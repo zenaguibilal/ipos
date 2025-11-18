@@ -126,8 +126,8 @@ function CustomerRow({ customer }: { customer: Customer }) {
                         </div>
                     </div>
                 </TableCell>
-                <TableCell className="hidden md:table-cell">{customer.phone}</TableCell>
-                <TableCell className="hidden md:table-cell text-center">{customer.settlementDay || 'N/A'}</TableCell>
+                <TableCell>{customer.phone}</TableCell>
+                <TableCell className="text-center">{customer.settlementDay || 'N/A'}</TableCell>
                  <TableCell>
                     {salesLoading ? '...' : (
                         <Badge variant="secondary">
@@ -236,8 +236,8 @@ export function CustomerList({ initialCustomers }: { initialCustomers: Customer[
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Client</TableHead>
-                                <TableHead className="hidden md:table-cell">Téléphone</TableHead>
-                                <TableHead className="hidden md:table-cell">Jour de règlement</TableHead>
+                                <TableHead>Téléphone</TableHead>
+                                <TableHead>Jour de règlement</TableHead>
                                 <TableHead>Ventes totales</TableHead>
                                 <TableHead>Dette</TableHead>
                                 <TableHead>Factures</TableHead>
