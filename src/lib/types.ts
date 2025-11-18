@@ -14,7 +14,6 @@ export interface Product {
 export interface Customer {
   id: string;
   name: string;
-  email?: string;
   phone: string;
   avatarUrl?: string;
   avatarHint?: string;
@@ -33,9 +32,28 @@ export interface Supplier {
 export interface Sale {
   id: string;
   customerId: string;
-  customer?: Pick<Customer, 'name' | 'email' | 'avatarUrl' | 'avatarHint'>;
   totalAmount: number; // in cents
   saleDate: string;
   paymentMethod: 'cash' | 'credit';
   saleLineItemIds: string[];
+}
+
+export interface SaleLineItem {
+    id: string;
+    productId: string;
+    quantity: number;
+    unitPrice: number; // in cents
+    discount: number;
+}
+
+
+// --- Detailed Types for UI ---
+
+export interface SaleLineItemWithProduct extends SaleLineItem {
+    product?: Product;
+}
+
+export interface SaleWithDetails extends Sale {
+    customer?: Customer;
+    lineItems?: SaleLineItemWithProduct[];
 }
