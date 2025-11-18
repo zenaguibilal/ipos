@@ -58,7 +58,7 @@ export function POSClient({ products, customers }: { products: Product[], custom
     setCart((prevCart) => {
       const existingItem = prevCart.find((item) => item.id === product.id);
       if (existingItem) {
-        if (existingItem.cartQuantity < item.quantity) {
+        if (existingItem.cartQuantity < product.quantity) {
           return prevCart.map((item) =>
             item.id === product.id
               ? { ...item, cartQuantity: item.cartQuantity + 1 }
@@ -180,8 +180,7 @@ export function POSClient({ products, customers }: { products: Product[], custom
   };
 
   const handleBarcodeScan = (barcode: string) => {
-    // In a real app, you might want a more efficient way to lookup by barcode
-    const product = products.find(p => p.id === barcode); 
+    const product = products.find(p => p.barcode === barcode); 
     if (product) {
       addToCart(product);
       toast({

@@ -34,6 +34,10 @@
         "supplierId": {
           "type": "string",
           "description": "Reference to Supplier. (Relationship: Supplier 1:N Product)"
+        },
+        "barcode": {
+          "type": "string",
+          "description": "The barcode value of the product."
         }
       },
       "required": [

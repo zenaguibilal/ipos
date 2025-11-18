@@ -27,6 +27,7 @@ function ProductForm({ product, onSave, onCancel, supplierId }: { product: Parti
             imageUrl: product?.imageUrl || 'https://picsum.photos/seed/99/400/400',
             description: product?.description || '',
             supplierId: supplierId,
+            barcode: formData.get('barcode') as string,
         };
         onSave(newProduct);
     };
@@ -43,6 +44,10 @@ function ProductForm({ product, onSave, onCancel, supplierId }: { product: Parti
                 <div>
                     <Label htmlFor="name">Nom du Produit</Label>
                     <Input id="name" name="name" defaultValue={product?.name} required />
+                </div>
+                <div>
+                    <Label htmlFor="barcode">Code-barres</Label>
+                    <Input id="barcode" name="barcode" defaultValue={product?.barcode} />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                     <div>
@@ -119,6 +124,7 @@ export function ProductList({ initialProducts }: { initialProducts: Product[] })
                                 <TableHead className="hidden w-[100px] sm:table-cell">Image</TableHead>
                                 <TableHead>Nom</TableHead>
                                 <TableHead>Statut</TableHead>
+                                <TableHead>Code-barres</TableHead>
                                 <TableHead className="hidden md:table-cell">Prix</TableHead>
                                 <TableHead className="hidden md:table-cell">Stock</TableHead>
                                 <TableHead>Actions</TableHead>
@@ -141,6 +147,7 @@ export function ProductList({ initialProducts }: { initialProducts: Product[] })
                                     <TableCell>
                                         {product.quantity > 10 ? <Badge variant="outline">En Stock</Badge> : (product.quantity > 0 ? <Badge variant="destructive">Stock Faible</Badge> : <Badge variant="destructive">En Rupture</Badge>)}
                                     </TableCell>
+                                    <TableCell>{product.barcode}</TableCell>
                                     <TableCell className="hidden md:table-cell">
                                         {(product.price / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'DZD', minimumFractionDigits: 0 })}
                                     </TableCell>

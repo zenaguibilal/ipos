@@ -6,6 +6,7 @@ export interface Product {
   imageUrl: string;
   description: string;
   supplierId: string;
+  barcode?: string;
 }
 
 export interface Customer {
