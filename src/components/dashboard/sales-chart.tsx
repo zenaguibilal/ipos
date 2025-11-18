@@ -7,16 +7,11 @@ import {
   ChartTooltipContent,
 } from '@/components/ui/chart';
 
-const data = [
-  { month: 'Jan', total: Math.floor(Math.random() * 5000) + 1000 },
-  { month: 'Fév', total: Math.floor(Math.random() * 5000) + 1000 },
-  { month: 'Mar', total: Math.floor(Math.random() * 5000) + 1000 },
-  { month: 'Avr', total: Math.floor(Math.random() * 5000) + 1000 },
-  { month: 'Mai', total: Math.floor(Math.random() * 5000) + 1000 },
-  { month: 'Juin', total: Math.floor(Math.random() * 5000) + 1000 },
-];
+type SalesChartProps = {
+    data: { month: string; total: number }[];
+}
 
-export function SalesChart() {
+export function SalesChart({ data = [] }: SalesChartProps) {
   return (
     <ChartContainer
       config={{
@@ -27,7 +22,7 @@ export function SalesChart() {
       }}
       className="h-[250px] w-full"
     >
-      <BarChart accessibilityLayer data={data}>
+      <BarChart accessibilityLayer data={data} margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
         <XAxis
           dataKey="month"
           stroke="#888888"

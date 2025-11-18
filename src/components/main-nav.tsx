@@ -8,6 +8,7 @@ import {
   History,
   Package,
   Users,
+  Truck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SheetClose } from './ui/sheet';
@@ -18,6 +19,7 @@ const navLinks = [
   { href: '/sales-history', label: 'Historique', icon: History },
   { href: '/products', label: 'Produits', icon: Package },
   { href: '/customers', label: 'Clients', icon: Users },
+  { href: '/suppliers', label: 'Fournisseurs', icon: Truck },
 ];
 
 type MainNavProps = {

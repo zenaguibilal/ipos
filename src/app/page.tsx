@@ -28,6 +28,7 @@ export default function DashboardPage() {
     totalCustomers,
     totalSuppliers,
     lowStockItems,
+    monthlySales,
     isLoading,
   } = useDashboardData();
 
@@ -69,7 +70,7 @@ export default function DashboardPage() {
             <CardTitle>Aperçu</CardTitle>
           </CardHeader>
           <CardContent className="pl-2">
-            <SalesChart />
+            <SalesChart data={monthlySales} />
           </CardContent>
         </Card>
         <Card className="col-span-1 lg:col-span-3">

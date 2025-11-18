@@ -4,6 +4,9 @@ import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, limit, getDocs, where, collectionGroup, documentId } from 'firebase/firestore';
 import type { Product, Customer, Supplier, Sale } from './types';
 import { useEffect, useState, useMemo } from 'react';
+import { format, getMonth } from 'date-fns';
+import { fr } from 'date-fns/locale';
+
 
 // Server-side data fetching functions (can be adapted for client-side with hooks)
 export async function getProducts(db: any): Promise<Product[]> {
@@ -84,7 +87,22 @@ export function useDashboardData() {
     const { data: products, isLoading: productsLoading } = useCollection(productsRef);
 
     const totalRevenue = sales?.reduce((acc, sale) => acc + sale.totalAmount, 0) || 0;
-    const lowStockItems = products?.filter(p => p.quantity < 10).length || 0;
+    const lowStockItems = products?.filter(p => p.quantity < p.minStock).length || 0;
+
+    const monthlySales = useMemo(() => {
+        const monthNames = ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Août", "Sep", "Oct", "Nov", "Déc"];
+        const monthlyData = monthNames.map(month => ({ month, total: 0 }));
+
+        if (sales) {
+            sales.forEach(sale => {
+                const monthIndex = getMonth(new Date(sale.saleDate));
+                monthlyData[monthIndex].total += sale.totalAmount;
+            });
+        }
+        // Return data for the current year, could be adapted for other ranges
+        return monthlyData.map(m => ({ ...m, total: m.total / 100 }));
+    }, [sales]);
+
 
     return {
         totalRevenue: totalRevenue,
@@ -92,6 +110,7 @@ export function useDashboardData() {
         totalCustomers: customers?.length || 0,
         totalSuppliers: suppliers?.length || 0,
         lowStockItems: lowStockItems,
+        monthlySales,
         isLoading: salesLoading || customersLoading || suppliersLoading || productsLoading
     }
 }
