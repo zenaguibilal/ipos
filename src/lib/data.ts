@@ -1,7 +1,7 @@
 'use client';
 
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, limit, getDocs, where } from 'firebase/firestore';
+import { collection, query, limit, getDocs, where, collectionGroup } from 'firebase/firestore';
 import type { Product, Customer, Supplier, Sale } from './types';
 import { useEffect, useState, useMemo } from 'react';
 
@@ -27,7 +27,7 @@ export async function getSuppliers(db: any): Promise<Supplier[]> {
 export function useSales(salesLimit?: number) {
   const firestore = useFirestore();
   const salesRef = useMemoFirebase(() => {
-    let q = collection(firestore, 'customers/test-customer/sales');
+    let q = collectionGroup(firestore, 'sales');
     if (salesLimit) {
       q = query(q, limit(salesLimit));
     }
@@ -35,25 +35,33 @@ export function useSales(salesLimit?: number) {
   }, [firestore, salesLimit]);
 
   const { data: salesData, isLoading: isSalesLoading, error: salesError } = useCollection<Sale>(salesRef);
-  
-  const customerIds = useMemo(() => salesData?.map(s => s.customerId), [salesData]);
-  const customersRef = useMemoFirebase(() => customerIds && customerIds.length > 0 ? query(collection(firestore, 'customers'), where('id', 'in', customerIds)) : null, [firestore, customerIds]);
+
+  const customerIds = useMemo(() => {
+      if (!salesData) return [];
+      const ids = new Set(salesData.map(s => s.customerId));
+      return Array.from(ids);
+  }, [salesData]);
+
+  const customersRef = useMemoFirebase(() => {
+      if (!firestore || customerIds.length === 0) return null;
+      return query(collection(firestore, 'customers'), where('id', 'in', customerIds.slice(0, 30)))
+  }, [firestore, customerIds]);
+
   const { data: customersData, isLoading: areCustomersLoading, error: customersError } = useCollection<Customer>(customersRef);
-  
+
   const [sales, setSales] = useState<any[]>([]);
-  
+
   useEffect(() => {
     if (salesData && customersData) {
-      const salesWithCustomerData = salesData.map(sale => {
-        const customer = customersData.find(c => c.id === sale.customerId);
-        return {
-          ...sale,
-          customer: customer || null
-        }
-      });
+      const customerMap = new Map(customersData.map(c => [c.id, c]));
+      const salesWithCustomerData = salesData.map(sale => ({
+        ...sale,
+        customer: customerMap.get(sale.customerId) || null
+      }));
       setSales(salesWithCustomerData);
     } else if (salesData) {
-        setSales(salesData);
+        // If customers are still loading, just show sales data without customer info
+        setSales(salesData.map(sale => ({ ...sale, customer: null })));
     }
   }, [salesData, customersData]);
 
@@ -63,7 +71,7 @@ export function useSales(salesLimit?: number) {
 export function useDashboardData() {
     const firestore = useFirestore();
 
-    const salesRef = useMemoFirebase(() => collection(firestore, 'customers/test-customer/sales'), [firestore]);
+    const salesRef = useMemoFirebase(() => collectionGroup(firestore, 'sales'), [firestore]);
     const { data: sales, isLoading: salesLoading } = useCollection(salesRef);
     
     const customersRef = useMemoFirebase(() => collection(firestore, 'customers'), [firestore]);
