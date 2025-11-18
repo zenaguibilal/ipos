@@ -25,7 +25,10 @@ import { Input } from '@/components/ui/input';
 import { BarcodeScanner } from '@/components/sell/barcode-scanner';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Command, CommandInput } from '@/components/ui/command';
+import { Command, CommandInput, CommandEmpty, CommandGroup, CommandItem, CommandList } from '@/components/ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
+import { Check } from 'lucide-react';
 
 
 interface CartItem extends Product {
@@ -33,48 +36,56 @@ interface CartItem extends Product {
 }
 
 function CustomerSelect({ customers, selectedCustomerId, onSelect }: { customers: Customer[], selectedCustomerId: string | undefined, onSelect: (customerId: string) => void }) {
-    const [searchTerm, setSearchTerm] = useState('');
-
-    const filteredCustomers = customers.filter(customer =>
-        customer.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-    
+    const [open, setOpen] = useState(false)
     const selectedCustomer = customers.find(c => c.id === selectedCustomerId);
 
     return (
-        <Select value={selectedCustomerId} onValueChange={onSelect}>
-            <SelectTrigger className="w-full">
-                 <div className="flex items-center gap-2">
-                    <User className="h-4 w-4" />
-                    <SelectValue placeholder="Sélectionner un client">
-                        {selectedCustomer?.name || "Sélectionner un client"}
-                    </SelectValue>
-                 </div>
-            </SelectTrigger>
-            <SelectContent>
-                <Command>
-                    <CommandInput 
-                        placeholder="Rechercher un client..." 
-                        value={searchTerm}
-                        onValueChange={setSearchTerm}
-                        className="mb-2"
-                    />
-                     <div className="max-h-60 overflow-y-auto">
-                        {filteredCustomers.map((customer) => (
-                            <SelectItem key={customer.id} value={customer.id}>
-                                {customer.name}
-                            </SelectItem>
-                        ))}
-                        {filteredCustomers.length === 0 && (
-                            <div className="py-6 text-center text-sm">
-                                Aucun client trouvé.
-                            </div>
-                        )}
+        <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+                <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={open}
+                    className="w-full justify-between"
+                >
+                    <div className="flex items-center gap-2">
+                        <User className="h-4 w-4" />
+                        {selectedCustomer
+                            ? selectedCustomer.name
+                            : "Sélectionner un client"}
                     </div>
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                <Command>
+                    <CommandInput placeholder="Rechercher un client..." />
+                    <CommandList>
+                        <CommandEmpty>Aucun client trouvé.</CommandEmpty>
+                        <CommandGroup>
+                            {customers.map((customer) => (
+                                <CommandItem
+                                    key={customer.id}
+                                    value={customer.name}
+                                    onSelect={() => {
+                                        onSelect(customer.id)
+                                        setOpen(false)
+                                    }}
+                                >
+                                    <Check
+                                        className={cn(
+                                            "mr-2 h-4 w-4",
+                                            selectedCustomerId === customer.id ? "opacity-100" : "opacity-0"
+                                        )}
+                                    />
+                                    {customer.name}
+                                </CommandItem>
+                            ))}
+                        </CommandGroup>
+                    </CommandList>
                 </Command>
-            </SelectContent>
-        </Select>
-    );
+            </PopoverContent>
+        </Popover>
+    )
 }
 
 const generalCustomer: Customer = {
