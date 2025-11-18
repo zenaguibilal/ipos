@@ -3,7 +3,7 @@
 import type { Product, Sale, Customer } from '@/lib/types';
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { PlusCircle, MinusCircle, XCircle, Coins, BookUser, User, Search, ScanLine } from 'lucide-react';
+import { PlusCircle, MinusCircle, XCircle, Coins, BookUser, User, Search, ScanLine, Barcode } from 'lucide-react';
 import {
   Card,
   CardContent,
@@ -45,6 +45,7 @@ export function POSClient({ products, customers }: { products: Product[], custom
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | undefined>(customers[0]?.id);
   const [searchTerm, setSearchTerm] = useState('');
+  const [barcodeTerm, setBarcodeTerm] = useState('');
   const [isScannerOpen, setIsScannerOpen] = useState(false);
 
   useEffect(() => {
@@ -187,13 +188,21 @@ export function POSClient({ products, customers }: { products: Product[], custom
         title: "Produit Ajouté",
         description: `${product.name} a été ajouté au panier.`,
       });
-      setIsScannerOpen(false);
+      if (isScannerOpen) setIsScannerOpen(false);
+      if (barcodeTerm) setBarcodeTerm('');
     } else {
       toast({
         variant: "destructive",
         title: "Produit Non Trouvé",
         description: `Aucun produit ne correspond au code-barres : ${barcode}`,
       });
+    }
+  };
+
+  const handleBarcodeSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (barcodeTerm) {
+      handleBarcodeScan(barcodeTerm);
     }
   };
 
@@ -208,21 +217,33 @@ export function POSClient({ products, customers }: { products: Product[], custom
         <div className="md:col-span-2 bg-card rounded-lg border flex flex-col">
           <CardHeader>
               <CardTitle>Produits</CardTitle>
-              <div className="flex w-full items-center gap-2 pt-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
                 <div className="relative w-full">
                   <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
                     type="search"
-                    placeholder="Rechercher des produits..."
+                    placeholder="Rechercher par nom de produit..."
                     className="w-full rounded-lg bg-background pl-8"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
                 </div>
-                <Button variant="outline" size="icon" className="shrink-0" onClick={() => setIsScannerOpen(true)}>
-                  <ScanLine className="h-5 w-5" />
-                  <span className="sr-only">Scanner un code-barres</span>
-                </Button>
+                <div className="flex w-full items-center gap-2">
+                  <form onSubmit={handleBarcodeSubmit} className="relative w-full">
+                    <Barcode className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      type="text"
+                      placeholder="Entrer le code-barres..."
+                      className="w-full rounded-lg bg-background pl-8"
+                      value={barcodeTerm}
+                      onChange={(e) => setBarcodeTerm(e.target.value)}
+                    />
+                  </form>
+                  <Button variant="outline" size="icon" className="shrink-0" onClick={() => setIsScannerOpen(true)}>
+                    <ScanLine className="h-5 w-5" />
+                    <span className="sr-only">Scanner un code-barres</span>
+                  </Button>
+                </div>
               </div>
           </CardHeader>
           <div className="p-4 flex-grow overflow-y-auto">
@@ -352,3 +373,5 @@ export function POSClient({ products, customers }: { products: Product[], custom
     </>
   );
 }
+
+    
