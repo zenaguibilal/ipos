@@ -40,33 +40,33 @@ export default function DashboardPage() {
       <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
         <SummaryCard
           icon={<DollarSign />}
-          title="Total Revenue"
-          value={(totalRevenue / 100).toLocaleString('ar-DZ', { style: 'currency', currency: 'DZD', minimumFractionDigits: 0 })}
-          description="+20.1% from last month"
+          title="Revenu Total"
+          value={(totalRevenue / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'DZD', minimumFractionDigits: 0 })}
+          description="+20.1% depuis le mois dernier"
         />
         <SummaryCard
           icon={<Users />}
-          title="Customers"
+          title="Clients"
           value={`+${totalCustomers}`}
-          description="All-time customer count"
+          description="Nombre total de clients"
         />
         <SummaryCard
           icon={<Truck />}
-          title="Suppliers"
+          title="Fournisseurs"
           value={`+${totalSuppliers}`}
-          description="All-time supplier count"
+          description="Nombre total de fournisseurs"
         />
         <SummaryCard
           icon={<Archive />}
-          title="Low Stock"
+          title="Stock Faible"
           value={`${lowStockItems}`}
-          description="Items needing attention"
+          description="Articles nécessitant une attention"
         />
       </div>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-7">
         <Card className="col-span-1 lg:col-span-4">
           <CardHeader>
-            <CardTitle>Overview</CardTitle>
+            <CardTitle>Aperçu</CardTitle>
           </CardHeader>
           <CardContent className="pl-2">
             <SalesChart />
@@ -74,7 +74,7 @@ export default function DashboardPage() {
         </Card>
         <Card className="col-span-1 lg:col-span-3">
           <CardHeader>
-            <CardTitle>Recent Sales</CardTitle>
+            <CardTitle>Ventes Récentes</CardTitle>
           </CardHeader>
           <CardContent>
             <RecentSales />

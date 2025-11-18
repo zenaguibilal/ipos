@@ -9,11 +9,11 @@ import {
 
 const data = [
   { month: 'Jan', total: Math.floor(Math.random() * 5000) + 1000 },
-  { month: 'Feb', total: Math.floor(Math.random() * 5000) + 1000 },
+  { month: 'Fév', total: Math.floor(Math.random() * 5000) + 1000 },
   { month: 'Mar', total: Math.floor(Math.random() * 5000) + 1000 },
-  { month: 'Apr', total: Math.floor(Math.random() * 5000) + 1000 },
-  { month: 'May', total: Math.floor(Math.random() * 5000) + 1000 },
-  { month: 'Jun', total: Math.floor(Math.random() * 5000) + 1000 },
+  { month: 'Avr', total: Math.floor(Math.random() * 5000) + 1000 },
+  { month: 'Mai', total: Math.floor(Math.random() * 5000) + 1000 },
+  { month: 'Juin', total: Math.floor(Math.random() * 5000) + 1000 },
 ];
 
 export function SalesChart() {
@@ -21,7 +21,7 @@ export function SalesChart() {
     <ChartContainer
       config={{
         total: {
-          label: 'Sales',
+          label: 'Ventes',
           color: 'hsl(var(--chart-1))',
         },
       }}
@@ -44,7 +44,7 @@ export function SalesChart() {
         />
         <ChartTooltip
           cursor={false}
-          content={<ChartTooltipContent indicator="dot" formatter={(value, name) => [(value as number).toLocaleString('ar-DZ', { style: 'currency', currency: 'DZD', minimumFractionDigits: 0 }), name]} />}
+          content={<ChartTooltipContent indicator="dot" formatter={(value, name) => [(value as number).toLocaleString('fr-FR', { style: 'currency', currency: 'DZD', minimumFractionDigits: 0 }), name]} />}
         />
         <Bar
           dataKey="total"

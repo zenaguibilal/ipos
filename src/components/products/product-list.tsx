@@ -34,30 +34,30 @@ function ProductForm({ product, onSave, onCancel, supplierId }: { product: Parti
     return (
         <form onSubmit={handleSubmit} className="flex flex-col h-full">
             <SheetHeader className="p-6">
-                <SheetTitle>{product?.id ? 'Edit Product' : 'Add Product'}</SheetTitle>
+                <SheetTitle>{product?.id ? 'Modifier le Produit' : 'Ajouter un Produit'}</SheetTitle>
                 <SheetDescription>
-                    Fill in the details for the product. Click save when you're done.
+                    Remplissez les détails du produit. Cliquez sur enregistrer lorsque vous avez terminé.
                 </SheetDescription>
             </SheetHeader>
             <div className="flex-grow p-6 space-y-4 overflow-y-auto">
                 <div>
-                    <Label htmlFor="name">Product Name</Label>
+                    <Label htmlFor="name">Nom du Produit</Label>
                     <Input id="name" name="name" defaultValue={product?.name} required />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                     <div>
-                        <Label htmlFor="price">Price (DZD)</Label>
+                        <Label htmlFor="price">Prix (DZD)</Label>
                         <Input id="price" name="price" type="number" step="0.01" defaultValue={product?.price ? product.price / 100 : ''} required />
                     </div>
                     <div>
-                        <Label htmlFor="quantity">Stock Quantity</Label>
+                        <Label htmlFor="quantity">Quantité en Stock</Label>
                         <Input id="quantity" name="quantity" type="number" defaultValue={product?.quantity} required />
                     </div>
                 </div>
             </div>
             <SheetFooter className="p-6 bg-muted/40 border-t">
-                <Button variant="outline" type="button" onClick={onCancel}>Cancel</Button>
-                <Button type="submit">Save Product</Button>
+                <Button variant="outline" type="button" onClick={onCancel}>Annuler</Button>
+                <Button type="submit">Enregistrer le Produit</Button>
             </SheetFooter>
         </form>
     );
@@ -102,13 +102,13 @@ export function ProductList({ initialProducts }: { initialProducts: Product[] })
             <Card>
                 <CardHeader className="flex flex-row items-center">
                     <div className="grid gap-2">
-                        <CardTitle>Products</CardTitle>
-                        <CardDescription>Manage your products and view their inventory status.</CardDescription>
+                        <CardTitle>Produits</CardTitle>
+                        <CardDescription>Gérez vos produits et consultez l'état de leur inventaire.</CardDescription>
                     </div>
                     <div className="ml-auto flex items-center gap-2">
                         <Button size="sm" className="h-8 gap-1" onClick={handleAddClick}>
                             <PlusCircle className="h-3.5 w-3.5" />
-                            <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Add Product</span>
+                            <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Ajouter un Produit</span>
                         </Button>
                     </div>
                 </CardHeader>
@@ -117,9 +117,9 @@ export function ProductList({ initialProducts }: { initialProducts: Product[] })
                         <TableHeader>
                             <TableRow>
                                 <TableHead className="hidden w-[100px] sm:table-cell">Image</TableHead>
-                                <TableHead>Name</TableHead>
-                                <TableHead>Status</TableHead>
-                                <TableHead className="hidden md:table-cell">Price</TableHead>
+                                <TableHead>Nom</TableHead>
+                                <TableHead>Statut</TableHead>
+                                <TableHead className="hidden md:table-cell">Prix</TableHead>
                                 <TableHead className="hidden md:table-cell">Stock</TableHead>
                                 <TableHead>Actions</TableHead>
                             </TableRow>
@@ -139,10 +139,10 @@ export function ProductList({ initialProducts }: { initialProducts: Product[] })
                                     </TableCell>
                                     <TableCell className="font-medium">{product.name}</TableCell>
                                     <TableCell>
-                                        {product.quantity > 10 ? <Badge variant="outline">In Stock</Badge> : (product.quantity > 0 ? <Badge variant="destructive">Low Stock</Badge> : <Badge variant="destructive">Out of Stock</Badge>)}
+                                        {product.quantity > 10 ? <Badge variant="outline">En Stock</Badge> : (product.quantity > 0 ? <Badge variant="destructive">Stock Faible</Badge> : <Badge variant="destructive">En Rupture</Badge>)}
                                     </TableCell>
                                     <TableCell className="hidden md:table-cell">
-                                        {(product.price / 100).toLocaleString('ar-DZ', { style: 'currency', currency: 'DZD', minimumFractionDigits: 0 })}
+                                        {(product.price / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'DZD', minimumFractionDigits: 0 })}
                                     </TableCell>
                                     <TableCell className="hidden md:table-cell">{product.quantity}</TableCell>
                                     <TableCell>
@@ -150,13 +150,13 @@ export function ProductList({ initialProducts }: { initialProducts: Product[] })
                                             <DropdownMenuTrigger asChild>
                                                 <Button aria-haspopup="true" size="icon" variant="ghost">
                                                     <MoreHorizontal className="h-4 w-4" />
-                                                    <span className="sr-only">Toggle menu</span>
+                                                    <span className="sr-only">Ouvrir/fermer le menu</span>
                                                 </Button>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
                                                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                                <DropdownMenuItem onClick={() => handleEditClick(product)}>Edit</DropdownMenuItem>
-                                                <DropdownMenuItem onClick={() => handleDelete(product.id)} className="text-destructive">Delete</DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => handleEditClick(product)}>Modifier</DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => handleDelete(product.id)} className="text-destructive">Supprimer</DropdownMenuItem>
                                             </DropdownMenuContent>
                                         </DropdownMenu>
                                     </TableCell>

@@ -33,14 +33,14 @@ function CustomerForm({ customer, onSave, onCancel }: { customer: Partial<Custom
     return (
         <form onSubmit={handleSubmit} className="flex flex-col h-full">
             <SheetHeader className="p-6">
-                <SheetTitle>{customer?.id ? 'Edit Customer' : 'Add Customer'}</SheetTitle>
+                <SheetTitle>{customer?.id ? 'Modifier le Client' : 'Ajouter un Client'}</SheetTitle>
                 <SheetDescription>
-                    Fill in the customer's details. Click save when you're done.
+                    Remplissez les détails du client. Cliquez sur enregistrer lorsque vous avez terminé.
                 </SheetDescription>
             </SheetHeader>
             <div className="flex-grow p-6 space-y-4 overflow-y-auto">
                 <div>
-                    <Label htmlFor="name">Full Name</Label>
+                    <Label htmlFor="name">Nom complet</Label>
                     <Input id="name" name="name" defaultValue={customer?.name} required />
                 </div>
                 <div>
@@ -48,17 +48,17 @@ function CustomerForm({ customer, onSave, onCancel }: { customer: Partial<Custom
                     <Input id="email" name="email" type="email" defaultValue={customer?.email} required />
                 </div>
                  <div>
-                    <Label htmlFor="phone">Phone</Label>
+                    <Label htmlFor="phone">Téléphone</Label>
                     <Input id="phone" name="phone" type="tel" defaultValue={customer?.phone} />
                 </div>
                  <div>
-                    <Label htmlFor="loyaltyCardNumber">Loyalty Card Number</Label>
+                    <Label htmlFor="loyaltyCardNumber">Numéro de carte de fidélité</Label>
                     <Input id="loyaltyCardNumber" name="loyaltyCardNumber" type="text" defaultValue={customer?.loyaltyCardNumber} />
                 </div>
             </div>
             <SheetFooter className="p-6 bg-muted/40 border-t">
-                <Button variant="outline" type="button" onClick={onCancel}>Cancel</Button>
-                <Button type="submit">Save Customer</Button>
+                <Button variant="outline" type="button" onClick={onCancel}>Annuler</Button>
+                <Button type="submit">Enregistrer le Client</Button>
             </SheetFooter>
         </form>
     );
@@ -103,13 +103,13 @@ export function CustomerList({ initialCustomers }: { initialCustomers: Customer[
             <Card>
                 <CardHeader className="flex flex-row items-center">
                      <div className="grid gap-2">
-                        <CardTitle>Customers</CardTitle>
-                        <CardDescription>Manage your customers and view their purchase history.</CardDescription>
+                        <CardTitle>Clients</CardTitle>
+                        <CardDescription>Gérez vos clients et consultez leur historique d'achats.</CardDescription>
                     </div>
                     <div className="ml-auto flex items-center gap-2">
                         <Button size="sm" className="h-8 gap-1" onClick={handleAddClick}>
                             <PlusCircle className="h-3.5 w-3.5" />
-                            <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Add Customer</span>
+                            <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Ajouter un Client</span>
                         </Button>
                     </div>
                 </CardHeader>
@@ -117,9 +117,9 @@ export function CustomerList({ initialCustomers }: { initialCustomers: Customer[
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Customer</TableHead>
-                                <TableHead className="hidden md:table-cell">Phone</TableHead>
-                                <TableHead className="hidden md:table-cell">Loyalty Card</TableHead>
+                                <TableHead>Client</TableHead>
+                                <TableHead className="hidden md:table-cell">Téléphone</TableHead>
+                                <TableHead className="hidden md:table-cell">Carte de fidélité</TableHead>
                                 <TableHead>Actions</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -129,7 +129,7 @@ export function CustomerList({ initialCustomers }: { initialCustomers: Customer[
                                     <TableCell>
                                         <div className="flex items-center gap-4">
                                             <Avatar className="hidden h-9 w-9 sm:flex">
-                                                 <Image src={customer.avatarUrl || `https://picsum.photos/seed/${customer.id}/100/100`} alt={`Avatar of ${customer.name}`} width={36} height={36} data-ai-hint={'person portrait'} />
+                                                 <Image src={customer.avatarUrl || `https://picsum.photos/seed/${customer.id}/100/100`} alt={`Avatar de ${customer.name}`} width={36} height={36} data-ai-hint={'person portrait'} />
                                                  <AvatarFallback>{customer.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
                                             </Avatar>
                                             <div className="grid gap-1">
@@ -145,13 +145,13 @@ export function CustomerList({ initialCustomers }: { initialCustomers: Customer[
                                             <DropdownMenuTrigger asChild>
                                                 <Button aria-haspopup="true" size="icon" variant="ghost">
                                                     <MoreHorizontal className="h-4 w-4" />
-                                                    <span className="sr-only">Toggle menu</span>
+                                                    <span className="sr-only">Ouvrir/fermer le menu</span>
                                                 </Button>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
                                                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                                <DropdownMenuItem onClick={() => handleEditClick(customer)}>Edit</DropdownMenuItem>
-                                                <DropdownMenuItem onClick={() => handleDelete(customer.id)} className="text-destructive">Delete</DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => handleEditClick(customer)}>Modifier</DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => handleDelete(customer.id)} className="text-destructive">Supprimer</DropdownMenuItem>
                                             </DropdownMenuContent>
                                         </DropdownMenu>
                                     </TableCell>

@@ -11,9 +11,9 @@ import { PasswordProvider } from '@/components/auth/password-provider';
 import { PasswordGate } from '@/components/auth/password-gate';
 
 export const metadata: Metadata = {
-  title: 'iPOS - Intelligent Point of Sale',
+  title: 'iPOS - Point de Vente Intelligent',
   description:
-    'A modern, integrated point-of-sale system for managing sales, products, customers, and suppliers.',
+    'Un système de point de vente moderne et intégré pour la gestion des ventes, des produits, des clients et des fournisseurs.',
 };
 
 export default function RootLayout({
@@ -22,7 +22,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="fr">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />

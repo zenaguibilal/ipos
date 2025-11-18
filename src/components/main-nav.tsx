@@ -15,11 +15,11 @@ import { Badge } from './ui/badge';
 import { SheetClose } from './ui/sheet';
 
 const navLinks = [
-  { href: '/', label: 'Dashboard', icon: Home },
-  { href: '/sell', label: 'Sell', icon: ShoppingCart },
-  { href: '/products', label: 'Products', icon: Package },
-  { href: '/customers', label: 'Customers', icon: Users },
-  { href: '/suppliers', label: 'Suppliers', icon: Truck },
+  { href: '/', label: 'Tableau de Bord', icon: Home },
+  { href: '/sell', label: 'Vendre', icon: ShoppingCart },
+  { href: '/products', label: 'Produits', icon: Package },
+  { href: '/customers', label: 'Clients', icon: Users },
+  { href: '/suppliers', label: 'Fournisseurs', icon: Truck },
 ];
 
 type MainNavProps = {

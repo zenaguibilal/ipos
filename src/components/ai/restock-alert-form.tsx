@@ -66,8 +66,8 @@ export function RestockAlertForm() {
       const response = await generateRestockAlerts(input);
       setResult(response);
     } catch (error) {
-      console.error('Error generating restock alert:', error);
-      // Handle error display to user
+      console.error('Erreur lors de la génération de l\'alerte de réapprovisionnement:', error);
+      // Gérer l'affichage de l'erreur à l'utilisateur
     } finally {
       setIsLoading(false);
     }
@@ -79,10 +79,10 @@ export function RestockAlertForm() {
             <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                     <BrainCircuit className="h-6 w-6 text-primary" />
-                    AI-Powered Restock Alerts
+                    Alertes de Réapprovisionnement IA
                 </CardTitle>
                  <CardDescription>
-                    Loading product data...
+                    Chargement des données produits...
                 </CardDescription>
             </CardHeader>
             <CardContent>
@@ -98,10 +98,10 @@ export function RestockAlertForm() {
             <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                     <BrainCircuit className="h-6 w-6 text-primary" />
-                    AI-Powered Restock Alerts
+                    Alertes de Réapprovisionnement IA
                 </CardTitle>
                  <CardDescription>
-                    No products found to analyze.
+                    Aucun produit trouvé à analyser.
                 </CardDescription>
             </CardHeader>
         </Card>
@@ -113,23 +113,22 @@ export function RestockAlertForm() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <BrainCircuit className="h-6 w-6 text-primary" />
-          AI-Powered Restock Alerts
+          Alertes de Réapprovisionnement IA
         </CardTitle>
         <CardDescription>
-          Predict when you need to reorder products based on sales velocity and
-          lead times.
+          Prédisez quand vous devez réapprovisionner les produits en fonction de la vélocité des ventes et des délais.
         </CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit}>
         <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           <div className="lg:col-span-5">
-            <Label htmlFor="product-select">Select a product to analyze</Label>
+            <Label htmlFor="product-select">Sélectionnez un produit à analyser</Label>
             <Select
               onValueChange={handleProductChange}
               defaultValue={selectedProduct.id}
             >
               <SelectTrigger id="product-select">
-                <SelectValue placeholder="Select Product" />
+                <SelectValue placeholder="Sélectionner un produit" />
               </SelectTrigger>
               <SelectContent>
                 {products.map((product) => (
@@ -146,7 +145,7 @@ export function RestockAlertForm() {
             value={selectedProduct.name}
           />
           <div className="space-y-2">
-            <Label htmlFor="currentStockLevel">Current Stock</Label>
+            <Label htmlFor="currentStockLevel">Stock Actuel</Label>
             <Input
               id="currentStockLevel"
               name="currentStockLevel"
@@ -155,7 +154,7 @@ export function RestockAlertForm() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="salesVelocity">Sales Velocity (units/day)</Label>
+            <Label htmlFor="salesVelocity">Vélocité des ventes (unités/jour)</Label>
             <Input
               id="salesVelocity"
               name="salesVelocity"
@@ -165,7 +164,7 @@ export function RestockAlertForm() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="reorderThreshold">Reorder Threshold</Label>
+            <Label htmlFor="reorderThreshold">Seuil de Réapprovisionnement</Label>
             <Input
               id="reorderThreshold"
               name="reorderThreshold"
@@ -174,7 +173,7 @@ export function RestockAlertForm() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="leadTimeDays">Restock Lead Time (days)</Label>
+            <Label htmlFor="leadTimeDays">Délai de Réapprovisionnement (jours)</Label>
             <Input
               id="leadTimeDays"
               name="leadTimeDays"
@@ -188,18 +187,18 @@ export function RestockAlertForm() {
             {isLoading ? (
               <>
                 <Loader className="mr-2 h-4 w-4 animate-spin" />
-                Analyzing...
+                Analyse en cours...
               </>
             ) : (
-              'Generate Alert'
+              'Générer l\'Alerte'
             )}
           </Button>
           {result && (
             <Alert variant={result.shouldRestock ? 'destructive' : 'default'}>
               <AlertTitle>
                 {result.shouldRestock
-                  ? `Restock Recommended for ${selectedProduct.name}`
-                  : `Stock Levels OK for ${selectedProduct.name}`}
+                  ? `Réapprovisionnement Recommandé pour ${selectedProduct.name}`
+                  : `Niveaux de Stock OK pour ${selectedProduct.name}`}
               </AlertTitle>
               <AlertDescription>{result.alertMessage}</AlertDescription>
             </Alert>

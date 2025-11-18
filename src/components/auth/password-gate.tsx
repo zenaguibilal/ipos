@@ -15,7 +15,7 @@ export function PasswordGate({ children }: { children: React.ReactNode }) {
   const handleLogin = () => {
     const success = login(password);
     if (!success) {
-      setError('Incorrect password. Please try again.');
+      setError('Mot de passe incorrect. Veuillez réessayer.');
     } else {
       setError('');
     }
@@ -29,12 +29,12 @@ export function PasswordGate({ children }: { children: React.ReactNode }) {
     <div className="flex items-center justify-center min-h-screen bg-muted/40">
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle>Enter Password</CardTitle>
-          <CardDescription>This application is password protected.</CardDescription>
+          <CardTitle>Entrez le mot de passe</CardTitle>
+          <CardDescription>Cette application est protégée par un mot de passe.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password">Mot de passe</Label>
             <Input
               id="password"
               type="password"
@@ -47,7 +47,7 @@ export function PasswordGate({ children }: { children: React.ReactNode }) {
         </CardContent>
         <CardFooter>
           <Button className="w-full" onClick={handleLogin}>
-            Unlock
+            Déverrouiller
           </Button>
         </CardFooter>
       </Card>

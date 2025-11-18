@@ -29,18 +29,18 @@ function SupplierForm({ supplier, onSave, onCancel }: { supplier: Partial<Suppli
     return (
         <form onSubmit={handleSubmit} className="flex flex-col h-full">
             <SheetHeader className="p-6">
-                <SheetTitle>{supplier?.id ? 'Edit Supplier' : 'Add Supplier'}</SheetTitle>
+                <SheetTitle>{supplier?.id ? 'Modifier le Fournisseur' : 'Ajouter un Fournisseur'}</SheetTitle>
                 <SheetDescription>
-                    Fill in the supplier's details. Click save when you're done.
+                    Remplissez les détails du fournisseur. Cliquez sur enregistrer lorsque vous avez terminé.
                 </SheetDescription>
             </SheetHeader>
             <div className="flex-grow p-6 space-y-4 overflow-y-auto">
                 <div>
-                    <Label htmlFor="name">Company Name</Label>
+                    <Label htmlFor="name">Nom de l'entreprise</Label>
                     <Input id="name" name="name" defaultValue={supplier?.name} required />
                 </div>
                  <div>
-                    <Label htmlFor="contactPerson">Contact Person</Label>
+                    <Label htmlFor="contactPerson">Personne à contacter</Label>
                     <Input id="contactPerson" name="contactPerson" defaultValue={supplier?.contactName} />
                 </div>
                 <div>
@@ -48,13 +48,13 @@ function SupplierForm({ supplier, onSave, onCancel }: { supplier: Partial<Suppli
                     <Input id="email" name="email" type="email" defaultValue={supplier?.contactEmail} required />
                 </div>
                  <div>
-                    <Label htmlFor="phone">Phone</Label>
+                    <Label htmlFor="phone">Téléphone</Label>
                     <Input id="phone" name="phone" type="tel" defaultValue={supplier?.contactPhone} />
                 </div>
             </div>
             <SheetFooter className="p-6 bg-muted/40 border-t">
-                <Button variant="outline" type="button" onClick={onCancel}>Cancel</Button>
-                <Button type="submit">Save Supplier</Button>
+                <Button variant="outline" type="button" onClick={onCancel}>Annuler</Button>
+                <Button type="submit">Enregistrer le Fournisseur</Button>
             </SheetFooter>
         </form>
     );
@@ -98,13 +98,13 @@ export function SupplierList({ initialSuppliers }: { initialSuppliers: Supplier[
             <Card>
                 <CardHeader className="flex flex-row items-center">
                     <div className="grid gap-2">
-                        <CardTitle>Suppliers</CardTitle>
-                        <CardDescription>Manage your suppliers and track invoices.</CardDescription>
+                        <CardTitle>Fournisseurs</CardTitle>
+                        <CardDescription>Gérez vos fournisseurs et suivez les factures.</CardDescription>
                     </div>
                     <div className="ml-auto flex items-center gap-2">
                         <Button size="sm" className="h-8 gap-1" onClick={handleAddClick}>
                             <PlusCircle className="h-3.5 w-3.5" />
-                            <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Add Supplier</span>
+                            <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Ajouter un Fournisseur</span>
                         </Button>
                     </div>
                 </CardHeader>
@@ -112,8 +112,8 @@ export function SupplierList({ initialSuppliers }: { initialSuppliers: Supplier[
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Company</TableHead>
-                                <TableHead className="hidden md:table-cell">Contact Person</TableHead>
+                                <TableHead>Entreprise</TableHead>
+                                <TableHead className="hidden md:table-cell">Personne à contacter</TableHead>
                                 <TableHead className="hidden md:table-cell">Email</TableHead>
                                 <TableHead>Actions</TableHead>
                             </TableRow>
@@ -129,13 +129,13 @@ export function SupplierList({ initialSuppliers }: { initialSuppliers: Supplier[
                                             <DropdownMenuTrigger asChild>
                                                 <Button aria-haspopup="true" size="icon" variant="ghost">
                                                     <MoreHorizontal className="h-4 w-4" />
-                                                    <span className="sr-only">Toggle menu</span>
+                                                    <span className="sr-only">Ouvrir/fermer le menu</span>
                                                 </Button>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
                                                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                                <DropdownMenuItem onClick={() => handleEditClick(supplier)}>Edit</DropdownMenuItem>
-                                                <DropdownMenuItem onClick={() => handleDelete(supplier.id)} className="text-destructive">Delete</DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => handleEditClick(supplier)}>Modifier</DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => handleDelete(supplier.id)} className="text-destructive">Supprimer</DropdownMenuItem>
                                             </DropdownMenuContent>
                                         </DropdownMenu>
                                     </TableCell>

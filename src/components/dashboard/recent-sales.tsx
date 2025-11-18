@@ -12,7 +12,7 @@ export function RecentSales() {
   }
 
   if (!sales || sales.length === 0) {
-    return <p className="text-sm text-muted-foreground">No recent sales found.</p>
+    return <p className="text-sm text-muted-foreground">Aucune vente récente trouvée.</p>
   }
 
   return (
@@ -22,7 +22,7 @@ export function RecentSales() {
           <Avatar className="h-9 w-9">
             <Image
               src={sale.customer?.avatarUrl || `https://picsum.photos/seed/${sale.customerId}/100/100`}
-              alt={`Avatar of ${sale.customer?.name || 'customer'}`}
+              alt={`Avatar de ${sale.customer?.name || 'client'}`}
               width={36}
               height={36}
               data-ai-hint={sale.customer?.avatarHint || 'person portrait'}
@@ -36,14 +36,14 @@ export function RecentSales() {
           </Avatar>
           <div className="ml-4 space-y-1">
             <p className="text-sm font-medium leading-none">
-              {sale.customer?.name || 'Unknown Customer'}
+              {sale.customer?.name || 'Client Inconnu'}
             </p>
             <p className="text-sm text-muted-foreground">
-              {sale.customer?.email || 'No email'}
+              {sale.customer?.email || 'Pas d\'email'}
             </p>
           </div>
           <div className="ml-auto font-medium">
-            +{(sale.totalAmount / 100).toLocaleString('ar-DZ', { style: 'currency', currency: 'DZD', minimumFractionDigits: 0 })}
+            +{(sale.totalAmount / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'DZD', minimumFractionDigits: 0 })}
           </div>
         </div>
       ))}

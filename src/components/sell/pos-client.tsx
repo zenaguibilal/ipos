@@ -46,8 +46,8 @@ export function POSClient({ products }: { products: Product[] }) {
         } else {
             toast({
                 variant: "destructive",
-                title: "Out of Stock",
-                description: `No more ${product.name} in stock.`,
+                title: "En rupture de stock",
+                description: `Plus de ${product.name} en stock.`,
             });
             return prevCart;
         }
@@ -57,8 +57,8 @@ export function POSClient({ products }: { products: Product[] }) {
       }
       toast({
             variant: "destructive",
-            title: "Out of Stock",
-            description: `${product.name} is out of stock.`,
+            title: "En rupture de stock",
+            description: `${product.name} est en rupture de stock.`,
       });
       return prevCart;
 
@@ -126,16 +126,16 @@ export function POSClient({ products }: { products: Product[] }) {
     try {
         await batch.commit();
         toast({
-            title: "Sale Complete!",
-            description: "The transaction has been recorded.",
+            title: "Vente Terminée!",
+            description: "La transaction a été enregistrée.",
         });
         setCart([]); // Clear cart
     } catch (error) {
-        console.error("Checkout error: ", error);
+        console.error("Erreur de paiement: ", error);
         toast({
             variant: "destructive",
-            title: "Checkout Failed",
-            description: "There was an error processing the sale.",
+            title: "Le Paiement a Échoué",
+            description: "Une erreur est survenue lors du traitement de la vente.",
         });
     }
   };
@@ -145,7 +145,7 @@ export function POSClient({ products }: { products: Product[] }) {
       {/* Product Selection */}
       <div className="md:col-span-2 bg-card rounded-lg border">
         <CardHeader>
-            <CardTitle>Products</CardTitle>
+            <CardTitle>Produits</CardTitle>
         </CardHeader>
         <div className="p-4 h-[calc(100%-80px)] overflow-y-auto">
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -166,7 +166,7 @@ export function POSClient({ products }: { products: Product[] }) {
                     />
                     <h3 className="font-semibold text-sm mt-2 text-center">{product.name}</h3>
                     <p className="text-xs text-muted-foreground">
-                    {(product.price / 100).toLocaleString('ar-DZ', {
+                    {(product.price / 100).toLocaleString('fr-FR', {
                         style: 'currency',
                         currency: 'DZD',
                         minimumFractionDigits: 0
@@ -183,11 +183,11 @@ export function POSClient({ products }: { products: Product[] }) {
       <div className="md:col-span-1">
         <Card className="h-full flex flex-col">
           <CardHeader>
-            <CardTitle>Cart</CardTitle>
+            <CardTitle>Panier</CardTitle>
           </CardHeader>
           <CardContent className="flex-grow overflow-y-auto">
             {cart.length === 0 ? (
-              <p className="text-muted-foreground text-center">Your cart is empty.</p>
+              <p className="text-muted-foreground text-center">Votre panier est vide.</p>
             ) : (
               <div className="space-y-4">
                 {cart.map((item) => (
@@ -203,7 +203,7 @@ export function POSClient({ products }: { products: Product[] }) {
                     <div className="flex-grow">
                       <p className="font-medium text-sm">{item.name}</p>
                       <p className="text-xs text-muted-foreground">
-                        {(item.price / 100).toLocaleString('ar-DZ', {
+                        {(item.price / 100).toLocaleString('fr-FR', {
                           style: 'currency',
                           currency: 'DZD',
                           minimumFractionDigits: 0
@@ -224,35 +224,35 @@ export function POSClient({ products }: { products: Product[] }) {
           <CardFooter className="flex-col !items-stretch !p-0 border-t">
               <div className="p-6 space-y-2">
                 <div className="flex justify-between text-sm">
-                    <span>Subtotal</span>
-                    <span>{(subtotal / 100).toLocaleString('ar-DZ', { style: 'currency', currency: 'DZD', minimumFractionDigits: 0 })}</span>
+                    <span>Sous-total</span>
+                    <span>{(subtotal / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'DZD', minimumFractionDigits: 0 })}</span>
                 </div>
                  <div className="flex justify-between text-sm text-muted-foreground">
                     <span>Taxes (8%)</span>
-                    <span>{(tax / 100).toLocaleString('ar-DZ', { style: 'currency', currency: 'DZD', minimumFractionDigits: 0 })}</span>
+                    <span>{(tax / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'DZD', minimumFractionDigits: 0 })}</span>
                 </div>
                 <Separator />
                  <div className="flex justify-between font-semibold text-lg">
                     <span>Total</span>
-                    <span>{(total / 100).toLocaleString('ar-DZ', { style: 'currency', currency: 'DZD', minimumFractionDigits: 0 })}</span>
+                    <span>{(total / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'DZD', minimumFractionDigits: 0 })}</span>
                 </div>
                  <div className="pt-4">
-                    <Label className="mb-2 block">Payment Method</Label>
+                    <Label className="mb-2 block">Moyen de Paiement</Label>
                     <ToggleGroup type="single" defaultValue={paymentMethod} onValueChange={(value) => value && setPaymentMethod(value)} variant="outline" className="w-full justify-between">
-                        <ToggleGroupItem value="cash" aria-label="Cash" className="flex-1">
-                            <Coins className="h-4 w-4 mr-2"/> Cash
+                        <ToggleGroupItem value="cash" aria-label="Espèces" className="flex-1">
+                            <Coins className="h-4 w-4 mr-2"/> Espèces
                         </ToggleGroupItem>
-                        <ToggleGroupItem value="card" aria-label="Card" className="flex-1">
-                            <CreditCard className="h-4 w-4 mr-2"/> Card
+                        <ToggleGroupItem value="card" aria-label="Carte" className="flex-1">
+                            <CreditCard className="h-4 w-4 mr-2"/> Carte
                         </ToggleGroupItem>
-                         <ToggleGroupItem value="e-wallet" aria-label="E-Wallet" className="flex-1">
+                         <ToggleGroupItem value="e-wallet" aria-label="Portefeuille électronique" className="flex-1">
                             <Wallet className="h-4 w-4 mr-2"/> E-Wallet
                         </ToggleGroupItem>
                     </ToggleGroup>
                  </div>
               </div>
             <Button size="lg" className="w-full rounded-t-none rounded-b-lg text-lg" disabled={cart.length === 0} onClick={handleCheckout}>
-                Checkout
+                Payer
             </Button>
           </CardFooter>
         </Card>
