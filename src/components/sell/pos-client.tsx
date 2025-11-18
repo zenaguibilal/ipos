@@ -1,9 +1,9 @@
 'use client';
 
-import type { Product, Sale } from '@/lib/types';
-import { useState } from 'react';
+import type { Product, Sale, Customer } from '@/lib/types';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { PlusCircle, MinusCircle, XCircle, CreditCard, Coins, BookUser } from 'lucide-react';
+import { PlusCircle, MinusCircle, XCircle, Coins, BookUser, User } from 'lucide-react';
 import {
   Card,
   CardContent,
@@ -18,6 +18,13 @@ import {
   ToggleGroup,
   ToggleGroupItem,
 } from "@/components/ui/toggle-group";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import { useFirestore, useUser, addDocumentNonBlocking, useMemoFirebase } from '@/firebase';
 import { collection, doc, writeBatch } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -26,18 +33,26 @@ interface CartItem extends Product {
   cartQuantity: number;
 }
 
-export function POSClient({ products }: { products: Product[] }) {
+export function POSClient({ products, customers }: { products: Product[], customers: Customer[] }) {
   const firestore = useFirestore();
   const { user } = useUser();
   const { toast } = useToast();
   const [cart, setCart] = useState<CartItem[]>([]);
   const [paymentMethod, setPaymentMethod] = useState('cash');
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | undefined>(customers[0]?.id);
+
+  useEffect(() => {
+    if (!selectedCustomerId && customers.length > 0) {
+      setSelectedCustomerId(customers[0].id);
+    }
+  }, [customers, selectedCustomerId]);
+
 
   const addToCart = (product: Product) => {
     setCart((prevCart) => {
       const existingItem = prevCart.find((item) => item.id === product.id);
       if (existingItem) {
-        if (existingItem.cartQuantity < existingItem.quantity) {
+        if (existingItem.cartQuantity < item.quantity) {
           return prevCart.map((item) =>
             item.id === product.id
               ? { ...item, cartQuantity: item.cartQuantity + 1 }
@@ -66,15 +81,27 @@ export function POSClient({ products }: { products: Product[] }) {
   };
 
   const updateQuantity = (productId: string, newQuantity: number) => {
-    if (newQuantity <= 0) {
-      removeFromCart(productId);
-      return;
-    }
-    setCart((prevCart) =>
-      prevCart.map((item) =>
-        item.id === productId ? { ...item, cartQuantity: newQuantity } : item
-      )
-    );
+    setCart((prevCart) => {
+        const itemToUpdate = prevCart.find(item => item.id === productId);
+        if (!itemToUpdate) return prevCart;
+        
+        if (newQuantity <= 0) {
+          return prevCart.filter((item) => item.id !== productId);
+        }
+
+        if (newQuantity > itemToUpdate.quantity) {
+             toast({
+                variant: "destructive",
+                title: "Quantité non disponible",
+                description: `Seulement ${itemToUpdate.quantity} unités de ${itemToUpdate.name} sont disponibles.`,
+            });
+            return prevCart;
+        }
+
+        return prevCart.map((item) =>
+            item.id === productId ? { ...item, cartQuantity: newQuantity } : item
+        );
+    });
   };
 
   const removeFromCart = (productId: string) => {
@@ -85,12 +112,20 @@ export function POSClient({ products }: { products: Product[] }) {
   const total = subtotal;
 
   const handleCheckout = async () => {
-    if (!user || cart.length === 0) return;
+    if (!user || cart.length === 0 || !selectedCustomerId) {
+        if (!selectedCustomerId) {
+             toast({
+                variant: "destructive",
+                title: "Aucun client sélectionné",
+                description: "Veuillez sélectionner un client pour finaliser la vente.",
+            });
+        }
+        return;
+    };
 
     const batch = writeBatch(firestore);
 
-    // In a real app, you would select a customer. For now, we'll use a hardcoded one.
-    const customerId = 'test-customer';
+    const customerId = selectedCustomerId;
 
     const salesRef = collection(firestore, `customers/${customerId}/sales`);
     const saleId = doc(collection(firestore, 'id_generator')).id;
@@ -100,7 +135,7 @@ export function POSClient({ products }: { products: Product[] }) {
         customerId,
         saleDate: new Date().toISOString(),
         totalAmount: total,
-        paymentMethod: paymentMethod,
+        paymentMethod: paymentMethod as 'cash' | 'credit',
         saleLineItemIds: cart.map(item => item.id)
     };
     batch.set(saleDocRef, saleData);
@@ -220,7 +255,22 @@ export function POSClient({ products }: { products: Product[] }) {
             )}
           </CardContent>
           <CardFooter className="flex-col !items-stretch !p-0 border-t">
-              <div className="p-6 space-y-2">
+              <div className="p-6 space-y-4">
+                 <div>
+                    <Label className="mb-2 block">Client</Label>
+                    <Select onValueChange={setSelectedCustomerId} value={selectedCustomerId}>
+                        <SelectTrigger>
+                             <User className="mr-2 h-4 w-4" />
+                            <SelectValue placeholder="Sélectionner un client" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {customers.map(customer => (
+                                <SelectItem key={customer.id} value={customer.id}>{customer.name}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                 </div>
+                 <Separator />
                 <div className="flex justify-between text-sm">
                     <span>Sous-total</span>
                     <span>{(subtotal / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'DZD', minimumFractionDigits: 0 })}</span>
@@ -242,7 +292,7 @@ export function POSClient({ products }: { products: Product[] }) {
                     </ToggleGroup>
                  </div>
               </div>
-            <Button size="lg" className="w-full rounded-t-none rounded-b-lg text-lg" disabled={cart.length === 0} onClick={handleCheckout}>
+            <Button size="lg" className="w-full rounded-t-none rounded-b-lg text-lg" disabled={cart.length === 0 || !selectedCustomerId} onClick={handleCheckout}>
                 Payer
             </Button>
           </CardFooter>
