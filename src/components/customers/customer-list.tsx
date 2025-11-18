@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import type { Customer, Sale, SaleWithDetails } from '@/lib/types';
-import { MoreHorizontal, PlusCircle, HandCoins, Search } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, HandCoins, Search, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -264,6 +264,8 @@ export function CustomerList({ initialCustomers }: { initialCustomers: Customer[
     const [searchTerm, setSearchTerm] = useState('');
     const firestore = useFirestore();
     const customersRef = useMemoFirebase(() => collection(firestore, 'customers'), [firestore]);
+    
+    const totalDebt = initialCustomers.reduce((acc, customer) => acc + (customer.debt || 0), 0);
 
     const handleAddClick = () => {
         setIsSheetOpen(true);
@@ -305,7 +307,13 @@ export function CustomerList({ initialCustomers }: { initialCustomers: Customer[
                             <CardTitle>Clients</CardTitle>
                             <CardDescription>Gérez vos clients et consultez leur historique d'achats.</CardDescription>
                         </div>
-                        <div className="ml-auto flex items-center gap-2">
+                        <div className="ml-auto flex items-center gap-4">
+                             <div className="flex items-center gap-2 text-lg font-semibold text-destructive">
+                                <Wallet className="h-6 w-6" />
+                                <span>
+                                    {(totalDebt / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'DZD', minimumFractionDigits: 0 })}
+                                </span>
+                            </div>
                             <Button size="sm" className="h-8 gap-1" onClick={handleAddClick}>
                                 <PlusCircle className="h-3.5 w-3.5" />
                                 <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Ajouter un Client</span>
@@ -352,5 +360,3 @@ export function CustomerList({ initialCustomers }: { initialCustomers: Customer[
         </>
     );
 }
-
-    
