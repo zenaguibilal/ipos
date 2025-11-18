@@ -26,7 +26,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { useFirestore, useUser, addDocumentNonBlocking, useMemoFirebase } from '@/firebase';
-import { collection, doc, writeBatch } from 'firebase/firestore';
+import { collection, doc, writeBatch, increment } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { BarcodeScanner } from '@/components/sell/barcode-scanner';
@@ -162,6 +162,11 @@ export function POSClient({ products, customers }: { products: Product[], custom
         const productRef = doc(firestore, `suppliers/${item.supplierId}/products/${item.id}`);
         batch.update(productRef, { quantity: item.quantity - item.cartQuantity });
     });
+
+    if (paymentMethod === 'credit') {
+        const customerRef = doc(firestore, 'customers', customerId);
+        batch.update(customerRef, { debt: increment(total) });
+    }
 
     try {
         await batch.commit();
@@ -373,5 +378,3 @@ export function POSClient({ products, customers }: { products: Product[], custom
     </>
   );
 }
-
-    

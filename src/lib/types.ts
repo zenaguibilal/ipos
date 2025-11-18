@@ -17,6 +17,7 @@ export interface Customer {
   avatarUrl?: string;
   avatarHint?: string;
   loyaltyCardNumber: string;
+  debt?: number; // in cents
 }
 
 export interface Supplier {

@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useFirestore, useUser, addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking, useMemoFirebase } from '@/firebase';
 import { collection, doc } from 'firebase/firestore';
+import { Badge } from '@/components/ui/badge';
 
 function CustomerForm({ customer, onSave, onCancel }: { customer: Partial<Customer> | null, onSave: (c: Customer) => void, onCancel: () => void }) {
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -26,6 +27,7 @@ function CustomerForm({ customer, onSave, onCancel }: { customer: Partial<Custom
             loyaltyCardNumber: (formData.get('loyaltyCardNumber') as string) || '',
             avatarUrl: `https://picsum.photos/seed/${Date.now()}/100/100`,
             avatarHint: 'person portrait',
+            debt: customer?.debt || 0,
         };
         onSave(newCustomer);
     };
@@ -119,7 +121,7 @@ export function CustomerList({ initialCustomers }: { initialCustomers: Customer[
                             <TableRow>
                                 <TableHead>Client</TableHead>
                                 <TableHead className="hidden md:table-cell">Téléphone</TableHead>
-                                <TableHead className="hidden md:table-cell">Carte de fidélité</TableHead>
+                                <TableHead>Dette</TableHead>
                                 <TableHead>Actions</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -139,7 +141,17 @@ export function CustomerList({ initialCustomers }: { initialCustomers: Customer[
                                         </div>
                                     </TableCell>
                                     <TableCell className="hidden md:table-cell">{customer.phone}</TableCell>
-                                    <TableCell className="hidden md:table-cell">{customer.loyaltyCardNumber}</TableCell>
+                                    <TableCell>
+                                        {customer.debt && customer.debt > 0 ? (
+                                            <Badge variant="destructive">
+                                                {(customer.debt / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'DZD', minimumFractionDigits: 0 })}
+                                            </Badge>
+                                        ) : (
+                                            <Badge variant="outline">
+                                                0 DZD
+                                            </Badge>
+                                        )}
+                                    </TableCell>
                                     <TableCell>
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
