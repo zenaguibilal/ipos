@@ -105,7 +105,8 @@ export default function AlertsPage() {
     const today = new Date().getDate();
     return (
       customers?.filter(
-        (c) => c.debt && c.debt > 0 && c.settlementDay && c.settlementDay <= today
+        (c) =>
+          c.debt && c.debt > 0 && c.settlementDay && c.settlementDay <= today + 1
       ) || []
     );
   }, [customers]);
@@ -144,7 +145,7 @@ export default function AlertsPage() {
             تنبيهات الديون المستحقة ({dueDebtCustomers.length})
           </CardTitle>
           <CardDescription>
-            العملاء الذين استحق موعد تسوية ديونهم هذا الشهر.
+            العملاء الذين استحق موعد تسوية ديونهم أو سيستحق خلال يوم واحد.
           </CardDescription>
         </CardHeader>
         <CardContent>
