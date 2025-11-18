@@ -16,6 +16,7 @@ import { collection, query, where, documentId } from "firebase/firestore";
 import { Loader } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import Barcode from 'react-barcode';
 
 function InvoiceContent({ sale }: { sale: SaleWithDetails }) {
     const firestore = useFirestore();
@@ -35,7 +36,6 @@ function InvoiceContent({ sale }: { sale: SaleWithDetails }) {
 
     const productsQuery = useMemoFirebase(() => {
         if (!firestore || productIds.length === 0) return null;
-        // Using a collection group query for products might be better if they are nested under different suppliers
         return query(collection(firestore, 'suppliers/supp_1/products'), where(documentId(), 'in', productIds.slice(0, 30)));
     }, [firestore, productIds]);
 
@@ -66,7 +66,7 @@ function InvoiceContent({ sale }: { sale: SaleWithDetails }) {
             </div>
 
             <div className="flex justify-center my-4">
-                <div className="font-mono text-sm tracking-widest">{sale.id}</div>
+                <Barcode value={sale.id} height={50} displayValue={false} />
             </div>
             
             {isLoading ? (
