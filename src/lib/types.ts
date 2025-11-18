@@ -27,6 +27,8 @@ export interface Supplier {
   contactName: string;
   contactEmail: string;
   contactPhone: string;
+  debt?: number; // in cents
+  visitingDays?: string; // Comma-separated days
 }
 
 export interface Sale {

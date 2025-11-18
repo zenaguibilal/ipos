@@ -117,6 +117,14 @@
           "type": "string",
           "description": "Contact email address at the supplier.",
           "format": "email"
+        },
+        "debt": {
+          "type": "number",
+          "description": "The total amount of debt owed to the supplier, in cents."
+        },
+        "visitingDays": {
+          "type": "string",
+          "description": "The days of the week the supplier visits, as a comma-separated string."
         }
       },
       "required": [
@@ -134,6 +142,10 @@
         "id": {
           "type": "string",
           "description": "Unique identifier for the Sale entity."
+        },
+        "invoiceNumber": {
+            "type": "number",
+            "description": "The sequential invoice number for the sale."
         },
         "customerId": {
           "type": "string",
@@ -162,6 +174,7 @@
       },
       "required": [
         "id",
+        "invoiceNumber",
         "customerId",
         "saleDate",
         "totalAmount",
@@ -238,6 +251,23 @@
         "predictedRunOutDate",
         "alertSent"
       ]
+    },
+     "InvoiceCounter": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "InvoiceCounter",
+      "type": "object",
+      "description": "A global counter to ensure unique, sequential invoice numbers.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The ID of the counter document (e.g., 'sales')."
+        },
+        "lastNumber": {
+          "type": "number",
+          "description": "The last invoice number that was used."
+        }
+      },
+      "required": ["id", "lastNumber"]
     }
   },
   "auth": {
@@ -347,6 +377,22 @@
             {
               "name": "stockAlertId",
               "description": "The unique identifier of the stock alert."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/counters/{counterId}",
+        "definition": {
+          "entityName": "InvoiceCounter",
+          "schema": {
+            "$ref": "#/backend/entities/InvoiceCounter"
+          },
+          "description": "Global counters for things like invoice numbers.",
+          "params": [
+            {
+              "name": "counterId",
+              "description": "The name of the counter (e.g., 'sales')."
             }
           ]
         }

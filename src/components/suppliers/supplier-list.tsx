@@ -1,29 +1,75 @@
 'use client';
 import { useState } from 'react';
 import type { Supplier } from '@/lib/types';
-import { MoreHorizontal, PlusCircle } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, HandCoins, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/components/ui/sheet';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { useFirestore, useUser, setDocumentNonBlocking, deleteDocumentNonBlocking, useMemoFirebase } from '@/firebase';
-import { collection, doc } from 'firebase/firestore';
+import { useFirestore, useUser, setDocumentNonBlocking, deleteDocumentNonBlocking, useMemoFirebase, updateDocumentNonBlocking } from '@/firebase';
+import { collection, doc, increment } from 'firebase/firestore';
+import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/hooks/use-toast';
 
-function SupplierForm({ supplier, onSave, onCancel }: { supplier: Partial<Supplier> | null, onSave: (s: Supplier) => void, onCancel: () => void }) {
+function SettleDebtDialog({ supplier, isOpen, onClose, onSettle }: { supplier: Supplier, isOpen: boolean, onClose: () => void, onSettle: (amount: number) => void }) {
+    const [amount, setAmount] = useState<number | string>('');
+
+    const handleSettle = () => {
+        const paymentAmount = Number(amount);
+        if (paymentAmount > 0 && paymentAmount <= (supplier.debt || 0) / 100) {
+            onSettle(paymentAmount);
+            onClose();
+        }
+    }
+    
+    return (
+        <Dialog open={isOpen} onOpenChange={onClose}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Régler la dette de {supplier.name}</DialogTitle>
+                    <DialogDescription>
+                        Le solde actuel de la dette est de <strong>{((supplier.debt || 0) / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'DZD', minimumFractionDigits: 0 })}</strong>.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="py-4">
+                    <Label htmlFor="settle-amount">Montant à régler (DZD)</Label>
+                    <Input
+                        id="settle-amount"
+                        type="number"
+                        value={amount}
+                        onChange={(e) => setAmount(e.target.value)}
+                        placeholder="Entrez le montant"
+                        max={(supplier.debt || 0) / 100}
+                    />
+                </div>
+                <DialogFooter>
+                    <DialogClose asChild>
+                        <Button type="button" variant="secondary">Annuler</Button>
+                    </DialogClose>
+                    <Button onClick={handleSettle} disabled={Number(amount) <= 0 || Number(amount) > (supplier.debt || 0) / 100}>Régler</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    )
+}
+
+function SupplierForm({ supplier, onSave, onCancel }: { supplier: Partial<Supplier> | null, onSave: (s: Omit<Supplier, 'id' | 'debt'> & { id?: string }) => void, onCancel: () => void }) {
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         const formData = new FormData(e.currentTarget);
-        const newSupplier: Supplier = {
-            id: supplier?.id || `supp_${Date.now()}`,
+        const newSupplierData = {
+            id: supplier?.id,
             name: formData.get('name') as string,
             contactEmail: formData.get('email') as string,
             contactPhone: formData.get('phone') as string,
             contactName: formData.get('contactPerson') as string,
+            visitingDays: formData.get('visitingDays') as string,
         };
-        onSave(newSupplier);
+        onSave(newSupplierData);
     };
 
     return (
@@ -51,12 +97,84 @@ function SupplierForm({ supplier, onSave, onCancel }: { supplier: Partial<Suppli
                     <Label htmlFor="phone">Téléphone</Label>
                     <Input id="phone" name="phone" type="tel" defaultValue={supplier?.contactPhone} />
                 </div>
+                 <div>
+                    <Label htmlFor="visitingDays">Jours de visite (ex: Lundi, Mercredi)</Label>
+                    <Input id="visitingDays" name="visitingDays" defaultValue={supplier?.visitingDays} />
+                </div>
             </div>
             <SheetFooter className="p-6 bg-muted/40 border-t">
                 <Button variant="outline" type="button" onClick={onCancel}>Annuler</Button>
                 <Button type="submit">Enregistrer le Fournisseur</Button>
             </SheetFooter>
         </form>
+    );
+}
+
+function SupplierRow({ supplier, onDelete, onEdit }: { supplier: Supplier, onDelete: (id: string) => void, onEdit: (s: Supplier) => void }) {
+    const firestore = useFirestore();
+    const { toast } = useToast();
+    const [isSettleDebtOpen, setIsSettleDebtOpen] = useState(false);
+
+    const handleSettleDebt = (amountInDZD: number) => {
+        const amountInCents = amountInDZD * 100;
+        const supplierRef = doc(firestore, 'suppliers', supplier.id);
+        updateDocumentNonBlocking(supplierRef, {
+            debt: increment(-amountInCents)
+        });
+        toast({
+            title: "Règlement enregistré",
+            description: `${(amountInDZD).toLocaleString('fr-FR', { style: 'currency', currency: 'DZD' })} ont été réglés pour ${supplier.name}.`
+        });
+    };
+
+    return (
+        <>
+            <TableRow>
+                <TableCell className="font-medium">{supplier.name}</TableCell>
+                <TableCell>{supplier.contactPhone || 'N/A'}</TableCell>
+                <TableCell className="hidden md:table-cell">{supplier.visitingDays || 'N/A'}</TableCell>
+                 <TableCell>
+                    <div className="flex items-center gap-2">
+                        {supplier.debt && supplier.debt > 0 ? (
+                            <Badge variant="destructive">
+                                {(supplier.debt / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'DZD', minimumFractionDigits: 0 })}
+                            </Badge>
+                        ) : (
+                             <Badge variant="outline">0 DZD</Badge>
+                        )}
+                         {supplier.debt && supplier.debt > 0 && (
+                            <Button variant="outline" size="sm" className="h-7" onClick={() => setIsSettleDebtOpen(true)}>
+                                <HandCoins className="h-3.5 w-3.5" />
+                                <span className="sr-only">Régler la dette</span>
+                            </Button>
+                        )}
+                    </div>
+                </TableCell>
+                <TableCell>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button aria-haspopup="true" size="icon" variant="ghost">
+                                <MoreHorizontal className="h-4 w-4" />
+                                <span className="sr-only">Ouvrir/fermer le menu</span>
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuItem onClick={() => onEdit(supplier)}>Modifier</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => onDelete(supplier.id)} className="text-destructive">Supprimer</DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </TableCell>
+            </TableRow>
+            {isSettleDebtOpen && (
+                <SettleDebtDialog
+                    supplier={supplier}
+                    isOpen={isSettleDebtOpen}
+                    onClose={() => setIsSettleDebtOpen(false)}
+                    onSettle={handleSettleDebt}
+                />
+            )}
+        </>
     );
 }
 
@@ -68,8 +186,10 @@ export function SupplierList({ initialSuppliers }: { initialSuppliers: Supplier[
     const [isSheetOpen, setIsSheetOpen] = useState(false);
     const [editingSupplier, setEditingSupplier] = useState<Partial<Supplier> | null>(null);
 
+    const totalDebt = initialSuppliers.reduce((acc, supplier) => acc + (supplier.debt || 0), 0);
+
     const handleAddClick = () => {
-        setEditingSupplier({ id: user?.uid });
+        setEditingSupplier({});
         setIsSheetOpen(true);
     };
 
@@ -83,11 +203,18 @@ export function SupplierList({ initialSuppliers }: { initialSuppliers: Supplier[
         deleteDocumentNonBlocking(docRef);
     };
     
-    const handleSave = (supplier: Supplier) => {
-        const { id, ...supplierData } = supplier;
-        if (!id) return;
+    const handleSave = (supplierData: Omit<Supplier, 'id' | 'debt'> & { id?: string }) => {
+        const id = supplierData.id || `supp_${Date.now()}`;
         const docRef = doc(suppliersRef, id);
-        setDocumentNonBlocking(docRef, supplierData, { merge: true });
+
+        const dataToSave: Partial<Supplier> = { ...supplierData };
+        delete dataToSave.id;
+
+        if (!supplierData.id) { // New supplier
+            dataToSave.debt = 0;
+        }
+
+        setDocumentNonBlocking(docRef, dataToSave, { merge: true });
 
         setIsSheetOpen(false);
         setEditingSupplier(null);
@@ -96,16 +223,24 @@ export function SupplierList({ initialSuppliers }: { initialSuppliers: Supplier[
     return (
         <>
             <Card>
-                <CardHeader className="flex flex-row items-center">
-                    <div className="grid gap-2">
-                        <CardTitle>Fournisseurs</CardTitle>
-                        <CardDescription>Gérez vos fournisseurs et suivez les factures.</CardDescription>
-                    </div>
-                    <div className="ml-auto flex items-center gap-2">
-                        <Button size="sm" className="h-8 gap-1" onClick={handleAddClick}>
-                            <PlusCircle className="h-3.5 w-3.5" />
-                            <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Ajouter un Fournisseur</span>
-                        </Button>
+                <CardHeader>
+                     <div className="flex items-center justify-between">
+                        <div className="grid gap-2">
+                            <CardTitle>Fournisseurs</CardTitle>
+                            <CardDescription>Gérez vos fournisseurs et suivez les factures.</CardDescription>
+                        </div>
+                        <div className="ml-auto flex items-center gap-4">
+                            <div className="flex items-center gap-2 text-lg font-semibold text-destructive">
+                                <Wallet className="h-6 w-6" />
+                                <span>
+                                    {(totalDebt / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'DZD', minimumFractionDigits: 0 })}
+                                </span>
+                            </div>
+                            <Button size="sm" className="h-8 gap-1" onClick={handleAddClick}>
+                                <PlusCircle className="h-3.5 w-3.5" />
+                                <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Ajouter un Fournisseur</span>
+                            </Button>
+                        </div>
                     </div>
                 </CardHeader>
                 <CardContent>
@@ -113,33 +248,15 @@ export function SupplierList({ initialSuppliers }: { initialSuppliers: Supplier[
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Entreprise</TableHead>
-                                <TableHead className="hidden md:table-cell">Personne à contacter</TableHead>
-                                <TableHead className="hidden md:table-cell">Email</TableHead>
+                                <TableHead>Téléphone</TableHead>
+                                <TableHead className="hidden md:table-cell">Jours de visite</TableHead>
+                                <TableHead>Dette</TableHead>
                                 <TableHead>Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {initialSuppliers.map((supplier) => (
-                                <TableRow key={supplier.id}>
-                                    <TableCell className="font-medium">{supplier.name}</TableCell>
-                                    <TableCell className="hidden md:table-cell">{supplier.contactName}</TableCell>
-                                    <TableCell className="hidden md:table-cell">{supplier.contactEmail}</TableCell>
-                                    <TableCell>
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button aria-haspopup="true" size="icon" variant="ghost">
-                                                    <MoreHorizontal className="h-4 w-4" />
-                                                    <span className="sr-only">Ouvrir/fermer le menu</span>
-                                                </Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                                <DropdownMenuItem onClick={() => handleEditClick(supplier)}>Modifier</DropdownMenuItem>
-                                                <DropdownMenuItem onClick={() => handleDelete(supplier.id)} className="text-destructive">Supprimer</DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    </TableCell>
-                                </TableRow>
+                                <SupplierRow key={supplier.id} supplier={supplier} onDelete={handleDelete} onEdit={handleEditClick} />
                             ))}
                         </TableBody>
                     </Table>
@@ -147,9 +264,6 @@ export function SupplierList({ initialSuppliers }: { initialSuppliers: Supplier[
             </Card>
             <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
                 <SheetContent className="sm:max-w-lg p-0">
-                    <SheetTitle className="sr-only">
-                        {editingSupplier?.id ? 'Modifier le Fournisseur' : 'Ajouter un Fournisseur'}
-                    </SheetTitle>
                    <SupplierForm supplier={editingSupplier} onSave={handleSave} onCancel={() => setIsSheetOpen(false)} />
                 </SheetContent>
             </Sheet>
