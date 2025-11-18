@@ -18,15 +18,10 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { MainNav } from './main-nav';
-import { useAuth } from '@/firebase';
-import { signOut } from 'firebase/auth';
+import { usePassword } from '@/components/auth/password-provider';
 
 export function AppHeader() {
-  const auth = useAuth();
-
-  const handleLogout = () => {
-    signOut(auth);
-  };
+  const { logout } = usePassword();
 
   return (
     <header className="flex h-14 items-center gap-4 border-b bg-background px-4 lg:h-[60px] lg:px-6">
@@ -67,7 +62,7 @@ export function AppHeader() {
           <DropdownMenuItem>Settings</DropdownMenuItem>
           <DropdownMenuItem>Support</DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={handleLogout}>Logout</DropdownMenuItem>
+          <DropdownMenuItem onClick={logout}>Logout</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
     </header>
