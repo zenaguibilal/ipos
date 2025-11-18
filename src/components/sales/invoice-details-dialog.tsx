@@ -124,7 +124,7 @@ export function InvoiceDetailsDialog({ sale, isOpen, onClose }: { sale: SaleWith
                 <DialogHeader>
                     <DialogTitle>Détails de la Facture</DialogTitle>
                     <DialogDescription>
-                        Facture #{sale.id.substring(0, 7)}
+                        Facture N° {String(sale.invoiceNumber).padStart(6, '0')}
                     </DialogDescription>
                 </DialogHeader>
                 <InvoiceContent sale={sale} />

@@ -32,6 +32,7 @@ export function SalesHistoryList({ sales }: { sales: SaleWithDetails[] }) {
                     <Table>
                         <TableHeader>
                             <TableRow>
+                                <TableHead>Facture N°</TableHead>
                                 <TableHead>Client</TableHead>
                                 <TableHead>Date</TableHead>
                                 <TableHead className="text-right">Montant Total</TableHead>
@@ -41,11 +42,14 @@ export function SalesHistoryList({ sales }: { sales: SaleWithDetails[] }) {
                         <TableBody>
                             {sales.length === 0 && (
                                  <TableRow>
-                                    <TableCell colSpan={4} className="text-center">Aucune vente trouvée.</TableCell>
+                                    <TableCell colSpan={5} className="text-center">Aucune vente trouvée.</TableCell>
                                 </TableRow>
                             )}
                             {sales.map((sale) => (
                                 <TableRow key={sale.id} onClick={() => setSelectedSale(sale)} className="cursor-pointer">
+                                     <TableCell className="font-mono">
+                                        {String(sale.invoiceNumber).padStart(6, '0')}
+                                    </TableCell>
                                     <TableCell>
                                         <div className="font-medium">{sale.customer?.name || 'Client inconnu'}</div>
                                     </TableCell>

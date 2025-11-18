@@ -31,6 +31,7 @@ export interface Supplier {
 
 export interface Sale {
   id: string;
+  invoiceNumber: number;
   customerId: string;
   totalAmount: number; // in cents
   saleDate: string;
@@ -56,4 +57,9 @@ export interface SaleLineItemWithProduct extends SaleLineItem {
 export interface SaleWithDetails extends Sale {
     customer?: Customer;
     lineItems?: SaleLineItemWithProduct[];
+}
+
+export interface InvoiceCounter {
+    id: string;
+    lastNumber: number;
 }

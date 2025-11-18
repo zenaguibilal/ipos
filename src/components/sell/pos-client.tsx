@@ -1,9 +1,9 @@
 'use client';
 
-import type { Product, Sale, Customer, SaleLineItem } from '@/lib/types';
+import type { Product, Sale, Customer, SaleLineItem, InvoiceCounter } from '@/lib/types';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import Image from 'next/image';
-import { PlusCircle, MinusCircle, XCircle, Coins, BookUser, User, Search, ScanLine, Barcode, ChevronsUpDown } from 'lucide-react';
+import { PlusCircle, MinusCircle, XCircle, Coins, BookUser, User, Search, ScanLine, Barcode as BarcodeIcon, ChevronsUpDown } from 'lucide-react';
 import {
   Card,
   CardContent,
@@ -18,8 +18,8 @@ import {
   ToggleGroup,
   ToggleGroupItem,
 } from "@/components/ui/toggle-group";
-import { useFirestore, useUser, addDocumentNonBlocking, useMemoFirebase } from '@/firebase';
-import { collection, doc, writeBatch, increment } from 'firebase/firestore';
+import { useFirestore, useUser, useMemoFirebase } from '@/firebase';
+import { collection, doc, writeBatch, increment, runTransaction } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { BarcodeScanner } from '@/components/sell/barcode-scanner';
@@ -70,7 +70,7 @@ function CustomerSelect({ customers, selectedCustomerId, onSelect }: { customers
                 </Button>
             </PopoverTrigger>
             <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                <Command>
+                <Command shouldFilter={false}>
                     <CommandInput 
                         placeholder="Rechercher un client..."
                         value={searchTerm}
@@ -121,6 +121,7 @@ export function POSClient({ products, customers }: { products: Product[], custom
   const [searchTerm, setSearchTerm] = useState('');
   const [barcodeTerm, setBarcodeTerm] = useState('');
   const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [isCheckingOut, setIsCheckingOut] = useState(false);
 
   const allCustomers = useMemo(() => [generalCustomer, ...customers], [customers]);
 
@@ -195,7 +196,7 @@ export function POSClient({ products, customers }: { products: Product[], custom
   const total = subtotal;
 
   const handleCheckout = async () => {
-    if (!user || cart.length === 0 || !selectedCustomerId) {
+    if (!user || cart.length === 0 || !selectedCustomerId || isCheckingOut) {
         if (!selectedCustomerId) {
              toast({
                 variant: "destructive",
@@ -214,53 +215,64 @@ export function POSClient({ products, customers }: { products: Product[], custom
         });
         return;
     }
-
-    const batch = writeBatch(firestore);
-    const customerId = selectedCustomerId;
-
-    const salesRef = collection(firestore, `customers/${customerId}/sales`);
-    const saleId = `sale_${Date.now()}`;
-    const saleDocRef = doc(salesRef, saleId);
     
-    const lineItemIds = [];
-
-    const lineItemsRef = collection(firestore, 'sales_line_items');
-    for (const item of cart) {
-        const lineItemId = `sli_${Date.now()}_${item.id}`;
-        lineItemIds.push(lineItemId);
-
-        const lineItemDocRef = doc(lineItemsRef, lineItemId);
-        const lineItemData: Omit<SaleLineItem, 'id'> = {
-            productId: item.id,
-            quantity: item.cartQuantity,
-            unitPrice: item.price,
-            discount: 0,
-        };
-        batch.set(lineItemDocRef, lineItemData);
-
-        // Decrement product stock
-        const productRef = doc(firestore, `suppliers/${item.supplierId}/products/${item.id}`);
-        batch.update(productRef, { quantity: increment(-item.cartQuantity) });
-    }
-
-    const saleData: Sale = {
-        id: saleId,
-        customerId,
-        saleDate: new Date().toISOString(),
-        totalAmount: total,
-        paymentMethod: paymentMethod as 'cash' | 'credit',
-        saleLineItemIds: lineItemIds
-    };
-    batch.set(saleDocRef, saleData);
-
-
-    if (paymentMethod === 'credit') {
-        const customerRef = doc(firestore, 'customers', customerId);
-        batch.update(customerRef, { debt: increment(total) });
-    }
+    setIsCheckingOut(true);
 
     try {
-        await batch.commit();
+        await runTransaction(firestore, async (transaction) => {
+            const counterRef = doc(firestore, 'counters', 'sales');
+            const counterDoc = await transaction.get(counterRef);
+
+            let newInvoiceNumber = 1;
+            if (counterDoc.exists()) {
+                newInvoiceNumber = counterDoc.data().lastNumber + 1;
+            }
+
+            const customerId = selectedCustomerId;
+            const salesRef = collection(firestore, `customers/${customerId}/sales`);
+            const saleId = `sale_${Date.now()}`;
+            const saleDocRef = doc(salesRef, saleId);
+            
+            const lineItemIds = [];
+        
+            const lineItemsRef = collection(firestore, 'sales_line_items');
+            for (const item of cart) {
+                const lineItemId = `sli_${Date.now()}_${item.id}`;
+                lineItemIds.push(lineItemId);
+        
+                const lineItemDocRef = doc(lineItemsRef, lineItemId);
+                const lineItemData: Omit<SaleLineItem, 'id'> = {
+                    productId: item.id,
+                    quantity: item.cartQuantity,
+                    unitPrice: item.price,
+                    discount: 0,
+                };
+                transaction.set(lineItemDocRef, lineItemData);
+        
+                // Decrement product stock
+                const productRef = doc(firestore, `suppliers/${item.supplierId}/products/${item.id}`);
+                transaction.update(productRef, { quantity: increment(-item.cartQuantity) });
+            }
+        
+            const saleData: Omit<Sale, 'id'> = {
+                invoiceNumber: newInvoiceNumber,
+                customerId,
+                saleDate: new Date().toISOString(),
+                totalAmount: total,
+                paymentMethod: paymentMethod as 'cash' | 'credit',
+                saleLineItemIds: lineItemIds
+            };
+            transaction.set(saleDocRef, saleData);
+        
+            if (paymentMethod === 'credit') {
+                const customerRef = doc(firestore, 'customers', customerId);
+                transaction.update(customerRef, { debt: increment(total) });
+            }
+            
+            // Update the counter
+            transaction.set(counterRef, { lastNumber: newInvoiceNumber }, { merge: true });
+        });
+
         toast({
             title: "Vente Terminée!",
             description: "La transaction a été enregistrée.",
@@ -271,8 +283,10 @@ export function POSClient({ products, customers }: { products: Product[], custom
         toast({
             variant: "destructive",
             title: "Le Paiement a Échoué",
-            description: "Une erreur est survenue lors du traitement de la vente.",
+            description: "Une erreur est survenue lors du traitement de la vente. Veuillez réessayer.",
         });
+    } finally {
+        setIsCheckingOut(false);
     }
   };
 
@@ -326,7 +340,7 @@ export function POSClient({ products, customers }: { products: Product[], custom
                 </div>
                 <div className="flex w-full items-center gap-2">
                   <form onSubmit={handleBarcodeSubmit} className="relative w-full">
-                    <Barcode className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <BarcodeIcon className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
                       type="text"
                       placeholder="Entrer le code-barres..."
@@ -448,8 +462,8 @@ export function POSClient({ products, customers }: { products: Product[], custom
                       </ToggleGroup>
                   </div>
                 </div>
-              <Button size="lg" className="w-full rounded-t-none rounded-b-lg text-lg" disabled={cart.length === 0 || !selectedCustomerId} onClick={handleCheckout}>
-                  Payer
+              <Button size="lg" className="w-full rounded-t-none rounded-b-lg text-lg" disabled={cart.length === 0 || !selectedCustomerId || isCheckingOut} onClick={handleCheckout}>
+                  {isCheckingOut ? 'Traitement...' : 'Payer'}
               </Button>
             </CardFooter>
           </Card>
