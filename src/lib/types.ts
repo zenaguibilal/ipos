@@ -64,5 +64,3 @@ export interface InvoiceCounter {
     id: string;
     lastNumber: number;
 }
-
-    

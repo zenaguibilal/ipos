@@ -43,7 +43,7 @@ export default function DashboardPage() {
           icon={<DollarSign />}
           title="Revenu Total"
           value={(totalRevenue / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'DZD', minimumFractionDigits: 0 })}
-          description="+20.1% depuis le mois dernier"
+          description={`Basé sur ${totalSales} ventes`}
         />
         <SummaryCard
           icon={<Users />}

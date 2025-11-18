@@ -39,7 +39,7 @@ export function RecentSales() {
               {sale.customer?.name || 'Client Inconnu'}
             </p>
             <p className="text-sm text-muted-foreground">
-              {sale.customer?.email || 'Pas d\'email'}
+              {sale.customer?.phone || 'Pas de téléphone'}
             </p>
           </div>
           <div className="ml-auto font-medium">
