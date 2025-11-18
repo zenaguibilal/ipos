@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import Image from 'next/image';
-import type { Customer, Sale } from '@/lib/types';
+import type { Customer, Sale, SaleWithDetails } from '@/lib/types';
 import { MoreHorizontal, PlusCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,6 +16,7 @@ import { collection, doc, query, where, Firestore } from 'firebase/firestore';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { InvoiceDetailsDialog } from '@/components/sales/invoice-details-dialog';
 
 function CustomerForm({ customer, onSave, onCancel }: { customer: Partial<Customer> | null, onSave: (c: Omit<Customer, 'id'> & { id?: string }) => void, onCancel: () => void }) {
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -64,6 +65,7 @@ function CustomerRow({ customer }: { customer: Customer }) {
     const firestore = useFirestore();
     const [isSheetOpen, setIsSheetOpen] = useState(false);
     const [editingCustomer, setEditingCustomer] = useState<Partial<Customer> | null>(null);
+    const [selectedSale, setSelectedSale] = useState<SaleWithDetails | null>(null);
 
     const salesRef = useMemoFirebase(() => query(collection(firestore, `customers/${customer.id}/sales`)), [firestore, customer.id]);
     const { data: sales, isLoading: salesLoading } = useCollection<Sale>(salesRef);
@@ -100,6 +102,13 @@ function CustomerRow({ customer }: { customer: Customer }) {
         setIsSheetOpen(false);
         setEditingCustomer(null);
     };
+    
+    const handleInvoiceClick = (sale: Sale) => {
+        setSelectedSale({
+            ...sale,
+            customer: customer
+        });
+    }
 
     return (
         <>
@@ -144,7 +153,7 @@ function CustomerRow({ customer }: { customer: Customer }) {
                             <DropdownMenuContent>
                                 <DropdownMenuLabel>Dernières factures</DropdownMenuLabel>
                                 {sales.slice(0, 5).map(sale => (
-                                    <DropdownMenuItem key={sale.id} className="flex justify-between">
+                                    <DropdownMenuItem key={sale.id} className="flex justify-between" onClick={() => handleInvoiceClick(sale)}>
                                         <span>{format(new Date(sale.saleDate), "d MMM yy", { locale: fr })}</span>
                                         <span>{(sale.totalAmount / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'DZD', minimumFractionDigits: 0 })}</span>
                                     </DropdownMenuItem>
@@ -176,6 +185,7 @@ function CustomerRow({ customer }: { customer: Customer }) {
                    <CustomerForm customer={editingCustomer} onSave={handleSave} onCancel={() => setIsSheetOpen(false)} />
                 </SheetContent>
             </Sheet>
+            <InvoiceDetailsDialog sale={selectedSale} isOpen={!!selectedSale} onClose={() => setSelectedSale(null)} />
         </>
     )
 }
@@ -249,5 +259,3 @@ export function CustomerList({ initialCustomers }: { initialCustomers: Customer[
         </>
     );
 }
-
-    
