@@ -7,6 +7,7 @@ import {
   ShoppingCart,
   History,
   Package,
+  Users,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SheetClose } from './ui/sheet';
@@ -16,6 +17,7 @@ const navLinks = [
   { href: '/sell', label: 'Vendre', icon: ShoppingCart },
   { href: '/sales-history', label: 'Historique', icon: History },
   { href: '/products', label: 'Produits', icon: Package },
+  { href: '/customers', label: 'Clients', icon: Users },
 ];
 
 type MainNavProps = {

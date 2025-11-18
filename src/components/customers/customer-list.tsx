@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import Image from 'next/image';
-import type { Customer } from '@/lib/types';
+import type { Customer, Sale } from '@/lib/types';
 import { MoreHorizontal, PlusCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,25 +11,25 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFo
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { useFirestore, useUser, addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking, useMemoFirebase } from '@/firebase';
-import { collection, doc } from 'firebase/firestore';
+import { useFirestore, useUser, setDocumentNonBlocking, deleteDocumentNonBlocking, useMemoFirebase, useCollection } from '@/firebase';
+import { collection, doc, query, where } from 'firebase/firestore';
 import { Badge } from '@/components/ui/badge';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
 
-function CustomerForm({ customer, onSave, onCancel }: { customer: Partial<Customer> | null, onSave: (c: Customer) => void, onCancel: () => void }) {
+function CustomerForm({ customer, onSave, onCancel }: { customer: Partial<Customer> | null, onSave: (c: Omit<Customer, 'id'> & { id?: string }) => void, onCancel: () => void }) {
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         const formData = new FormData(e.currentTarget);
-        const newCustomer: Customer = {
-            id: customer?.id || `cust_${Date.now()}`,
+        const newCustomerData: Omit<Customer, 'id' | 'avatarUrl' | 'avatarHint' | 'debt'> & { id?: string } = {
+            id: customer?.id,
             name: formData.get('name') as string,
             email: formData.get('email') as string,
             phone: formData.get('phone') as string,
             loyaltyCardNumber: (formData.get('loyaltyCardNumber') as string) || '',
-            avatarUrl: `https://picsum.photos/seed/${Date.now()}/100/100`,
-            avatarHint: 'person portrait',
-            debt: customer?.debt || 0,
+            settlementDay: Number(formData.get('settlementDay')),
         };
-        onSave(newCustomer);
+        onSave(newCustomerData);
     };
 
     return (
@@ -54,6 +54,10 @@ function CustomerForm({ customer, onSave, onCancel }: { customer: Partial<Custom
                     <Input id="phone" name="phone" type="tel" defaultValue={customer?.phone} />
                 </div>
                  <div>
+                    <Label htmlFor="settlementDay">Jour de règlement</Label>
+                    <Input id="settlementDay" name="settlementDay" type="number" defaultValue={customer?.settlementDay} min="1" max="31" />
+                </div>
+                 <div>
                     <Label htmlFor="loyaltyCardNumber">Numéro de carte de fidélité</Label>
                     <Input id="loyaltyCardNumber" name="loyaltyCardNumber" type="text" defaultValue={customer?.loyaltyCardNumber} />
                 </div>
@@ -66,19 +70,17 @@ function CustomerForm({ customer, onSave, onCancel }: { customer: Partial<Custom
     );
 }
 
-
-export function CustomerList({ initialCustomers }: { initialCustomers: Customer[] }) {
+function CustomerRow({ customer }: { customer: Customer }) {
     const firestore = useFirestore();
-    const { user } = useUser();
-    const customersRef = useMemoFirebase(() => collection(firestore, 'customers'), [firestore]);
-
     const [isSheetOpen, setIsSheetOpen] = useState(false);
     const [editingCustomer, setEditingCustomer] = useState<Partial<Customer> | null>(null);
 
-    const handleAddClick = () => {
-        setEditingCustomer({ id: user?.uid });
-        setIsSheetOpen(true);
-    };
+    const salesRef = useMemoFirebase(() => query(collection(firestore, `customers/${customer.id}/sales`)), [firestore, customer.id]);
+    const { data: sales, isLoading: salesLoading } = useCollection<Sale>(salesRef);
+
+    const totalSales = sales ? sales.reduce((acc, sale) => acc + sale.totalAmount, 0) : 0;
+    
+    const customersRef = useMemoFirebase(() => collection(firestore, 'customers'), [firestore]);
 
     const handleEditClick = (customer: Customer) => {
         setEditingCustomer(customer);
@@ -90,15 +92,129 @@ export function CustomerList({ initialCustomers }: { initialCustomers: Customer[
         deleteDocumentNonBlocking(docRef);
     };
 
-    const handleSave = (customer: Customer) => {
-        const { id, ...customerData } = customer;
+    const handleSave = (customerData: Omit<Customer, 'id' | 'avatarUrl' | 'avatarHint'> & { id?: string }) => {
+        const id = customerData.id || `cust_${Date.now()}`;
         const docRef = doc(customersRef, id);
-        setDocumentNonBlocking(docRef, customerData, { merge: true });
+        
+        const dataToSave: Partial<Customer> = { ...customerData };
+        delete dataToSave.id;
+
+        if (!customerData.id) { // New customer
+            dataToSave.avatarUrl = `https://picsum.photos/seed/${id}/100/100`;
+            dataToSave.avatarHint = 'person portrait';
+            dataToSave.debt = 0;
+        }
+        
+        setDocumentNonBlocking(docRef, dataToSave, { merge: true });
         
         setIsSheetOpen(false);
         setEditingCustomer(null);
     };
 
+    return (
+        <>
+            <TableRow>
+                <TableCell>
+                    <div className="flex items-center gap-4">
+                        <Avatar className="hidden h-9 w-9 sm:flex">
+                                <Image src={customer.avatarUrl || `https://picsum.photos/seed/${customer.id}/100/100`} alt={`Avatar de ${customer.name}`} width={36} height={36} data-ai-hint={'person portrait'} />
+                                <AvatarFallback>{customer.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                        </Avatar>
+                        <div className="grid gap-1">
+                            <p className="text-sm font-medium leading-none">{customer.name}</p>
+                            <p className="text-sm text-muted-foreground">{customer.email}</p>
+                        </div>
+                    </div>
+                </TableCell>
+                <TableCell className="hidden md:table-cell">{customer.phone}</TableCell>
+                <TableCell className="hidden md:table-cell text-center">{customer.settlementDay || 'N/A'}</TableCell>
+                 <TableCell>
+                    {salesLoading ? '...' : (
+                        <Badge variant="secondary">
+                            {(totalSales / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'DZD', minimumFractionDigits: 0 })}
+                        </Badge>
+                    )}
+                </TableCell>
+                <TableCell>
+                    {customer.debt && customer.debt > 0 ? (
+                        <Badge variant="destructive">
+                            {(customer.debt / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'DZD', minimumFractionDigits: 0 })}
+                        </Badge>
+                    ) : (
+                        <Badge variant="outline">
+                            0 DZD
+                        </Badge>
+                    )}
+                </TableCell>
+                <TableCell>
+                    {sales && sales.length > 0 ? (
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="outline" size="sm">{sales.length} Factures</Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                                <DropdownMenuLabel>Dernières factures</DropdownMenuLabel>
+                                {sales.slice(0, 5).map(sale => (
+                                    <DropdownMenuItem key={sale.id} className="flex justify-between">
+                                        <span>{format(new Date(sale.saleDate), "d MMM yy", { locale: fr })}</span>
+                                        <span>{(sale.totalAmount / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'DZD', minimumFractionDigits: 0 })}</span>
+                                    </DropdownMenuItem>
+                                ))}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    ) : (
+                        <span>0 Factures</span>
+                    )}
+                </TableCell>
+                <TableCell>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button aria-haspopup="true" size="icon" variant="ghost">
+                                <MoreHorizontal className="h-4 w-4" />
+                                <span className="sr-only">Ouvrir/fermer le menu</span>
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuItem onClick={() => handleEditClick(customer)}>Modifier</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleDelete(customer.id)} className="text-destructive">Supprimer</DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </TableCell>
+            </TableRow>
+            <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+                <SheetContent className="sm:max-w-lg p-0">
+                   <CustomerForm customer={editingCustomer} onSave={handleSave} onCancel={() => setIsSheetOpen(false)} />
+                </SheetContent>
+            </Sheet>
+        </>
+    )
+}
+
+export function CustomerList({ initialCustomers }: { initialCustomers: Customer[] }) {
+    const [isSheetOpen, setIsSheetOpen] = useState(false);
+
+    const handleAddClick = () => {
+        setIsSheetOpen(true);
+    };
+
+    const handleSave = (customerData: Omit<Customer, 'id' | 'avatarUrl' | 'avatarHint'> & { id?: string }) => {
+        const firestore = useFirestore();
+        const customersRef = collection(firestore, 'customers');
+        const id = `cust_${Date.now()}`;
+        const docRef = doc(customersRef, id);
+        
+        const dataToSave: Partial<Customer> = { ...customerData };
+        delete dataToSave.id;
+
+        dataToSave.avatarUrl = `https://picsum.photos/seed/${id}/100/100`;
+        dataToSave.avatarHint = 'person portrait';
+        dataToSave.debt = 0;
+        
+        setDocumentNonBlocking(docRef, dataToSave, { merge: true });
+        
+        setIsSheetOpen(false);
+    };
 
     return (
         <>
@@ -121,53 +237,16 @@ export function CustomerList({ initialCustomers }: { initialCustomers: Customer[
                             <TableRow>
                                 <TableHead>Client</TableHead>
                                 <TableHead className="hidden md:table-cell">Téléphone</TableHead>
+                                <TableHead className="hidden md:table-cell">Jour de règlement</TableHead>
+                                <TableHead>Ventes totales</TableHead>
                                 <TableHead>Dette</TableHead>
+                                <TableHead>Factures</TableHead>
                                 <TableHead>Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {initialCustomers.map((customer) => (
-                                <TableRow key={customer.id}>
-                                    <TableCell>
-                                        <div className="flex items-center gap-4">
-                                            <Avatar className="hidden h-9 w-9 sm:flex">
-                                                 <Image src={customer.avatarUrl || `https://picsum.photos/seed/${customer.id}/100/100`} alt={`Avatar de ${customer.name}`} width={36} height={36} data-ai-hint={'person portrait'} />
-                                                 <AvatarFallback>{customer.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                                            </Avatar>
-                                            <div className="grid gap-1">
-                                                <p className="text-sm font-medium leading-none">{customer.name}</p>
-                                                <p className="text-sm text-muted-foreground">{customer.email}</p>
-                                            </div>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell className="hidden md:table-cell">{customer.phone}</TableCell>
-                                    <TableCell>
-                                        {customer.debt && customer.debt > 0 ? (
-                                            <Badge variant="destructive">
-                                                {(customer.debt / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'DZD', minimumFractionDigits: 0 })}
-                                            </Badge>
-                                        ) : (
-                                            <Badge variant="outline">
-                                                0 DZD
-                                            </Badge>
-                                        )}
-                                    </TableCell>
-                                    <TableCell>
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button aria-haspopup="true" size="icon" variant="ghost">
-                                                    <MoreHorizontal className="h-4 w-4" />
-                                                    <span className="sr-only">Ouvrir/fermer le menu</span>
-                                                </Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                                <DropdownMenuItem onClick={() => handleEditClick(customer)}>Modifier</DropdownMenuItem>
-                                                <DropdownMenuItem onClick={() => handleDelete(customer.id)} className="text-destructive">Supprimer</DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    </TableCell>
-                                </TableRow>
+                               <CustomerRow key={customer.id} customer={customer} />
                             ))}
                         </TableBody>
                     </Table>
@@ -175,7 +254,7 @@ export function CustomerList({ initialCustomers }: { initialCustomers: Customer[
             </Card>
             <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
                 <SheetContent className="sm:max-w-lg p-0">
-                   <CustomerForm customer={editingCustomer} onSave={handleSave} onCancel={() => setIsSheetOpen(false)} />
+                   <CustomerForm customer={null} onSave={handleSave} onCancel={() => setIsSheetOpen(false)} />
                 </SheetContent>
             </Sheet>
         </>

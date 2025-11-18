@@ -20,6 +20,7 @@ export interface Customer {
   avatarHint?: string;
   loyaltyCardNumber: string;
   debt?: number; // in cents
+  settlementDay?: number;
 }
 
 export interface Supplier {
