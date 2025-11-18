@@ -7,9 +7,12 @@ import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { InvoiceDetailsDialog } from './invoice-details-dialog';
+import { Input } from '@/components/ui/input';
+import { Search } from 'lucide-react';
 
 export function SalesHistoryList({ sales }: { sales: SaleWithDetails[] }) {
     const [selectedSale, setSelectedSale] = useState<SaleWithDetails | null>(null);
+    const [searchTerm, setSearchTerm] = useState('');
 
     const formatPaymentMethod = (method: 'cash' | 'credit') => {
         switch (method) {
@@ -20,13 +23,37 @@ export function SalesHistoryList({ sales }: { sales: SaleWithDetails[] }) {
             default:
                 return <Badge variant="default">{method}</Badge>;
         }
-    }
+    };
+
+    const filteredSales = sales.filter(sale => {
+        const invoiceNumber = String(sale.invoiceNumber).padStart(6, '0');
+        const customerName = sale.customer?.name || '';
+        const saleDate = format(new Date(sale.saleDate), "d MMMM yyyy 'à' HH:mm", { locale: fr });
+        const lowerCaseSearchTerm = searchTerm.toLowerCase();
+
+        return (
+            invoiceNumber.includes(lowerCaseSearchTerm) ||
+            customerName.toLowerCase().includes(lowerCaseSearchTerm) ||
+            saleDate.toLowerCase().includes(lowerCaseSearchTerm)
+        );
+    });
+
     return (
         <>
             <Card>
                 <CardHeader>
                     <CardTitle>Historique des Ventes</CardTitle>
                     <CardDescription>Consultez la liste de toutes les transactions récentes.</CardDescription>
+                    <div className="relative pt-4">
+                        <Search className="absolute left-2.5 top-6 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            type="search"
+                            placeholder="Rechercher par N°, client, ou date..."
+                            className="w-full rounded-lg bg-background pl-8"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
                 </CardHeader>
                 <CardContent>
                     <Table>
@@ -40,12 +67,12 @@ export function SalesHistoryList({ sales }: { sales: SaleWithDetails[] }) {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {sales.length === 0 && (
+                            {filteredSales.length === 0 && (
                                  <TableRow>
                                     <TableCell colSpan={5} className="text-center">Aucune vente trouvée.</TableCell>
                                 </TableRow>
                             )}
-                            {sales.map((sale) => (
+                            {filteredSales.map((sale) => (
                                 <TableRow key={sale.id} onClick={() => setSelectedSale(sale)} className="cursor-pointer">
                                      <TableCell className="font-mono">
                                         {String(sale.invoiceNumber).padStart(6, '0')}
