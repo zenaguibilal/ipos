@@ -25,7 +25,6 @@ export interface Supplier {
   id:string;
   name: string;
   contactName: string;
-  contactEmail: string;
   contactPhone: string;
   debt?: number; // in cents
   visitingDays?: string; // Comma-separated days
@@ -65,3 +64,5 @@ export interface InvoiceCounter {
     id: string;
     lastNumber: number;
 }
+
+    

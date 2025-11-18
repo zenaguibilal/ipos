@@ -64,7 +64,6 @@ function SupplierForm({ supplier, onSave, onCancel }: { supplier: Partial<Suppli
         const newSupplierData = {
             id: supplier?.id,
             name: formData.get('name') as string,
-            contactEmail: formData.get('email') as string,
             contactPhone: formData.get('phone') as string,
             contactName: formData.get('contactPerson') as string,
             visitingDays: formData.get('visitingDays') as string,
@@ -88,10 +87,6 @@ function SupplierForm({ supplier, onSave, onCancel }: { supplier: Partial<Suppli
                  <div>
                     <Label htmlFor="contactPerson">Personne à contacter</Label>
                     <Input id="contactPerson" name="contactPerson" defaultValue={supplier?.contactName} />
-                </div>
-                <div>
-                    <Label htmlFor="email">Email</Label>
-                    <Input id="email" name="email" type="email" defaultValue={supplier?.contactEmail} required />
                 </div>
                  <div>
                     <Label htmlFor="phone">Téléphone</Label>
@@ -292,3 +287,5 @@ export function SupplierList({ initialSuppliers }: { initialSuppliers: Supplier[
         </>
     );
 }
+
+    
