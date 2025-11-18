@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import type { Supplier } from '@/lib/types';
-import { MoreHorizontal, PlusCircle, HandCoins, Wallet } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, HandCoins, Wallet, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -131,6 +131,7 @@ function SupplierRow({ supplier, onDelete, onEdit }: { supplier: Supplier, onDel
         <>
             <TableRow>
                 <TableCell className="font-medium">{supplier.name}</TableCell>
+                <TableCell>{supplier.contactName || 'N/A'}</TableCell>
                 <TableCell>{supplier.contactPhone || 'N/A'}</TableCell>
                 <TableCell className="hidden md:table-cell">{supplier.visitingDays || 'N/A'}</TableCell>
                  <TableCell>
@@ -185,6 +186,7 @@ export function SupplierList({ initialSuppliers }: { initialSuppliers: Supplier[
     
     const [isSheetOpen, setIsSheetOpen] = useState(false);
     const [editingSupplier, setEditingSupplier] = useState<Partial<Supplier> | null>(null);
+    const [searchTerm, setSearchTerm] = useState('');
 
     const totalDebt = initialSuppliers.reduce((acc, supplier) => acc + (supplier.debt || 0), 0);
 
@@ -220,6 +222,15 @@ export function SupplierList({ initialSuppliers }: { initialSuppliers: Supplier[
         setEditingSupplier(null);
     };
 
+    const filteredSuppliers = initialSuppliers.filter(supplier => {
+        const lowerCaseSearchTerm = searchTerm.toLowerCase();
+        return (
+            supplier.name.toLowerCase().includes(lowerCaseSearchTerm) ||
+            (supplier.contactName && supplier.contactName.toLowerCase().includes(lowerCaseSearchTerm)) ||
+            (supplier.contactPhone && supplier.contactPhone.toLowerCase().includes(lowerCaseSearchTerm))
+        );
+    });
+
     return (
         <>
             <Card>
@@ -242,12 +253,23 @@ export function SupplierList({ initialSuppliers }: { initialSuppliers: Supplier[
                             </Button>
                         </div>
                     </div>
+                     <div className="relative mt-4">
+                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            type="search"
+                            placeholder="Rechercher par nom, contact, ou téléphone..."
+                            className="w-full rounded-lg bg-background pl-8"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
                 </CardHeader>
                 <CardContent>
                     <Table>
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Entreprise</TableHead>
+                                <TableHead>Contact</TableHead>
                                 <TableHead>Téléphone</TableHead>
                                 <TableHead className="hidden md:table-cell">Jours de visite</TableHead>
                                 <TableHead>Dette</TableHead>
@@ -255,7 +277,7 @@ export function SupplierList({ initialSuppliers }: { initialSuppliers: Supplier[
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {initialSuppliers.map((supplier) => (
+                            {filteredSuppliers.map((supplier) => (
                                 <SupplierRow key={supplier.id} supplier={supplier} onDelete={handleDelete} onEdit={handleEditClick} />
                             ))}
                         </TableBody>
