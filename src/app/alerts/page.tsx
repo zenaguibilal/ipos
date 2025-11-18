@@ -12,7 +12,7 @@ import Link from 'next/link';
 
 function LowStockAlerts({ products }: { products: Product[] }) {
   if (products.length === 0) {
-    return <p className="text-sm text-muted-foreground">لا توجد تنبيهات بخصوص انخفاض المخزون.</p>;
+    return <p className="text-sm text-muted-foreground">لا توجد تنبيهات بانخفاض المخزون.</p>;
   }
 
   return (
