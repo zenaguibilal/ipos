@@ -1,0 +1,71 @@
+'use client';
+
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import {
+  Home,
+  ShoppingCart,
+  Package,
+  Users,
+  Truck,
+  LineChart,
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Badge } from './ui/badge';
+import { SheetClose } from './ui/sheet';
+
+const navLinks = [
+  { href: '/', label: 'Dashboard', icon: Home },
+  { href: '/sell', label: 'Sell', icon: ShoppingCart },
+  { href: '/products', label: 'Products', icon: Package },
+  { href: '/customers', label: 'Customers', icon: Users },
+  { href: '/suppliers', label: 'Suppliers', icon: Truck },
+];
+
+type MainNavProps = {
+  isMobile?: boolean;
+};
+
+export function MainNav({ isMobile = false }: MainNavProps) {
+  const pathname = usePathname();
+
+  const NavLink = ({
+    href,
+    icon: Icon,
+    label,
+  }: {
+    href: string;
+    icon: React.ElementType;
+    label: string;
+  }) => {
+    const isActive = pathname === href;
+    const linkContent = (
+      <Link
+        href={href}
+        className={cn(
+          'flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:text-primary',
+          isActive
+            ? 'bg-muted text-primary'
+            : 'text-muted-foreground'
+        )}
+      >
+        <Icon className="h-4 w-4" />
+        {label}
+      </Link>
+    );
+
+    if (isMobile) {
+      return <SheetClose asChild>{linkContent}</SheetClose>;
+    }
+
+    return linkContent;
+  };
+
+  return (
+    <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
+      {navLinks.map((link) => (
+        <NavLink key={link.href} {...link} />
+      ))}
+    </nav>
+  );
+}

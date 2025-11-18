@@ -1,0 +1,166 @@
+'use client';
+import { useState } from 'react';
+import Image from 'next/image';
+import type { Customer } from '@/lib/types';
+import { MoreHorizontal, PlusCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/components/ui/sheet';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+
+function CustomerForm({ customer, onSave, onCancel }: { customer: Partial<Customer> | null, onSave: (c: Customer) => void, onCancel: () => void }) {
+    const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        const formData = new FormData(e.currentTarget);
+        const newCustomer: Customer = {
+            id: customer?.id || `cust_${Date.now()}`,
+            name: formData.get('name') as string,
+            email: formData.get('email') as string,
+            phone: formData.get('phone') as string,
+            loyaltyPoints: Number(formData.get('loyaltyPoints') as string || 0),
+            avatarUrl: customer?.avatarUrl || `https://picsum.photos/seed/${Date.now()}/100/100`,
+            avatarHint: customer?.avatarHint || 'person portrait',
+        };
+        onSave(newCustomer);
+    };
+
+    return (
+        <form onSubmit={handleSubmit} className="flex flex-col h-full">
+            <SheetHeader className="p-6">
+                <SheetTitle>{customer?.id ? 'Edit Customer' : 'Add Customer'}</SheetTitle>
+                <SheetDescription>
+                    Fill in the customer's details. Click save when you're done.
+                </SheetDescription>
+            </SheetHeader>
+            <div className="flex-grow p-6 space-y-4 overflow-y-auto">
+                <div>
+                    <Label htmlFor="name">Full Name</Label>
+                    <Input id="name" name="name" defaultValue={customer?.name} required />
+                </div>
+                <div>
+                    <Label htmlFor="email">Email</Label>
+                    <Input id="email" name="email" type="email" defaultValue={customer?.email} required />
+                </div>
+                 <div>
+                    <Label htmlFor="phone">Phone</Label>
+                    <Input id="phone" name="phone" type="tel" defaultValue={customer?.phone} />
+                </div>
+                 <div>
+                    <Label htmlFor="loyaltyPoints">Loyalty Points</Label>
+                    <Input id="loyaltyPoints" name="loyaltyPoints" type="number" defaultValue={customer?.loyaltyPoints} />
+                </div>
+            </div>
+            <SheetFooter className="p-6 bg-muted/40 border-t">
+                <Button variant="outline" type="button" onClick={onCancel}>Cancel</Button>
+                <Button type="submit">Save Customer</Button>
+            </SheetFooter>
+        </form>
+    );
+}
+
+
+export function CustomerList({ initialCustomers }: { initialCustomers: Customer[] }) {
+    const [customers, setCustomers] = useState(initialCustomers);
+    const [isSheetOpen, setIsSheetOpen] = useState(false);
+    const [editingCustomer, setEditingCustomer] = useState<Partial<Customer> | null>(null);
+
+    const handleAddClick = () => {
+        setEditingCustomer(null);
+        setIsSheetOpen(true);
+    };
+
+    const handleEditClick = (customer: Customer) => {
+        setEditingCustomer(customer);
+        setIsSheetOpen(true);
+    };
+
+    const handleDelete = (customerId: string) => {
+        setCustomers(customers.filter(c => c.id !== customerId));
+    };
+
+    const handleSave = (customer: Customer) => {
+        if (editingCustomer?.id) {
+            setCustomers(customers.map(c => c.id === customer.id ? customer : c));
+        } else {
+            setCustomers([customer, ...customers]);
+        }
+        setIsSheetOpen(false);
+        setEditingCustomer(null);
+    };
+
+
+    return (
+        <>
+            <Card>
+                <CardHeader className="flex flex-row items-center">
+                     <div className="grid gap-2">
+                        <CardTitle>Customers</CardTitle>
+                        <CardDescription>Manage your customers and view their purchase history.</CardDescription>
+                    </div>
+                    <div className="ml-auto flex items-center gap-2">
+                        <Button size="sm" className="h-8 gap-1" onClick={handleAddClick}>
+                            <PlusCircle className="h-3.5 w-3.5" />
+                            <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Add Customer</span>
+                        </Button>
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Customer</TableHead>
+                                <TableHead className="hidden md:table-cell">Phone</TableHead>
+                                <TableHead className="hidden md:table-cell">Loyalty Points</TableHead>
+                                <TableHead>Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {customers.map((customer) => (
+                                <TableRow key={customer.id}>
+                                    <TableCell>
+                                        <div className="flex items-center gap-4">
+                                            <Avatar className="hidden h-9 w-9 sm:flex">
+                                                 <Image src={customer.avatarUrl} alt={`Avatar of ${customer.name}`} width={36} height={36} data-ai-hint={customer.avatarHint} />
+                                                 <AvatarFallback>{customer.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                                            </Avatar>
+                                            <div className="grid gap-1">
+                                                <p className="text-sm font-medium leading-none">{customer.name}</p>
+                                                <p className="text-sm text-muted-foreground">{customer.email}</p>
+                                            </div>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell className="hidden md:table-cell">{customer.phone}</TableCell>
+                                    <TableCell className="hidden md:table-cell">{customer.loyaltyPoints.toLocaleString()}</TableCell>
+                                    <TableCell>
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button aria-haspopup="true" size="icon" variant="ghost">
+                                                    <MoreHorizontal className="h-4 w-4" />
+                                                    <span className="sr-only">Toggle menu</span>
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                                <DropdownMenuItem onClick={() => handleEditClick(customer)}>Edit</DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => handleDelete(customer.id)} className="text-destructive">Delete</DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
+            <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+                <SheetContent className="sm:max-w-lg p-0">
+                   <CustomerForm customer={editingCustomer} onSave={handleSave} onCancel={() => setIsSheetOpen(false)} />
+                </SheetContent>
+            </Sheet>
+        </>
+    );
+}

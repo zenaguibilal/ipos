@@ -1,3 +1,82 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "product-1",
+      "description": "Modern wireless headphones",
+      "imageUrl": "https://images.unsplash.com/photo-1667178173387-7e0cb51c0b4f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxoZWFkcGhvbmVzJTIwYXVkaW98ZW58MHx8fHwxNzYzMzc0MDIwfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "headphones audio"
+    },
+    {
+      "id": "product-2",
+      "description": "Sleek smartwatch with fitness tracking",
+      "imageUrl": "https://images.unsplash.com/photo-1664219624278-5c0309a0eeb8?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxzbWFydHdhdGNoJTIwdGVjaHxlbnwwfHx8fDE3NjM0MzM0MDJ8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "smartwatch tech"
+    },
+    {
+      "id": "product-3",
+      "description": "Ergonomic mechanical keyboard",
+      "imageUrl": "https://images.unsplash.com/photo-1612260836955-1140700c5bf0?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxrZXlib2FyZCUyMG9mZmljZXxlbnwwfHx8fDE3NjM0NzkyNjl8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "keyboard office"
+    },
+    {
+      "id": "product-4",
+      "description": "Portable bluetooth speaker",
+      "imageUrl": "https://images.unsplash.com/photo-1687586370886-b31f1c557df5?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8c3BlYWtlciUyMG11c2ljfGVufDB8fHx8MTc2MzM5NDUzMXww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "speaker music"
+    },
+    {
+      "id": "product-5",
+      "description": "High-resolution 4K monitor",
+      "imageUrl": "https://images.unsplash.com/photo-1648146511841-30f5b8957629?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxtb25pdG9yJTIwc2NyZWVufGVufDB8fHx8MTc2MzQzMzQwMnww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "monitor screen"
+    },
+    {
+      "id": "product-6",
+      "description": "Professional DSLR camera",
+      "imageUrl": "https://images.unsplash.com/photo-1752649938189-25651a4040fe?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxjYW1lcmElMjBwaG90b2dyYXBoeXxlbnwwfHx8fDE3NjM0MzM0MDJ8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "camera photography"
+    },
+    {
+      "id": "product-7",
+      "description": "A book on modern design principles",
+      "imageUrl": "https://images.unsplash.com/photo-1630852722702-3e2ec1eaa751?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8Ym9vayUyMGRlc2lnbnxlbnwwfHx8fDE3NjM0NTU5NzR8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "book design"
+    },
+    {
+      "id": "product-8",
+      "description": "A stylish backpack for laptops",
+      "imageUrl": "https://images.unsplash.com/photo-1673505705677-93516a00ca06?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxiYWNrcGFjayUyMHRyYXZlbHxlbnwwfHx8fDE3NjMzOTI4NTl8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "backpack travel"
+    },
+    {
+      "id": "avatar-1",
+      "description": "Customer avatar for Olivia Martin",
+      "imageUrl": "https://images.unsplash.com/photo-1609505848912-b7c3b8b4beda?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHx3b21hbiUyMHBvcnRyYWl0fGVufDB8fHx8MTc2MzQ0NDY2Mnww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "woman portrait"
+    },
+    {
+      "id": "avatar-2",
+      "description": "Customer avatar for Jackson Lee",
+      "imageUrl": "https://images.unsplash.com/photo-1636377985931-898218afd306?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxtYW4lMjBwb3J0cmFpdHxlbnwwfHx8fDE3NjMzNzc5Mjh8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "man portrait"
+    },
+    {
+      "id": "avatar-3",
+      "description": "Customer avatar for Isabella Nguyen",
+      "imageUrl": "https://images.unsplash.com/photo-1589268579398-1be8358506ab?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8d29tYW4lMjBzbWlsZXxlbnwwfHx8fDE3NjM0NjQ1Mjd8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "woman smile"
+    },
+    {
+      "id": "avatar-4",
+      "description": "Customer avatar for William Kim",
+      "imageUrl": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxtYW4lMjBwcm9mZXNzaW9uYWx8ZW58MHx8fHwxNzYzMzg2MDQ2fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "man professional"
+    },
+    {
+      "id": "avatar-5",
+      "description": "Customer avatar for Sofia Davis",
+      "imageUrl": "https://images.unsplash.com/photo-1525786210598-d527194d3e9a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHx3b21hbiUyMGdsYXNzZXN8ZW58MHx8fHwxNzYzNDUxNTM4fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "woman glasses"
+    }
+  ]
 }
