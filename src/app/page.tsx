@@ -7,6 +7,8 @@ import {
   Activity,
   Truck,
   Archive,
+  TrendingUp,
+  Package,
 } from 'lucide-react';
 import {
   Card,
@@ -24,6 +26,8 @@ import { Loader } from 'lucide-react';
 export default function DashboardPage() {
   const {
     totalRevenue,
+    netProfit,
+    productsValue,
     totalSales,
     totalCustomers,
     totalSuppliers,
@@ -38,12 +42,24 @@ export default function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-4 md:gap-8">
-      <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4 xl:grid-cols-6">
         <SummaryCard
           icon={<DollarSign />}
           title="Revenu Total"
           value={(totalRevenue / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'DZD', minimumFractionDigits: 0 })}
           description={`Basé sur ${totalSales} ventes`}
+        />
+         <SummaryCard
+          icon={<TrendingUp />}
+          title="Bénéfice Net"
+          value={(netProfit / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'DZD', minimumFractionDigits: 0 })}
+          description="Revenu total moins le coût des marchandises"
+        />
+        <SummaryCard
+          icon={<Package />}
+          title="Valeur du Stock"
+          value={(productsValue / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'DZD', minimumFractionDigits: 0 })}
+          description="Valeur d'achat totale des produits en stock"
         />
         <SummaryCard
           icon={<Users />}

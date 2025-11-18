@@ -2,7 +2,7 @@
 
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, limit, getDocs, where, collectionGroup, documentId } from 'firebase/firestore';
-import type { Product, Customer, Supplier, Sale } from './types';
+import type { Product, Customer, Supplier, Sale, SaleLineItem, SaleWithDetails } from './types';
 import { useEffect, useState, useMemo } from 'react';
 import { format, getMonth } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -28,54 +28,76 @@ export async function getSuppliers(db: any): Promise<Supplier[]> {
 }
 
 export function useSales(salesLimit?: number) {
-  const firestore = useFirestore();
-  const salesRef = useMemoFirebase(() => {
-    let q = collectionGroup(firestore, 'sales');
-    if (salesLimit) {
-      q = query(q, limit(salesLimit));
-    }
-    return q;
-  }, [firestore, salesLimit]);
+    const firestore = useFirestore();
 
-  const { data: salesData, isLoading: isSalesLoading, error: salesError } = useCollection<Sale>(salesRef);
+    const salesRef = useMemoFirebase(() => {
+        let q: any = collectionGroup(firestore, 'sales');
+        if (salesLimit) {
+            q = query(q, limit(salesLimit));
+        }
+        return q;
+    }, [firestore, salesLimit]);
+    const { data: salesData, isLoading: salesLoading, error: salesError } = useCollection<Sale>(salesRef);
 
-  const customerIds = useMemo(() => {
-      if (!salesData) return [];
-      const ids = new Set(salesData.map(s => s.customerId));
-      return Array.from(ids);
-  }, [salesData]);
+    const customerIds = useMemo(() => Array.from(new Set(salesData?.map(s => s.customerId) || [])), [salesData]);
+    const lineItemIds = useMemo(() => salesData?.flatMap(s => s.saleLineItemIds) || [], [salesData]);
 
-  const customersRef = useMemoFirebase(() => {
-      if (!firestore || customerIds.length === 0) return null;
-      return query(collection(firestore, 'customers'), where(documentId(), 'in', customerIds.slice(0, 30)))
-  }, [firestore, customerIds]);
+    const customersRef = useMemoFirebase(() => {
+        return customerIds.length > 0
+            ? query(collection(firestore, 'customers'), where(documentId(), 'in', customerIds.slice(0, 30)))
+            : null;
+    }, [firestore, customerIds]);
+    const { data: customersData, isLoading: customersLoading, error: customersError } = useCollection<Customer>(customersRef);
 
-  const { data: customersData, isLoading: areCustomersLoading, error: customersError } = useCollection<Customer>(customersRef);
+    const lineItemsRef = useMemoFirebase(() => {
+        return lineItemIds.length > 0
+            ? query(collection(firestore, 'sales_line_items'), where(documentId(), 'in', lineItemIds.slice(0, 30)))
+            : null;
+    }, [firestore, lineItemIds]);
+    const { data: lineItemsData, isLoading: lineItemsLoading, error: lineItemsError } = useCollection<SaleLineItem>(lineItemsRef);
 
-  const [sales, setSales] = useState<any[]>([]);
+    const productIds = useMemo(() => Array.from(new Set(lineItemsData?.map(item => item.productId) || [])), [lineItemsData]);
 
-  useEffect(() => {
-    if (salesData && customersData) {
-      const customerMap = new Map(customersData.map(c => [c.id, c]));
-      const salesWithCustomerData = salesData.map(sale => ({
-        ...sale,
-        customer: customerMap.get(sale.customerId) || null
-      }));
-      setSales(salesWithCustomerData);
-    } else if (salesData) {
-        // If customers are still loading, just show sales data without customer info
-        setSales(salesData.map(sale => ({ ...sale, customer: null })));
-    }
-  }, [salesData, customersData]);
+    const productsRef = useMemoFirebase(() => {
+        return productIds.length > 0
+            ? query(collection(firestore, 'suppliers/supp_1/products'), where(documentId(), 'in', productIds.slice(0, 30)))
+            : null;
+    }, [firestore, productIds]);
+    const { data: productsData, isLoading: productsLoading, error: productsError } = useCollection<Product>(productsRef);
 
-  return { sales, isLoading: isSalesLoading || areCustomersLoading, error: salesError || customersError };
+
+    const [sales, setSales] = useState<SaleWithDetails[]>([]);
+
+    useEffect(() => {
+        if (salesData) {
+            const customerMap = new Map(customersData?.map(c => [c.id, c]));
+            const productMap = new Map(productsData?.map(p => [p.id, p]));
+            const lineItemMap = new Map(lineItemsData?.map(li => [li.id, {
+                ...li,
+                product: productMap.get(li.productId)
+            }]));
+
+            const enrichedSales = salesData.map(sale => {
+                return {
+                    ...sale,
+                    customer: customerMap.get(sale.customerId),
+                    lineItems: sale.saleLineItemIds.map(id => lineItemMap.get(id)).filter(Boolean) as any,
+                };
+            });
+            setSales(enrichedSales);
+        }
+    }, [salesData, customersData, lineItemsData, productsData]);
+
+    const isLoading = salesLoading || customersLoading || lineItemsLoading || productsLoading;
+    const error = salesError || customersError || lineItemsError || productsError;
+
+    return { sales, isLoading, error };
 }
 
 export function useDashboardData() {
     const firestore = useFirestore();
 
-    const salesRef = useMemoFirebase(() => collectionGroup(firestore, 'sales'), [firestore]);
-    const { data: sales, isLoading: salesLoading } = useCollection(salesRef);
+    const { sales, isLoading: salesLoading } = useSales();
     
     const customersRef = useMemoFirebase(() => collection(firestore, 'customers'), [firestore]);
     const { data: customers, isLoading: customersLoading } = useCollection(customersRef);
@@ -84,10 +106,24 @@ export function useDashboardData() {
     const { data: suppliers, isLoading: suppliersLoading } = useCollection(suppliersRef);
 
     const productsRef = useMemoFirebase(() => collection(firestore, 'suppliers/supp_1/products'), [firestore]);
-    const { data: products, isLoading: productsLoading } = useCollection(productsRef);
+    const { data: products, isLoading: productsLoading } = useCollection<Product>(productsRef);
 
     const totalRevenue = sales?.reduce((acc, sale) => acc + sale.totalAmount, 0) || 0;
-    const lowStockItems = products?.filter(p => p.quantity < p.minStock).length || 0;
+    const lowStockItems = products?.filter(p => p.quantity <= p.minStock).length || 0;
+
+    const totalCostOfGoods = useMemo(() => {
+        return sales.reduce((acc, sale) => {
+            const saleCost = sale.lineItems?.reduce((itemAcc, item) => {
+                const cost = item.product?.purchasePrice || 0;
+                return itemAcc + (cost * item.quantity);
+            }, 0) || 0;
+            return acc + saleCost;
+        }, 0);
+    }, [sales]);
+
+    const netProfit = totalRevenue - totalCostOfGoods;
+
+    const productsValue = products?.reduce((acc, p) => acc + (p.purchasePrice * p.quantity), 0) || 0;
 
     const monthlySales = useMemo(() => {
         const monthNames = ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Août", "Sep", "Oct", "Nov", "Déc"];
@@ -99,17 +135,18 @@ export function useDashboardData() {
                 monthlyData[monthIndex].total += sale.totalAmount;
             });
         }
-        // Return data for the current year, could be adapted for other ranges
         return monthlyData.map(m => ({ ...m, total: m.total / 100 }));
     }, [sales]);
 
 
     return {
-        totalRevenue: totalRevenue,
+        totalRevenue,
+        netProfit,
+        productsValue,
         totalSales: sales?.length || 0,
         totalCustomers: customers?.length || 0,
         totalSuppliers: suppliers?.length || 0,
-        lowStockItems: lowStockItems,
+        lowStockItems,
         monthlySales,
         isLoading: salesLoading || customersLoading || suppliersLoading || productsLoading
     }
