@@ -1,7 +1,7 @@
 'use client';
 
 import type { Product, Sale, Customer, SaleLineItem } from '@/lib/types';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import { PlusCircle, MinusCircle, XCircle, Coins, BookUser, User, Search, ScanLine, Barcode, ChevronsUpDown, Check } from 'lucide-react';
 import {
@@ -93,20 +93,28 @@ function CustomerCombobox({ customers, selectedCustomerId, onSelect }: { custome
     );
 }
 
+const generalCustomer: Customer = {
+    id: 'general',
+    name: 'Client Général',
+    phone: 'N/A'
+};
+
 export function POSClient({ products, customers }: { products: Product[], customers: Customer[] }) {
   const firestore = useFirestore();
   const { user } = useUser();
   const { toast } = useToast();
   const [cart, setCart] = useState<CartItem[]>([]);
   const [paymentMethod, setPaymentMethod] = useState('cash');
-  const [selectedCustomerId, setSelectedCustomerId] = useState<string | undefined>(customers[0]?.id);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | undefined>(generalCustomer.id);
   const [searchTerm, setSearchTerm] = useState('');
   const [barcodeTerm, setBarcodeTerm] = useState('');
   const [isScannerOpen, setIsScannerOpen] = useState(false);
 
+  const allCustomers = useMemo(() => [generalCustomer, ...customers], [customers]);
+
   useEffect(() => {
-    if (!selectedCustomerId && customers.length > 0) {
-      setSelectedCustomerId(customers[0].id);
+    if (!selectedCustomerId) {
+      setSelectedCustomerId(generalCustomer.id);
     }
   }, [customers, selectedCustomerId]);
 
@@ -185,6 +193,15 @@ export function POSClient({ products, customers }: { products: Product[], custom
         }
         return;
     };
+    
+    if (paymentMethod === 'credit' && selectedCustomerId === 'general') {
+        toast({
+            variant: "destructive",
+            title: "Paiement à crédit non autorisé",
+            description: "Le client général ne peut pas effectuer d'achats à crédit. Veuillez sélectionner un client enregistré.",
+        });
+        return;
+    }
 
     const batch = writeBatch(firestore);
     const customerId = selectedCustomerId;
@@ -392,7 +409,7 @@ export function POSClient({ products, customers }: { products: Product[], custom
                   <div>
                       <Label className="mb-2 block">Client</Label>
                        <CustomerCombobox
-                          customers={customers}
+                          customers={allCustomers}
                           selectedCustomerId={selectedCustomerId}
                           onSelect={setSelectedCustomerId}
                        />
@@ -413,7 +430,7 @@ export function POSClient({ products, customers }: { products: Product[], custom
                           <ToggleGroupItem value="cash" aria-label="نقدا" className="flex-1">
                               <Coins className="h-4 w-4 mr-2"/> نقدا
                           </ToggleGroupItem>
-                          <ToggleGroupItem value="credit" aria-label="بالدين" className="flex-1">
+                          <ToggleGroupItem value="credit" aria-label="بالدين" className="flex-1" disabled={selectedCustomerId === 'general'}>
                               <BookUser className="h-4 w-4 mr-2"/> بالدين
                           </ToggleGroupItem>
                       </ToggleGroup>
