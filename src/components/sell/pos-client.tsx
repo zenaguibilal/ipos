@@ -145,8 +145,7 @@ export function POSClient({ products, customers }: { products: Product[], custom
         lineItemIds.push(lineItemId);
 
         const lineItemDocRef = doc(lineItemsRef, lineItemId);
-        const lineItemData: SaleLineItem = {
-            id: lineItemId,
+        const lineItemData: Omit<SaleLineItem, 'id'> = {
             productId: item.id,
             quantity: item.cartQuantity,
             unitPrice: item.price,
@@ -159,7 +158,7 @@ export function POSClient({ products, customers }: { products: Product[], custom
         batch.update(productRef, { quantity: increment(-item.cartQuantity) });
     }
 
-    const saleData: Omit<Sale, 'id'> & { id: string } = {
+    const saleData: Sale = {
         id: saleId,
         customerId,
         saleDate: new Date().toISOString(),
