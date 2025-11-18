@@ -2,12 +2,10 @@ export interface Product {
   id: string;
   name: string;
   price: number; // in cents
-  stock: number;
-  salesVelocity: number; // units per day
-  reorderThreshold: number;
+  quantity: number;
   imageUrl: string;
-  imageHint: string;
-  supplierId?: string;
+  description: string;
+  supplierId: string;
 }
 
 export interface Customer {
@@ -15,22 +13,25 @@ export interface Customer {
   name: string;
   email: string;
   phone: string;
-  avatarUrl: string;
-  avatarHint: string;
-  loyaltyPoints: number;
+  avatarUrl?: string;
+  avatarHint?: string;
+  loyaltyCardNumber: string;
 }
 
 export interface Supplier {
   id: string;
   name: string;
-  contactPerson: string;
-  email: string;
-  phone: string;
+  contactName: string;
+  contactEmail: string;
+  contactPhone: string;
 }
 
 export interface Sale {
   id: string;
-  customer: Pick<Customer, 'name' | 'email' | 'avatarUrl' | 'avatarHint'>;
-  amount: number; // in cents
-  date: Date;
+  customerId: string;
+  customer?: Pick<Customer, 'name' | 'email' | 'avatarUrl' | 'avatarHint'>;
+  totalAmount: number; // in cents
+  saleDate: string;
+  paymentMethod: string;
+  saleLineItemIds: string[];
 }

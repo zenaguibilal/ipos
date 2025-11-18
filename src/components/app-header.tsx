@@ -5,7 +5,6 @@ import {
   CircleUser,
   Menu,
   Package2,
-  Search,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -17,11 +16,18 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { MainNav } from './main-nav';
+import { useAuth } from '@/firebase';
+import { signOut } from 'firebase/auth';
 
 export function AppHeader() {
+  const auth = useAuth();
+
+  const handleLogout = () => {
+    signOut(auth);
+  };
+
   return (
     <header className="flex h-14 items-center gap-4 border-b bg-background px-4 lg:h-[60px] lg:px-6">
       <Sheet>
@@ -61,7 +67,7 @@ export function AppHeader() {
           <DropdownMenuItem>Settings</DropdownMenuItem>
           <DropdownMenuItem>Support</DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem>Logout</DropdownMenuItem>
+          <DropdownMenuItem onClick={handleLogout}>Logout</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
     </header>

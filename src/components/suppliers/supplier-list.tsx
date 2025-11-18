@@ -9,6 +9,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/components/ui/sheet';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { useFirestore, useUser, setDocumentNonBlocking, deleteDocumentNonBlocking, useMemoFirebase } from '@/firebase';
+import { collection, doc } from 'firebase/firestore';
 
 function SupplierForm({ supplier, onSave, onCancel }: { supplier: Partial<Supplier> | null, onSave: (s: Supplier) => void, onCancel: () => void }) {
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -17,9 +19,9 @@ function SupplierForm({ supplier, onSave, onCancel }: { supplier: Partial<Suppli
         const newSupplier: Supplier = {
             id: supplier?.id || `supp_${Date.now()}`,
             name: formData.get('name') as string,
-            email: formData.get('email') as string,
-            phone: formData.get('phone') as string,
-            contactPerson: formData.get('contactPerson') as string,
+            contactEmail: formData.get('email') as string,
+            contactPhone: formData.get('phone') as string,
+            contactName: formData.get('contactPerson') as string,
         };
         onSave(newSupplier);
     };
@@ -39,15 +41,15 @@ function SupplierForm({ supplier, onSave, onCancel }: { supplier: Partial<Suppli
                 </div>
                  <div>
                     <Label htmlFor="contactPerson">Contact Person</Label>
-                    <Input id="contactPerson" name="contactPerson" defaultValue={supplier?.contactPerson} />
+                    <Input id="contactPerson" name="contactPerson" defaultValue={supplier?.contactName} />
                 </div>
                 <div>
                     <Label htmlFor="email">Email</Label>
-                    <Input id="email" name="email" type="email" defaultValue={supplier?.email} required />
+                    <Input id="email" name="email" type="email" defaultValue={supplier?.contactEmail} required />
                 </div>
                  <div>
                     <Label htmlFor="phone">Phone</Label>
-                    <Input id="phone" name="phone" type="tel" defaultValue={supplier?.phone} />
+                    <Input id="phone" name="phone" type="tel" defaultValue={supplier?.contactPhone} />
                 </div>
             </div>
             <SheetFooter className="p-6 bg-muted/40 border-t">
@@ -59,12 +61,15 @@ function SupplierForm({ supplier, onSave, onCancel }: { supplier: Partial<Suppli
 }
 
 export function SupplierList({ initialSuppliers }: { initialSuppliers: Supplier[] }) {
-    const [suppliers, setSuppliers] = useState(initialSuppliers);
+    const firestore = useFirestore();
+    const { user } = useUser();
+    const suppliersRef = useMemoFirebase(() => collection(firestore, 'suppliers'), [firestore]);
+    
     const [isSheetOpen, setIsSheetOpen] = useState(false);
     const [editingSupplier, setEditingSupplier] = useState<Partial<Supplier> | null>(null);
 
     const handleAddClick = () => {
-        setEditingSupplier(null);
+        setEditingSupplier({ id: user?.uid });
         setIsSheetOpen(true);
     };
 
@@ -74,15 +79,16 @@ export function SupplierList({ initialSuppliers }: { initialSuppliers: Supplier[
     };
 
     const handleDelete = (supplierId: string) => {
-        setSuppliers(suppliers.filter(s => s.id !== supplierId));
+        const docRef = doc(firestore, 'suppliers', supplierId);
+        deleteDocumentNonBlocking(docRef);
     };
     
     const handleSave = (supplier: Supplier) => {
-        if (editingSupplier?.id) {
-            setSuppliers(suppliers.map(s => s.id === supplier.id ? supplier : s));
-        } else {
-            setSuppliers([supplier, ...suppliers]);
-        }
+        const { id, ...supplierData } = supplier;
+        if (!id) return;
+        const docRef = doc(suppliersRef, id);
+        setDocumentNonBlocking(docRef, supplierData, { merge: true });
+
         setIsSheetOpen(false);
         setEditingSupplier(null);
     };
@@ -113,11 +119,11 @@ export function SupplierList({ initialSuppliers }: { initialSuppliers: Supplier[
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {suppliers.map((supplier) => (
+                            {initialSuppliers.map((supplier) => (
                                 <TableRow key={supplier.id}>
                                     <TableCell className="font-medium">{supplier.name}</TableCell>
-                                    <TableCell className="hidden md:table-cell">{supplier.contactPerson}</TableCell>
-                                    <TableCell className="hidden md:table-cell">{supplier.email}</TableCell>
+                                    <TableCell className="hidden md:table-cell">{supplier.contactName}</TableCell>
+                                    <TableCell className="hidden md:table-cell">{supplier.contactEmail}</TableCell>
                                     <TableCell>
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>

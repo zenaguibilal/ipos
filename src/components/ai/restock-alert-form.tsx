@@ -20,18 +20,26 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { products } from '@/lib/data';
+import { useProducts } from '@/lib/data';
 import {
   generateRestockAlerts,
   type GenerateRestockAlertsOutput,
 } from '@/ai/flows/generate-restock-alerts';
+import type { Product } from '@/lib/types';
 
 export function RestockAlertForm() {
-  const [selectedProduct, setSelectedProduct] = useState(products[1]);
+  const { products, isLoading: isLoadingProducts } = useProducts();
+  const [selectedProduct, setSelectedProduct] = useState<Product | undefined>(undefined);
   const [result, setResult] = useState<GenerateRestockAlertsOutput | null>(
     null
   );
   const [isLoading, setIsLoading] = useState(false);
+
+  useState(() => {
+    if (products && products.length > 0) {
+      setSelectedProduct(products[1]);
+    }
+  });
 
   const handleProductChange = (productId: string) => {
     const product = products.find((p) => p.id === productId);
@@ -64,6 +72,41 @@ export function RestockAlertForm() {
       setIsLoading(false);
     }
   };
+  
+  if (isLoadingProducts) {
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                    <BrainCircuit className="h-6 w-6 text-primary" />
+                    AI-Powered Restock Alerts
+                </CardTitle>
+                 <CardDescription>
+                    Loading product data...
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Loader className="animate-spin" />
+            </CardContent>
+        </Card>
+    )
+  }
+  
+  if (!selectedProduct) {
+     return (
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                    <BrainCircuit className="h-6 w-6 text-primary" />
+                    AI-Powered Restock Alerts
+                </CardTitle>
+                 <CardDescription>
+                    No products found to analyze.
+                </CardDescription>
+            </CardHeader>
+        </Card>
+    )
+  }
 
   return (
     <Card>
@@ -108,7 +151,7 @@ export function RestockAlertForm() {
               id="currentStockLevel"
               name="currentStockLevel"
               type="number"
-              defaultValue={selectedProduct.stock}
+              defaultValue={selectedProduct.quantity}
             />
           </div>
           <div className="space-y-2">
@@ -118,7 +161,7 @@ export function RestockAlertForm() {
               name="salesVelocity"
               type="number"
               step="0.1"
-              defaultValue={selectedProduct.salesVelocity}
+              defaultValue={0}
             />
           </div>
           <div className="space-y-2">
@@ -127,7 +170,7 @@ export function RestockAlertForm() {
               id="reorderThreshold"
               name="reorderThreshold"
               type="number"
-              defaultValue={selectedProduct.reorderThreshold}
+              defaultValue={10}
             />
           </div>
           <div className="space-y-2">

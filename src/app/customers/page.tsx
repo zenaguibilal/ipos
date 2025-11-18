@@ -1,15 +1,19 @@
-import { getCustomers } from "@/lib/data";
+'use client';
+import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { CustomerList } from "@/components/customers/customer-list";
-import type { Metadata } from 'next';
+import { collection } from "firebase/firestore";
+import { Loader } from "lucide-react";
 
-export const metadata: Metadata = {
-    title: 'Customers | iPOS',
-};
+export default function CustomersPage() {
+    const firestore = useFirestore();
+    const customersRef = useMemoFirebase(() => collection(firestore, 'customers'), [firestore]);
+    const { data: customers, isLoading } = useCollection(customersRef);
 
-export default async function CustomersPage() {
-    const customers = await getCustomers();
+    if (isLoading) {
+        return <div className="flex justify-center items-center h-full"><Loader className="animate-spin" /></div>
+    }
 
     return (
-        <CustomerList initialCustomers={customers} />
+        <CustomerList initialCustomers={customers || []} />
     );
 }

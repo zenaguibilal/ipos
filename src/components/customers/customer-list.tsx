@@ -11,6 +11,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFo
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { useFirestore, useUser, addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking, useMemoFirebase } from '@/firebase';
+import { collection, doc } from 'firebase/firestore';
 
 function CustomerForm({ customer, onSave, onCancel }: { customer: Partial<Customer> | null, onSave: (c: Customer) => void, onCancel: () => void }) {
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -21,9 +23,9 @@ function CustomerForm({ customer, onSave, onCancel }: { customer: Partial<Custom
             name: formData.get('name') as string,
             email: formData.get('email') as string,
             phone: formData.get('phone') as string,
-            loyaltyPoints: Number(formData.get('loyaltyPoints') as string || 0),
-            avatarUrl: customer?.avatarUrl || `https://picsum.photos/seed/${Date.now()}/100/100`,
-            avatarHint: customer?.avatarHint || 'person portrait',
+            loyaltyCardNumber: (formData.get('loyaltyCardNumber') as string) || '',
+            avatarUrl: `https://picsum.photos/seed/${Date.now()}/100/100`,
+            avatarHint: 'person portrait',
         };
         onSave(newCustomer);
     };
@@ -50,8 +52,8 @@ function CustomerForm({ customer, onSave, onCancel }: { customer: Partial<Custom
                     <Input id="phone" name="phone" type="tel" defaultValue={customer?.phone} />
                 </div>
                  <div>
-                    <Label htmlFor="loyaltyPoints">Loyalty Points</Label>
-                    <Input id="loyaltyPoints" name="loyaltyPoints" type="number" defaultValue={customer?.loyaltyPoints} />
+                    <Label htmlFor="loyaltyCardNumber">Loyalty Card Number</Label>
+                    <Input id="loyaltyCardNumber" name="loyaltyCardNumber" type="text" defaultValue={customer?.loyaltyCardNumber} />
                 </div>
             </div>
             <SheetFooter className="p-6 bg-muted/40 border-t">
@@ -64,12 +66,15 @@ function CustomerForm({ customer, onSave, onCancel }: { customer: Partial<Custom
 
 
 export function CustomerList({ initialCustomers }: { initialCustomers: Customer[] }) {
-    const [customers, setCustomers] = useState(initialCustomers);
+    const firestore = useFirestore();
+    const { user } = useUser();
+    const customersRef = useMemoFirebase(() => collection(firestore, 'customers'), [firestore]);
+
     const [isSheetOpen, setIsSheetOpen] = useState(false);
     const [editingCustomer, setEditingCustomer] = useState<Partial<Customer> | null>(null);
 
     const handleAddClick = () => {
-        setEditingCustomer(null);
+        setEditingCustomer({ id: user?.uid });
         setIsSheetOpen(true);
     };
 
@@ -79,15 +84,15 @@ export function CustomerList({ initialCustomers }: { initialCustomers: Customer[
     };
 
     const handleDelete = (customerId: string) => {
-        setCustomers(customers.filter(c => c.id !== customerId));
+        const docRef = doc(firestore, 'customers', customerId);
+        deleteDocumentNonBlocking(docRef);
     };
 
     const handleSave = (customer: Customer) => {
-        if (editingCustomer?.id) {
-            setCustomers(customers.map(c => c.id === customer.id ? customer : c));
-        } else {
-            setCustomers([customer, ...customers]);
-        }
+        const { id, ...customerData } = customer;
+        const docRef = doc(customersRef, id);
+        setDocumentNonBlocking(docRef, customerData, { merge: true });
+        
         setIsSheetOpen(false);
         setEditingCustomer(null);
     };
@@ -114,17 +119,17 @@ export function CustomerList({ initialCustomers }: { initialCustomers: Customer[
                             <TableRow>
                                 <TableHead>Customer</TableHead>
                                 <TableHead className="hidden md:table-cell">Phone</TableHead>
-                                <TableHead className="hidden md:table-cell">Loyalty Points</TableHead>
+                                <TableHead className="hidden md:table-cell">Loyalty Card</TableHead>
                                 <TableHead>Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {customers.map((customer) => (
+                            {initialCustomers.map((customer) => (
                                 <TableRow key={customer.id}>
                                     <TableCell>
                                         <div className="flex items-center gap-4">
                                             <Avatar className="hidden h-9 w-9 sm:flex">
-                                                 <Image src={customer.avatarUrl} alt={`Avatar of ${customer.name}`} width={36} height={36} data-ai-hint={customer.avatarHint} />
+                                                 <Image src={customer.avatarUrl || `https://picsum.photos/seed/${customer.id}/100/100`} alt={`Avatar of ${customer.name}`} width={36} height={36} data-ai-hint={'person portrait'} />
                                                  <AvatarFallback>{customer.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
                                             </Avatar>
                                             <div className="grid gap-1">
@@ -134,7 +139,7 @@ export function CustomerList({ initialCustomers }: { initialCustomers: Customer[
                                         </div>
                                     </TableCell>
                                     <TableCell className="hidden md:table-cell">{customer.phone}</TableCell>
-                                    <TableCell className="hidden md:table-cell">{customer.loyaltyPoints.toLocaleString()}</TableCell>
+                                    <TableCell className="hidden md:table-cell">{customer.loyaltyCardNumber}</TableCell>
                                     <TableCell>
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>

@@ -1,3 +1,5 @@
+'use client';
+
 import {
   DollarSign,
   Users,
@@ -6,7 +8,6 @@ import {
   Truck,
   Archive,
 } from 'lucide-react';
-import type { Metadata } from 'next';
 import {
   Card,
   CardContent,
@@ -17,20 +18,22 @@ import { SalesChart } from '@/components/dashboard/sales-chart';
 import { RecentSales } from '@/components/dashboard/recent-sales';
 import { SummaryCard } from '@/components/dashboard/summary-card';
 import { RestockAlertForm } from '@/components/ai/restock-alert-form';
-import { getDashboardData } from '@/lib/data';
+import { useDashboardData } from '@/lib/data';
+import { Loader } from 'lucide-react';
 
-export const metadata: Metadata = {
-  title: 'Dashboard | iPOS',
-};
-
-export default async function DashboardPage() {
+export default function DashboardPage() {
   const {
     totalRevenue,
     totalSales,
     totalCustomers,
     totalSuppliers,
     lowStockItems,
-  } = await getDashboardData();
+    isLoading,
+  } = useDashboardData();
+
+  if (isLoading) {
+    return <div className="flex justify-center items-center h-full"><Loader className="animate-spin" /></div>
+  }
 
   return (
     <div className="flex flex-col gap-4 md:gap-8">

@@ -11,9 +11,11 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/components/ui/sheet';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { useFirestore, useUser, addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking, useMemoFirebase } from '@/firebase';
+import { collection, doc } from 'firebase/firestore';
 
-function ProductForm({ product, onSave, onCancel }: { product: Partial<Product> | null, onSave: (p: Product) => void, onCancel: () => void }) {
-    // A real implementation would use a robust form library like react-hook-form
+
+function ProductForm({ product, onSave, onCancel, supplierId }: { product: Partial<Product> | null, onSave: (p: Product) => void, onCancel: () => void, supplierId: string }) {
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         const formData = new FormData(e.currentTarget);
@@ -21,11 +23,10 @@ function ProductForm({ product, onSave, onCancel }: { product: Partial<Product> 
             id: product?.id || `prod_${Date.now()}`,
             name: formData.get('name') as string,
             price: parseFloat(formData.get('price') as string) * 100,
-            stock: parseInt(formData.get('stock') as string, 10),
-            salesVelocity: product?.salesVelocity || 0,
-            reorderThreshold: parseInt(formData.get('reorderThreshold') as string, 10),
+            quantity: parseInt(formData.get('quantity') as string, 10),
             imageUrl: product?.imageUrl || 'https://picsum.photos/seed/99/400/400',
-            imageHint: product?.imageHint || 'product placeholder',
+            description: product?.description || '',
+            supplierId: supplierId,
         };
         onSave(newProduct);
     };
@@ -49,13 +50,9 @@ function ProductForm({ product, onSave, onCancel }: { product: Partial<Product> 
                         <Input id="price" name="price" type="number" step="0.01" defaultValue={product?.price ? product.price / 100 : ''} required />
                     </div>
                     <div>
-                        <Label htmlFor="stock">Stock</Label>
-                        <Input id="stock" name="stock" type="number" defaultValue={product?.stock} required />
+                        <Label htmlFor="quantity">Stock Quantity</Label>
+                        <Input id="quantity" name="quantity" type="number" defaultValue={product?.quantity} required />
                     </div>
-                </div>
-                <div>
-                    <Label htmlFor="reorderThreshold">Reorder Threshold</Label>
-                    <Input id="reorderThreshold" name="reorderThreshold" type="number" defaultValue={product?.reorderThreshold} required />
                 </div>
             </div>
             <SheetFooter className="p-6 bg-muted/40 border-t">
@@ -67,7 +64,12 @@ function ProductForm({ product, onSave, onCancel }: { product: Partial<Product> 
 }
 
 export function ProductList({ initialProducts }: { initialProducts: Product[] }) {
-    const [products, setProducts] = useState(initialProducts);
+    const firestore = useFirestore();
+    const { user } = useUser();
+    // A real app would get the supplierId from the logged in user
+    const supplierId = 'supp_1';
+    const productsRef = useMemoFirebase(() => collection(firestore, `suppliers/${supplierId}/products`), [firestore, supplierId]);
+    
     const [isSheetOpen, setIsSheetOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Partial<Product> | null>(null);
 
@@ -82,15 +84,15 @@ export function ProductList({ initialProducts }: { initialProducts: Product[] })
     };
 
     const handleDelete = (productId: string) => {
-        setProducts(products.filter(p => p.id !== productId));
+        const docRef = doc(productsRef, productId);
+        deleteDocumentNonBlocking(docRef);
     };
 
     const handleSave = (product: Product) => {
-        if (editingProduct?.id) {
-            setProducts(products.map(p => p.id === product.id ? product : p));
-        } else {
-            setProducts([product, ...products]);
-        }
+        const { id, ...productData } = product;
+        const docRef = doc(productsRef, id);
+        setDocumentNonBlocking(docRef, productData, { merge: true });
+        
         setIsSheetOpen(false);
         setEditingProduct(null);
     };
@@ -123,26 +125,26 @@ export function ProductList({ initialProducts }: { initialProducts: Product[] })
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {products.map((product) => (
+                            {initialProducts.map((product) => (
                                 <TableRow key={product.id}>
                                     <TableCell className="hidden sm:table-cell">
                                         <Image
                                             alt={product.name}
                                             className="aspect-square rounded-md object-cover"
                                             height="64"
-                                            src={product.imageUrl}
+                                            src={product.imageUrl || `https://picsum.photos/seed/${product.id}/64/64`}
                                             width="64"
-                                            data-ai-hint={product.imageHint}
+                                            data-ai-hint={'product photo'}
                                         />
                                     </TableCell>
                                     <TableCell className="font-medium">{product.name}</TableCell>
                                     <TableCell>
-                                        {product.stock > product.reorderThreshold ? <Badge variant="outline">In Stock</Badge> : (product.stock > 0 ? <Badge variant="destructive">Low Stock</Badge> : <Badge variant="destructive">Out of Stock</Badge>)}
+                                        {product.quantity > 10 ? <Badge variant="outline">In Stock</Badge> : (product.quantity > 0 ? <Badge variant="destructive">Low Stock</Badge> : <Badge variant="destructive">Out of Stock</Badge>)}
                                     </TableCell>
                                     <TableCell className="hidden md:table-cell">
                                         {(product.price / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
                                     </TableCell>
-                                    <TableCell className="hidden md:table-cell">{product.stock}</TableCell>
+                                    <TableCell className="hidden md:table-cell">{product.quantity}</TableCell>
                                     <TableCell>
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
@@ -166,7 +168,7 @@ export function ProductList({ initialProducts }: { initialProducts: Product[] })
             </Card>
             <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
                 <SheetContent className="sm:max-w-lg p-0">
-                   <ProductForm product={editingProduct} onSave={handleSave} onCancel={() => setIsSheetOpen(false)} />
+                   <ProductForm product={editingProduct} onSave={handleSave} onCancel={() => setIsSheetOpen(false)} supplierId={supplierId} />
                 </SheetContent>
             </Sheet>
         </>
