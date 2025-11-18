@@ -258,7 +258,7 @@ export function ProductList({ initialProducts }: { initialProducts: Product[] })
                   <TableCell className="font-medium">{product.name}</TableCell>
                   <TableCell>{product.barcode}</TableCell>
                    <TableCell>
-                    {(product.purchasePrice || 0 / 100).toLocaleString('fr-FR', {
+                    {(product.purchasePrice / 100).toLocaleString('fr-FR', {
                       style: 'currency',
                       currency: 'DZD',
                       minimumFractionDigits: 0,
@@ -309,6 +309,9 @@ export function ProductList({ initialProducts }: { initialProducts: Product[] })
       </Card>
       <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
         <SheetContent className="sm:max-w-lg p-0">
+          <SheetTitle className="sr-only">
+            {editingProduct ? 'Modifier le Produit' : 'Ajouter un Produit'}
+          </SheetTitle>
           <ProductForm
             product={editingProduct}
             onSave={handleSave}

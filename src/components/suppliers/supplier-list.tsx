@@ -147,6 +147,9 @@ export function SupplierList({ initialSuppliers }: { initialSuppliers: Supplier[
             </Card>
             <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
                 <SheetContent className="sm:max-w-lg p-0">
+                    <SheetTitle className="sr-only">
+                        {editingSupplier?.id ? 'Modifier le Fournisseur' : 'Ajouter un Fournisseur'}
+                    </SheetTitle>
                    <SupplierForm supplier={editingSupplier} onSave={handleSave} onCancel={() => setIsSheetOpen(false)} />
                 </SheetContent>
             </Sheet>

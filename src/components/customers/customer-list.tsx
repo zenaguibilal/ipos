@@ -12,15 +12,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { useFirestore, setDocumentNonBlocking, updateDocumentNonBlocking, useMemoFirebase, useCollection } from '@/firebase';
-import { collection, doc, query, where, increment } from 'firebase/firestore';
+import { useFirestore, setDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking, useMemoFirebase, useCollection } from '@/firebase';
+import { collection, doc, query, where, increment, deleteDoc } from 'firebase/firestore';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { InvoiceDetailsDialog } from '@/components/sales/invoice-details-dialog';
 import { useToast } from '@/hooks/use-toast';
 
-function CustomerForm({ customer, onSave, onCancel }: { customer: Partial<Customer> | null, onSave: (c: Omit<Customer, 'id'> & { id?: string }) => void, onCancel: () => void }) {
+function CustomerForm({ customer, onSave, onCancel }: { customer: Partial<Customer> | null, onSave: (c: Omit<Customer, 'id' | 'avatarUrl' | 'avatarHint' | 'debt'> & { id?: string }) => void, onCancel: () => void }) {
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         const formData = new FormData(e.currentTarget);
@@ -105,7 +105,7 @@ function SettleDebtDialog({ customer, isOpen, onClose, onSettle }: { customer: C
     )
 }
 
-function CustomerRow({ customer }: { customer: Customer }) {
+function CustomerRow({ customer, onDelete }: { customer: Customer, onDelete: (id: string) => void }) {
     const firestore = useFirestore();
     const { toast } = useToast();
     const [isSheetOpen, setIsSheetOpen] = useState(false);
@@ -125,12 +125,7 @@ function CustomerRow({ customer }: { customer: Customer }) {
         setIsSheetOpen(true);
     };
 
-    const handleDelete = (customerId: string) => {
-        const docRef = doc(firestore, 'customers', customerId);
-        deleteDocumentNonBlocking(docRef);
-    };
-
-    const handleSave = (customerData: Omit<Customer, 'id' | 'avatarUrl' | 'avatarHint'> & { id?: string }) => {
+    const handleSave = (customerData: Omit<Customer, 'id' | 'avatarUrl' | 'avatarHint' | 'debt'> & { id?: string }) => {
         const id = customerData.id || `cust_${Date.now()}`;
         const docRef = doc(customersRef, id);
         
@@ -241,7 +236,7 @@ function CustomerRow({ customer }: { customer: Customer }) {
                         <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
                             <DropdownMenuItem onClick={() => handleEditClick(customer)}>Modifier</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleDelete(customer.id)} className="text-destructive">Supprimer</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => onDelete(customer.id)} className="text-destructive">Supprimer</DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
                 </TableCell>
@@ -267,13 +262,19 @@ function CustomerRow({ customer }: { customer: Customer }) {
 export function CustomerList({ initialCustomers }: { initialCustomers: Customer[] }) {
     const [isSheetOpen, setIsSheetOpen] = useState(false);
     const firestore = useFirestore();
+    const customersRef = useMemoFirebase(() => collection(firestore, 'customers'), [firestore]);
 
     const handleAddClick = () => {
         setIsSheetOpen(true);
     };
+    
+    const handleDelete = async (customerId: string) => {
+        if (!firestore) return;
+        const docRef = doc(firestore, 'customers', customerId);
+        await deleteDoc(docRef);
+    };
 
     const handleSave = (customerData: Omit<Customer, 'id' | 'avatarUrl' | 'avatarHint' | 'debt'> & { id?: string }) => {
-        const customersRef = collection(firestore, 'customers');
         const id = `cust_${Date.now()}`;
         const docRef = doc(customersRef, id);
         
@@ -319,7 +320,7 @@ export function CustomerList({ initialCustomers }: { initialCustomers: Customer[
                         </TableHeader>
                         <TableBody>
                             {initialCustomers.map((customer) => (
-                               <CustomerRow key={customer.id} customer={customer} />
+                               <CustomerRow key={customer.id} customer={customer} onDelete={handleDelete} />
                             ))}
                         </TableBody>
                     </Table>
