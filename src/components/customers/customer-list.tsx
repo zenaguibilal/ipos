@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import type { Customer, Sale, SaleWithDetails } from '@/lib/types';
-import { MoreHorizontal, PlusCircle, HandCoins } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, HandCoins, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -261,6 +261,7 @@ function CustomerRow({ customer, onDelete }: { customer: Customer, onDelete: (id
 
 export function CustomerList({ initialCustomers }: { initialCustomers: Customer[] }) {
     const [isSheetOpen, setIsSheetOpen] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
     const firestore = useFirestore();
     const customersRef = useMemoFirebase(() => collection(firestore, 'customers'), [firestore]);
 
@@ -289,20 +290,37 @@ export function CustomerList({ initialCustomers }: { initialCustomers: Customer[
         
         setIsSheetOpen(false);
     };
+    
+    const filteredCustomers = initialCustomers.filter(customer =>
+        customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        customer.phone.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
     return (
         <>
             <Card>
-                <CardHeader className="flex flex-row items-center">
-                     <div className="grid gap-2">
-                        <CardTitle>Clients</CardTitle>
-                        <CardDescription>Gérez vos clients et consultez leur historique d'achats.</CardDescription>
+                <CardHeader>
+                    <div className="flex items-center justify-between">
+                        <div className="grid gap-2">
+                            <CardTitle>Clients</CardTitle>
+                            <CardDescription>Gérez vos clients et consultez leur historique d'achats.</CardDescription>
+                        </div>
+                        <div className="ml-auto flex items-center gap-2">
+                            <Button size="sm" className="h-8 gap-1" onClick={handleAddClick}>
+                                <PlusCircle className="h-3.5 w-3.5" />
+                                <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Ajouter un Client</span>
+                            </Button>
+                        </div>
                     </div>
-                    <div className="ml-auto flex items-center gap-2">
-                        <Button size="sm" className="h-8 gap-1" onClick={handleAddClick}>
-                            <PlusCircle className="h-3.5 w-3.5" />
-                            <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Ajouter un Client</span>
-                        </Button>
+                     <div className="relative mt-4">
+                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            type="search"
+                            placeholder="Rechercher par nom ou téléphone..."
+                            className="w-full rounded-lg bg-background pl-8"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
                     </div>
                 </CardHeader>
                 <CardContent>
@@ -319,7 +337,7 @@ export function CustomerList({ initialCustomers }: { initialCustomers: Customer[
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {initialCustomers.map((customer) => (
+                            {filteredCustomers.map((customer) => (
                                <CustomerRow key={customer.id} customer={customer} onDelete={handleDelete} />
                             ))}
                         </TableBody>
@@ -334,3 +352,5 @@ export function CustomerList({ initialCustomers }: { initialCustomers: Customer[
         </>
     );
 }
+
+    
