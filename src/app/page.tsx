@@ -6,6 +6,7 @@ import {
   Truck,
   Archive,
 } from 'lucide-react';
+import type { Metadata } from 'next';
 import {
   Card,
   CardContent,
@@ -17,6 +18,10 @@ import { RecentSales } from '@/components/dashboard/recent-sales';
 import { SummaryCard } from '@/components/dashboard/summary-card';
 import { RestockAlertForm } from '@/components/ai/restock-alert-form';
 import { getDashboardData } from '@/lib/data';
+
+export const metadata: Metadata = {
+  title: 'Dashboard | iPOS',
+};
 
 export default async function DashboardPage() {
   const {
