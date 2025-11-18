@@ -1,6 +1,6 @@
 'use client';
 import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, collectionGroup, query, where } from "firebase/firestore";
+import { collection, collectionGroup, query, where, documentId } from "firebase/firestore";
 import { Loader } from "lucide-react";
 import { SalesHistoryList } from "@/components/sales/sales-history-list";
 import type { Sale, Customer, SaleWithDetails } from "@/lib/types";
@@ -30,7 +30,7 @@ export default function SalesHistoryPage() {
         }
         // Firestore 'in' query is limited to 30 items.
         // For a real-world app with many customers, pagination or a different data structure would be needed.
-        return query(collection(firestore, 'customers'), where('id', 'in', customerIds.slice(0, 30)));
+        return query(collection(firestore, 'customers'), where(documentId(), 'in', customerIds.slice(0, 30)));
     }, [firestore, customerIds]);
 
     const { data: customersData, isLoading: customersLoading, error: customersError } = useCollection<Customer>(customersQuery);

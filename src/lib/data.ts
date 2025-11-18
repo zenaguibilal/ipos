@@ -1,7 +1,7 @@
 'use client';
 
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, limit, getDocs, where, collectionGroup } from 'firebase/firestore';
+import { collection, query, limit, getDocs, where, collectionGroup, documentId } from 'firebase/firestore';
 import type { Product, Customer, Supplier, Sale } from './types';
 import { useEffect, useState, useMemo } from 'react';
 
@@ -44,7 +44,7 @@ export function useSales(salesLimit?: number) {
 
   const customersRef = useMemoFirebase(() => {
       if (!firestore || customerIds.length === 0) return null;
-      return query(collection(firestore, 'customers'), where('id', 'in', customerIds.slice(0, 30)))
+      return query(collection(firestore, 'customers'), where(documentId(), 'in', customerIds.slice(0, 30)))
   }, [firestore, customerIds]);
 
   const { data: customersData, isLoading: areCustomersLoading, error: customersError } = useCollection<Customer>(customersRef);

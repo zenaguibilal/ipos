@@ -35,7 +35,7 @@ function InvoiceContent({ sale }: { sale: SaleWithDetails }) {
 
     const productsQuery = useMemoFirebase(() => {
         if (!firestore || productIds.length === 0) return null;
-        return query(collection(firestore, 'suppliers/supp_1/products'), where('id', 'in', productIds.slice(0, 30)));
+        return query(collection(firestore, 'suppliers/supp_1/products'), where(documentId(), 'in', productIds.slice(0, 30)));
     }, [firestore, productIds]);
 
     const { data: products, isLoading: productsLoading } = useCollection<Product>(productsQuery);
