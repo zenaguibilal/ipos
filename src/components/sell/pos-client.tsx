@@ -166,9 +166,10 @@ export function POSClient({ products }: { products: Product[] }) {
                     />
                     <h3 className="font-semibold text-sm mt-2 text-center">{product.name}</h3>
                     <p className="text-xs text-muted-foreground">
-                    {(product.price / 100).toLocaleString('en-US', {
+                    {(product.price / 100).toLocaleString('ar-DZ', {
                         style: 'currency',
-                        currency: 'USD',
+                        currency: 'DZD',
+                        minimumFractionDigits: 0
                     })}
                     </p>
                 </CardContent>
@@ -202,9 +203,10 @@ export function POSClient({ products }: { products: Product[] }) {
                     <div className="flex-grow">
                       <p className="font-medium text-sm">{item.name}</p>
                       <p className="text-xs text-muted-foreground">
-                        {(item.price / 100).toLocaleString('en-US', {
+                        {(item.price / 100).toLocaleString('ar-DZ', {
                           style: 'currency',
-                          currency: 'USD',
+                          currency: 'DZD',
+                          minimumFractionDigits: 0
                         })}
                       </p>
                     </div>
@@ -223,16 +225,16 @@ export function POSClient({ products }: { products: Product[] }) {
               <div className="p-6 space-y-2">
                 <div className="flex justify-between text-sm">
                     <span>Subtotal</span>
-                    <span>{(subtotal / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</span>
+                    <span>{(subtotal / 100).toLocaleString('ar-DZ', { style: 'currency', currency: 'DZD', minimumFractionDigits: 0 })}</span>
                 </div>
                  <div className="flex justify-between text-sm text-muted-foreground">
                     <span>Taxes (8%)</span>
-                    <span>{(tax / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</span>
+                    <span>{(tax / 100).toLocaleString('ar-DZ', { style: 'currency', currency: 'DZD', minimumFractionDigits: 0 })}</span>
                 </div>
                 <Separator />
                  <div className="flex justify-between font-semibold text-lg">
                     <span>Total</span>
-                    <span>{(total / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</span>
+                    <span>{(total / 100).toLocaleString('ar-DZ', { style: 'currency', currency: 'DZD', minimumFractionDigits: 0 })}</span>
                 </div>
                  <div className="pt-4">
                     <Label className="mb-2 block">Payment Method</Label>

@@ -46,7 +46,7 @@ function ProductForm({ product, onSave, onCancel, supplierId }: { product: Parti
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                     <div>
-                        <Label htmlFor="price">Price ($)</Label>
+                        <Label htmlFor="price">Price (DZD)</Label>
                         <Input id="price" name="price" type="number" step="0.01" defaultValue={product?.price ? product.price / 100 : ''} required />
                     </div>
                     <div>
@@ -142,7 +142,7 @@ export function ProductList({ initialProducts }: { initialProducts: Product[] })
                                         {product.quantity > 10 ? <Badge variant="outline">In Stock</Badge> : (product.quantity > 0 ? <Badge variant="destructive">Low Stock</Badge> : <Badge variant="destructive">Out of Stock</Badge>)}
                                     </TableCell>
                                     <TableCell className="hidden md:table-cell">
-                                        {(product.price / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+                                        {(product.price / 100).toLocaleString('ar-DZ', { style: 'currency', currency: 'DZD', minimumFractionDigits: 0 })}
                                     </TableCell>
                                     <TableCell className="hidden md:table-cell">{product.quantity}</TableCell>
                                     <TableCell>

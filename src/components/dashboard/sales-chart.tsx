@@ -40,11 +40,11 @@ export function SalesChart() {
           fontSize={12}
           tickLine={false}
           axisLine={false}
-          tickFormatter={(value) => `$${value / 1000}k`}
+          tickFormatter={(value) => `${(value / 1000).toLocaleString()}k`}
         />
         <ChartTooltip
           cursor={false}
-          content={<ChartTooltipContent indicator="dot" />}
+          content={<ChartTooltipContent indicator="dot" formatter={(value, name) => [(value as number).toLocaleString('ar-DZ', { style: 'currency', currency: 'DZD', minimumFractionDigits: 0 }), name]} />}
         />
         <Bar
           dataKey="total"

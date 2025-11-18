@@ -41,7 +41,7 @@ export default function DashboardPage() {
         <SummaryCard
           icon={<DollarSign />}
           title="Total Revenue"
-          value={`$${(totalRevenue / 1000).toFixed(1)}k`}
+          value={(totalRevenue / 100).toLocaleString('ar-DZ', { style: 'currency', currency: 'DZD', minimumFractionDigits: 0 })}
           description="+20.1% from last month"
         />
         <SummaryCard

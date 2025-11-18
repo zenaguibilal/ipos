@@ -43,7 +43,7 @@ export function RecentSales() {
             </p>
           </div>
           <div className="ml-auto font-medium">
-            +{(sale.totalAmount / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+            +{(sale.totalAmount / 100).toLocaleString('ar-DZ', { style: 'currency', currency: 'DZD', minimumFractionDigits: 0 })}
           </div>
         </div>
       ))}
