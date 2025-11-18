@@ -3,7 +3,7 @@
 import type { Product, Sale, Customer, SaleLineItem } from '@/lib/types';
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { PlusCircle, MinusCircle, XCircle, Coins, BookUser, User, Search, ScanLine, Barcode } from 'lucide-react';
+import { PlusCircle, MinusCircle, XCircle, Coins, BookUser, User, Search, ScanLine, Barcode, ChevronsUpDown, Check } from 'lucide-react';
 import {
   Card,
   CardContent,
@@ -18,23 +18,79 @@ import {
   ToggleGroup,
   ToggleGroupItem,
 } from "@/components/ui/toggle-group";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
 import { useFirestore, useUser, addDocumentNonBlocking, useMemoFirebase } from '@/firebase';
 import { collection, doc, writeBatch, increment } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { BarcodeScanner } from '@/components/sell/barcode-scanner';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+    Command,
+    CommandEmpty,
+    CommandGroup,
+    CommandInput,
+    CommandItem,
+    CommandList,
+} from "@/components/ui/command";
+import { cn } from '@/lib/utils';
 
 
 interface CartItem extends Product {
   cartQuantity: number;
+}
+
+function CustomerCombobox({ customers, selectedCustomerId, onSelect }: { customers: Customer[], selectedCustomerId: string | undefined, onSelect: (customerId: string) => void }) {
+    const [open, setOpen] = useState(false);
+
+    return (
+        <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+                <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={open}
+                    className="w-full justify-between"
+                >
+                    <div className="flex items-center gap-2">
+                     <User className="h-4 w-4" />
+                    {selectedCustomerId
+                        ? customers.find((customer) => customer.id === selectedCustomerId)?.name
+                        : "Sélectionner un client"}
+                    </div>
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                <Command>
+                    <CommandInput placeholder="Rechercher un client..." />
+                    <CommandList>
+                        <CommandEmpty>Aucun client trouvé.</CommandEmpty>
+                        <CommandGroup>
+                            {customers.map((customer) => (
+                                <CommandItem
+                                    key={customer.id}
+                                    value={customer.name}
+                                    onSelect={() => {
+                                        onSelect(customer.id);
+                                        setOpen(false);
+                                    }}
+                                >
+                                    <Check
+                                        className={cn(
+                                            "mr-2 h-4 w-4",
+                                            selectedCustomerId === customer.id ? "opacity-100" : "opacity-0"
+                                        )}
+                                    />
+                                    {customer.name}
+                                </CommandItem>
+                            ))}
+                        </CommandGroup>
+                    </CommandList>
+                </Command>
+            </PopoverContent>
+        </Popover>
+    );
 }
 
 export function POSClient({ products, customers }: { products: Product[], customers: Customer[] }) {
@@ -335,17 +391,11 @@ export function POSClient({ products, customers }: { products: Product[], custom
                 <div className="p-6 space-y-4">
                   <div>
                       <Label className="mb-2 block">Client</Label>
-                      <Select onValueChange={setSelectedCustomerId} value={selectedCustomerId}>
-                          <SelectTrigger>
-                              <User className="mr-2 h-4 w-4" />
-                              <SelectValue placeholder="Sélectionner un client" />
-                          </SelectTrigger>
-                          <SelectContent>
-                              {customers.map(customer => (
-                                  <SelectItem key={customer.id} value={customer.id}>{customer.name}</SelectItem>
-                              ))}
-                          </SelectContent>
-                      </Select>
+                       <CustomerCombobox
+                          customers={customers}
+                          selectedCustomerId={selectedCustomerId}
+                          onSelect={setSelectedCustomerId}
+                       />
                   </div>
                   <Separator />
                   <div className="flex justify-between text-sm">
