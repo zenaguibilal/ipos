@@ -32,6 +32,6 @@ export interface Sale {
   customer?: Pick<Customer, 'name' | 'email' | 'avatarUrl' | 'avatarHint'>;
   totalAmount: number; // in cents
   saleDate: string;
-  paymentMethod: string;
+  paymentMethod: 'cash' | 'credit';
   saleLineItemIds: string[];
 }

@@ -3,7 +3,7 @@
 import type { Product, Sale } from '@/lib/types';
 import { useState } from 'react';
 import Image from 'next/image';
-import { PlusCircle, MinusCircle, XCircle, CreditCard, Wallet, Coins } from 'lucide-react';
+import { PlusCircle, MinusCircle, XCircle, CreditCard, Coins, BookUser } from 'lucide-react';
 import {
   Card,
   CardContent,
@@ -89,9 +89,8 @@ export function POSClient({ products }: { products: Product[] }) {
 
     const batch = writeBatch(firestore);
 
-    // In a real app, you would select a customer. For now, we'll use the current user as the customer.
-    // Let's assume a customer profile exists with the same ID as the user.
-    const customerId = user.uid;
+    // In a real app, you would select a customer. For now, we'll use a hardcoded one.
+    const customerId = 'test-customer';
 
     const salesRef = collection(firestore, `customers/${customerId}/sales`);
     const saleId = doc(collection(firestore, 'id_generator')).id;
@@ -234,14 +233,11 @@ export function POSClient({ products }: { products: Product[] }) {
                  <div className="pt-4">
                     <Label className="mb-2 block">Moyen de Paiement</Label>
                     <ToggleGroup type="single" defaultValue={paymentMethod} onValueChange={(value) => value && setPaymentMethod(value)} variant="outline" className="w-full justify-between">
-                        <ToggleGroupItem value="cash" aria-label="Espèces" className="flex-1">
-                            <Coins className="h-4 w-4 mr-2"/> Espèces
+                        <ToggleGroupItem value="cash" aria-label="نقدا" className="flex-1">
+                            <Coins className="h-4 w-4 mr-2"/> نقدا
                         </ToggleGroupItem>
-                        <ToggleGroupItem value="card" aria-label="Carte" className="flex-1">
-                            <CreditCard className="h-4 w-4 mr-2"/> Carte
-                        </ToggleGroupItem>
-                         <ToggleGroupItem value="e-wallet" aria-label="Portefeuille électronique" className="flex-1">
-                            <Wallet className="h-4 w-4 mr-2"/> E-Wallet
+                        <ToggleGroupItem value="credit" aria-label="بالدين" className="flex-1">
+                            <BookUser className="h-4 w-4 mr-2"/> بالدين
                         </ToggleGroupItem>
                     </ToggleGroup>
                  </div>
