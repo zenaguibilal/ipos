@@ -1,6 +1,6 @@
 'use client';
 
-import type { Product, Sale, Customer } from '@/lib/types';
+import type { Product, Sale, Customer, SaleLineItem } from '@/lib/types';
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { PlusCircle, MinusCircle, XCircle, Coins, BookUser, User, Search, ScanLine, Barcode } from 'lucide-react';
@@ -131,37 +131,44 @@ export function POSClient({ products, customers }: { products: Product[], custom
     };
 
     const batch = writeBatch(firestore);
-
     const customerId = selectedCustomerId;
 
     const salesRef = collection(firestore, `customers/${customerId}/sales`);
-    const saleId = doc(collection(firestore, 'id_generator')).id;
+    const saleId = `sale_${Date.now()}`;
     const saleDocRef = doc(salesRef, saleId);
-
-    const saleData: Omit<Sale, 'id' | 'customer'> = {
-        customerId,
-        saleDate: new Date().toISOString(),
-        totalAmount: total,
-        paymentMethod: paymentMethod as 'cash' | 'credit',
-        saleLineItemIds: cart.map(item => item.id)
-    };
-    batch.set(saleDocRef, saleData);
+    
+    const lineItemIds = [];
 
     const lineItemsRef = collection(firestore, 'sales_line_items');
-    cart.forEach(item => {
-        const lineItemId = doc(collection(firestore, 'id_generator')).id;
+    for (const item of cart) {
+        const lineItemId = `sli_${Date.now()}_${item.id}`;
+        lineItemIds.push(lineItemId);
+
         const lineItemDocRef = doc(lineItemsRef, lineItemId);
-        batch.set(lineItemDocRef, {
+        const lineItemData: Omit<SaleLineItem, 'id'> & { id: string } = {
+            id: lineItemId,
             productId: item.id,
             quantity: item.cartQuantity,
             unitPrice: item.price,
             discount: 0,
-        });
+        };
+        batch.set(lineItemDocRef, lineItemData);
 
         // Decrement product stock
         const productRef = doc(firestore, `suppliers/${item.supplierId}/products/${item.id}`);
-        batch.update(productRef, { quantity: item.quantity - item.cartQuantity });
-    });
+        batch.update(productRef, { quantity: increment(-item.cartQuantity) });
+    }
+
+    const saleData: Omit<Sale, 'id'> & { id: string } = {
+        id: saleId,
+        customerId,
+        saleDate: new Date().toISOString(),
+        totalAmount: total,
+        paymentMethod: paymentMethod as 'cash' | 'credit',
+        saleLineItemIds: lineItemIds
+    };
+    batch.set(saleDocRef, saleData);
+
 
     if (paymentMethod === 'credit') {
         const customerRef = doc(firestore, 'customers', customerId);

@@ -23,7 +23,7 @@ function InvoiceContent({ sale }: { sale: SaleWithDetails }) {
     const lineItemsQuery = useMemoFirebase(() => {
         if (!sale?.saleLineItemIds || sale.saleLineItemIds.length === 0) return null;
         // Firestore 'in' query is limited to 30 items. We assume an invoice won't have more.
-        return query(collection(firestore, 'sales_line_items'), where('__name__', 'in', sale.saleLineItemIds.slice(0, 30)));
+        return query(collection(firestore, 'sales_line_items'), where('id', 'in', sale.saleLineItemIds.slice(0, 30)));
     }, [firestore, sale?.saleLineItemIds]);
 
     const { data: lineItems, isLoading: lineItemsLoading } = useCollection<SaleLineItem>(lineItemsQuery);
@@ -34,8 +34,8 @@ function InvoiceContent({ sale }: { sale: SaleWithDetails }) {
     }, [lineItems]);
 
     const productsQuery = useMemoFirebase(() => {
-        if (productIds.length === 0) return null;
-        return query(collection(firestore, 'suppliers/supp_1/products'), where('__name__', 'in', productIds.slice(0, 30)));
+        if (!firestore || productIds.length === 0) return null;
+        return query(collection(firestore, 'suppliers/supp_1/products'), where('id', 'in', productIds.slice(0, 30)));
     }, [firestore, productIds]);
 
     const { data: products, isLoading: productsLoading } = useCollection<Product>(productsQuery);
