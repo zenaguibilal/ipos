@@ -32,9 +32,9 @@ export default function RootLayout({
         />
       </head>
       <body className="font-body antialiased">
-        <FirebaseClientProvider>
-          <PasswordProvider>
-            <PasswordGate>
+        <PasswordProvider>
+          <PasswordGate>
+            <FirebaseClientProvider>
               <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
                 <div className="hidden border-r bg-background md:block">
                   <div className="flex h-full max-h-screen flex-col gap-2">
@@ -56,9 +56,9 @@ export default function RootLayout({
                   </main>
                 </div>
               </div>
-            </PasswordGate>
-          </PasswordProvider>
-        </FirebaseClientProvider>
+            </FirebaseClientProvider>
+          </PasswordGate>
+        </PasswordProvider>
         <Toaster />
       </body>
     </html>

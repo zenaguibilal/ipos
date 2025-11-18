@@ -5,9 +5,6 @@ import { usePathname } from 'next/navigation';
 import {
   Home,
   ShoppingCart,
-  Package,
-  Users,
-  Truck,
   History,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -17,9 +14,6 @@ const navLinks = [
   { href: '/', label: 'Tableau de Bord', icon: Home },
   { href: '/sell', label: 'Vendre', icon: ShoppingCart },
   { href: '/sales-history', label: 'Historique', icon: History },
-  { href: '/products', label: 'Produits', icon: Package },
-  { href: '/customers', label: 'Clients', icon: Users },
-  { href: '/suppliers', label: 'Fournisseurs', icon: Truck },
 ];
 
 type MainNavProps = {
