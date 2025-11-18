@@ -1,7 +1,9 @@
+'use client';
+
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, limit, getDocs, where } from 'firebase/firestore';
 import type { Product, Customer, Supplier, Sale } from './types';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 
 // Server-side data fetching functions (can be adapted for client-side with hooks)
 export async function getProducts(db: any): Promise<Product[]> {
@@ -34,7 +36,7 @@ export function useSales(salesLimit?: number) {
 
   const { data: salesData, isLoading: isSalesLoading, error: salesError } = useCollection<Sale>(salesRef);
   
-  const customerIds = useMemoFirebase(() => salesData?.map(s => s.customerId), [salesData]);
+  const customerIds = useMemo(() => salesData?.map(s => s.customerId), [salesData]);
   const customersRef = useMemoFirebase(() => customerIds && customerIds.length > 0 ? query(collection(firestore, 'customers'), where('id', 'in', customerIds)) : null, [firestore, customerIds]);
   const { data: customersData, isLoading: areCustomersLoading, error: customersError } = useCollection<Customer>(customersRef);
   
@@ -50,6 +52,8 @@ export function useSales(salesLimit?: number) {
         }
       });
       setSales(salesWithCustomerData);
+    } else if (salesData) {
+        setSales(salesData);
     }
   }, [salesData, customersData]);
 
