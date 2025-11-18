@@ -2,21 +2,23 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import type { Customer, Sale, SaleWithDetails } from '@/lib/types';
-import { MoreHorizontal, PlusCircle } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, HandCoins } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/components/ui/sheet';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { useFirestore, useUser, setDocumentNonBlocking, deleteDocumentNonBlocking, useMemoFirebase, useCollection } from '@/firebase';
-import { collection, doc, query, where, Firestore } from 'firebase/firestore';
+import { useFirestore, setDocumentNonBlocking, updateDocumentNonBlocking, useMemoFirebase, useCollection } from '@/firebase';
+import { collection, doc, query, where, increment } from 'firebase/firestore';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { InvoiceDetailsDialog } from '@/components/sales/invoice-details-dialog';
+import { useToast } from '@/hooks/use-toast';
 
 function CustomerForm({ customer, onSave, onCancel }: { customer: Partial<Customer> | null, onSave: (c: Omit<Customer, 'id'> & { id?: string }) => void, onCancel: () => void }) {
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -61,9 +63,53 @@ function CustomerForm({ customer, onSave, onCancel }: { customer: Partial<Custom
     );
 }
 
+function SettleDebtDialog({ customer, isOpen, onClose, onSettle }: { customer: Customer, isOpen: boolean, onClose: () => void, onSettle: (amount: number) => void }) {
+    const [amount, setAmount] = useState<number | string>('');
+
+    const handleSettle = () => {
+        const paymentAmount = Number(amount);
+        if (paymentAmount > 0 && paymentAmount <= (customer.debt || 0)) {
+            onSettle(paymentAmount);
+            onClose();
+        }
+    }
+    
+    return (
+        <Dialog open={isOpen} onOpenChange={onClose}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Régler la dette de {customer.name}</DialogTitle>
+                    <DialogDescription>
+                        Le solde actuel de la dette est de <strong>{(customer.debt! / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'DZD', minimumFractionDigits: 0 })}</strong>.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="py-4">
+                    <Label htmlFor="settle-amount">Montant à régler (DZD)</Label>
+                    <Input
+                        id="settle-amount"
+                        type="number"
+                        value={amount}
+                        onChange={(e) => setAmount(e.target.value)}
+                        placeholder="Entrez le montant"
+                        max={customer.debt! / 100}
+                    />
+                </div>
+                <DialogFooter>
+                    <DialogClose asChild>
+                        <Button type="button" variant="secondary">Annuler</Button>
+                    </DialogClose>
+                    <Button onClick={handleSettle} disabled={Number(amount) <= 0 || Number(amount) > (customer.debt! / 100)}>Régler</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    )
+}
+
 function CustomerRow({ customer }: { customer: Customer }) {
     const firestore = useFirestore();
+    const { toast } = useToast();
     const [isSheetOpen, setIsSheetOpen] = useState(false);
+    const [isSettleDebtOpen, setIsSettleDebtOpen] = useState(false);
     const [editingCustomer, setEditingCustomer] = useState<Partial<Customer> | null>(null);
     const [selectedSale, setSelectedSale] = useState<SaleWithDetails | null>(null);
 
@@ -84,7 +130,7 @@ function CustomerRow({ customer }: { customer: Customer }) {
         deleteDocumentNonBlocking(docRef);
     };
 
-    const handleSave = (customerData: Omit<Customer, 'id' | 'avatarUrl' | 'avatarHint' | 'email'> & { id?: string }) => {
+    const handleSave = (customerData: Omit<Customer, 'id' | 'avatarUrl' | 'avatarHint'> & { id?: string }) => {
         const id = customerData.id || `cust_${Date.now()}`;
         const docRef = doc(customersRef, id);
         
@@ -109,6 +155,18 @@ function CustomerRow({ customer }: { customer: Customer }) {
             customer: customer
         });
     }
+    
+    const handleSettleDebt = (amountInDZD: number) => {
+        const amountInCents = amountInDZD * 100;
+        const customerRef = doc(firestore, 'customers', customer.id);
+        updateDocumentNonBlocking(customerRef, {
+            debt: increment(-amountInCents)
+        });
+        toast({
+            title: "Règlement enregistré",
+            description: `${(amountInCents/100).toLocaleString('fr-FR', { style: 'currency', currency: 'DZD' })} ont été réglés pour ${customer.name}.`
+        });
+    };
 
     return (
         <>
@@ -134,15 +192,23 @@ function CustomerRow({ customer }: { customer: Customer }) {
                     )}
                 </TableCell>
                 <TableCell>
-                    {customer.debt && customer.debt > 0 ? (
-                        <Badge variant="destructive">
-                            {(customer.debt / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'DZD', minimumFractionDigits: 0 })}
-                        </Badge>
-                    ) : (
-                        <Badge variant="outline">
-                            0 DZD
-                        </Badge>
-                    )}
+                    <div className="flex items-center gap-2">
+                        {customer.debt && customer.debt > 0 ? (
+                            <Badge variant="destructive">
+                                {(customer.debt / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'DZD', minimumFractionDigits: 0 })}
+                            </Badge>
+                        ) : (
+                            <Badge variant="outline">
+                                0 DZD
+                            </Badge>
+                        )}
+                        {customer.debt && customer.debt > 0 && (
+                            <Button variant="outline" size="sm" className="h-7" onClick={() => setIsSettleDebtOpen(true)}>
+                                <HandCoins className="h-3.5 w-3.5" />
+                                <span className="sr-only">Régler la dette</span>
+                            </Button>
+                        )}
+                    </div>
                 </TableCell>
                 <TableCell>
                     {sales && sales.length > 0 ? (
@@ -185,6 +251,14 @@ function CustomerRow({ customer }: { customer: Customer }) {
                    <CustomerForm customer={editingCustomer} onSave={handleSave} onCancel={() => setIsSheetOpen(false)} />
                 </SheetContent>
             </Sheet>
+            {isSettleDebtOpen && (
+                <SettleDebtDialog
+                    customer={customer}
+                    isOpen={isSettleDebtOpen}
+                    onClose={() => setIsSettleDebtOpen(false)}
+                    onSettle={handleSettleDebt}
+                />
+            )}
             <InvoiceDetailsDialog sale={selectedSale} isOpen={!!selectedSale} onClose={() => setSelectedSale(null)} />
         </>
     )
@@ -198,12 +272,12 @@ export function CustomerList({ initialCustomers }: { initialCustomers: Customer[
         setIsSheetOpen(true);
     };
 
-    const handleSave = (customerData: Omit<Customer, 'id' | 'avatarUrl' | 'avatarHint' | 'email'> & { id?: string }) => {
+    const handleSave = (customerData: Omit<Customer, 'id' | 'avatarUrl' | 'avatarHint' | 'debt'> & { id?: string }) => {
         const customersRef = collection(firestore, 'customers');
         const id = `cust_${Date.now()}`;
         const docRef = doc(customersRef, id);
         
-        const dataToSave: Partial<Customer> = { ...customerData };
+        const dataToSave: Partial<Customer> = { ...customerData, id };
         delete dataToSave.id;
 
         dataToSave.avatarUrl = `https://picsum.photos/seed/${id}/100/100`;
