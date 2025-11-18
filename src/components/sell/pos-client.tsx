@@ -82,8 +82,7 @@ export function POSClient({ products }: { products: Product[] }) {
   };
   
   const subtotal = cart.reduce((acc, item) => acc + item.price * item.cartQuantity, 0);
-  const tax = subtotal * 0.08; // 8% tax
-  const total = subtotal + tax;
+  const total = subtotal;
 
   const handleCheckout = async () => {
     if (!user || cart.length === 0) return;
@@ -226,10 +225,6 @@ export function POSClient({ products }: { products: Product[] }) {
                 <div className="flex justify-between text-sm">
                     <span>Sous-total</span>
                     <span>{(subtotal / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'DZD', minimumFractionDigits: 0 })}</span>
-                </div>
-                 <div className="flex justify-between text-sm text-muted-foreground">
-                    <span>Taxes (8%)</span>
-                    <span>{(tax / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'DZD', minimumFractionDigits: 0 })}</span>
                 </div>
                 <Separator />
                  <div className="flex justify-between font-semibold text-lg">
