@@ -26,7 +26,6 @@ function CustomerForm({ customer, onSave, onCancel }: { customer: Partial<Custom
             name: formData.get('name') as string,
             email: formData.get('email') as string,
             phone: formData.get('phone') as string,
-            loyaltyCardNumber: (formData.get('loyaltyCardNumber') as string) || '',
             settlementDay: Number(formData.get('settlementDay')),
         };
         onSave(newCustomerData);
@@ -56,10 +55,6 @@ function CustomerForm({ customer, onSave, onCancel }: { customer: Partial<Custom
                  <div>
                     <Label htmlFor="settlementDay">Jour de règlement</Label>
                     <Input id="settlementDay" name="settlementDay" type="number" defaultValue={customer?.settlementDay} min="1" max="31" />
-                </div>
-                 <div>
-                    <Label htmlFor="loyaltyCardNumber">Numéro de carte de fidélité</Label>
-                    <Input id="loyaltyCardNumber" name="loyaltyCardNumber" type="text" defaultValue={customer?.loyaltyCardNumber} />
                 </div>
             </div>
             <SheetFooter className="p-6 bg-muted/40 border-t">

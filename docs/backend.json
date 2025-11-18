@@ -79,10 +79,6 @@
           "description": "Email address of the customer.",
           "format": "email"
         },
-        "loyaltyCardNumber": {
-          "type": "string",
-          "description": "Loyalty card number of the customer."
-        },
         "debt": {
           "type": "number",
           "description": "The total amount of debt the customer has, in cents."

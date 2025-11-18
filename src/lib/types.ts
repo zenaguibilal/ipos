@@ -18,7 +18,6 @@ export interface Customer {
   phone: string;
   avatarUrl?: string;
   avatarHint?: string;
-  loyaltyCardNumber: string;
   debt?: number; // in cents
   settlementDay?: number;
 }
