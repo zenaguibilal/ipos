@@ -25,6 +25,14 @@ import { Input } from '@/components/ui/input';
 import { BarcodeScanner } from '@/components/sell/barcode-scanner';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { Check } from 'lucide-react';
@@ -35,7 +43,7 @@ interface CartItem extends Product {
 }
 
 function CustomerSelect({ customers, selectedCustomerId, onSelect }: { customers: Customer[], selectedCustomerId: string | undefined, onSelect: (customerId: string | undefined) => void }) {
-    const [open, setOpen] = useState(false)
+    const [open, setOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const selectedCustomer = customers.find(c => c.id === selectedCustomerId);
 
@@ -62,41 +70,36 @@ function CustomerSelect({ customers, selectedCustomerId, onSelect }: { customers
                 </Button>
             </PopoverTrigger>
             <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                <div className="p-2">
-                    <div className="relative">
-                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                        <Input
-                            type="search"
-                            placeholder="Rechercher un client..."
-                            className="w-full rounded-lg bg-background pl-8"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
-                    </div>
-                </div>
-                <div className="max-h-60 overflow-y-auto">
-                    {filteredCustomers.map((customer) => (
-                        <div
-                            key={customer.id}
-                            className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent"
-                            onClick={() => {
-                                onSelect(customer.id)
-                                setOpen(false)
-                            }}
-                        >
-                            <Check
-                                className={cn(
-                                    "mr-2 h-4 w-4",
-                                    selectedCustomerId === customer.id ? "opacity-100" : "opacity-0"
-                                )}
-                            />
-                            {customer.name}
-                        </div>
-                    ))}
-                    {filteredCustomers.length === 0 && (
-                        <div className="py-6 text-center text-sm">Aucun client trouvé.</div>
-                    )}
-                </div>
+                <Command>
+                    <CommandInput 
+                        placeholder="Rechercher un client..."
+                        value={searchTerm}
+                        onValueChange={setSearchTerm}
+                    />
+                    <CommandList>
+                        <CommandEmpty>Aucun client trouvé.</CommandEmpty>
+                        <CommandGroup>
+                            {filteredCustomers.map((customer) => (
+                                <CommandItem
+                                    key={customer.id}
+                                    value={customer.name}
+                                    onSelect={() => {
+                                        onSelect(customer.id);
+                                        setOpen(false);
+                                    }}
+                                >
+                                    <Check
+                                        className={cn(
+                                            "mr-2 h-4 w-4",
+                                            selectedCustomerId === customer.id ? "opacity-100" : "opacity-0"
+                                        )}
+                                    />
+                                    {customer.name}
+                                </CommandItem>
+                            ))}
+                        </CommandGroup>
+                    </CommandList>
+                </Command>
             </PopoverContent>
         </Popover>
     )

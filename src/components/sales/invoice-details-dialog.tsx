@@ -16,7 +16,6 @@ import { collection, query, where, documentId } from "firebase/firestore";
 import { Loader } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import Barcode from 'react-barcode';
 
 function InvoiceContent({ sale }: { sale: SaleWithDetails }) {
     const firestore = useFirestore();
@@ -67,7 +66,7 @@ function InvoiceContent({ sale }: { sale: SaleWithDetails }) {
             </div>
 
             <div className="flex justify-center my-4">
-              <Barcode value={sale.id} width={1.5} height={50} fontSize={14} />
+                <div className="font-mono text-sm tracking-widest">{sale.id}</div>
             </div>
             
             {isLoading ? (
