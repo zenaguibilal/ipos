@@ -1,8 +1,10 @@
 export interface Product {
   id: string;
   name: string;
-  price: number; // in cents
+  price: number; // in cents - Selling Price
+  purchasePrice?: number; // in cents
   quantity: number;
+  minStock?: number;
   imageUrl: string;
   description: string;
   supplierId: string;
@@ -21,7 +23,7 @@ export interface Customer {
 }
 
 export interface Supplier {
-  id: string;
+  id:string;
   name: string;
   contactName: string;
   contactEmail: string;
