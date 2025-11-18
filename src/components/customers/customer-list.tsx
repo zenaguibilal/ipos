@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useFirestore, useUser, setDocumentNonBlocking, deleteDocumentNonBlocking, useMemoFirebase, useCollection } from '@/firebase';
-import { collection, doc, query, where } from 'firebase/firestore';
+import { collection, doc, query, where, Firestore } from 'firebase/firestore';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -182,13 +182,13 @@ function CustomerRow({ customer }: { customer: Customer }) {
 
 export function CustomerList({ initialCustomers }: { initialCustomers: Customer[] }) {
     const [isSheetOpen, setIsSheetOpen] = useState(false);
+    const firestore = useFirestore();
 
     const handleAddClick = () => {
         setIsSheetOpen(true);
     };
 
     const handleSave = (customerData: Omit<Customer, 'id' | 'avatarUrl' | 'avatarHint' | 'email'> & { id?: string }) => {
-        const firestore = useFirestore();
         const customersRef = collection(firestore, 'customers');
         const id = `cust_${Date.now()}`;
         const docRef = doc(customersRef, id);
@@ -249,3 +249,5 @@ export function CustomerList({ initialCustomers }: { initialCustomers: Customer[
         </>
     );
 }
+
+    
