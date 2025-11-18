@@ -3,7 +3,7 @@
 import type { Product, Sale, Customer } from '@/lib/types';
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { PlusCircle, MinusCircle, XCircle, Coins, BookUser, User } from 'lucide-react';
+import { PlusCircle, MinusCircle, XCircle, Coins, BookUser, User, Search, ScanLine } from 'lucide-react';
 import {
   Card,
   CardContent,
@@ -28,6 +28,8 @@ import {
 import { useFirestore, useUser, addDocumentNonBlocking, useMemoFirebase } from '@/firebase';
 import { collection, doc, writeBatch } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
+import { Input } from '@/components/ui/input';
+
 
 interface CartItem extends Product {
   cartQuantity: number;
@@ -40,6 +42,7 @@ export function POSClient({ products, customers }: { products: Product[], custom
   const [cart, setCart] = useState<CartItem[]>([]);
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | undefined>(customers[0]?.id);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     if (!selectedCustomerId && customers.length > 0) {
@@ -173,16 +176,36 @@ export function POSClient({ products, customers }: { products: Product[], custom
     }
   };
 
+  const filteredProducts = products.filter(product =>
+    product.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
     <div className="grid md:grid-cols-3 gap-6 h-[calc(100vh-100px)]">
       {/* Product Selection */}
-      <div className="md:col-span-2 bg-card rounded-lg border">
+      <div className="md:col-span-2 bg-card rounded-lg border flex flex-col">
         <CardHeader>
             <CardTitle>Produits</CardTitle>
+            <div className="flex w-full items-center gap-2 pt-4">
+              <div className="relative w-full">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="search"
+                  placeholder="Rechercher des produits..."
+                  className="w-full rounded-lg bg-background pl-8"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              <Button variant="outline" size="icon" className="shrink-0" onClick={() => toast({ title: 'Fonctionnalité à venir', description: 'Le scanner de codes-barres sera bientôt disponible.'})}>
+                <ScanLine className="h-5 w-5" />
+                <span className="sr-only">Scanner un code-barres</span>
+              </Button>
+            </div>
         </CardHeader>
-        <div className="p-4 h-[calc(100%-80px)] overflow-y-auto">
+        <div className="p-4 flex-grow overflow-y-auto">
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {products.map((product) => (
+            {filteredProducts.map((product) => (
                 <Card
                 key={product.id}
                 onClick={() => addToCart(product)}
