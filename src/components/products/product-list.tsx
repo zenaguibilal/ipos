@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import type { Product } from '@/lib/types';
-import { MoreHorizontal, PlusCircle } from 'lucide-react';
+import { MoreHorizontal, PlusCircle, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -19,7 +19,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -150,7 +149,6 @@ function ProductForm({
 
 export function ProductList({ initialProducts }: { initialProducts: Product[] }) {
   const firestore = useFirestore();
-  // A real app would get the supplierId from the logged in user
   const supplierId = 'supp_1';
   const productsRef = useMemoFirebase(
     () => collection(firestore, `suppliers/${supplierId}/products`),
@@ -161,6 +159,7 @@ export function ProductList({ initialProducts }: { initialProducts: Product[] })
   const [editingProduct, setEditingProduct] = useState<Partial<Product> | null>(
     null
   );
+  const [searchTerm, setSearchTerm] = useState('');
 
   const handleAddClick = () => {
     setEditingProduct(null);
@@ -186,28 +185,43 @@ export function ProductList({ initialProducts }: { initialProducts: Product[] })
     setEditingProduct(null);
   };
 
+  const filteredProducts = initialProducts.filter(product =>
+    product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    product.barcode?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
     <>
       <Card>
-        <CardHeader className="flex flex-row items-center">
-          <div className="grid gap-2">
-            <CardTitle>Produits</CardTitle>
-            <CardDescription>
-              Gérez vos produits et consultez l'état de leur inventaire.
-            </CardDescription>
-          </div>
-          <div className="ml-auto flex items-center gap-2">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="grid gap-2">
+                <CardTitle>Produits</CardTitle>
+                <CardDescription>
+                Gérez vos produits et consultez l'état de leur inventaire.
+                </CardDescription>
+            </div>
             <Button
-              size="sm"
-              className="h-8 gap-1"
-              onClick={handleAddClick}
+                size="sm"
+                className="h-8 gap-1"
+                onClick={handleAddClick}
             >
-              <PlusCircle className="h-3.5 w-3.5" />
-              <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                <PlusCircle className="h-3.5 w-3.5" />
+                <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
                 Ajouter un Produit
-              </span>
+                </span>
             </Button>
           </div>
+           <div className="relative mt-4">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                    type="search"
+                    placeholder="Rechercher par nom ou code-barres..."
+                    className="w-full rounded-lg bg-background pl-8"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                />
+            </div>
         </CardHeader>
         <CardContent>
           <Table>
@@ -226,7 +240,7 @@ export function ProductList({ initialProducts }: { initialProducts: Product[] })
               </TableRow>
             </TableHeader>
             <TableBody>
-              {initialProducts.map((product) => (
+              {filteredProducts.map((product) => (
                 <TableRow key={product.id}>
                   <TableCell className="hidden sm:table-cell">
                     <Image
