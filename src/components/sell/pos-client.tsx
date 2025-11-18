@@ -145,7 +145,7 @@ export function POSClient({ products, customers }: { products: Product[], custom
         lineItemIds.push(lineItemId);
 
         const lineItemDocRef = doc(lineItemsRef, lineItemId);
-        const lineItemData: Omit<SaleLineItem, 'id'> & { id: string } = {
+        const lineItemData: SaleLineItem = {
             id: lineItemId,
             productId: item.id,
             quantity: item.cartQuantity,
