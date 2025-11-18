@@ -1,6 +1,6 @@
 'use client';
 import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import { collectionGroup, query, where } from "firebase/firestore";
+import { collection, collectionGroup, query, where } from "firebase/firestore";
 import { Loader } from "lucide-react";
 import { SalesHistoryList } from "@/components/sales/sales-history-list";
 import type { Sale, Customer, SaleWithDetails } from "@/lib/types";
