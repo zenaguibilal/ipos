@@ -53,7 +53,9 @@
         "name",
         "price",
         "quantity",
-        "supplierId"
+        "supplierId",
+        "purchasePrice",
+        "minStock"
       ]
     },
     "Customer": {
@@ -73,11 +75,6 @@
         "phone": {
           "type": "string",
           "description": "Phone number of the customer."
-        },
-        "email": {
-          "type": "string",
-          "description": "Email address of the customer.",
-          "format": "email"
         },
         "debt": {
           "type": "number",

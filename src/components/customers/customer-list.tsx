@@ -24,7 +24,6 @@ function CustomerForm({ customer, onSave, onCancel }: { customer: Partial<Custom
         const newCustomerData: Omit<Customer, 'id' | 'avatarUrl' | 'avatarHint' | 'debt'> & { id?: string } = {
             id: customer?.id,
             name: formData.get('name') as string,
-            email: formData.get('email') as string,
             phone: formData.get('phone') as string,
             settlementDay: Number(formData.get('settlementDay')),
         };
@@ -44,13 +43,9 @@ function CustomerForm({ customer, onSave, onCancel }: { customer: Partial<Custom
                     <Label htmlFor="name">Nom complet</Label>
                     <Input id="name" name="name" defaultValue={customer?.name} required />
                 </div>
-                <div>
-                    <Label htmlFor="email">Email</Label>
-                    <Input id="email" name="email" type="email" defaultValue={customer?.email} required />
-                </div>
                  <div>
                     <Label htmlFor="phone">Téléphone</Label>
-                    <Input id="phone" name="phone" type="tel" defaultValue={customer?.phone} />
+                    <Input id="phone" name="phone" type="tel" defaultValue={customer?.phone} required />
                 </div>
                  <div>
                     <Label htmlFor="settlementDay">Jour de règlement</Label>
@@ -87,7 +82,7 @@ function CustomerRow({ customer }: { customer: Customer }) {
         deleteDocumentNonBlocking(docRef);
     };
 
-    const handleSave = (customerData: Omit<Customer, 'id' | 'avatarUrl' | 'avatarHint'> & { id?: string }) => {
+    const handleSave = (customerData: Omit<Customer, 'id' | 'avatarUrl' | 'avatarHint' | 'email'> & { id?: string }) => {
         const id = customerData.id || `cust_${Date.now()}`;
         const docRef = doc(customersRef, id);
         
@@ -117,7 +112,6 @@ function CustomerRow({ customer }: { customer: Customer }) {
                         </Avatar>
                         <div className="grid gap-1">
                             <p className="text-sm font-medium leading-none">{customer.name}</p>
-                            <p className="text-sm text-muted-foreground">{customer.email}</p>
                         </div>
                     </div>
                 </TableCell>
@@ -193,7 +187,7 @@ export function CustomerList({ initialCustomers }: { initialCustomers: Customer[
         setIsSheetOpen(true);
     };
 
-    const handleSave = (customerData: Omit<Customer, 'id' | 'avatarUrl' | 'avatarHint'> & { id?: string }) => {
+    const handleSave = (customerData: Omit<Customer, 'id' | 'avatarUrl' | 'avatarHint' | 'email'> & { id?: string }) => {
         const firestore = useFirestore();
         const customersRef = collection(firestore, 'customers');
         const id = `cust_${Date.now()}`;
@@ -232,7 +226,7 @@ export function CustomerList({ initialCustomers }: { initialCustomers: Customer[
                             <TableRow>
                                 <TableHead>Client</TableHead>
                                 <TableHead>Téléphone</TableHead>
-                                <TableHead>Jour de règlement</TableHead>
+                                <TableHead className="text-center">Jour de règlement</TableHead>
                                 <TableHead>Ventes totales</TableHead>
                                 <TableHead>Dette</TableHead>
                                 <TableHead>Factures</TableHead>

@@ -2,9 +2,9 @@ export interface Product {
   id: string;
   name: string;
   price: number; // in cents - Selling Price
-  purchasePrice?: number; // in cents
+  purchasePrice: number; // in cents
   quantity: number;
-  minStock?: number;
+  minStock: number;
   imageUrl: string;
   description: string;
   supplierId: string;
@@ -14,7 +14,7 @@ export interface Product {
 export interface Customer {
   id: string;
   name: string;
-  email: string;
+  email?: string;
   phone: string;
   avatarUrl?: string;
   avatarHint?: string;
