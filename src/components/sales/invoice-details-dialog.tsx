@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { SaleWithDetails, SaleLineItem, Product } from "@/lib/types";
 import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, query, where } from "firebase/firestore";
+import { collection, query, where, documentId } from "firebase/firestore";
 import { Loader } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -23,7 +23,7 @@ function InvoiceContent({ sale }: { sale: SaleWithDetails }) {
     const lineItemsQuery = useMemoFirebase(() => {
         if (!sale?.saleLineItemIds || sale.saleLineItemIds.length === 0) return null;
         // Firestore 'in' query is limited to 30 items. We assume an invoice won't have more.
-        return query(collection(firestore, 'sales_line_items'), where('id', 'in', sale.saleLineItemIds.slice(0, 30)));
+        return query(collection(firestore, 'sales_line_items'), where(documentId(), 'in', sale.saleLineItemIds.slice(0, 30)));
     }, [firestore, sale?.saleLineItemIds]);
 
     const { data: lineItems, isLoading: lineItemsLoading } = useCollection<SaleLineItem>(lineItemsQuery);
