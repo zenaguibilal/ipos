@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { getAuth, sendEmailVerification } from 'firebase/auth';
 
 function LoginFormComponent() {
   const [email, setEmail] = useState('');

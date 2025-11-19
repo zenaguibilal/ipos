@@ -7,6 +7,7 @@ import { useEffect, useState, Suspense } from 'react';
 import Link from 'next/link';
 import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { doc, getFirestore } from 'firebase/firestore';
+import { sendEmailVerification } from 'firebase/auth';
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -25,6 +26,7 @@ function SignupFormComponent() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
   const auth = useAuth();
   const { user, isUserLoading } = useUser();
   const router = useRouter();
@@ -38,6 +40,7 @@ function SignupFormComponent() {
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
+    setMessage(null);
     if (!auth) {
       setError('خدمة المصادقة غير متوفرة.');
       return;
@@ -56,6 +59,9 @@ function SignupFormComponent() {
                     createdAt: new Date().toISOString(),
                     updatedAt: new Date().toISOString(),
                 }, { merge: true });
+
+                sendEmailVerification(userCredential.user);
+                setMessage("تم إنشاء حسابك بنجاح! لقد أرسلنا رابط تحقق إلى بريدك الإلكتروني.");
             }
         })
         .catch((err: any) => {
@@ -85,6 +91,7 @@ function SignupFormComponent() {
         </CardHeader>
         <CardContent className="grid gap-4">
           {error && <p className="text-sm text-red-500 text-center">{error}</p>}
+          {message && <p className="text-sm text-green-500 text-center">{message}</p>}
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2">
               <Label htmlFor="first-name">الاسم الأول</Label>
