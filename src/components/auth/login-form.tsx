@@ -33,23 +33,22 @@ function LoginFormComponent() {
     }
   }, [user, router, searchParams]);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
     if (!auth) {
       setError('خدمة المصادقة غير متوفرة.');
       return;
     }
-    try {
-        await initiateEmailSignIn(auth, email, password);
-    } catch (err: any) {
-        if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
-            setError('البريد الإلكتروني أو كلمة المرور غير صحيحة.');
-        } else {
-            setError('حدث خطأ أثناء تسجيل الدخول. يرجى المحاولة مرة أخرى.');
-            console.error(err);
-        }
-    }
+    initiateEmailSignIn(auth, email, password)
+        .catch((err: any) => {
+            if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+                setError('البريد الإلكتروني أو كلمة المرور غير صحيحة.');
+            } else {
+                setError('حدث خطأ أثناء تسجيل الدخول. يرجى المحاولة مرة أخرى.');
+                console.error(err);
+            }
+        });
   };
 
   if (isUserLoading || user) {

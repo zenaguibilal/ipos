@@ -33,7 +33,7 @@ function SignupFormComponent() {
     }
   }, [user, router]);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
     if (!auth) {
@@ -41,29 +41,28 @@ function SignupFormComponent() {
       return;
     }
     
-    try {
-        const userCredential = await initiateEmailSignUp(auth, email, password);
-        
-        if (userCredential.user) {
-            const userDocRef = doc(getFirestore(), "users", userCredential.user.uid);
-            // We are not including firstName and lastName for now
-            setDocumentNonBlocking(userDocRef, {
-                id: userCredential.user.uid,
-                email: userCredential.user.email,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-            }, { merge: true });
-        }
-    } catch (err: any) {
-        if (err.code === 'auth/email-already-in-use') {
-            setError('هذا البريد الإلكتروني مستخدم بالفعل.');
-        } else if (err.code === 'auth/weak-password') {
-            setError('كلمة المرور يجب أن تتكون من 6 أحرف على الأقل.');
-        } else {
-            setError('حدث خطأ أثناء إنشاء الحساب. يرجى المحاولة مرة أخرى.');
-            console.error(err);
-        }
-    }
+    initiateEmailSignUp(auth, email, password)
+        .then(userCredential => {
+            if (userCredential.user) {
+                const userDocRef = doc(getFirestore(), "users", userCredential.user.uid);
+                setDocumentNonBlocking(userDocRef, {
+                    id: userCredential.user.uid,
+                    email: userCredential.user.email,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                }, { merge: true });
+            }
+        })
+        .catch((err: any) => {
+            if (err.code === 'auth/email-already-in-use') {
+                setError('هذا البريد الإلكتروني مستخدم بالفعل.');
+            } else if (err.code === 'auth/weak-password') {
+                setError('كلمة المرور يجب أن تتكون من 6 أحرف على الأقل.');
+            } else {
+                setError('حدث خطأ أثناء إنشاء الحساب. يرجى المحاولة مرة أخرى.');
+                console.error(err);
+            }
+        });
   };
 
   if (isUserLoading || user) {
