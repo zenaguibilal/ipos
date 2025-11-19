@@ -89,7 +89,10 @@ export default function SalesHistoryPage() {
              filtered = filtered.filter(sale => {
                 const saleDate = sale.createdAt.toDate();
                 if (dateRange.to) {
-                    return saleDate >= dateRange.from && saleDate <= dateRange.to;
+                    // Set 'to' date to the end of the day
+                    const toDate = new Date(dateRange.to);
+                    toDate.setHours(23, 59, 59, 999);
+                    return saleDate >= dateRange.from && saleDate <= toDate;
                 }
                 // If only 'from' is selected, filter for that day
                 const fromDayStart = new Date(dateRange.from.setHours(0,0,0,0));
@@ -214,3 +217,5 @@ export default function SalesHistoryPage() {
         </div>
     );
 }
+
+    
