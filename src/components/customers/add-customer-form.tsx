@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -18,7 +19,6 @@ export function AddCustomerForm({ isOpen, onOpenChange, userId }: AddCustomerFor
     const firestore = useFirestore();
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
-    const [email, setEmail] = useState('');
     const [phone, setPhone] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -26,7 +26,6 @@ export function AddCustomerForm({ isOpen, onOpenChange, userId }: AddCustomerFor
     const resetForm = () => {
         setFirstName('');
         setLastName('');
-        setEmail('');
         setPhone('');
         setError(null);
     }
@@ -46,7 +45,6 @@ export function AddCustomerForm({ isOpen, onOpenChange, userId }: AddCustomerFor
         addDocumentNonBlocking(customersCollectionRef, {
             firstName: firstName,
             lastName: lastName,
-            email: email,
             phone: phone,
             createdAt: serverTimestamp(),
         }, {
@@ -107,18 +105,6 @@ export function AddCustomerForm({ isOpen, onOpenChange, userId }: AddCustomerFor
                             />
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="email" className="text-right">
-                                E-mail
-                            </Label>
-                            <Input
-                                id="email"
-                                type="email"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                className="col-span-3"
-                            />
-                        </div>
-                        <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="phone" className="text-right">
                                 Téléphone
                             </Label>
@@ -143,3 +129,5 @@ export function AddCustomerForm({ isOpen, onOpenChange, userId }: AddCustomerFor
         </Dialog>
     );
 }
+
+    

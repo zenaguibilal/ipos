@@ -21,7 +21,6 @@ export function EditCustomerForm({ isOpen, onOpenChange, userId, customer }: Edi
     const firestore = useFirestore();
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
-    const [email, setEmail] = useState('');
     const [phone, setPhone] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -30,7 +29,6 @@ export function EditCustomerForm({ isOpen, onOpenChange, userId, customer }: Edi
         if (customer) {
             setFirstName(customer.firstName);
             setLastName(customer.lastName);
-            setEmail(customer.email || '');
             setPhone(customer.phone || '');
         }
     }, [customer]);
@@ -50,7 +48,6 @@ export function EditCustomerForm({ isOpen, onOpenChange, userId, customer }: Edi
         updateDocumentNonBlocking(customerDocRef, {
             firstName,
             lastName,
-            email,
             phone,
         }, {
             onSuccess: () => {
@@ -102,18 +99,6 @@ export function EditCustomerForm({ isOpen, onOpenChange, userId, customer }: Edi
                             />
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="edit-email" className="text-right">
-                                E-mail
-                            </Label>
-                            <Input
-                                id="edit-email"
-                                type="email"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                className="col-span-3"
-                            />
-                        </div>
-                        <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="edit-phone" className="text-right">
                                 Téléphone
                             </Label>
@@ -138,3 +123,5 @@ export function EditCustomerForm({ isOpen, onOpenChange, userId, customer }: Edi
         </Dialog>
     );
 }
+
+    

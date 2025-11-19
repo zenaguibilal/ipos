@@ -21,7 +21,6 @@ export interface Customer {
     id: string;
     firstName: string;
     lastName: string;
-    email?: string;
     phone?: string;
 }
 
@@ -120,8 +119,7 @@ export default function CustomersPage() {
         
         return customersWithSales.filter(customer => 
             customer.firstName.toLowerCase().includes(lowercasedQuery) ||
-            customer.lastName.toLowerCase().includes(lowercasedQuery) ||
-            (customer.email && customer.email.toLowerCase().includes(lowercasedQuery))
+            customer.lastName.toLowerCase().includes(lowercasedQuery)
         );
     }, [customersWithSales, searchQuery]);
 
@@ -211,7 +209,7 @@ export default function CustomersPage() {
                         </div>
                          <div className="pt-4">
                             <Input 
-                                placeholder="Rechercher par nom, prénom ou e-mail..."
+                                placeholder="Rechercher par nom ou prénom..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                             />
@@ -226,7 +224,6 @@ export default function CustomersPage() {
                                     <thead className="bg-muted/50">
                                         <tr>
                                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Nom</th>
-                                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">E-mail</th>
                                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Téléphone</th>
                                             <th scope="col" className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Total Dépensé</th>
                                             <th scope="col" className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Solde Impayé</th>
@@ -239,7 +236,6 @@ export default function CustomersPage() {
                                         {filteredCustomers.map(customer => (
                                             <tr key={customer.id}>
                                                 <td className="whitespace-nowrap px-6 py-4 font-medium">{customer.firstName} {customer.lastName}</td>
-                                                <td className="whitespace-nowrap px-6 py-4 text-muted-foreground">{customer.email || '-'}</td>
                                                 <td className="whitespace-nowrap px-6 py-4 text-muted-foreground">{customer.phone || '-'}</td>
                                                 <td className="whitespace-nowrap px-6 py-4 text-right font-medium">{customer.totalSpent.toFixed(2)} €</td>
                                                 <td className={`whitespace-nowrap px-6 py-4 text-right font-medium ${customer.outstandingBalance > 0 ? 'text-destructive' : ''}`}>{customer.outstandingBalance.toFixed(2)} €</td>
@@ -290,5 +286,7 @@ export default function CustomersPage() {
             </div>
         </>
     );
+
+    
 
     
