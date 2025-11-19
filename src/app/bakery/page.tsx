@@ -17,10 +17,11 @@ import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
 
 function BakeryOrderForm({ isOpen, onClose, onSave }: { isOpen: boolean, onClose: () => void, onSave: (order: Omit<BakeryOrder, 'id' | 'isFulfilled'>) => Promise<void> }) {
     const [isSaving, setIsSaving] = useState(false);
@@ -141,79 +142,92 @@ function StatCard({ title, value, icon }: { title: string, value: number, icon: 
 
 
 function BakeryTable({ orders, onFulfillToggle, onPaymentStatusChange, onDelete, isFulfilledTable = false }: { orders: BakeryOrder[], onFulfillToggle: (order: BakeryOrder) => void, onPaymentStatusChange: (order: BakeryOrder, newStatus: 'paid' | 'unpaid') => void, onDelete: (orderId: string) => void, isFulfilledTable?: boolean }) {
-    const [orderToDelete, setOrderToDelete] = useState<string | null>(null);
-
-    const handleDeleteClick = (orderId: string) => {
-        setOrderToDelete(orderId);
-    }
-
-    const confirmDelete = () => {
-        if(orderToDelete) {
-            onDelete(orderToDelete);
-            setOrderToDelete(null);
-        }
-    }
     
     if (orders.length === 0) {
         return (
-             <>
-                <TableRow>
-                    <TableCell colSpan={7} className="h-24 text-center">
-                        {isFulfilledTable ? 'لا توجد طلبات مكتملة.' : 'لا توجد طلبات نشطة حالياً.'}
-                    </TableCell>
-                </TableRow>
-            </>
+            <div className="flex items-center justify-center h-40 text-muted-foreground">
+                {isFulfilledTable ? 'لا توجد طلبات مكتملة.' : 'لا توجد طلبات نشطة حالياً.'}
+            </div>
         );
     }
 
     return (
-        <>
-            {orders.map(order => (
-                <TableRow key={order.id} className={order.isFulfilled ? 'bg-muted/50' : ''}>
-                    <TableCell className="font-medium">{order.customerName}</TableCell>
-                    <TableCell className="text-center">{order.quantity}</TableCell>
-                    <TableCell>
-                         <Badge variant={order.type === 'bread' ? 'secondary' : 'outline'} className="gap-1">
-                            {order.type === 'bread' ? <Wheat className="h-3 w-3" /> : <Cookie className="h-3 w-3" />}
-                            {order.type === 'bread' ? 'خبز' : 'ملوي'}
-                        </Badge>
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                        {format(new Date(order.orderDate), "d MMM yyyy, HH:mm", { locale: fr })}
-                    </TableCell>
-                    <TableCell>
-                        <Select
-                            value={order.paymentStatus}
-                            onValueChange={(newStatus: 'paid' | 'unpaid') => onPaymentStatusChange(order, newStatus)}
-                        >
-                            <SelectTrigger className={`w-[110px] text-xs h-8 ${order.paymentStatus === 'paid' ? 'border-green-500 text-green-700 focus:ring-green-500' : 'border-red-500 text-red-700 focus:ring-red-500'}`}>
-                                <SelectValue placeholder="حالة الدفع" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="paid">مدفوع</SelectItem>
-                                <SelectItem value="unpaid">غير مدفوع</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </TableCell>
-                    <TableCell>
-                        <div className="flex items-center justify-center">
-                            <Switch
-                                id={`fulfill-switch-${order.id}`}
-                                checked={order.isFulfilled}
-                                onCheckedChange={() => onFulfillToggle(order)}
-                                aria-label="حالة الاستلام"
-                            />
-                        </div>
-                    </TableCell>
-                    <TableCell className="text-center">
-                        <Button variant="ghost" size="icon" onClick={() => handleDeleteClick(order.id)}>
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                            <span className="sr-only">حذف</span>
-                        </Button>
-                    </TableCell>
+        <Table>
+            <TableHeader>
+                <TableRow>
+                    <TableHead>اسم العميل</TableHead>
+                    <TableHead className="text-center">الكمية</TableHead>
+                    <TableHead>النوع</TableHead>
+                    <TableHead>تاريخ الطلب</TableHead>
+                    <TableHead>حالة الدفع</TableHead>
+                    <TableHead className="text-center">حالة الاستلام</TableHead>
+                    <TableHead className="text-center">إجراءات</TableHead>
                 </TableRow>
-            ))}
-             <AlertDialog open={!!orderToDelete} onOpenChange={(open) => !open && setOrderToDelete(null)}>
+            </TableHeader>
+            <TableBody>
+                {orders.map(order => (
+                    <BakeryTableRow 
+                        key={order.id} 
+                        order={order} 
+                        onFulfillToggle={onFulfillToggle} 
+                        onPaymentStatusChange={onPaymentStatusChange} 
+                        onDelete={onDelete}
+                    />
+                ))}
+            </TableBody>
+        </Table>
+    );
+}
+
+function BakeryTableRow({ order, onFulfillToggle, onPaymentStatusChange, onDelete }: { order: BakeryOrder, onFulfillToggle: (order: BakeryOrder) => void, onPaymentStatusChange: (order: BakeryOrder, newStatus: 'paid' | 'unpaid') => void, onDelete: (orderId: string) => void }) {
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+
+    return (
+        <>
+            <TableRow className={order.isFulfilled ? 'bg-muted/50' : ''}>
+                <TableCell className="font-medium">{order.customerName}</TableCell>
+                <TableCell className="text-center">{order.quantity}</TableCell>
+                <TableCell>
+                     <Badge variant={order.type === 'bread' ? 'secondary' : 'outline'} className="gap-1">
+                        {order.type === 'bread' ? <Wheat className="h-3 w-3" /> : <Cookie className="h-3 w-3" />}
+                        {order.type === 'bread' ? 'خبز' : 'ملوي'}
+                    </Badge>
+                </TableCell>
+                <TableCell className="text-sm text-muted-foreground">
+                    {format(new Date(order.orderDate), "d MMM yyyy, HH:mm", { locale: fr })}
+                </TableCell>
+                <TableCell>
+                    <Select
+                        value={order.paymentStatus}
+                        onValueChange={(newStatus: 'paid' | 'unpaid') => onPaymentStatusChange(order, newStatus)}
+                    >
+                        <SelectTrigger className={`w-[110px] text-xs h-8 ${order.paymentStatus === 'paid' ? 'border-green-500 text-green-700 focus:ring-green-500' : 'border-red-500 text-red-700 focus:ring-red-500'}`}>
+                            <SelectValue placeholder="حالة الدفع" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="paid">مدفوع</SelectItem>
+                            <SelectItem value="unpaid">غير مدفوع</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </TableCell>
+                <TableCell>
+                    <div className="flex items-center justify-center">
+                        <Switch
+                            id={`fulfill-switch-${order.id}`}
+                            checked={order.isFulfilled}
+                            onCheckedChange={() => onFulfillToggle(order)}
+                            aria-label="حالة الاستلام"
+                        />
+                    </div>
+                </TableCell>
+                <TableCell className="text-center">
+                    <Button variant="ghost" size="icon" onClick={() => setIsDeleteDialogOpen(true)}>
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                        <span className="sr-only">حذف</span>
+                    </Button>
+                </TableCell>
+            </TableRow>
+            <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>هل أنت متأكد؟</AlertDialogTitle>
@@ -223,7 +237,7 @@ function BakeryTable({ orders, onFulfillToggle, onPaymentStatusChange, onDelete,
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel>إلغاء</AlertDialogCancel>
-                        <AlertDialogAction onClick={confirmDelete}>
+                        <AlertDialogAction onClick={() => onDelete(order.id)}>
                             نعم، حذف
                         </AlertDialogAction>
                     </AlertDialogFooter>
@@ -269,7 +283,7 @@ export default function BakeryPage() {
                 title: "تم حفظ الطلب",
                 description: `تم تسجيل طلب ${orderData.customerName} بنجاح.`,
             });
-            setIsFormOpen(false); // Close the dialog on successful save
+            setIsFormOpen(false);
         } catch (error) {
             console.error("Error saving order:", error);
             toast({
@@ -354,89 +368,55 @@ export default function BakeryPage() {
                 <StatCard title="إجمالي الملوي" value={melouiOrdersQuantity} icon={<Cookie className="h-4 w-4 text-muted-foreground" />} />
             </div>
             
-            <Card>
-                <CardHeader>
-                    <CardTitle>الطلبات النشطة ({activeOrders.length})</CardTitle>
-                    <CardDescription>الطلبات التي لم يتم استلامها بعد.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    {isLoading ? (
-                        <div className="flex justify-center items-center h-60">
-                            <Loader className="animate-spin h-8 w-8 text-primary" />
-                        </div>
-                    ) : (
-                         <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>اسم العميل</TableHead>
-                                    <TableHead className="text-center">الكمية</TableHead>
-                                    <TableHead>النوع</TableHead>
-                                    <TableHead>تاريخ الطلب</TableHead>
-                                    <TableHead>حالة الدفع</TableHead>
-                                    <TableHead className="text-center">حالة الاستلام</TableHead>
-                                    <TableHead className="text-center">إجراءات</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
+            <Tabs defaultValue="active">
+                <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="active">
+                        الطلبات النشطة ({activeOrders.length})
+                    </TabsTrigger>
+                    <TabsTrigger value="fulfilled">
+                        الطلبات المكتملة ({fulfilledOrders.length})
+                    </TabsTrigger>
+                </TabsList>
+                <TabsContent value="active">
+                    <Card>
+                        <CardContent className="pt-6">
+                            {isLoading ? (
+                                <div className="flex justify-center items-center h-60">
+                                    <Loader className="animate-spin h-8 w-8 text-primary" />
+                                </div>
+                            ) : (
                                 <BakeryTable 
                                     orders={activeOrders} 
                                     onFulfillToggle={handleFulfillToggle} 
                                     onPaymentStatusChange={handlePaymentStatusChange} 
                                     onDelete={handleDeleteOrder} 
                                 />
-                            </TableBody>
-                        </Table>
-                    )}
-                </CardContent>
-            </Card>
-
-            <Accordion type="single" collapsible className="w-full">
-                <AccordionItem value="item-1">
-                    <AccordionTrigger>
-                        <div className="flex items-center gap-2">
-                             <h3 className="font-semibold">الطلبات المكتملة ({fulfilledOrders.length})</h3>
-                        </div>
-                    </AccordionTrigger>
-                    <AccordionContent>
-                         <Card>
-                            <CardContent className="pt-6">
-                                {isLoading ? (
-                                    <div className="flex justify-center items-center h-60">
-                                        <Loader className="animate-spin h-8 w-8 text-primary" />
-                                    </div>
-                                ) : (
-                                    <Table>
-                                        <TableHeader>
-                                            <TableRow>
-                                                <TableHead>اسم العميل</TableHead>
-                                                <TableHead className="text-center">الكمية</TableHead>
-                                                <TableHead>النوع</TableHead>
-                                                <TableHead>تاريخ الطلب</TableHead>
-                                                <TableHead>حالة الدفع</TableHead>
-                                                <TableHead className="text-center">حالة الاستلام</TableHead>
-                                                <TableHead className="text-center">إجراءات</TableHead>
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            <BakeryTable 
-                                                orders={fulfilledOrders} 
-                                                onFulfillToggle={handleFulfillToggle} 
-                                                onPaymentStatusChange={handlePaymentStatusChange} 
-                                                onDelete={handleDeleteOrder}
-                                                isFulfilledTable={true}
-                                            />
-                                        </TableBody>
-                                    </Table>
-                                )}
-                            </CardContent>
-                         </Card>
-                    </AccordionContent>
-                </AccordionItem>
-            </Accordion>
+                            )}
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+                <TabsContent value="fulfilled">
+                    <Card>
+                        <CardContent className="pt-6">
+                             {isLoading ? (
+                                <div className="flex justify-center items-center h-60">
+                                    <Loader className="animate-spin h-8 w-8 text-primary" />
+                                </div>
+                            ) : (
+                                <BakeryTable 
+                                    orders={fulfilledOrders} 
+                                    onFulfillToggle={handleFulfillToggle} 
+                                    onPaymentStatusChange={handlePaymentStatusChange} 
+                                    onDelete={handleDeleteOrder}
+                                    isFulfilledTable={true}
+                                />
+                            )}
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+            </Tabs>
             
             <BakeryOrderForm isOpen={isFormOpen} onClose={() => setIsFormOpen(false)} onSave={handleSaveOrder} />
         </div>
     );
 }
-
-    
