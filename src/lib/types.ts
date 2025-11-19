@@ -21,15 +21,6 @@ export interface Customer {
   settlementDay?: number;
 }
 
-export interface Supplier {
-  id:string;
-  name: string;
-  contactName: string;
-  contactPhone: string;
-  debt?: number; // in cents
-  visitingDays?: string; // Comma-separated days
-}
-
 export interface BakeryOrder {
   id: string;
   customerName: string;
@@ -67,5 +58,3 @@ export interface InvoiceCounter {
     id: 'sales';
     lastNumber: number;
 }
-
-    

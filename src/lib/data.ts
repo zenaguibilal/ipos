@@ -2,7 +2,7 @@
 
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, collectionGroup, where, documentId, orderBy, limit } from 'firebase/firestore';
-import type { Product, Customer, Supplier, Sale, SaleWithDetails } from './types';
+import type { Product, Customer, Sale, SaleWithDetails } from './types';
 import { useMemo } from 'react';
 import { subDays, format } from 'date-fns';
 import { fr } from 'date-fns/locale';
