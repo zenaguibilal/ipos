@@ -19,7 +19,6 @@ import {
 import { SalesChart } from '@/components/dashboard/sales-chart';
 import { RecentSales } from '@/components/dashboard/recent-sales';
 import { SummaryCard } from '@/components/dashboard/summary-card';
-import { RestockAlertForm } from '@/components/ai/restock-alert-form';
 import { useDashboardData } from '@/lib/data';
 import { Loader } from 'lucide-react';
 
@@ -97,9 +96,6 @@ export default function DashboardPage() {
             <RecentSales />
           </CardContent>
         </Card>
-      </div>
-      <div>
-        <RestockAlertForm />
       </div>
     </div>
   );
