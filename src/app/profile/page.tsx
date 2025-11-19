@@ -45,7 +45,7 @@ export default function ProfilePage() {
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!userDocRef) return;
+    if (!userDocRef || !firestore) return;
 
     setIsSaving(true);
     setMessage(null);
