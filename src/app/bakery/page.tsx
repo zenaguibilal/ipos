@@ -1,12 +1,12 @@
 'use client';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, doc, updateDoc, addDoc, deleteDoc } from 'firebase/firestore';
 import type { BakeryOrder } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Loader, PlusCircle, Trash2, Cookie, Wheat } from 'lucide-react';
+import { Loader, PlusCircle, Trash2, Cookie, Wheat, ChevronDown } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -16,6 +16,7 @@ import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 function BakeryOrderForm({ isOpen, onClose, onSave }: { isOpen: boolean, onClose: () => void, onSave: (order: Omit<BakeryOrder, 'id' | 'orderDate' | 'isFulfilled'>) => Promise<void> }) {
     const [isSaving, setIsSaving] = useState(false);
@@ -43,26 +44,28 @@ function BakeryOrderForm({ isOpen, onClose, onSave }: { isOpen: boolean, onClose
                         أدخل تفاصيل الطلب الجديد.
                     </DialogDescription>
                 </DialogHeader>
-                <form onSubmit={handleSubmit} id="bakery-order-form" className="space-y-4">
+                <form onSubmit={handleSubmit} id="bakery-order-form" className="space-y-4 pt-4">
                     <div>
                         <Label htmlFor="customerName">اسم العميل</Label>
                         <Input id="customerName" name="customerName" required />
                     </div>
-                     <div>
-                        <Label htmlFor="type">النوع</Label>
-                        <Select name="type" defaultValue="bread">
-                            <SelectTrigger>
-                                <SelectValue placeholder="اختر النوع" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="bread">خبز</SelectItem>
-                                <SelectItem value="meloui">ملوي</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <div>
-                        <Label htmlFor="quantity">الكمية</Label>
-                        <Input id="quantity" name="quantity" type="number" required min="1" />
+                     <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <Label htmlFor="type">النوع</Label>
+                            <Select name="type" defaultValue="bread">
+                                <SelectTrigger>
+                                    <SelectValue placeholder="اختر النوع" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="bread">خبز</SelectItem>
+                                    <SelectItem value="meloui">ملوي</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div>
+                            <Label htmlFor="quantity">الكمية</Label>
+                            <Input id="quantity" name="quantity" type="number" required min="1" />
+                        </div>
                     </div>
                     <div>
                         <Label htmlFor="paymentStatus">حالة الدفع</Label>
@@ -88,13 +91,28 @@ function BakeryOrderForm({ isOpen, onClose, onSave }: { isOpen: boolean, onClose
     );
 }
 
+function StatCard({ title, value, icon }: { title: string, value: number, icon: React.ReactNode }) {
+    return (
+        <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">{title}</CardTitle>
+                {icon}
+            </CardHeader>
+            <CardContent>
+                <div className="text-2xl font-bold">{value}</div>
+                <p className="text-xs text-muted-foreground">وحدة مطلوبة (غير مستلمة)</p>
+            </CardContent>
+        </Card>
+    );
+}
 
-function BakeryTable({ orders, onFulfillToggle, onPaymentStatusChange, onDelete }: { orders: BakeryOrder[], onFulfillToggle: (order: BakeryOrder) => void, onPaymentStatusChange: (order: BakeryOrder, newStatus: 'paid' | 'unpaid') => void, onDelete: (orderId: string) => void }) {
+
+function BakeryTable({ orders, onFulfillToggle, onPaymentStatusChange, onDelete, isFulfilledTable = false }: { orders: BakeryOrder[], onFulfillToggle: (order: BakeryOrder) => void, onPaymentStatusChange: (order: BakeryOrder, newStatus: 'paid' | 'unpaid') => void, onDelete: (orderId: string) => void, isFulfilledTable?: boolean }) {
     if (orders.length === 0) {
         return (
             <TableRow>
                 <TableCell colSpan={7} className="h-24 text-center">
-                    لا توجد طلبات حالياً.
+                    {isFulfilledTable ? 'لا توجد طلبات مكتملة.' : 'لا توجد طلبات نشطة حالياً.'}
                 </TableCell>
             </TableRow>
         );
@@ -159,13 +177,21 @@ export default function BakeryPage() {
 
     const [isFormOpen, setIsFormOpen] = useState(false);
     
-    const breadOrdersQuantity = useMemo(() => {
-        return orders?.filter(order => order.type === 'bread' && !order.isFulfilled).reduce((sum, order) => sum + order.quantity, 0) || 0;
+    const { activeOrders, fulfilledOrders } = useMemo(() => {
+        const sorted = orders ? [...orders].sort((a, b) => new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime()) : [];
+        return {
+            activeOrders: sorted.filter(order => !order.isFulfilled),
+            fulfilledOrders: sorted.filter(order => order.isFulfilled),
+        };
     }, [orders]);
 
+    const breadOrdersQuantity = useMemo(() => {
+        return activeOrders.filter(order => order.type === 'bread').reduce((sum, order) => sum + order.quantity, 0) || 0;
+    }, [activeOrders]);
+
     const melouiOrdersQuantity = useMemo(() => {
-        return orders?.filter(order => order.type === 'meloui' && !order.isFulfilled).reduce((sum, order) => sum + order.quantity, 0) || 0;
-    }, [orders]);
+        return activeOrders.filter(order => order.type === 'meloui').reduce((sum, order) => sum + order.quantity, 0) || 0;
+    }, [activeOrders]);
 
     const handleSaveOrder = async (orderData: Omit<BakeryOrder, 'id' | 'orderDate' | 'isFulfilled'>) => {
         if (!firestore) return;
@@ -250,38 +276,28 @@ export default function BakeryPage() {
         }
     };
 
-    const sortedOrders = useMemo(() => {
-        return orders ? [...orders].sort((a, b) => {
-            if (a.isFulfilled !== b.isFulfilled) {
-                return a.isFulfilled ? 1 : -1;
-            }
-            return new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime();
-        }) : [];
-    }, [orders]);
-
-
     return (
         <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                 <div className="grid gap-2">
+                    <h1 className="text-2xl font-bold tracking-tight">طلبات المخبوزات</h1>
+                    <p className="text-muted-foreground">إدارة وتتبع طلبات الخبز والملوي اليومية.</p>
+                </div>
+                 <Button size="sm" className="h-9 gap-1" onClick={() => setIsFormOpen(true)}>
+                    <PlusCircle className="h-4 w-4" />
+                    <span className="whitespace-nowrap">إضافة طلب جديد</span>
+                </Button>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+                <StatCard title="إجمالي الخبز" value={breadOrdersQuantity} icon={<Wheat className="h-4 w-4 text-muted-foreground" />} />
+                <StatCard title="إجمالي الملوي" value={melouiOrdersQuantity} icon={<Cookie className="h-4 w-4 text-muted-foreground" />} />
+            </div>
+            
             <Card>
-                <CardHeader className="flex flex-row items-start justify-between">
-                    <div className="grid gap-2">
-                        <CardTitle>طلبات المخبوزات</CardTitle>
-                        <CardDescription>إدارة وتتبع طلبات الخبز والملوي اليومية. الإجماليات تظهر فقط للطلبات غير المستلمة.</CardDescription>
-                        <div className="flex items-center gap-4 pt-2">
-                            <Badge variant="secondary" className="flex items-center gap-2 py-1 px-3 text-base">
-                                <Wheat className="h-4 w-4" />
-                                <span>خبز: {breadOrdersQuantity}</span>
-                            </Badge>
-                            <Badge variant="outline" className="flex items-center gap-2 py-1 px-3 text-base">
-                                <Cookie className="h-4 w-4" />
-                                <span>ملوي: {melouiOrdersQuantity}</span>
-                            </Badge>
-                        </div>
-                    </div>
-                    <Button size="sm" className="h-8 gap-1" onClick={() => setIsFormOpen(true)}>
-                        <PlusCircle className="h-3.5 w-3.5" />
-                        <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">إضافة طلب</span>
-                    </Button>
+                <CardHeader>
+                    <CardTitle>الطلبات النشطة ({activeOrders.length})</CardTitle>
+                    <CardDescription>الطلبات التي لم يتم استلامها بعد.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     {isLoading ? (
@@ -303,7 +319,7 @@ export default function BakeryPage() {
                             </TableHeader>
                             <TableBody>
                                 <BakeryTable 
-                                    orders={sortedOrders} 
+                                    orders={activeOrders} 
                                     onFulfillToggle={handleFulfillToggle} 
                                     onPaymentStatusChange={handlePaymentStatusChange} 
                                     onDelete={handleDeleteOrder} 
@@ -313,6 +329,51 @@ export default function BakeryPage() {
                     )}
                 </CardContent>
             </Card>
+
+            <Accordion type="single" collapsible className="w-full">
+                <AccordionItem value="item-1">
+                    <AccordionTrigger>
+                        <div className="flex items-center gap-2">
+                             <h3 className="font-semibold">الطلبات المكتملة ({fulfilledOrders.length})</h3>
+                        </div>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                         <Card>
+                            <CardContent className="pt-6">
+                                {isLoading ? (
+                                    <div className="flex justify-center items-center h-60">
+                                        <Loader className="animate-spin h-8 w-8 text-primary" />
+                                    </div>
+                                ) : (
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>اسم العميل</TableHead>
+                                                <TableHead className="text-center">الكمية</TableHead>
+                                                <TableHead>النوع</TableHead>
+                                                <TableHead>تاريخ الطلب</TableHead>
+                                                <TableHead>حالة الدفع</TableHead>
+                                                <TableHead className="text-center">حالة الاستلام</TableHead>
+                                                <TableHead className="text-center">إجراءات</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            <BakeryTable 
+                                                orders={fulfilledOrders} 
+                                                onFulfillToggle={handleFulfillToggle} 
+                                                onPaymentStatusChange={handlePaymentStatusChange} 
+                                                onDelete={handleDeleteOrder}
+                                                isFulfilledTable={true}
+                                            />
+                                        </TableBody>
+                                    </Table>
+                                )}
+                            </CardContent>
+                         </Card>
+                    </AccordionContent>
+                </AccordionItem>
+            </Accordion>
+            
             <BakeryOrderForm isOpen={isFormOpen} onClose={() => setIsFormOpen(false)} onSave={handleSaveOrder} />
         </div>
     );
