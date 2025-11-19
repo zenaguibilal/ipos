@@ -62,28 +62,25 @@ export function useCollection<T = any>(
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
   useEffect(() => {
-    // If the query is not ready, reset state and do nothing.
-    if (memoizedTargetRefOrQuery === null || memoizedTargetRefOrQuery === undefined) {
+    // Definitive Guard Clause: If the query is not ready, reset state and exit immediately.
+    // This is the root fix for the persistent "Missing or insufficient permissions" error.
+    if (!memoizedTargetRefOrQuery) {
       setData(null);
       // Set to true because the dependency that generates the query is likely still loading.
       // The consumer component will show a loading state until the query is valid.
       setIsLoading(true); 
       setError(null);
-      return;
+      return; // Exit the effect completely.
     }
     
-    // This check is now redundant if the above handles null/undefined correctly, but kept for safety.
-    if (!memoizedTargetRefOrQuery) {
-        setIsLoading(false);
-        return;
-    }
-
     if (!(memoizedTargetRefOrQuery as any).__memo) {
+        // This is a developer error, not a runtime one. Throwing it makes it visible during development.
         throw new Error('Query or reference passed to useCollection was not properly memoized using useMemoFirebase. This will cause infinite loops.');
     }
 
     setIsLoading(true);
     setError(null);
+    setData(null); // Reset data on new query
 
     const unsubscribe = onSnapshot(
       memoizedTargetRefOrQuery,
