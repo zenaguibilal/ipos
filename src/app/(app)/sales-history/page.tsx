@@ -124,106 +124,101 @@ export default function SalesHistoryPage() {
                     sale={selectedSale}
                 />
             )}
-            <div className="flex flex-col h-full">
-                <header className="flex h-14 items-center gap-4 border-b bg-muted/40 px-6">
-                    <h1 className="text-lg font-semibold md:text-xl">Historique des Ventes</h1>
-                </header>
-                <main className="flex-1 overflow-auto p-4 sm:p-6">
-                    <Card className="w-full">
-                        <CardHeader>
-                            <div className="flex flex-col gap-2 sm:flex-row">
-                                <Input 
-                                    placeholder="Rechercher par client ou N° facture..."
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="w-full sm:w-64"
-                                />
-                                <Popover>
-                                    <PopoverTrigger asChild>
-                                    <Button
-                                        id="date"
-                                        variant={"outline"}
-                                        className={cn(
-                                        "w-full justify-start text-left font-normal sm:w-auto",
-                                        !dateRange && "text-muted-foreground"
-                                        )}
-                                    >
-                                        <CalendarIcon className="mr-2 h-4 w-4" />
-                                        {dateRange?.from ? (
-                                        dateRange.to ? (
-                                            <>
-                                            {format(dateRange.from, "d LLL y", { locale: fr })} - {format(dateRange.to, "d LLL y", { locale: fr })}
-                                            </>
-                                        ) : (
-                                            format(dateRange.from, "d LLL y", { locale: fr })
-                                        )
-                                        ) : (
-                                        <span>Choisir une date</span>
-                                        )}
-                                    </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-0" align="start">
-                                        <Calendar
-                                            initialFocus
-                                            mode="range"
-                                            defaultMonth={dateRange?.from}
-                                            selected={dateRange}
-                                            onSelect={setDateRange}
-                                            numberOfMonths={2}
-                                            locale={fr}
-                                        />
-                                    </PopoverContent>
-                                </Popover>
-                                {(searchQuery || dateRange) && (
-                                    <Button variant="ghost" onClick={() => { setSearchQuery(''); setDateRange(undefined); }}>
-                                        Effacer les filtres
-                                    </Button>
-                                )}
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                            {isLoading ? (
-                                <div className="text-center">Chargement des données...</div>
-                            ) : filteredSales.length > 0 ? (
-                                <div className="overflow-x-auto">
-                                    <table className="min-w-full divide-y divide-border">
-                                        <thead className="bg-muted/50">
-                                            <tr>
-                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Facture N°</th>
-                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Date</th>
-                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Client</th>
-                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Statut</th>
-                                                <th scope="col" className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Total</th>
-                                                <th scope="col" className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Payé</th>
-                                                <th scope="col" className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Solde</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-border">
-                                            {filteredSales.map(sale => (
-                                                <tr key={sale.id} onClick={() => setSelectedSale(sale)} className="cursor-pointer hover:bg-muted/50">
-                                                    <td className="whitespace-nowrap px-6 py-4 font-mono text-xs">{sale.invoiceNumber}</td>
-                                                    <td className="whitespace-nowrap px-6 py-4 font-medium">{format(sale.createdAt.toDate(), 'd MMM yyyy, HH:mm', { locale: fr })}</td>
-                                                    <td className="whitespace-nowrap px-6 py-4 text-muted-foreground">{sale.customerName || 'Vente au comptoir'}</td>
-                                                    <td className="whitespace-nowrap px-6 py-4"><StatusBadge status={sale.paymentStatus} /></td>
-                                                    <td className="whitespace-nowrap px-6 py-4 text-right font-medium">{sale.total.toFixed(2)} €</td>
-                                                    <td className="whitespace-nowrap px-6 py-4 text-right font-medium text-green-400">{sale.amountPaid.toFixed(2)} €</td>
-                                                    <td className={`whitespace-nowrap px-6 py-4 text-right font-medium ${sale.remainingBalance > 0 ? 'text-destructive' : ''}`}>{sale.remainingBalance.toFixed(2)} €</td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            ) : (
-                                <div className="flex h-40 items-center justify-center rounded-md border-2 border-dashed border-border">
-                                    <p className="text-muted-foreground">
-                                        {sales && sales.length === 0 ? "Vous n'avez pas encore de ventes enregistrées." : "Aucune vente ne correspond à vos filtres."}
-                                    </p>
-                                </div>
+            <main className="flex-1 overflow-auto p-4 sm:p-6">
+                <Card className="w-full">
+                    <CardHeader>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <Input 
+                                placeholder="Rechercher par client ou N° facture..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full sm:w-auto sm:flex-grow max-w-sm"
+                            />
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                <Button
+                                    id="date"
+                                    variant={"outline"}
+                                    className={cn(
+                                    "w-full justify-start text-left font-normal sm:w-auto",
+                                    !dateRange && "text-muted-foreground"
+                                    )}
+                                >
+                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                    {dateRange?.from ? (
+                                    dateRange.to ? (
+                                        <>
+                                        {format(dateRange.from, "d LLL y", { locale: fr })} - {format(dateRange.to, "d LLL y", { locale: fr })}
+                                        </>
+                                    ) : (
+                                        format(dateRange.from, "d LLL y", { locale: fr })
+                                    )
+                                    ) : (
+                                    <span>Choisir une date</span>
+                                    )}
+                                </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0" align="start">
+                                    <Calendar
+                                        initialFocus
+                                        mode="range"
+                                        defaultMonth={dateRange?.from}
+                                        selected={dateRange}
+                                        onSelect={setDateRange}
+                                        numberOfMonths={2}
+                                        locale={fr}
+                                    />
+                                </PopoverContent>
+                            </Popover>
+                            {(searchQuery || dateRange) && (
+                                <Button variant="ghost" onClick={() => { setSearchQuery(''); setDateRange(undefined); }}>
+                                    Effacer les filtres
+                                </Button>
                             )}
-                        </CardContent>
-                    </Card>
-                </main>
-            </div>
+                        </div>
+                    </CardHeader>
+                    <CardContent>
+                        {isLoading ? (
+                            <div className="text-center">Chargement des données...</div>
+                        ) : filteredSales.length > 0 ? (
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full divide-y divide-border">
+                                    <thead className="bg-muted/50">
+                                        <tr>
+                                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Facture N°</th>
+                                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Date</th>
+                                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Client</th>
+                                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Statut</th>
+                                            <th scope="col" className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Total</th>
+                                            <th scope="col" className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Payé</th>
+                                            <th scope="col" className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Solde</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-border">
+                                        {filteredSales.map(sale => (
+                                            <tr key={sale.id} onClick={() => setSelectedSale(sale)} className="cursor-pointer hover:bg-muted/50">
+                                                <td className="whitespace-nowrap px-6 py-4 font-mono text-xs">{sale.invoiceNumber}</td>
+                                                <td className="whitespace-nowrap px-6 py-4 font-medium">{format(sale.createdAt.toDate(), 'd MMM yyyy, HH:mm', { locale: fr })}</td>
+                                                <td className="whitespace-nowrap px-6 py-4 text-muted-foreground">{sale.customerName || 'Vente au comptoir'}</td>
+                                                <td className="whitespace-nowrap px-6 py-4"><StatusBadge status={sale.paymentStatus} /></td>
+                                                <td className="whitespace-nowrap px-6 py-4 text-right font-medium">{sale.total.toFixed(2)} €</td>
+                                                <td className="whitespace-nowrap px-6 py-4 text-right font-medium text-green-400">{sale.amountPaid.toFixed(2)} €</td>
+                                                <td className={`whitespace-nowrap px-6 py-4 text-right font-medium ${sale.remainingBalance > 0 ? 'text-destructive' : ''}`}>{sale.remainingBalance.toFixed(2)} €</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ) : (
+                            <div className="flex h-40 items-center justify-center rounded-md border-2 border-dashed border-border">
+                                <p className="text-muted-foreground">
+                                    {sales && sales.length === 0 ? "Vous n'avez pas encore de ventes enregistrées." : "Aucune vente ne correspond à vos filtres."}
+                                </p>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            </main>
         </>
     );
 }

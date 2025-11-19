@@ -205,7 +205,7 @@ export default function SellPage() {
   }
 
   return (
-    <div className="flex h-full flex-col bg-muted/40">
+    <>
         <AddProductForm 
             isOpen={isAddingProduct}
             onOpenChange={setIsAddingProduct}
@@ -367,6 +367,6 @@ export default function SellPage() {
                 </Card>
             </div>
         </main>
-    </div>
+    </>
   );
 }

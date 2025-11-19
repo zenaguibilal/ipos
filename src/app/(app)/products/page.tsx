@@ -97,92 +97,88 @@ export default function ProductsPage() {
                 />
             )}
            
-            <div className="flex flex-col h-full">
-                <header className="flex h-14 items-center gap-4 border-b bg-muted/40 px-6">
-                    <h1 className="text-lg font-semibold md:text-xl">Produits</h1>
-                    <Button onClick={() => setIsAddingProduct(true)} className="ml-auto">Ajouter un produit</Button>
-                </header>
-                <main className="flex-1 overflow-auto p-4 sm:p-6">
-                    <Card className="w-full">
-                        <CardHeader className="pt-4">
-                            <Input 
-                                placeholder="Rechercher par nom ou code-barres..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                            />
-                        </CardHeader>
-                        <CardContent>
-                            {isLoading ? (
-                                <div className="text-center">Chargement des données...</div>
-                            ) : filteredProducts && filteredProducts.length > 0 ? (
-                                <div className="overflow-x-auto">
-                                    <table className="min-w-full divide-y divide-border">
-                                        <thead className="bg-muted/50">
-                                            <tr>
-                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Nom</th>
-                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Code-barres</th>
-                                                <th scope="col" className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Prix Achat</th>
-                                                <th scope="col" className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Prix Vente</th>
-                                                <th scope="col" className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Quantité</th>
-                                                <th scope="col" className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Stock Min.</th>
-                                                <th scope="col" className="relative px-6 py-3">
-                                                    <span className="sr-only">Actions</span>
-                                                </th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-border">
-                                            {filteredProducts.map(product => {
-                                                const isLowStock = product.quantity <= product.minStockLevel;
-                                                return (
-                                                    <tr key={product.id} className={cn(isLowStock && 'bg-destructive/10')}>
-                                                        <td className="whitespace-nowrap px-6 py-4 font-medium">{product.name}</td>
-                                                        <td className="whitespace-nowrap px-6 py-4 text-muted-foreground">{product.barcode || '-'}</td>
-                                                        <td className="whitespace-nowrap px-6 py-4 text-right font-medium">{product.purchasePrice.toFixed(2)} €</td>
-                                                        <td className="whitespace-nowrap px-6 py-4 text-right font-medium">{product.price.toFixed(2)} €</td>
-                                                        <td className={cn("whitespace-nowrap px-6 py-4 text-right font-medium", isLowStock && 'text-destructive font-bold')}>{product.quantity}</td>
-                                                        <td className="whitespace-nowrap px-6 py-4 text-right font-medium">{product.minStockLevel}</td>
-                                                        <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
-                                                            <DropdownMenu>
-                                                                <DropdownMenuTrigger asChild>
-                                                                    <Button variant="ghost" className="h-8 w-8 p-0">
-                                                                        <span className="sr-only">Ouvrir le menu</span>
-                                                                        <MoreHorizontal className="h-4 w-4" />
-                                                                    </Button>
-                                                                </DropdownMenuTrigger>
-                                                                <DropdownMenuContent align="end">
-                                                                    <DropdownMenuItem onClick={() => setEditingProduct(product)}>
-                                                                        <Pencil className="mr-2 h-4 w-4" />
-                                                                        <span>Modifier</span>
-                                                                    </DropdownMenuItem>
-                                                                    <DropdownMenuItem onClick={() => setDeletingProduct(product)} className="text-destructive focus:text-destructive-foreground focus:bg-destructive">
-                                                                        <Trash2 className="mr-2 h-4 w-4" />
-                                                                        <span>Supprimer</span>
-                                                                    </DropdownMenuItem>
-                                                                </DropdownMenuContent>
-                                                            </DropdownMenu>
-                                                        </td>
-                                                    </tr>
-                                                )
-                                            })}
-                                        </tbody>
-                                    </table>
+            <main className="flex-1 overflow-auto p-4 sm:p-6">
+                <Card className="w-full">
+                    <CardHeader className="flex flex-row items-center justify-between pt-4">
+                        <Input 
+                            placeholder="Rechercher par nom ou code-barres..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                             className="w-full max-w-sm"
+                        />
+                        <Button onClick={() => setIsAddingProduct(true)}>Ajouter un produit</Button>
+                    </CardHeader>
+                    <CardContent>
+                        {isLoading ? (
+                            <div className="text-center">Chargement des données...</div>
+                        ) : filteredProducts && filteredProducts.length > 0 ? (
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full divide-y divide-border">
+                                    <thead className="bg-muted/50">
+                                        <tr>
+                                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Nom</th>
+                                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Code-barres</th>
+                                            <th scope="col" className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Prix Achat</th>
+                                            <th scope="col" className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Prix Vente</th>
+                                            <th scope="col" className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Quantité</th>
+                                            <th scope="col" className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Stock Min.</th>
+                                            <th scope="col" className="relative px-6 py-3">
+                                                <span className="sr-only">Actions</span>
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-border">
+                                        {filteredProducts.map(product => {
+                                            const isLowStock = product.quantity <= product.minStockLevel;
+                                            return (
+                                                <tr key={product.id} className={cn(isLowStock && 'bg-destructive/10')}>
+                                                    <td className="whitespace-nowrap px-6 py-4 font-medium">{product.name}</td>
+                                                    <td className="whitespace-nowrap px-6 py-4 text-muted-foreground">{product.barcode || '-'}</td>
+                                                    <td className="whitespace-nowrap px-6 py-4 text-right font-medium">{product.purchasePrice.toFixed(2)} €</td>
+                                                    <td className="whitespace-nowrap px-6 py-4 text-right font-medium">{product.price.toFixed(2)} €</td>
+                                                    <td className={cn("whitespace-nowrap px-6 py-4 text-right font-medium", isLowStock && 'text-destructive font-bold')}>{product.quantity}</td>
+                                                    <td className="whitespace-nowrap px-6 py-4 text-right font-medium">{product.minStockLevel}</td>
+                                                    <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
+                                                        <DropdownMenu>
+                                                            <DropdownMenuTrigger asChild>
+                                                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                                                    <span className="sr-only">Ouvrir le menu</span>
+                                                                    <MoreHorizontal className="h-4 w-4" />
+                                                                </Button>
+                                                            </DropdownMenuTrigger>
+                                                            <DropdownMenuContent align="end">
+                                                                <DropdownMenuItem onClick={() => setEditingProduct(product)}>
+                                                                    <Pencil className="mr-2 h-4 w-4" />
+                                                                    <span>Modifier</span>
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuItem onClick={() => setDeletingProduct(product)} className="text-destructive focus:text-destructive-foreground focus:bg-destructive">
+                                                                    <Trash2 className="mr-2 h-4 w-4" />
+                                                                    <span>Supprimer</span>
+                                                                </DropdownMenuItem>
+                                                            </DropdownMenuContent>
+                                                        </DropdownMenu>
+                                                    </td>
+                                                </tr>
+                                            )
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ) : products && products.length > 0 && searchQuery ? (
+                            <div className="flex h-40 items-center justify-center rounded-md border-2 border-dashed border-border">
+                                <p className="text-muted-foreground">Aucun produit ne correspond à votre recherche.</p>
+                            </div>
+                        ) : (
+                            <div className="flex h-40 items-center justify-center rounded-md border-2 border-dashed border-border">
+                                <div className="text-center">
+                                    <p className="text-muted-foreground">Vous n'avez pas encore de produits.</p>
+                                    <Button variant="link" onClick={() => setIsAddingProduct(true)}>Ajouter votre premier produit</Button>
                                 </div>
-                            ) : products && products.length > 0 && searchQuery ? (
-                                <div className="flex h-40 items-center justify-center rounded-md border-2 border-dashed border-border">
-                                    <p className="text-muted-foreground">Aucun produit ne correspond à votre recherche.</p>
-                                </div>
-                            ) : (
-                                <div className="flex h-40 items-center justify-center rounded-md border-2 border-dashed border-border">
-                                    <div className="text-center">
-                                        <p className="text-muted-foreground">Vous n'avez pas encore de produits.</p>
-                                        <Button variant="link" onClick={() => setIsAddingProduct(true)}>Ajouter votre premier produit</Button>
-                                    </div>
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
-                </main>
-            </div>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            </main>
         </>
     );
 }

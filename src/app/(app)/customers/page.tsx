@@ -197,92 +197,88 @@ export default function CustomersPage() {
                 />
             )}
            
-            <div className="flex flex-col h-full">
-                <header className="flex h-14 items-center gap-4 border-b bg-muted/40 px-6">
-                    <h1 className="text-lg font-semibold md:text-xl">Clients</h1>
-                    <Button onClick={() => setIsAddingCustomer(true)} className="ml-auto">Ajouter un client</Button>
-                </header>
-                <main className="flex-1 overflow-auto p-4 sm:p-6">
-                    <Card className="w-full">
-                        <CardHeader className="pt-4">
-                            <Input 
-                                placeholder="Rechercher par nom ou prénom..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                            />
-                        </CardHeader>
-                        <CardContent>
-                            {isLoading ? (
-                                <div className="text-center">Chargement des données...</div>
-                            ) : filteredCustomers && filteredCustomers.length > 0 ? (
-                                <div className="overflow-x-auto">
-                                    <table className="min-w-full divide-y divide-border">
-                                        <thead className="bg-muted/50">
-                                            <tr>
-                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Nom</th>
-                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Téléphone</th>
-                                                <th scope="col" className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Jour de règlement</th>
-                                                <th scope="col" className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Total Dépensé</th>
-                                                <th scope="col" className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Solde Impayé</th>
-                                                <th scope="col" className="relative px-6 py-3">
-                                                    <span className="sr-only">Actions</span>
-                                                </th>
+            <main className="flex-1 overflow-auto p-4 sm:p-6">
+                <Card className="w-full">
+                    <CardHeader className="flex flex-row items-center justify-between pt-4">
+                        <Input 
+                            placeholder="Rechercher par nom ou prénom..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full max-w-sm"
+                        />
+                         <Button onClick={() => setIsAddingCustomer(true)}>Ajouter un client</Button>
+                    </CardHeader>
+                    <CardContent>
+                        {isLoading ? (
+                            <div className="text-center">Chargement des données...</div>
+                        ) : filteredCustomers && filteredCustomers.length > 0 ? (
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full divide-y divide-border">
+                                    <thead className="bg-muted/50">
+                                        <tr>
+                                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Nom</th>
+                                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Téléphone</th>
+                                            <th scope="col" className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Jour de règlement</th>
+                                            <th scope="col" className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Total Dépensé</th>
+                                            <th scope="col" className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Solde Impayé</th>
+                                            <th scope="col" className="relative px-6 py-3">
+                                                <span className="sr-only">Actions</span>
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-border">
+                                        {filteredCustomers.map(customer => (
+                                            <tr key={customer.id}>
+                                                <td className="whitespace-nowrap px-6 py-4 font-medium">{customer.firstName} {customer.lastName}</td>
+                                                <td className="whitespace-nowrap px-6 py-4 text-muted-foreground">{customer.phone || '-'}</td>
+                                                <td className="whitespace-nowrap px-6 py-4 text-right font-medium">{customer.settlementDay || '-'}</td>
+                                                <td className="whitespace-nowrap px-6 py-4 text-right font-medium">{customer.totalSpent.toFixed(2)} €</td>
+                                                <td className={`whitespace-nowrap px-6 py-4 text-right font-medium ${customer.outstandingBalance > 0 ? 'text-destructive' : ''}`}>{customer.outstandingBalance.toFixed(2)} €</td>
+                                                <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" className="h-8 w-8 p-0">
+                                                                <span className="sr-only">Ouvrir le menu</span>
+                                                                <MoreHorizontal className="h-4 w-4" />
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end">
+                                                            <DropdownMenuItem onClick={() => setSettlingDebtForCustomer(customer)} disabled={customer.outstandingBalance <= 0}>
+                                                                <CreditCard className="mr-2 h-4 w-4" />
+                                                                <span>Régler la dette</span>
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuSeparator />
+                                                            <DropdownMenuItem onClick={() => setEditingCustomer(customer)}>
+                                                                <Pencil className="mr-2 h-4 w-4" />
+                                                                <span>Modifier</span>
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem onClick={() => setDeletingCustomer(customer)} className="text-destructive focus:text-destructive-foreground focus:bg-destructive">
+                                                                <Trash2 className="mr-2 h-4 w-4" />
+                                                                <span>Supprimer</span>
+                                                            </DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                </td>
                                             </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-border">
-                                            {filteredCustomers.map(customer => (
-                                                <tr key={customer.id}>
-                                                    <td className="whitespace-nowrap px-6 py-4 font-medium">{customer.firstName} {customer.lastName}</td>
-                                                    <td className="whitespace-nowrap px-6 py-4 text-muted-foreground">{customer.phone || '-'}</td>
-                                                    <td className="whitespace-nowrap px-6 py-4 text-right font-medium">{customer.settlementDay || '-'}</td>
-                                                    <td className="whitespace-nowrap px-6 py-4 text-right font-medium">{customer.totalSpent.toFixed(2)} €</td>
-                                                    <td className={`whitespace-nowrap px-6 py-4 text-right font-medium ${customer.outstandingBalance > 0 ? 'text-destructive' : ''}`}>{customer.outstandingBalance.toFixed(2)} €</td>
-                                                    <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
-                                                        <DropdownMenu>
-                                                            <DropdownMenuTrigger asChild>
-                                                                <Button variant="ghost" className="h-8 w-8 p-0">
-                                                                    <span className="sr-only">Ouvrir le menu</span>
-                                                                    <MoreHorizontal className="h-4 w-4" />
-                                                                </Button>
-                                                            </DropdownMenuTrigger>
-                                                            <DropdownMenuContent align="end">
-                                                                <DropdownMenuItem onClick={() => setSettlingDebtForCustomer(customer)} disabled={customer.outstandingBalance <= 0}>
-                                                                    <CreditCard className="mr-2 h-4 w-4" />
-                                                                    <span>Régler la dette</span>
-                                                                </DropdownMenuItem>
-                                                                <DropdownMenuSeparator />
-                                                                <DropdownMenuItem onClick={() => setEditingCustomer(customer)}>
-                                                                    <Pencil className="mr-2 h-4 w-4" />
-                                                                    <span>Modifier</span>
-                                                                </DropdownMenuItem>
-                                                                <DropdownMenuItem onClick={() => setDeletingCustomer(customer)} className="text-destructive focus:text-destructive-foreground focus:bg-destructive">
-                                                                    <Trash2 className="mr-2 h-4 w-4" />
-                                                                    <span>Supprimer</span>
-                                                                </DropdownMenuItem>
-                                                            </DropdownMenuContent>
-                                                        </DropdownMenu>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ) : customers && customers.length > 0 && searchQuery ? (
+                            <div className="flex h-40 items-center justify-center rounded-md border-2 border-dashed border-border">
+                                <p className="text-muted-foreground">Aucun client ne correspond à votre recherche.</p>
+                            </div>
+                        ) : (
+                            <div className="flex h-40 items-center justify-center rounded-md border-2 border-dashed border-border">
+                                <div className="text-center">
+                                    <p className="text-muted-foreground">Vous n'avez pas encore de clients.</p>
+                                    <Button variant="link" onClick={() => setIsAddingCustomer(true)}>Ajouter votre premier client</Button>
                                 </div>
-                            ) : customers && customers.length > 0 && searchQuery ? (
-                                <div className="flex h-40 items-center justify-center rounded-md border-2 border-dashed border-border">
-                                    <p className="text-muted-foreground">Aucun client ne correspond à votre recherche.</p>
-                                </div>
-                            ) : (
-                                <div className="flex h-40 items-center justify-center rounded-md border-2 border-dashed border-border">
-                                    <div className="text-center">
-                                        <p className="text-muted-foreground">Vous n'avez pas encore de clients.</p>
-                                        <Button variant="link" onClick={() => setIsAddingCustomer(true)}>Ajouter votre premier client</Button>
-                                    </div>
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
-                </main>
-            </div>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            </main>
         </>
     );
 }
