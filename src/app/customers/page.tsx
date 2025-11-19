@@ -1,18 +1,19 @@
 
 'use client';
 
-import { useUser, useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking } from '@/firebase';
+import { useUser, useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useMemo } from 'react';
-import { collection, doc } from 'firebase/firestore';
+import { collection, doc, serverTimestamp } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
 import { AddCustomerForm } from '@/components/customers/add-customer-form';
 import { EditCustomerForm } from '@/components/customers/edit-customer-form';
 import { DeleteCustomerDialog } from '@/components/customers/delete-customer-dialog';
+import { SettleDebtDialog } from '@/components/customers/settle-debt-dialog';
 import { MoreHorizontal } from 'lucide-react';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 
 
 export interface Customer {
@@ -30,6 +31,12 @@ export interface Sale {
     remainingBalance: number;
 }
 
+export interface Payment {
+    id: string;
+    customerId: string;
+    amount: number;
+}
+
 export interface CustomerWithSalesData extends Customer {
     totalSpent: number;
     outstandingBalance: number;
@@ -43,6 +50,7 @@ export default function CustomersPage() {
     const [isAddingCustomer, setIsAddingCustomer] = useState(false);
     const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
     const [deletingCustomer, setDeletingCustomer] = useState<Customer | null>(null);
+    const [settlingDebtForCustomer, setSettlingDebtForCustomer] = useState<CustomerWithSalesData | null>(null);
 
     // Fetch Customers
     const customersCollectionRef = useMemoFirebase(() => {
@@ -58,27 +66,50 @@ export default function CustomersPage() {
     }, [user, firestore]);
     const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesCollectionRef);
     
+    // Fetch Payments
+    const paymentsCollectionRef = useMemoFirebase(() => {
+        if (!user || !firestore) return null;
+        return collection(firestore, 'users', user.uid, 'payments');
+    }, [user, firestore]);
+    const { data: payments, isLoading: isLoadingPayments } = useCollection<Payment>(paymentsCollectionRef);
+    
     // Combine customer and sales data
     const customersWithSales = useMemo(() => {
-        if (!customers || !sales) return [];
+        if (!customers || !sales || !payments) return [];
 
         const salesByCustomer = sales.reduce((acc, sale) => {
             if (sale.customerId) {
                 if (!acc[sale.customerId]) {
-                    acc[sale.customerId] = { totalSpent: 0, outstandingBalance: 0 };
+                    acc[sale.customerId] = { totalSpent: 0, debtFromSales: 0 };
                 }
                 acc[sale.customerId].totalSpent += sale.total;
-                acc[sale.customerId].outstandingBalance += sale.remainingBalance;
+                acc[sale.customerId].debtFromSales += sale.remainingBalance;
             }
             return acc;
-        }, {} as Record<string, { totalSpent: number, outstandingBalance: number }>);
+        }, {} as Record<string, { totalSpent: number, debtFromSales: number }>);
 
-        return customers.map(customer => ({
-            ...customer,
-            totalSpent: salesByCustomer[customer.id]?.totalSpent || 0,
-            outstandingBalance: salesByCustomer[customer.id]?.outstandingBalance || 0,
-        }));
-    }, [customers, sales]);
+        const paymentsByCustomer = payments.reduce((acc, payment) => {
+             if (payment.customerId) {
+                if (!acc[payment.customerId]) {
+                    acc[payment.customerId] = 0;
+                }
+                acc[payment.customerId] += payment.amount;
+            }
+            return acc;
+        }, {} as Record<string, number>);
+
+        return customers.map(customer => {
+            const customerSales = salesByCustomer[customer.id] || { totalSpent: 0, debtFromSales: 0 };
+            const customerPayments = paymentsByCustomer[customer.id] || 0;
+            const outstandingBalance = customerSales.debtFromSales - customerPayments;
+
+            return {
+                ...customer,
+                totalSpent: customerSales.totalSpent,
+                outstandingBalance: outstandingBalance > 0 ? outstandingBalance : 0,
+            }
+        });
+    }, [customers, sales, payments]);
 
 
     useEffect(() => {
@@ -95,8 +126,27 @@ export default function CustomersPage() {
             onError: (err) => console.error("Failed to delete customer:", err)
         });
     }
+
+    const handleSettleDebt = (amount: number) => {
+        if (!settlingDebtForCustomer || !firestore || !user) return;
+
+        const paymentsRef = collection(firestore, 'users', user.uid, 'payments');
+        addDocumentNonBlocking(paymentsRef, {
+            amount: amount,
+            customerId: settlingDebtForCustomer.id,
+            customerName: `${settlingDebtForCustomer.firstName} ${settlingDebtForCustomer.lastName}`,
+            createdAt: serverTimestamp(),
+        }, {
+            onSuccess: () => {
+                setSettlingDebtForCustomer(null);
+            },
+            onError: (err) => {
+                console.error("Failed to add payment:", err);
+            }
+        })
+    };
     
-    const isLoading = isUserLoading || isLoadingCustomers || isLoadingSales;
+    const isLoading = isUserLoading || isLoadingCustomers || isLoadingSales || isLoadingPayments;
 
     if (isLoading || !user) {
         return <div className="flex min-h-screen items-center justify-center"><p>Chargement...</p></div>;
@@ -123,6 +173,15 @@ export default function CustomersPage() {
                     onOpenChange={(isOpen) => !isOpen && setDeletingCustomer(null)}
                     onConfirm={handleDeleteCustomer}
                     customerName={`${deletingCustomer.firstName} ${deletingCustomer.lastName}`}
+                />
+            )}
+            {settlingDebtForCustomer && (
+                <SettleDebtDialog
+                    isOpen={!!settlingDebtForCustomer}
+                    onOpenChange={(isOpen) => !isOpen && setSettlingDebtForCustomer(null)}
+                    onConfirm={handleSettleDebt}
+                    customerName={`${settlingDebtForCustomer.firstName} ${settlingDebtForCustomer.lastName}`}
+                    outstandingBalance={settlingDebtForCustomer.outstandingBalance}
                 />
             )}
            
@@ -170,6 +229,10 @@ export default function CustomersPage() {
                                                             </Button>
                                                         </DropdownMenuTrigger>
                                                         <DropdownMenuContent align="end">
+                                                            <DropdownMenuItem onClick={() => setSettlingDebtForCustomer(customer)} disabled={customer.outstandingBalance <= 0}>
+                                                                Régler la dette
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuSeparator />
                                                             <DropdownMenuItem onClick={() => setEditingCustomer(customer)}>
                                                                 Modifier
                                                             </DropdownMenuItem>
