@@ -10,14 +10,12 @@ import {
   Cookie,
   Settings,
   ShoppingCart,
-  History,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SheetClose } from './ui/sheet';
 
 const navLinks = [
   { href: '/sell', label: 'Vendre', icon: ShoppingCart },
-  { href: '/sales-history', label: 'Historique', icon: History },
   { href: '/alerts', label: 'Alertes', icon: Bell },
   { href: '/products', label: 'Produits', icon: Package },
   { href: '/customers', label: 'Clients', icon: Users },
