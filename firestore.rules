@@ -9,6 +9,7 @@
  * /users/{userId} - User profile information.
  * /users/{userId}/products/{productId} - Products created by the user.
  * /users/{userId}/sales/{saleId} - Sales recorded by the user.
+ * /users/{userId}/customers/{customerId} - Customers created by the user.
  *
  */
 rules_version = '2';
@@ -41,6 +42,12 @@ service cloud.firestore {
       // Rules for the 'sales' subcollection nested under a user document.
       match /sales/{saleId} {
         // Only the owner of the parent user document can read or write to the sales subcollection.
+        allow read, write: if isOwner(userId);
+      }
+
+      // Rules for the 'customers' subcollection nested under a user document.
+      match /customers/{customerId} {
+        // Only the owner of the parent user document can read or write to the customers subcollection.
         allow read, write: if isOwner(userId);
       }
     }

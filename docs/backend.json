@@ -112,6 +112,41 @@
         "total",
         "createdAt"
       ]
+    },
+    "Customer": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Customer",
+      "type": "object",
+      "description": "Represents a customer of the business.",
+      "properties": {
+        "firstName": {
+          "type": "string",
+          "description": "First name of the customer."
+        },
+        "lastName": {
+          "type": "string",
+          "description": "Last name of the customer."
+        },
+        "email": {
+          "type": "string",
+          "description": "Email address of the customer.",
+          "format": "email"
+        },
+        "phone": {
+          "type": "string",
+          "description": "Phone number of the customer."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the customer was created.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "firstName",
+        "lastName",
+        "createdAt"
+      ]
     }
   },
   "auth": {
@@ -131,6 +166,10 @@
     "/users/{userId}/sales/{saleId}": {
       "schema": { "$ref": "#/backend/entities/Sale" },
       "description": "The collection of sales records for a specific user. Only the user can access their own sales history."
+    },
+    "/users/{userId}/customers/{customerId}": {
+      "schema": { "$ref": "#/backend/entities/Customer" },
+      "description": "The collection of customers for a specific user. Only the user can access their own customer list."
     }
   }
 }
