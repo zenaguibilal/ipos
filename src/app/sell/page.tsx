@@ -33,6 +33,7 @@ export default function SellPage() {
   const [isProcessingSale, setIsProcessingSale] = useState(false);
   const [saleStatus, setSaleStatus] = useState<{ success?: string, error?: string } | null>(null);
   const [barcodeSearch, setBarcodeSearch] = useState('');
+  const [productSearch, setProductSearch] = useState('');
 
   const productsCollectionRef = useMemoFirebase(() => {
     if (!firestore || !user) return null;
@@ -129,6 +130,11 @@ export default function SellPage() {
     setBarcodeSearch(''); // Clear input after search
     setTimeout(() => setSaleStatus(null), 2000); // Clear status message after 2 seconds
   };
+  
+  const filteredProducts = useMemo(() => {
+    if (!products) return [];
+    return products.filter(p => p.name.toLowerCase().includes(productSearch.toLowerCase()));
+  }, [products, productSearch]);
 
 
   if (isUserLoading || !user) {
@@ -159,15 +165,23 @@ export default function SellPage() {
                          <CardTitle>Produits</CardTitle>
                          <div className="flex flex-col gap-2 sm:flex-row">
                              <CardDescription className="flex-1">
-                                Recherchez par code-barres ou cliquez sur un produit pour l'ajouter.
+                                Recherchez par nom, code-barres ou cliquez sur un produit pour l'ajouter.
                             </CardDescription>
-                            <form onSubmit={handleBarcodeSearch} className="w-full sm:w-64">
+                            <div className="flex gap-2">
                                 <Input 
-                                    placeholder="Rechercher par code-barres..."
-                                    value={barcodeSearch}
-                                    onChange={(e) => setBarcodeSearch(e.target.value)}
+                                    placeholder="Rechercher par nom..."
+                                    value={productSearch}
+                                    onChange={(e) => setProductSearch(e.target.value)}
+                                    className="w-full sm:w-48"
                                 />
-                            </form>
+                                <form onSubmit={handleBarcodeSearch} className="w-full sm:w-48">
+                                    <Input 
+                                        placeholder="Rechercher par code-barres..."
+                                        value={barcodeSearch}
+                                        onChange={(e) => setBarcodeSearch(e.target.value)}
+                                    />
+                                </form>
+                            </div>
                         </div>
                         <div className="h-5 pt-1">
                             {saleStatus?.error && <p className="text-xs text-red-500">{saleStatus.error}</p>}
@@ -179,9 +193,9 @@ export default function SellPage() {
                             <div className="flex h-64 items-center justify-center">
                                 <p>Chargement des produits...</p>
                             </div>
-                        ) : products && products.length > 0 ? (
+                        ) : filteredProducts && filteredProducts.length > 0 ? (
                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                                {products.map((product) => (
+                                {filteredProducts.map((product) => (
                                     <Card 
                                         key={product.id}
                                         onClick={() => addToCart(product)}
@@ -197,10 +211,17 @@ export default function SellPage() {
                                     </Card>
                                 ))}
                            </div>
+                        ) : products && products.length > 0 ? (
+                             <div className="flex h-64 items-center justify-center rounded-md border-2 border-dashed border-border">
+                                <div className="text-center">
+                                    <p className="text-muted-foreground">Aucun produit ne correspond à votre recherche.</p>
+                                </div>
+                            </div>
                         ) : (
                             <div className="flex h-64 items-center justify-center rounded-md border-2 border-dashed border-border">
                                 <div className="text-center">
                                     <p className="text-muted-foreground">Aucun produit à afficher.</p>
+
                                     <Button variant="link" onClick={() => setIsAddingProduct(true)}>Ajouter un premier produit</Button>
                                 </div>
                             </div>
