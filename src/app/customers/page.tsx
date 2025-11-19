@@ -1,15 +1,11 @@
 'use client';
 
-import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { CustomerList } from "@/components/customers/customer-list";
-import { collection } from "firebase/firestore";
+import { useCustomers } from "@/lib/data";
 import { Loader } from "lucide-react";
-import type { Customer } from "@/lib/types";
 
 export default function CustomersPage() {
-    const firestore = useFirestore();
-    const customersRef = useMemoFirebase(() => collection(firestore, 'customers'), [firestore]);
-    const { data: customers, isLoading } = useCollection<Customer>(customersRef);
+    const { customers, isLoading } = useCustomers();
 
     if (isLoading) {
         return <div className="flex justify-center items-center h-full"><Loader className="animate-spin" /></div>

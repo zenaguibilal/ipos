@@ -1,15 +1,11 @@
 'use client';
 
-import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { SupplierList } from "@/components/suppliers/supplier-list";
-import { collection } from "firebase/firestore";
+import { useSuppliers } from "@/lib/data";
 import { Loader } from "lucide-react";
-import type { Supplier } from "@/lib/types";
 
 export default function SuppliersPage() {
-    const firestore = useFirestore();
-    const suppliersRef = useMemoFirebase(() => collection(firestore, 'suppliers'), [firestore]);
-    const { data: suppliers, isLoading } = useCollection<Supplier>(suppliersRef);
+    const { suppliers, isLoading } = useSuppliers();
 
     if (isLoading) {
         return <div className="flex justify-center items-center h-full"><Loader className="animate-spin" /></div>
