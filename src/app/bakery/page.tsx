@@ -259,7 +259,7 @@ function BakeryTableRow({ order, onFulfillToggle, onPaymentStatusChange, onDelet
 
 export default function BakeryPage() {
     const firestore = useFirestore();
-    const bakeryOrdersColRef = useMemoFirebase(() => collection(firestore, 'bakery_orders'), [firestore]);
+    const bakeryOrdersColRef = useMemoFirebase(() => firestore ? collection(firestore, 'bakery_orders') : null, [firestore]);
     const { data: orders, isLoading } = useCollection<BakeryOrder>(bakeryOrdersColRef);
     const { toast } = useToast();
 
@@ -282,7 +282,7 @@ export default function BakeryPage() {
     }, [activeOrders]);
 
     const handleSaveOrder = async (orderData: Omit<BakeryOrder, 'id' | 'isFulfilled'>) => {
-        if (!firestore) return;
+        if (!firestore || !bakeryOrdersColRef) return;
         const orderWithFulfillment = {
             ...orderData,
             isFulfilled: false,
