@@ -151,7 +151,10 @@ export function ProductList({ initialProducts }: { initialProducts: Product[] })
   const firestore = useFirestore();
   const supplierId = 'supp_1';
   const productsRef = useMemoFirebase(
-    () => collection(firestore, `suppliers/${supplierId}/products`),
+    () => {
+        if (!firestore) return null;
+        return collection(firestore, `suppliers/${supplierId}/products`);
+    },
     [firestore, supplierId]
   );
 

@@ -111,6 +111,7 @@ function SupplierRow({ supplier, onDelete, onEdit }: { supplier: Supplier, onDel
     const [isSettleDebtOpen, setIsSettleDebtOpen] = useState(false);
 
     const handleSettleDebt = (amountInDZD: number) => {
+        if (!firestore) return;
         const amountInCents = amountInDZD * 100;
         const supplierRef = doc(firestore, 'suppliers', supplier.id);
         updateDocumentNonBlocking(supplierRef, {
@@ -176,7 +177,10 @@ function SupplierRow({ supplier, onDelete, onEdit }: { supplier: Supplier, onDel
 
 export function SupplierList({ initialSuppliers }: { initialSuppliers: Supplier[] }) {
     const firestore = useFirestore();
-    const suppliersRef = useMemoFirebase(() => collection(firestore, 'suppliers'), [firestore]);
+    const suppliersRef = useMemoFirebase(() => {
+        if (!firestore) return null;
+        return collection(firestore, 'suppliers');
+    }, [firestore]);
     
     const [isSheetOpen, setIsSheetOpen] = useState(false);
     const [editingSupplier, setEditingSupplier] = useState<Partial<Supplier> | null>(null);
@@ -195,11 +199,13 @@ export function SupplierList({ initialSuppliers }: { initialSuppliers: Supplier[
     };
 
     const handleDelete = (supplierId: string) => {
+        if (!firestore) return;
         const docRef = doc(firestore, 'suppliers', supplierId);
         deleteDocumentNonBlocking(docRef);
     };
     
     const handleSave = (supplierData: Omit<Supplier, 'id' | 'debt'> & { id?: string }) => {
+        if (!suppliersRef) return;
         const id = supplierData.id || `supp_${Date.now()}`;
         const docRef = doc(suppliersRef, id);
 
@@ -286,5 +292,3 @@ export function SupplierList({ initialSuppliers }: { initialSuppliers: Supplier[
         </>
     );
 }
-
-    
