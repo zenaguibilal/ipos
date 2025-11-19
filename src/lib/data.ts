@@ -47,3 +47,73 @@ export function useSales() {
     const { data: sales, isLoading, error } = useCollection<SaleWithDetails>(salesQuery);
     return { sales: sales || [], isLoading, error };
 }
+
+export function useSalesDashboard() {
+    const firestore = useFirestore();
+
+    const salesQuery = useMemoFirebase(() => {
+        if (!firestore) return null;
+        const sevenDaysAgo = subDays(new Date(), 7).toISOString();
+        return query(
+            collectionGroup(firestore, 'sales'),
+            where('saleDate', '>=', sevenDaysAgo),
+            orderBy('saleDate', 'desc')
+        );
+    }, [firestore]);
+    
+    const { data: sales, isLoading: salesLoading } = useCollection<Sale>(salesQuery);
+
+    const recentSalesQuery = useMemoFirebase(() => {
+        if (!firestore) return null;
+        return query(
+            collectionGroup(firestore, 'sales'),
+            orderBy('saleDate', 'desc'),
+            limit(5)
+        );
+    }, [firestore]);
+    const { data: recentSales, isLoading: recentSalesLoading } = useCollection<SaleWithDetails>(recentSalesQuery);
+
+    const { customers, isLoading: customersLoading } = useCustomers();
+
+    const salesLast7Days = useMemo(() => {
+        if (!sales) return [];
+        const dailySales = new Map<string, number>();
+
+        for (let i = 0; i < 7; i++) {
+            const date = subDays(new Date(), i);
+            const formattedDate = format(date, 'd MMM', { locale: fr });
+            dailySales.set(formattedDate, 0);
+        }
+
+        sales.forEach(sale => {
+            const saleDate = new Date(sale.saleDate);
+            const formattedDate = format(saleDate, 'd MMM', { locale: fr });
+            if (dailySales.has(formattedDate)) {
+                dailySales.set(formattedDate, (dailySales.get(formattedDate) || 0) + sale.totalAmount);
+            }
+        });
+        
+        return Array.from(dailySales.entries())
+            .map(([name, total]) => ({ name, total }))
+            .reverse();
+
+    }, [sales]);
+    
+    const totalRevenue = useMemo(() => sales?.reduce((sum, sale) => sum + sale.totalAmount, 0) || 0, [sales]);
+    const totalSales = sales?.length || 0;
+
+    const customersWithSales = useMemo(() => new Set(sales?.map(s => s.customerId)), [sales]);
+    const activeCustomers = customers.filter(c => customersWithSales.has(c.id)).length;
+    
+    const isLoading = salesLoading || recentSalesLoading || customersLoading;
+
+    return { 
+        salesLast7Days, 
+        totalRevenue, 
+        totalSales,
+        activeCustomers, 
+        recentSales: recentSales || [], 
+        customers,
+        isLoading 
+    };
+}
