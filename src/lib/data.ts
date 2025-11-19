@@ -77,7 +77,7 @@ export function useSales(max?: number) {
 
     return {
         sales: enrichedSales,
-        isLoading: salesLoading || (customerIds.length > 0 && customersLoading),
+        isLoading: salesLoading || customersLoading,
         error: salesError,
     };
 }
