@@ -78,7 +78,15 @@ function LoginFormComponent() {
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="password">كلمة المرور</Label>
+            <div className="flex items-center">
+              <Label htmlFor="password">كلمة المرور</Label>
+              <Link
+                href="/forgot-password"
+                className="ml-auto inline-block text-sm underline"
+              >
+                نسيت كلمة المرور؟
+              </Link>
+            </div>
             <Input 
               id="password" 
               type="password" 
