@@ -1,7 +1,7 @@
 'use client';
 import { useState, useMemo } from 'react';
-import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
-import { collection, doc, query, where, updateDoc } from 'firebase/firestore';
+import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, doc, updateDoc, addDoc, deleteDoc } from 'firebase/firestore';
 import type { BakeryOrder } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -86,71 +86,63 @@ function BakeryOrderForm({ isOpen, onClose, onSave }: { isOpen: boolean, onClose
 
 function BakeryTable({ orders, onFulfillToggle, onPaymentStatusChange, onDelete }: { orders: BakeryOrder[], onFulfillToggle: (order: BakeryOrder) => void, onPaymentStatusChange: (order: BakeryOrder, newStatus: 'paid' | 'unpaid') => void, onDelete: (orderId: string) => void }) {
     if (orders.length === 0) {
-        return <p className="text-center text-muted-foreground py-8">لا توجد طلبات حالياً.</p>;
+        return (
+            <TableRow>
+                <TableCell colSpan={7} className="h-24 text-center">
+                    لا توجد طلبات حالياً.
+                </TableCell>
+            </TableRow>
+        );
     }
 
     return (
-        <Table>
-            <TableHeader>
-                <TableRow>
-                    <TableHead>اسم العميل</TableHead>
-                    <TableHead>الكمية</TableHead>
-                    <TableHead>النوع</TableHead>
-                    <TableHead>تاريخ الطلب</TableHead>
-                    <TableHead>حالة الدفع</TableHead>
-                    <TableHead>حالة الاستلام</TableHead>
-                    <TableHead>إجراءات</TableHead>
+        <>
+            {orders.map(order => (
+                <TableRow key={order.id} data-state={order.isFulfilled ? 'completed' : 'pending'}>
+                    <TableCell className="font-medium">{order.customerName}</TableCell>
+                    <TableCell className="text-center">{order.quantity}</TableCell>
+                    <TableCell>
+                         <Badge variant={order.type === 'bread' ? 'secondary' : 'outline'} className="gap-1">
+                            {order.type === 'bread' ? <Wheat className="h-3 w-3" /> : <Cookie className="h-3 w-3" />}
+                            {order.type === 'bread' ? 'خبز' : 'ملوي'}
+                        </Badge>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                        {format(new Date(order.orderDate), "d MMM yyyy, HH:mm", { locale: fr })}
+                    </TableCell>
+                    <TableCell>
+                        <Select
+                            value={order.paymentStatus}
+                            onValueChange={(newStatus: 'paid' | 'unpaid') => onPaymentStatusChange(order, newStatus)}
+                        >
+                            <SelectTrigger className={`w-[110px] text-xs h-8 ${order.paymentStatus === 'paid' ? 'border-green-500 text-green-700' : 'border-red-500 text-red-700'}`}>
+                                <SelectValue placeholder="حالة الدفع" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="paid">مدفوع</SelectItem>
+                                <SelectItem value="unpaid">غير مدفوع</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </TableCell>
+                    <TableCell>
+                        <div className="flex items-center justify-center">
+                            <Switch
+                                id={`fulfill-switch-${order.id}`}
+                                checked={order.isFulfilled}
+                                onCheckedChange={() => onFulfillToggle(order)}
+                                aria-label="حالة الاستلام"
+                            />
+                        </div>
+                    </TableCell>
+                    <TableCell className="text-center">
+                        <Button variant="ghost" size="icon" onClick={() => onDelete(order.id)}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                            <span className="sr-only">حذف</span>
+                        </Button>
+                    </TableCell>
                 </TableRow>
-            </TableHeader>
-            <TableBody>
-                {orders.map(order => (
-                    <TableRow key={order.id}>
-                        <TableCell className="font-medium">{order.customerName}</TableCell>
-                        <TableCell>{order.quantity}</TableCell>
-                        <TableCell>
-                            <Badge variant={order.type === 'bread' ? 'secondary' : 'outline'}>
-                                {order.type === 'bread' ? 'خبز' : 'ملوي'}
-                            </Badge>
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                            {format(new Date(order.orderDate), "d MMM yyyy, HH:mm", { locale: fr })}
-                        </TableCell>
-                        <TableCell>
-                            <Select
-                                value={order.paymentStatus}
-                                onValueChange={(newStatus: 'paid' | 'unpaid') => onPaymentStatusChange(order, newStatus)}
-                            >
-                                <SelectTrigger className={`w-[110px] ${order.paymentStatus === 'paid' ? 'border-green-500' : 'border-destructive'}`}>
-                                    <SelectValue placeholder="حالة الدفع" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="paid">مدفوع</SelectItem>
-                                    <SelectItem value="unpaid">غير مدفوع</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </TableCell>
-                        <TableCell>
-                            <div className="flex items-center gap-2">
-                                <Switch
-                                    id={`fulfill-switch-${order.id}`}
-                                    checked={order.isFulfilled}
-                                    onCheckedChange={() => onFulfillToggle(order)}
-                                />
-                                <Label htmlFor={`fulfill-switch-${order.id}`} className="sr-only">
-                                    حالة الاستلام
-                                </Label>
-                            </div>
-                        </TableCell>
-                        <TableCell>
-                            <Button variant="ghost" size="icon" onClick={() => onDelete(order.id)}>
-                                <Trash2 className="h-4 w-4 text-destructive" />
-                                <span className="sr-only">حذف</span>
-                            </Button>
-                        </TableCell>
-                    </TableRow>
-                ))}
-            </TableBody>
-        </Table>
+            ))}
+        </>
     );
 }
 
@@ -170,20 +162,31 @@ export default function BakeryPage() {
         return orders?.filter(order => order.type === 'meloui').reduce((sum, order) => sum + order.quantity, 0) || 0;
     }, [orders]);
 
-    const handleSaveOrder = (orderData: Omit<BakeryOrder, 'id' | 'orderDate' | 'isFulfilled'>) => {
+    const handleSaveOrder = async (orderData: Omit<BakeryOrder, 'id' | 'orderDate' | 'isFulfilled'>) => {
+        if (!firestore) return;
         const orderWithDate = {
             ...orderData,
             orderDate: new Date().toISOString(),
             isFulfilled: false,
         };
-        addDocumentNonBlocking(bakeryOrdersColRef, orderWithDate);
-        toast({
-            title: "تم حفظ الطلب",
-            description: `تم تسجيل طلب ${orderData.customerName} بنجاح.`,
-        });
+        try {
+            await addDoc(bakeryOrdersColRef, orderWithDate);
+            toast({
+                title: "تم حفظ الطلب",
+                description: `تم تسجيل طلب ${orderData.customerName} بنجاح.`,
+            });
+        } catch (error) {
+            console.error("Error saving order:", error);
+            toast({
+                variant: "destructive",
+                title: "خطأ في الحفظ",
+                description: "لم نتمكن من حفظ الطلب. يرجى المحاولة مرة أخرى.",
+            });
+        }
     };
 
     const handleFulfillToggle = async (order: BakeryOrder) => {
+        if (!firestore) return;
         const orderRef = doc(firestore, 'bakery_orders', order.id);
         try {
             await updateDoc(orderRef, { isFulfilled: !order.isFulfilled });
@@ -202,6 +205,7 @@ export default function BakeryPage() {
     };
     
     const handlePaymentStatusChange = async (order: BakeryOrder, newStatus: 'paid' | 'unpaid') => {
+        if (!firestore) return;
         const orderRef = doc(firestore, 'bakery_orders', order.id);
         try {
             await updateDoc(orderRef, { paymentStatus: newStatus });
@@ -219,17 +223,32 @@ export default function BakeryPage() {
         }
     };
 
-    const handleDeleteOrder = (orderId: string) => {
+    const handleDeleteOrder = async (orderId: string) => {
+        if (!firestore) return;
         const orderRef = doc(firestore, 'bakery_orders', orderId);
-        deleteDocumentNonBlocking(orderRef);
-        toast({
-            title: "تم حذف الطلب",
-            variant: "destructive",
-        });
+        try {
+            await deleteDoc(orderRef);
+            toast({
+                title: "تم حذف الطلب",
+                variant: "destructive",
+            });
+        } catch (error) {
+            console.error("Error deleting order:", error);
+            toast({
+                variant: "destructive",
+                title: "خطأ في الحذف",
+                description: "لم نتمكن من حذف الطلب. يرجى المحاولة مرة أخرى.",
+            });
+        }
     };
 
     const sortedOrders = useMemo(() => {
-        return orders ? [...orders].sort((a, b) => a.isFulfilled === b.isFulfilled ? (new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime()) : a.isFulfilled ? 1 : -1) : [];
+        return orders ? [...orders].sort((a, b) => {
+            if (a.isFulfilled !== b.isFulfilled) {
+                return a.isFulfilled ? 1 : -1;
+            }
+            return new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime();
+        }) : [];
     }, [orders]);
 
 
@@ -239,13 +258,13 @@ export default function BakeryPage() {
                 <CardHeader className="flex flex-row items-center justify-between">
                     <div className="grid gap-2">
                         <CardTitle>طلبات المخبوزات</CardTitle>
-                        <CardDescription>إدارة وتتبع طلبات الخبز والملوي.</CardDescription>
+                        <CardDescription>إدارة وتتبع طلبات الخبز والملوي اليومية.</CardDescription>
                         <div className="flex items-center gap-4 pt-2">
-                            <Badge variant="secondary" className="flex items-center gap-2">
+                            <Badge variant="secondary" className="flex items-center gap-2 py-1 px-3 text-sm">
                                 <Wheat className="h-4 w-4" />
                                 <span>خبز: {breadOrdersQuantity}</span>
                             </Badge>
-                            <Badge variant="outline" className="flex items-center gap-2">
+                            <Badge variant="outline" className="flex items-center gap-2 py-1 px-3 text-sm">
                                 <Cookie className="h-4 w-4" />
                                 <span>ملوي: {melouiOrdersQuantity}</span>
                             </Badge>
@@ -258,11 +277,31 @@ export default function BakeryPage() {
                 </CardHeader>
                 <CardContent>
                     {isLoading ? (
-                        <div className="flex justify-center items-center h-40">
-                            <Loader className="animate-spin" />
+                        <div className="flex justify-center items-center h-60">
+                            <Loader className="animate-spin h-8 w-8 text-primary" />
                         </div>
                     ) : (
-                        <BakeryTable orders={sortedOrders} onFulfillToggle={handleFulfillToggle} onPaymentStatusChange={handlePaymentStatusChange} onDelete={handleDeleteOrder} />
+                         <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>اسم العميل</TableHead>
+                                    <TableHead className="text-center">الكمية</TableHead>
+                                    <TableHead>النوع</TableHead>
+                                    <TableHead>تاريخ الطلب</TableHead>
+                                    <TableHead>حالة الدفع</TableHead>
+                                    <TableHead className="text-center">حالة الاستلام</TableHead>
+                                    <TableHead className="text-center">إجراءات</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                <BakeryTable 
+                                    orders={sortedOrders} 
+                                    onFulfillToggle={handleFulfillToggle} 
+                                    onPaymentStatusChange={handlePaymentStatusChange} 
+                                    onDelete={handleDeleteOrder} 
+                                />
+                            </TableBody>
+                        </Table>
                     )}
                 </CardContent>
             </Card>
@@ -270,3 +309,5 @@ export default function BakeryPage() {
         </div>
     );
 }
+
+    
