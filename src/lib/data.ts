@@ -35,7 +35,7 @@ export function useSales(salesLimit?: number) {
 
     const salesRef = useMemoFirebase(() => {
         if (!firestore) return null;
-        let q: any = query(collectionGroup(firestore, 'sales'), orderBy('saleDate', 'desc'));
+        let q = query(collectionGroup(firestore, 'sales'), orderBy('saleDate', 'desc'));
         if (salesLimit) {
             q = query(q, limit(salesLimit));
         }
@@ -75,30 +75,23 @@ export function useSales(salesLimit?: number) {
     const { data: productsData, isLoading: productsLoading, error: productsError } = useCollection<Product>(productsRef);
 
     const enrichedSales = useMemo(() => {
-        if (!salesData || !customersData || !lineItemsData || !productsData) return [];
-        if (salesData.length > 0 && customerIds.length > 0 && customersData.length === 0) return [];
-        if (lineItemIds.length > 0 && lineItemsData.length === 0) return [];
-        if (productIds.length > 0 && productsData.length === 0) return [];
-
-        const customerMap = new Map(customersData.map(c => [c.id, c]));
-        const productMap = new Map(productsData.map(p => [p.id, p]));
-        const lineItemMap = new Map(lineItemsData.map(li => [li.id, { ...li, product: productMap.get(li.productId) }]));
+        if (!salesData) return [];
+        
+        const customerMap = new Map(customersData?.map(c => [c.id, c]));
+        const productMap = new Map(productsData?.map(p => [p.id, p]));
+        const lineItemMap = new Map(lineItemsData?.map(li => [li.id, { ...li, product: productMap.get(li.productId) }]));
 
         return salesData.map(sale => ({
             ...sale,
             customer: customerMap.get(sale.customerId),
             lineItems: sale.saleLineItemIds.map(id => lineItemMap.get(id)).filter(Boolean) as SaleLineItemWithProduct[],
         }));
-    }, [salesData, customersData, lineItemsData, productsData, customerIds, lineItemIds, productIds]);
-
-    const isLoading = salesLoading ||
-                      (customerIds.length > 0 && customersLoading) ||
-                      (lineItemIds.length > 0 && lineItemsLoading) ||
-                      (productIds.length > 0 && productsLoading);
-                      
+    }, [salesData, customersData, lineItemsData, productsData]);
+    
+    const isLoading = salesLoading || (customerIds.length > 0 && customersLoading) || (lineItemIds.length > 0 && lineItemsLoading) || (productIds.length > 0 && productsLoading);
     const error = salesError || customersError || lineItemsError || productsError;
 
-    return { sales: enrichedSales || [], isLoading, error };
+    return { sales: enrichedSales, isLoading, error };
 }
 
 export type TimeRange = 'daily' | 'monthly' | 'yearly';
