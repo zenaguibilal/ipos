@@ -16,6 +16,7 @@
  * - /customers/{customerId}/sales/{saleId}
  * - /sales_line_items/{saleLineItemId}
  * - /stock_alerts/{stockAlertId}
+ * - /bakery_orders/{orderId}
  */
 rules_version = '2';
 service cloud.firestore {
