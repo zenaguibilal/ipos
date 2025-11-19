@@ -13,13 +13,7 @@ service cloud.firestore {
     match /customers/{customerId} {
       allow read, write: if request.auth != null;
     }
-    match /sales_line_items/{saleLineItemId} {
-      allow read, write: if request.auth != null;
-    }
     match /stock_alerts/{stockAlertId} {
-      allow read, write: if request.auth != null;
-    }
-    match /counters/{counterId} {
       allow read, write: if request.auth != null;
     }
     match /bakery_orders/{orderId} {
@@ -29,14 +23,6 @@ service cloud.firestore {
     // Allow access to subcollections
     match /suppliers/{supplierId}/products/{productId} {
       allow read, write: if request.auth != null;
-    }
-    match /customers/{customerId}/sales/{saleId} {
-      allow read, write: if request.auth != null;
-    }
-
-    // Allow collection group queries on 'sales' for authenticated users.
-    match /{path=**}/sales/{saleId} {
-      allow read: if request.auth != null;
     }
   }
 }

@@ -4,8 +4,6 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   Home,
-  ShoppingCart,
-  History,
   Package,
   Users,
   Truck,
@@ -18,8 +16,6 @@ import { SheetClose } from './ui/sheet';
 
 const navLinks = [
   { href: '/', label: 'Tableau de Bord', icon: Home },
-  { href: '/sell', label: 'Vendre', icon: ShoppingCart },
-  { href: '/sales-history', label: 'Historique', icon: History },
   { href: '/alerts', label: 'Alertes', icon: Bell },
   { href: '/products', label: 'Produits', icon: Package },
   { href: '/customers', label: 'Clients', icon: Users },

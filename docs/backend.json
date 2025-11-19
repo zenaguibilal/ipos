@@ -128,88 +128,6 @@
         "contactName"
       ]
     },
-    "Sale": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Sale",
-      "type": "object",
-      "description": "Represents a sale transaction.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Sale entity."
-        },
-        "invoiceNumber": {
-            "type": "number",
-            "description": "The sequential invoice number for the sale."
-        },
-        "customerId": {
-          "type": "string",
-          "description": "Reference to Customer. (Relationship: Customer 1:N Sale)"
-        },
-        "saleDate": {
-          "type": "string",
-          "description": "Date and time of the sale.",
-          "format": "date-time"
-        },
-        "totalAmount": {
-          "type": "number",
-          "description": "Total amount of the sale."
-        },
-        "paymentMethod": {
-          "type": "string",
-          "description": "Payment method used for the sale (e.g., cash, card, e-wallet)."
-        },
-        "saleLineItemIds": {
-          "type": "array",
-          "description": "References to SaleLineItems. (Relationship: SaleLineItem N:N Sale)",
-          "items": {
-            "type": "string"
-          }
-        }
-      },
-      "required": [
-        "id",
-        "invoiceNumber",
-        "customerId",
-        "saleDate",
-        "totalAmount",
-        "paymentMethod"
-      ]
-    },
-    "SaleLineItem": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "SaleLineItem",
-      "type": "object",
-      "description": "Represents a line item in a sale transaction.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the SaleLineItem entity."
-        },
-        "productId": {
-          "type": "string",
-          "description": "Reference to Product. (Relationship: Product 1:N SaleLineItem)"
-        },
-        "quantity": {
-          "type": "number",
-          "description": "Quantity of the product sold in this line item."
-        },
-        "unitPrice": {
-          "type": "number",
-          "description": "Price of one unit of the product at the time of the sale."
-        },
-        "discount": {
-          "type": "number",
-          "description": "Discount applied to this line item."
-        }
-      },
-      "required": [
-        "id",
-        "productId",
-        "quantity",
-        "unitPrice"
-      ]
-    },
     "StockAlert": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "StockAlert",
@@ -246,23 +164,6 @@
         "predictedRunOutDate",
         "alertSent"
       ]
-    },
-     "InvoiceCounter": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "InvoiceCounter",
-      "type": "object",
-      "description": "A global counter to ensure unique, sequential invoice numbers.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "The ID of the counter document (e.g., 'sales')."
-        },
-        "lastNumber": {
-          "type": "number",
-          "description": "The last invoice number that was used."
-        }
-      },
-      "required": ["id", "lastNumber"]
     },
     "BakeryOrder": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -369,42 +270,6 @@
         }
       },
       {
-        "path": "/customers/{customerId}/sales/{saleId}",
-        "definition": {
-          "entityName": "Sale",
-          "schema": {
-            "$ref": "#/backend/entities/Sale"
-          },
-          "description": "Stores sales records associated with a specific customer. Uses path-based ownership for security. Includes denormalized 'customerId' for authorization independence.",
-          "params": [
-            {
-              "name": "customerId",
-              "description": "The unique identifier of the customer."
-            },
-            {
-              "name": "saleId",
-              "description": "The unique identifier of the sale."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/sales_line_items/{saleLineItemId}",
-        "definition": {
-          "entityName": "SaleLineItem",
-          "schema": {
-            "$ref": "#/backend/entities/SaleLineItem"
-          },
-          "description": "Stores individual line items for sales.",
-          "params": [
-            {
-              "name": "saleLineItemId",
-              "description": "The unique identifier of the sale line item."
-            }
-          ]
-        }
-      },
-      {
         "path": "/stock_alerts/{stockAlertId}",
         "definition": {
           "entityName": "StockAlert",
@@ -416,22 +281,6 @@
             {
               "name": "stockAlertId",
               "description": "The unique identifier of the stock alert."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/counters/{counterId}",
-        "definition": {
-          "entityName": "InvoiceCounter",
-          "schema": {
-            "$ref": "#/backend/entities/InvoiceCounter"
-          },
-          "description": "Global counters for things like invoice numbers.",
-          "params": [
-            {
-              "name": "counterId",
-              "description": "The name of the counter (e.g., 'sales')."
             }
           ]
         }
@@ -453,7 +302,7 @@
         }
       }
     ],
-    "reasoning": "The Firestore data structure is designed to support the iPOS application's core features: sales, product management, customer management, and supplier management. The structure prioritizes authorization independence and simplifies security rules. Path-based ownership is used for entities associated with specific suppliers and customers. Each collection is designed to have a homogeneous security posture, meaning all documents within a single collection share the same security requirements. This eliminates the need for complex rule logic that distinguishes between different types of documents within the same collection. \n\nAuthorization Independence:\nTo ensure authorization independence and avoid `get()` calls in security rules, the `Supplier` and `Customer` entities will have dedicated collections. The `Product` entities are stored as subcollections of `Supplier` documents, enabling secure and straightforward ownership-based security rules. Sales data is associated with customers via a subcollection, also enforcing ownership.\n\nQAPs Support:\nThe structure uses structural segregation to ensure that each collection has a homogeneous security posture. This, combined with path-based ownership, facilitates secure `list` operations.  Data denormalization (copying relevant supplier/customer data where needed) avoids the need for complex joins or server-side filtering, improving performance and security."
+    "reasoning": "The Firestore data structure is designed to support the iPOS application's core features: product management, customer management, and supplier management. The structure prioritizes authorization independence and simplifies security rules. Path-based ownership is used for entities associated with specific suppliers and customers. Each collection is designed to have a homogeneous security posture, meaning all documents within a single collection share the same security requirements. This eliminates the need for complex rule logic that distinguishes between different types of documents within the same collection. \n\nAuthorization Independence:\nTo ensure authorization independence and avoid `get()` calls in security rules, the `Supplier` and `Customer` entities will have dedicated collections. The `Product` entities are stored as subcollections of `Supplier` documents, enabling secure and straightforward ownership-based security rules. \n\nQAPs Support:\nThe structure uses structural segregation to ensure that each collection has a homogeneous security posture. This, combined with path-based ownership, facilitates secure `list` operations.  Data denormalization (copying relevant supplier/customer data where needed) avoids the need for complex joins or server-side filtering, improving performance and security."
   }
 }
     

@@ -1,8 +1,8 @@
 'use client';
 import { useState } from 'react';
 import Image from 'next/image';
-import type { Customer, Sale, SaleWithDetails } from '@/lib/types';
-import { MoreHorizontal, PlusCircle, HandCoins, Search, Wallet } from 'lucide-react';
+import type { Customer } from '@/lib/types';
+import { MoreHorizontal, PlusCircle, Search, Wallet, HandCoins } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -12,12 +12,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { useFirestore, setDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking, useMemoFirebase, useCollection } from '@/firebase';
-import { collection, doc, query, where, increment, deleteDoc } from 'firebase/firestore';
+import { useFirestore, setDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking, useMemoFirebase } from '@/firebase';
+import { collection, doc, deleteDoc, increment } from 'firebase/firestore';
 import { Badge } from '@/components/ui/badge';
-import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
-import { InvoiceDetailsDialog } from '@/components/sales/invoice-details-dialog';
 import { useToast } from '@/hooks/use-toast';
 
 function CustomerForm({ customer, onSave, onCancel }: { customer: Partial<Customer> | null, onSave: (c: Omit<Customer, 'id' | 'avatarUrl' | 'avatarHint' | 'debt'> & { id?: string }) => void, onCancel: () => void }) {
@@ -111,13 +108,7 @@ function CustomerRow({ customer, onDelete }: { customer: Customer, onDelete: (id
     const [isSheetOpen, setIsSheetOpen] = useState(false);
     const [isSettleDebtOpen, setIsSettleDebtOpen] = useState(false);
     const [editingCustomer, setEditingCustomer] = useState<Partial<Customer> | null>(null);
-    const [selectedSale, setSelectedSale] = useState<SaleWithDetails | null>(null);
 
-    const salesRef = useMemoFirebase(() => query(collection(firestore, `customers/${customer.id}/sales`)), [firestore, customer.id]);
-    const { data: sales, isLoading: salesLoading } = useCollection<Sale>(salesRef);
-
-    const totalSales = sales ? sales.reduce((acc, sale) => acc + sale.totalAmount, 0) : 0;
-    
     const customersRef = useMemoFirebase(() => collection(firestore, 'customers'), [firestore]);
 
     const handleEditClick = (customer: Customer) => {
@@ -143,13 +134,6 @@ function CustomerRow({ customer, onDelete }: { customer: Customer, onDelete: (id
         setIsSheetOpen(false);
         setEditingCustomer(null);
     };
-    
-    const handleInvoiceClick = (sale: Sale) => {
-        setSelectedSale({
-            ...sale,
-            customer: customer
-        });
-    }
     
     const handleSettleDebt = (amountInDZD: number) => {
         const amountInCents = amountInDZD * 100;
@@ -179,13 +163,6 @@ function CustomerRow({ customer, onDelete }: { customer: Customer, onDelete: (id
                 </TableCell>
                 <TableCell>{customer.phone}</TableCell>
                 <TableCell className="text-center">{customer.settlementDay || 'N/A'}</TableCell>
-                 <TableCell>
-                    {salesLoading ? '...' : (
-                        <Badge variant="secondary">
-                            {(totalSales / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'DZD', minimumFractionDigits: 0 })}
-                        </Badge>
-                    )}
-                </TableCell>
                 <TableCell>
                     <div className="flex items-center gap-2">
                         {customer.debt && customer.debt > 0 ? (
@@ -204,26 +181,6 @@ function CustomerRow({ customer, onDelete }: { customer: Customer, onDelete: (id
                             </Button>
                         )}
                     </div>
-                </TableCell>
-                <TableCell>
-                    {sales && sales.length > 0 ? (
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="outline" size="sm">{sales.length} Factures</Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent>
-                                <DropdownMenuLabel>Dernières factures</DropdownMenuLabel>
-                                {sales.slice(0, 5).map(sale => (
-                                    <DropdownMenuItem key={sale.id} className="flex justify-between" onClick={() => handleInvoiceClick(sale)}>
-                                        <span>{format(new Date(sale.saleDate), "d MMM yy", { locale: fr })}</span>
-                                        <span>{(sale.totalAmount / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'DZD', minimumFractionDigits: 0 })}</span>
-                                    </DropdownMenuItem>
-                                ))}
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    ) : (
-                        <span>0 Factures</span>
-                    )}
                 </TableCell>
                 <TableCell>
                     <DropdownMenu>
@@ -254,7 +211,6 @@ function CustomerRow({ customer, onDelete }: { customer: Customer, onDelete: (id
                     onSettle={handleSettleDebt}
                 />
             )}
-            <InvoiceDetailsDialog sale={selectedSale} isOpen={!!selectedSale} onClose={() => setSelectedSale(null)} />
         </>
     )
 }
@@ -305,7 +261,7 @@ export function CustomerList({ initialCustomers }: { initialCustomers: Customer[
                     <div className="flex items-center justify-between">
                         <div className="grid gap-2">
                             <CardTitle>Clients</CardTitle>
-                            <CardDescription>Gérez vos clients et consultez leur historique d'achats.</CardDescription>
+                            <CardDescription>Gérez vos clients et consultez leurs dettes.</CardDescription>
                         </div>
                         <div className="ml-auto flex items-center gap-4">
                              <div className="flex items-center gap-2 text-lg font-semibold text-destructive">
@@ -338,9 +294,7 @@ export function CustomerList({ initialCustomers }: { initialCustomers: Customer[
                                 <TableHead>Client</TableHead>
                                 <TableHead>Téléphone</TableHead>
                                 <TableHead className="text-center">Jour de règlement</TableHead>
-                                <TableHead>Ventes totales</TableHead>
                                 <TableHead>Dette</TableHead>
-                                <TableHead>Factures</TableHead>
                                 <TableHead>Actions</TableHead>
                             </TableRow>
                         </TableHeader>
