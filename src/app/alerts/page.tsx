@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection } from 'firebase/firestore';
+import { collection, collectionGroup, query } from 'firebase/firestore';
 import type { Product, Customer } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -85,18 +85,18 @@ function DueDebtAlerts({ customers }: { customers: Customer[] }) {
 export default function AlertsPage() {
   const firestore = useFirestore();
 
-  const productsRef = useMemoFirebase(() => {
-      if (!firestore) return null;
-      return collection(firestore, 'suppliers/supp_1/products');
+  const productsQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(collectionGroup(firestore, 'products'));
   }, [firestore]);
 
-  const customersRef = useMemoFirebase(() => {
+  const customersQuery = useMemoFirebase(() => {
       if (!firestore) return null;
       return collection(firestore, 'customers');
   }, [firestore]);
 
-  const { data: products, isLoading: productsLoading } = useCollection<Product>(productsRef);
-  const { data: customers, isLoading: customersLoading } = useCollection<Customer>(customersRef);
+  const { data: products, isLoading: productsLoading } = useCollection<Product>(productsQuery);
+  const { data: customers, isLoading: customersLoading } = useCollection<Customer>(customersQuery);
 
   const isLoading = productsLoading || customersLoading;
 
