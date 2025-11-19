@@ -14,6 +14,7 @@ import { DeleteCustomerDialog } from '@/components/customers/delete-customer-dia
 import { SettleDebtDialog } from '@/components/customers/settle-debt-dialog';
 import { MoreHorizontal } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { Input } from '@/components/ui/input';
 
 
 export interface Customer {
@@ -51,6 +52,7 @@ export default function CustomersPage() {
     const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
     const [deletingCustomer, setDeletingCustomer] = useState<Customer | null>(null);
     const [settlingDebtForCustomer, setSettlingDebtForCustomer] = useState<CustomerWithSalesData | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
 
     // Fetch Customers
     const customersCollectionRef = useMemoFirebase(() => {
@@ -110,6 +112,18 @@ export default function CustomersPage() {
             }
         });
     }, [customers, sales, payments]);
+
+    const filteredCustomers = useMemo(() => {
+        if (!searchQuery) return customersWithSales;
+        
+        const lowercasedQuery = searchQuery.toLowerCase();
+        
+        return customersWithSales.filter(customer => 
+            customer.firstName.toLowerCase().includes(lowercasedQuery) ||
+            customer.lastName.toLowerCase().includes(lowercasedQuery) ||
+            (customer.email && customer.email.toLowerCase().includes(lowercasedQuery))
+        );
+    }, [customersWithSales, searchQuery]);
 
 
     useEffect(() => {
@@ -187,17 +201,26 @@ export default function CustomersPage() {
            
             <div className="flex min-h-screen flex-col items-center p-4 sm:p-6 md:p-8">
                 <Card className="w-full max-w-6xl">
-                    <CardHeader className="flex flex-row items-center justify-between">
-                        <div>
-                            <CardTitle>Clients</CardTitle>
-                            <CardDescription>Gérez votre liste de clients et consultez leurs dépenses.</CardDescription>
+                    <CardHeader>
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                                <CardTitle>Clients</CardTitle>
+                                <CardDescription>Gérez votre liste de clients et consultez leurs dépenses.</CardDescription>
+                            </div>
+                            <Button onClick={() => setIsAddingCustomer(true)}>Ajouter un client</Button>
                         </div>
-                        <Button onClick={() => setIsAddingCustomer(true)}>Ajouter un client</Button>
+                         <div className="pt-4">
+                            <Input 
+                                placeholder="Rechercher par nom, prénom ou e-mail..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                            />
+                        </div>
                     </CardHeader>
                     <CardContent>
                         {isLoading ? (
                             <div className="text-center">Chargement des données...</div>
-                        ) : customersWithSales && customersWithSales.length > 0 ? (
+                        ) : filteredCustomers && filteredCustomers.length > 0 ? (
                             <div className="overflow-x-auto">
                                 <table className="min-w-full divide-y divide-border">
                                     <thead className="bg-muted/50">
@@ -213,7 +236,7 @@ export default function CustomersPage() {
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-border">
-                                        {customersWithSales.map(customer => (
+                                        {filteredCustomers.map(customer => (
                                             <tr key={customer.id}>
                                                 <td className="whitespace-nowrap px-6 py-4 font-medium">{customer.firstName} {customer.lastName}</td>
                                                 <td className="whitespace-nowrap px-6 py-4 text-muted-foreground">{customer.email || '-'}</td>
@@ -247,6 +270,10 @@ export default function CustomersPage() {
                                     </tbody>
                                 </table>
                             </div>
+                        ) : customers && customers.length > 0 && searchQuery ? (
+                            <div className="flex h-40 items-center justify-center rounded-md border-2 border-dashed border-border">
+                                <p className="text-muted-foreground">Aucun client ne correspond à votre recherche.</p>
+                            </div>
                         ) : (
                             <div className="flex h-40 items-center justify-center rounded-md border-2 border-dashed border-border">
                                 <div className="text-center">
@@ -263,4 +290,5 @@ export default function CustomersPage() {
             </div>
         </>
     );
-}
+
+    
