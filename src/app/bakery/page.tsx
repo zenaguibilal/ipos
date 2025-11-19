@@ -156,12 +156,12 @@ export default function BakeryPage() {
 
     const [isFormOpen, setIsFormOpen] = useState(false);
     
-    const breadOrdersCount = useMemo(() => {
-        return orders?.filter(order => order.type === 'bread').length || 0;
+    const breadOrdersQuantity = useMemo(() => {
+        return orders?.filter(order => order.type === 'bread').reduce((sum, order) => sum + order.quantity, 0) || 0;
     }, [orders]);
 
-    const melouiOrdersCount = useMemo(() => {
-        return orders?.filter(order => order.type === 'meloui').length || 0;
+    const melouiOrdersQuantity = useMemo(() => {
+        return orders?.filter(order => order.type === 'meloui').reduce((sum, order) => sum + order.quantity, 0) || 0;
     }, [orders]);
 
     const handleSaveOrder = (orderData: Omit<BakeryOrder, 'id' | 'orderDate' | 'isFulfilled'>) => {
@@ -237,11 +237,11 @@ export default function BakeryPage() {
                         <div className="flex items-center gap-4 pt-2">
                             <Badge variant="secondary" className="flex items-center gap-2">
                                 <Wheat className="h-4 w-4" />
-                                <span>خبز: {breadOrdersCount}</span>
+                                <span>خبز: {breadOrdersQuantity}</span>
                             </Badge>
                             <Badge variant="outline" className="flex items-center gap-2">
                                 <Cookie className="h-4 w-4" />
-                                <span>ملوي: {melouiOrdersCount}</span>
+                                <span>ملوي: {melouiOrdersQuantity}</span>
                             </Badge>
                         </div>
                     </div>
