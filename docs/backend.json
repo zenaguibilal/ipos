@@ -60,7 +60,19 @@
         },
         "price": {
           "type": "number",
-          "description": "Price of the product."
+          "description": "Selling price of the product."
+        },
+        "purchasePrice": {
+          "type": "number",
+          "description": "Purchase price of the product."
+        },
+        "quantity": {
+          "type": "integer",
+          "description": "Quantity in stock."
+        },
+        "minStockLevel": {
+          "type": "integer",
+          "description": "Minimum stock level for alert."
         },
         "barcode": {
           "type": "string",
@@ -75,6 +87,9 @@
       "required": [
         "name",
         "price",
+        "purchasePrice",
+        "quantity",
+        "minStockLevel",
         "createdAt"
       ]
     },
@@ -104,128 +119,4 @@
         },
         "amountPaid": {
           "type": "number",
-          "description": "The amount paid by the customer for this sale."
-        },
-        "remainingBalance": {
-          "type": "number",
-          "description": "The outstanding balance for this sale. Should be 0 for fully paid sales."
-        },
-        "paymentStatus": {
-          "type": "string",
-          "description": "The payment status of the sale.",
-          "enum": ["paid", "partial", "unpaid"]
-        },
-        "customerId": {
-          "type": "string",
-          "description": "ID of the customer associated with the sale."
-        },
-        "customerName": {
-          "type": "string",
-          "description": "Name of the customer associated with the sale, for easy display."
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "Timestamp indicating when the sale was made.",
-          "format": "date-time"
-        }
-      },
-      "required": [
-        "items",
-        "total",
-        "amountPaid",
-        "remainingBalance",
-        "paymentStatus",
-        "createdAt"
-      ]
-    },
-    "Customer": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Customer",
-      "type": "object",
-      "description": "Represents a customer of the business.",
-      "properties": {
-        "firstName": {
-          "type": "string",
-          "description": "First name of the customer."
-        },
-        "lastName": {
-          "type": "string",
-          "description": "Last name of the customer."
-        },
-        "phone": {
-          "type": "string",
-          "description": "Phone number of the customer."
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "Timestamp indicating when the customer was created.",
-          "format": "date-time"
-        }
-      },
-      "required": [
-        "firstName",
-        "lastName",
-        "createdAt"
-      ]
-    },
-    "Payment": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Payment",
-      "type": "object",
-      "description": "Represents a payment received from a customer, typically to settle an outstanding debt.",
-      "properties": {
-        "amount": {
-          "type": "number",
-          "description": "The amount of money paid."
-        },
-        "customerId": {
-          "type": "string",
-          "description": "ID of the customer who made the payment."
-        },
-        "customerName": {
-          "type": "string",
-          "description": "Name of the customer, for easy display."
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "Timestamp indicating when the payment was made.",
-          "format": "date-time"
-        }
-      },
-      "required": [
-        "amount",
-        "customerId",
-        "createdAt"
-      ]
-    }
-  },
-  "auth": {
-    "providers": [
-      "password"
-    ]
-  },
-  "firestore": {
-    "/users/{userId}": {
-      "schema": { "$ref": "#/backend/entities/User" },
-      "description": "Stores user profile information. The document ID is the user's UID from Firebase Authentication, enforcing ownership."
-    },
-    "/users/{userId}/products/{productId}": {
-      "schema": { "$ref": "#/backend/entities/Product" },
-      "description": "The collection of products created by a specific user. Only the user can access their own products."
-    },
-    "/users/{userId}/sales/{saleId}": {
-      "schema": { "$ref": "#/backend/entities/Sale" },
-      "description": "The collection of sales records for a specific user. Only the user can access their own sales history."
-    },
-    "/users/{userId}/customers/{customerId}": {
-      "schema": { "$ref": "#/backend/entities/Customer" },
-      "description": "The collection of customers for a specific user. Only the user can access their own customer list."
-    },
-    "/users/{userId}/payments/{paymentId}": {
-      "schema": { "$ref": "#/backend/entities/Payment" },
-      "description": "The collection of debt settlement payments for a specific user. Only the user can access their own payment records."
-    }
-  }
-}
-
-    
+...
