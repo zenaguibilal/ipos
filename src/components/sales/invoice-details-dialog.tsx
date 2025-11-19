@@ -63,6 +63,10 @@ function InvoiceContent({ sale, onClose }: { sale: SaleWithDetails; onClose: () 
         }));
     }, [lineItems, products]);
     
+    const calculatedTotal = useMemo(() => {
+        return enrichedLineItems.reduce((total, item) => total + (item.unitPrice * item.quantity), 0);
+    }, [enrichedLineItems]);
+
     const handlePrint = () => {
         const printContent = invoiceRef.current;
         if (printContent) {
@@ -160,7 +164,7 @@ function InvoiceContent({ sale, onClose }: { sale: SaleWithDetails; onClose: () 
                     <div className="w-full max-w-xs space-y-2">
                         <div className="flex justify-between font-semibold text-lg">
                             <span>Total</span>
-                            <span>{(sale.totalAmount / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'DZD', minimumFractionDigits: 0 })}</span>
+                            <span>{(calculatedTotal / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'DZD', minimumFractionDigits: 0 })}</span>
                         </div>
                         <div className="flex justify-between text-sm">
                             <span>Méthode de paiement</span>
@@ -168,6 +172,12 @@ function InvoiceContent({ sale, onClose }: { sale: SaleWithDetails; onClose: () 
                                 {sale.paymentMethod === 'cash' ? 'Comptant' : 'Crédit'}
                             </Badge>
                         </div>
+                         {sale.paymentMethod === 'credit' && (
+                            <div className="flex justify-between text-sm text-destructive">
+                                <span>Montant ajouté à la dette</span>
+                                <span>{(sale.totalAmount / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'DZD', minimumFractionDigits: 0 })}</span>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
