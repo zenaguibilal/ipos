@@ -37,12 +37,26 @@ export function useSuppliers() {
 }
 
 export function useDashboardData() {
+    const firestore = useFirestore();
     const { customers, isLoading: customersLoading } = useCustomers();
     const { suppliers, isLoading: suppliersLoading } = useSuppliers();
     const { products, isLoading: productsLoading } = useProducts();
-    const firestore = useFirestore();
+    
+    // Explicitly check if firestore is initialized. If not, return loading state immediately.
+    // This is the primary fix to prevent hooks from running with a null firestore instance.
+    if (!firestore) {
+        return {
+            productsValue: 0,
+            totalCustomers: 0,
+            totalSuppliers: 0,
+            lowStockItems: 0,
+            products: [],
+            customers: [],
+            isLoading: true
+        }
+    }
 
-    const isLoading = !firestore || customersLoading || suppliersLoading || productsLoading;
+    const isLoading = customersLoading || suppliersLoading || productsLoading;
     
     const lowStockItems = useMemo(() => products?.filter(p => p.quantity <= p.minStock).length || 0, [products]);
     const productsValue = useMemo(() => products?.reduce((acc, p) => acc + (p.purchasePrice * p.quantity), 0) || 0, [products]);
