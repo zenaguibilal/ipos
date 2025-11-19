@@ -15,6 +15,21 @@ function chunkArray<T>(array: T[], size: number): T[][] {
     return chunks;
 }
 
+// Custom hook to fetch multiple collections
+function useCollections<T>(queries: any[]) {
+    const results = queries.map(q => useCollection<T>(q));
+    
+    const data = useMemo(() => {
+        if (results.some(r => r.isLoading)) return null;
+        return results.map(r => r.data || []).flat();
+    }, [results]);
+
+    const isLoading = results.some(r => r.isLoading);
+    const error = results.find(r => r.error)?.error || null;
+
+    return { data, isLoading, error };
+}
+
 export default function SalesHistoryPage() {
     const firestore = useFirestore();
 
@@ -24,68 +39,25 @@ export default function SalesHistoryPage() {
     }, [firestore]);
 
     const { data: salesData, isLoading: salesLoading, error: salesError } = useCollection<Sale>(salesQuery);
-
-    const [allCustomers, setAllCustomers] = useState<Customer[]>([]);
-    const [customersLoading, setCustomersLoading] = useState(true);
-    const [customersError, setCustomersError] = useState<Error | null>(null);
-
-    useEffect(() => {
-        if (!firestore || !salesData) {
-            if (!salesLoading) {
-                setCustomersLoading(false);
-            }
-            return;
-        }
-
+    
+    const customerIdChunks = useMemo(() => {
+        if (!salesData) return [];
         const customerIds = Array.from(new Set(salesData.map(s => s.customerId)));
+        if(customerIds.length === 0) return [];
+        return chunkArray(customerIds, 30);
+    }, [salesData]);
 
-        if (customerIds.length === 0) {
-            setAllCustomers([]);
-            setCustomersLoading(false);
-            return;
-        }
+    const customerQueries = useMemoFirebase(() => {
+        if (!firestore || customerIdChunks.length === 0) return [];
+        return customerIdChunks.map(chunk => 
+            query(collection(firestore, 'customers'), where(documentId(), 'in', chunk))
+        );
+    }, [firestore, customerIdChunks]);
 
-        setCustomersLoading(true);
-        setCustomersError(null);
-
-        // Firestore 'in' query supports a maximum of 30 elements in the array.
-        const idChunks = chunkArray(customerIds, 30);
-
-        const fetchCustomers = async () => {
-            try {
-                const customerPromises = idChunks.map(chunk => {
-                    const customersQuery = query(collection(firestore, 'customers'), where(documentId(), 'in', chunk));
-                    // This is not a hook, so we can't use useCollection. We'll fetch it directly.
-                    // This part is tricky inside a hook-based component. A better approach
-                    // would be a more advanced data fetching library or a dedicated hook
-                    // that can handle multiple queries. For now, we'll keep it simple
-                    // and just fetch once. A full implementation would use onSnapshot.
-                    return new Promise<Customer[]>((resolve, reject) => {
-                         const { getDocs } = require("firebase/firestore");
-                         getDocs(customersQuery).then(snapshot => {
-                             resolve(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer)));
-                         }).catch(reject);
-                    });
-                });
-                
-                const customerChunks = await Promise.all(customerPromises);
-                const flattenedCustomers = customerChunks.flat();
-                setAllCustomers(flattenedCustomers);
-                
-            } catch (err: any) {
-                setCustomersError(err);
-            } finally {
-                setCustomersLoading(false);
-            }
-        };
-
-        fetchCustomers();
-
-    }, [firestore, salesData, salesLoading]);
-
+    const { data: allCustomers, isLoading: customersLoading, error: customersError } = useCollections<Customer>(customerQueries);
 
     const enrichedSales = useMemo(() => {
-        if (!salesData) return [];
+        if (!salesData || !allCustomers) return [];
         
         const customerMap = new Map(allCustomers.map(c => [c.id, c]));
         return salesData.map(sale => ({
@@ -95,7 +67,7 @@ export default function SalesHistoryPage() {
     }, [salesData, allCustomers]);
 
 
-    if (salesLoading || customersLoading) {
+    if (salesLoading || (customerIdChunks.length > 0 && customersLoading)) {
         return <div className="flex justify-center items-center h-full"><Loader className="animate-spin" /></div>;
     }
 
