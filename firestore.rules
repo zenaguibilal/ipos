@@ -3,16 +3,13 @@
  *
  * Core Philosophy:
  * This ruleset enforces a strict user-ownership model. Each user can only access their own data.
+ * All user-specific data is nested under their user document.
  *
  * Data Structure:
- * All user data is stored under the `/users/{userId}` path.
+ * /users/{userId} - User profile information.
+ * /users/{userId}/products/{productId} - Products created by the user.
+ * /users/{userId}/sales/{saleId} - Sales recorded by the user.
  *
- * Key Security Decisions:
- * - Users cannot list all users.
- * - Data shape is not strictly enforced to allow for rapid prototyping.
- *
- * Denormalization for Authorization:
- * The `userId` is present both in the path (`/users/{userId}`) and as the `id` field within the document.
  */
 rules_version = '2';
 service cloud.firestore {
@@ -24,30 +21,26 @@ service cloud.firestore {
     }
 
     // Helper function to check if the user is the owner of the document
+    // It compares the `userId` from the path with the authenticated user's UID.
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
-
-    // Helper function to check if the user is the existing owner of the document
-    function isExistingOwner(userId) {
-      return isOwner(userId) && resource != null;
-    }
       
     match /users/{userId} {
-      // Allow the user to create their own document if the userId matches their auth.uid. The document id also must match the userId
+      // Allow a user to create their own document if the document ID matches their auth UID.
       allow create: if isOwner(userId) && request.resource.data.id == userId;
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      // Allow the user to update their own document if the userId matches their auth.uid
-      // Enforce immutability for the `id` field.
-      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
-      allow delete: if isExistingOwner(userId);
+      // Allow a user to read, update, and delete their own document.
+      allow read, update, delete: if isOwner(userId);
 
+      // Rules for the 'products' subcollection nested under a user document.
       match /products/{productId} {
+        // Only the owner of the parent user document can read or write to the products subcollection.
         allow read, write: if isOwner(userId);
       }
 
+      // Rules for the 'sales' subcollection nested under a user document.
       match /sales/{saleId} {
+        // Only the owner of the parent user document can read or write to the sales subcollection.
         allow read, write: if isOwner(userId);
       }
     }

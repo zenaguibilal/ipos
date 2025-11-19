@@ -116,38 +116,17 @@
     ]
   },
   "firestore": {
-    "structure": [
-      {
-        "path": "/users/{userId}",
-        "definition": {
-          "entityName": "user",
-          "schema": {
-            "$ref": "#/backend/entities/User"
-          },
-          "description": "Stores user profile information. Uses path-based ownership for user data security.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier for the user."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/users/{userId}/products/{productId}",
-        "definition": {
-          "schema": { "$ref": "#/backend/entities/Product" },
-          "description": "Products owned by a specific user."
-        }
-      },
-      {
-        "path": "/users/{userId}/sales/{saleId}",
-        "definition": {
-          "schema": { "$ref": "#/backend/entities/Sale" },
-          "description": "Sales records for a specific user."
-        }
-      }
-    ],
-    "reasoning": "This design prioritizes simplicity and security for the iPOS application. We use path-based ownership for user data and avoid hierarchical authorization dependencies by storing all data directly under the user's document, ensuring authorization independence. This structure enables secure `list` operations. This approach streamlines security rule creation and enhances maintainability."
+    "/users/{userId}": {
+      "schema": { "$ref": "#/backend/entities/User" },
+      "description": "Stores user profile information. The document ID is the user's UID from Firebase Authentication, enforcing ownership."
+    },
+    "/users/{userId}/products/{productId}": {
+      "schema": { "$ref": "#/backend/entities/Product" },
+      "description": "The collection of products created by a specific user. Only the user can access their own products."
+    },
+    "/users/{userId}/sales/{saleId}": {
+      "schema": { "$ref": "#/backend/entities/Sale" },
+      "description": "The collection of sales records for a specific user. Only the user can access their own sales history."
+    }
   }
 }
