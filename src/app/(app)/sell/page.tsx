@@ -198,14 +198,14 @@ export default function SellPage() {
 
   if (isUserLoading || !user) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex h-full items-center justify-center">
         <p>Chargement...</p>
       </div>
     );
   }
 
   return (
-    <div className="flex h-screen flex-col bg-muted/40">
+    <div className="flex h-full flex-col bg-muted/40">
         <AddProductForm 
             isOpen={isAddingProduct}
             onOpenChange={setIsAddingProduct}
