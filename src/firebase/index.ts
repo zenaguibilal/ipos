@@ -2,40 +2,44 @@
 
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
-import { getAuth, signInAnonymously } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore'
+import { getAuth, signInAnonymously, Auth } from 'firebase/auth';
+import { getFirestore, Firestore } from 'firebase/firestore';
 
 // IMPORTANT: DO NOT MODIFY THIS FUNCTION
-// This function is now async to handle anonymous sign-in.
-export async function initializeFirebase() {
-  if (!getApps().length) {
-    let firebaseApp;
-    try {
-      firebaseApp = initializeApp();
+export async function initializeFirebase(): Promise<{ firebaseApp: FirebaseApp; auth: Auth; firestore: Firestore }> {
+  const appName = '[DEFAULT]';
+  
+  // Check if the default app is already initialized
+  const alreadyInitialized = getApps().some(app => app.name === appName);
+
+  let firebaseApp: FirebaseApp;
+
+  if (alreadyInitialized) {
+    firebaseApp = getApp(appName);
+  } else {
+    // Initialize the app for the first time
+     try {
+      firebaseApp = initializeApp(firebaseConfig);
     } catch (e) {
       if (process.env.NODE_ENV === "production") {
         console.warn('Automatic initialization failed. Falling back to firebase config object.', e);
       }
       firebaseApp = initializeApp(firebaseConfig);
     }
-
+    
+    // Authenticate immediately after initialization
     const auth = getAuth(firebaseApp);
-    // Await the sign-in process to ensure a user is authenticated before proceeding.
     try {
       await signInAnonymously(auth);
     } catch (error) {
-      console.error("Anonymous sign-in failed:", error);
-      // Depending on the app's requirements, you might want to handle this more gracefully.
-      // For now, we'll log the error and continue. The app might not function correctly
-      // for unauthenticated users if security rules are strict.
+      console.error("Anonymous sign-in failed during initialization:", error);
+      // Handle failure gracefully, perhaps by throwing the error to be caught by the provider
+      throw error;
     }
-
-    return getSdks(firebaseApp);
   }
 
-  // If already initialized, just return the SDKs.
-  // The sign-in would have already completed.
-  return getSdks(getApp());
+  // Always return the SDKs from the initialized app
+  return getSdks(firebaseApp);
 }
 
 export function getSdks(firebaseApp: FirebaseApp) {
