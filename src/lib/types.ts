@@ -64,3 +64,14 @@ export interface InvoiceCounter {
     id: string;
     lastNumber: number;
 }
+
+export interface BakeryOrder {
+  id: string;
+  customerName: string;
+  quantity: number;
+  type: 'bread' | 'meloui';
+  orderDate: string;
+  isFulfilled: boolean;
+}
+
+    
