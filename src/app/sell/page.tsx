@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import Link from 'next/link';
 import { collection, serverTimestamp } from 'firebase/firestore';
 import { AddProductForm } from '@/components/sell/add-product-form';
+import { MinusCircle, PlusCircle, XCircle } from 'lucide-react';
 
 interface Product {
     id: string;
@@ -60,7 +61,7 @@ export default function SellPage() {
     });
   };
 
-  const removeFromCart = (productId: string) => {
+  const decreaseQuantity = (productId: string) => {
       setSaleStatus(null);
       setCart((prevCart) => {
           const existingItem = prevCart.find((item) => item.id === productId);
@@ -69,9 +70,16 @@ export default function SellPage() {
                   item.id === productId ? { ...item, quantity: item.quantity - 1 } : item
               );
           }
+          // If quantity is 1, remove it completely
           return prevCart.filter((item) => item.id !== productId);
       });
   };
+
+  const removeFromCart = (productId: string) => {
+    setSaleStatus(null);
+    setCart((prevCart) => prevCart.filter((item) => item.id !== productId));
+  };
+
 
   const total = useMemo(() => {
     return cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -93,7 +101,7 @@ export default function SellPage() {
             setCart([]);
             setIsProcessingSale(false);
             setSaleStatus({ success: "Vente enregistrée avec succès !" });
-            setTimeout(() => setSaleStatus(null), 3000); // Clear message after 3 seconds
+            setTimeout(() => setSaleStatus(null), 3000);
         },
         onError: (err) => {
             console.error("Erreur lors de la vente :", err);
@@ -130,7 +138,7 @@ export default function SellPage() {
                 <Card>
                     <CardHeader>
                         <CardTitle>Produits</CardTitle>
-                        <CardDescription>Sélectionnez les produits à ajouter à la vente.</CardDescription>
+                        <CardDescription>Cliquez sur un produit pour l'ajouter à la vente.</CardDescription>
                     </CardHeader>
                     <CardContent>
                         {isLoadingProducts ? (
@@ -158,7 +166,7 @@ export default function SellPage() {
                             <div className="flex h-64 items-center justify-center rounded-md border-2 border-dashed border-border">
                                 <div className="text-center">
                                     <p className="text-muted-foreground">Aucun produit à afficher.</p>
-                                    <Button variant="link" onClick={() => setIsAddingProduct(true)}>Ajouter un produit</Button>
+                                    <Button variant="link" onClick={() => setIsAddingProduct(true)}>Ajouter un premier produit</Button>
                                 </div>
                             </div>
                         )}
@@ -196,7 +204,9 @@ export default function SellPage() {
                                        </div>
                                        <div className="flex items-center gap-2">
                                            <span className="font-semibold">{(item.quantity * item.price).toFixed(2)} €</span>
-                                           <Button size="sm" variant="ghost" onClick={() => removeFromCart(item.id)}>X</Button>
+                                           <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => addToCart(item)}><PlusCircle className="h-4 w-4" /></Button>
+                                           <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => decreaseQuantity(item.id)}><MinusCircle className="h-4 w-4" /></Button>
+                                           <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => removeFromCart(item.id)}><XCircle className="h-4 w-4" /></Button>
                                        </div>
                                    </div>
                                ))}
