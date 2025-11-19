@@ -18,12 +18,15 @@ import { PaymentDialog } from '@/components/sell/payment-dialog';
 interface Product {
     id: string;
     name: string;
-    price: number;
+    price: number; // Selling price
+    purchasePrice: number;
+    quantity: number;
+    minStockLevel: number;
     barcode?: string;
 }
 
 interface CartItem extends Product {
-    quantity: number;
+    cartQuantity: number;
 }
 
 interface Customer {
@@ -79,10 +82,10 @@ export default function SellPage() {
         const existingItem = prevCart.find((item) => item.id === product.id);
         if (existingItem) {
             return prevCart.map((item) =>
-                item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
+                item.id === product.id ? { ...item, cartQuantity: item.cartQuantity + 1 } : item
             );
         }
-        return [...prevCart, { ...product, quantity: 1 }];
+        return [...prevCart, { ...product, cartQuantity: 1 }];
     });
   };
 
@@ -90,9 +93,9 @@ export default function SellPage() {
       setSaleStatus(null);
       setCart((prevCart) => {
           const existingItem = prevCart.find((item) => item.id === productId);
-          if (existingItem && existingItem.quantity > 1) {
+          if (existingItem && existingItem.cartQuantity > 1) {
               return prevCart.map((item) =>
-                  item.id === productId ? { ...item, quantity: item.quantity - 1 } : item
+                  item.id === productId ? { ...item, cartQuantity: item.cartQuantity - 1 } : item
               );
           }
           return prevCart.filter((item) => item.id !== productId);
@@ -106,7 +109,7 @@ export default function SellPage() {
 
 
   const total = useMemo(() => {
-    return cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    return cart.reduce((sum, item) => sum + item.price * item.cartQuantity, 0);
   }, [cart]);
 
   const handleProcessSale = (amountPaid: number) => {
@@ -121,7 +124,7 @@ export default function SellPage() {
     const paymentStatus = remainingBalance <= 0 ? 'paid' : 'partial';
 
     const saleData: any = {
-        items: cart.map(item => ({ id: item.id, name: item.name, price: item.price, quantity: item.quantity })),
+        items: cart.map(item => ({ id: item.id, name: item.name, price: item.price, quantity: item.cartQuantity })),
         total: total,
         amountPaid: amountPaid,
         remainingBalance: remainingBalance > 0 ? remainingBalance : 0,
@@ -136,6 +139,7 @@ export default function SellPage() {
 
     addDocumentNonBlocking(salesCollectionRef, saleData, {
         onSuccess: () => {
+            // Here you would typically also decrease the product quantities in the database
             setCart([]);
             setSelectedCustomerId('none');
             setIsProcessingSale(false);
@@ -321,10 +325,10 @@ export default function SellPage() {
                                    <div key={item.id} className="flex items-center justify-between">
                                        <div>
                                            <p className="font-medium">{item.name}</p>
-                                           <p className="text-sm text-muted-foreground">{item.quantity} x {item.price.toFixed(2)} €</p>
+                                           <p className="text-sm text-muted-foreground">{item.cartQuantity} x {item.price.toFixed(2)} €</p>
                                        </div>
                                        <div className="flex items-center gap-2">
-                                           <span className="font-semibold">{(item.quantity * item.price).toFixed(2)} €</span>
+                                           <span className="font-semibold">{(item.cartQuantity * item.price).toFixed(2)} €</span>
                                            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => addToCart(item)}><PlusCircle className="h-4 w-4" /></Button>
                                            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => decreaseQuantity(item.id)}><MinusCircle className="h-4 w-4" /></Button>
                                            <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => removeFromCart(item.id)}><XCircle className="h-4 w-4" /></Button>

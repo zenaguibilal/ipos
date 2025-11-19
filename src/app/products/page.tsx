@@ -14,11 +14,15 @@ import { DeleteProductDialog } from '@/components/products/delete-product-dialog
 import { MoreHorizontal } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
 
 export interface Product {
     id: string;
     name: string;
-    price: number;
+    price: number; // Selling price
+    purchasePrice: number;
+    quantity: number;
+    minStockLevel: number;
     barcode?: string;
 }
 
@@ -95,7 +99,7 @@ export default function ProductsPage() {
             )}
            
             <div className="flex min-h-screen flex-col items-center p-4 sm:p-6 md:p-8">
-                <Card className="w-full max-w-6xl">
+                <Card className="w-full max-w-7xl">
                     <CardHeader>
                         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                             <div>
@@ -122,38 +126,47 @@ export default function ProductsPage() {
                                         <tr>
                                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Nom</th>
                                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Code-barres</th>
-                                            <th scope="col" className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Prix</th>
+                                            <th scope="col" className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Prix Achat</th>
+                                            <th scope="col" className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Prix Vente</th>
+                                            <th scope="col" className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Quantité</th>
+                                            <th scope="col" className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Stock Min.</th>
                                             <th scope="col" className="relative px-6 py-3">
                                                 <span className="sr-only">Actions</span>
                                             </th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-border">
-                                        {filteredProducts.map(product => (
-                                            <tr key={product.id}>
-                                                <td className="whitespace-nowrap px-6 py-4 font-medium">{product.name}</td>
-                                                <td className="whitespace-nowrap px-6 py-4 text-muted-foreground">{product.barcode || '-'}</td>
-                                                <td className="whitespace-nowrap px-6 py-4 text-right font-medium">{product.price.toFixed(2)} €</td>
-                                                <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
-                                                    <DropdownMenu>
-                                                        <DropdownMenuTrigger asChild>
-                                                            <Button variant="ghost" className="h-8 w-8 p-0">
-                                                                <span className="sr-only">Ouvrir le menu</span>
-                                                                <MoreHorizontal className="h-4 w-4" />
-                                                            </Button>
-                                                        </DropdownMenuTrigger>
-                                                        <DropdownMenuContent align="end">
-                                                            <DropdownMenuItem onClick={() => setEditingProduct(product)}>
-                                                                Modifier
-                                                            </DropdownMenuItem>
-                                                            <DropdownMenuItem onClick={() => setDeletingProduct(product)} className="text-destructive focus:text-destructive-foreground focus:bg-destructive">
-                                                                Supprimer
-                                                            </DropdownMenuItem>
-                                                        </DropdownMenuContent>
-                                                    </DropdownMenu>
-                                                </td>
-                                            </tr>
-                                        ))}
+                                        {filteredProducts.map(product => {
+                                            const isLowStock = product.quantity <= product.minStockLevel;
+                                            return (
+                                                <tr key={product.id} className={cn(isLowStock && 'bg-destructive/10')}>
+                                                    <td className="whitespace-nowrap px-6 py-4 font-medium">{product.name}</td>
+                                                    <td className="whitespace-nowrap px-6 py-4 text-muted-foreground">{product.barcode || '-'}</td>
+                                                    <td className="whitespace-nowrap px-6 py-4 text-right font-medium">{product.purchasePrice.toFixed(2)} €</td>
+                                                    <td className="whitespace-nowrap px-6 py-4 text-right font-medium">{product.price.toFixed(2)} €</td>
+                                                    <td className={cn("whitespace-nowrap px-6 py-4 text-right font-medium", isLowStock && 'text-destructive font-bold')}>{product.quantity}</td>
+                                                    <td className="whitespace-nowrap px-6 py-4 text-right font-medium">{product.minStockLevel}</td>
+                                                    <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
+                                                        <DropdownMenu>
+                                                            <DropdownMenuTrigger asChild>
+                                                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                                                    <span className="sr-only">Ouvrir le menu</span>
+                                                                    <MoreHorizontal className="h-4 w-4" />
+                                                                </Button>
+                                                            </DropdownMenuTrigger>
+                                                            <DropdownMenuContent align="end">
+                                                                <DropdownMenuItem onClick={() => setEditingProduct(product)}>
+                                                                    Modifier
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuItem onClick={() => setDeletingProduct(product)} className="text-destructive focus:text-destructive-foreground focus:bg-destructive">
+                                                                    Supprimer
+                                                                </DropdownMenuItem>
+                                                            </DropdownMenuContent>
+                                                        </DropdownMenu>
+                                                    </td>
+                                                </tr>
+                                            )
+                                        })}
                                     </tbody>
                                 </table>
                             </div>

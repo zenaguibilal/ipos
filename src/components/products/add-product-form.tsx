@@ -18,7 +18,10 @@ interface AddProductFormProps {
 export function AddProductForm({ isOpen, onOpenChange, userId }: AddProductFormProps) {
     const firestore = useFirestore();
     const [name, setName] = useState('');
-    const [price, setPrice] = useState('');
+    const [price, setPrice] = useState(''); // selling price
+    const [purchasePrice, setPurchasePrice] = useState('');
+    const [quantity, setQuantity] = useState('');
+    const [minStockLevel, setMinStockLevel] = useState('');
     const [barcode, setBarcode] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -26,6 +29,9 @@ export function AddProductForm({ isOpen, onOpenChange, userId }: AddProductFormP
     const resetForm = () => {
         setName('');
         setPrice('');
+        setPurchasePrice('');
+        setQuantity('');
+        setMinStockLevel('');
         setBarcode('');
         setError(null);
     };
@@ -35,10 +41,27 @@ export function AddProductForm({ isOpen, onOpenChange, userId }: AddProductFormP
         setError(null);
         
         const priceNumber = parseFloat(price);
+        const purchasePriceNumber = parseFloat(purchasePrice);
+        const quantityNumber = parseInt(quantity, 10);
+        const minStockLevelNumber = parseInt(minStockLevel, 10);
+
         if (isNaN(priceNumber) || priceNumber <= 0) {
-            setError("Veuillez entrer un prix valide.");
+            setError("Veuillez entrer un prix de vente valide.");
             return;
         }
+        if (isNaN(purchasePriceNumber) || purchasePriceNumber < 0) {
+            setError("Veuillez entrer un prix d'achat valide.");
+            return;
+        }
+        if (isNaN(quantityNumber) || quantityNumber < 0) {
+             setError("Veuillez entrer une quantité valide.");
+            return;
+        }
+        if (isNaN(minStockLevelNumber) || minStockLevelNumber < 0) {
+             setError("Veuillez entrer un niveau de stock minimum valide.");
+            return;
+        }
+
 
         if (!firestore) {
             setError("Le service de base de données n'est pas disponible.");
@@ -50,7 +73,10 @@ export function AddProductForm({ isOpen, onOpenChange, userId }: AddProductFormP
         
         addDocumentNonBlocking(productsCollectionRef, {
             name: name,
-            price: priceNumber,
+            price: priceNumber, // selling price
+            purchasePrice: purchasePriceNumber,
+            quantity: quantityNumber,
+            minStockLevel: minStockLevelNumber,
             barcode: barcode,
             createdAt: serverTimestamp(),
         }, {
@@ -76,7 +102,7 @@ export function AddProductForm({ isOpen, onOpenChange, userId }: AddProductFormP
 
     return (
         <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent className="sm:max-w-md">
                 <form onSubmit={handleSubmit}>
                     <DialogHeader>
                         <DialogTitle>Ajouter un nouveau produit</DialogTitle>
@@ -100,7 +126,7 @@ export function AddProductForm({ isOpen, onOpenChange, userId }: AddProductFormP
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="price" className="text-right">
-                                Prix (€)
+                                Prix Vente (€)
                             </Label>
                             <Input
                                 id="price"
@@ -110,6 +136,46 @@ export function AddProductForm({ isOpen, onOpenChange, userId }: AddProductFormP
                                 className="col-span-3"
                                 required
                                 step="0.01"
+                            />
+                        </div>
+                         <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="purchasePrice" className="text-right">
+                                Prix Achat (€)
+                            </Label>
+                            <Input
+                                id="purchasePrice"
+                                type="number"
+                                value={purchasePrice}
+                                onChange={(e) => setPurchasePrice(e.target.value)}
+                                className="col-span-3"
+                                required
+                                step="0.01"
+                            />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="quantity" className="text-right">
+                                Quantité
+                            </Label>
+                            <Input
+                                id="quantity"
+                                type="number"
+                                value={quantity}
+                                onChange={(e) => setQuantity(e.target.value)}
+                                className="col-span-3"
+                                required
+                            />
+                        </div>
+                         <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="minStockLevel" className="text-right">
+                                Stock Min.
+                            </Label>
+                            <Input
+                                id="minStockLevel"
+                                type="number"
+                                value={minStockLevel}
+                                onChange={(e) => setMinStockLevel(e.target.value)}
+                                className="col-span-3"
+                                required
                             />
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">

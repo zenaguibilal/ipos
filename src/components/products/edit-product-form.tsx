@@ -21,6 +21,9 @@ export function EditProductForm({ isOpen, onOpenChange, userId, product }: EditP
     const firestore = useFirestore();
     const [name, setName] = useState('');
     const [price, setPrice] = useState('');
+    const [purchasePrice, setPurchasePrice] = useState('');
+    const [quantity, setQuantity] = useState('');
+    const [minStockLevel, setMinStockLevel] = useState('');
     const [barcode, setBarcode] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -29,6 +32,9 @@ export function EditProductForm({ isOpen, onOpenChange, userId, product }: EditP
         if (product) {
             setName(product.name);
             setPrice(String(product.price));
+            setPurchasePrice(String(product.purchasePrice));
+            setQuantity(String(product.quantity));
+            setMinStockLevel(String(product.minStockLevel));
             setBarcode(product.barcode || '');
         }
     }, [product]);
@@ -38,8 +44,24 @@ export function EditProductForm({ isOpen, onOpenChange, userId, product }: EditP
         setError(null);
         
         const priceNumber = parseFloat(price);
+        const purchasePriceNumber = parseFloat(purchasePrice);
+        const quantityNumber = parseInt(quantity, 10);
+        const minStockLevelNumber = parseInt(minStockLevel, 10);
+
         if (isNaN(priceNumber) || priceNumber <= 0) {
-            setError("Veuillez entrer un prix valide.");
+            setError("Veuillez entrer un prix de vente valide.");
+            return;
+        }
+        if (isNaN(purchasePriceNumber) || purchasePriceNumber < 0) {
+            setError("Veuillez entrer un prix d'achat valide.");
+            return;
+        }
+        if (isNaN(quantityNumber) || quantityNumber < 0) {
+             setError("Veuillez entrer une quantité valide.");
+            return;
+        }
+        if (isNaN(minStockLevelNumber) || minStockLevelNumber < 0) {
+             setError("Veuillez entrer un niveau de stock minimum valide.");
             return;
         }
 
@@ -54,6 +76,9 @@ export function EditProductForm({ isOpen, onOpenChange, userId, product }: EditP
         updateDocumentNonBlocking(productDocRef, {
             name: name,
             price: priceNumber,
+            purchasePrice: purchasePriceNumber,
+            quantity: quantityNumber,
+            minStockLevel: minStockLevelNumber,
             barcode: barcode,
         }, {
             onSuccess: () => {
@@ -70,7 +95,7 @@ export function EditProductForm({ isOpen, onOpenChange, userId, product }: EditP
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent className="sm:max-w-md">
                 <form onSubmit={handleSubmit}>
                     <DialogHeader>
                         <DialogTitle>Modifier le produit</DialogTitle>
@@ -92,9 +117,9 @@ export function EditProductForm({ isOpen, onOpenChange, userId, product }: EditP
                                 required
                             />
                         </div>
-                        <div className="grid grid-cols-4 items-center gap-4">
+                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="edit-price" className="text-right">
-                                Prix (€)
+                                Prix Vente (€)
                             </Label>
                             <Input
                                 id="edit-price"
@@ -104,6 +129,46 @@ export function EditProductForm({ isOpen, onOpenChange, userId, product }: EditP
                                 className="col-span-3"
                                 required
                                 step="0.01"
+                            />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="edit-purchase-price" className="text-right">
+                                Prix Achat (€)
+                            </Label>
+                            <Input
+                                id="edit-purchase-price"
+                                type="number"
+                                value={purchasePrice}
+                                onChange={(e) => setPurchasePrice(e.target.value)}
+                                className="col-span-3"
+                                required
+                                step="0.01"
+                            />
+                        </div>
+                         <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="edit-quantity" className="text-right">
+                                Quantité
+                            </Label>
+                            <Input
+                                id="edit-quantity"
+                                type="number"
+                                value={quantity}
+                                onChange={(e) => setQuantity(e.target.value)}
+                                className="col-span-3"
+                                required
+                            />
+                        </div>
+                         <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="edit-min-stock" className="text-right">
+                                Stock Min.
+                            </Label>
+                            <Input
+                                id="edit-min-stock"
+                                type="number"
+                                value={minStockLevel}
+                                onChange={(e) => setMinStockLevel(e.target.value)}
+                                className="col-span-3"
+                                required
                             />
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
