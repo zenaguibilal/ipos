@@ -91,6 +91,40 @@
         "phone"
       ]
     },
+    "Supplier": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Supplier",
+      "type": "object",
+      "description": "Represents a supplier of products.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Supplier entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the supplier."
+        },
+        "contactName": {
+          "type": "string",
+          "description": "Name of the primary contact person."
+        },
+        "phone": {
+          "type": "string",
+          "description": "Phone number of the supplier."
+        },
+        "email": {
+          "type": "string",
+          "description": "Email address of the supplier.",
+          "format": "email"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "phone"
+      ]
+    },
     "BakeryOrder": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "BakeryOrder",
@@ -214,22 +248,27 @@
   "firestore": {
     "structure": [
       {
+        "path": "/suppliers/{supplierId}",
+        "definition": {
+          "entityName": "Supplier",
+          "schema": {
+            "$ref": "#/backend/entities/Supplier"
+          },
+          "description": "Stores supplier data.",
+          "params": [{ "name": "supplierId", "description": "The unique ID of the supplier."}]
+        }
+      },
+      {
         "path": "/suppliers/{supplierId}/products/{productId}",
         "definition": {
           "entityName": "Product",
           "schema": {
             "$ref": "#/backend/entities/Product"
           },
-          "description": "Stores products associated with a specific supplier. Uses path-based ownership for security. Includes denormalized 'supplierId' for authorization independence.",
+          "description": "Stores products associated with a specific supplier. Uses path-based ownership for security.",
           "params": [
-            {
-              "name": "supplierId",
-              "description": "The unique identifier of the supplier."
-            },
-            {
-              "name": "productId",
-              "description": "The unique identifier of the product."
-            }
+            { "name": "supplierId", "description": "The unique identifier of the supplier." },
+            { "name": "productId", "description": "The unique identifier of the product."}
           ]
         }
       },
@@ -242,10 +281,7 @@
           },
           "description": "Stores customer data. Each document represents a customer.",
           "params": [
-            {
-              "name": "customerId",
-              "description": "The unique identifier of the customer."
-            }
+            { "name": "customerId", "description": "The unique identifier of the customer." }
           ]
         }
       },
@@ -258,14 +294,8 @@
           },
           "description": "Stores sales for a specific customer.",
           "params": [
-            {
-              "name": "customerId",
-              "description": "The unique identifier of the customer."
-            },
-            {
-                "name": "saleId",
-                "description": "The unique identifier of the sale."
-            }
+            { "name": "customerId", "description": "The unique identifier of the customer." },
+            { "name": "saleId", "description": "The unique identifier of the sale." }
           ]
         }
       },
@@ -287,10 +317,7 @@
           },
           "description": "Stores orders for bakery items.",
           "params": [
-            {
-              "name": "orderId",
-              "description": "The unique identifier of the bakery order."
-            }
+            { "name": "orderId", "description": "The unique identifier of the bakery order." }
           ]
         }
       },
@@ -302,8 +329,6 @@
               "description": "Global counters for the application, such as for invoice numbers."
           }
       }
-    ],
-    "reasoning": "The Firestore data structure is designed to support the iPOS application's core features: product management, customer management, and sales. The structure prioritizes authorization independence and simplifies security rules. Path-based ownership is used for entities associated with specific suppliers and customers. Each collection is designed to have a homogeneous security posture, meaning all documents within a single collection share the same security requirements. This eliminates the need for complex rule logic that distinguishes between different types of documents within the same collection. \n\nAuthorization Independence:\nTo ensure authorization independence and avoid `get()` calls in security rules, the `Customer` entities will have dedicated collections. The `Product` entities are stored as subcollections of `Supplier` documents, enabling secure and straightforward ownership-based security rules. \n\nQAPs Support:\nThe structure uses structural segregation to ensure that each collection has a homogeneous security posture. This, combined with path-based ownership, facilitates secure `list` operations.  Data denormalization (copying relevant customer data where needed) avoids the need for complex joins or server-side filtering, improving performance and security."
+    ]
   }
 }
-    

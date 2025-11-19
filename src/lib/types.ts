@@ -21,6 +21,14 @@ export interface Customer {
   settlementDay?: number;
 }
 
+export interface Supplier {
+  id: string;
+  name: string;
+  contactName?: string;
+  phone: string;
+  email?: string;
+}
+
 export interface BakeryOrder {
   id: string;
   customerName: string;
