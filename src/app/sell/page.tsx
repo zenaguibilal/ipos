@@ -27,6 +27,7 @@ export default function SellPage() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isAddingProduct, setIsAddingProduct] = useState(false);
   const [isProcessingSale, setIsProcessingSale] = useState(false);
+  const [saleStatus, setSaleStatus] = useState<{ success?: string, error?: string } | null>(null);
 
   const productsCollectionRef = useMemoFirebase(() => {
     if (!firestore || !user) return null;
@@ -47,6 +48,7 @@ export default function SellPage() {
   }, [user, isUserLoading, router]);
   
   const addToCart = (product: Product) => {
+    setSaleStatus(null);
     setCart((prevCart) => {
         const existingItem = prevCart.find((item) => item.id === product.id);
         if (existingItem) {
@@ -59,6 +61,7 @@ export default function SellPage() {
   };
 
   const removeFromCart = (productId: string) => {
+      setSaleStatus(null);
       setCart((prevCart) => {
           const existingItem = prevCart.find((item) => item.id === productId);
           if (existingItem && existingItem.quantity > 1) {
@@ -78,6 +81,7 @@ export default function SellPage() {
     if (!salesCollectionRef || cart.length === 0) return;
     
     setIsProcessingSale(true);
+    setSaleStatus(null);
     const saleData = {
         items: cart.map(item => ({ id: item.id, name: item.name, price: item.price, quantity: item.quantity })),
         total: total,
@@ -88,12 +92,13 @@ export default function SellPage() {
         onSuccess: () => {
             setCart([]);
             setIsProcessingSale(false);
-            // Optionally, show a success message
+            setSaleStatus({ success: "Vente enregistrée avec succès !" });
+            setTimeout(() => setSaleStatus(null), 3000); // Clear message after 3 seconds
         },
         onError: (err) => {
             console.error("Erreur lors de la vente :", err);
             setIsProcessingSale(false);
-            // Optionally, show an error message
+            setSaleStatus({ error: "Échec de l'enregistrement de la vente." });
         }
     });
   };
@@ -173,7 +178,13 @@ export default function SellPage() {
                     <CardContent className="flex-1">
                         {cart.length === 0 ? (
                             <div className="flex h-full flex-col items-center justify-center text-center">
-                               <p className="text-muted-foreground">Le panier est vide.</p>
+                                <p className="text-muted-foreground">
+                                    {saleStatus?.success ? (
+                                        <span className="text-green-500">{saleStatus.success}</span>
+                                    ) : (
+                                        "Le panier est vide."
+                                    )}
+                                </p>
                             </div>
                         ) : (
                            <div className="space-y-2">
@@ -192,7 +203,8 @@ export default function SellPage() {
                            </div>
                         )}
                     </CardContent>
-                    <CardFooter className="flex flex-col gap-2 mt-auto">
+                    <CardFooter className="flex flex-col gap-2 mt-auto pt-4">
+                        {saleStatus?.error && <p className="text-sm text-red-500 text-center mb-2">{saleStatus.error}</p>}
                          <div className="flex w-full justify-between font-semibold">
                             <span>Total</span>
                             <span>{total.toFixed(2)} €</span>
