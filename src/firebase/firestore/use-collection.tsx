@@ -63,7 +63,6 @@ export function useCollection<T = any>(
 
   useEffect(() => {
     // Definitive Guard Clause: If the query is not ready, reset state and exit immediately.
-    // This is the root fix for the persistent "Missing or insufficient permissions" error.
     if (!memoizedTargetRefOrQuery) {
       setData(null);
       // Set to true because the dependency that generates the query is likely still loading.
@@ -116,6 +115,10 @@ export function useCollection<T = any>(
 
     return () => unsubscribe();
   }, [memoizedTargetRefOrQuery]);
+  
+  if (!memoizedTargetRefOrQuery) {
+      return { data: null, isLoading: true, error: null };
+  }
   
   return { data, isLoading, error };
 }

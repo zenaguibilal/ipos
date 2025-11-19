@@ -20,26 +20,27 @@ interface FirebaseServices {
 
 export function FirebaseClientProvider({ children }: FirebaseClientProviderProps) {
   const [services, setServices] = useState<FirebaseServices | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     // This effect runs once on the client after the component mounts.
     const init = async () => {
       try {
-        const firebaseServices = await initializeFirebase();
-        setServices(firebaseServices);
+        // Only initialize and set services if they haven't been set already.
+        if (!services) {
+            const firebaseServices = await initializeFirebase();
+            setServices(firebaseServices);
+        }
       } catch (error) {
         console.error("Firebase initialization failed:", error);
         // Optionally handle the error state in the UI
-      } finally {
-        setIsLoading(false);
       }
     };
 
     init();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Empty dependency array ensures this runs only once.
 
-  if (isLoading) {
+  if (!services) {
     // Render a loading state while Firebase is initializing.
     // This prevents children from rendering and trying to access Firebase too early.
     return (
@@ -50,12 +51,11 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
   }
 
   // Once services are available, render the actual provider with the children.
-  // We can safely assert services is not null because isLoading would be true otherwise.
   return (
     <FirebaseProvider
-      firebaseApp={services!.firebaseApp}
-      auth={services!.auth}
-      firestore={services!.firestore}
+      firebaseApp={services.firebaseApp}
+      auth={services.auth}
+      firestore={services.firestore}
     >
       {children}
     </FirebaseProvider>
