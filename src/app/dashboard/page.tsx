@@ -95,6 +95,9 @@ export default function DashboardPage() {
             <Button asChild variant="secondary">
                 <Link href="/customers">Gérer les clients</Link>
             </Button>
+             <Button asChild variant="secondary">
+                <Link href="/sales-history">Historique des ventes</Link>
+            </Button>
             <Button asChild variant="secondary">
                 <Link href="/profile">Aller au profil</Link>
             </Button>
