@@ -57,21 +57,18 @@ export function useCollection<T = any>(
   type ResultItemType = WithId<T>;
   type StateDataType = ResultItemType[] | null;
 
+  // Definitive Guard Clause: If the query is not ready, return a loading state immediately.
+  // This MUST be before any hooks.
+  if (!memoizedTargetRefOrQuery) {
+    return { data: null, isLoading: true, error: null };
+  }
+  
   const [data, setData] = useState<StateDataType>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
   useEffect(() => {
-    // Definitive Guard Clause: If the query is not ready, reset state and exit immediately.
-    if (!memoizedTargetRefOrQuery) {
-      setData(null);
-      // Set to true because the dependency that generates the query is likely still loading.
-      // The consumer component will show a loading state until the query is valid.
-      setIsLoading(true); 
-      setError(null);
-      return; // Exit the effect completely.
-    }
-    
+    // The guard clause at the top of the function ensures this effect only runs with a valid query.
     if (!(memoizedTargetRefOrQuery as any).__memo) {
         // This is a developer error, not a runtime one. Throwing it makes it visible during development.
         throw new Error('Query or reference passed to useCollection was not properly memoized using useMemoFirebase. This will cause infinite loops.');
@@ -115,10 +112,6 @@ export function useCollection<T = any>(
 
     return () => unsubscribe();
   }, [memoizedTargetRefOrQuery]);
-  
-  if (!memoizedTargetRefOrQuery) {
-      return { data: null, isLoading: true, error: null };
-  }
   
   return { data, isLoading, error };
 }

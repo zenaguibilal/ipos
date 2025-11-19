@@ -43,19 +43,18 @@ export function useDoc<T = any>(
 ): UseDocResult<T> {
   type StateDataType = WithId<T> | null;
 
+  // Definitive Guard Clause: If the ref is not ready, return a loading state immediately.
+  // This MUST be before any hooks.
+  if (!memoizedDocRef) {
+      return { data: null, isLoading: true, error: null };
+  }
+
   const [data, setData] = useState<StateDataType>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
   useEffect(() => {
-    // Definitive Guard Clause: If the reference is not ready, reset state and exit.
-    if (!memoizedDocRef) {
-      setData(null);
-      setIsLoading(true); // Waiting for a valid ref
-      setError(null);
-      return;
-    }
-
+    // The guard clause at the top of the function ensures this effect only runs with a valid ref.
     if (!(memoizedDocRef as any).__memo) {
         throw new Error('Document reference passed to useDoc was not properly memoized using useMemoFirebase. This will cause infinite loops.');
     }
