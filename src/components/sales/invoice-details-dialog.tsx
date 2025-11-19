@@ -19,12 +19,13 @@ import { fr } from "date-fns/locale";
 import Barcode from 'react-barcode';
 import { useMemo, useRef, useState, useEffect } from "react";
 
-function InvoiceContent({ sale }: { sale: SaleWithDetails }) {
+function InvoiceContent({ sale, onClose }: { sale: SaleWithDetails; onClose: () => void; }) {
     const firestore = useFirestore();
     const invoiceRef = useRef<HTMLDivElement>(null);
     const [storeInfo, setStoreInfo] = useState({ name: '', address: '', phone: '', email: '' });
 
     useEffect(() => {
+        // This code runs on the client, so window is available.
         const info = {
             name: localStorage.getItem('storeName') || 'Votre Magasin',
             address: localStorage.getItem('storeAddress') || 'Votre Adresse',
@@ -71,14 +72,18 @@ function InvoiceContent({ sale }: { sale: SaleWithDetails }) {
                 // Simple styling for printing
                 printWindow.document.write(`
                     <style>
-                        body { font-family: sans-serif; margin: 20px; }
-                        table { width: 100%; border-collapse: collapse; }
-                        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-                        .text-right { text-align: right; }
-                        .font-semibold { font-weight: 600; }
-                        .text-muted-foreground { color: #666; }
-                        .no-print { display: none; }
-                        .total-section { float: right; width: 300px; margin-top: 20px;}
+                        @media print {
+                            body { -webkit-print-color-adjust: exact; font-family: sans-serif; margin: 20px; }
+                            table { width: 100%; border-collapse: collapse; }
+                            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                            .text-right { text-align: right; }
+                            .font-semibold { font-weight: 600; }
+                            .text-muted-foreground { color: #666; }
+                            .no-print { display: none !important; }
+                            .total-section { float: right; width: 300px; margin-top: 20px;}
+                            .header-grid, .customer-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+                            .text-right { text-align: right; }
+                        }
                     </style>
                 `);
                 printWindow.document.write('</head><body>');
@@ -96,7 +101,7 @@ function InvoiceContent({ sale }: { sale: SaleWithDetails }) {
     return (
         <>
             <div ref={invoiceRef} className="space-y-4 printable-content">
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid gap-4 md:grid-cols-2 header-grid">
                     <div className="grid gap-2">
                         <h2 className="text-lg font-bold">{storeInfo.name}</h2>
                         <p className="text-sm text-muted-foreground">
@@ -111,7 +116,7 @@ function InvoiceContent({ sale }: { sale: SaleWithDetails }) {
                     </div>
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-2 border-t pt-4 mt-4">
+                <div className="grid gap-4 md:grid-cols-2 border-t pt-4 mt-4 customer-grid">
                     <div className="grid gap-1">
                         <div className="text-sm text-muted-foreground">Facturé à</div>
                         <div className="font-semibold">{sale.customer?.name || 'Client inconnu'}</div>
@@ -188,7 +193,7 @@ export function InvoiceDetailsDialog({ sale, isOpen, onClose }: { sale: SaleWith
                         Facture N° {String(sale.invoiceNumber).padStart(6, '0')}
                     </DialogDescription>
                 </DialogHeader>
-                <InvoiceContent sale={sale} />
+                <InvoiceContent sale={sale} onClose={onClose} />
             </DialogContent>
         </Dialog>
     );

@@ -72,7 +72,7 @@ export function SalesHistoryList({ sales }: { sales: SaleWithDetails[] }) {
                                     <TableCell colSpan={5} className="text-center">Aucune vente trouvée.</TableCell>
                                 </TableRow>
                             )}
-                            {filteredSales.map((sale) => (
+                            {filteredSales.sort((a,b) => b.invoiceNumber - a.invoiceNumber).map((sale) => (
                                 <TableRow key={sale.id} onClick={() => setSelectedSale(sale)} className="cursor-pointer">
                                      <TableCell className="font-mono">
                                         {String(sale.invoiceNumber).padStart(6, '0')}
