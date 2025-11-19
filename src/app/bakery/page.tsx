@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
-import { collection, query, where, doc, orderBy } from 'firebase/firestore';
+import { collection, query, where, doc, orderBy, CollectionReference } from 'firebase/firestore';
 import type { BakeryOrder } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -103,11 +103,9 @@ function OrdersTable({ orders, onFulfill, onDelete }: { orders: BakeryOrder[], o
     );
 }
 
-function BakeryTabContent({ type }: { type: BakeryItemType }) {
+function BakeryTabContent({ type, bakeryOrdersColRef }: { type: BakeryItemType, bakeryOrdersColRef: CollectionReference | null }) {
     const firestore = useFirestore();
     const { toast } = useToast();
-
-    const bakeryOrdersColRef = useMemoFirebase(() => collection(firestore, 'bakery_orders'), [firestore]);
     
     const ordersQuery = useMemoFirebase(
         () => {
@@ -120,6 +118,7 @@ function BakeryTabContent({ type }: { type: BakeryItemType }) {
     const { data: orders, isLoading } = useCollection<BakeryOrder>(ordersQuery);
 
     const handleAddOrder = (order: Omit<BakeryOrder, 'id' | 'orderDate' | 'isFulfilled'>) => {
+        if (!bakeryOrdersColRef) return;
         const newOrder: Omit<BakeryOrder, 'id'> = {
             ...order,
             orderDate: new Date().toISOString(),
@@ -169,6 +168,9 @@ function BakeryTabContent({ type }: { type: BakeryItemType }) {
 }
 
 export default function BakeryPage() {
+    const firestore = useFirestore();
+    const bakeryOrdersColRef = useMemoFirebase(() => collection(firestore, 'bakery_orders'), [firestore]);
+
     return (
         <div className="space-y-6">
              <div className="flex items-center justify-between">
@@ -180,10 +182,10 @@ export default function BakeryPage() {
                     <TabsTrigger value="meloui">الملوي</TabsTrigger>
                 </TabsList>
                 <TabsContent value="bread">
-                   <BakeryTabContent type="bread" />
+                   <BakeryTabContent type="bread" bakeryOrdersColRef={bakeryOrdersColRef} />
                 </TabsContent>
                 <TabsContent value="meloui">
-                   <BakeryTabContent type="meloui" />
+                   <BakeryTabContent type="meloui" bakeryOrdersColRef={bakeryOrdersColRef} />
                 </TabsContent>
             </Tabs>
         </div>
