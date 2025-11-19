@@ -31,10 +31,16 @@ export function initializeFirebase(): Promise<{ firebaseApp: FirebaseApp; auth: 
           firebaseApp = getApp();
           auth = getAuth(firebaseApp);
           firestore = getFirestore(firebaseApp);
+          // Ensure user is signed in even if app was already initialized
+          // This can happen with Fast Refresh
+          if (!auth.currentUser) {
+            await signInAnonymously(auth);
+          }
       }
       resolve({ firebaseApp, auth, firestore });
     } catch (error) {
       console.error("Firebase initialization failed:", error);
+      initializationPromise = null; // Reset promise on failure
       reject(error);
     }
   });
