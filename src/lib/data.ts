@@ -1,7 +1,7 @@
 'use client';
 
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, collectionGroup, where, documentId, orderBy, limit, Timestamp } from 'firebase/firestore';
+import { collection, query, collectionGroup, where, documentId, orderBy, limit, Timestamp, onSnapshot } from 'firebase/firestore';
 import type { Product, Customer, Supplier, Sale, SaleLineItem, SaleWithDetails } from './types';
 import { useState, useEffect, useMemo } from 'react';
 import { subDays, startOfDay, endOfDay, format } from 'date-fns';
@@ -87,6 +87,14 @@ export function useSales(max?: number) {
         let chunksLoaded = 0;
 
         customerChunks.forEach(chunk => {
+            if (chunk.length === 0) {
+                 chunksLoaded++;
+                 if (chunksLoaded === customerChunks.length) {
+                    setCustomersMap(new Map(fetchedCustomers));
+                    setCustomersLoading(false);
+                }
+                return;
+            }
             const customerQuery = query(collection(firestore, 'customers'), where(documentId(), 'in', chunk));
             const unsubscribe = onSnapshot(customerQuery, (snapshot) => {
                 snapshot.docs.forEach(doc => {
