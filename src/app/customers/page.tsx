@@ -12,7 +12,7 @@ import { AddCustomerForm } from '@/components/customers/add-customer-form';
 import { EditCustomerForm } from '@/components/customers/edit-customer-form';
 import { DeleteCustomerDialog } from '@/components/customers/delete-customer-dialog';
 import { SettleDebtDialog } from '@/components/customers/settle-debt-dialog';
-import { MoreHorizontal } from 'lucide-react';
+import { MoreHorizontal, CreditCard, Pencil, Trash2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 
@@ -252,14 +252,17 @@ export default function CustomersPage() {
                                                         </DropdownMenuTrigger>
                                                         <DropdownMenuContent align="end">
                                                             <DropdownMenuItem onClick={() => setSettlingDebtForCustomer(customer)} disabled={customer.outstandingBalance <= 0}>
-                                                                Régler la dette
+                                                                <CreditCard className="mr-2 h-4 w-4" />
+                                                                <span>Régler la dette</span>
                                                             </DropdownMenuItem>
                                                             <DropdownMenuSeparator />
                                                             <DropdownMenuItem onClick={() => setEditingCustomer(customer)}>
-                                                                Modifier
+                                                                <Pencil className="mr-2 h-4 w-4" />
+                                                                <span>Modifier</span>
                                                             </DropdownMenuItem>
                                                             <DropdownMenuItem onClick={() => setDeletingCustomer(customer)} className="text-destructive focus:text-destructive-foreground focus:bg-destructive">
-                                                                Supprimer
+                                                                <Trash2 className="mr-2 h-4 w-4" />
+                                                                <span>Supprimer</span>
                                                             </DropdownMenuItem>
                                                         </DropdownMenuContent>
                                                     </DropdownMenu>
