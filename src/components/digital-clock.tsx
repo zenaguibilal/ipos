@@ -34,9 +34,9 @@ export function DigitalClock() {
   };
 
   return (
-    <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+    <div className="flex items-center gap-2 text-sm font-medium text-foreground bg-muted/50 px-3 py-1.5 rounded-md border">
       <Clock className="h-4 w-4 text-muted-foreground" />
-      <span className="font-mono tracking-wider">
+      <span className="font-mono text-base tracking-wider">
         {formatTime(time)}
       </span>
     </div>
