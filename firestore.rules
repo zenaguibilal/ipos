@@ -18,52 +18,38 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    /**
-     * @description Controls access to user profile information.
-     * @path /users/{userId}
-     * @allow (create) - User with ID 'user123' can create their own profile.
-     *   - request.auth.uid: 'user123'
-     *   - request.resource.data: { "id": "user123", "firstName": "John", ... }
-     * @allow (get, update, delete, list) - User with ID 'user123' can read, update, and delete their own profile.
-     *   - request.auth.uid: 'user123'
-     * @deny (create) - User with ID 'user456' cannot create a profile for 'user123'.
-     *   - request.auth.uid: 'user456'
-     *   - request.resource.data: { "id": "user123", "firstName": "John", ... }
-     * @deny (get, update, delete, list) - User with ID 'user456' cannot read, update, or delete profile of 'user123'.
-     *   - request.auth.uid: 'user456'
-     * @principle Enforces document ownership for all operations.
-     */
+    // Helper function to check if the user is signed in
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Helper function to check if the user is the owner of the document
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Helper function to check if the user is the existing owner of the document
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
+    }
+      
     match /users/{userId} {
-      // Helper function to check if the user is signed in
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      // Helper function to check if the user is the owner of the document
-      function isOwner(userId) {
-        return isSignedIn() && request.auth.uid == userId;
-      }
-
-      // Helper function to check if the user is the existing owner of the document
-      function isExistingOwner(userId) {
-        return isOwner(userId) && resource != null;
-      }
-
       // Allow the user to create their own document if the userId matches their auth.uid. The document id also must match the userId
       allow create: if isOwner(userId) && request.resource.data.id == userId;
-
-      // Allow the user to get their own document
       allow get: if isOwner(userId);
-
-      // Allow the user to list their own "user" document. This collection only has one document per user, but list is included for completeness and future-proofing.
       allow list: if isOwner(userId);
-
       // Allow the user to update their own document if the userId matches their auth.uid
       // Enforce immutability for the `id` field.
       allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
-
-      // Allow the user to delete their own document
       allow delete: if isExistingOwner(userId);
+
+      match /products/{productId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      match /sales/{saleId} {
+        allow read, write: if isOwner(userId);
+      }
     }
   }
 }

@@ -46,6 +46,68 @@
         "createdAt",
         "updatedAt"
       ]
+    },
+    "Product": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Product",
+      "type": "object",
+      "description": "Represents a product in the inventory.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the product."
+        },
+        "price": {
+          "type": "number",
+          "description": "Price of the product."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the product was created.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "name",
+        "price",
+        "createdAt"
+      ]
+    },
+    "Sale": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Sale",
+      "type": "object",
+      "description": "Represents a single sales transaction.",
+      "properties": {
+        "items": {
+          "type": "array",
+          "description": "List of items included in the sale.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "price": { "type": "number" },
+              "quantity": { "type": "integer" }
+            },
+            "required": ["id", "name", "price", "quantity"]
+          }
+        },
+        "total": {
+          "type": "number",
+          "description": "Total amount of the sale."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the sale was made.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "items",
+        "total",
+        "createdAt"
+      ]
     }
   },
   "auth": {
@@ -69,6 +131,20 @@
               "description": "The unique identifier for the user."
             }
           ]
+        }
+      },
+      {
+        "path": "/users/{userId}/products/{productId}",
+        "definition": {
+          "schema": { "$ref": "#/backend/entities/Product" },
+          "description": "Products owned by a specific user."
+        }
+      },
+      {
+        "path": "/users/{userId}/sales/{saleId}",
+        "definition": {
+          "schema": { "$ref": "#/backend/entities/Sale" },
+          "description": "Sales records for a specific user."
         }
       }
     ],
