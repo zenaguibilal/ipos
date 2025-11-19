@@ -125,7 +125,7 @@ export default function CustomersPage() {
                                                             <DropdownMenuItem onClick={() => setEditingCustomer(customer)}>
                                                                 Modifier
                                                             </DropdownMenuItem>
-                                                            <DropdownMenuItem onClick={() => setDeletingCustomer(customer)} className="text-destructive">
+                                                            <DropdownMenuItem onClick={() => setDeletingCustomer(customer)} className="text-destructive focus:text-destructive-foreground focus:bg-destructive">
                                                                 Supprimer
                                                             </DropdownMenuItem>
                                                         </DropdownMenuContent>

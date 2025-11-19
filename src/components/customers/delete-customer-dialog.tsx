@@ -11,6 +11,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 interface DeleteCustomerDialogProps {
     isOpen: boolean;
@@ -31,7 +33,12 @@ export function DeleteCustomerDialog({ isOpen, onOpenChange, onConfirm, customer
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Annuler</AlertDialogCancel>
-          <AlertDialogAction onClick={onConfirm}>Continuer</AlertDialogAction>
+          <AlertDialogAction 
+            onClick={onConfirm} 
+            className={cn(buttonVariants({ variant: "destructive" }))}
+          >
+            Continuer
+          </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
