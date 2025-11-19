@@ -107,11 +107,17 @@ function BakeryTabContent({ type }: { type: BakeryItemType }) {
     const firestore = useFirestore();
     const { toast } = useToast();
 
-    const ordersRef = useMemoFirebase(
-        () => query(collection(firestore, 'bakery_orders'), where('type', '==', type), orderBy('orderDate', 'desc')),
-        [firestore, type]
+    const bakeryOrdersColRef = useMemoFirebase(() => collection(firestore, 'bakery_orders'), [firestore]);
+    
+    const ordersQuery = useMemoFirebase(
+        () => {
+            if (!bakeryOrdersColRef) return null;
+            return query(bakeryOrdersColRef, where('type', '==', type), orderBy('orderDate', 'desc'));
+        },
+        [bakeryOrdersColRef, type]
     );
-    const { data: orders, isLoading } = useCollection<BakeryOrder>(ordersRef);
+
+    const { data: orders, isLoading } = useCollection<BakeryOrder>(ordersQuery);
 
     const handleAddOrder = (order: Omit<BakeryOrder, 'id' | 'orderDate' | 'isFulfilled'>) => {
         const newOrder: Omit<BakeryOrder, 'id'> = {
@@ -119,8 +125,7 @@ function BakeryTabContent({ type }: { type: BakeryItemType }) {
             orderDate: new Date().toISOString(),
             isFulfilled: false,
         };
-        const colRef = collection(firestore, 'bakery_orders');
-        addDocumentNonBlocking(colRef, newOrder);
+        addDocumentNonBlocking(bakeryOrdersColRef, newOrder);
         toast({
             title: "تمت إضافة الطلب",
             description: `تم تسجيل طلب ${order.customerName}.`,
