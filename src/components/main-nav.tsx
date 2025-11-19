@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  Home,
   Package,
   Users,
   Truck,
@@ -17,7 +16,6 @@ import { cn } from '@/lib/utils';
 import { SheetClose } from './ui/sheet';
 
 const navLinks = [
-  { href: '/', label: 'Tableau de Bord', icon: Home },
   { href: '/sell', label: 'Vendre', icon: ShoppingCart },
   { href: '/sales-history', label: 'Historique', icon: History },
   { href: '/alerts', label: 'Alertes', icon: Bell },
