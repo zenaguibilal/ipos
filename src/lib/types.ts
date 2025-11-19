@@ -70,6 +70,7 @@ export interface BakeryOrder {
   customerName: string;
   quantity: number;
   type: 'bread' | 'meloui';
+  paymentStatus: 'paid' | 'unpaid';
   orderDate: string;
   isFulfilled: boolean;
 }

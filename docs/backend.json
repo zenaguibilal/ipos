@@ -287,6 +287,11 @@
           "description": "The type of bakery item.",
           "enum": ["bread", "meloui"]
         },
+        "paymentStatus": {
+          "type": "string",
+          "description": "The payment status of the order.",
+          "enum": ["paid", "unpaid"]
+        },
         "orderDate": {
           "type": "string",
           "description": "Date and time of the order.",
@@ -297,7 +302,7 @@
           "description": "Whether the order has been fulfilled."
         }
       },
-      "required": ["id", "customerName", "quantity", "type", "orderDate", "isFulfilled"]
+      "required": ["id", "customerName", "quantity", "type", "orderDate", "isFulfilled", "paymentStatus"]
     }
   },
   "auth": {
