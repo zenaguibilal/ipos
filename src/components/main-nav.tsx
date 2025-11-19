@@ -3,27 +3,15 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  Home,
   ShoppingCart,
-  Package,
-  Users,
-  Building,
-  History,
   Cookie,
-  Settings,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SheetClose } from './ui/sheet';
 
 const navLinks = [
-  { href: '/', label: 'Tableau de bord', icon: Home },
   { href: '/sell', label: 'Vendre', icon: ShoppingCart },
-  { href: '/sales-history', label: 'Sells History', icon: History },
-  { href: '/products', label: 'Produits', icon: Package },
-  { href: '/customers', label: 'Clients', icon: Users },
-  { href: '/suppliers', label: 'Fournisseurs', icon: Building },
   { href: '/bakery', label: 'Pâtisserie', icon: Cookie },
-  { href: '/settings', label: 'Paramètres', icon: Settings },
 ];
 
 type MainNavProps = {

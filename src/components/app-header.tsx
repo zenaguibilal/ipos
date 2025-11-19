@@ -5,6 +5,7 @@ import {
   CircleUser,
   Menu,
   Package2,
+  Settings,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -37,7 +38,7 @@ export function AppHeader() {
           <SheetTitle className="sr-only">Menu de navigation</SheetTitle>
           <nav className="grid gap-2 text-lg font-medium">
             <Link
-              href="/"
+              href="/sell"
               className="flex items-center gap-2 text-lg font-semibold mb-4"
             >
               <Package2 className="h-6 w-6 text-primary" />
@@ -63,9 +64,6 @@ export function AppHeader() {
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>Mon Compte</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-                <Link href="/settings">Paramètres</Link>
-            </DropdownMenuItem>
             <DropdownMenuItem>Support</DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={logout}>Déconnexion</DropdownMenuItem>
