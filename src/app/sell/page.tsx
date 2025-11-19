@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useUser, useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking } from '@/firebase';
@@ -9,6 +10,7 @@ import Link from 'next/link';
 import { collection, serverTimestamp } from 'firebase/firestore';
 import { AddProductForm } from '@/components/sell/add-product-form';
 import { MinusCircle, PlusCircle, XCircle } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 
 interface Product {
     id: string;
@@ -30,6 +32,7 @@ export default function SellPage() {
   const [isAddingProduct, setIsAddingProduct] = useState(false);
   const [isProcessingSale, setIsProcessingSale] = useState(false);
   const [saleStatus, setSaleStatus] = useState<{ success?: string, error?: string } | null>(null);
+  const [barcodeSearch, setBarcodeSearch] = useState('');
 
   const productsCollectionRef = useMemoFirebase(() => {
     if (!firestore || !user) return null;
@@ -111,6 +114,21 @@ export default function SellPage() {
         }
     });
   };
+  
+  const handleBarcodeSearch = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!barcodeSearch.trim() || !products) return;
+
+    const foundProduct = products.find(p => p.barcode === barcodeSearch.trim());
+    if (foundProduct) {
+        addToCart(foundProduct);
+        setSaleStatus({ success: `${foundProduct.name} ajouté.` });
+    } else {
+        setSaleStatus({ error: "Aucun produit trouvé avec ce code-barres." });
+    }
+    setBarcodeSearch(''); // Clear input after search
+    setTimeout(() => setSaleStatus(null), 2000); // Clear status message after 2 seconds
+  };
 
 
   if (isUserLoading || !user) {
@@ -138,8 +156,19 @@ export default function SellPage() {
             <div className="flex flex-col gap-4 md:col-span-1 lg:col-span-2">
                 <Card>
                     <CardHeader>
-                        <CardTitle>Produits</CardTitle>
-                        <CardDescription>Cliquez sur un produit pour l'ajouter à la vente.</CardDescription>
+                         <CardTitle>Produits</CardTitle>
+                        <div className="flex flex-col gap-2 sm:flex-row">
+                             <CardDescription className="flex-1">
+                                Recherchez par code-barres ou cliquez sur un produit pour l'ajouter.
+                            </CardDescription>
+                            <form onSubmit={handleBarcodeSearch} className="w-full sm:w-64">
+                                <Input 
+                                    placeholder="Rechercher par code-barres..."
+                                    value={barcodeSearch}
+                                    onChange={(e) => setBarcodeSearch(e.target.value)}
+                                />
+                            </form>
+                        </div>
                     </CardHeader>
                     <CardContent>
                         {isLoadingProducts ? (
@@ -184,12 +213,14 @@ export default function SellPage() {
                 <Card className="flex flex-col">
                     <CardHeader>
                         <CardTitle>Vente en cours</CardTitle>
+                         {saleStatus?.error && <p className="text-xs text-red-500">{saleStatus.error}</p>}
+                        {saleStatus?.success && <p className="text-xs text-green-500">{saleStatus.success}</p>}
                     </CardHeader>
                     <CardContent className="flex-1">
                         {cart.length === 0 ? (
                             <div className="flex h-full flex-col items-center justify-center text-center">
                                 <p className="text-muted-foreground">
-                                    {saleStatus?.success ? (
+                                    {saleStatus?.success && !cart.length ? (
                                         <span className="text-green-500">{saleStatus.success}</span>
                                     ) : (
                                         "Le panier est vide."
@@ -216,7 +247,6 @@ export default function SellPage() {
                         )}
                     </CardContent>
                     <CardFooter className="flex flex-col gap-2 mt-auto pt-4">
-                        {saleStatus?.error && <p className="text-sm text-red-500 text-center mb-2">{saleStatus.error}</p>}
                          <div className="flex w-full justify-between font-semibold">
                             <span>Total</span>
                             <span>{total.toFixed(2)} €</span>
