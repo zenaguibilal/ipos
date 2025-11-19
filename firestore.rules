@@ -1,10 +1,30 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{path=**} {
-      // Allow public access for development purposes to resolve permission errors.
-      // This is not recommended for production environments.
-      allow read, write: if true;
+    // This rule allows any authenticated user to read and write all documents.
+    // It's simple for development but you'll want more granular rules for production.
+    match /{path=**}/{document} {
+      allow read, write: if request.auth != null;
+    }
+
+    // Explicitly allow access to the collections at the root.
+    match /suppliers/{supplierId} {
+      allow read, write: if request.auth != null;
+    }
+    match /customers/{customerId} {
+      allow read, write: if request.auth != null;
+    }
+    match /sales_line_items/{saleLineItemId} {
+      allow read, write: if request.auth != null;
+    }
+    match /stock_alerts/{stockAlertId} {
+      allow read, write: if request.auth != null;
+    }
+    match /counters/{counterId} {
+      allow read, write: if request.auth != null;
+    }
+    match /bakery_orders/{orderId} {
+      allow read, write: if request.auth != null;
     }
   }
 }
