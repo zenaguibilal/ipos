@@ -11,8 +11,8 @@ import Link from 'next/link';
 import { AddProductForm } from '@/components/products/add-product-form';
 import { EditProductForm } from '@/components/products/edit-product-form';
 import { DeleteProductDialog } from '@/components/products/delete-product-dialog';
-import { MoreHorizontal } from 'lucide-react';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 
@@ -156,10 +156,12 @@ export default function ProductsPage() {
                                                             </DropdownMenuTrigger>
                                                             <DropdownMenuContent align="end">
                                                                 <DropdownMenuItem onClick={() => setEditingProduct(product)}>
-                                                                    Modifier
+                                                                    <Pencil className="mr-2 h-4 w-4" />
+                                                                    <span>Modifier</span>
                                                                 </DropdownMenuItem>
                                                                 <DropdownMenuItem onClick={() => setDeletingProduct(product)} className="text-destructive focus:text-destructive-foreground focus:bg-destructive">
-                                                                    Supprimer
+                                                                    <Trash2 className="mr-2 h-4 w-4" />
+                                                                    <span>Supprimer</span>
                                                                 </DropdownMenuItem>
                                                             </DropdownMenuContent>
                                                         </DropdownMenu>
