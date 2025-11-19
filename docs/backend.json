@@ -61,6 +61,10 @@
           "type": "number",
           "description": "Price of the product."
         },
+        "barcode": {
+          "type": "string",
+          "description": "Barcode (UPC, EAN, etc.) of the product."
+        },
         "createdAt": {
           "type": "string",
           "description": "Timestamp indicating when the product was created.",

@@ -18,6 +18,7 @@ export function AddProductForm({ isOpen, onOpenChange, userId }: AddProductFormP
     const firestore = useFirestore();
     const [name, setName] = useState('');
     const [price, setPrice] = useState('');
+    const [barcode, setBarcode] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
 
@@ -42,6 +43,7 @@ export function AddProductForm({ isOpen, onOpenChange, userId }: AddProductFormP
         addDocumentNonBlocking(productsCollectionRef, {
             name: name,
             price: priceNumber,
+            barcode: barcode,
             createdAt: serverTimestamp(),
         }, {
             onSuccess: () => {
@@ -49,6 +51,7 @@ export function AddProductForm({ isOpen, onOpenChange, userId }: AddProductFormP
                 onOpenChange(false);
                 setName('');
                 setPrice('');
+                setBarcode('');
             },
             onError: (err) => {
                 setIsLoading(false);
@@ -94,6 +97,17 @@ export function AddProductForm({ isOpen, onOpenChange, userId }: AddProductFormP
                                 className="col-span-3"
                                 required
                                 step="0.01"
+                            />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="barcode" className="text-right">
+                                Code-barres
+                            </Label>
+                            <Input
+                                id="barcode"
+                                value={barcode}
+                                onChange={(e) => setBarcode(e.target.value)}
+                                className="col-span-3"
                             />
                         </div>
                     </div>

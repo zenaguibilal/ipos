@@ -14,6 +14,7 @@ interface Product {
     id: string;
     name: string;
     price: number;
+    barcode?: string;
 }
 
 interface CartItem extends Product {
@@ -155,6 +156,7 @@ export default function SellPage() {
                                     >
                                         <CardHeader className="flex-1 p-4">
                                             <CardTitle className="text-sm">{product.name}</CardTitle>
+                                            {product.barcode && <CardDescription className="text-xs">{product.barcode}</CardDescription>}
                                         </CardHeader>
                                         <CardFooter className="p-4 pt-0">
                                             <p className="text-xs font-semibold">{product.price.toFixed(2)} €</p>
