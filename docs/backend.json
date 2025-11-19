@@ -171,6 +171,36 @@
         "lastName",
         "createdAt"
       ]
+    },
+    "Payment": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Payment",
+      "type": "object",
+      "description": "Represents a payment received from a customer, typically to settle an outstanding debt.",
+      "properties": {
+        "amount": {
+          "type": "number",
+          "description": "The amount of money paid."
+        },
+        "customerId": {
+          "type": "string",
+          "description": "ID of the customer who made the payment."
+        },
+        "customerName": {
+          "type": "string",
+          "description": "Name of the customer, for easy display."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the payment was made.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "amount",
+        "customerId",
+        "createdAt"
+      ]
     }
   },
   "auth": {
@@ -194,6 +224,10 @@
     "/users/{userId}/customers/{customerId}": {
       "schema": { "$ref": "#/backend/entities/Customer" },
       "description": "The collection of customers for a specific user. Only the user can access their own customer list."
+    },
+    "/users/{userId}/payments/{paymentId}": {
+      "schema": { "$ref": "#/backend/entities/Payment" },
+      "description": "The collection of debt settlement payments for a specific user. Only the user can access their own payment records."
     }
   }
 }
