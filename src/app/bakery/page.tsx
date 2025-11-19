@@ -1,5 +1,5 @@
 'use client';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, doc, updateDoc, addDoc, deleteDoc } from 'firebase/firestore';
 import type { BakeryOrder } from '@/lib/types';
@@ -17,9 +17,12 @@ import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
-function BakeryOrderForm({ isOpen, onClose, onSave }: { isOpen: boolean, onClose: () => void, onSave: (order: Omit<BakeryOrder, 'id' | 'orderDate' | 'isFulfilled'>) => void }) {
-    const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+function BakeryOrderForm({ isOpen, onClose, onSave }: { isOpen: boolean, onClose: () => void, onSave: (order: Omit<BakeryOrder, 'id' | 'orderDate' | 'isFulfilled'>) => Promise<void> }) {
+    const [isSaving, setIsSaving] = useState(false);
+
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
+        setIsSaving(true);
         const formData = new FormData(e.currentTarget);
         const newOrder: Omit<BakeryOrder, 'id' | 'orderDate' | 'isFulfilled'> = {
             customerName: formData.get('customerName') as string,
@@ -27,8 +30,8 @@ function BakeryOrderForm({ isOpen, onClose, onSave }: { isOpen: boolean, onClose
             type: formData.get('type') as 'bread' | 'meloui',
             paymentStatus: formData.get('paymentStatus') as 'paid' | 'unpaid',
         };
-        onSave(newOrder);
-        onClose();
+        await onSave(newOrder);
+        setIsSaving(false);
     };
 
     return (
@@ -75,8 +78,10 @@ function BakeryOrderForm({ isOpen, onClose, onSave }: { isOpen: boolean, onClose
                     </div>
                 </form>
                 <DialogFooter>
-                    <Button variant="outline" onClick={onClose}>إلغاء</Button>
-                    <Button type="submit" form="bakery-order-form">حفظ الطلب</Button>
+                    <Button variant="outline" onClick={onClose} disabled={isSaving}>إلغاء</Button>
+                    <Button type="submit" form="bakery-order-form" disabled={isSaving}>
+                        {isSaving ? <><Loader className="mr-2 h-4 w-4 animate-spin" /> جارٍ الحفظ...</> : 'حفظ الطلب'}
+                    </Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -98,7 +103,7 @@ function BakeryTable({ orders, onFulfillToggle, onPaymentStatusChange, onDelete 
     return (
         <>
             {orders.map(order => (
-                <TableRow key={order.id} data-state={order.isFulfilled ? 'completed' : 'pending'}>
+                <TableRow key={order.id} className={order.isFulfilled ? 'bg-muted/50' : ''}>
                     <TableCell className="font-medium">{order.customerName}</TableCell>
                     <TableCell className="text-center">{order.quantity}</TableCell>
                     <TableCell>
@@ -115,7 +120,7 @@ function BakeryTable({ orders, onFulfillToggle, onPaymentStatusChange, onDelete 
                             value={order.paymentStatus}
                             onValueChange={(newStatus: 'paid' | 'unpaid') => onPaymentStatusChange(order, newStatus)}
                         >
-                            <SelectTrigger className={`w-[110px] text-xs h-8 ${order.paymentStatus === 'paid' ? 'border-green-500 text-green-700' : 'border-red-500 text-red-700'}`}>
+                            <SelectTrigger className={`w-[110px] text-xs h-8 ${order.paymentStatus === 'paid' ? 'border-green-500 text-green-700 focus:ring-green-500' : 'border-red-500 text-red-700 focus:ring-red-500'}`}>
                                 <SelectValue placeholder="حالة الدفع" />
                             </SelectTrigger>
                             <SelectContent>
@@ -155,11 +160,11 @@ export default function BakeryPage() {
     const [isFormOpen, setIsFormOpen] = useState(false);
     
     const breadOrdersQuantity = useMemo(() => {
-        return orders?.filter(order => order.type === 'bread').reduce((sum, order) => sum + order.quantity, 0) || 0;
+        return orders?.filter(order => order.type === 'bread' && !order.isFulfilled).reduce((sum, order) => sum + order.quantity, 0) || 0;
     }, [orders]);
 
     const melouiOrdersQuantity = useMemo(() => {
-        return orders?.filter(order => order.type === 'meloui').reduce((sum, order) => sum + order.quantity, 0) || 0;
+        return orders?.filter(order => order.type === 'meloui' && !order.isFulfilled).reduce((sum, order) => sum + order.quantity, 0) || 0;
     }, [orders]);
 
     const handleSaveOrder = async (orderData: Omit<BakeryOrder, 'id' | 'orderDate' | 'isFulfilled'>) => {
@@ -175,6 +180,7 @@ export default function BakeryPage() {
                 title: "تم حفظ الطلب",
                 description: `تم تسجيل طلب ${orderData.customerName} بنجاح.`,
             });
+            setIsFormOpen(false); // Close the dialog on successful save
         } catch (error) {
             console.error("Error saving order:", error);
             toast({
@@ -225,12 +231,14 @@ export default function BakeryPage() {
 
     const handleDeleteOrder = async (orderId: string) => {
         if (!firestore) return;
+        if (!confirm('هل أنت متأكد أنك تريد حذف هذا الطلب؟ لا يمكن التراجع عن هذا الإجراء.')) {
+            return;
+        }
         const orderRef = doc(firestore, 'bakery_orders', orderId);
         try {
             await deleteDoc(orderRef);
             toast({
                 title: "تم حذف الطلب",
-                variant: "destructive",
             });
         } catch (error) {
             console.error("Error deleting order:", error);
@@ -255,16 +263,16 @@ export default function BakeryPage() {
     return (
         <div className="space-y-6">
             <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
+                <CardHeader className="flex flex-row items-start justify-between">
                     <div className="grid gap-2">
                         <CardTitle>طلبات المخبوزات</CardTitle>
-                        <CardDescription>إدارة وتتبع طلبات الخبز والملوي اليومية.</CardDescription>
+                        <CardDescription>إدارة وتتبع طلبات الخبز والملوي اليومية. الإجماليات تظهر فقط للطلبات غير المستلمة.</CardDescription>
                         <div className="flex items-center gap-4 pt-2">
-                            <Badge variant="secondary" className="flex items-center gap-2 py-1 px-3 text-sm">
+                            <Badge variant="secondary" className="flex items-center gap-2 py-1 px-3 text-base">
                                 <Wheat className="h-4 w-4" />
                                 <span>خبز: {breadOrdersQuantity}</span>
                             </Badge>
-                            <Badge variant="outline" className="flex items-center gap-2 py-1 px-3 text-sm">
+                            <Badge variant="outline" className="flex items-center gap-2 py-1 px-3 text-base">
                                 <Cookie className="h-4 w-4" />
                                 <span>ملوي: {melouiOrdersQuantity}</span>
                             </Badge>
@@ -309,5 +317,3 @@ export default function BakeryPage() {
         </div>
     );
 }
-
-    
