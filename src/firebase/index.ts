@@ -5,42 +5,43 @@ import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth, signInAnonymously, Auth } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
 
+let firebaseApp: FirebaseApp;
+let auth: Auth;
+let firestore: Firestore;
+let initializationPromise: Promise<{ firebaseApp: FirebaseApp; auth: Auth; firestore: Firestore; }> | null = null;
+
+
 // IMPORTANT: DO NOT MODIFY THIS FUNCTION
-export async function initializeFirebase(): Promise<{ firebaseApp: FirebaseApp; auth: Auth; firestore: Firestore }> {
-  const appName = '[DEFAULT]';
-  
-  // Check if the default app is already initialized
-  const alreadyInitialized = getApps().some(app => app.name === appName);
-
-  let firebaseApp: FirebaseApp;
-
-  if (alreadyInitialized) {
-    firebaseApp = getApp(appName);
-  } else {
-    // Initialize the app for the first time
-     try {
-      firebaseApp = initializeApp(firebaseConfig);
-    } catch (e) {
-      if (process.env.NODE_ENV === "production") {
-        console.warn('Automatic initialization failed. Falling back to firebase config object.', e);
-      }
-      firebaseApp = initializeApp(firebaseConfig);
-    }
-    
-    // Authenticate immediately after initialization
-    const auth = getAuth(firebaseApp);
-    try {
-      await signInAnonymously(auth);
-    } catch (error) {
-      console.error("Anonymous sign-in failed during initialization:", error);
-      // Handle failure gracefully, perhaps by throwing the error to be caught by the provider
-      throw error;
-    }
+export function initializeFirebase(): Promise<{ firebaseApp: FirebaseApp; auth: Auth; firestore: Firestore; }> {
+  if (initializationPromise) {
+    return initializationPromise;
   }
 
-  // Always return the SDKs from the initialized app
-  return getSdks(firebaseApp);
+  initializationPromise = new Promise(async (resolve, reject) => {
+    try {
+      if (!getApps().length) {
+          firebaseApp = initializeApp(firebaseConfig);
+          auth = getAuth(firebaseApp);
+          firestore = getFirestore(firebaseApp);
+          // Only sign in if there's no current user. This is crucial for HMR.
+          if (!auth.currentUser) {
+            await signInAnonymously(auth);
+          }
+      } else {
+          firebaseApp = getApp();
+          auth = getAuth(firebaseApp);
+          firestore = getFirestore(firebaseApp);
+      }
+      resolve({ firebaseApp, auth, firestore });
+    } catch (error) {
+      console.error("Firebase initialization failed:", error);
+      reject(error);
+    }
+  });
+
+  return initializationPromise;
 }
+
 
 export function getSdks(firebaseApp: FirebaseApp) {
   return {
