@@ -21,22 +21,17 @@ export function initializeFirebase(): Promise<{ firebaseApp: FirebaseApp; auth: 
     try {
       if (!getApps().length) {
           firebaseApp = initializeApp(firebaseConfig);
-          auth = getAuth(firebaseApp);
-          firestore = getFirestore(firebaseApp);
-          // Only sign in if there's no current user. This is crucial for HMR.
-          if (!auth.currentUser) {
-            await signInAnonymously(auth);
-          }
       } else {
           firebaseApp = getApp();
-          auth = getAuth(firebaseApp);
-          firestore = getFirestore(firebaseApp);
-          // Ensure user is signed in even if app was already initialized
-          // This can happen with Fast Refresh
-          if (!auth.currentUser) {
-            await signInAnonymously(auth);
-          }
       }
+      auth = getAuth(firebaseApp);
+      firestore = getFirestore(firebaseApp);
+      
+      // The core fix: ensure anonymous sign-in completes before resolving.
+      if (!auth.currentUser) {
+        await signInAnonymously(auth);
+      }
+
       resolve({ firebaseApp, auth, firestore });
     } catch (error) {
       console.error("Firebase initialization failed:", error);
