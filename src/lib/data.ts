@@ -134,13 +134,13 @@ export function useDashboardData(timeRange: TimeRange = 'monthly') {
         if (!firestore) return null;
         return collection(firestore, 'customers');
     }, [firestore]);
-    const { data: customers, isLoading: customersLoading } = useCollection(customersRef);
+    const { data: customers, isLoading: customersLoading } = useCollection<Customer>(customersRef);
 
     const suppliersRef = useMemoFirebase(() => {
         if (!firestore) return null;
         return collection(firestore, 'suppliers');
     }, [firestore]);
-    const { data: suppliers, isLoading: suppliersLoading } = useCollection(suppliersRef);
+    const { data: suppliers, isLoading: suppliersLoading } = useCollection<Supplier>(suppliersRef);
 
     const productsRef = useMemoFirebase(() => {
         if (!firestore) return null;
@@ -237,6 +237,8 @@ export function useDashboardData(timeRange: TimeRange = 'monthly') {
         totalSuppliers: suppliers?.length || 0,
         lowStockItems,
         salesChartData,
+        products: products || [],
+        customers: customers || [],
         isLoading: salesLoading || customersLoading || suppliersLoading || productsLoading
     }
 }

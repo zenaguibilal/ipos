@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
+import { useMemo } from 'react';
+import { useDashboardData } from '@/lib/data';
 import type { Product, Customer } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -83,23 +82,13 @@ function DueDebtAlerts({ customers }: { customers: Customer[] }) {
 }
 
 export default function AlertsPage() {
-  const firestore = useFirestore();
-
-  // Fetch low stock products
-  const productsRef = useMemoFirebase(
-    () => collection(firestore, 'suppliers/supp_1/products'),
-    [firestore]
-  );
-  const { data: products, isLoading: productsLoading } = useCollection<Product>(productsRef);
+    
+  const { products, customers, isLoading } = useDashboardData();
 
   const lowStockProducts = useMemo(
     () => products?.filter((p) => p.quantity <= p.minStock) || [],
     [products]
   );
-
-  // Fetch customers with due debts
-  const customersRef = useMemoFirebase(() => collection(firestore, 'customers'), [firestore]);
-  const { data: customers, isLoading: customersLoading } = useCollection<Customer>(customersRef);
 
   const dueDebtCustomers = useMemo(() => {
     const today = new Date().getDate();
@@ -111,7 +100,6 @@ export default function AlertsPage() {
     );
   }, [customers]);
 
-  const isLoading = productsLoading || customersLoading;
 
   if (isLoading) {
     return (
