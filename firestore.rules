@@ -1,13 +1,12 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // This rule allows any authenticated user to read and write all documents.
-    // It's simple for development but you'll want more granular rules for production.
-    match /{path=**}/{document} {
-      allow read, write: if request.auth != null;
+    // Default deny all reads and writes
+    match /{path=**} {
+      allow read, write: if false;
     }
 
-    // Explicitly allow access to the collections at the root.
+    // Explicitly allow access to the collections at the root for authenticated users.
     match /suppliers/{supplierId} {
       allow read, write: if request.auth != null;
     }
@@ -24,6 +23,12 @@ service cloud.firestore {
       allow read, write: if request.auth != null;
     }
     match /bakery_orders/{orderId} {
+      allow read, write: if request.auth != null;
+    }
+     match /suppliers/{supplierId}/products/{productId} {
+      allow read, write: if request.auth != null;
+    }
+    match /customers/{customerId}/sales/{saleId} {
       allow read, write: if request.auth != null;
     }
   }

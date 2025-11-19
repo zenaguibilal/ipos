@@ -68,7 +68,7 @@ export function useSales(salesLimit?: number) {
     const [sales, setSales] = useState<SaleWithDetails[]>([]);
 
     useEffect(() => {
-        if (salesData) {
+        if (salesData && customersData) {
             const customerMap = new Map(customersData?.map(c => [c.id, c]));
             const productMap = new Map(productsData?.map(p => [p.id, p]));
             const lineItemMap = new Map(lineItemsData?.map(li => [li.id, {
@@ -84,6 +84,8 @@ export function useSales(salesLimit?: number) {
                 };
             });
             setSales(enrichedSales);
+        } else if (salesData) {
+            setSales(salesData);
         }
     }, [salesData, customersData, lineItemsData, productsData]);
 
@@ -109,10 +111,11 @@ export function useDashboardData(timeRange: TimeRange = 'monthly') {
     const productsRef = useMemoFirebase(() => collection(firestore, 'suppliers/supp_1/products'), [firestore]);
     const { data: products, isLoading: productsLoading } = useCollection<Product>(productsRef);
 
-    const totalRevenue = sales?.reduce((acc, sale) => acc + sale.totalAmount, 0) || 0;
-    const lowStockItems = products?.filter(p => p.quantity <= p.minStock).length || 0;
+    const totalRevenue = useMemo(() => sales?.reduce((acc, sale) => acc + sale.totalAmount, 0) || 0, [sales]);
+    const lowStockItems = useMemo(() => products?.filter(p => p.quantity <= p.minStock).length || 0, [products]);
 
     const totalCostOfGoods = useMemo(() => {
+        if (!sales) return 0;
         return sales.reduce((acc, sale) => {
             const saleCost = sale.lineItems?.reduce((itemAcc, item) => {
                 const cost = item.product?.purchasePrice || 0;
@@ -124,14 +127,14 @@ export function useDashboardData(timeRange: TimeRange = 'monthly') {
 
     const netProfit = totalRevenue - totalCostOfGoods;
 
-    const productsValue = products?.reduce((acc, p) => acc + (p.purchasePrice * p.quantity), 0) || 0;
+    const productsValue = useMemo(() => products?.reduce((acc, p) => acc + (p.purchasePrice * p.quantity), 0) || 0, [products]);
 
     const salesChartData = useMemo(() => {
         const now = new Date();
-        if (!sales) return [];
+        if (!sales || sales.length === 0) return [];
 
         if (timeRange === 'daily') {
-             const last7Days = eachDayOfInterval({ start: new Date(now.setDate(now.getDate() - 6)), end: new Date() });
+             const last7Days = eachDayOfInterval({ start: new Date(new Date().setDate(now.getDate() - 6)), end: now });
              const dailyData = last7Days.map(day => ({
                 label: format(day, 'EEE', { locale: fr }),
                 total: 0
