@@ -65,13 +65,23 @@ export default function ProfilePage() {
 
   const isLoading = isUserLoading || isDataLoading;
 
-  if (isLoading || !userData) {
+  if (isLoading || !user) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <p>Chargement du profil...</p>
       </div>
     );
   }
+
+  // This might happen briefly if the user document hasn't been created yet
+  if (!userData) {
+      return (
+        <div className="flex min-h-screen items-center justify-center">
+          <p>Chargement des données utilisateur...</p>
+        </div>
+      );
+  }
+
 
   return (
     <div className="flex min-h-screen items-center justify-center p-4">
