@@ -263,6 +263,55 @@
         }
       },
       "required": ["id", "lastNumber"]
+    },
+    "BakeryOrder": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "BakeryOrder",
+        "type": "object",
+        "description": "Represents an order for bakery items like bread and meloui.",
+        "properties": {
+            "id": {
+                "type": "string",
+                "description": "Unique identifier for the BakeryOrder entity."
+            },
+            "items": {
+                "type": "array",
+                "description": "An array of items in the order.",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                            "type": "string",
+                            "description": "Name of the bakery item."
+                        },
+                        "quantity": {
+                            "type": "number",
+                            "description": "Quantity ordered."
+                        },
+                        "unitPrice": {
+                            "type": "number",
+                            "description": "Price per unit in cents."
+                        }
+                    },
+                    "required": ["name", "quantity", "unitPrice"]
+                }
+            },
+            "totalAmount": {
+                "type": "number",
+                "description": "Total amount of the order in cents."
+            },
+            "orderDate": {
+                "type": "string",
+                "description": "Date and time of the order.",
+                "format": "date-time"
+            },
+            "status": {
+                "type": "string",
+                "description": "Status of the order (e.g., pending, completed, cancelled).",
+                "enum": ["pending", "completed", "cancelled"]
+            }
+        },
+        "required": ["id", "items", "totalAmount", "orderDate", "status"]
     }
   },
   "auth": {
@@ -391,9 +440,24 @@
             }
           ]
         }
+      },
+      {
+        "path": "/bakery_orders/{orderId}",
+        "definition": {
+          "entityName": "BakeryOrder",
+          "schema": {
+            "$ref": "#/backend/entities/BakeryOrder"
+          },
+          "description": "Stores orders for bakery items.",
+          "params": [
+            {
+              "name": "orderId",
+              "description": "The unique identifier of the bakery order."
+            }
+          ]
+        }
       }
     ],
     "reasoning": "The Firestore data structure is designed to support the iPOS application's core features: sales, product management, customer management, and supplier management. The structure prioritizes authorization independence and simplifies security rules. Path-based ownership is used for entities associated with specific suppliers and customers. Each collection is designed to have a homogeneous security posture, meaning all documents within a single collection share the same security requirements. This eliminates the need for complex rule logic that distinguishes between different types of documents within the same collection. \n\nAuthorization Independence:\nTo ensure authorization independence and avoid `get()` calls in security rules, the `Supplier` and `Customer` entities will have dedicated collections. The `Product` entities are stored as subcollections of `Supplier` documents, enabling secure and straightforward ownership-based security rules. Sales data is associated with customers via a subcollection, also enforcing ownership.\n\nQAPs Support:\nThe structure uses structural segregation to ensure that each collection has a homogeneous security posture. This, combined with path-based ownership, facilitates secure `list` operations.  Data denormalization (copying relevant supplier/customer data where needed) avoids the need for complex joins or server-side filtering, improving performance and security."
   }
 }
-    
