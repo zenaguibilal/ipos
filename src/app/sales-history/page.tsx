@@ -21,7 +21,6 @@ function CustomerDataFetcher({ customerQuery, onData, onLoadingChange }: { custo
     const { data, isLoading, error } = useCollection<Customer>(customerQuery);
 
     useEffect(() => {
-        // Only call onLoadingChange when isLoading status actually changes.
         onLoadingChange(isLoading);
     }, [isLoading, onLoadingChange]);
     
@@ -82,13 +81,13 @@ export default function SalesHistoryPage() {
 
     // 5. Enrich sales with customer data
     const enrichedSales = useMemo(() => {
-        if (!salesData || salesLoading || customersLoading) return [];
+        if (!salesData) return []; // Don't wait for customers to load to show sales
         
         return salesData.map(sale => ({
             ...sale,
             customer: allCustomers.get(sale.customerId),
         }));
-    }, [salesData, salesLoading, customersLoading, allCustomers]);
+    }, [salesData, allCustomers]);
 
 
     if (salesLoading) {
@@ -105,7 +104,7 @@ export default function SalesHistoryPage() {
     }
 
     // This case will be hit when sales are loaded, but customers are still loading.
-    if (customersLoading) {
+    if (customersLoading && enrichedSales.length === 0) {
         return <div className="flex justify-center items-center h-full"><Loader className="animate-spin" /></div>;
     }
 
