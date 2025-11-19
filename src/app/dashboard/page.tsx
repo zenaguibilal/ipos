@@ -16,10 +16,10 @@ function VerificationNotice() {
     if (user && auth) {
       sendEmailVerification(user)
         .then(() => {
-          setMessage("تم إرسال بريد تحقق جديد. يرجى التحقق من بريدك الوارد.");
+          setMessage("Un nouvel e-mail de vérification a été envoyé. Veuillez consulter votre boîte de réception.");
         })
         .catch((error) => {
-          setMessage("حدث خطأ أثناء إرسال البريد. يرجى المحاولة مرة أخرى.");
+          setMessage("Une erreur s'est produite lors de l'envoi de l'e-mail. Veuillez réessayer.");
           console.error(error);
         });
     }
@@ -31,13 +31,13 @@ function VerificationNotice() {
 
   return (
     <div className="mb-4 rounded-md border border-yellow-500 bg-yellow-500/10 p-3 text-center text-sm">
-      <p>بريدك الإلكتروني لم يتم التحقق منه. يرجى التحقق من بريدك الوارد للحصول على رابط التحقق.</p>
+      <p>Votre e-mail n'est pas vérifié. Veuillez consulter votre boîte de réception pour le lien de vérification.</p>
       <Button
         variant="link"
         className="h-auto p-0 text-yellow-400"
         onClick={handleResendVerification}
       >
-        إعادة إرسال بريد التحقق
+        Renvoyer l'e-mail de vérification
       </Button>
       {message && <p className="mt-2 text-xs">{message}</p>}
     </div>
@@ -66,7 +66,7 @@ export default function DashboardPage() {
   if (isUserLoading || !user) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <p>جار التحميل...</p>
+        <p>Chargement...</p>
       </div>
     );
   }
@@ -75,20 +75,20 @@ export default function DashboardPage() {
     <div className="flex min-h-screen items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>أهلاً بك في لوحة التحكم</CardTitle>
-          <CardDescription>لقد سجلت الدخول بنجاح.</CardDescription>
+          <CardTitle>Bienvenue sur votre tableau de bord</CardTitle>
+          <CardDescription>Vous êtes connecté avec succès.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <VerificationNotice />
           <p className="text-center text-muted-foreground">
-            بريدك الإلكتروني: {user.email}
+            Votre e-mail : {user.email}
           </p>
           <Button
             onClick={handleSignOut}
             variant="destructive"
             className="w-full"
           >
-            تسجيل الخروج
+            Se déconnecter
           </Button>
         </CardContent>
       </Card>

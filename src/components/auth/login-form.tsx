@@ -38,37 +38,37 @@ function LoginFormComponent() {
     e.preventDefault();
     setError(null);
     if (!auth) {
-      setError('خدمة المصادقة غير متوفرة.');
+      setError("Le service d'authentification n'est pas disponible.");
       return;
     }
     initiateEmailSignIn(auth, email, password)
         .catch((err: any) => {
             if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
-                setError('البريد الإلكتروني أو كلمة المرور غير صحيحة.');
+                setError('E-mail ou mot de passe incorrect.');
             } else {
-                setError('حدث خطأ أثناء تسجيل الدخول. يرجى المحاولة مرة أخرى.');
+                setError("Une erreur s'est produite lors de la connexion. Veuillez réessayer.");
                 console.error(err);
             }
         });
   };
 
   if (isUserLoading || user) {
-    return <div className="text-center">جار التحميل...</div>;
+    return <div className="text-center">Chargement...</div>;
   }
 
   return (
     <Card className="w-full max-w-sm">
       <form onSubmit={handleSubmit}>
         <CardHeader>
-          <CardTitle className="text-2xl">تسجيل الدخول</CardTitle>
+          <CardTitle className="text-2xl">Connexion</CardTitle>
           <CardDescription>
-            أدخل بريدك الإلكتروني أدناه لتسجيل الدخول إلى حسابك.
+            Entrez votre e-mail ci-dessous pour vous connecter à votre compte.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
           {error && <p className="text-sm text-red-500 text-center">{error}</p>}
           <div className="grid gap-2">
-            <Label htmlFor="email">البريد الإلكتروني</Label>
+            <Label htmlFor="email">E-mail</Label>
             <Input
               id="email"
               type="email"
@@ -80,12 +80,12 @@ function LoginFormComponent() {
           </div>
           <div className="grid gap-2">
             <div className="flex items-center">
-              <Label htmlFor="password">كلمة المرور</Label>
+              <Label htmlFor="password">Mot de passe</Label>
               <Link
                 href="/forgot-password"
                 className="ml-auto inline-block text-sm underline"
               >
-                نسيت كلمة المرور؟
+                Mot de passe oublié ?
               </Link>
             </div>
             <Input 
@@ -98,11 +98,11 @@ function LoginFormComponent() {
           </div>
         </CardContent>
         <CardFooter className="flex flex-col">
-          <Button type="submit" className="w-full">تسجيل الدخول</Button>
+          <Button type="submit" className="w-full">Se connecter</Button>
           <p className="mt-4 text-xs text-center text-gray-400">
-            ليس لديك حساب؟{" "}
+            Vous n'avez pas de compte ?{" "}
             <Link href="/signup" className=" underline">
-              أنشئ حسابًا
+              Inscrivez-vous
             </Link>
           </p>
         </CardFooter>
@@ -113,7 +113,7 @@ function LoginFormComponent() {
 
 export function LoginForm() {
   return (
-    <Suspense fallback={<div className="text-center">جار التحميل...</div>}>
+    <Suspense fallback={<div className="text-center">Chargement...</div>}>
       <LoginFormComponent />
     </Suspense>
   )

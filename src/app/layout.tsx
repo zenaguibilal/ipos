@@ -3,8 +3,8 @@ import './globals.css';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
 
 export const metadata: Metadata = {
-  title: 'تطبيق جديد',
-  description: 'تم إنشاؤه بواسطة Firebase Studio',
+  title: 'Nouvelle Application',
+  description: 'Créé par Firebase Studio',
 };
 
 export default function RootLayout({
@@ -13,7 +13,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ar" dir="rtl" className="dark">
+    <html lang="fr" className="dark">
       <body>
         <FirebaseClientProvider>
           <main>{children}</main>

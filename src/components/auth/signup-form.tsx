@@ -42,7 +42,7 @@ function SignupFormComponent() {
     setError(null);
     setMessage(null);
     if (!auth) {
-      setError('خدمة المصادقة غير متوفرة.');
+      setError("Le service d'authentification n'est pas disponible.");
       return;
     }
     
@@ -61,32 +61,32 @@ function SignupFormComponent() {
                 }, { merge: true });
 
                 sendEmailVerification(userCredential.user);
-                setMessage("تم إنشاء حسابك بنجاح! لقد أرسلنا رابط تحقق إلى بريدك الإلكتروني.");
+                setMessage("Votre compte a été créé avec succès ! Nous avons envoyé un lien de vérification à votre adresse e-mail.");
             }
         })
         .catch((err: any) => {
             if (err.code === 'auth/email-already-in-use') {
-                setError('هذا البريد الإلكتروني مستخدم بالفعل.');
+                setError('Cet e-mail est déjà utilisé.');
             } else if (err.code === 'auth/weak-password') {
-                setError('كلمة المرور يجب أن تتكون من 6 أحرف على الأقل.');
+                setError('Le mot de passe doit comporter au moins 6 caractères.');
             } else {
-                setError('حدث خطأ أثناء إنشاء الحساب. يرجى المحاولة مرة أخرى.');
+                setError("Une erreur s'est produite lors de la création du compte. Veuillez réessayer.");
                 console.error(err);
             }
         });
   };
 
   if (isUserLoading || user) {
-    return <div className="text-center">جار التحميل...</div>;
+    return <div className="text-center">Chargement...</div>;
   }
 
   return (
     <Card className="w-full max-w-sm">
       <form onSubmit={handleSubmit}>
         <CardHeader>
-          <CardTitle className="text-xl">إنشاء حساب</CardTitle>
+          <CardTitle className="text-xl">Créer un compte</CardTitle>
           <CardDescription>
-            أدخل معلوماتك لإنشاء حساب جديد
+            Entrez vos informations pour créer un nouveau compte
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
@@ -94,20 +94,20 @@ function SignupFormComponent() {
           {message && <p className="text-sm text-green-500 text-center">{message}</p>}
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2">
-              <Label htmlFor="first-name">الاسم الأول</Label>
+              <Label htmlFor="first-name">Prénom</Label>
               <Input 
                 id="first-name" 
-                placeholder="أحمد" 
+                placeholder="Jean" 
                 required 
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="last-name">الاسم الأخير</Label>
+              <Label htmlFor="last-name">Nom de famille</Label>
               <Input 
                 id="last-name" 
-                placeholder="علي" 
+                placeholder="Dupont" 
                 required 
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
@@ -115,7 +115,7 @@ function SignupFormComponent() {
             </div>
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="email">البريد الإلكتروني</Label>
+            <Label htmlFor="email">E-mail</Label>
             <Input
               id="email"
               type="email"
@@ -126,7 +126,7 @@ function SignupFormComponent() {
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="password">كلمة المرور</Label>
+            <Label htmlFor="password">Mot de passe</Label>
             <Input 
               id="password"
               type="password"
@@ -137,11 +137,11 @@ function SignupFormComponent() {
           </div>
         </CardContent>
         <CardFooter className="flex flex-col">
-          <Button type="submit" className="w-full">إنشاء حساب</Button>
+          <Button type="submit" className="w-full">Créer un compte</Button>
           <p className="mt-4 text-xs text-center text-gray-400">
-            لديك حساب بالفعل؟{" "}
+            Vous avez déjà un compte ?{" "}
             <Link href="/login" className=" underline">
-              تسجيل الدخول
+              Se connecter
             </Link>
           </p>
         </CardFooter>
@@ -152,7 +152,7 @@ function SignupFormComponent() {
 
 export function SignupForm() {
   return (
-    <Suspense fallback={<div className="text-center">جار التحميل...</div>}>
+    <Suspense fallback={<div className="text-center">Chargement...</div>}>
       <SignupFormComponent />
     </Suspense>
   )

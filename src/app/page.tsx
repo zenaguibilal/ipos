@@ -15,15 +15,15 @@ function AuthButtons() {
     <div className="mt-8 flex gap-4">
       {user ? (
         <Button asChild>
-          <Link href="/dashboard">الذهاب إلى لوحة التحكم</Link>
+          <Link href="/dashboard">Aller au tableau de bord</Link>
         </Button>
       ) : (
         <>
           <Button variant="outline" asChild>
-            <Link href="/login">تسجيل الدخول</Link>
+            <Link href="/login">Se connecter</Link>
           </Button>
           <Button asChild>
-            <Link href="/signup">إنشاء حساب</Link>
+            <Link href="/signup">S'inscrire</Link>
           </Button>
         </>
       )}
@@ -35,8 +35,8 @@ function AuthButtons() {
 export default function Home() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center">
-      <h1 className="text-4xl font-bold">مشروع جديد</h1>
-      <p className="mt-4 text-lg text-muted-foreground">نحن على استعداد للبدء. ما هي خطوتك التالية؟</p>
+      <h1 className="text-4xl font-bold">Nouveau Projet</h1>
+      <p className="mt-4 text-lg text-muted-foreground">Nous sommes prêts à commencer. Quelle est votre prochaine étape ?</p>
       <AuthButtons />
     </div>
   );

@@ -30,7 +30,7 @@ export function ForgotPasswordForm() {
     setIsLoading(true);
 
     if (!auth) {
-      setError('خدمة المصادقة غير متوفرة.');
+      setError("Le service d'authentification n'est pas disponible.");
       setIsLoading(false);
       return;
     }
@@ -38,13 +38,13 @@ export function ForgotPasswordForm() {
     try {
       await sendPasswordResetEmail(auth, email);
       setMessage(
-        'تم إرسال بريد إلكتروني لإعادة تعيين كلمة المرور. يرجى التحقق من بريدك الوارد.'
+        "Un e-mail de réinitialisation de mot de passe a été envoyé. Veuillez consulter votre boîte de réception."
       );
     } catch (err: any) {
       if (err.code === 'auth/user-not-found') {
-        setError('لم يتم العثور على حساب مرتبط بهذا البريد الإلكتروني.');
+        setError("Aucun compte n'est associé à cet e-mail.");
       } else {
-        setError('حدث خطأ. يرجى المحاولة مرة أخرى.');
+        setError("Une erreur s'est produite. Veuillez réessayer.");
         console.error(err);
       }
     } finally {
@@ -56,9 +56,9 @@ export function ForgotPasswordForm() {
     <Card className="w-full max-w-sm">
       <form onSubmit={handleSubmit}>
         <CardHeader>
-          <CardTitle className="text-2xl">نسيت كلمة المرور؟</CardTitle>
+          <CardTitle className="text-2xl">Mot de passe oublié ?</CardTitle>
           <CardDescription>
-            أدخل بريدك الإلكتروني أدناه وسنرسل لك رابطًا لإعادة تعيين كلمة المرور.
+            Entrez votre e-mail ci-dessous et nous vous enverrons un lien pour réinitialiser votre mot de passe.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
@@ -67,7 +67,7 @@ export function ForgotPasswordForm() {
           )}
           {error && <p className="text-sm text-red-500 text-center">{error}</p>}
           <div className="grid gap-2">
-            <Label htmlFor="email">البريد الإلكتروني</Label>
+            <Label htmlFor="email">E-mail</Label>
             <Input
               id="email"
               type="email"
@@ -80,12 +80,12 @@ export function ForgotPasswordForm() {
         </CardContent>
         <CardFooter className="flex flex-col gap-4">
           <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? 'جار الإرسال...' : 'إرسال بريد الاستعادة'}
+            {isLoading ? 'Envoi...' : "Envoyer l'e-mail de récupération"}
           </Button>
           <p className="text-xs text-center text-gray-400">
-            تذكرت كلمة المرور؟{' '}
+            Vous vous souvenez de votre mot de passe ?{' '}
             <Link href="/login" className="underline">
-              العودة لتسجيل الدخول
+              Retour à la connexion
             </Link>
           </p>
         </CardFooter>
