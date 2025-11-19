@@ -9,6 +9,7 @@ import { MinusCircle, PlusCircle, ShoppingCart, Cookie, Wheat } from 'lucide-rea
 import { useFirestore, addDocumentNonBlocking, useMemoFirebase } from '@/firebase';
 import { collection } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 
 interface BakeryItem {
   id: string;
@@ -26,21 +27,68 @@ interface CartItem extends BakeryItem {
   quantity: number;
 }
 
+function AddToCartDialog({ item, isOpen, onClose, onAdd }: { item: BakeryItem | null, isOpen: boolean, onClose: () => void, onAdd: (item: BakeryItem, quantity: number) => void }) {
+    const [quantity, setQuantity] = useState(1);
+
+    if (!item) return null;
+
+    const handleAdd = () => {
+        if (quantity > 0) {
+            onAdd(item, quantity);
+            onClose();
+        }
+    }
+    
+    return (
+        <Dialog open={isOpen} onOpenChange={onClose}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>إضافة {item.name} إلى السلة</DialogTitle>
+                    <DialogDescription>أدخل الكمية المطلوبة.</DialogDescription>
+                </DialogHeader>
+                <div className="py-4">
+                    <Label htmlFor="quantity">الكمية</Label>
+                    <Input 
+                        id="quantity"
+                        type="number"
+                        min="1"
+                        value={quantity}
+                        onChange={(e) => setQuantity(Number(e.target.value))}
+                        className="mt-2"
+                    />
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={onClose}>إلغاء</Button>
+                    <Button onClick={handleAdd}>إضافة إلى الطلب</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    )
+}
+
 export default function BakeryPage() {
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [customerName, setCustomerName] = useState('');
+  const [selectedItem, setSelectedItem] = useState<BakeryItem | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { toast } = useToast();
   const firestore = useFirestore();
   const bakeryOrdersRef = useMemoFirebase(() => collection(firestore, 'bakery_orders'), [firestore]);
 
-  const addToCart = (item: BakeryItem) => {
+  const handleItemClick = (item: BakeryItem) => {
+    setSelectedItem(item);
+    setIsDialogOpen(true);
+  };
+
+  const addToCart = (item: BakeryItem, quantity: number) => {
     setCart((prevCart) => {
       const existingItem = prevCart.find((cartItem) => cartItem.id === item.id);
       if (existingItem) {
         return prevCart.map((cartItem) =>
-          cartItem.id === item.id ? { ...cartItem, quantity: cartItem.quantity + 1 } : cartItem
+          cartItem.id === item.id ? { ...cartItem, quantity: cartItem.quantity + quantity } : cartItem
         );
       }
-      return [...prevCart, { ...item, quantity: 1 }];
+      return [...prevCart, { ...item, quantity: quantity }];
     });
   };
 
@@ -66,9 +114,18 @@ export default function BakeryPage() {
       });
       return;
     }
+     if (!customerName.trim()) {
+      toast({
+        variant: 'destructive',
+        title: 'اسم العميل مطلوب',
+        description: 'الرجاء إدخال اسم العميل قبل تقديم الطلب.',
+      });
+      return;
+    }
 
     try {
       await addDocumentNonBlocking(bakeryOrdersRef, {
+        customerName: customerName.trim(),
         items: cart.map(item => ({ name: item.name, quantity: item.quantity, unitPrice: item.price })),
         totalAmount: total,
         orderDate: new Date().toISOString(),
@@ -77,9 +134,10 @@ export default function BakeryPage() {
 
       toast({
         title: 'تم تقديم الطلب!',
-        description: 'تم تسجيل طلب المخبوزات بنجاح.',
+        description: `تم تسجيل طلب المخبوزات باسم ${customerName} بنجاح.`,
       });
       setCart([]);
+      setCustomerName('');
     } catch (error) {
       console.error("خطأ في تقديم الطلب: ", error);
       toast({
@@ -91,6 +149,7 @@ export default function BakeryPage() {
   };
 
   return (
+    <>
     <div className="grid md:grid-cols-2 gap-8">
       <div>
         <Card>
@@ -102,7 +161,7 @@ export default function BakeryPage() {
               <Card
                 key={item.id}
                 className="flex flex-col items-center justify-center p-6 cursor-pointer hover:shadow-lg transition-shadow"
-                onClick={() => addToCart(item)}
+                onClick={() => handleItemClick(item)}
               >
                 {item.icon}
                 <h3 className="text-lg font-semibold mt-2">{item.name}</h3>
@@ -126,6 +185,15 @@ export default function BakeryPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div className="space-y-2">
+                <Label htmlFor="customer-name">اسم الطلب (العميل)</Label>
+                <Input 
+                    id="customer-name"
+                    placeholder="أدخل اسم العميل"
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                />
+            </div>
             {cart.length === 0 ? (
               <p className="text-muted-foreground text-center py-8">عربة الطلبات فارغة.</p>
             ) : (
@@ -178,5 +246,12 @@ export default function BakeryPage() {
         </Card>
       </div>
     </div>
+    <AddToCartDialog 
+        item={selectedItem}
+        isOpen={isDialogOpen}
+        onClose={() => setIsDialogOpen(false)}
+        onAdd={addToCart}
+    />
+    </>
   );
 }

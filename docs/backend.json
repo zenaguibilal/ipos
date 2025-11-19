@@ -274,6 +274,10 @@
                 "type": "string",
                 "description": "Unique identifier for the BakeryOrder entity."
             },
+            "customerName": {
+                "type": "string",
+                "description": "Name of the customer placing the order."
+            },
             "items": {
                 "type": "array",
                 "description": "An array of items in the order.",
@@ -311,7 +315,7 @@
                 "enum": ["pending", "completed", "cancelled"]
             }
         },
-        "required": ["id", "items", "totalAmount", "orderDate", "status"]
+        "required": ["id", "customerName", "items", "totalAmount", "orderDate", "status"]
     }
   },
   "auth": {
