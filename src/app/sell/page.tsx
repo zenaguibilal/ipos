@@ -10,10 +10,16 @@ export default function SellPage() {
     const firestore = useFirestore();
     
     // A real app would scope this to the logged in supplier
-    const productsRef = useMemoFirebase(() => query(collection(firestore, 'suppliers/supp_1/products'), where('quantity', '>', 0)), [firestore]);
+    const productsRef = useMemoFirebase(() => {
+        if (!firestore) return null;
+        return query(collection(firestore, 'suppliers/supp_1/products'), where('quantity', '>', 0));
+    }, [firestore]);
     const { data: products, isLoading: productsLoading } = useCollection<Product>(productsRef);
 
-    const customersRef = useMemoFirebase(() => collection(firestore, 'customers'), [firestore]);
+    const customersRef = useMemoFirebase(() => {
+        if (!firestore) return null;
+        return collection(firestore, 'customers');
+    }, [firestore]);
     const { data: customers, isLoading: customersLoading } = useCollection<Customer>(customersRef);
     
     if (productsLoading || customersLoading) {
@@ -24,3 +30,5 @@ export default function SellPage() {
         <POSClient products={products || []} customers={customers || []} />
     );
 }
+
+    

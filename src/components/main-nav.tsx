@@ -10,12 +10,14 @@ import {
   Bell,
   Cookie,
   Settings,
+  ShoppingCart,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SheetClose } from './ui/sheet';
 
 const navLinks = [
   { href: '/', label: 'Tableau de Bord', icon: Home },
+  { href: '/sell', label: 'Vendre', icon: ShoppingCart },
   { href: '/alerts', label: 'Alertes', icon: Bell },
   { href: '/products', label: 'Produits', icon: Package },
   { href: '/customers', label: 'Clients', icon: Users },
@@ -71,3 +73,5 @@ export function MainNav({ isMobile = false }: MainNavProps) {
     </nav>
   );
 }
+
+    

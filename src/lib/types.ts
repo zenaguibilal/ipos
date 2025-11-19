@@ -41,4 +41,31 @@ export interface BakeryOrder {
   isRecurring?: boolean;
 }
 
+export interface Sale {
+    id: string;
+    invoiceNumber: number;
+    customerId: string;
+    saleDate: string;
+    totalAmount: number; // in cents
+    paymentMethod: 'cash' | 'credit';
+    saleLineItemIds: string[];
+}
+
+export interface SaleWithDetails extends Sale {
+    customer?: Customer;
+}
+
+export interface SaleLineItem {
+    id: string;
+    productId: string;
+    quantity: number;
+    unitPrice: number; // in cents
+    discount: number; // in cents
+}
+
+export interface InvoiceCounter {
+    id: 'sales';
+    lastNumber: number;
+}
+
     

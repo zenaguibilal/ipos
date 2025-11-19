@@ -23,7 +23,7 @@ export function BarcodeScanner({ onScan, onCancel }: BarcodeScannerProps) {
       onScan(scannedText);
     },
     onError: (error) => {
-      console.error("Barcode scanner error:", error);
+      console.error("Erreur du scanner de code-barres:", error);
       if (error.name === 'NotAllowedError') {
         setHasPermission(false);
       }
@@ -81,3 +81,5 @@ export function BarcodeScanner({ onScan, onCancel }: BarcodeScannerProps) {
     </Card>
   );
 }
+
+    

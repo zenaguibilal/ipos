@@ -195,7 +195,7 @@ export function POSClient({ products, customers }: { products: Product[], custom
   const total = subtotal;
 
   const handleCheckout = async () => {
-    if (!user || cart.length === 0 || !selectedCustomerId || isCheckingOut) {
+    if (!user || !firestore || cart.length === 0 || !selectedCustomerId || isCheckingOut) {
         if (!selectedCustomerId) {
              toast({
                 variant: "destructive",
@@ -476,3 +476,5 @@ export function POSClient({ products, customers }: { products: Product[], custom
     </>
   );
 }
+
+    

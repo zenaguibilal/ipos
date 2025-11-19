@@ -208,6 +208,76 @@
         }
       },
       "required": ["id", "customerName", "quantity", "type", "orderDate", "isFulfilled", "paymentStatus"]
+    },
+    "Sale": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Sale",
+      "type": "object",
+      "description": "Represents a single sales transaction.",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "invoiceNumber": {
+            "type": "number"
+        },
+        "customerId": {
+          "type": "string"
+        },
+        "saleDate": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "totalAmount": {
+          "type": "number"
+        },
+        "paymentMethod": {
+          "type": "string",
+          "enum": ["cash", "credit"]
+        },
+        "saleLineItemIds": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        }
+      },
+      "required": ["id", "customerId", "saleDate", "totalAmount", "paymentMethod", "saleLineItemIds"]
+    },
+    "SaleLineItem": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "SaleLineItem",
+      "type": "object",
+      "description": "Represents a single line item within a sale.",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "productId": {
+          "type": "string"
+        },
+        "quantity": {
+          "type": "number"
+        },
+        "unitPrice": {
+          "type": "number"
+        },
+        "discount": {
+          "type": "number"
+        }
+      },
+      "required": ["id", "productId", "quantity", "unitPrice"]
+    },
+    "InvoiceCounter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "InvoiceCounter",
+        "type": "object",
+        "description": "A counter to generate sequential invoice numbers.",
+        "properties": {
+            "id": { "type": "string" },
+            "lastNumber": { "type": "number" }
+        },
+        "required": ["id", "lastNumber"]
     }
   },
   "auth": {
@@ -269,6 +339,35 @@
           ]
         }
       },
+       {
+        "path": "/customers/{customerId}/sales/{saleId}",
+        "definition": {
+          "entityName": "Sale",
+          "schema": {
+            "$ref": "#/backend/entities/Sale"
+          },
+          "description": "Stores sales for a specific customer.",
+          "params": [
+            {
+              "name": "customerId",
+              "description": "The unique identifier of the customer."
+            },
+            {
+                "name": "saleId",
+                "description": "The unique identifier of the sale."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/sales_line_items/{lineItemId}",
+        "definition": {
+            "entityName": "SaleLineItem",
+            "schema": { "$ref": "#/backend/entities/SaleLineItem" },
+            "description": "Stores individual line items for all sales.",
+            "params": [{ "name": "lineItemId", "description": "The unique ID of the line item."}]
+        }
+      },
       {
         "path": "/stock_alerts/{stockAlertId}",
         "definition": {
@@ -300,6 +399,14 @@
             }
           ]
         }
+      },
+      {
+          "path": "/counters/sales",
+          "definition": {
+              "entityName": "InvoiceCounter",
+              "schema": { "$ref": "#/backend/entities/InvoiceCounter"},
+              "description": "Global counters for the application, such as for invoice numbers."
+          }
       }
     ],
     "reasoning": "The Firestore data structure is designed to support the iPOS application's core features: product management, customer management, and supplier management. The structure prioritizes authorization independence and simplifies security rules. Path-based ownership is used for entities associated with specific suppliers and customers. Each collection is designed to have a homogeneous security posture, meaning all documents within a single collection share the same security requirements. This eliminates the need for complex rule logic that distinguishes between different types of documents within the same collection. \n\nAuthorization Independence:\nTo ensure authorization independence and avoid `get()` calls in security rules, the `Supplier` and `Customer` entities will have dedicated collections. The `Product` entities are stored as subcollections of `Supplier` documents, enabling secure and straightforward ownership-based security rules. \n\nQAPs Support:\nThe structure uses structural segregation to ensure that each collection has a homogeneous security posture. This, combined with path-based ownership, facilitates secure `list` operations.  Data denormalization (copying relevant supplier/customer data where needed) avoids the need for complex joins or server-side filtering, improving performance and security."
