@@ -1,28 +1,6 @@
-/**
- * @fileoverview Firestore Security Rules for the iPOS application.
- *
- * Core Philosophy:
- * This ruleset has been simplified. Previously, it enforced a strict, user-ownership
- * model. Now, it has been updated to allow any authenticated user to read and write
- * to any collection. This is less secure but sufficient for a single-user or
- * prototype application protected by a single site-wide password. All users
- * are authenticated anonymously, and the application UI is gated by a password,
- * so only users who know the password can access the application and its data.
- *
- * Data Structure:
- * - /suppliers/{supplierId}
- * - /suppliers/{supplierId}/products/{productId}
- * - /customers/{customerId}
- * - /customers/{customerId}/sales/{saleId}
- * - /sales_line_items/{saleLineItemId}
- * - /stock_alerts/{stockAlertId}
- * - /bakery_orders/{orderId}
- */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Allow read and write access to any authenticated user for all paths.
     match /{path=**} {
       allow read, write: if request.auth != null;
     }
