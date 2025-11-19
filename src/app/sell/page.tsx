@@ -226,7 +226,7 @@ export default function SellPage() {
                         </div>
                         <div className="h-5 pt-1">
                             {saleStatus?.error && <p className="text-xs text-red-500">{saleStatus.error}</p>}
-                            {saleStatus?.success && !isProcessingSale && <p className="text-xs text-green-500">{saleStatus.success}</p>}
+                            {saleStatus?.success && !isProcessingSale && cart.length > 0 && <p className="text-xs text-green-500">{saleStatus.success}</p>}
                         </div>
                     </CardHeader>
                     <CardContent>
