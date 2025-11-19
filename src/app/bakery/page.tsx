@@ -15,16 +15,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 
-function BakeryOrderForm({ isOpen, onClose, onSave }: { isOpen: boolean, onClose: () => void, onSave: (order: Omit<BakeryOrder, 'id' | 'orderDate'>) => void }) {
+function BakeryOrderForm({ isOpen, onClose, onSave }: { isOpen: boolean, onClose: () => void, onSave: (order: Omit<BakeryOrder, 'id' | 'orderDate' | 'isFulfilled'>) => void }) {
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         const formData = new FormData(e.currentTarget);
-        const newOrder: Omit<BakeryOrder, 'id' | 'orderDate'> = {
+        const newOrder: Omit<BakeryOrder, 'id' | 'orderDate' | 'isFulfilled'> = {
             customerName: formData.get('customerName') as string,
             quantity: Number(formData.get('quantity')),
             type: formData.get('type') as 'bread' | 'meloui',
             paymentStatus: formData.get('paymentStatus') as 'paid' | 'unpaid',
-            isFulfilled: false,
         };
         onSave(newOrder);
         onClose();
@@ -83,7 +82,7 @@ function BakeryOrderForm({ isOpen, onClose, onSave }: { isOpen: boolean, onClose
 }
 
 
-function BakeryTable({ orders, onFulfillToggle, onDelete }: { orders: BakeryOrder[], onFulfillToggle: (order: BakeryOrder) => void, onDelete: (orderId: string) => void }) {
+function BakeryTable({ orders, onFulfillToggle, onPaymentStatusChange, onDelete }: { orders: BakeryOrder[], onFulfillToggle: (order: BakeryOrder) => void, onPaymentStatusChange: (order: BakeryOrder, newStatus: 'paid' | 'unpaid') => void, onDelete: (orderId: string) => void }) {
     if (orders.length === 0) {
         return <p className="text-center text-muted-foreground py-8">لا توجد طلبات حالياً.</p>;
     }
@@ -111,9 +110,18 @@ function BakeryTable({ orders, onFulfillToggle, onDelete }: { orders: BakeryOrde
                             </Badge>
                         </TableCell>
                         <TableCell>
-                            <Badge variant={order.paymentStatus === 'paid' ? 'default' : 'destructive'}>
-                                {order.paymentStatus === 'paid' ? 'مدفوع' : 'غير مدفوع'}
-                            </Badge>
+                            <Select
+                                value={order.paymentStatus}
+                                onValueChange={(newStatus: 'paid' | 'unpaid') => onPaymentStatusChange(order, newStatus)}
+                            >
+                                <SelectTrigger className={`w-[110px] ${order.paymentStatus === 'paid' ? 'border-green-500' : 'border-destructive'}`}>
+                                    <SelectValue placeholder="حالة الدفع" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="paid">مدفوع</SelectItem>
+                                    <SelectItem value="unpaid">غير مدفوع</SelectItem>
+                                </SelectContent>
+                            </Select>
                         </TableCell>
                         <TableCell>
                             <div className="flex items-center gap-2">
@@ -122,8 +130,8 @@ function BakeryTable({ orders, onFulfillToggle, onDelete }: { orders: BakeryOrde
                                     checked={order.isFulfilled}
                                     onCheckedChange={() => onFulfillToggle(order)}
                                 />
-                                <Label htmlFor={`fulfill-switch-${order.id}`}>
-                                    {order.isFulfilled ? 'تم الاستلام' : 'لم يتم الاستلام'}
+                                <Label htmlFor={`fulfill-switch-${order.id}`} className="sr-only">
+                                    حالة الاستلام
                                 </Label>
                             </div>
                         </TableCell>
@@ -148,10 +156,11 @@ export default function BakeryPage() {
 
     const [isFormOpen, setIsFormOpen] = useState(false);
 
-    const handleSaveOrder = (orderData: Omit<BakeryOrder, 'id' | 'orderDate'>) => {
+    const handleSaveOrder = (orderData: Omit<BakeryOrder, 'id' | 'orderDate' | 'isFulfilled'>) => {
         const orderWithDate = {
             ...orderData,
-            orderDate: new Date().toISOString()
+            orderDate: new Date().toISOString(),
+            isFulfilled: false,
         };
         addDocumentNonBlocking(bakeryOrdersColRef, orderWithDate);
         toast({
@@ -178,6 +187,24 @@ export default function BakeryPage() {
         }
     };
     
+    const handlePaymentStatusChange = async (order: BakeryOrder, newStatus: 'paid' | 'unpaid') => {
+        const orderRef = doc(firestore, 'bakery_orders', order.id);
+        try {
+            await updateDoc(orderRef, { paymentStatus: newStatus });
+            toast({
+                title: "تم تحديث حالة الدفع",
+                description: `تم تحديث حالة دفع طلب ${order.customerName}.`,
+            });
+        } catch (error) {
+            console.error("Error updating payment status:", error);
+            toast({
+                variant: "destructive",
+                title: "خطأ في التحديث",
+                description: "لم نتمكن من تحديث حالة الدفع. يرجى المحاولة مرة أخرى.",
+            });
+        }
+    };
+
     const handleDeleteOrder = (orderId: string) => {
         const orderRef = doc(firestore, 'bakery_orders', orderId);
         deleteDocumentNonBlocking(orderRef);
@@ -188,7 +215,7 @@ export default function BakeryPage() {
     };
 
     const sortedOrders = useMemo(() => {
-        return orders ? [...orders].sort((a, b) => a.isFulfilled === b.isFulfilled ? 0 : a.isFulfilled ? 1 : -1) : [];
+        return orders ? [...orders].sort((a, b) => a.isFulfilled === b.isFulfilled ? (new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime()) : a.isFulfilled ? 1 : -1) : [];
     }, [orders]);
 
 
@@ -211,7 +238,7 @@ export default function BakeryPage() {
                             <Loader className="animate-spin" />
                         </div>
                     ) : (
-                        <BakeryTable orders={sortedOrders} onFulfillToggle={handleFulfillToggle} onDelete={handleDeleteOrder} />
+                        <BakeryTable orders={sortedOrders} onFulfillToggle={handleFulfillToggle} onPaymentStatusChange={handlePaymentStatusChange} onDelete={handleDeleteOrder} />
                     )}
                 </CardContent>
             </Card>
