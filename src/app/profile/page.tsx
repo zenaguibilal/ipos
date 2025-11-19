@@ -29,6 +29,7 @@ export default function ProfilePage() {
   const [lastName, setLastName] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -45,22 +46,28 @@ export default function ProfilePage() {
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!userDocRef || !firestore) return;
+    if (!userDocRef) return;
 
     setIsSaving(true);
     setMessage(null);
+    setError(null);
 
     updateDocumentNonBlocking(userDocRef, {
       firstName: firstName,
       lastName: lastName,
       updatedAt: new Date().toISOString(),
-    });
-
-    // Since the update is non-blocking, we show the message optimistically.
-    setTimeout(() => {
+    }, {
+      onSuccess: () => {
         setIsSaving(false);
         setMessage('Votre profil a été mis à jour avec succès !');
-    }, 1000); // Simulate network latency for better UX
+      },
+      onError: (err) => {
+        setIsSaving(false);
+        setError("Une erreur est survenue lors de la mise à jour.");
+        // The global error handler will also catch and display this.
+        console.error(err);
+      }
+    });
   };
 
   const isLoading = isUserLoading || isDataLoading;
@@ -93,6 +100,7 @@ export default function ProfilePage() {
           </CardHeader>
           <CardContent className="space-y-4">
             {message && <p className="text-sm text-green-500 text-center">{message}</p>}
+            {error && <p className="text-sm text-red-500 text-center">{error}</p>}
             <div className="grid gap-2">
               <Label htmlFor="first-name">Prénom</Label>
               <Input
