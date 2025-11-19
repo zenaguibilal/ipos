@@ -1,5 +1,49 @@
 {
   "entities": {
+    "BakeryOrder": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "BakeryOrder",
+      "type": "object",
+      "description": "Represents an order for a bakery item like bread or meloui.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the BakeryOrder entity."
+        },
+        "customerName": {
+          "type": "string",
+          "description": "Name of the customer placing the order."
+        },
+        "quantity": {
+          "type": "number",
+          "description": "The quantity of the item ordered."
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of bakery item.",
+          "enum": ["bread", "meloui"]
+        },
+        "paymentStatus": {
+          "type": "string",
+          "description": "The payment status of the order.",
+          "enum": ["paid", "unpaid"]
+        },
+        "orderDate": {
+          "type": "string",
+          "description": "Date and time of the order.",
+          "format": "date-time"
+        },
+        "isFulfilled": {
+          "type": "boolean",
+          "description": "Whether the order has been fulfilled."
+        },
+        "isRecurring": {
+            "type": "boolean",
+            "description": "Whether the order should repeat daily."
+        }
+      },
+      "required": ["id", "customerName", "quantity", "type", "orderDate", "isFulfilled", "paymentStatus"]
+    },
     "Product": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Product",
@@ -91,85 +135,7 @@
         "phone"
       ]
     },
-    "Supplier": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Supplier",
-      "type": "object",
-      "description": "Represents a supplier of products.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Supplier entity."
-        },
-        "name": {
-          "type": "string",
-          "description": "Name of the supplier."
-        },
-        "contactName": {
-          "type": "string",
-          "description": "Name of the primary contact person."
-        },
-        "phone": {
-          "type": "string",
-          "description": "Phone number of the supplier."
-        },
-        "email": {
-          "type": "string",
-          "description": "Email address of the supplier.",
-          "format": "email"
-        }
-      },
-      "required": [
-        "id",
-        "name",
-        "phone"
-      ]
-    },
-    "BakeryOrder": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "BakeryOrder",
-      "type": "object",
-      "description": "Represents an order for a bakery item like bread or meloui.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the BakeryOrder entity."
-        },
-        "customerName": {
-          "type": "string",
-          "description": "Name of the customer placing the order."
-        },
-        "quantity": {
-          "type": "number",
-          "description": "The quantity of the item ordered."
-        },
-        "type": {
-          "type": "string",
-          "description": "The type of bakery item.",
-          "enum": ["bread", "meloui"]
-        },
-        "paymentStatus": {
-          "type": "string",
-          "description": "The payment status of the order.",
-          "enum": ["paid", "unpaid"]
-        },
-        "orderDate": {
-          "type": "string",
-          "description": "Date and time of the order.",
-          "format": "date-time"
-        },
-        "isFulfilled": {
-          "type": "boolean",
-          "description": "Whether the order has been fulfilled."
-        },
-        "isRecurring": {
-            "type": "boolean",
-            "description": "Whether the order should repeat daily."
-        }
-      },
-      "required": ["id", "customerName", "quantity", "type", "orderDate", "isFulfilled", "paymentStatus"]
-    },
-    "Sale": {
+     "Sale": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Sale",
       "type": "object",
@@ -247,15 +213,30 @@
   },
   "firestore": {
     "structure": [
-      {
-        "path": "/suppliers/{supplierId}",
+       {
+        "path": "/bakery_orders/{orderId}",
         "definition": {
-          "entityName": "Supplier",
+          "entityName": "BakeryOrder",
           "schema": {
-            "$ref": "#/backend/entities/Supplier"
+            "$ref": "#/backend/entities/BakeryOrder"
           },
-          "description": "Stores supplier data.",
-          "params": [{ "name": "supplierId", "description": "The unique ID of the supplier."}]
+          "description": "Stores orders for bakery items.",
+          "params": [
+            { "name": "orderId", "description": "The unique identifier of the bakery order." }
+          ]
+        }
+      },
+      {
+        "path": "/customers/{customerId}",
+        "definition": {
+          "entityName": "Customer",
+          "schema": {
+            "$ref": "#/backend/entities/Customer"
+          },
+          "description": "Stores customer data. Each document represents a customer.",
+          "params": [
+            { "name": "customerId", "description": "The unique identifier of the customer." }
+          ]
         }
       },
       {
@@ -273,19 +254,6 @@
         }
       },
       {
-        "path": "/customers/{customerId}",
-        "definition": {
-          "entityName": "Customer",
-          "schema": {
-            "$ref": "#/backend/entities/Customer"
-          },
-          "description": "Stores customer data. Each document represents a customer.",
-          "params": [
-            { "name": "customerId", "description": "The unique identifier of the customer." }
-          ]
-        }
-      },
-       {
         "path": "/customers/{customerId}/sales/{saleId}",
         "definition": {
           "entityName": "Sale",
@@ -306,19 +274,6 @@
             "schema": { "$ref": "#/backend/entities/SaleLineItem" },
             "description": "Stores individual line items for all sales.",
             "params": [{ "name": "lineItemId", "description": "The unique ID of the line item."}]
-        }
-      },
-       {
-        "path": "/bakery_orders/{orderId}",
-        "definition": {
-          "entityName": "BakeryOrder",
-          "schema": {
-            "$ref": "#/backend/entities/BakeryOrder"
-          },
-          "description": "Stores orders for bakery items.",
-          "params": [
-            { "name": "orderId", "description": "The unique identifier of the bakery order." }
-          ]
         }
       },
       {
