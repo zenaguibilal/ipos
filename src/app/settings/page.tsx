@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -88,6 +88,83 @@ function ChangePasswordForm() {
     )
 }
 
+function StoreInfoForm() {
+    const { toast } = useToast();
+    const [storeName, setStoreName] = useState('');
+    const [storeAddress, setStoreAddress] = useState('');
+    const [storePhone, setStorePhone] = useState('');
+    const [storeEmail, setStoreEmail] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+
+    useEffect(() => {
+        const info = {
+            name: localStorage.getItem('storeName') || '',
+            address: localStorage.getItem('storeAddress') || '',
+            phone: localStorage.getItem('storePhone') || '',
+            email: localStorage.getItem('storeEmail') || '',
+        };
+        setStoreName(info.name);
+        setStoreAddress(info.address);
+        setStorePhone(info.phone);
+        setStoreEmail(info.email);
+    }, []);
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsLoading(true);
+        localStorage.setItem('storeName', storeName);
+        localStorage.setItem('storeAddress', storeAddress);
+        localStorage.setItem('storePhone', storePhone);
+        localStorage.setItem('storeEmail', storeEmail);
+        setIsLoading(false);
+        toast({
+            title: "تم الحفظ",
+            description: "تم تحديث معلومات المتجر بنجاح.",
+        });
+    }
+
+    return (
+         <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+                <Label htmlFor="store-name">اسم المتجر</Label>
+                <Input
+                    id="store-name"
+                    value={storeName}
+                    onChange={(e) => setStoreName(e.target.value)}
+                />
+            </div>
+             <div className="space-y-2">
+                <Label htmlFor="store-address">عنوان المتجر</Label>
+                <Input
+                    id="store-address"
+                    value={storeAddress}
+                    onChange={(e) => setStoreAddress(e.target.value)}
+                />
+            </div>
+             <div className="space-y-2">
+                <Label htmlFor="store-phone">رقم الهاتف</Label>
+                <Input
+                    id="store-phone"
+                    type="tel"
+                    value={storePhone}
+                    onChange={(e) => setStorePhone(e.target.value)}
+                />
+            </div>
+            <div className="space-y-2">
+                <Label htmlFor="store-email">البريد الإلكتروني</Label>
+                <Input
+                    id="store-email"
+                    type="email"
+                    value={storeEmail}
+                    onChange={(e) => setStoreEmail(e.target.value)}
+                />
+            </div>
+            <Button type="submit" disabled={isLoading}>
+                {isLoading ? 'جارٍ الحفظ...' : 'حفظ المعلومات'}
+            </Button>
+        </form>
+    );
+}
 
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
@@ -128,6 +205,18 @@ export default function SettingsPage() {
         </CardHeader>
         <CardContent>
           <ChangePasswordForm />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>معلومات المتجر</CardTitle>
+          <CardDescription>
+            قم بتعيين التفاصيل الأساسية لمتجرك ليتم استخدامها في الفواتير.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <StoreInfoForm />
         </CardContent>
       </Card>
     </div>
