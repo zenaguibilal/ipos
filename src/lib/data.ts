@@ -30,6 +30,10 @@ export async function getSuppliers(db: any): Promise<Supplier[]> {
 export function useSales(salesLimit?: number) {
     const firestore = useFirestore();
 
+    if (!firestore) {
+        return { sales: [], isLoading: true, error: null };
+    }
+
     const salesRef = useMemoFirebase(() => {
         if (!firestore) return null;
         let q: any = collectionGroup(firestore, 'sales');
@@ -99,6 +103,20 @@ export type TimeRange = 'daily' | 'monthly' | 'yearly';
 
 export function useDashboardData(timeRange: TimeRange = 'monthly') {
     const firestore = useFirestore();
+
+    if (!firestore) {
+        return {
+            totalRevenue: 0,
+            netProfit: 0,
+            productsValue: 0,
+            totalSales: 0,
+            totalCustomers: 0,
+            totalSuppliers: 0,
+            lowStockItems: 0,
+            salesChartData: [],
+            isLoading: true
+        };
+    }
 
     const { sales, isLoading: salesLoading } = useSales();
     
@@ -205,6 +223,11 @@ export function useDashboardData(timeRange: TimeRange = 'monthly') {
 
 export function useProducts() {
     const firestore = useFirestore();
+    
+    if (!firestore) {
+        return { products: [], isLoading: true };
+    }
+
     const productsRef = useMemoFirebase(() => collection(firestore, 'suppliers/supp_1/products'), [firestore]);
     const { data: products, isLoading } = useCollection<Product>(productsRef);
 
