@@ -46,7 +46,8 @@ function SignupFormComponent() {
     initiateEmailSignUp(auth, email, password)
         .then(userCredential => {
             if (userCredential.user) {
-                const userDocRef = doc(getFirestore(), "users", userCredential.user.uid);
+                const firestore = getFirestore();
+                const userDocRef = doc(firestore, "users", userCredential.user.uid);
                 setDocumentNonBlocking(userDocRef, {
                     id: userCredential.user.uid,
                     firstName: firstName,
