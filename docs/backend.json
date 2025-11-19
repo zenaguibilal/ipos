@@ -99,6 +99,10 @@
       "type": "object",
       "description": "Represents a single sales transaction.",
       "properties": {
+        "invoiceNumber": {
+          "type": "string",
+          "description": "Unique identifier for the sales invoice."
+        },
         "items": {
           "type": "array",
           "description": "List of items included in the sale.",
@@ -145,6 +149,7 @@
         }
       },
       "required": [
+        "invoiceNumber",
         "items",
         "total",
         "amountPaid",

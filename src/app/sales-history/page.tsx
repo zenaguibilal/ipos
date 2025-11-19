@@ -26,6 +26,7 @@ interface SaleItem {
 
 interface Sale {
     id: string;
+    invoiceNumber: string;
     items: SaleItem[];
     total: number;
     amountPaid: number;
@@ -76,11 +77,12 @@ export default function SalesHistoryPage() {
 
         let filtered = sales;
 
-        // Filter by search query (customer name)
+        // Filter by search query (customer name or invoice number)
         if (searchQuery) {
             const lowercasedQuery = searchQuery.toLowerCase();
             filtered = filtered.filter(sale => 
-                sale.customerName?.toLowerCase().includes(lowercasedQuery)
+                sale.customerName?.toLowerCase().includes(lowercasedQuery) ||
+                sale.invoiceNumber?.toLowerCase().includes(lowercasedQuery)
             );
         }
 
@@ -124,7 +126,7 @@ export default function SalesHistoryPage() {
                     </div>
                      <div className="flex flex-col gap-2 pt-4 sm:flex-row">
                         <Input 
-                            placeholder="Rechercher par nom de client..."
+                            placeholder="Rechercher par client ou N° facture..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             className="w-full sm:w-64"
@@ -180,6 +182,7 @@ export default function SalesHistoryPage() {
                             <table className="min-w-full divide-y divide-border">
                                 <thead className="bg-muted/50">
                                     <tr>
+                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Facture N°</th>
                                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Date</th>
                                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Client</th>
                                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Statut</th>
@@ -191,6 +194,7 @@ export default function SalesHistoryPage() {
                                 <tbody className="divide-y divide-border">
                                     {filteredSales.map(sale => (
                                         <tr key={sale.id}>
+                                            <td className="whitespace-nowrap px-6 py-4 font-mono text-xs">{sale.invoiceNumber}</td>
                                             <td className="whitespace-nowrap px-6 py-4 font-medium">{format(sale.createdAt.toDate(), 'd MMM yyyy, HH:mm', { locale: fr })}</td>
                                             <td className="whitespace-nowrap px-6 py-4 text-muted-foreground">{sale.customerName || 'Vente au comptoir'}</td>
                                             <td className="whitespace-nowrap px-6 py-4"><StatusBadge status={sale.paymentStatus} /></td>

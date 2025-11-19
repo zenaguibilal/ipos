@@ -121,9 +121,11 @@ export default function SellPage() {
     const selectedCustomer = customers?.find(c => c.id === selectedCustomerId);
     
     const remainingBalance = total - amountPaid;
-    const paymentStatus = remainingBalance <= 0 ? 'paid' : 'partial';
+    const paymentStatus = remainingBalance <= 0 ? 'paid' : (amountPaid > 0 ? 'partial' : 'unpaid');
+    const invoiceNumber = `F-${Date.now()}`;
 
     const saleData: any = {
+        invoiceNumber: invoiceNumber,
         items: cart.map(item => ({ id: item.id, name: item.name, price: item.price, quantity: item.cartQuantity })),
         total: total,
         amountPaid: amountPaid,
@@ -143,7 +145,7 @@ export default function SellPage() {
             setCart([]);
             setSelectedCustomerId('none');
             setIsProcessingSale(false);
-            setSaleStatus({ success: "Vente enregistrée avec succès !" });
+            setSaleStatus({ success: `Vente enregistrée avec succès (Facture ${invoiceNumber})` });
             setIsPaymentDialogOpen(false);
         },
         onError: (err) => {
