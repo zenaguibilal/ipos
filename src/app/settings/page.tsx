@@ -24,11 +24,11 @@ function ChangePasswordForm() {
         e.preventDefault();
         setError('');
         if (newPassword !== confirmPassword) {
-            setError('كلمتا المرور الجديدتان غير متطابقتين.');
+            setError('Les nouveaux mots de passe ne correspondent pas.');
             return;
         }
         if (newPassword.length < 4) {
-            setError('يجب أن تتكون كلمة المرور الجديدة من 4 أحرف على الأقل.');
+            setError('Le nouveau mot de passe doit contenir au moins 4 caractères.');
             return;
         }
 
@@ -38,21 +38,21 @@ function ChangePasswordForm() {
 
         if (success) {
             toast({
-                title: "تم تغيير كلمة المرور",
-                description: "تم تحديث كلمة المرور الخاصة بك بنجاح.",
+                title: "Mot de passe modifié",
+                description: "Votre mot de passe a été mis à jour avec succès.",
             });
             setCurrentPassword('');
             setNewPassword('');
             setConfirmPassword('');
         } else {
-            setError('كلمة المرور الحالية غير صحيحة.');
+            setError('Le mot de passe actuel est incorrect.');
         }
     }
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-                <Label htmlFor="current-password">كلمة المرور الحالية</Label>
+                <Label htmlFor="current-password">Mot de passe actuel</Label>
                 <Input
                     id="current-password"
                     type="password"
@@ -62,7 +62,7 @@ function ChangePasswordForm() {
                 />
             </div>
              <div className="space-y-2">
-                <Label htmlFor="new-password">كلمة المرور الجديدة</Label>
+                <Label htmlFor="new-password">Nouveau mot de passe</Label>
                 <Input
                     id="new-password"
                     type="password"
@@ -72,7 +72,7 @@ function ChangePasswordForm() {
                 />
             </div>
              <div className="space-y-2">
-                <Label htmlFor="confirm-password">تأكيد كلمة المرور الجديدة</Label>
+                <Label htmlFor="confirm-password">Confirmer le nouveau mot de passe</Label>
                 <Input
                     id="confirm-password"
                     type="password"
@@ -83,7 +83,7 @@ function ChangePasswordForm() {
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
             <Button type="submit" disabled={isLoading}>
-                {isLoading ? 'جارٍ التغيير...' : 'تغيير كلمة المرور'}
+                {isLoading ? 'Modification en cours...' : 'Changer le mot de passe'}
             </Button>
         </form>
     )
@@ -119,15 +119,15 @@ function StoreInfoForm() {
         localStorage.setItem('storeEmail', storeEmail);
         setIsLoading(false);
         toast({
-            title: "تم الحفظ",
-            description: "تم تحديث معلومات المتجر بنجاح.",
+            title: "Enregistré",
+            description: "Les informations du magasin ont été mises à jour avec succès.",
         });
     }
 
     return (
          <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-                <Label htmlFor="store-name">اسم المتجر</Label>
+                <Label htmlFor="store-name">Nom du magasin</Label>
                 <Input
                     id="store-name"
                     value={storeName}
@@ -135,7 +135,7 @@ function StoreInfoForm() {
                 />
             </div>
              <div className="space-y-2">
-                <Label htmlFor="store-address">عنوان المتجر</Label>
+                <Label htmlFor="store-address">Adresse du magasin</Label>
                 <Input
                     id="store-address"
                     value={storeAddress}
@@ -143,7 +143,7 @@ function StoreInfoForm() {
                 />
             </div>
              <div className="space-y-2">
-                <Label htmlFor="store-phone">رقم الهاتف</Label>
+                <Label htmlFor="store-phone">Numéro de téléphone</Label>
                 <Input
                     id="store-phone"
                     type="tel"
@@ -152,7 +152,7 @@ function StoreInfoForm() {
                 />
             </div>
             <div className="space-y-2">
-                <Label htmlFor="store-email">البريد الإلكتروني</Label>
+                <Label htmlFor="store-email">Email</Label>
                 <Input
                     id="store-email"
                     type="email"
@@ -161,7 +161,7 @@ function StoreInfoForm() {
                 />
             </div>
             <Button type="submit" disabled={isLoading}>
-                {isLoading ? 'جارٍ الحفظ...' : 'حفظ المعلومات'}
+                {isLoading ? 'Enregistrement...' : 'Enregistrer les informations'}
             </Button>
         </form>
     );
@@ -173,24 +173,24 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6">
        <div className="grid gap-2">
-            <h1 className="text-2xl font-bold tracking-tight">الإعدادات</h1>
+            <h1 className="text-2xl font-bold tracking-tight">Paramètres</h1>
             <p className="text-muted-foreground">
-                تحكم في إعدادات التطبيق وتفضيلاتك.
+                Gérez les paramètres et les préférences de votre application.
             </p>
         </div>
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Palette />
-            المظهر
+            Apparence
           </CardTitle>
           <CardDescription>
-            قم بتخصيص مظهر التطبيق. قم بالتبديل بين الوضع الفاتح والداكن.
+            Personnalisez l'apparence de l'application. Basculez entre le mode clair et le mode sombre.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center space-x-4">
-            <Label htmlFor="dark-mode-switch">الوضع الداكن</Label>
+            <Label htmlFor="dark-mode-switch">Mode sombre</Label>
             <Switch
               id="dark-mode-switch"
               checked={theme === 'dark'}
@@ -204,10 +204,10 @@ export default function SettingsPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Lock />
-            الأمان
+            Sécurité
             </CardTitle>
           <CardDescription>
-            قم بتغيير كلمة المرور الرئيسية للوصول إلى التطبيق.
+            Changez le mot de passe principal pour accéder à l'application.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -219,10 +219,10 @@ export default function SettingsPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Store />
-            معلومات المتجر
+            Informations sur le magasin
             </CardTitle>
           <CardDescription>
-            قم بتعيين التفاصيل الأساسية لمتجرك ليتم استخدامها في الفواتير.
+            Définissez les détails de base de votre magasin à utiliser sur les factures.
           </CardDescription>
         </CardHeader>
         <CardContent>

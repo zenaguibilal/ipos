@@ -104,7 +104,7 @@ function InvoiceContent({ sale }: { sale: SaleWithDetails }) {
                      <div className="flex justify-between text-sm">
                         <span>Méthode de paiement</span>
                         <Badge variant={sale.paymentMethod === 'cash' ? 'secondary' : 'outline'}>
-                            {sale.paymentMethod === 'cash' ? 'نقدا' : 'بالدين'}
+                            {sale.paymentMethod === 'cash' ? 'Comptant' : 'Crédit'}
                         </Badge>
                     </div>
                 </div>

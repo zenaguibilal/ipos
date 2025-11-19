@@ -29,7 +29,6 @@ import {
   Command,
   CommandEmpty,
   CommandGroup,
-  CommandInput,
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
@@ -145,7 +144,7 @@ export function POSClient({ products, customers }: { products: Product[], custom
         } else {
             toast({
                 variant: "destructive",
-                title: "En rupture de stock",
+                title: "Rupture de stock",
                 description: `Plus de ${product.name} en stock.`,
             });
             return prevCart;
@@ -156,7 +155,7 @@ export function POSClient({ products, customers }: { products: Product[], custom
       }
       toast({
             variant: "destructive",
-            title: "En rupture de stock",
+            title: "Rupture de stock",
             description: `${product.name} est en rupture de stock.`,
       });
       return prevCart;
@@ -453,11 +452,11 @@ export function POSClient({ products, customers }: { products: Product[], custom
                   <div className="pt-4">
                       <Label className="mb-2 block">Moyen de Paiement</Label>
                       <ToggleGroup type="single" defaultValue={paymentMethod} onValueChange={(value) => value && setPaymentMethod(value)} variant="outline" className="w-full justify-between">
-                          <ToggleGroupItem value="cash" aria-label="نقدا" className="flex-1">
-                              <Coins className="h-4 w-4 mr-2"/> نقدا
+                          <ToggleGroupItem value="cash" aria-label="Comptant" className="flex-1">
+                              <Coins className="h-4 w-4 mr-2"/> Comptant
                           </ToggleGroupItem>
-                          <ToggleGroupItem value="credit" aria-label="بالدين" className="flex-1" disabled={selectedCustomerId === 'general'}>
-                              <BookUser className="h-4 w-4 mr-2"/> بالدين
+                          <ToggleGroupItem value="credit" aria-label="Crédit" className="flex-1" disabled={selectedCustomerId === 'general'}>
+                              <BookUser className="h-4 w-4 mr-2"/> Crédit
                           </ToggleGroupItem>
                       </ToggleGroup>
                   </div>

@@ -12,16 +12,16 @@ import Link from 'next/link';
 
 function LowStockAlerts({ products }: { products: Product[] }) {
   if (products.length === 0) {
-    return <p className="text-sm text-muted-foreground">لا توجد تنبيهات بانخفاض المخزون.</p>;
+    return <p className="text-sm text-muted-foreground">Aucune alerte de stock bas.</p>;
   }
 
   return (
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>المنتج</TableHead>
-          <TableHead>المخزون الحالي</TableHead>
-          <TableHead>أدنى مخزون</TableHead>
+          <TableHead>Produit</TableHead>
+          <TableHead>Stock Actuel</TableHead>
+          <TableHead>Stock Minimum</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -41,17 +41,17 @@ function LowStockAlerts({ products }: { products: Product[] }) {
 
 function DueDebtAlerts({ customers }: { customers: Customer[] }) {
   if (customers.length === 0) {
-    return <p className="text-sm text-muted-foreground">لا توجد تنبيهات بخصوص الديون المستحقة.</p>;
+    return <p className="text-sm text-muted-foreground">Aucune alerte de dette due.</p>;
   }
 
   return (
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>العميل</TableHead>
-          <TableHead>الهاتف</TableHead>
-          <TableHead>يوم التسوية</TableHead>
-          <TableHead className="text-right">الدين المستحق</TableHead>
+          <TableHead>Client</TableHead>
+          <TableHead>Téléphone</TableHead>
+          <TableHead>Jour de Règlement</TableHead>
+          <TableHead className="text-right">Dette Due</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -64,7 +64,7 @@ function DueDebtAlerts({ customers }: { customers: Customer[] }) {
             </TableCell>
             <TableCell>{customer.phone}</TableCell>
             <TableCell>
-                <Badge variant="outline">اليوم {customer.settlementDay}</Badge>
+                <Badge variant="outline">Jour {customer.settlementDay}</Badge>
             </TableCell>
             <TableCell className="text-right">
               <Badge variant="destructive">
@@ -127,10 +127,10 @@ export default function AlertsPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Archive className="h-6 w-6 text-destructive" />
-            تنبيهات المخزون المنخفض ({lowStockProducts.length})
+            Alertes de Stock Bas ({lowStockProducts.length})
           </CardTitle>
           <CardDescription>
-            المنتجات التي وصلت إلى الحد الأدنى للمخزون أو أقل.
+            Produits qui ont atteint ou sont en dessous du seuil de stock minimum.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -142,10 +142,10 @@ export default function AlertsPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <CircleDollarSign className="h-6 w-6 text-destructive" />
-            تنبيهات الديون المستحقة ({dueDebtCustomers.length})
+            Alertes de Dettes Dues ({dueDebtCustomers.length})
           </CardTitle>
           <CardDescription>
-            العملاء الذين استحق موعد تسوية ديونهم أو سيستحق خلال يوم واحد.
+            Clients dont la date de règlement est due ou le sera dans un jour.
           </CardDescription>
         </CardHeader>
         <CardContent>

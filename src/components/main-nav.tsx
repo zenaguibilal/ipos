@@ -20,12 +20,12 @@ const navLinks = [
   { href: '/', label: 'Tableau de Bord', icon: Home },
   { href: '/sell', label: 'Vendre', icon: ShoppingCart },
   { href: '/sales-history', label: 'Historique', icon: History },
-  { href: '/alerts', label: 'تنبيهات', icon: Bell },
+  { href: '/alerts', label: 'Alertes', icon: Bell },
   { href: '/products', label: 'Produits', icon: Package },
   { href: '/customers', label: 'Clients', icon: Users },
   { href: '/suppliers', label: 'Fournisseurs', icon: Truck },
-  { href: '/bakery', label: 'المخبوزات', icon: Cookie },
-  { href: '/settings', label: 'الإعدادات', icon: Settings },
+  { href: '/bakery', label: 'Pâtisserie', icon: Cookie },
+  { href: '/settings', label: 'Paramètres', icon: Settings },
 ];
 
 type MainNavProps = {

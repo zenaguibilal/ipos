@@ -127,7 +127,7 @@ function ProductForm({
             />
           </div>
           <div>
-            <Label htmlFor="minStock">أدنى مخزون</Label>
+            <Label htmlFor="minStock">Stock Minimum</Label>
             <Input
               id="minStock"
               name="minStock"
@@ -237,7 +237,7 @@ export function ProductList({ initialProducts }: { initialProducts: Product[] })
                 <TableHead>Prix d'achat</TableHead>
                 <TableHead>Prix de vente</TableHead>
                 <TableHead>Stock</TableHead>
-                <TableHead>أدنى مخزون</TableHead>
+                <TableHead>Stock Minimum</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>

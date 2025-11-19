@@ -49,49 +49,49 @@ function BakeryOrderForm({ isOpen, onClose, onSave }: { isOpen: boolean, onClose
         <Dialog open={isOpen} onOpenChange={onClose}>
             <DialogContent>
                 <DialogHeader className="p-6 pb-0">
-                    <DialogTitle>إضافة طلب جديد</DialogTitle>
+                    <DialogTitle>Ajouter une nouvelle commande</DialogTitle>
                     <DialogDescription>
-                        أدخل تفاصيل الطلب الجديد.
+                        Entrez les détails de la nouvelle commande.
                     </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} id="bakery-order-form" className="space-y-4 p-6 pt-4">
                     <div>
-                        <Label htmlFor="customerName">اسم العميل</Label>
+                        <Label htmlFor="customerName">Nom du client</Label>
                         <Input id="customerName" name="customerName" required />
                     </div>
                      <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <Label htmlFor="type">النوع</Label>
+                            <Label htmlFor="type">Type</Label>
                             <Select name="type" defaultValue="bread">
                                 <SelectTrigger>
-                                    <SelectValue placeholder="اختر النوع" />
+                                    <SelectValue placeholder="Choisissez le type" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="bread">خبز</SelectItem>
-                                    <SelectItem value="meloui">ملوي</SelectItem>
+                                    <SelectItem value="bread">Pain</SelectItem>
+                                    <SelectItem value="meloui">Meloui</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
                         <div>
-                            <Label htmlFor="quantity">الكمية</Label>
+                            <Label htmlFor="quantity">Quantité</Label>
                             <Input id="quantity" name="quantity" type="number" required min="1" />
                         </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <Label htmlFor="paymentStatus">حالة الدفع</Label>
+                            <Label htmlFor="paymentStatus">Statut du paiement</Label>
                             <Select name="paymentStatus" defaultValue="unpaid">
                                 <SelectTrigger>
-                                    <SelectValue placeholder="اختر حالة الدفع" />
+                                    <SelectValue placeholder="Choisissez le statut" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="paid">مدفوع</SelectItem>
-                                    <SelectItem value="unpaid">غير مدفوع</SelectItem>
+                                    <SelectItem value="paid">Payée</SelectItem>
+                                    <SelectItem value="unpaid">Non payée</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
                          <div>
-                            <Label>تاريخ الطلب</Label>
+                            <Label>Date de la commande</Label>
                             <Popover>
                                 <PopoverTrigger asChild>
                                 <Button
@@ -102,7 +102,7 @@ function BakeryOrderForm({ isOpen, onClose, onSave }: { isOpen: boolean, onClose
                                     )}
                                 >
                                     <CalendarIcon className="mr-2 h-4 w-4" />
-                                    {date ? format(date, "d MMM yyyy", { locale: fr }) : <span>اختر تاريخًا</span>}
+                                    {date ? format(date, "d MMM yyyy", { locale: fr }) : <span>Choisissez une date</span>}
                                 </Button>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-auto p-0">
@@ -118,13 +118,13 @@ function BakeryOrderForm({ isOpen, onClose, onSave }: { isOpen: boolean, onClose
                     </div>
                     <div className="flex items-center space-x-2 pt-2">
                         <Switch id="isRecurring" name="isRecurring" checked={isRecurring} onCheckedChange={setIsRecurring} />
-                        <Label htmlFor="isRecurring">طلب متكرر يوميا</Label>
+                        <Label htmlFor="isRecurring">Commande récurrente quotidienne</Label>
                     </div>
                 </form>
                 <DialogFooter>
-                    <Button variant="outline" onClick={onClose} disabled={isSaving}>إلغاء</Button>
+                    <Button variant="outline" onClick={onClose} disabled={isSaving}>Annuler</Button>
                     <Button type="submit" form="bakery-order-form" disabled={isSaving}>
-                        {isSaving ? <><Loader className="mr-2 h-4 w-4 animate-spin" /> جارٍ الحفظ...</> : 'حفظ الطلب'}
+                        {isSaving ? <><Loader className="mr-2 h-4 w-4 animate-spin" /> Enregistrement...</> : 'Enregistrer la commande'}
                     </Button>
                 </DialogFooter>
             </DialogContent>
@@ -141,7 +141,7 @@ function StatCard({ title, value, icon }: { title: string, value: number, icon: 
             </CardHeader>
             <CardContent>
                 <div className="text-2xl font-bold">{value}</div>
-                <p className="text-xs text-muted-foreground">وحدة مطلوبة (غير مستلمة)</p>
+                <p className="text-xs text-muted-foreground">unités commandées (non livrées)</p>
             </CardContent>
         </Card>
     );
@@ -153,7 +153,7 @@ function BakeryTable({ orders, onFulfillToggle, onPaymentStatusChange, onDelete,
     if (orders.length === 0) {
         return (
             <div className="flex items-center justify-center h-40 text-muted-foreground">
-                {isFulfilledTable ? 'لا توجد طلبات مكتملة.' : 'لا توجد طلبات نشطة حالياً.'}
+                {isFulfilledTable ? 'Aucune commande terminée.' : 'Aucune commande active pour le moment.'}
             </div>
         );
     }
@@ -162,13 +162,13 @@ function BakeryTable({ orders, onFulfillToggle, onPaymentStatusChange, onDelete,
         <Table>
             <TableHeader>
                 <TableRow>
-                    <TableHead>اسم العميل</TableHead>
-                    <TableHead className="text-center">الكمية</TableHead>
-                    <TableHead>النوع</TableHead>
-                    <TableHead>تاريخ الطلب</TableHead>
-                    <TableHead>حالة الدفع</TableHead>
-                    <TableHead className="text-center">حالة الاستلام</TableHead>
-                    <TableHead className="text-center">إجراءات</TableHead>
+                    <TableHead>Nom du client</TableHead>
+                    <TableHead className="text-center">Quantité</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Date de la commande</TableHead>
+                    <TableHead>Statut du paiement</TableHead>
+                    <TableHead className="text-center">Statut de la livraison</TableHead>
+                    <TableHead className="text-center">Actions</TableHead>
                 </TableRow>
             </TableHeader>
             <TableBody>
@@ -200,7 +200,7 @@ function BakeryTableRow({ order, onFulfillToggle, onPaymentStatusChange, onDelet
                 <TableCell>
                      <Badge variant={order.type === 'bread' ? 'secondary' : 'outline'} className="gap-1">
                         {order.type === 'bread' ? <Wheat className="h-3 w-3" /> : <Cookie className="h-3 w-3" />}
-                        {order.type === 'bread' ? 'خبز' : 'ملوي'}
+                        {order.type === 'bread' ? 'Pain' : 'Meloui'}
                     </Badge>
                 </TableCell>
                 <TableCell className="text-sm text-muted-foreground">
@@ -212,11 +212,11 @@ function BakeryTableRow({ order, onFulfillToggle, onPaymentStatusChange, onDelet
                         onValueChange={(newStatus: 'paid' | 'unpaid') => onPaymentStatusChange(order, newStatus)}
                     >
                         <SelectTrigger className={`w-[110px] text-xs h-8 ${order.paymentStatus === 'paid' ? 'border-green-500 text-green-700 focus:ring-green-500' : 'border-red-500 text-red-700 focus:ring-red-500'}`}>
-                            <SelectValue placeholder="حالة الدفع" />
+                            <SelectValue placeholder="Statut du paiement" />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="paid">مدفوع</SelectItem>
-                            <SelectItem value="unpaid">غير مدفوع</SelectItem>
+                            <SelectItem value="paid">Payée</SelectItem>
+                            <SelectItem value="unpaid">Non payée</SelectItem>
                         </SelectContent>
                     </Select>
                 </TableCell>
@@ -226,29 +226,29 @@ function BakeryTableRow({ order, onFulfillToggle, onPaymentStatusChange, onDelet
                             id={`fulfill-switch-${order.id}`}
                             checked={order.isFulfilled}
                             onCheckedChange={() => onFulfillToggle(order)}
-                            aria-label="حالة الاستلام"
+                            aria-label="Statut de la livraison"
                         />
                     </div>
                 </TableCell>
                 <TableCell className="text-center">
                     <Button variant="ghost" size="icon" onClick={() => setIsDeleteDialogOpen(true)}>
                         <Trash2 className="h-4 w-4 text-destructive" />
-                        <span className="sr-only">حذف</span>
+                        <span className="sr-only">Supprimer</span>
                     </Button>
                 </TableCell>
             </TableRow>
             <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>هل أنت متأكد؟</AlertDialogTitle>
+                        <AlertDialogTitle>Êtes-vous sûr ?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            سيؤدي هذا الإجراء إلى حذف الطلب نهائيًا. لا يمكن التراجع عن هذا الإجراء.
+                            Cette action supprimera définitivement la commande. Cette action est irréversible.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                        <AlertDialogCancel>Annuler</AlertDialogCancel>
                         <AlertDialogAction onClick={() => onDelete(order.id)}>
-                            نعم، حذف
+                            Oui, supprimer
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
@@ -290,16 +290,16 @@ export default function BakeryPage() {
         try {
             await addDoc(bakeryOrdersColRef, orderWithFulfillment);
             toast({
-                title: "تم حفظ الطلب",
-                description: `تم تسجيل طلب ${orderData.customerName} بنجاح.`,
+                title: "Commande enregistrée",
+                description: `La commande de ${orderData.customerName} a été enregistrée avec succès.`,
             });
             setIsFormOpen(false);
         } catch (error) {
             console.error("Error saving order:", error);
             toast({
                 variant: "destructive",
-                title: "خطأ في الحفظ",
-                description: "لم نتمكن من حفظ الطلب. يرجى المحاولة مرة أخرى.",
+                title: "Erreur d'enregistrement",
+                description: "Nous n'avons pas pu enregistrer la commande. Veuillez réessayer.",
             });
         }
     };
@@ -310,15 +310,15 @@ export default function BakeryPage() {
         try {
             await updateDoc(orderRef, { isFulfilled: !order.isFulfilled });
             toast({
-                title: "تم تحديث الحالة",
-                description: `تم تحديث حالة استلام طلب ${order.customerName}.`,
+                title: "Statut mis à jour",
+                description: `Le statut de livraison de la commande de ${order.customerName} a été mis à jour.`,
             });
         } catch (error) {
             console.error("Error updating fulfillment status:", error);
             toast({
                 variant: "destructive",
-                title: "خطأ في التحديث",
-                description: "لم نتمكن من تحديث حالة الاستلام. يرجى المحاولة مرة أخرى.",
+                title: "Erreur de mise à jour",
+                description: "Nous n'avons pas pu mettre à jour le statut de livraison. Veuillez réessayer.",
             });
         }
     };
@@ -329,15 +329,15 @@ export default function BakeryPage() {
         try {
             await updateDoc(orderRef, { paymentStatus: newStatus });
             toast({
-                title: "تم تحديث حالة الدفع",
-                description: `تم تحديث حالة دفع طلب ${order.customerName}.`,
+                title: "Statut du paiement mis à jour",
+                description: `Le statut du paiement de la commande de ${order.customerName} a été mis à jour.`,
             });
         } catch (error) {
             console.error("Error updating payment status:", error);
             toast({
                 variant: "destructive",
-                title: "خطأ في التحديث",
-                description: "لم نتمكن من تحديث حالة الدفع. يرجى المحاولة مرة أخرى.",
+                title: "Erreur de mise à jour",
+                description: "Nous n'avons pas pu mettre à jour le statut du paiement. Veuillez réessayer.",
             });
         }
     };
@@ -348,14 +348,14 @@ export default function BakeryPage() {
         try {
             await deleteDoc(orderRef);
             toast({
-                title: "تم حذف الطلب",
+                title: "Commande supprimée",
             });
         } catch (error) {
             console.error("Error deleting order:", error);
             toast({
                 variant: "destructive",
-                title: "خطأ في الحذف",
-                description: "لم نتمكن من حذف الطلب. يرجى المحاولة مرة أخرى.",
+                title: "Erreur de suppression",
+                description: "Nous n'avons pas pu supprimer la commande. Veuillez réessayer.",
             });
         }
     };
@@ -364,27 +364,27 @@ export default function BakeryPage() {
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                  <div className="grid gap-2">
-                    <h1 className="text-2xl font-bold tracking-tight">طلبات المخبوزات</h1>
-                    <p className="text-muted-foreground">إدارة وتتبع طلبات الخبز والملوي اليومية.</p>
+                    <h1 className="text-2xl font-bold tracking-tight">Commandes de Pâtisserie</h1>
+                    <p className="text-muted-foreground">Gérez et suivez les commandes quotidiennes de pain et de meloui.</p>
                 </div>
                  <Button size="sm" className="h-9 gap-1" onClick={() => setIsFormOpen(true)}>
                     <PlusCircle className="h-4 w-4" />
-                    <span className="whitespace-nowrap">إضافة طلب جديد</span>
+                    <span className="whitespace-nowrap">Ajouter une commande</span>
                 </Button>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
-                <StatCard title="إجمالي الخبز" value={breadOrdersQuantity} icon={<Wheat className="h-4 w-4 text-muted-foreground" />} />
-                <StatCard title="إجمالي الملوي" value={melouiOrdersQuantity} icon={<Cookie className="h-4 w-4 text-muted-foreground" />} />
+                <StatCard title="Total Pain" value={breadOrdersQuantity} icon={<Wheat className="h-4 w-4 text-muted-foreground" />} />
+                <StatCard title="Total Meloui" value={melouiOrdersQuantity} icon={<Cookie className="h-4 w-4 text-muted-foreground" />} />
             </div>
             
             <Tabs defaultValue="active">
                 <TabsList className="grid w-full grid-cols-2">
                     <TabsTrigger value="active">
-                        الطلبات النشطة ({activeOrders.length})
+                        Commandes Actives ({activeOrders.length})
                     </TabsTrigger>
                     <TabsTrigger value="fulfilled">
-                        الطلبات المكتملة ({fulfilledOrders.length})
+                        Commandes Terminées ({fulfilledOrders.length})
                     </TabsTrigger>
                 </TabsList>
                 <TabsContent value="active">

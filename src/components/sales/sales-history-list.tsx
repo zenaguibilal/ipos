@@ -17,9 +17,9 @@ export function SalesHistoryList({ sales }: { sales: SaleWithDetails[] }) {
     const formatPaymentMethod = (method: 'cash' | 'credit') => {
         switch (method) {
             case 'cash':
-                return <Badge variant="secondary">نقدا</Badge>;
+                return <Badge variant="secondary">Comptant</Badge>;
             case 'credit':
-                return <Badge variant="outline">بالدين</Badge>;
+                return <Badge variant="outline">Crédit</Badge>;
             default:
                 return <Badge variant="default">{method}</Badge>;
         }
