@@ -101,6 +101,19 @@
           "type": "number",
           "description": "Total amount of the sale."
         },
+        "amountPaid": {
+          "type": "number",
+          "description": "The amount paid by the customer for this sale."
+        },
+        "remainingBalance": {
+          "type": "number",
+          "description": "The outstanding balance for this sale. Should be 0 for fully paid sales."
+        },
+        "paymentStatus": {
+          "type": "string",
+          "description": "The payment status of the sale.",
+          "enum": ["paid", "partial", "unpaid"]
+        },
         "customerId": {
           "type": "string",
           "description": "ID of the customer associated with the sale."
@@ -118,6 +131,9 @@
       "required": [
         "items",
         "total",
+        "amountPaid",
+        "remainingBalance",
+        "paymentStatus",
         "createdAt"
       ]
     },

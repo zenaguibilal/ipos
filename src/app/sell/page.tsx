@@ -13,6 +13,7 @@ import { MinusCircle, PlusCircle, User, XCircle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { PaymentDialog } from '@/components/sell/payment-dialog';
 
 interface Product {
     id: string;
@@ -43,6 +44,7 @@ export default function SellPage() {
   const [barcodeSearch, setBarcodeSearch] = useState('');
   const [productSearch, setProductSearch] = useState('');
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>('none');
+  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
 
   // Products collection
   const productsCollectionRef = useMemoFirebase(() => {
@@ -107,17 +109,23 @@ export default function SellPage() {
     return cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   }, [cart]);
 
-  const handleProcessSale = () => {
+  const handleProcessSale = (amountPaid: number) => {
     if (!salesCollectionRef || cart.length === 0) return;
     
     setIsProcessingSale(true);
     setSaleStatus(null);
 
     const selectedCustomer = customers?.find(c => c.id === selectedCustomerId);
+    
+    const remainingBalance = total - amountPaid;
+    const paymentStatus = remainingBalance <= 0 ? 'paid' : 'partial';
 
     const saleData: any = {
         items: cart.map(item => ({ id: item.id, name: item.name, price: item.price, quantity: item.quantity })),
         total: total,
+        amountPaid: amountPaid,
+        remainingBalance: remainingBalance > 0 ? remainingBalance : 0,
+        paymentStatus: paymentStatus,
         createdAt: serverTimestamp(),
     };
 
@@ -132,12 +140,13 @@ export default function SellPage() {
             setSelectedCustomerId('none');
             setIsProcessingSale(false);
             setSaleStatus({ success: "Vente enregistrée avec succès !" });
-            // The success message will be shown in the cart area
+            setIsPaymentDialogOpen(false);
         },
         onError: (err) => {
             console.error("Erreur lors de la vente :", err);
             setIsProcessingSale(false);
             setSaleStatus({ error: "Échec de l'enregistrement de la vente." });
+            setIsPaymentDialogOpen(false);
         }
     });
   };
@@ -178,6 +187,13 @@ export default function SellPage() {
             isOpen={isAddingProduct}
             onOpenChange={setIsAddingProduct}
             userId={user.uid}
+        />
+        <PaymentDialog
+            isOpen={isPaymentDialogOpen}
+            onOpenChange={setIsPaymentDialogOpen}
+            total={total}
+            isProcessing={isProcessingSale}
+            onConfirm={handleProcessSale}
         />
         <header className="flex h-14 items-center gap-4 border-b bg-background px-6">
             <h1 className="text-lg font-semibold md:text-xl">Point de Vente</h1>
@@ -326,7 +342,7 @@ export default function SellPage() {
                         <Button 
                             className="w-full" 
                             disabled={cart.length === 0 || isProcessingSale}
-                            onClick={handleProcessSale}
+                            onClick={() => setIsPaymentDialogOpen(true)}
                         >
                             {isProcessingSale ? 'Encaissement...' : 'Encaisser'}
                         </Button>
@@ -337,7 +353,3 @@ export default function SellPage() {
     </div>
   );
 }
-
-    
-
-    
