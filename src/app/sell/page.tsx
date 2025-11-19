@@ -42,7 +42,7 @@ export default function SellPage() {
   const [saleStatus, setSaleStatus] = useState<{ success?: string, error?: string } | null>(null);
   const [barcodeSearch, setBarcodeSearch] = useState('');
   const [productSearch, setProductSearch] = useState('');
-  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string>('none');
 
   // Products collection
   const productsCollectionRef = useMemoFirebase(() => {
@@ -129,7 +129,7 @@ export default function SellPage() {
     addDocumentNonBlocking(salesCollectionRef, saleData, {
         onSuccess: () => {
             setCart([]);
-            setSelectedCustomerId(null);
+            setSelectedCustomerId('none');
             setIsProcessingSale(false);
             setSaleStatus({ success: "Vente enregistrée avec succès !" });
             setTimeout(() => setSaleStatus(null), 3000);
@@ -265,9 +265,12 @@ export default function SellPage() {
                         <CardTitle>Vente en cours</CardTitle>
                         <div className="grid w-full items-center gap-1.5 pt-4">
                             <Label htmlFor="customer-select">Associer à un client</Label>
-                            <Select onValueChange={setSelectedCustomerId} value={selectedCustomerId || ""} disabled={isLoadingCustomers || !customers?.length}>
-                                <SelectTrigger id="customer-select">
-                                    <SelectValue placeholder="Sélectionner un client..." />
+                             <Select onValueChange={setSelectedCustomerId} value={selectedCustomerId} disabled={isLoadingCustomers || !customers?.length}>
+                                <SelectTrigger id="customer-select" className="w-full">
+                                    <div className="flex items-center gap-2">
+                                        <User className="h-4 w-4 text-muted-foreground" />
+                                        <SelectValue placeholder="Sélectionner un client..." />
+                                    </div>
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="none">Aucun client</SelectItem>
@@ -278,6 +281,11 @@ export default function SellPage() {
                                     ))}
                                 </SelectContent>
                             </Select>
+                            {!isLoadingCustomers && !customers?.length && (
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    Aucun client trouvé. <Link href="/customers" className="underline">En ajouter un ?</Link>
+                                </p>
+                            )}
                         </div>
                     </CardHeader>
                     <CardContent className="flex-1">
@@ -329,3 +337,5 @@ export default function SellPage() {
     </div>
   );
 }
+
+    
