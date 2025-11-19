@@ -70,7 +70,7 @@ export default function SellPage() {
                   item.id === productId ? { ...item, quantity: item.quantity - 1 } : item
               );
           }
-          // If quantity is 1, remove it completely
+          // If quantity is 1, remove it completely by filtering
           return prevCart.filter((item) => item.id !== productId);
       });
   };
