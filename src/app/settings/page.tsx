@@ -9,6 +9,7 @@ import { usePassword } from "@/components/auth/password-provider";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { Palette, Lock, Store } from "lucide-react";
 
 function ChangePasswordForm() {
     const { changePassword } = usePassword();
@@ -179,7 +180,10 @@ export default function SettingsPage() {
         </div>
       <Card>
         <CardHeader>
-          <CardTitle>المظهر</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Palette />
+            المظهر
+          </CardTitle>
           <CardDescription>
             قم بتخصيص مظهر التطبيق. قم بالتبديل بين الوضع الفاتح والداكن.
           </CardDescription>
@@ -198,7 +202,10 @@ export default function SettingsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>الأمان</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Lock />
+            الأمان
+            </CardTitle>
           <CardDescription>
             قم بتغيير كلمة المرور الرئيسية للوصول إلى التطبيق.
           </CardDescription>
@@ -210,7 +217,10 @@ export default function SettingsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>معلومات المتجر</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Store />
+            معلومات المتجر
+            </CardTitle>
           <CardDescription>
             قم بتعيين التفاصيل الأساسية لمتجرك ليتم استخدامها في الفواتير.
           </CardDescription>
