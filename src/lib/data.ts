@@ -7,6 +7,9 @@ import { useEffect, useState, useMemo } from 'react';
 import { format, getMonth, eachDayOfInterval, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, eachMonthOfInterval, getYear } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
+interface SaleLineItemWithProduct extends SaleLineItem {
+    product?: Product;
+}
 
 // Server-side data fetching functions (can be adapted for client-side with hooks)
 export async function getProducts(db: any): Promise<Product[]> {
@@ -52,7 +55,6 @@ export function useSales(salesLimit?: number) {
     }, [firestore, customerIds]);
     const { data: customersData, isLoading: customersLoading, error: customersError } = useCollection<Customer>(customersRef);
 
-    // Fetch line items and products to calculate net profit.
     const lineItemIds = useMemo(() => salesData?.flatMap(s => s.saleLineItemIds) || [], [salesData]);
 
     const lineItemsRef = useMemoFirebase(() => {
@@ -73,28 +75,30 @@ export function useSales(salesLimit?: number) {
     const { data: productsData, isLoading: productsLoading, error: productsError } = useCollection<Product>(productsRef);
 
     const enrichedSales = useMemo(() => {
-        if (!salesData) return [];
+        if (!salesData || !customersData || !lineItemsData || !productsData) return [];
+        if (salesData.length > 0 && customerIds.length > 0 && customersData.length === 0) return [];
+        if (lineItemIds.length > 0 && lineItemsData.length === 0) return [];
+        if (productIds.length > 0 && productsData.length === 0) return [];
 
-        const customerMap = customersData ? new Map(customersData.map(c => [c.id, c])) : new Map();
-        const productMap = productsData ? new Map(productsData.map(p => [p.id, p])) : new Map();
-        const lineItemMap = lineItemsData ? new Map(lineItemsData.map(li => [li.id, { ...li, product: productMap.get(li.productId) }])) : new Map();
+        const customerMap = new Map(customersData.map(c => [c.id, c]));
+        const productMap = new Map(productsData.map(p => [p.id, p]));
+        const lineItemMap = new Map(lineItemsData.map(li => [li.id, { ...li, product: productMap.get(li.productId) }]));
 
         return salesData.map(sale => ({
             ...sale,
             customer: customerMap.get(sale.customerId),
             lineItems: sale.saleLineItemIds.map(id => lineItemMap.get(id)).filter(Boolean) as SaleLineItemWithProduct[],
         }));
-    }, [salesData, customersData, lineItemsData, productsData]);
+    }, [salesData, customersData, lineItemsData, productsData, customerIds, lineItemIds, productIds]);
 
-
-    const isLoading = salesLoading || 
-                      (customerIds.length > 0 && customersLoading) || 
-                      (lineItemIds.length > 0 && lineItemsLoading) || 
+    const isLoading = salesLoading ||
+                      (customerIds.length > 0 && customersLoading) ||
+                      (lineItemIds.length > 0 && lineItemsLoading) ||
                       (productIds.length > 0 && productsLoading);
                       
     const error = salesError || customersError || lineItemsError || productsError;
 
-    return { sales: enrichedSales, isLoading, error };
+    return { sales: enrichedSales || [], isLoading, error };
 }
 
 export type TimeRange = 'daily' | 'monthly' | 'yearly';
@@ -104,13 +108,22 @@ export function useDashboardData(timeRange: TimeRange = 'monthly') {
 
     const { sales, isLoading: salesLoading } = useSales();
     
-    const customersRef = useMemoFirebase(() => collection(firestore, 'customers'), [firestore]);
+    const customersRef = useMemoFirebase(() => {
+        if (!firestore) return null;
+        return collection(firestore, 'customers');
+    }, [firestore]);
     const { data: customers, isLoading: customersLoading } = useCollection<Customer>(customersRef);
 
-    const suppliersRef = useMemoFirebase(() => collection(firestore, 'suppliers'), [firestore]);
+    const suppliersRef = useMemoFirebase(() => {
+        if (!firestore) return null;
+        return collection(firestore, 'suppliers');
+    }, [firestore]);
     const { data: suppliers, isLoading: suppliersLoading } = useCollection<Supplier>(suppliersRef);
 
-    const productsRef = useMemoFirebase(() => collection(firestore, 'suppliers/supp_1/products'), [firestore]);
+    const productsRef = useMemoFirebase(() => {
+        if (!firestore) return null;
+        return collection(firestore, 'suppliers/supp_1/products');
+    }, [firestore]);
     const { data: products, isLoading: productsLoading } = useCollection<Product>(productsRef);
 
     const totalRevenue = useMemo(() => sales.reduce((acc, sale) => acc + sale.totalAmount, 0), [sales]);
@@ -190,7 +203,8 @@ export function useDashboardData(timeRange: TimeRange = 'monthly') {
 
     }, [sales, timeRange]);
 
-
+    const isLoading = salesLoading || customersLoading || suppliersLoading || productsLoading;
+    
     return {
         totalRevenue,
         netProfit,
@@ -202,7 +216,7 @@ export function useDashboardData(timeRange: TimeRange = 'monthly') {
         salesChartData,
         products: products || [],
         customers: customers || [],
-        isLoading: salesLoading || customersLoading || suppliersLoading || productsLoading
+        isLoading: isLoading
     }
 }
 
@@ -217,3 +231,5 @@ export function useProducts() {
 
     return { products: products || [], isLoading };
 }
+
+    
