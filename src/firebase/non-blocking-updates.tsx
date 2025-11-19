@@ -32,7 +32,7 @@ export function setDocumentNonBlocking(docRef: DocumentReference, data: any, opt
           'permission-error',
           new FirestorePermissionError({
             path: docRef.path,
-            operation: 'write', // or 'create'/'update' based on options
+            operation: options && 'merge' in options ? 'update' : 'create',
             requestResourceData: data,
           })
         )
@@ -54,10 +54,12 @@ export function addDocumentNonBlocking(colRef: CollectionReference, data: any, c
     })
     .catch(error => {
       callbacks?.onError?.(error);
+      // Construct path for the document that failed to be created
+      const failedDocPath = `${colRef.path}/[new_document]`;
       errorEmitter.emit(
         'permission-error',
         new FirestorePermissionError({
-          path: colRef.path,
+          path: failedDocPath,
           operation: 'create',
           requestResourceData: data,
         })
