@@ -1,14 +1,15 @@
 'use client';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, doc, updateDoc, addDoc, deleteDoc } from 'firebase/firestore';
 import type { BakeryOrder } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Loader, PlusCircle, Trash2, Cookie, Wheat, ChevronDown, Calendar as CalendarIcon } from 'lucide-react';
+import { Loader, PlusCircle, Trash2, Cookie, Wheat, Calendar as CalendarIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -140,13 +141,28 @@ function StatCard({ title, value, icon }: { title: string, value: number, icon: 
 
 
 function BakeryTable({ orders, onFulfillToggle, onPaymentStatusChange, onDelete, isFulfilledTable = false }: { orders: BakeryOrder[], onFulfillToggle: (order: BakeryOrder) => void, onPaymentStatusChange: (order: BakeryOrder, newStatus: 'paid' | 'unpaid') => void, onDelete: (orderId: string) => void, isFulfilledTable?: boolean }) {
+    const [orderToDelete, setOrderToDelete] = useState<string | null>(null);
+
+    const handleDeleteClick = (orderId: string) => {
+        setOrderToDelete(orderId);
+    }
+
+    const confirmDelete = () => {
+        if(orderToDelete) {
+            onDelete(orderToDelete);
+            setOrderToDelete(null);
+        }
+    }
+    
     if (orders.length === 0) {
         return (
-            <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center">
-                    {isFulfilledTable ? 'لا توجد طلبات مكتملة.' : 'لا توجد طلبات نشطة حالياً.'}
-                </TableCell>
-            </TableRow>
+             <>
+                <TableRow>
+                    <TableCell colSpan={7} className="h-24 text-center">
+                        {isFulfilledTable ? 'لا توجد طلبات مكتملة.' : 'لا توجد طلبات نشطة حالياً.'}
+                    </TableCell>
+                </TableRow>
+            </>
         );
     }
 
@@ -190,13 +206,29 @@ function BakeryTable({ orders, onFulfillToggle, onPaymentStatusChange, onDelete,
                         </div>
                     </TableCell>
                     <TableCell className="text-center">
-                        <Button variant="ghost" size="icon" onClick={() => onDelete(order.id)}>
+                        <Button variant="ghost" size="icon" onClick={() => handleDeleteClick(order.id)}>
                             <Trash2 className="h-4 w-4 text-destructive" />
                             <span className="sr-only">حذف</span>
                         </Button>
                     </TableCell>
                 </TableRow>
             ))}
+             <AlertDialog open={!!orderToDelete} onOpenChange={(open) => !open && setOrderToDelete(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>هل أنت متأكد؟</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            سيؤدي هذا الإجراء إلى حذف الطلب نهائيًا. لا يمكن التراجع عن هذا الإجراء.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                        <AlertDialogAction onClick={confirmDelete}>
+                            نعم، حذف
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </>
     );
 }
@@ -288,9 +320,6 @@ export default function BakeryPage() {
 
     const handleDeleteOrder = async (orderId: string) => {
         if (!firestore) return;
-        if (!confirm('هل أنت متأكد أنك تريد حذف هذا الطلب؟ لا يمكن التراجع عن هذا الإجراء.')) {
-            return;
-        }
         const orderRef = doc(firestore, 'bakery_orders', orderId);
         try {
             await deleteDoc(orderRef);
@@ -409,5 +438,3 @@ export default function BakeryPage() {
         </div>
     );
 }
-
-    
