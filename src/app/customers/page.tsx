@@ -3,7 +3,7 @@
 
 import { useUser, useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { collection, doc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,6 +23,18 @@ export interface Customer {
     phone?: string;
 }
 
+export interface Sale {
+    id: string;
+    customerId?: string;
+    total: number;
+    remainingBalance: number;
+}
+
+export interface CustomerWithSalesData extends Customer {
+    totalSpent: number;
+    outstandingBalance: number;
+}
+
 export default function CustomersPage() {
     const { user, isUserLoading } = useUser();
     const firestore = useFirestore();
@@ -32,12 +44,42 @@ export default function CustomersPage() {
     const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
     const [deletingCustomer, setDeletingCustomer] = useState<Customer | null>(null);
 
+    // Fetch Customers
     const customersCollectionRef = useMemoFirebase(() => {
         if (!user || !firestore) return null;
         return collection(firestore, 'users', user.uid, 'customers');
     }, [user, firestore]);
-
     const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersCollectionRef);
+
+    // Fetch Sales
+    const salesCollectionRef = useMemoFirebase(() => {
+        if (!user || !firestore) return null;
+        return collection(firestore, 'users', user.uid, 'sales');
+    }, [user, firestore]);
+    const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesCollectionRef);
+    
+    // Combine customer and sales data
+    const customersWithSales = useMemo(() => {
+        if (!customers || !sales) return [];
+
+        const salesByCustomer = sales.reduce((acc, sale) => {
+            if (sale.customerId) {
+                if (!acc[sale.customerId]) {
+                    acc[sale.customerId] = { totalSpent: 0, outstandingBalance: 0 };
+                }
+                acc[sale.customerId].totalSpent += sale.total;
+                acc[sale.customerId].outstandingBalance += sale.remainingBalance;
+            }
+            return acc;
+        }, {} as Record<string, { totalSpent: number, outstandingBalance: number }>);
+
+        return customers.map(customer => ({
+            ...customer,
+            totalSpent: salesByCustomer[customer.id]?.totalSpent || 0,
+            outstandingBalance: salesByCustomer[customer.id]?.outstandingBalance || 0,
+        }));
+    }, [customers, sales]);
+
 
     useEffect(() => {
         if (!isUserLoading && !user) {
@@ -53,8 +95,10 @@ export default function CustomersPage() {
             onError: (err) => console.error("Failed to delete customer:", err)
         });
     }
+    
+    const isLoading = isUserLoading || isLoadingCustomers || isLoadingSales;
 
-    if (isUserLoading || !user) {
+    if (isLoading || !user) {
         return <div className="flex min-h-screen items-center justify-center"><p>Chargement...</p></div>;
     }
 
@@ -83,18 +127,18 @@ export default function CustomersPage() {
             )}
            
             <div className="flex min-h-screen flex-col items-center p-4 sm:p-6 md:p-8">
-                <Card className="w-full max-w-4xl">
+                <Card className="w-full max-w-6xl">
                     <CardHeader className="flex flex-row items-center justify-between">
                         <div>
                             <CardTitle>Clients</CardTitle>
-                            <CardDescription>Gérez votre liste de clients.</CardDescription>
+                            <CardDescription>Gérez votre liste de clients et consultez leurs dépenses.</CardDescription>
                         </div>
                         <Button onClick={() => setIsAddingCustomer(true)}>Ajouter un client</Button>
                     </CardHeader>
                     <CardContent>
-                        {isLoadingCustomers ? (
-                            <div className="text-center">Chargement des clients...</div>
-                        ) : customers && customers.length > 0 ? (
+                        {isLoading ? (
+                            <div className="text-center">Chargement des données...</div>
+                        ) : customersWithSales && customersWithSales.length > 0 ? (
                             <div className="overflow-x-auto">
                                 <table className="min-w-full divide-y divide-border">
                                     <thead className="bg-muted/50">
@@ -102,17 +146,21 @@ export default function CustomersPage() {
                                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Nom</th>
                                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">E-mail</th>
                                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Téléphone</th>
+                                            <th scope="col" className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Total Dépensé</th>
+                                            <th scope="col" className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Solde Impayé</th>
                                             <th scope="col" className="relative px-6 py-3">
                                                 <span className="sr-only">Actions</span>
                                             </th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-border">
-                                        {customers.map(customer => (
+                                        {customersWithSales.map(customer => (
                                             <tr key={customer.id}>
                                                 <td className="whitespace-nowrap px-6 py-4 font-medium">{customer.firstName} {customer.lastName}</td>
                                                 <td className="whitespace-nowrap px-6 py-4 text-muted-foreground">{customer.email || '-'}</td>
                                                 <td className="whitespace-nowrap px-6 py-4 text-muted-foreground">{customer.phone || '-'}</td>
+                                                <td className="whitespace-nowrap px-6 py-4 text-right font-medium">{customer.totalSpent.toFixed(2)} €</td>
+                                                <td className={`whitespace-nowrap px-6 py-4 text-right font-medium ${customer.outstandingBalance > 0 ? 'text-destructive' : ''}`}>{customer.outstandingBalance.toFixed(2)} €</td>
                                                 <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
                                                     <DropdownMenu>
                                                         <DropdownMenuTrigger asChild>
