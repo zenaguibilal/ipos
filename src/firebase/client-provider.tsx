@@ -8,12 +8,12 @@ interface FirebaseClientProviderProps {
   children: ReactNode;
 }
 
-export function FirebaseClientProvider({ children }: FirebaseClientProviderProps) {
-  const firebaseServices = useMemo(() => {
-    // Initialize Firebase on the client side, once per component mount.
-    return initializeFirebase();
-  }, []); // Empty dependency array ensures this runs only once on mount
+// Make this an async component to await initialization.
+export async function FirebaseClientProvider({ children }: FirebaseClientProviderProps) {
+  // Await the initialization which now includes the async sign-in.
+  const firebaseServices = await initializeFirebase();
 
+  // The provider will only render after the services, including auth sign-in, are ready.
   return (
     <FirebaseProvider
       firebaseApp={firebaseServices.firebaseApp}
