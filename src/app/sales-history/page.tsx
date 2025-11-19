@@ -21,13 +21,16 @@ function CustomerDataFetcher({ customerQuery, onData, onLoadingChange }: { custo
     const { data, isLoading, error } = useCollection<Customer>(customerQuery);
 
     useEffect(() => {
-        if (!isLoading) {
-            onData(data || []);
-            onLoadingChange(false);
-        } else {
-            onLoadingChange(true);
+        // Only call onLoadingChange when isLoading status actually changes.
+        onLoadingChange(isLoading);
+    }, [isLoading, onLoadingChange]);
+    
+    useEffect(() => {
+        if (!isLoading && data) {
+            onData(data);
         }
-    }, [data, isLoading, onData, onLoadingChange]);
+    }, [data, isLoading, onData]);
+
 
      useEffect(() => {
         if(error) {
@@ -52,7 +55,7 @@ export default function SalesHistoryPage() {
     
     // 2. Prepare customer ID chunks from sales data
     const customerIdChunks = useMemo(() => {
-        if (!salesData) return [];
+        if (!salesData || salesData.length === 0) return [];
         const customerIds = Array.from(new Set(salesData.map(s => s.customerId)));
         if(customerIds.length === 0) return [];
         return chunkArray(customerIds, 30);
@@ -67,28 +70,43 @@ export default function SalesHistoryPage() {
     }, [firestore, customerIdChunks]);
 
     // 4. State to hold aggregated customer data and loading status from all fetchers
-    const [allCustomers, setAllCustomers] = useState<Customer[]>([]);
+    const [allCustomers, setAllCustomers] = useState<Map<string, Customer>>(new Map());
     const [loadingStates, setLoadingStates] = useState<Record<number, boolean>>({});
-    const customersLoading = Object.values(loadingStates).some(isLoading => isLoading) || (customerQueries.length > 0 && Object.keys(loadingStates).length < customerQueries.length);
+    
+    const customersLoading = useMemo(() => {
+      if (customerQueries.length === 0) return false;
+      // Loading is true if any fetcher is loading OR if not all fetchers have reported their status yet.
+      return Object.values(loadingStates).some(isLoading => isLoading) || Object.keys(loadingStates).length < customerQueries.length;
+    }, [loadingStates, customerQueries.length]);
+
 
     // 5. Enrich sales with customer data
     const enrichedSales = useMemo(() => {
-        if (!salesData || customersLoading) return [];
-        
-        const customerMap = new Map(allCustomers.map(c => [c.id, c]));
+        if (!salesData || salesLoading || customersLoading) return [];
         
         return salesData.map(sale => ({
             ...sale,
-            customer: customerMap.get(sale.customerId),
+            customer: allCustomers.get(sale.customerId),
         }));
-    }, [salesData, allCustomers, customersLoading]);
+    }, [salesData, salesLoading, customersLoading, allCustomers]);
 
-    if (salesLoading || (customerQueries.length > 0 && customersLoading)) {
+
+    if (salesLoading) {
         return <div className="flex justify-center items-center h-full"><Loader className="animate-spin" /></div>;
     }
 
     if (salesError) {
         return <div className="text-destructive">Erreur lors du chargement des ventes: {salesError.message}</div>
+    }
+
+    // Handle the case where there are no sales after loading is complete.
+    if (!salesData || salesData.length === 0) {
+        return <SalesHistoryList sales={[]} />;
+    }
+
+    // This case will be hit when sales are loaded, but customers are still loading.
+    if (customersLoading) {
+        return <div className="flex justify-center items-center h-full"><Loader className="animate-spin" /></div>;
     }
 
     return (
@@ -102,8 +120,9 @@ export default function SalesHistoryPage() {
                     }}
                     onData={(data) => {
                          setAllCustomers(prev => {
-                            const newCustomers = [...prev.filter(c => !data.some(d => d.id === c.id)), ...data];
-                            return newCustomers;
+                            const newMap = new Map(prev);
+                            data.forEach(customer => newMap.set(customer.id, customer));
+                            return newMap;
                          });
                     }}
                 />
