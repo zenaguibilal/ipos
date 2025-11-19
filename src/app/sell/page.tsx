@@ -328,7 +328,7 @@ export default function SellPage() {
                             disabled={cart.length === 0 || isProcessingSale}
                             onClick={handleProcessSale}
                         >
-                            {isProcessingSale ? 'Traitement...' : 'Paiement'}
+                            {isProcessingSale ? 'Encaissement...' : 'Encaisser'}
                         </Button>
                     </CardFooter>
                 </Card>
@@ -337,5 +337,7 @@ export default function SellPage() {
     </div>
   );
 }
+
+    
 
     
