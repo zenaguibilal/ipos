@@ -38,10 +38,11 @@ export function useSales(salesLimit?: number) {
         }
         return q;
     }, [firestore, salesLimit]);
+
     const { data: salesData, isLoading: salesLoading, error: salesError } = useCollection<Sale>(salesRef);
 
     const customerIds = useMemo(() => {
-        if (!salesData || salesData.length === 0) return [];
+        if (!salesData) return [];
         return Array.from(new Set(salesData.map(s => s.customerId)));
     }, [salesData]);
 
@@ -51,23 +52,7 @@ export function useSales(salesLimit?: number) {
     }, [firestore, customerIds]);
     const { data: customersData, isLoading: customersLoading, error: customersError } = useCollection<Customer>(customersRef);
 
-    const [sales, setSales] = useState<SaleWithDetails[]>([]);
-
-    useEffect(() => {
-        if (salesData && customersData) {
-            const customerMap = new Map(customersData.map(c => [c.id, c]));
-            const enrichedSales = salesData.map(sale => ({
-                ...sale,
-                customer: customerMap.get(sale.customerId),
-            }));
-            setSales(enrichedSales);
-        } else if (salesData) {
-            // If customers are still loading, just set the sales without customer data
-            setSales(salesData);
-        }
-    }, [salesData, customersData]);
-    
-    // We need to fetch line items and products to calculate net profit.
+    // Fetch line items and products to calculate net profit.
     const lineItemIds = useMemo(() => salesData?.flatMap(s => s.saleLineItemIds) || [], [salesData]);
 
     const lineItemsRef = useMemoFirebase(() => {
@@ -87,40 +72,29 @@ export function useSales(salesLimit?: number) {
     }, [firestore, productIds]);
     const { data: productsData, isLoading: productsLoading, error: productsError } = useCollection<Product>(productsRef);
 
+    const enrichedSales = useMemo(() => {
+        if (!salesData) return [];
 
-    useEffect(() => {
-        if (salesData && customersData && lineItemsData && productsData) {
-            const customerMap = new Map(customersData.map(c => [c.id, c]));
-            const productMap = new Map(productsData.map(p => [p.id, p]));
+        const customerMap = customersData ? new Map(customersData.map(c => [c.id, c])) : new Map();
+        const productMap = productsData ? new Map(productsData.map(p => [p.id, p])) : new Map();
+        const lineItemMap = lineItemsData ? new Map(lineItemsData.map(li => [li.id, { ...li, product: productMap.get(li.productId) }])) : new Map();
 
-            const lineItemMap = new Map(lineItemsData.map(li => [li.id, {
-                ...li,
-                product: productMap.get(li.productId)
-            }]));
-
-            const enrichedSales = salesData.map(sale => ({
-                ...sale,
-                customer: customerMap.get(sale.customerId),
-                lineItems: sale.saleLineItemIds.map(id => lineItemMap.get(id)).filter(Boolean) as any,
-            }));
-            setSales(enrichedSales);
-        } else if (salesData && customersData) {
-             const customerMap = new Map(customersData.map(c => [c.id, c]));
-             const enrichedSales = salesData.map(sale => ({
-                ...sale,
-                customer: customerMap.get(sale.customerId),
-            }));
-            setSales(enrichedSales);
-        } else if (salesData) {
-            setSales(salesData);
-        }
+        return salesData.map(sale => ({
+            ...sale,
+            customer: customerMap.get(sale.customerId),
+            lineItems: sale.saleLineItemIds.map(id => lineItemMap.get(id)).filter(Boolean) as SaleLineItemWithProduct[],
+        }));
     }, [salesData, customersData, lineItemsData, productsData]);
 
 
-    const isLoading = salesLoading || (customerIds.length > 0 && customersLoading) || (lineItemIds.length > 0 && lineItemsLoading) || (productIds.length > 0 && productsLoading);
+    const isLoading = salesLoading || 
+                      (customerIds.length > 0 && customersLoading) || 
+                      (lineItemIds.length > 0 && lineItemsLoading) || 
+                      (productIds.length > 0 && productsLoading);
+                      
     const error = salesError || customersError || lineItemsError || productsError;
 
-    return { sales, isLoading, error };
+    return { sales: enrichedSales, isLoading, error };
 }
 
 export type TimeRange = 'daily' | 'monthly' | 'yearly';
@@ -130,39 +104,28 @@ export function useDashboardData(timeRange: TimeRange = 'monthly') {
 
     const { sales, isLoading: salesLoading } = useSales();
     
-    const customersRef = useMemoFirebase(() => {
-        if (!firestore) return null;
-        return collection(firestore, 'customers');
-    }, [firestore]);
+    const customersRef = useMemoFirebase(() => collection(firestore, 'customers'), [firestore]);
     const { data: customers, isLoading: customersLoading } = useCollection<Customer>(customersRef);
 
-    const suppliersRef = useMemoFirebase(() => {
-        if (!firestore) return null;
-        return collection(firestore, 'suppliers');
-    }, [firestore]);
+    const suppliersRef = useMemoFirebase(() => collection(firestore, 'suppliers'), [firestore]);
     const { data: suppliers, isLoading: suppliersLoading } = useCollection<Supplier>(suppliersRef);
 
-    const productsRef = useMemoFirebase(() => {
-        if (!firestore) return null;
-        return collection(firestore, 'suppliers/supp_1/products');
-    }, [firestore]);
+    const productsRef = useMemoFirebase(() => collection(firestore, 'suppliers/supp_1/products'), [firestore]);
     const { data: products, isLoading: productsLoading } = useCollection<Product>(productsRef);
 
-    const totalRevenue = useMemo(() => sales?.reduce((acc, sale) => acc + sale.totalAmount, 0) || 0, [sales]);
+    const totalRevenue = useMemo(() => sales.reduce((acc, sale) => acc + sale.totalAmount, 0), [sales]);
     const lowStockItems = useMemo(() => products?.filter(p => p.quantity <= p.minStock).length || 0, [products]);
 
     const totalCostOfGoods = useMemo(() => {
-        if (!sales || sales.length === 0) return 0;
         return sales.reduce((acc, sale) => {
-            if (!sale.lineItems) return acc;
-            const saleCost = sale.lineItems.reduce((itemAcc, item) => {
+            const saleCost = sale.lineItems?.reduce((itemAcc, item) => {
                 const cost = item.product?.purchasePrice || 0;
                 return itemAcc + (cost * item.quantity);
-            }, 0);
+            }, 0) || 0;
             return acc + saleCost;
         }, 0);
     }, [sales]);
-
+    
     const netProfit = totalRevenue - totalCostOfGoods;
 
     const productsValue = useMemo(() => products?.reduce((acc, p) => acc + (p.purchasePrice * p.quantity), 0) || 0, [products]);

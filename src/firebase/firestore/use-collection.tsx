@@ -63,11 +63,19 @@ export function useCollection<T = any>(
 
   useEffect(() => {
     // If the query is not ready, reset state and do nothing.
-    if (!memoizedTargetRefOrQuery) {
+    if (memoizedTargetRefOrQuery === null || memoizedTargetRefOrQuery === undefined) {
       setData(null);
-      setIsLoading(false); // Set to false as we are not actively fetching.
+      // Set to true because the dependency that generates the query is likely still loading.
+      // The consumer component will show a loading state until the query is valid.
+      setIsLoading(true); 
       setError(null);
       return;
+    }
+    
+    // This check is now redundant if the above handles null/undefined correctly, but kept for safety.
+    if (!memoizedTargetRefOrQuery) {
+        setIsLoading(false);
+        return;
     }
 
     if (!(memoizedTargetRefOrQuery as any).__memo) {
