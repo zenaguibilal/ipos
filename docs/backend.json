@@ -101,6 +101,14 @@
           "type": "number",
           "description": "Total amount of the sale."
         },
+        "customerId": {
+          "type": "string",
+          "description": "ID of the customer associated with the sale."
+        },
+        "customerName": {
+          "type": "string",
+          "description": "Name of the customer associated with the sale, for easy display."
+        },
         "createdAt": {
           "type": "string",
           "description": "Timestamp indicating when the sale was made.",

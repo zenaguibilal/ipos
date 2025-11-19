@@ -9,8 +9,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import Link from 'next/link';
 import { collection, serverTimestamp } from 'firebase/firestore';
 import { AddProductForm } from '@/components/sell/add-product-form';
-import { MinusCircle, PlusCircle, XCircle } from 'lucide-react';
+import { MinusCircle, PlusCircle, User, XCircle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 
 interface Product {
     id: string;
@@ -21,6 +23,12 @@ interface Product {
 
 interface CartItem extends Product {
     quantity: number;
+}
+
+interface Customer {
+    id: string;
+    firstName: string;
+    lastName: string;
 }
 
 export default function SellPage() {
@@ -34,18 +42,28 @@ export default function SellPage() {
   const [saleStatus, setSaleStatus] = useState<{ success?: string, error?: string } | null>(null);
   const [barcodeSearch, setBarcodeSearch] = useState('');
   const [productSearch, setProductSearch] = useState('');
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
 
+  // Products collection
   const productsCollectionRef = useMemoFirebase(() => {
     if (!firestore || !user) return null;
     return collection(firestore, 'users', user.uid, 'products');
   }, [firestore, user]);
-
   const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsCollectionRef);
   
+  // Sales collection
   const salesCollectionRef = useMemoFirebase(() => {
     if (!firestore || !user) return null;
     return collection(firestore, 'users', user.uid, 'sales');
   }, [firestore, user]);
+
+  // Customers collection
+  const customersCollectionRef = useMemoFirebase(() => {
+    if (!user || !firestore) return null;
+    return collection(firestore, 'users', user.uid, 'customers');
+  }, [user, firestore]);
+  const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersCollectionRef);
+
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -75,7 +93,6 @@ export default function SellPage() {
                   item.id === productId ? { ...item, quantity: item.quantity - 1 } : item
               );
           }
-          // If quantity is 1, remove it completely by filtering
           return prevCart.filter((item) => item.id !== productId);
       });
   };
@@ -95,15 +112,24 @@ export default function SellPage() {
     
     setIsProcessingSale(true);
     setSaleStatus(null);
-    const saleData = {
+
+    const selectedCustomer = customers?.find(c => c.id === selectedCustomerId);
+
+    const saleData: any = {
         items: cart.map(item => ({ id: item.id, name: item.name, price: item.price, quantity: item.quantity })),
         total: total,
         createdAt: serverTimestamp(),
     };
 
+    if (selectedCustomer) {
+        saleData.customerId = selectedCustomer.id;
+        saleData.customerName = `${selectedCustomer.firstName} ${selectedCustomer.lastName}`;
+    }
+
     addDocumentNonBlocking(salesCollectionRef, saleData, {
         onSuccess: () => {
             setCart([]);
+            setSelectedCustomerId(null);
             setIsProcessingSale(false);
             setSaleStatus({ success: "Vente enregistrée avec succès !" });
             setTimeout(() => setSaleStatus(null), 3000);
@@ -127,12 +153,13 @@ export default function SellPage() {
     } else {
         setSaleStatus({ error: "Aucun produit trouvé avec ce code-barres." });
     }
-    setBarcodeSearch(''); // Clear input after search
-    setTimeout(() => setSaleStatus(null), 2000); // Clear status message after 2 seconds
+    setBarcodeSearch('');
+    setTimeout(() => setSaleStatus(null), 2000);
   };
   
   const filteredProducts = useMemo(() => {
     if (!products) return [];
+    if (!productSearch.trim()) return products;
     return products.filter(p => p.name.toLowerCase().includes(productSearch.toLowerCase()));
   }, [products, productSearch]);
 
@@ -164,9 +191,9 @@ export default function SellPage() {
                     <CardHeader>
                         <CardTitle>Produits</CardTitle>
                         <CardDescription>
-                            Cliquez sur un produit pour l'ajouter, ou recherchez par nom ou code-barres.
+                            Cliquez sur un produit pour l'ajouter, ou effectuez une recherche.
                         </CardDescription>
-                         <div className="flex flex-col gap-2 sm:flex-row">
+                         <div className="flex flex-col gap-2 pt-2 sm:flex-row">
                              <Input 
                                 placeholder="Rechercher par nom..."
                                 value={productSearch}
@@ -183,7 +210,7 @@ export default function SellPage() {
                         </div>
                         <div className="h-5 pt-1">
                             {saleStatus?.error && <p className="text-xs text-red-500">{saleStatus.error}</p>}
-                            {saleStatus?.success && <p className="text-xs text-green-500">{saleStatus.success}</p>}
+                            {saleStatus?.success && !isProcessingSale && <p className="text-xs text-green-500">{saleStatus.success}</p>}
                         </div>
                     </CardHeader>
                     <CardContent>
@@ -209,7 +236,7 @@ export default function SellPage() {
                                     </Card>
                                 ))}
                            </div>
-                        ) : products && products.length > 0 ? (
+                        ) : products && products.length > 0 && productSearch ? (
                              <div className="flex h-64 items-center justify-center rounded-md border-2 border-dashed border-border">
                                 <div className="text-center">
                                     <p className="text-muted-foreground">Aucun produit ne correspond à votre recherche.</p>
@@ -236,13 +263,33 @@ export default function SellPage() {
                 <Card className="flex flex-col">
                     <CardHeader>
                         <CardTitle>Vente en cours</CardTitle>
+                        <div className="grid w-full items-center gap-1.5 pt-4">
+                            <Label htmlFor="customer-select">Associer à un client</Label>
+                            <Select onValueChange={setSelectedCustomerId} value={selectedCustomerId || ""} disabled={isLoadingCustomers || !customers?.length}>
+                                <SelectTrigger id="customer-select">
+                                    <SelectValue placeholder="Sélectionner un client..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="none">Aucun client</SelectItem>
+                                    {customers?.map(customer => (
+                                        <SelectItem key={customer.id} value={customer.id}>
+                                            {customer.firstName} {customer.lastName}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </CardHeader>
                     <CardContent className="flex-1">
                         {cart.length === 0 ? (
                             <div className="flex h-full flex-col items-center justify-center text-center">
-                                <p className="text-muted-foreground">
-                                    Le panier est vide.
-                                </p>
+                                {saleStatus?.success && isProcessingSale === false ? (
+                                    <p className="text-green-500">{saleStatus.success}</p>
+                                ) : (
+                                    <p className="text-muted-foreground">
+                                        Le panier est vide.
+                                    </p>
+                                )}
                             </div>
                         ) : (
                            <div className="space-y-2">
@@ -263,7 +310,7 @@ export default function SellPage() {
                            </div>
                         )}
                     </CardContent>
-                    <CardFooter className="flex flex-col gap-2 mt-auto pt-4">
+                    <CardFooter className="flex flex-col gap-2 mt-auto pt-4 border-t">
                          <div className="flex w-full justify-between font-semibold">
                             <span>Total</span>
                             <span>{total.toFixed(2)} €</span>
