@@ -14,6 +14,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
 
 function BakeryOrderForm({ isOpen, onClose, onSave }: { isOpen: boolean, onClose: () => void, onSave: (order: Omit<BakeryOrder, 'id' | 'orderDate' | 'isFulfilled'>) => void }) {
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -94,6 +96,7 @@ function BakeryTable({ orders, onFulfillToggle, onPaymentStatusChange, onDelete 
                     <TableHead>اسم العميل</TableHead>
                     <TableHead>الكمية</TableHead>
                     <TableHead>النوع</TableHead>
+                    <TableHead>تاريخ الطلب</TableHead>
                     <TableHead>حالة الدفع</TableHead>
                     <TableHead>حالة الاستلام</TableHead>
                     <TableHead>إجراءات</TableHead>
@@ -108,6 +111,9 @@ function BakeryTable({ orders, onFulfillToggle, onPaymentStatusChange, onDelete 
                             <Badge variant={order.type === 'bread' ? 'secondary' : 'outline'}>
                                 {order.type === 'bread' ? 'خبز' : 'ملوي'}
                             </Badge>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                            {format(new Date(order.orderDate), "d MMM yyyy, HH:mm", { locale: fr })}
                         </TableCell>
                         <TableCell>
                             <Select
