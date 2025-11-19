@@ -17,19 +17,20 @@ import { Loader } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import Barcode from 'react-barcode';
+import { useMemo } from "react";
 
 function InvoiceContent({ sale }: { sale: SaleWithDetails }) {
     const firestore = useFirestore();
 
     const lineItemsQuery = useMemoFirebase(() => {
-        if (!sale?.saleLineItemIds || sale.saleLineItemIds.length === 0) return null;
+        if (!firestore || !sale?.saleLineItemIds || sale.saleLineItemIds.length === 0) return null;
         // Firestore 'in' query is limited to 30 items. We assume an invoice won't have more.
         return query(collection(firestore, 'sales_line_items'), where(documentId(), 'in', sale.saleLineItemIds.slice(0, 30)));
     }, [firestore, sale?.saleLineItemIds]);
 
     const { data: lineItems, isLoading: lineItemsLoading } = useCollection<SaleLineItem>(lineItemsQuery);
 
-    const productIds = useMemoFirebase(() => {
+    const productIds = useMemo(() => {
         if (!lineItems) return [];
         return lineItems.map(item => item.productId);
     }, [lineItems]);
@@ -41,7 +42,7 @@ function InvoiceContent({ sale }: { sale: SaleWithDetails }) {
 
     const { data: products, isLoading: productsLoading } = useCollection<Product>(productsQuery);
 
-    const enrichedLineItems = useMemoFirebase(() => {
+    const enrichedLineItems = useMemo(() => {
         if (!lineItems || !products) return [];
         const productMap = new Map(products.map(p => [p.id, p]));
         return lineItems.map(item => ({

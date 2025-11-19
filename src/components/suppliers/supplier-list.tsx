@@ -176,7 +176,6 @@ function SupplierRow({ supplier, onDelete, onEdit }: { supplier: Supplier, onDel
 
 export function SupplierList({ initialSuppliers }: { initialSuppliers: Supplier[] }) {
     const firestore = useFirestore();
-    const { user } = useUser();
     const suppliersRef = useMemoFirebase(() => collection(firestore, 'suppliers'), [firestore]);
     
     const [isSheetOpen, setIsSheetOpen] = useState(false);
@@ -287,5 +286,3 @@ export function SupplierList({ initialSuppliers }: { initialSuppliers: Supplier[
         </>
     );
 }
-
-    

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, limit, getDocs, where, collectionGroup, documentId } from 'firebase/firestore';
+import { collection, query, limit, getDocs, where, collectionGroup, documentId, orderBy } from 'firebase/firestore';
 import type { Product, Customer, Supplier, Sale, SaleLineItem, SaleWithDetails } from './types';
 import { useEffect, useState, useMemo } from 'react';
 import { format, getMonth, eachDayOfInterval, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, eachMonthOfInterval, getYear } from 'date-fns';
@@ -31,7 +31,9 @@ export function useSales(salesLimit?: number) {
     const firestore = useFirestore();
 
     const salesRef = useMemoFirebase(() => {
+        if (!firestore) return null;
         let q: any = collectionGroup(firestore, 'sales');
+        q = query(q, orderBy('saleDate', 'desc'));
         if (salesLimit) {
             q = query(q, limit(salesLimit));
         }
@@ -43,25 +45,22 @@ export function useSales(salesLimit?: number) {
     const lineItemIds = useMemo(() => salesData?.flatMap(s => s.saleLineItemIds) || [], [salesData]);
 
     const customersRef = useMemoFirebase(() => {
-        return customerIds.length > 0
-            ? query(collection(firestore, 'customers'), where(documentId(), 'in', customerIds.slice(0, 30)))
-            : null;
+        if (!firestore || customerIds.length === 0) return null;
+        return query(collection(firestore, 'customers'), where(documentId(), 'in', customerIds.slice(0, 30)));
     }, [firestore, customerIds]);
     const { data: customersData, isLoading: customersLoading, error: customersError } = useCollection<Customer>(customersRef);
 
     const lineItemsRef = useMemoFirebase(() => {
-        return lineItemIds.length > 0
-            ? query(collection(firestore, 'sales_line_items'), where(documentId(), 'in', lineItemIds.slice(0, 30)))
-            : null;
+        if (!firestore || lineItemIds.length === 0) return null;
+        return query(collection(firestore, 'sales_line_items'), where(documentId(), 'in', lineItemIds.slice(0, 30)));
     }, [firestore, lineItemIds]);
     const { data: lineItemsData, isLoading: lineItemsLoading, error: lineItemsError } = useCollection<SaleLineItem>(lineItemsRef);
 
     const productIds = useMemo(() => Array.from(new Set(lineItemsData?.map(item => item.productId) || [])), [lineItemsData]);
 
     const productsRef = useMemoFirebase(() => {
-        return productIds.length > 0
-            ? query(collection(firestore, 'suppliers/supp_1/products'), where(documentId(), 'in', productIds.slice(0, 30)))
-            : null;
+        if (!firestore || productIds.length === 0) return null;
+        return query(collection(firestore, 'suppliers/supp_1/products'), where(documentId(), 'in', productIds.slice(0, 30)));
     }, [firestore, productIds]);
     const { data: productsData, isLoading: productsLoading, error: productsError } = useCollection<Product>(productsRef);
 

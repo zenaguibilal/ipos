@@ -70,6 +70,10 @@ export function useCollection<T = any>(
       return;
     }
 
+    if (!(memoizedTargetRefOrQuery as any).__memo) {
+        throw new Error('Query or reference passed to useCollection was not properly memoized using useMemoFirebase. This will cause infinite loops.');
+    }
+
     setIsLoading(true);
     setError(null);
 
@@ -108,9 +112,5 @@ export function useCollection<T = any>(
     return () => unsubscribe();
   }, [memoizedTargetRefOrQuery]);
   
-  if(memoizedTargetRefOrQuery && !memoizedTargetRefOrQuery.__memo) {
-    throw new Error('Query or reference passed to useCollection was not properly memoized using useMemoFirebase. This will cause infinite loops.');
-  }
-
   return { data, isLoading, error };
 }

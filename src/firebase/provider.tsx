@@ -156,13 +156,22 @@ export const useFirebaseApp = (): FirebaseApp => {
 
 type MemoFirebase <T> = T & {__memo?: boolean};
 
-export function useMemoFirebase<T>(factory: () => T, deps: DependencyList): T | (MemoFirebase<T>) {
+export function useMemoFirebase<T>(factory: () => T, deps: DependencyList): T {
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const memoized = useMemo(factory, deps);
   
   if(typeof memoized !== 'object' || memoized === null) return memoized;
-  (memoized as MemoFirebase<T>).__memo = true;
+
+  // This is a hack to ensure that the memoized value is not re-created on every render.
+  // It's not a perfect solution, but it's a good enough for our purposes.
+  Object.defineProperty(memoized, '__memo', {
+    value: true,
+    writable: false,
+    configurable: false,
+    enumerable: false,
+  });
   
-  return memoized;
+  return memoized as MemoFirebase<T>;
 }
 
 /**

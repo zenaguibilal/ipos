@@ -172,11 +172,13 @@ export function ProductList({ initialProducts }: { initialProducts: Product[] })
   };
 
   const handleDelete = (productId: string) => {
+    if (!productsRef) return;
     const docRef = doc(productsRef, productId);
     deleteDocumentNonBlocking(docRef);
   };
 
   const handleSave = (product: Product) => {
+    if (!productsRef) return;
     const { id, ...productData } = product;
     const docRef = doc(productsRef, id);
     setDocumentNonBlocking(docRef, productData, { merge: true });
