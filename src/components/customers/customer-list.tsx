@@ -198,7 +198,10 @@ function CustomerRow({ customer, onDelete }: { customer: Customer, onDelete: (id
     const [isSalesHistoryOpen, setIsSalesHistoryOpen] = useState(false);
     const [editingCustomer, setEditingCustomer] = useState<Partial<Customer> | null>(null);
 
-    const customersRef = useMemoFirebase(() => collection(firestore, 'customers'), [firestore]);
+    const customersRef = useMemoFirebase(() => {
+        if (!firestore) return null;
+        return collection(firestore, 'customers');
+    }, [firestore]);
 
     const handleEditClick = (customer: Customer) => {
         setEditingCustomer(customer);
@@ -206,6 +209,7 @@ function CustomerRow({ customer, onDelete }: { customer: Customer, onDelete: (id
     };
 
     const handleSave = (customerData: Omit<Customer, 'id' | 'avatarUrl' | 'avatarHint' | 'debt'> & { id?: string }) => {
+        if (!customersRef) return;
         const id = customerData.id || `cust_${Date.now()}`;
         const docRef = doc(customersRef, id);
         
@@ -225,6 +229,7 @@ function CustomerRow({ customer, onDelete }: { customer: Customer, onDelete: (id
     };
     
     const handleSettleDebt = (amountInDZD: number) => {
+        if (!firestore) return;
         const amountInCents = amountInDZD * 100;
         const customerRef = doc(firestore, 'customers', customer.id);
         updateDocumentNonBlocking(customerRef, {
@@ -319,7 +324,11 @@ export function CustomerList({ initialCustomers }: { initialCustomers: Customer[
     const [isSheetOpen, setIsSheetOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const firestore = useFirestore();
-    const customersRef = useMemoFirebase(() => collection(firestore, 'customers'), [firestore]);
+    
+    const customersRef = useMemoFirebase(() => {
+        if (!firestore) return null;
+        return collection(firestore, 'customers');
+    }, [firestore]);
     
     const totalDebt = initialCustomers.reduce((acc, customer) => acc + (customer.debt || 0), 0);
 
@@ -334,6 +343,7 @@ export function CustomerList({ initialCustomers }: { initialCustomers: Customer[
     };
 
     const handleSave = (customerData: Omit<Customer, 'id' | 'avatarUrl' | 'avatarHint' | 'debt'> & { id?: string }) => {
+        if (!customersRef) return;
         const id = `cust_${Date.now()}`;
         const docRef = doc(customersRef, id);
         
