@@ -6,7 +6,7 @@ import type { BakeryOrder } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Loader, PlusCircle, Trash2 } from 'lucide-react';
+import { Loader, PlusCircle, Trash2, Cookie, Wheat } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -155,6 +155,14 @@ export default function BakeryPage() {
     const { toast } = useToast();
 
     const [isFormOpen, setIsFormOpen] = useState(false);
+    
+    const breadOrdersCount = useMemo(() => {
+        return orders?.filter(order => order.type === 'bread').length || 0;
+    }, [orders]);
+
+    const melouiOrdersCount = useMemo(() => {
+        return orders?.filter(order => order.type === 'meloui').length || 0;
+    }, [orders]);
 
     const handleSaveOrder = (orderData: Omit<BakeryOrder, 'id' | 'orderDate' | 'isFulfilled'>) => {
         const orderWithDate = {
@@ -226,6 +234,16 @@ export default function BakeryPage() {
                     <div className="grid gap-2">
                         <CardTitle>طلبات المخبوزات</CardTitle>
                         <CardDescription>إدارة وتتبع طلبات الخبز والملوي.</CardDescription>
+                        <div className="flex items-center gap-4 pt-2">
+                            <Badge variant="secondary" className="flex items-center gap-2">
+                                <Wheat className="h-4 w-4" />
+                                <span>خبز: {breadOrdersCount}</span>
+                            </Badge>
+                            <Badge variant="outline" className="flex items-center gap-2">
+                                <Cookie className="h-4 w-4" />
+                                <span>ملوي: {melouiOrdersCount}</span>
+                            </Badge>
+                        </div>
                     </div>
                     <Button size="sm" className="h-8 gap-1" onClick={() => setIsFormOpen(true)}>
                         <PlusCircle className="h-3.5 w-3.5" />
