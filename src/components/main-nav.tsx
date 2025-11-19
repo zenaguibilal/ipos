@@ -3,10 +3,6 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  Package,
-  Users,
-  Truck,
-  Bell,
   Cookie,
   Settings,
   ShoppingCart,
@@ -16,10 +12,6 @@ import { SheetClose } from './ui/sheet';
 
 const navLinks = [
   { href: '/sell', label: 'Vendre', icon: ShoppingCart },
-  { href: '/alerts', label: 'Alertes', icon: Bell },
-  { href: '/products', label: 'Produits', icon: Package },
-  { href: '/customers', label: 'Clients', icon: Users },
-  { href: '/suppliers', label: 'Fournisseurs', icon: Truck },
   { href: '/bakery', label: 'Pâtisserie', icon: Cookie },
   { href: '/settings', label: 'Paramètres', icon: Settings },
 ];

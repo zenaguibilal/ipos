@@ -7,16 +7,6 @@ import { useMemo } from 'react';
 import { subDays, format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
-export function useCustomers() {
-    const firestore = useFirestore();
-    const customersRef = useMemoFirebase(() => {
-        if (!firestore) return null;
-        return collection(firestore, 'customers');
-    }, [firestore]);
-    const { data: customers, isLoading } = useCollection<Customer>(customersRef);
-    return { customers: customers || [], isLoading };
-}
-
 export function useProducts() {
     const firestore = useFirestore();
     const productsRef = useMemoFirebase(() => {
@@ -27,12 +17,12 @@ export function useProducts() {
     return { products: products || [], isLoading };
 }
 
-export function useSuppliers() {
+export function useCustomers() {
     const firestore = useFirestore();
-    const suppliersRef = useMemoFirebase(() => {
+    const customersRef = useMemoFirebase(() => {
         if (!firestore) return null;
-        return collection(firestore, 'suppliers');
+        return collection(firestore, 'customers');
     }, [firestore]);
-    const { data: suppliers, isLoading } = useCollection<Supplier>(suppliersRef);
-    return { suppliers: suppliers || [], isLoading };
+    const { data: customers, isLoading } = useCollection<Customer>(customersRef);
+    return { customers: customers || [], isLoading };
 }
