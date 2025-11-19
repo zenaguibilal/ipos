@@ -119,4 +119,134 @@
         },
         "amountPaid": {
           "type": "number",
-...
+          "description": "The amount paid by the customer for this specific transaction."
+        },
+        "remainingBalance": {
+          "type": "number",
+          "description": "The outstanding balance for this specific sale (total - amountPaid)."
+        },
+        "paymentStatus": {
+          "type": "string",
+          "description": "The payment status of the sale.",
+          "enum": ["paid", "partial", "unpaid"]
+        },
+        "customerId": {
+          "type": "string",
+          "description": "Optional ID of the customer associated with the sale."
+        },
+        "customerName": {
+            "type": "string",
+            "description": "Optional name of the customer for quick reference."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the sale occurred.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "items",
+        "total",
+        "amountPaid",
+        "remainingBalance",
+        "paymentStatus",
+        "createdAt"
+      ]
+    },
+    "Customer": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Customer",
+      "type": "object",
+      "description": "Represents a customer.",
+      "properties": {
+        "firstName": {
+          "type": "string",
+          "description": "First name of the customer."
+        },
+        "lastName": {
+          "type": "string",
+          "description": "Last name of the customer."
+        },
+        "phone": {
+          "type": "string",
+          "description": "Phone number of the customer."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the customer was created.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "firstName",
+        "lastName",
+        "createdAt"
+      ]
+    },
+    "Payment": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Payment",
+      "type": "object",
+      "description": "Represents a payment made by a customer to settle a debt.",
+      "properties": {
+        "amount": {
+          "type": "number",
+          "description": "The amount paid."
+        },
+        "customerId": {
+          "type": "string",
+          "description": "The ID of the customer making the payment."
+        },
+        "customerName": {
+            "type": "string",
+            "description": "The name of the customer for quick reference."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the payment was made.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "amount",
+        "customerId",
+        "createdAt"
+      ]
+    }
+  },
+  "auth": {
+    "providers": ["email"]
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/User"
+      },
+      "description": "User profile information."
+    },
+    "/users/{userId}/products/{productId}": {
+      "schema": {
+        "$ref": "#/entities/Product"
+      },
+      "description": "Products created by the user."
+    },
+    "/users/{userId}/sales/{saleId}": {
+      "schema": {
+        "$ref": "#/entities/Sale"
+      },
+      "description": "Sales recorded by the user."
+    },
+    "/users/{userId}/customers/{customerId}": {
+      "schema": {
+        "$ref": "#/entities/Customer"
+      },
+      "description": "Customers created by the user."
+    },
+     "/users/{userId}/payments/{paymentId}": {
+      "schema": {
+        "$ref": "#/entities/Payment"
+      },
+      "description": "Payments made by customers to settle debts."
+    }
+  }
+}
