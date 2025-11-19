@@ -1,8 +1,10 @@
+
 'use client';
 
 import { useUser } from '@/firebase';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { Store } from 'lucide-react';
 
 function AuthButtons() {
   const { user, isUserLoading } = useUser();
@@ -35,8 +37,11 @@ function AuthButtons() {
 export default function Home() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center">
-      <h1 className="text-4xl font-bold">Nouveau Projet</h1>
-      <p className="mt-4 text-lg text-muted-foreground">Nous sommes prêts à commencer. Quelle est votre prochaine étape ?</p>
+      <div className="flex items-center gap-4 mb-6">
+        <Store className="h-16 w-16 text-primary" />
+        <h1 className="text-5xl font-bold">iPOS</h1>
+      </div>
+      <p className="mt-2 text-lg text-muted-foreground">Votre solution de point de vente simple et efficace.</p>
       <AuthButtons />
     </div>
   );

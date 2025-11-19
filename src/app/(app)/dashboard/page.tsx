@@ -7,7 +7,6 @@ import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { sendEmailVerification } from 'firebase/auth';
-import Link from 'next/link';
 
 function VerificationNotice() {
   const { user } = useUser();
@@ -49,7 +48,6 @@ function VerificationNotice() {
 
 export default function DashboardPage() {
   const { user, isUserLoading } = useUser();
-  const auth = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -58,59 +56,26 @@ export default function DashboardPage() {
     }
   }, [user, isUserLoading, router]);
 
-  const handleSignOut = () => {
-    if (auth) {
-      auth.signOut();
-      router.push('/');
-    }
-  };
-
   if (isUserLoading || !user) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex h-full items-center justify-center">
         <p>Chargement...</p>
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Bienvenue sur votre tableau de bord</CardTitle>
-          <CardDescription>Vous êtes connecté avec succès.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <VerificationNotice />
-          <p className="text-center text-muted-foreground">
-            Votre e-mail : {user.email}
-          </p>
-          <div className="flex w-full flex-col gap-2">
-             <Button asChild>
-                <Link href="/sell">Aller à la page de vente</Link>
-            </Button>
-            <Button asChild variant="secondary">
-                <Link href="/products">Gérer les produits</Link>
-            </Button>
-            <Button asChild variant="secondary">
-                <Link href="/customers">Gérer les clients</Link>
-            </Button>
-             <Button asChild variant="secondary">
-                <Link href="/sales-history">Historique des ventes</Link>
-            </Button>
-            <Button asChild variant="secondary">
-                <Link href="/profile">Aller au profil</Link>
-            </Button>
-            <Button
-              onClick={handleSignOut}
-              variant="destructive"
-              className="w-full"
-            >
-              Se déconnecter
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+    <div className="flex flex-1 items-center justify-center p-4">
+        <Card className="w-full max-w-lg">
+            <CardHeader>
+                <CardTitle>Bienvenue, {user.displayName || user.email}!</CardTitle>
+                <CardDescription>Ceci est votre tableau de bord. Utilisez la navigation de gauche pour commencer.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <VerificationNotice />
+                <p>C'est ici que les statistiques et les informations importantes sur votre activité seront affichées.</p>
+            </CardContent>
+        </Card>
     </div>
   );
 }

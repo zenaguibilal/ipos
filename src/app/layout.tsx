@@ -14,9 +14,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr" className="dark">
-      <body>
+      <body className="min-h-screen">
         <FirebaseClientProvider>
-          <main>{children}</main>
+          {children}
         </FirebaseClientProvider>
       </body>
     </html>

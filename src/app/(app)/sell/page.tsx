@@ -1,19 +1,20 @@
 
 'use client';
 
-import { useUser, useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking } from '@/firebase';
+import { useUser, useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import Link from 'next/link';
-import { collection, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { AddProductForm } from '@/components/sell/add-product-form';
 import { MinusCircle, PlusCircle, User, XCircle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { PaymentDialog } from '@/components/sell/payment-dialog';
+import Link from 'next/link';
+
 
 interface Product {
     id: string;
@@ -56,12 +57,6 @@ export default function SellPage() {
   }, [firestore, user]);
   const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsCollectionRef);
   
-  // Sales collection
-  const salesCollectionRef = useMemoFirebase(() => {
-    if (!firestore || !user) return null;
-    return collection(firestore, 'users', user.uid, 'sales');
-  }, [firestore, user]);
-
   // Customers collection
   const customersCollectionRef = useMemoFirebase(() => {
     if (!user || !firestore) return null;
@@ -77,10 +72,20 @@ export default function SellPage() {
   }, [user, isUserLoading, router]);
   
   const addToCart = (product: Product) => {
+    if (product.quantity <= 0) {
+        setSaleStatus({ error: `Stock épuisé pour ${product.name}.` });
+        setTimeout(() => setSaleStatus(null), 3000);
+        return;
+    }
     setSaleStatus(null);
     setCart((prevCart) => {
         const existingItem = prevCart.find((item) => item.id === product.id);
         if (existingItem) {
+            if (existingItem.cartQuantity >= product.quantity) {
+                setSaleStatus({ error: `Quantité maximale atteinte pour ${product.name}.` });
+                setTimeout(() => setSaleStatus(null), 3000);
+                return prevCart;
+            }
             return prevCart.map((item) =>
                 item.id === product.id ? { ...item, cartQuantity: item.cartQuantity + 1 } : item
             );
@@ -113,13 +118,12 @@ export default function SellPage() {
   }, [cart]);
 
   const handleProcessSale = (amountPaid: number) => {
-    if (!salesCollectionRef || cart.length === 0) return;
+    if (!firestore || !user || cart.length === 0) return;
     
     setIsProcessingSale(true);
     setSaleStatus(null);
 
     const selectedCustomer = customers?.find(c => c.id === selectedCustomerId);
-    
     const remainingBalance = total - amountPaid;
     const paymentStatus = remainingBalance <= 0 ? 'paid' : (amountPaid > 0 ? 'partial' : 'unpaid');
     const invoiceNumber = `F-${Date.now()}`;
@@ -139,22 +143,35 @@ export default function SellPage() {
         saleData.customerName = `${selectedCustomer.firstName} ${selectedCustomer.lastName}`;
     }
 
-    addDocumentNonBlocking(salesCollectionRef, saleData, {
-        onSuccess: () => {
-            // Here you would typically also decrease the product quantities in the database
+    const batch = writeBatch(firestore);
+
+    // 1. Create the sale document
+    const salesCollectionRef = collection(firestore, 'users', user.uid, 'sales');
+    const newSaleRef = doc(salesCollectionRef); // Create a new doc ref with a unique ID
+    batch.set(newSaleRef, saleData);
+
+    // 2. Update product quantities
+    for (const item of cart) {
+        const productRef = doc(firestore, 'users', user.uid, 'products', item.id);
+        const newQuantity = item.quantity - item.cartQuantity;
+        batch.update(productRef, { quantity: newQuantity });
+    }
+
+    // 3. Commit the batch
+    batch.commit()
+      .then(() => {
             setCart([]);
             setSelectedCustomerId('none');
             setIsProcessingSale(false);
             setSaleStatus({ success: `Vente enregistrée avec succès (Facture ${invoiceNumber})` });
             setIsPaymentDialogOpen(false);
-        },
-        onError: (err) => {
+      })
+      .catch((err) => {
             console.error("Erreur lors de la vente :", err);
             setIsProcessingSale(false);
             setSaleStatus({ error: "Échec de l'enregistrement de la vente." });
             setIsPaymentDialogOpen(false);
-        }
-    });
+      });
   };
   
   const handleBarcodeSearch = (e: React.FormEvent<HTMLFormElement>) => {
@@ -201,15 +218,9 @@ export default function SellPage() {
             isProcessing={isProcessingSale}
             onConfirm={handleProcessSale}
         />
-        <header className="flex h-14 items-center gap-4 border-b bg-background px-6">
-            <h1 className="text-lg font-semibold md:text-xl">Point de Vente</h1>
-            <Button asChild variant="outline" className="ml-auto">
-                <Link href="/dashboard">Retour au tableau de bord</Link>
-            </Button>
-        </header>
-        <main className="grid flex-1 grid-cols-1 gap-4 p-4 md:grid-cols-2 lg:grid-cols-3">
-            <div className="flex flex-col gap-4 md:col-span-1 lg:col-span-2">
-                <Card>
+        <main className="grid flex-1 grid-cols-1 gap-4 p-4 md:grid-cols-2 lg:grid-cols-3 h-full overflow-hidden">
+            <div className="flex flex-col gap-4 md:col-span-1 lg:col-span-2 h-full overflow-hidden">
+                <Card className='flex flex-col h-full'>
                     <CardHeader>
                         <CardTitle>Produits</CardTitle>
                         <CardDescription>
@@ -235,9 +246,9 @@ export default function SellPage() {
                             {saleStatus?.success && !isProcessingSale && cart.length > 0 && <p className="text-xs text-green-500">{saleStatus.success}</p>}
                         </div>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="flex-1 overflow-auto">
                         {isLoadingProducts ? (
-                            <div className="flex h-64 items-center justify-center">
+                            <div className="flex h-full items-center justify-center">
                                 <p>Chargement des produits...</p>
                             </div>
                         ) : filteredProducts && filteredProducts.length > 0 ? (
@@ -259,13 +270,13 @@ export default function SellPage() {
                                 ))}
                            </div>
                         ) : products && products.length > 0 && productSearch ? (
-                             <div className="flex h-64 items-center justify-center rounded-md border-2 border-dashed border-border">
+                             <div className="flex h-full items-center justify-center rounded-md border-2 border-dashed border-border">
                                 <div className="text-center">
                                     <p className="text-muted-foreground">Aucun produit ne correspond à votre recherche.</p>
                                 </div>
                             </div>
                         ) : (
-                            <div className="flex h-64 items-center justify-center rounded-md border-2 border-dashed border-border">
+                            <div className="flex h-full items-center justify-center rounded-md border-2 border-dashed border-border">
                                 <div className="text-center">
                                     <p className="text-muted-foreground">Aucun produit à afficher.</p>
 
@@ -281,8 +292,8 @@ export default function SellPage() {
                     </CardContent>
                 </Card>
             </div>
-            <div className="flex flex-col gap-4 md:col-span-1">
-                <Card className="flex flex-col">
+            <div className="flex flex-col gap-4 md:col-span-1 h-full">
+                <Card className="flex flex-col h-full">
                     <CardHeader>
                         <CardTitle>Vente en cours</CardTitle>
                         <div className="grid w-full items-center gap-1.5 pt-4">
@@ -310,7 +321,7 @@ export default function SellPage() {
                             )}
                         </div>
                     </CardHeader>
-                    <CardContent className="flex-1">
+                    <CardContent className="flex-1 overflow-auto">
                         {cart.length === 0 ? (
                             <div className="flex h-full flex-col items-center justify-center text-center">
                                 {saleStatus?.success && !isProcessingSale ? (

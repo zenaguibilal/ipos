@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -74,7 +75,7 @@ export default function ProfilePage() {
 
   if (isLoading || !user) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex h-full items-center justify-center">
         <p>Chargement du profil...</p>
       </div>
     );
@@ -83,7 +84,7 @@ export default function ProfilePage() {
   // This might happen briefly if the user document hasn't been created yet
   if (!userData) {
       return (
-        <div className="flex min-h-screen items-center justify-center">
+        <div className="flex h-full items-center justify-center">
           <p>Chargement des données utilisateur...</p>
         </div>
       );
@@ -91,7 +92,7 @@ export default function ProfilePage() {
 
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4">
+    <div className="flex flex-1 items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <form onSubmit={handleSubmit}>
           <CardHeader>
@@ -124,10 +125,7 @@ export default function ProfilePage() {
               <Input id="email" type="email" value={userData.email} disabled />
             </div>
           </CardContent>
-          <CardFooter className="flex justify-between">
-            <Button variant="outline" type="button" onClick={() => router.push('/dashboard')}>
-                Retour
-            </Button>
+          <CardFooter className="flex justify-end">
             <Button type="submit" disabled={isSaving}>
               {isSaving ? 'Enregistrement...' : 'Enregistrer'}
             </Button>
