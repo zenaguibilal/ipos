@@ -1,10 +1,10 @@
 'use client';
 
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, collectionGroup, where, documentId, orderBy, limit, Timestamp, onSnapshot } from 'firebase/firestore';
-import type { Product, Customer, Supplier, Sale, SaleLineItem, SaleWithDetails } from './types';
-import { useState, useEffect, useMemo } from 'react';
-import { subDays, startOfDay, endOfDay, format } from 'date-fns';
+import { collection, query, collectionGroup, where, documentId, orderBy, limit } from 'firebase/firestore';
+import type { Product, Customer, Supplier, Sale, SaleWithDetails } from './types';
+import { useMemo } from 'react';
+import { subDays, format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
 export function useCustomers() {
@@ -138,7 +138,8 @@ export function useDashboardData() {
     const { suppliers, isLoading: suppliersLoading } = useSuppliers();
     const { products, isLoading: productsLoading } = useProducts();
 
-    const todayStart = startOfDay(new Date());
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
 
     const todaysSalesQuery = useMemoFirebase(() => {
          if (!firestore) return null;
