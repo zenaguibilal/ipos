@@ -162,26 +162,24 @@ export default function SellPage() {
             <div className="flex flex-col gap-4 md:col-span-1 lg:col-span-2">
                 <Card>
                     <CardHeader>
-                         <CardTitle>Produits</CardTitle>
+                        <CardTitle>Produits</CardTitle>
+                        <CardDescription>
+                            Cliquez sur un produit pour l'ajouter, ou recherchez par nom ou code-barres.
+                        </CardDescription>
                          <div className="flex flex-col gap-2 sm:flex-row">
-                             <CardDescription className="flex-1">
-                                Recherchez par nom, code-barres ou cliquez sur un produit pour l'ajouter.
-                            </CardDescription>
-                            <div className="flex gap-2">
+                             <Input 
+                                placeholder="Rechercher par nom..."
+                                value={productSearch}
+                                onChange={(e) => setProductSearch(e.target.value)}
+                                className="w-full"
+                            />
+                            <form onSubmit={handleBarcodeSearch} className="w-full">
                                 <Input 
-                                    placeholder="Rechercher par nom..."
-                                    value={productSearch}
-                                    onChange={(e) => setProductSearch(e.target.value)}
-                                    className="w-full sm:w-48"
+                                    placeholder="Rechercher par code-barres..."
+                                    value={barcodeSearch}
+                                    onChange={(e) => setBarcodeSearch(e.target.value)}
                                 />
-                                <form onSubmit={handleBarcodeSearch} className="w-full sm:w-48">
-                                    <Input 
-                                        placeholder="Rechercher par code-barres..."
-                                        value={barcodeSearch}
-                                        onChange={(e) => setBarcodeSearch(e.target.value)}
-                                    />
-                                </form>
-                            </div>
+                            </form>
                         </div>
                         <div className="h-5 pt-1">
                             {saleStatus?.error && <p className="text-xs text-red-500">{saleStatus.error}</p>}
