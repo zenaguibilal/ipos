@@ -263,59 +263,6 @@
         }
       },
       "required": ["id", "lastNumber"]
-    },
-    "BakeryOrder": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "BakeryOrder",
-        "type": "object",
-        "description": "Represents an order for bakery items like bread and meloui.",
-        "properties": {
-            "id": {
-                "type": "string",
-                "description": "Unique identifier for the BakeryOrder entity."
-            },
-            "customerName": {
-                "type": "string",
-                "description": "Name of the customer placing the order."
-            },
-            "items": {
-                "type": "array",
-                "description": "An array of items in the order.",
-                "items": {
-                    "type": "object",
-                    "properties": {
-                        "name": {
-                            "type": "string",
-                            "description": "Name of the bakery item."
-                        },
-                        "quantity": {
-                            "type": "number",
-                            "description": "Quantity ordered."
-                        },
-                        "unitPrice": {
-                            "type": "number",
-                            "description": "Price per unit in cents."
-                        }
-                    },
-                    "required": ["name", "quantity", "unitPrice"]
-                }
-            },
-            "totalAmount": {
-                "type": "number",
-                "description": "Total amount of the order in cents."
-            },
-            "orderDate": {
-                "type": "string",
-                "description": "Date and time of the order.",
-                "format": "date-time"
-            },
-            "status": {
-                "type": "string",
-                "description": "Status of the order (e.g., pending, completed, cancelled).",
-                "enum": ["pending", "completed", "cancelled"]
-            }
-        },
-        "required": ["id", "customerName", "items", "totalAmount", "orderDate", "status"]
     }
   },
   "auth": {
@@ -441,22 +388,6 @@
             {
               "name": "counterId",
               "description": "The name of the counter (e.g., 'sales')."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/bakery_orders/{orderId}",
-        "definition": {
-          "entityName": "BakeryOrder",
-          "schema": {
-            "$ref": "#/backend/entities/BakeryOrder"
-          },
-          "description": "Stores orders for bakery items.",
-          "params": [
-            {
-              "name": "orderId",
-              "description": "The unique identifier of the bakery order."
             }
           ]
         }
