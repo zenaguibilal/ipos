@@ -48,13 +48,13 @@ function BakeryOrderForm({ isOpen, onClose, onSave }: { isOpen: boolean, onClose
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
             <DialogContent>
-                <DialogHeader>
+                <DialogHeader className="p-6 pb-0">
                     <DialogTitle>إضافة طلب جديد</DialogTitle>
                     <DialogDescription>
                         أدخل تفاصيل الطلب الجديد.
                     </DialogDescription>
                 </DialogHeader>
-                <form onSubmit={handleSubmit} id="bakery-order-form" className="space-y-4 pt-4">
+                <form onSubmit={handleSubmit} id="bakery-order-form" className="space-y-4 p-6 pt-4">
                     <div>
                         <Label htmlFor="customerName">اسم العميل</Label>
                         <Input id="customerName" name="customerName" required />
