@@ -157,7 +157,7 @@ export default function SellPage() {
                 <Card>
                     <CardHeader>
                          <CardTitle>Produits</CardTitle>
-                        <div className="flex flex-col gap-2 sm:flex-row">
+                         <div className="flex flex-col gap-2 sm:flex-row">
                              <CardDescription className="flex-1">
                                 Recherchez par code-barres ou cliquez sur un produit pour l'ajouter.
                             </CardDescription>
@@ -168,6 +168,10 @@ export default function SellPage() {
                                     onChange={(e) => setBarcodeSearch(e.target.value)}
                                 />
                             </form>
+                        </div>
+                        <div className="h-5 pt-1">
+                            {saleStatus?.error && <p className="text-xs text-red-500">{saleStatus.error}</p>}
+                            {saleStatus?.success && <p className="text-xs text-green-500">{saleStatus.success}</p>}
                         </div>
                     </CardHeader>
                     <CardContent>
@@ -213,14 +217,12 @@ export default function SellPage() {
                 <Card className="flex flex-col">
                     <CardHeader>
                         <CardTitle>Vente en cours</CardTitle>
-                         {saleStatus?.error && <p className="text-xs text-red-500">{saleStatus.error}</p>}
-                        {saleStatus?.success && !cart.length && <p className="text-xs text-green-500">{saleStatus.success}</p>}
                     </CardHeader>
                     <CardContent className="flex-1">
                         {cart.length === 0 ? (
                             <div className="flex h-full flex-col items-center justify-center text-center">
                                 <p className="text-muted-foreground">
-                                    {saleStatus?.success ? saleStatus.success : "Le panier est vide."}
+                                    Le panier est vide.
                                 </p>
                             </div>
                         ) : (
