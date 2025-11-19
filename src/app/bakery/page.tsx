@@ -6,7 +6,7 @@ import type { BakeryOrder } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Loader, PlusCircle, Trash2, Cookie, Wheat, ChevronDown } from 'lucide-react';
+import { Loader, PlusCircle, Trash2, Cookie, Wheat, ChevronDown, Calendar as CalendarIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -17,19 +17,24 @@ import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { cn } from '@/lib/utils';
 
-function BakeryOrderForm({ isOpen, onClose, onSave }: { isOpen: boolean, onClose: () => void, onSave: (order: Omit<BakeryOrder, 'id' | 'orderDate' | 'isFulfilled'>) => Promise<void> }) {
+function BakeryOrderForm({ isOpen, onClose, onSave }: { isOpen: boolean, onClose: () => void, onSave: (order: Omit<BakeryOrder, 'id' | 'isFulfilled'>) => Promise<void> }) {
     const [isSaving, setIsSaving] = useState(false);
+    const [date, setDate] = useState<Date | undefined>(new Date());
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setIsSaving(true);
         const formData = new FormData(e.currentTarget);
-        const newOrder: Omit<BakeryOrder, 'id' | 'orderDate' | 'isFulfilled'> = {
+        const newOrder: Omit<BakeryOrder, 'id' | 'isFulfilled'> = {
             customerName: formData.get('customerName') as string,
             quantity: Number(formData.get('quantity')),
             type: formData.get('type') as 'bread' | 'meloui',
             paymentStatus: formData.get('paymentStatus') as 'paid' | 'unpaid',
+            orderDate: date ? date.toISOString() : new Date().toISOString(),
         };
         await onSave(newOrder);
         setIsSaving(false);
@@ -67,17 +72,44 @@ function BakeryOrderForm({ isOpen, onClose, onSave }: { isOpen: boolean, onClose
                             <Input id="quantity" name="quantity" type="number" required min="1" />
                         </div>
                     </div>
-                    <div>
-                        <Label htmlFor="paymentStatus">حالة الدفع</Label>
-                        <Select name="paymentStatus" defaultValue="unpaid">
-                            <SelectTrigger>
-                                <SelectValue placeholder="اختر حالة الدفع" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="paid">مدفوع</SelectItem>
-                                <SelectItem value="unpaid">غير مدفوع</SelectItem>
-                            </SelectContent>
-                        </Select>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <Label htmlFor="paymentStatus">حالة الدفع</Label>
+                            <Select name="paymentStatus" defaultValue="unpaid">
+                                <SelectTrigger>
+                                    <SelectValue placeholder="اختر حالة الدفع" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="paid">مدفوع</SelectItem>
+                                    <SelectItem value="unpaid">غير مدفوع</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                         <div>
+                            <Label>تاريخ الطلب</Label>
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                <Button
+                                    variant={"outline"}
+                                    className={cn(
+                                    "w-full justify-start text-left font-normal",
+                                    !date && "text-muted-foreground"
+                                    )}
+                                >
+                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                    {date ? format(date, "d MMM yyyy", { locale: fr }) : <span>اختر تاريخًا</span>}
+                                </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0">
+                                <Calendar
+                                    mode="single"
+                                    selected={date}
+                                    onSelect={setDate}
+                                    initialFocus
+                                />
+                                </PopoverContent>
+                            </Popover>
+                         </div>
                     </div>
                 </form>
                 <DialogFooter>
@@ -193,15 +225,14 @@ export default function BakeryPage() {
         return activeOrders.filter(order => order.type === 'meloui').reduce((sum, order) => sum + order.quantity, 0) || 0;
     }, [activeOrders]);
 
-    const handleSaveOrder = async (orderData: Omit<BakeryOrder, 'id' | 'orderDate' | 'isFulfilled'>) => {
+    const handleSaveOrder = async (orderData: Omit<BakeryOrder, 'id' | 'isFulfilled'>) => {
         if (!firestore) return;
-        const orderWithDate = {
+        const orderWithFulfillment = {
             ...orderData,
-            orderDate: new Date().toISOString(),
             isFulfilled: false,
         };
         try {
-            await addDoc(bakeryOrdersColRef, orderWithDate);
+            await addDoc(bakeryOrdersColRef, orderWithFulfillment);
             toast({
                 title: "تم حفظ الطلب",
                 description: `تم تسجيل طلب ${orderData.customerName} بنجاح.`,
@@ -378,3 +409,5 @@ export default function BakeryPage() {
         </div>
     );
 }
+
+    
