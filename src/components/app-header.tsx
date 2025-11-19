@@ -63,7 +63,9 @@ export function AppHeader() {
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>Mon Compte</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Paramètres</DropdownMenuItem>
+            <DropdownMenuItem asChild>
+                <Link href="/settings">Paramètres</Link>
+            </DropdownMenuItem>
             <DropdownMenuItem>Support</DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={logout}>Déconnexion</DropdownMenuItem>

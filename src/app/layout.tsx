@@ -9,6 +9,7 @@ import { AppHeader } from '@/components/app-header';
 import { FirebaseClientProvider } from '@/firebase';
 import { PasswordProvider } from '@/components/auth/password-provider';
 import { PasswordGate } from '@/components/auth/password-gate';
+import { ThemeProvider } from '@/components/theme-provider';
 
 export const metadata: Metadata = {
   title: 'iPOS - Point de Vente Intelligent',
@@ -22,7 +23,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="fr">
+    <html lang="fr" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
@@ -32,6 +33,12 @@ export default function RootLayout({
         />
       </head>
       <body className="font-body antialiased">
+       <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+        >
         <PasswordProvider>
           <PasswordGate>
             <FirebaseClientProvider>
@@ -60,6 +67,7 @@ export default function RootLayout({
           </PasswordGate>
         </PasswordProvider>
         <Toaster />
+        </ThemeProvider>
       </body>
     </html>
   );

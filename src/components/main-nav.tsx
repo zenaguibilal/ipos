@@ -11,6 +11,7 @@ import {
   Truck,
   Bell,
   Cookie,
+  Settings,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SheetClose } from './ui/sheet';
@@ -24,6 +25,7 @@ const navLinks = [
   { href: '/customers', label: 'Clients', icon: Users },
   { href: '/suppliers', label: 'Fournisseurs', icon: Truck },
   { href: '/bakery', label: 'المخبوزات', icon: Cookie },
+  { href: '/settings', label: 'الإعدادات', icon: Settings },
 ];
 
 type MainNavProps = {
