@@ -85,7 +85,10 @@ export default function DashboardPage() {
             Votre e-mail : {user.email}
           </p>
           <div className="flex w-full flex-col gap-2">
-            <Button asChild>
+             <Button asChild>
+                <Link href="/sell">Aller à la page de vente</Link>
+            </Button>
+            <Button asChild variant="secondary">
                 <Link href="/profile">Aller au profil</Link>
             </Button>
             <Button
