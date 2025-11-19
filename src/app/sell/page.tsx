@@ -132,7 +132,7 @@ export default function SellPage() {
             setSelectedCustomerId('none');
             setIsProcessingSale(false);
             setSaleStatus({ success: "Vente enregistrée avec succès !" });
-            setTimeout(() => setSaleStatus(null), 3000);
+            // The success message will be shown in the cart area
         },
         onError: (err) => {
             console.error("Erreur lors de la vente :", err);
@@ -291,7 +291,7 @@ export default function SellPage() {
                     <CardContent className="flex-1">
                         {cart.length === 0 ? (
                             <div className="flex h-full flex-col items-center justify-center text-center">
-                                {saleStatus?.success && isProcessingSale === false ? (
+                                {saleStatus?.success && !isProcessingSale ? (
                                     <p className="text-green-500">{saleStatus.success}</p>
                                 ) : (
                                     <p className="text-muted-foreground">
