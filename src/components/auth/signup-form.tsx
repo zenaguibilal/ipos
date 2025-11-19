@@ -20,6 +20,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
 function SignupFormComponent() {
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -47,6 +49,8 @@ function SignupFormComponent() {
                 const userDocRef = doc(getFirestore(), "users", userCredential.user.uid);
                 setDocumentNonBlocking(userDocRef, {
                     id: userCredential.user.uid,
+                    firstName: firstName,
+                    lastName: lastName,
                     email: userCredential.user.email,
                     createdAt: new Date().toISOString(),
                     updatedAt: new Date().toISOString(),
@@ -80,6 +84,28 @@ function SignupFormComponent() {
         </CardHeader>
         <CardContent className="grid gap-4">
           {error && <p className="text-sm text-red-500 text-center">{error}</p>}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="first-name">الاسم الأول</Label>
+              <Input 
+                id="first-name" 
+                placeholder="أحمد" 
+                required 
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="last-name">الاسم الأخير</Label>
+              <Input 
+                id="last-name" 
+                placeholder="علي" 
+                required 
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+              />
+            </div>
+          </div>
           <div className="grid gap-2">
             <Label htmlFor="email">البريد الإلكتروني</Label>
             <Input
