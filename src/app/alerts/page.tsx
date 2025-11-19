@@ -1,12 +1,13 @@
 'use client';
 
 import { useMemo } from 'react';
-import { useDashboardData } from '@/lib/data';
+import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection } from 'firebase/firestore';
 import type { Product, Customer } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { AlertCircle, Archive, CircleDollarSign, Loader } from 'lucide-react';
+import { Archive, CircleDollarSign, Loader } from 'lucide-react';
 import Link from 'next/link';
 
 function LowStockAlerts({ products }: { products: Product[] }) {
@@ -82,8 +83,22 @@ function DueDebtAlerts({ customers }: { customers: Customer[] }) {
 }
 
 export default function AlertsPage() {
-    
-  const { products, customers, isLoading } = useDashboardData();
+  const firestore = useFirestore();
+
+  const productsRef = useMemoFirebase(() => {
+      if (!firestore) return null;
+      return collection(firestore, 'suppliers/supp_1/products');
+  }, [firestore]);
+
+  const customersRef = useMemoFirebase(() => {
+      if (!firestore) return null;
+      return collection(firestore, 'customers');
+  }, [firestore]);
+
+  const { data: products, isLoading: productsLoading } = useCollection<Product>(productsRef);
+  const { data: customers, isLoading: customersLoading } = useCollection<Customer>(customersRef);
+
+  const isLoading = productsLoading || customersLoading;
 
   const lowStockProducts = useMemo(
     () => products?.filter((p) => p.quantity <= p.minStock) || [],
