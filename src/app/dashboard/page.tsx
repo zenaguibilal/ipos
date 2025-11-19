@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { sendEmailVerification } from 'firebase/auth';
+import Link from 'next/link';
 
 function VerificationNotice() {
   const { user } = useUser();
@@ -83,13 +84,18 @@ export default function DashboardPage() {
           <p className="text-center text-muted-foreground">
             Votre e-mail : {user.email}
           </p>
-          <Button
-            onClick={handleSignOut}
-            variant="destructive"
-            className="w-full"
-          >
-            Se déconnecter
-          </Button>
+          <div className="flex w-full flex-col gap-2">
+            <Button asChild>
+                <Link href="/profile">Aller au profil</Link>
+            </Button>
+            <Button
+              onClick={handleSignOut}
+              variant="destructive"
+              className="w-full"
+            >
+              Se déconnecter
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>

@@ -1,0 +1,121 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useUser, useFirestore, useDoc, useMemoFirebase, updateDocumentNonBlocking } from '@/firebase';
+import { useRouter } from 'next/navigation';
+import { doc } from 'firebase/firestore';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+
+export default function ProfilePage() {
+  const { user, isUserLoading } = useUser();
+  const firestore = useFirestore();
+  const router = useRouter();
+
+  const userDocRef = useMemoFirebase(() => {
+    if (!user || !firestore) return null;
+    return doc(firestore, 'users', user.uid);
+  }, [user, firestore]);
+
+  const { data: userData, isLoading: isDataLoading } = useDoc<{
+    firstName: string;
+    lastName: string;
+    email: string;
+  }>(userDocRef);
+
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isUserLoading && !user) {
+      router.push('/login');
+    }
+  }, [user, isUserLoading, router]);
+
+  useEffect(() => {
+    if (userData) {
+      setFirstName(userData.firstName);
+      setLastName(userData.lastName);
+    }
+  }, [userData]);
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!userDocRef) return;
+
+    setIsSaving(true);
+    setMessage(null);
+
+    updateDocumentNonBlocking(userDocRef, {
+      firstName: firstName,
+      lastName: lastName,
+      updatedAt: new Date().toISOString(),
+    });
+
+    // Since the update is non-blocking, we show the message optimistically.
+    setTimeout(() => {
+        setIsSaving(false);
+        setMessage('Votre profil a été mis à jour avec succès !');
+    }, 1000); // Simulate network latency for better UX
+  };
+
+  const isLoading = isUserLoading || isDataLoading;
+
+  if (isLoading || !userData) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <p>Chargement du profil...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex min-h-screen items-center justify-center p-4">
+      <Card className="w-full max-w-md">
+        <form onSubmit={handleSubmit}>
+          <CardHeader>
+            <CardTitle>Votre Profil</CardTitle>
+            <CardDescription>Mettez à jour vos informations personnelles.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {message && <p className="text-sm text-green-500 text-center">{message}</p>}
+            <div className="grid gap-2">
+              <Label htmlFor="first-name">Prénom</Label>
+              <Input
+                id="first-name"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                required
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="last-name">Nom de famille</Label>
+              <Input
+                id="last-name"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                required
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="email">E-mail</Label>
+              <Input id="email" type="email" value={userData.email} disabled />
+            </div>
+          </CardContent>
+          <CardFooter className="flex justify-between">
+            <Button variant="outline" type="button" onClick={() => router.push('/dashboard')}>
+                Retour
+            </Button>
+            <Button type="submit" disabled={isSaving}>
+              {isSaving ? 'Enregistrement...' : 'Enregistrer'}
+            </Button>
+          </CardFooter>
+        </form>
+      </Card>
+    </div>
+  );
+}
