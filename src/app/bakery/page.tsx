@@ -1,12 +1,12 @@
 'use client';
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo } from 'react';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, doc, updateDoc, addDoc, deleteDoc } from 'firebase/firestore';
 import type { BakeryOrder } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Loader, PlusCircle, Trash2, Cookie, Wheat, Calendar as CalendarIcon } from 'lucide-react';
+import { Loader, PlusCircle, Trash2, Cookie, Wheat, Calendar as CalendarIcon, Repeat } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -26,6 +26,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 function BakeryOrderForm({ isOpen, onClose, onSave }: { isOpen: boolean, onClose: () => void, onSave: (order: Omit<BakeryOrder, 'id' | 'isFulfilled'>) => Promise<void> }) {
     const [isSaving, setIsSaving] = useState(false);
     const [date, setDate] = useState<Date | undefined>(new Date());
+    const [isRecurring, setIsRecurring] = useState(false);
+
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -37,6 +39,7 @@ function BakeryOrderForm({ isOpen, onClose, onSave }: { isOpen: boolean, onClose
             type: formData.get('type') as 'bread' | 'meloui',
             paymentStatus: formData.get('paymentStatus') as 'paid' | 'unpaid',
             orderDate: date ? date.toISOString() : new Date().toISOString(),
+            isRecurring: isRecurring,
         };
         await onSave(newOrder);
         setIsSaving(false);
@@ -113,6 +116,10 @@ function BakeryOrderForm({ isOpen, onClose, onSave }: { isOpen: boolean, onClose
                             </Popover>
                          </div>
                     </div>
+                    <div className="flex items-center space-x-2 pt-2">
+                        <Switch id="isRecurring" name="isRecurring" checked={isRecurring} onCheckedChange={setIsRecurring} />
+                        <Label htmlFor="isRecurring">طلب متكرر يوميا</Label>
+                    </div>
                 </form>
                 <DialogFooter>
                     <Button variant="outline" onClick={onClose} disabled={isSaving}>إلغاء</Button>
@@ -185,7 +192,10 @@ function BakeryTableRow({ order, onFulfillToggle, onPaymentStatusChange, onDelet
     return (
         <>
             <TableRow className={order.isFulfilled ? 'bg-muted/50' : ''}>
-                <TableCell className="font-medium">{order.customerName}</TableCell>
+                <TableCell className="font-medium flex items-center gap-2">
+                    {order.customerName}
+                    {order.isRecurring && <Repeat className="h-4 w-4 text-muted-foreground" />}
+                </TableCell>
                 <TableCell className="text-center">{order.quantity}</TableCell>
                 <TableCell>
                      <Badge variant={order.type === 'bread' ? 'secondary' : 'outline'} className="gap-1">

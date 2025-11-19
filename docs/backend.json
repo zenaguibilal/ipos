@@ -300,6 +300,10 @@
         "isFulfilled": {
           "type": "boolean",
           "description": "Whether the order has been fulfilled."
+        },
+        "isRecurring": {
+            "type": "boolean",
+            "description": "Whether the order should repeat daily."
         }
       },
       "required": ["id", "customerName", "quantity", "type", "orderDate", "isFulfilled", "paymentStatus"]

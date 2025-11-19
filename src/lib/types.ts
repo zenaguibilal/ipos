@@ -73,6 +73,7 @@ export interface BakeryOrder {
   paymentStatus: 'paid' | 'unpaid';
   orderDate: string;
   isFulfilled: boolean;
+  isRecurring?: boolean;
 }
 
     
