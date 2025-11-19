@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useAuth, useUser } from '@/firebase';
@@ -87,6 +88,9 @@ export default function DashboardPage() {
           <div className="flex w-full flex-col gap-2">
              <Button asChild>
                 <Link href="/sell">Aller à la page de vente</Link>
+            </Button>
+            <Button asChild variant="secondary">
+                <Link href="/products">Gérer les produits</Link>
             </Button>
             <Button asChild variant="secondary">
                 <Link href="/customers">Gérer les clients</Link>
