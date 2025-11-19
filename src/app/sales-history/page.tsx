@@ -1,6 +1,6 @@
 'use client';
 import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, collectionGroup, query, where, documentId } from "firebase/firestore";
+import { collection, collectionGroup, query, where, documentId, Query } from "firebase/firestore";
 import { Loader } from "lucide-react";
 import { SalesHistoryList } from "@/components/sales/sales-history-list";
 import type { Sale, Customer, SaleWithDetails } from "@/lib/types";
@@ -15,24 +15,34 @@ function chunkArray<T>(array: T[], size: number): T[][] {
     return chunks;
 }
 
-// Custom hook to fetch multiple collections
-function useCollections<T>(queries: any[]) {
-    const results = queries.map(q => useCollection<T>(q));
-    
-    const data = useMemo(() => {
-        if (results.some(r => r.isLoading)) return null;
-        return results.map(r => r.data || []).flat();
-    }, [results]);
+// This new component fetches data for a single query.
+// It ensures that useCollection is called unconditionally at the top level of this component.
+function CustomerDataFetcher({ customerQuery, onData, onLoadingChange }: { customerQuery: Query<Customer> | null, onData: (data: Customer[]) => void, onLoadingChange: (loading: boolean) => void }) {
+    const { data, isLoading, error } = useCollection<Customer>(customerQuery);
 
-    const isLoading = results.some(r => r.isLoading);
-    const error = results.find(r => r.error)?.error || null;
+    useEffect(() => {
+        if (!isLoading) {
+            onData(data || []);
+            onLoadingChange(false);
+        } else {
+            onLoadingChange(true);
+        }
+    }, [data, isLoading, onData, onLoadingChange]);
 
-    return { data, isLoading, error };
+     useEffect(() => {
+        if(error) {
+            console.error("Error fetching customer chunk:", error);
+            // Optionally handle individual chunk errors
+        }
+    }, [error]);
+
+    return null; // This component doesn't render anything itself
 }
 
 export default function SalesHistoryPage() {
     const firestore = useFirestore();
 
+    // 1. Fetch all sales
     const salesQuery = useMemoFirebase(() => {
         if (!firestore) return null;
         return query(collectionGroup(firestore, 'sales'));
@@ -40,6 +50,7 @@ export default function SalesHistoryPage() {
 
     const { data: salesData, isLoading: salesLoading, error: salesError } = useCollection<Sale>(salesQuery);
     
+    // 2. Prepare customer ID chunks from sales data
     const customerIdChunks = useMemo(() => {
         if (!salesData) return [];
         const customerIds = Array.from(new Set(salesData.map(s => s.customerId)));
@@ -47,6 +58,7 @@ export default function SalesHistoryPage() {
         return chunkArray(customerIds, 30);
     }, [salesData]);
 
+    // 3. Prepare queries for each customer ID chunk
     const customerQueries = useMemoFirebase(() => {
         if (!firestore || customerIdChunks.length === 0) return [];
         return customerIdChunks.map(chunk => 
@@ -54,29 +66,49 @@ export default function SalesHistoryPage() {
         );
     }, [firestore, customerIdChunks]);
 
-    const { data: allCustomers, isLoading: customersLoading, error: customersError } = useCollections<Customer>(customerQueries);
+    // 4. State to hold aggregated customer data and loading status from all fetchers
+    const [allCustomers, setAllCustomers] = useState<Customer[]>([]);
+    const [loadingStates, setLoadingStates] = useState<Record<number, boolean>>({});
+    const customersLoading = Object.values(loadingStates).some(isLoading => isLoading) || (customerQueries.length > 0 && Object.keys(loadingStates).length < customerQueries.length);
 
+    // 5. Enrich sales with customer data
     const enrichedSales = useMemo(() => {
-        if (!salesData || !allCustomers) return [];
+        if (!salesData || customersLoading) return [];
         
         const customerMap = new Map(allCustomers.map(c => [c.id, c]));
+        
         return salesData.map(sale => ({
             ...sale,
             customer: customerMap.get(sale.customerId),
         }));
-    }, [salesData, allCustomers]);
+    }, [salesData, allCustomers, customersLoading]);
 
-
-    if (salesLoading || (customerIdChunks.length > 0 && customersLoading)) {
+    if (salesLoading || (customerQueries.length > 0 && customersLoading)) {
         return <div className="flex justify-center items-center h-full"><Loader className="animate-spin" /></div>;
     }
 
-    if (salesError || customersError) {
-        const errorMessage = [salesError?.message, customersError?.message].filter(Boolean).join('; ');
-        return <div className="text-destructive">Erreur lors du chargement des données: {errorMessage}</div>
+    if (salesError) {
+        return <div className="text-destructive">Erreur lors du chargement des ventes: {salesError.message}</div>
     }
 
     return (
-        <SalesHistoryList sales={enrichedSales} />
+        <>
+            {customerQueries.map((q, index) => (
+                <CustomerDataFetcher
+                    key={index}
+                    customerQuery={q}
+                    onLoadingChange={(isLoading) => {
+                         setLoadingStates(prev => ({...prev, [index]: isLoading}));
+                    }}
+                    onData={(data) => {
+                         setAllCustomers(prev => {
+                            const newCustomers = [...prev.filter(c => !data.some(d => d.id === c.id)), ...data];
+                            return newCustomers;
+                         });
+                    }}
+                />
+            ))}
+            <SalesHistoryList sales={enrichedSales} />
+        </>
     );
 }
