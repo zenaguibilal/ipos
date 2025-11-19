@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import {
   DollarSign,
   Users,
@@ -19,10 +20,14 @@ import {
 import { SalesChart } from '@/components/dashboard/sales-chart';
 import { RecentSales } from '@/components/dashboard/recent-sales';
 import { SummaryCard } from '@/components/dashboard/summary-card';
-import { useDashboardData } from '@/lib/data';
+import { useDashboardData, type TimeRange } from '@/lib/data';
 import { Loader } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 
 export default function DashboardPage() {
+  const [timeRange, setTimeRange] = useState<TimeRange>('monthly');
+
   const {
     totalRevenue,
     netProfit,
@@ -31,9 +36,9 @@ export default function DashboardPage() {
     totalCustomers,
     totalSuppliers,
     lowStockItems,
-    monthlySales,
+    salesChartData,
     isLoading,
-  } = useDashboardData();
+  } = useDashboardData(timeRange);
 
   if (isLoading) {
     return <div className="flex justify-center items-center h-full"><Loader className="animate-spin" /></div>
@@ -81,11 +86,20 @@ export default function DashboardPage() {
       </div>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-7">
         <Card className="col-span-1 lg:col-span-4">
-          <CardHeader>
-            <CardTitle>Aperçu</CardTitle>
+           <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>Aperçu</CardTitle>
+              <Tabs defaultValue={timeRange} onValueChange={(value) => setTimeRange(value as TimeRange)} className="w-auto">
+                <TabsList>
+                  <TabsTrigger value="daily">Aujourd'hui</TabsTrigger>
+                  <TabsTrigger value="monthly">Ce mois</TabsTrigger>
+                  <TabsTrigger value="yearly">Cette année</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
           </CardHeader>
           <CardContent className="pl-2">
-            <SalesChart data={monthlySales} />
+            <SalesChart data={salesChartData} />
           </CardContent>
         </Card>
         <Card className="col-span-1 lg:col-span-3">

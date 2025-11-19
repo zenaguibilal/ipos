@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/chart';
 
 type SalesChartProps = {
-    data: { month: string; total: number }[];
+    data: { label: string; total: number }[];
 }
 
 export function SalesChart({ data = [] }: SalesChartProps) {
@@ -24,7 +24,7 @@ export function SalesChart({ data = [] }: SalesChartProps) {
     >
       <BarChart accessibilityLayer data={data} margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
         <XAxis
-          dataKey="month"
+          dataKey="label"
           stroke="#888888"
           fontSize={12}
           tickLine={false}

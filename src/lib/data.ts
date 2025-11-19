@@ -4,7 +4,7 @@ import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, limit, getDocs, where, collectionGroup, documentId } from 'firebase/firestore';
 import type { Product, Customer, Supplier, Sale, SaleLineItem, SaleWithDetails } from './types';
 import { useEffect, useState, useMemo } from 'react';
-import { format, getMonth } from 'date-fns';
+import { format, getMonth, eachDayOfInterval, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, eachMonthOfInterval, getYear } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
 
@@ -94,7 +94,9 @@ export function useSales(salesLimit?: number) {
     return { sales, isLoading, error };
 }
 
-export function useDashboardData() {
+export type TimeRange = 'daily' | 'monthly' | 'yearly';
+
+export function useDashboardData(timeRange: TimeRange = 'monthly') {
     const firestore = useFirestore();
 
     const { sales, isLoading: salesLoading } = useSales();
@@ -125,18 +127,65 @@ export function useDashboardData() {
 
     const productsValue = products?.reduce((acc, p) => acc + (p.purchasePrice * p.quantity), 0) || 0;
 
-    const monthlySales = useMemo(() => {
-        const monthNames = ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Août", "Sep", "Oct", "Nov", "Déc"];
-        const monthlyData = monthNames.map(month => ({ month, total: 0 }));
+    const salesChartData = useMemo(() => {
+        const now = new Date();
+        if (!sales) return [];
 
-        if (sales) {
+        if (timeRange === 'daily') {
+             const last7Days = eachDayOfInterval({ start: new Date(now.setDate(now.getDate() - 6)), end: new Date() });
+             const dailyData = last7Days.map(day => ({
+                label: format(day, 'EEE', { locale: fr }),
+                total: 0
+             }));
+
             sales.forEach(sale => {
-                const monthIndex = getMonth(new Date(sale.saleDate));
-                monthlyData[monthIndex].total += sale.totalAmount;
+                const saleDate = new Date(sale.saleDate);
+                if (saleDate >= last7Days[0] && saleDate <= last7Days[last7Days.length - 1]) {
+                    const dayStr = format(saleDate, 'EEE', { locale: fr });
+                    const dayData = dailyData.find(d => d.label === dayStr);
+                    if (dayData) {
+                        dayData.total += sale.totalAmount / 100;
+                    }
+                }
             });
+            return dailyData;
         }
-        return monthlyData.map(m => ({ ...m, total: m.total / 100 }));
-    }, [sales]);
+
+        if (timeRange === 'yearly') {
+            const year = getYear(now);
+            const months = eachMonthOfInterval({ start: startOfYear(now), end: endOfYear(now) });
+            const yearlyData = months.map(month => ({
+                label: format(month, 'MMM', { locale: fr }),
+                total: 0
+            }));
+            
+            sales.forEach(sale => {
+                const saleDate = new Date(sale.saleDate);
+                if (getYear(saleDate) === year) {
+                    const monthIndex = getMonth(saleDate);
+                    yearlyData[monthIndex].total += sale.totalAmount / 100;
+                }
+            });
+            return yearlyData;
+        }
+
+        // Default to monthly
+        const currentYear = getYear(now);
+        const monthlyData = Array.from({ length: 12 }, (_, i) => ({
+            label: format(new Date(currentYear, i), 'MMM', { locale: fr }),
+            total: 0
+        }));
+
+        sales.forEach(sale => {
+            const saleDate = new Date(sale.saleDate);
+            if (getYear(saleDate) === currentYear) {
+                const monthIndex = getMonth(saleDate);
+                monthlyData[monthIndex].total += sale.totalAmount / 100;
+            }
+        });
+        return monthlyData;
+
+    }, [sales, timeRange]);
 
 
     return {
@@ -147,7 +196,7 @@ export function useDashboardData() {
         totalCustomers: customers?.length || 0,
         totalSuppliers: suppliers?.length || 0,
         lowStockItems,
-        monthlySales,
+        salesChartData,
         isLoading: salesLoading || customersLoading || suppliersLoading || productsLoading
     }
 }
