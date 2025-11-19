@@ -11,7 +11,7 @@ import {
   Package,
 } from 'lucide-react';
 import { SummaryCard } from '@/components/dashboard/summary-card';
-import { useDashboardData, useSalesChartData } from '@/lib/data';
+import { useDashboardData, useSalesChartData, useSales } from '@/lib/data';
 import { Loader } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { SalesChart } from '@/components/dashboard/sales-chart';
@@ -26,13 +26,16 @@ export default function DashboardPage() {
     totalSuppliers,
     lowStockItems,
     dailyRevenue,
-    isLoading,
+    isLoading: isDashboardLoading,
   } = useDashboardData();
   
   const { chartData, isLoading: isChartLoading } = useSalesChartData();
+  const { sales: recentSales, isLoading: isRecentSalesLoading } = useSales(5);
+
+  const isLoading = isDashboardLoading || isChartLoading || isRecentSalesLoading;
 
 
-  if (isLoading || isChartLoading) {
+  if (isLoading) {
     return <div className="flex justify-center items-center h-full"><Loader className="animate-spin" /></div>
   }
 
@@ -81,7 +84,7 @@ export default function DashboardPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <RecentSales />
+              <RecentSales sales={recentSales} />
             </CardContent>
           </Card>
         </div>

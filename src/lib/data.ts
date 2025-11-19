@@ -3,9 +3,19 @@
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, collectionGroup, where, documentId, orderBy, limit, Timestamp } from 'firebase/firestore';
 import type { Product, Customer, Supplier, Sale, SaleLineItem, SaleWithDetails } from './types';
-import { useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { subDays, startOfDay, endOfDay, format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+
+// Helper function to split an array into chunks for 'in' queries
+function chunkArray<T>(array: T[], size: number): T[][] {
+    const chunks: T[][] = [];
+    if (!array) return chunks;
+    for (let i = 0; i < array.length; i += size) {
+        chunks.push(array.slice(i, i + size));
+    }
+    return chunks;
+}
 
 
 export function useCustomers() {
@@ -41,6 +51,8 @@ export function useSuppliers() {
 
 export function useSales(max?: number) {
     const firestore = useFirestore();
+    
+    // 1. Fetch all sales, ordered by date
     const salesQuery = useMemoFirebase(() => {
         if (!firestore) return null;
         let q = query(collectionGroup(firestore, 'sales'), orderBy('saleDate', 'desc'));
@@ -49,33 +61,79 @@ export function useSales(max?: number) {
         }
         return q;
     }, [firestore, max]);
-    const { data: sales, isLoading: salesLoading } = useCollection<Sale>(salesQuery);
-    
+    const { data: sales, isLoading: salesLoading, error: salesError } = useCollection<Sale>(salesQuery);
+
+    // 2. Get unique customer IDs from the fetched sales
     const customerIds = useMemo(() => {
         if (!sales) return [];
-        return Array.from(new Set(sales.map(s => s.customerId)));
+        return Array.from(new Set(sales.map(s => s.customerId).filter(id => id)));
     }, [sales]);
 
-    const customersQuery = useMemoFirebase(() => {
-        if (!firestore || customerIds.length === 0) return null;
-        return query(collection(firestore, 'customers'), where(documentId(), 'in', customerIds.slice(0, 30)));
-    }, [firestore, customerIds]);
-    const { data: customers, isLoading: customersLoading } = useCollection<Customer>(customersQuery);
+    // 3. State to hold the combined customer data
+    const [customersMap, setCustomersMap] = useState<Map<string, Customer>>(new Map());
+    const [customersLoading, setCustomersLoading] = useState(true);
 
+    // 4. Effect to fetch customers in chunks when sales data is available
+    useEffect(() => {
+        if (!firestore || customerIds.length === 0) {
+            setCustomersLoading(false);
+            return;
+        }
+
+        setCustomersLoading(true);
+        const customerChunks = chunkArray(customerIds, 30);
+        let unsubscribes: (() => void)[] = [];
+        let fetchedCustomers = new Map<string, Customer>();
+        let chunksLoaded = 0;
+
+        customerChunks.forEach(chunk => {
+            const customerQuery = query(collection(firestore, 'customers'), where(documentId(), 'in', chunk));
+            const unsubscribe = onSnapshot(customerQuery, (snapshot) => {
+                snapshot.docs.forEach(doc => {
+                    fetchedCustomers.set(doc.id, { id: doc.id, ...doc.data() } as Customer);
+                });
+                
+                // This is a bit simplistic; a better approach might use Promise.all
+                // if not using real-time listeners.
+                chunksLoaded++;
+                if (chunksLoaded === customerChunks.length) {
+                    setCustomersMap(new Map(fetchedCustomers));
+                    setCustomersLoading(false);
+                }
+            }, (error) => {
+                console.error("Error fetching customer chunk:", error);
+                chunksLoaded++;
+                 if (chunksLoaded === customerChunks.length) {
+                    setCustomersLoading(false); // Still finish loading even if one chunk fails
+                }
+            });
+            unsubscribes.push(unsubscribe);
+        });
+
+        // Cleanup function
+        return () => {
+            unsubscribes.forEach(unsub => unsub());
+        };
+
+    }, [firestore, customerIds]);
+
+
+    // 5. Memoize the final enriched sales data
     const enrichedSales = useMemo(() => {
-        if (!sales || !customers) return [];
-        const customerMap = new Map(customers.map(c => [c.id, c]));
+        if (!sales) return [];
         return sales.map(sale => ({
             ...sale,
-            customer: customerMap.get(sale.customerId)
+            customer: customersMap.get(sale.customerId),
         }));
-    }, [sales, customers]);
+    }, [sales, customersMap]);
 
     return {
         sales: enrichedSales,
-        isLoading: salesLoading || (customerIds.length > 0 && customersLoading)
-    }
+        isLoading: salesLoading || customersLoading,
+        error: salesError,
+    };
 }
+
 
 export function useSalesChartData() {
     const firestore = useFirestore();
@@ -93,26 +151,28 @@ export function useSalesChartData() {
     const { data: sales, isLoading } = useCollection<Sale>(salesQuery);
 
     const chartData = useMemo(() => {
-        if (!sales) return [];
-
-        const dailySales = new Map<string, number>();
-
-        // Initialize last 7 days
+        const initialData = new Map<string, number>();
+        // Initialize last 7 days with 0 sales
         for (let i = 6; i >= 0; i--) {
             const date = subDays(new Date(), i);
             const formattedDate = format(date, 'd MMM', { locale: fr });
-            dailySales.set(formattedDate, 0);
+            initialData.set(formattedDate, 0);
         }
 
+        if (!sales) {
+             return Array.from(initialData.entries()).map(([label, total]) => ({ label, total }));
+        }
+
+        // Populate with actual sales
         sales.forEach(sale => {
             const saleDate = new Date(sale.saleDate);
             const formattedDate = format(saleDate, 'd MMM', { locale: fr });
-            if (dailySales.has(formattedDate)) {
-                dailySales.set(formattedDate, (dailySales.get(formattedDate) || 0) + sale.totalAmount);
+            if (initialData.has(formattedDate)) {
+                initialData.set(formattedDate, (initialData.get(formattedDate) || 0) + sale.totalAmount);
             }
         });
 
-        return Array.from(dailySales.entries()).map(([label, total]) => ({ label, total }));
+        return Array.from(initialData.entries()).map(([label, total]) => ({ label, total }));
 
     }, [sales]);
 
@@ -125,17 +185,6 @@ export function useSalesChartData() {
 
 export function useDashboardData() {
     const firestore = useFirestore();
-
-    if (!firestore) {
-        return {
-            productsValue: 0,
-            totalCustomers: 0,
-            totalSuppliers: 0,
-            lowStockItems: 0,
-            dailyRevenue: 0,
-            isLoading: true
-        }
-    }
 
     const { customers, isLoading: customersLoading } = useCustomers();
     const { suppliers, isLoading: suppliersLoading } = useSuppliers();
@@ -152,6 +201,17 @@ export function useDashboardData() {
     }, [firestore]);
 
     const { data: todaysSales, isLoading: salesLoading } = useCollection<Sale>(todaysSalesQuery);
+    
+    if (!firestore) {
+        return {
+            productsValue: 0,
+            totalCustomers: 0,
+            totalSuppliers: 0,
+            lowStockItems: 0,
+            dailyRevenue: 0,
+            isLoading: true
+        }
+    }
     
     const isLoading = customersLoading || suppliersLoading || productsLoading || salesLoading;
     

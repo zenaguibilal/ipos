@@ -1,15 +1,9 @@
 'use client';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { useSales } from '@/lib/data';
+import type { SaleWithDetails } from '@/lib/types';
 import Image from 'next/image';
-import { Loader } from 'lucide-react';
 
-export function RecentSales() {
-  const { sales, isLoading } = useSales(5);
-
-  if (isLoading) {
-    return <div className="flex justify-center items-center"><Loader className="animate-spin" /></div>
-  }
+export function RecentSales({ sales }: { sales: SaleWithDetails[] }) {
 
   if (!sales || sales.length === 0) {
     return <p className="text-sm text-muted-foreground">Aucune vente récente trouvée.</p>
