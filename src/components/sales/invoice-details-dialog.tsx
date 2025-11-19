@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { SaleWithDetails, SaleLineItem, Product } from "@/lib/types";
 import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, query, where, documentId } from "firebase/firestore";
+import { collection, query, where, documentId, collectionGroup } from "firebase/firestore";
 import { Loader, Printer } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -49,7 +49,7 @@ function InvoiceContent({ sale, onClose }: { sale: SaleWithDetails; onClose: () 
 
     const productsQuery = useMemoFirebase(() => {
         if (!firestore || productIds.length === 0) return null;
-        return query(collection(firestore, 'suppliers/supp_1/products'), where(documentId(), 'in', productIds.slice(0, 30)));
+        return query(collectionGroup(firestore, 'products'), where(documentId(), 'in', productIds.slice(0, 30)));
     }, [firestore, productIds]);
 
     const { data: products, isLoading: productsLoading } = useCollection<Product>(productsQuery);
