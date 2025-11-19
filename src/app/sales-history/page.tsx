@@ -18,7 +18,9 @@ function chunkArray<T>(array: T[], size: number): T[][] {
 // This new component fetches data for a single query.
 // It ensures that useCollection is called unconditionally at the top level of this component.
 function CustomerDataFetcher({ customerQuery, onData, onLoadingChange }: { customerQuery: Query<Customer> | null, onData: (data: Customer[]) => void, onLoadingChange: (loading: boolean) => void }) {
-    const { data, isLoading, error } = useCollection<Customer>(customerQuery);
+    // Memoize the query prop to ensure stability for useCollection
+    const memoizedQuery = useMemoFirebase(() => customerQuery, [customerQuery]);
+    const { data, isLoading, error } = useCollection<Customer>(memoizedQuery);
 
     useEffect(() => {
         onLoadingChange(isLoading);
@@ -55,7 +57,7 @@ export default function SalesHistoryPage() {
     // 2. Prepare customer ID chunks from sales data
     const customerIdChunks = useMemo(() => {
         if (!salesData || salesData.length === 0) return [];
-        const customerIds = Array.from(new Set(salesData.map(s => s.customerId)));
+        const customerIds = Array.from(new Set(salesData.map(s => s.customerId).filter(id => id)));
         if(customerIds.length === 0) return [];
         return chunkArray(customerIds, 30);
     }, [salesData]);
@@ -71,17 +73,10 @@ export default function SalesHistoryPage() {
     // 4. State to hold aggregated customer data and loading status from all fetchers
     const [allCustomers, setAllCustomers] = useState<Map<string, Customer>>(new Map());
     const [loadingStates, setLoadingStates] = useState<Record<number, boolean>>({});
-    
-    const customersLoading = useMemo(() => {
-      if (customerQueries.length === 0) return false;
-      // Loading is true if any fetcher is loading OR if not all fetchers have reported their status yet.
-      return Object.values(loadingStates).some(isLoading => isLoading) || Object.keys(loadingStates).length < customerQueries.length;
-    }, [loadingStates, customerQueries.length]);
-
 
     // 5. Enrich sales with customer data
     const enrichedSales = useMemo(() => {
-        if (!salesData) return []; // Don't wait for customers to load to show sales
+        if (!salesData) return [];
         
         return salesData.map(sale => ({
             ...sale,
@@ -101,11 +96,6 @@ export default function SalesHistoryPage() {
     // Handle the case where there are no sales after loading is complete.
     if (!salesData || salesData.length === 0) {
         return <SalesHistoryList sales={[]} />;
-    }
-
-    // This case will be hit when sales are loaded, but customers are still loading.
-    if (customersLoading && enrichedSales.length === 0) {
-        return <div className="flex justify-center items-center h-full"><Loader className="animate-spin" /></div>;
     }
 
     return (
