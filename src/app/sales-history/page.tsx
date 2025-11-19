@@ -4,7 +4,7 @@ import { collection, collectionGroup, query, where, documentId, Query } from "fi
 import { Loader } from "lucide-react";
 import { SalesHistoryList } from "@/components/sales/sales-history-list";
 import type { Sale, Customer, SaleWithDetails } from "@/lib/types";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 
 // Helper function to split an array into chunks
 function chunkArray<T>(array: T[], size: number): T[][] {
@@ -74,6 +74,18 @@ export default function SalesHistoryPage() {
     const [allCustomers, setAllCustomers] = useState<Map<string, Customer>>(new Map());
     const [loadingStates, setLoadingStates] = useState<Record<number, boolean>>({});
 
+    const handleLoadingChange = useCallback((index: number, isLoading: boolean) => {
+        setLoadingStates(prev => ({ ...prev, [index]: isLoading }));
+    }, []);
+
+    const handleData = useCallback((data: Customer[]) => {
+        setAllCustomers(prev => {
+            const newMap = new Map(prev);
+            data.forEach(customer => newMap.set(customer.id, customer));
+            return newMap;
+        });
+    }, []);
+
     // 5. Enrich sales with customer data
     const enrichedSales = useMemo(() => {
         if (!salesData) return [];
@@ -104,16 +116,8 @@ export default function SalesHistoryPage() {
                 <CustomerDataFetcher
                     key={index}
                     customerQuery={q}
-                    onLoadingChange={(isLoading) => {
-                         setLoadingStates(prev => ({...prev, [index]: isLoading}));
-                    }}
-                    onData={(data) => {
-                         setAllCustomers(prev => {
-                            const newMap = new Map(prev);
-                            data.forEach(customer => newMap.set(customer.id, customer));
-                            return newMap;
-                         });
-                    }}
+                    onLoadingChange={(isLoading) => handleLoadingChange(index, isLoading)}
+                    onData={handleData}
                 />
             ))}
             <SalesHistoryList sales={enrichedSales} />
