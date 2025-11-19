@@ -171,6 +171,10 @@
           "type": "string",
           "description": "Phone number of the customer."
         },
+        "settlementDay": {
+          "type": "integer",
+          "description": "The usual day of the month the customer settles their debt."
+        },
         "createdAt": {
           "type": "string",
           "description": "Timestamp indicating when the customer was created.",

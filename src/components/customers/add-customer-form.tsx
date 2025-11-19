@@ -20,6 +20,7 @@ export function AddCustomerForm({ isOpen, onOpenChange, userId }: AddCustomerFor
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
     const [phone, setPhone] = useState('');
+    const [settlementDay, setSettlementDay] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
 
@@ -27,6 +28,7 @@ export function AddCustomerForm({ isOpen, onOpenChange, userId }: AddCustomerFor
         setFirstName('');
         setLastName('');
         setPhone('');
+        setSettlementDay('');
         setError(null);
     }
 
@@ -39,6 +41,12 @@ export function AddCustomerForm({ isOpen, onOpenChange, userId }: AddCustomerFor
             return;
         }
 
+        const settlementDayNumber = settlementDay ? parseInt(settlementDay, 10) : undefined;
+        if (settlementDay && (isNaN(settlementDayNumber) || settlementDayNumber < 1 || settlementDayNumber > 31)) {
+            setError("Le jour de règlement doit être un nombre entre 1 et 31.");
+            return;
+        }
+
         setIsLoading(true);
         const customersCollectionRef = collection(firestore, 'users', userId, 'customers');
         
@@ -46,6 +54,7 @@ export function AddCustomerForm({ isOpen, onOpenChange, userId }: AddCustomerFor
             firstName: firstName,
             lastName: lastName,
             phone: phone,
+            settlementDay: settlementDayNumber,
             createdAt: serverTimestamp(),
         }, {
             onSuccess: () => {
@@ -113,6 +122,20 @@ export function AddCustomerForm({ isOpen, onOpenChange, userId }: AddCustomerFor
                                 value={phone}
                                 onChange={(e) => setPhone(e.target.value)}
                                 className="col-span-3"
+                            />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="settlementDay" className="text-right">
+                                Jour de règlement
+                            </Label>
+                            <Input
+                                id="settlementDay"
+                                type="number"
+                                value={settlementDay}
+                                onChange={(e) => setSettlementDay(e.target.value)}
+                                className="col-span-3"
+                                min="1"
+                                max="31"
                             />
                         </div>
                     </div>

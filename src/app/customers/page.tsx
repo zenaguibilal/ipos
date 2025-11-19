@@ -22,6 +22,7 @@ export interface Customer {
     firstName: string;
     lastName: string;
     phone?: string;
+    settlementDay?: number;
 }
 
 export interface Sale {
@@ -225,6 +226,7 @@ export default function CustomersPage() {
                                         <tr>
                                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Nom</th>
                                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Téléphone</th>
+                                            <th scope="col" className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Jour de règlement</th>
                                             <th scope="col" className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Total Dépensé</th>
                                             <th scope="col" className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Solde Impayé</th>
                                             <th scope="col" className="relative px-6 py-3">
@@ -237,6 +239,7 @@ export default function CustomersPage() {
                                             <tr key={customer.id}>
                                                 <td className="whitespace-nowrap px-6 py-4 font-medium">{customer.firstName} {customer.lastName}</td>
                                                 <td className="whitespace-nowrap px-6 py-4 text-muted-foreground">{customer.phone || '-'}</td>
+                                                <td className="whitespace-nowrap px-6 py-4 text-right font-medium">{customer.settlementDay || '-'}</td>
                                                 <td className="whitespace-nowrap px-6 py-4 text-right font-medium">{customer.totalSpent.toFixed(2)} €</td>
                                                 <td className={`whitespace-nowrap px-6 py-4 text-right font-medium ${customer.outstandingBalance > 0 ? 'text-destructive' : ''}`}>{customer.outstandingBalance.toFixed(2)} €</td>
                                                 <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
@@ -286,9 +289,4 @@ export default function CustomersPage() {
             </div>
         </>
     );
-
-    
-
-    
-
-    
+}
