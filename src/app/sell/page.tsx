@@ -214,17 +214,13 @@ export default function SellPage() {
                     <CardHeader>
                         <CardTitle>Vente en cours</CardTitle>
                          {saleStatus?.error && <p className="text-xs text-red-500">{saleStatus.error}</p>}
-                        {saleStatus?.success && <p className="text-xs text-green-500">{saleStatus.success}</p>}
+                        {saleStatus?.success && !cart.length && <p className="text-xs text-green-500">{saleStatus.success}</p>}
                     </CardHeader>
                     <CardContent className="flex-1">
                         {cart.length === 0 ? (
                             <div className="flex h-full flex-col items-center justify-center text-center">
                                 <p className="text-muted-foreground">
-                                    {saleStatus?.success && !cart.length ? (
-                                        <span className="text-green-500">{saleStatus.success}</span>
-                                    ) : (
-                                        "Le panier est vide."
-                                    )}
+                                    {saleStatus?.success ? saleStatus.success : "Le panier est vide."}
                                 </p>
                             </div>
                         ) : (
