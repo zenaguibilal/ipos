@@ -4,8 +4,9 @@ import withPWAInit from '@ducanh2912/next-pwa';
 
 const withPWA = withPWAInit({
   dest: 'public',
-  disable: process.env.NODE_ENV === 'development',
-  // add more options here
+  disable: false, // Always enable PWA
+  register: true,
+  skipWaiting: true,
 });
 
 const config: NextConfig = {
