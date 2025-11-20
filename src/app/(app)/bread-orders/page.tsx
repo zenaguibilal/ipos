@@ -6,12 +6,12 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState, useMemo } from 'react';
 import { collection, doc, writeBatch, query, where } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AddOrderForm } from '@/components/bread-orders/add-order-form';
 import { EditOrderForm } from '@/components/bread-orders/edit-order-form';
 import { DeleteOrderDialog } from '@/components/bread-orders/delete-order-dialog';
 import { ResetRecurringDialog } from '@/components/bread-orders/reset-recurring-dialog';
-import { MoreHorizontal, Pencil, Trash2, Repeat, RefreshCw } from 'lucide-react';
+import { MoreHorizontal, Pencil, Trash2, Repeat, RefreshCw, Cookie, CheckCircle } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
@@ -43,8 +43,21 @@ export default function BreadOrdersPage() {
         }
     }, [user, isUserLoading, router]);
 
-    const recurringOrdersCount = useMemo(() => {
-        return orders?.filter(o => o.isRecurring).length || 0;
+    const { recurringOrdersCount, totalOrdered, totalDelivered } = useMemo(() => {
+        if (!orders) {
+            return { recurringOrdersCount: 0, totalOrdered: 0, totalDelivered: 0 };
+        }
+        const recurring = orders.filter(o => o.isRecurring).length;
+        const ordered = orders.reduce((sum, order) => sum + order.quantity, 0);
+        const delivered = orders
+            .filter(order => order.isDelivered)
+            .reduce((sum, order) => sum + order.quantity, 0);
+
+        return {
+            recurringOrdersCount: recurring,
+            totalOrdered: ordered,
+            totalDelivered: delivered
+        };
     }, [orders]);
 
     const filteredOrders = useMemo(() => {
@@ -162,6 +175,27 @@ export default function BreadOrdersPage() {
                         </div>
                     </CardHeader>
                     <CardContent>
+                        <div className="grid gap-4 md:grid-cols-2 mb-4">
+                             <Card>
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardTitle className="text-sm font-medium">Total Commandé</CardTitle>
+                                    <Cookie className="h-4 w-4 text-muted-foreground" />
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="text-2xl font-bold">{totalOrdered}</div>
+                                </CardContent>
+                            </Card>
+                             <Card>
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardTitle className="text-sm font-medium">Total Livré</CardTitle>
+                                    <CheckCircle className="h-4 w-4 text-muted-foreground" />
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="text-2xl font-bold">{totalDelivered}</div>
+                                </CardContent>
+                            </Card>
+                        </div>
+
                         {isLoading ? (
                             <div className="text-center">Chargement des données...</div>
                         ) : filteredOrders && filteredOrders.length > 0 ? (
