@@ -28,6 +28,7 @@ import {
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 import { useAuth, useUser } from '@/firebase';
+import { Clock } from '@/components/layout/clock';
 
 const navLinks = [
   { href: '/dashboard', icon: Home, label: 'Tableau de bord' },
@@ -152,6 +153,7 @@ export function Sidebar({ children }: { children: React.ReactNode }) {
           <h1 className="flex-1 text-lg font-semibold md:text-xl">
             {currentPage?.label}
           </h1>
+          <Clock />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="secondary" size="icon" className="rounded-full">
