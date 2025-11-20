@@ -48,7 +48,7 @@ export function PaymentDialog({ isOpen, onOpenChange, total, isProcessing, onCon
                 <div className="grid gap-4 py-4">
                     <div className="flex justify-between items-center text-lg font-bold">
                         <span>Total à payer :</span>
-                        <span>{total.toFixed(2)} €</span>
+                        <span>{total.toFixed(2)} DA</span>
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="amount-paid" className="text-right col-span-1">

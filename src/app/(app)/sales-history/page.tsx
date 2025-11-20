@@ -201,9 +201,9 @@ export default function SalesHistoryPage() {
                                                 <td className="whitespace-nowrap px-6 py-4 font-medium">{format(sale.createdAt.toDate(), 'd MMM yyyy, HH:mm', { locale: fr })}</td>
                                                 <td className="whitespace-nowrap px-6 py-4 text-muted-foreground">{sale.customerName || 'Vente au comptoir'}</td>
                                                 <td className="whitespace-nowrap px-6 py-4"><StatusBadge status={sale.paymentStatus} /></td>
-                                                <td className="whitespace-nowrap px-6 py-4 text-right font-medium">{sale.total.toFixed(2)} €</td>
-                                                <td className="whitespace-nowrap px-6 py-4 text-right font-medium text-green-400">{sale.amountPaid.toFixed(2)} €</td>
-                                                <td className={`whitespace-nowrap px-6 py-4 text-right font-medium ${sale.remainingBalance > 0 ? 'text-destructive' : ''}`}>{sale.remainingBalance.toFixed(2)} €</td>
+                                                <td className="whitespace-nowrap px-6 py-4 text-right font-medium">{sale.total.toFixed(2)} DA</td>
+                                                <td className="whitespace-nowrap px-6 py-4 text-right font-medium text-green-400">{sale.amountPaid.toFixed(2)} DA</td>
+                                                <td className={`whitespace-nowrap px-6 py-4 text-right font-medium ${sale.remainingBalance > 0 ? 'text-destructive' : ''}`}>{sale.remainingBalance.toFixed(2)} DA</td>
                                             </tr>
                                         ))}
                                     </tbody>

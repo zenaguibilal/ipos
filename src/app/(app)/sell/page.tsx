@@ -264,7 +264,7 @@ export default function SellPage() {
                                             <CardTitle className="text-sm">{product.name}</CardTitle>
                                         </CardHeader>
                                         <CardFooter className="p-4 pt-0 flex justify-between items-center text-xs">
-                                            <span className="font-semibold">{product.price.toFixed(2)} €</span>
+                                            <span className="font-semibold">{product.price.toFixed(2)} DA</span>
                                             <span className={product.quantity <= product.minStockLevel ? 'text-destructive font-bold' : 'text-muted-foreground'}>
                                                 Stock: {product.quantity}
                                             </span>
@@ -338,10 +338,10 @@ export default function SellPage() {
                                    <div key={item.id} className="flex items-center justify-between">
                                        <div>
                                            <p className="font-medium">{item.name}</p>
-                                           <p className="text-sm text-muted-foreground">{item.cartQuantity} x {item.price.toFixed(2)} €</p>
+                                           <p className="text-sm text-muted-foreground">{item.cartQuantity} x {item.price.toFixed(2)} DA</p>
                                        </div>
                                        <div className="flex items-center gap-2">
-                                           <span className="font-semibold">{(item.cartQuantity * item.price).toFixed(2)} €</span>
+                                           <span className="font-semibold">{(item.cartQuantity * item.price).toFixed(2)} DA</span>
                                            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => addToCart(item)}><PlusCircle className="h-4 w-4" /></Button>
                                            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => decreaseQuantity(item.id)}><MinusCircle className="h-4 w-4" /></Button>
                                            <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => removeFromCart(item.id)}><XCircle className="h-4 w-4" /></Button>
@@ -354,7 +354,7 @@ export default function SellPage() {
                     <CardFooter className="flex flex-col gap-2 mt-auto pt-4 border-t">
                          <div className="flex w-full justify-between font-semibold">
                             <span>Total</span>
-                            <span>{total.toFixed(2)} €</span>
+                            <span>{total.toFixed(2)} DA</span>
                         </div>
                         <Button 
                             className="w-full" 
@@ -370,5 +370,3 @@ export default function SellPage() {
     </>
   );
 }
-
-    

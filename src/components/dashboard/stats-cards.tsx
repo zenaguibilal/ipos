@@ -27,7 +27,7 @@ export function StatsCards({ stats }: StatsCardsProps) {
                     <CircleDollarSign className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold">{stats.dailyRevenue.toFixed(2)} €</div>
+                    <div className="text-2xl font-bold">{stats.dailyRevenue.toFixed(2)} DA</div>
                     <p className="text-xs text-muted-foreground">
                         Revenu total des ventes d'aujourd'hui
                     </p>
@@ -41,7 +41,7 @@ export function StatsCards({ stats }: StatsCardsProps) {
                     <TrendingUp className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold">{stats.dailyNetProfit.toFixed(2)} €</div>
+                    <div className="text-2xl font-bold">{stats.dailyNetProfit.toFixed(2)} DA</div>
                      <p className="text-xs text-muted-foreground">
                         Marge bénéficiaire de la journée
                     </p>
@@ -67,7 +67,7 @@ export function StatsCards({ stats }: StatsCardsProps) {
                     <Users className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold">{stats.totalDebt.toFixed(2)} €</div>
+                    <div className="text-2xl font-bold">{stats.totalDebt.toFixed(2)} DA</div>
                     <p className="text-xs text-muted-foreground">
                         Montant total dû par tous les clients
                     </p>

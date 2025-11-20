@@ -2,7 +2,7 @@
 'use client';
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import type { Sale } from '@/app/sales-history/page';
+import type { Sale } from '@/app/(app)/sales-history/page';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -71,8 +71,8 @@ export function SaleDetailsDialog({ isOpen, onOpenChange, sale }: SaleDetailsDia
                                         <tr key={index}>
                                             <td className="px-4 py-2 whitespace-nowrap text-sm font-medium">{item.name}</td>
                                             <td className="px-4 py-2 whitespace-nowrap text-sm text-center text-muted-foreground">{item.quantity}</td>
-                                            <td className="px-4 py-2 whitespace-nowrap text-sm text-right">{item.price.toFixed(2)} €</td>
-                                            <td className="px-4 py-2 whitespace-nowrap text-sm text-right font-medium">{(item.price * item.quantity).toFixed(2)} €</td>
+                                            <td className="px-4 py-2 whitespace-nowrap text-sm text-right">{item.price.toFixed(2)} DA</td>
+                                            <td className="px-4 py-2 whitespace-nowrap text-sm text-right font-medium">{(item.price * item.quantity).toFixed(2)} DA</td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -83,16 +83,16 @@ export function SaleDetailsDialog({ isOpen, onOpenChange, sale }: SaleDetailsDia
                     <div className="mt-4 space-y-2 border-t pt-4">
                          <div className="flex justify-between font-semibold text-lg">
                             <span>Total</span>
-                            <span>{sale.total.toFixed(2)} €</span>
+                            <span>{sale.total.toFixed(2)} DA</span>
                         </div>
                         <div className="flex justify-between text-sm">
                             <span className="text-muted-foreground">Montant Payé</span>
-                            <span className="text-green-400">{sale.amountPaid.toFixed(2)} €</span>
+                            <span className="text-green-400">{sale.amountPaid.toFixed(2)} DA</span>
                         </div>
                         <div className="flex justify-between text-sm">
                             <span className="text-muted-foreground">Solde Restant</span>
                              <span className={cn(sale.remainingBalance > 0 && "text-destructive font-bold")}>
-                                {sale.remainingBalance.toFixed(2)} €
+                                {sale.remainingBalance.toFixed(2)} DA
                             </span>
                         </div>
                     </div>
@@ -106,4 +106,3 @@ export function SaleDetailsDialog({ isOpen, onOpenChange, sale }: SaleDetailsDia
         </Dialog>
     );
 }
-

@@ -35,7 +35,7 @@ export function SettleDebtDialog({ isOpen, onOpenChange, customerName, outstandi
             return;
         }
         if (paymentAmount > outstandingBalance) {
-            setError(`Le paiement ne peut pas dépasser le solde de ${outstandingBalance.toFixed(2)} €.`);
+            setError(`Le paiement ne peut pas dépasser le solde de ${outstandingBalance.toFixed(2)} DA.`);
             return;
         }
         
@@ -56,7 +56,7 @@ export function SettleDebtDialog({ isOpen, onOpenChange, customerName, outstandi
                 <div className="grid gap-4 py-4">
                     <div className="flex justify-between items-center text-lg font-bold">
                         <span>Solde impayé :</span>
-                        <span>{outstandingBalance.toFixed(2)} €</span>
+                        <span>{outstandingBalance.toFixed(2)} DA</span>
                     </div>
                      {error && <p className="text-sm text-red-500 text-center -mt-2">{error}</p>}
                     <div className="grid grid-cols-4 items-center gap-4">

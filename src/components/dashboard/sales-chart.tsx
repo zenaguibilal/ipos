@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
@@ -24,7 +25,7 @@ export function SalesChart({ data }: SalesChartProps) {
                     fontSize={12}
                     tickLine={false}
                     axisLine={false}
-                    tickFormatter={(value) => `${value}€`}
+                    tickFormatter={(value) => `${value} DA`}
                 />
                 <Tooltip
                     contentStyle={{

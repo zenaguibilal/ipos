@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import type { Product } from '@/app/products/page';
+import type { Product } from '@/app/(app)/products/page';
 
 interface EditProductFormProps {
     isOpen: boolean;
@@ -119,7 +119,7 @@ export function EditProductForm({ isOpen, onOpenChange, userId, product }: EditP
                         </div>
                          <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="edit-price" className="text-right">
-                                Prix Vente (€)
+                                Prix Vente (DA)
                             </Label>
                             <Input
                                 id="edit-price"
@@ -133,7 +133,7 @@ export function EditProductForm({ isOpen, onOpenChange, userId, product }: EditP
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="edit-purchase-price" className="text-right">
-                                Prix Achat (€)
+                                Prix Achat (DA)
                             </Label>
                             <Input
                                 id="edit-purchase-price"

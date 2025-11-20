@@ -158,7 +158,7 @@ export default function CustomersPage() {
         }, {
             onSuccess: () => {
                 setSettlingDebtForCustomer(null);
-                toast.success(`Paiement de ${amount.toFixed(2)} € enregistré pour ${settlingDebtForCustomer.firstName} ${settlingDebtForCustomer.lastName}.`);
+                toast.success(`Paiement de ${amount.toFixed(2)} DA enregistré pour ${settlingDebtForCustomer.firstName} ${settlingDebtForCustomer.lastName}.`);
             },
             onError: (err) => {
                 console.error("Failed to add payment:", err);
@@ -241,8 +241,8 @@ export default function CustomersPage() {
                                                 <td className="whitespace-nowrap px-6 py-4 font-medium">{customer.firstName} {customer.lastName}</td>
                                                 <td className="whitespace-nowrap px-6 py-4 text-muted-foreground">{customer.phone || '-'}</td>
                                                 <td className="whitespace-nowrap px-6 py-4 text-right font-medium">{customer.settlementDay || '-'}</td>
-                                                <td className="whitespace-nowrap px-6 py-4 text-right font-medium">{customer.totalSpent.toFixed(2)} €</td>
-                                                <td className={`whitespace-nowrap px-6 py-4 text-right font-medium ${customer.outstandingBalance > 0 ? 'text-destructive' : ''}`}>{customer.outstandingBalance.toFixed(2)} €</td>
+                                                <td className="whitespace-nowrap px-6 py-4 text-right font-medium">{customer.totalSpent.toFixed(2)} DA</td>
+                                                <td className={`whitespace-nowrap px-6 py-4 text-right font-medium ${customer.outstandingBalance > 0 ? 'text-destructive' : ''}`}>{customer.outstandingBalance.toFixed(2)} DA</td>
                                                 <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium" onClick={(e) => e.stopPropagation()}>
                                                     <DropdownMenu>
                                                         <DropdownMenuTrigger asChild>

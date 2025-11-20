@@ -134,8 +134,8 @@ export default function ProductsPage() {
                                                 <tr key={product.id} className={cn(isLowStock && 'bg-destructive/10')}>
                                                     <td className="whitespace-nowrap px-6 py-4 font-medium">{product.name}</td>
                                                     <td className="whitespace-nowrap px-6 py-4 text-muted-foreground">{product.barcode || '-'}</td>
-                                                    <td className="whitespace-nowrap px-6 py-4 text-right font-medium">{product.purchasePrice.toFixed(2)} €</td>
-                                                    <td className="whitespace-nowrap px-6 py-4 text-right font-medium">{product.price.toFixed(2)} €</td>
+                                                    <td className="whitespace-nowrap px-6 py-4 text-right font-medium">{product.purchasePrice.toFixed(2)} DA</td>
+                                                    <td className="whitespace-nowrap px-6 py-4 text-right font-medium">{product.price.toFixed(2)} DA</td>
                                                     <td className={cn("whitespace-nowrap px-6 py-4 text-right font-medium", isLowStock && 'text-destructive font-bold')}>{product.quantity}</td>
                                                     <td className="whitespace-nowrap px-6 py-4 text-right font-medium">{product.minStockLevel}</td>
                                                     <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">

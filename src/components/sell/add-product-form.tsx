@@ -126,7 +126,7 @@ export function AddProductForm({ isOpen, onOpenChange, userId }: AddProductFormP
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="sell-add-price" className="text-right">
-                                Prix Vente (€)
+                                Prix Vente (DA)
                             </Label>
                             <Input
                                 id="sell-add-price"
@@ -140,7 +140,7 @@ export function AddProductForm({ isOpen, onOpenChange, userId }: AddProductFormP
                         </div>
                          <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="sell-add-purchasePrice" className="text-right">
-                                Prix Achat (€)
+                                Prix Achat (DA)
                             </Label>
                             <Input
                                 id="sell-add-purchasePrice"
