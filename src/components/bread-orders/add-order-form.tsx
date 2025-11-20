@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 
 interface AddOrderFormProps {
@@ -20,12 +21,14 @@ export function AddOrderForm({ isOpen, onOpenChange, userId }: AddOrderFormProps
     const firestore = useFirestore();
     const [name, setName] = useState('');
     const [quantity, setQuantity] = useState('');
+    const [isRecurring, setIsRecurring] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
 
     const resetForm = () => {
         setName('');
         setQuantity('');
+        setIsRecurring(false);
         setError(null);
     };
 
@@ -53,6 +56,7 @@ export function AddOrderForm({ isOpen, onOpenChange, userId }: AddOrderFormProps
             quantity: quantityNumber,
             isPaid: false,
             isDelivered: false,
+            isRecurring: isRecurring,
             createdAt: serverTimestamp(),
         }, {
             onSuccess: () => {
@@ -113,6 +117,19 @@ export function AddOrderForm({ isOpen, onOpenChange, userId }: AddOrderFormProps
                                 className="col-span-3"
                                 required
                             />
+                        </div>
+                        <div className="flex items-center space-x-2 justify-center col-span-4 pt-2">
+                           <Checkbox 
+                                id="is-recurring"
+                                checked={isRecurring}
+                                onCheckedChange={(checked) => setIsRecurring(checked as boolean)}
+                            />
+                            <Label
+                                htmlFor="is-recurring"
+                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                            >
+                                Commande récurrente (quotidienne)
+                            </Label>
                         </div>
                     </div>
                     <DialogFooter>

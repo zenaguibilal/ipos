@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { AddOrderForm } from '@/components/bread-orders/add-order-form';
 import { EditOrderForm } from '@/components/bread-orders/edit-order-form';
 import { DeleteOrderDialog } from '@/components/bread-orders/delete-order-dialog';
-import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { MoreHorizontal, Pencil, Trash2, Repeat } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
@@ -22,6 +22,7 @@ export interface BreadOrder {
     quantity: number;
     isPaid: boolean;
     isDelivered: boolean;
+    isRecurring: boolean;
 }
 
 export default function BreadOrdersPage() {
@@ -124,6 +125,7 @@ export default function BreadOrdersPage() {
                                         <tr>
                                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Nom de la commande</th>
                                             <th scope="col" className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Quantité</th>
+                                            <th scope="col" className="px-6 py-3 text-center text-xs font-medium uppercase tracking-wider text-muted-foreground">Récurrence</th>
                                             <th scope="col" className="px-6 py-3 text-center text-xs font-medium uppercase tracking-wider text-muted-foreground">Payé</th>
                                             <th scope="col" className="px-6 py-3 text-center text-xs font-medium uppercase tracking-wider text-muted-foreground">Livré</th>
                                             <th scope="col" className="relative px-6 py-3">
@@ -136,6 +138,9 @@ export default function BreadOrdersPage() {
                                             <tr key={order.id}>
                                                 <td className="whitespace-nowrap px-6 py-4 font-medium">{order.name}</td>
                                                 <td className="whitespace-nowrap px-6 py-4 text-right font-medium">{order.quantity}</td>
+                                                <td className="whitespace-nowrap px-6 py-4 text-center">
+                                                    {order.isRecurring && <Repeat className="h-5 w-5 text-muted-foreground mx-auto" />}
+                                                </td>
                                                 <td className="whitespace-nowrap px-6 py-4 text-center">
                                                     <StatusToggle 
                                                         userId={user.uid}

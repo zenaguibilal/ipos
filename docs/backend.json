@@ -284,6 +284,10 @@
           "type": "boolean",
           "description": "Indicates if the order has been delivered/picked up."
         },
+        "isRecurring": {
+          "type": "boolean",
+          "description": "Indicates if the order is a daily recurring order."
+        },
         "createdAt": {
           "type": "string",
           "description": "Timestamp indicating when the order was created.",

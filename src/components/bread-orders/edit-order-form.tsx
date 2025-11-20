@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import type { BreadOrder } from '@/app/(app)/bread-orders/page';
 import { toast } from 'sonner';
 
@@ -22,6 +23,7 @@ export function EditOrderForm({ isOpen, onOpenChange, userId, order }: EditOrder
     const firestore = useFirestore();
     const [name, setName] = useState('');
     const [quantity, setQuantity] = useState('');
+    const [isRecurring, setIsRecurring] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
 
@@ -29,6 +31,7 @@ export function EditOrderForm({ isOpen, onOpenChange, userId, order }: EditOrder
         if (order) {
             setName(order.name);
             setQuantity(String(order.quantity));
+            setIsRecurring(order.isRecurring || false);
         }
     }, [order]);
 
@@ -54,6 +57,7 @@ export function EditOrderForm({ isOpen, onOpenChange, userId, order }: EditOrder
         updateDocumentNonBlocking(orderDocRef, {
             name: name,
             quantity: quantityNumber,
+            isRecurring: isRecurring,
         }, {
             onSuccess: () => {
                 setIsLoading(false);
@@ -105,6 +109,19 @@ export function EditOrderForm({ isOpen, onOpenChange, userId, order }: EditOrder
                                 className="col-span-3"
                                 required
                             />
+                        </div>
+                        <div className="flex items-center space-x-2 justify-center col-span-4 pt-2">
+                           <Checkbox 
+                                id="edit-is-recurring"
+                                checked={isRecurring}
+                                onCheckedChange={(checked) => setIsRecurring(checked as boolean)}
+                            />
+                            <Label
+                                htmlFor="edit-is-recurring"
+                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                            >
+                                Commande récurrente (quotidienne)
+                            </Label>
                         </div>
                     </div>
                     <DialogFooter>
