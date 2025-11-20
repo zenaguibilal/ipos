@@ -14,6 +14,7 @@ import { SettleDebtDialog } from '@/components/customers/settle-debt-dialog';
 import { MoreHorizontal, CreditCard, Pencil, Trash2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
+import { toast } from 'sonner';
 
 
 export interface Customer {
@@ -134,8 +135,14 @@ export default function CustomersPage() {
         if (!deletingCustomer || !firestore || !user) return;
         const customerDocRef = doc(firestore, 'users', user.uid, 'customers', deletingCustomer.id);
         deleteDocumentNonBlocking(customerDocRef, {
-            onSuccess: () => setDeletingCustomer(null),
-            onError: (err) => console.error("Failed to delete customer:", err)
+            onSuccess: () => {
+                setDeletingCustomer(null);
+                toast.success(`Le client "${deletingCustomer.firstName} ${deletingCustomer.lastName}" a été supprimé.`);
+            },
+            onError: (err) => {
+                console.error("Failed to delete customer:", err);
+                toast.error("Échec de la suppression du client.");
+            }
         });
     }
 
@@ -151,9 +158,11 @@ export default function CustomersPage() {
         }, {
             onSuccess: () => {
                 setSettlingDebtForCustomer(null);
+                toast.success(`Paiement de ${amount.toFixed(2)} € enregistré pour ${settlingDebtForCustomer.firstName} ${settlingDebtForCustomer.lastName}.`);
             },
             onError: (err) => {
                 console.error("Failed to add payment:", err);
+                toast.error("Échec de l'enregistrement du paiement.");
             }
         })
     };

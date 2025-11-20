@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { toast } from 'sonner';
 
 interface AddCustomerFormProps {
     isOpen: boolean;
@@ -61,10 +62,12 @@ export function AddCustomerForm({ isOpen, onOpenChange, userId }: AddCustomerFor
                 setIsLoading(false);
                 onOpenChange(false);
                 resetForm();
+                toast.success('Client ajouté avec succès.');
             },
             onError: (err) => {
                 setIsLoading(false);
                 setError("Une erreur est survenue lors de l'ajout du client.");
+                toast.error("Échec de l'ajout du client.");
                 console.error(err);
             }
         });

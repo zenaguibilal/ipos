@@ -8,7 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import type { Customer } from '@/app/customers/page';
+import type { Customer } from '@/app/(app)/customers/page';
+import { toast } from 'sonner';
 
 interface EditCustomerFormProps {
     isOpen: boolean;
@@ -62,10 +63,12 @@ export function EditCustomerForm({ isOpen, onOpenChange, userId, customer }: Edi
             onSuccess: () => {
                 setIsLoading(false);
                 onOpenChange(false);
+                toast.success('Client mis à jour avec succès.');
             },
             onError: (err) => {
                 setIsLoading(false);
                 setError("Une erreur est survenue lors de la mise à jour du client.");
+                toast.error("Échec de la mise à jour du client.");
                 console.error(err);
             }
         });
@@ -146,5 +149,3 @@ export function EditCustomerForm({ isOpen, onOpenChange, userId, customer }: Edi
         </Dialog>
     );
 }
-
-    
