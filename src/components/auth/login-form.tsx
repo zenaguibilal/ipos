@@ -1,3 +1,4 @@
+
 'use client';
 
 import { initiateEmailSignIn } from '@/firebase/non-blocking-login';
@@ -17,7 +18,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
-import { getAuth, setPersistence, browserSessionPersistence, localPersistence } from 'firebase/auth';
+import { getAuth, setPersistence, browserSessionPersistence, browserLocalPersistence } from 'firebase/auth';
 
 function LoginFormComponent() {
   const [email, setEmail] = useState('');
@@ -44,7 +45,7 @@ function LoginFormComponent() {
       return;
     }
 
-    const persistence = rememberMe ? localPersistence : browserSessionPersistence;
+    const persistence = rememberMe ? browserLocalPersistence : browserSessionPersistence;
     setPersistence(auth, persistence)
       .then(() => {
         return initiateEmailSignIn(auth, email, password);
