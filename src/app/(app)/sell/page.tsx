@@ -360,7 +360,7 @@ export default function SellPage() {
                         {!showTabs && <CardTitle>Vente en cours</CardTitle>}
                         <div className="grid w-full items-center gap-1.5 pt-4">
                             <Label htmlFor="customer-select">Ouvrir un onglet de vente pour un client</Label>
-                             <Select onValueChange={handleCustomerSelect} value={activeCartId} disabled={isLoadingCustomers || !customers?.length}>
+                             <Select onValueChange={handleCustomerSelect} value="" disabled={isLoadingCustomers || !customers?.length}>
                                 <SelectTrigger id="customer-select" className="w-full">
                                     <div className="flex items-center gap-2">
                                         <User className="h-4 w-4 text-muted-foreground" />
@@ -391,9 +391,9 @@ export default function SellPage() {
                                         <TabsTrigger key={cart.customerId} value={cart.customerId} className="relative">
                                             {cart.customerName}
                                             {cart.customerId !== 'none' && (
-                                                <button onClick={(e) => closeCart(e, cart.customerId)} className="absolute top-1 right-1 rounded-full p-0.5 hover:bg-muted-foreground/20">
+                                                <div role="button" onClick={(e) => closeCart(e, cart.customerId)} className="absolute top-1 right-1 rounded-full p-0.5 hover:bg-muted-foreground/20">
                                                     <X className="h-3 w-3" />
-                                                </button>
+                                                </div>
                                             )}
                                         </TabsTrigger>
                                     ))}
