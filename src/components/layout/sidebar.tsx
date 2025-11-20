@@ -94,7 +94,7 @@ export function Sidebar({ children }: { children: React.ReactNode }) {
     );
   }
   
-  const currentPage = navLinks.find(link => link.href === pathname);
+  const currentPage = navLinks.find(link => pathname.startsWith(link.href));
 
   return (
     <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
