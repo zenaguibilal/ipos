@@ -11,7 +11,7 @@ import { AddOrderForm } from '@/components/bread-orders/add-order-form';
 import { EditOrderForm } from '@/components/bread-orders/edit-order-form';
 import { DeleteOrderDialog } from '@/components/bread-orders/delete-order-dialog';
 import { ResetRecurringDialog } from '@/components/bread-orders/reset-recurring-dialog';
-import { MoreHorizontal, Pencil, Trash2, Repeat, RefreshCw, Cookie, CheckCircle } from 'lucide-react';
+import { MoreHorizontal, Pencil, Trash2, Repeat, RefreshCw, Cookie, CheckCircle, PackageMinus } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
@@ -43,9 +43,9 @@ export default function BreadOrdersPage() {
         }
     }, [user, isUserLoading, router]);
 
-    const { recurringOrdersCount, totalOrdered, totalDelivered } = useMemo(() => {
+    const { recurringOrdersCount, totalOrdered, totalDelivered, totalRemaining } = useMemo(() => {
         if (!orders) {
-            return { recurringOrdersCount: 0, totalOrdered: 0, totalDelivered: 0 };
+            return { recurringOrdersCount: 0, totalOrdered: 0, totalDelivered: 0, totalRemaining: 0 };
         }
         const recurring = orders.filter(o => o.isRecurring).length;
         const ordered = orders.reduce((sum, order) => sum + order.quantity, 0);
@@ -56,7 +56,8 @@ export default function BreadOrdersPage() {
         return {
             recurringOrdersCount: recurring,
             totalOrdered: ordered,
-            totalDelivered: delivered
+            totalDelivered: delivered,
+            totalRemaining: ordered - delivered
         };
     }, [orders]);
 
@@ -175,7 +176,7 @@ export default function BreadOrdersPage() {
                         </div>
                     </CardHeader>
                     <CardContent>
-                        <div className="grid gap-4 md:grid-cols-2 mb-4">
+                        <div className="grid gap-4 md:grid-cols-3 mb-4">
                              <Card>
                                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                     <CardTitle className="text-sm font-medium">Total Commandé</CardTitle>
@@ -192,6 +193,15 @@ export default function BreadOrdersPage() {
                                 </CardHeader>
                                 <CardContent>
                                     <div className="text-2xl font-bold">{totalDelivered}</div>
+                                </CardContent>
+                            </Card>
+                            <Card>
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardTitle className="text-sm font-medium">Restant à Livrer</CardTitle>
+                                    <PackageMinus className="h-4 w-4 text-muted-foreground" />
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="text-2xl font-bold">{totalRemaining}</div>
                                 </CardContent>
                             </Card>
                         </div>
