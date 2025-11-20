@@ -8,31 +8,41 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { collection, doc, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { AddProductForm } from '@/components/sell/add-product-form';
-import { MinusCircle, PlusCircle, User, XCircle } from 'lucide-react';
+import { MinusCircle, PlusCircle, User, XCircle, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { PaymentDialog } from '@/components/sell/payment-dialog';
 import Link from 'next/link';
 import type { Product, Customer } from '@/lib/types';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { cn } from '@/lib/utils';
 
 interface CartItem extends Product {
     cartQuantity: number;
 }
 
+interface Cart {
+    customerId: string;
+    customerName: string;
+    items: CartItem[];
+}
 
 export default function SellPage() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const router = useRouter();
 
-  const [cart, setCart] = useState<CartItem[]>([]);
+  const [carts, setCarts] = useState<Record<string, Cart>>({
+      'none': { customerId: 'none', customerName: 'Vente au comptoir', items: [] }
+  });
+  const [activeCartId, setActiveCartId] = useState<string>('none');
+
   const [isAddingProduct, setIsAddingProduct] = useState(false);
   const [isProcessingSale, setIsProcessingSale] = useState(false);
-  const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [statusMessage, setStatusMessage] = useState<{ cartId: string; type: 'success' | 'error'; text: string } | null>(null);
   const [barcodeSearch, setBarcodeSearch] = useState('');
   const [productSearch, setProductSearch] = useState('');
-  const [selectedCustomerId, setSelectedCustomerId] = useState<string>('none');
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
 
   // Products collection
@@ -49,84 +59,140 @@ export default function SellPage() {
   }, [user, firestore]);
   const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersCollectionRef);
 
-
   useEffect(() => {
     if (!isUserLoading && !user) {
       router.push('/login');
     }
   }, [user, isUserLoading, router]);
-
-  const showStatusMessage = useCallback((type: 'success' | 'error', text: string) => {
-    setStatusMessage({ type, text });
+  
+  const showStatusMessage = useCallback((type: 'success' | 'error', text: string, cartId: string) => {
+    setStatusMessage({ type, text, cartId });
     setTimeout(() => setStatusMessage(null), 3000);
   }, []);
   
   const addToCart = useCallback((product: Product) => {
     if (product.quantity <= 0) {
-        showStatusMessage('error', `Stock épuisé pour ${product.name}.`);
+        showStatusMessage('error', `Stock épuisé pour ${product.name}.`, activeCartId);
         return;
     }
-    setCart((prevCart) => {
-        const existingItem = prevCart.find((item) => item.id === product.id);
-        if (existingItem) {
-            if (existingItem.cartQuantity >= product.quantity) {
-                showStatusMessage('error', `Quantité maximale atteinte pour ${product.name}.`);
-                return prevCart;
-            }
-            return prevCart.map((item) =>
-                item.id === product.id ? { ...item, cartQuantity: item.cartQuantity + 1 } : item
-            );
-        }
-        showStatusMessage('success', `${product.name} ajouté.`);
-        return [...prevCart, { ...product, cartQuantity: 1 }];
-    });
-  }, [showStatusMessage]);
+    setCarts(prevCarts => {
+        const activeCart = prevCarts[activeCartId];
+        const newItems = [...activeCart.items];
+        const existingItemIndex = newItems.findIndex((item) => item.id === product.id);
 
-  const decreaseQuantity = (productId: string) => {
-      setCart((prevCart) => {
-          const existingItem = prevCart.find((item) => item.id === productId);
-          if (existingItem && existingItem.cartQuantity > 1) {
-              return prevCart.map((item) =>
-                  item.id === productId ? { ...item, cartQuantity: item.cartQuantity - 1 } : item
-              );
-          }
-          return prevCart.filter((item) => item.id !== productId);
-      });
-  };
+        if (existingItemIndex > -1) {
+            if (newItems[existingItemIndex].cartQuantity >= product.quantity) {
+                showStatusMessage('error', `Quantité maximale atteinte pour ${product.name}.`, activeCartId);
+                return prevCarts;
+            }
+            newItems[existingItemIndex] = { ...newItems[existingItemIndex], cartQuantity: newItems[existingItemIndex].cartQuantity + 1 };
+        } else {
+            showStatusMessage('success', `${product.name} ajouté.`, activeCartId);
+            newItems.push({ ...product, cartQuantity: 1 });
+        }
+        
+        return {
+            ...prevCarts,
+            [activeCartId]: { ...activeCart, items: newItems }
+        };
+    });
+  }, [activeCartId, showStatusMessage]);
+
+  const updateCartItemQuantity = (productId: string, newQuantity: number) => {
+    setCarts(prevCarts => {
+        const activeCart = prevCarts[activeCartId];
+        let newItems = [...activeCart.items];
+
+        if (newQuantity <= 0) {
+            newItems = newItems.filter(item => item.id !== productId);
+        } else {
+            const itemIndex = newItems.findIndex(item => item.id === productId);
+            if (itemIndex > -1) {
+                const originalProduct = products?.find(p => p.id === productId);
+                if (originalProduct && newQuantity > originalProduct.quantity) {
+                    showStatusMessage('error', `Stock insuffisant pour ${newItems[itemIndex].name}.`, activeCartId);
+                    return prevCarts;
+                }
+                newItems[itemIndex] = { ...newItems[itemIndex], cartQuantity: newQuantity };
+            }
+        }
+        
+        return {
+            ...prevCarts,
+            [activeCartId]: { ...activeCart, items: newItems }
+        };
+    });
+};
 
   const removeFromCart = (productId: string) => {
-    setCart((prevCart) => prevCart.filter((item) => item.id !== productId));
+    updateCartItemQuantity(productId, 0);
+  };
+  
+  const activeCart = carts[activeCartId];
+  const total = useMemo(() => {
+    if (!activeCart) return 0;
+    return activeCart.items.reduce((sum, item) => sum + item.price * item.cartQuantity, 0);
+  }, [activeCart]);
+
+
+  const handleCustomerSelect = (customerId: string) => {
+    if (customerId === 'none' || carts[customerId]) {
+      return; // Do nothing if it's the placeholder or cart already exists
+    }
+    const customer = customers?.find(c => c.id === customerId);
+    if (customer) {
+        setCarts(prev => ({
+            ...prev,
+            [customerId]: {
+                customerId,
+                customerName: `${customer.firstName} ${customer.lastName}`,
+                items: []
+            }
+        }));
+        setActiveCartId(customerId);
+    }
+  };
+
+  const closeCart = (e: React.MouseEvent, cartIdToClose: string) => {
+    e.stopPropagation();
+    if (cartIdToClose === 'none') return; // Cannot close the default cart
+
+    setCarts(prev => {
+        const newCarts = { ...prev };
+        delete newCarts[cartIdToClose];
+        return newCarts;
+    });
+
+    // If we closed the active cart, switch to the default one
+    if (activeCartId === cartIdToClose) {
+        setActiveCartId('none');
+    }
   };
 
 
-  const total = useMemo(() => {
-    return cart.reduce((sum, item) => sum + item.price * item.cartQuantity, 0);
-  }, [cart]);
-
   const handleProcessSale = (amountPaid: number) => {
-    if (!firestore || !user || cart.length === 0) return;
+    if (!firestore || !user || !activeCart || activeCart.items.length === 0) return;
     
     setIsProcessingSale(true);
     setStatusMessage(null);
 
-    const selectedCustomer = customers?.find(c => c.id === selectedCustomerId);
     const remainingBalance = total - amountPaid;
     const paymentStatus = remainingBalance <= 0 ? 'paid' : (amountPaid > 0 ? 'partial' : 'unpaid');
     const invoiceNumber = `F-${Date.now()}`;
 
     const saleData: any = {
         invoiceNumber: invoiceNumber,
-        items: cart.map(item => ({ id: item.id, name: item.name, price: item.price, quantity: item.cartQuantity })),
+        items: activeCart.items.map(item => ({ id: item.id, name: item.name, price: item.price, quantity: item.cartQuantity })),
         total: total,
         amountPaid: amountPaid,
         remainingBalance: remainingBalance > 0 ? remainingBalance : 0,
         paymentStatus: paymentStatus,
         createdAt: serverTimestamp(),
     };
-
-    if (selectedCustomer) {
-        saleData.customerId = selectedCustomer.id;
-        saleData.customerName = `${selectedCustomer.firstName} ${selectedCustomer.lastName}`;
+    
+    if (activeCart.customerId !== 'none') {
+        saleData.customerId = activeCart.customerId;
+        saleData.customerName = activeCart.customerName;
     }
 
     const batch = writeBatch(firestore);
@@ -135,7 +201,7 @@ export default function SellPage() {
     const newSaleRef = doc(salesCollectionRef);
     batch.set(newSaleRef, saleData);
 
-    for (const item of cart) {
+    for (const item of activeCart.items) {
         const productRef = doc(firestore, 'users', user.uid, 'products', item.id);
         const newQuantity = item.quantity - item.cartQuantity;
         batch.update(productRef, { quantity: newQuantity });
@@ -143,16 +209,20 @@ export default function SellPage() {
 
     batch.commit()
       .then(() => {
-            setCart([]);
-            setSelectedCustomerId('none');
+            // Reset only the active cart
+            setCarts(prev => ({
+                ...prev,
+                [activeCartId]: { ...prev[activeCartId], items: [] }
+            }));
+            
             setIsProcessingSale(false);
-            showStatusMessage('success', `Vente enregistrée avec succès (Facture ${invoiceNumber})`);
+            showStatusMessage('success', `Vente enregistrée (Facture ${invoiceNumber})`, activeCartId);
             setIsPaymentDialogOpen(false);
       })
       .catch((err) => {
             console.error("Erreur lors de la vente :", err);
             setIsProcessingSale(false);
-            showStatusMessage('error', "Échec de l'enregistrement de la vente.");
+            showStatusMessage('error', "Échec de l'enregistrement de la vente.", activeCartId);
             setIsPaymentDialogOpen(false);
       });
   };
@@ -167,10 +237,10 @@ export default function SellPage() {
         } else {
             // Only show error if input is reasonably long, prevents errors while typing
             if (barcodeSearch.length > 3) { 
-                 showStatusMessage('error', "Produit non trouvé.");
+                 showStatusMessage('error', "Produit non trouvé.", activeCartId);
             }
         }
-    }, [barcodeSearch, products, addToCart, showStatusMessage]);
+    }, [barcodeSearch, products, addToCart, showStatusMessage, activeCartId]);
 
   const filteredProducts = useMemo(() => {
     if (!products) return [];
@@ -207,7 +277,7 @@ export default function SellPage() {
                     <CardHeader>
                         <CardTitle>Produits</CardTitle>
                         <CardDescription>
-                            Scannez un code-barres, recherchez un produit par nom, ou cliquez pour l'ajouter au panier.
+                            Scannez un code-barres, recherchez un produit par nom, ou cliquez pour l'ajouter au panier actif.
                         </CardDescription>
                          <div className="flex flex-col gap-2 pt-2 sm:flex-row">
                              <Input 
@@ -225,7 +295,7 @@ export default function SellPage() {
                             />
                         </div>
                         <div className="h-5 pt-1">
-                            {statusMessage && (
+                            {statusMessage && statusMessage.cartId === activeCartId && (
                                 <p className={`text-xs ${statusMessage.type === 'error' ? 'text-red-500' : 'text-green-500'}`}>
                                     {statusMessage.text}
                                 </p>
@@ -280,10 +350,10 @@ export default function SellPage() {
             <div className="flex flex-col gap-4 md:col-span-1 h-full">
                 <Card className="flex flex-col h-full">
                     <CardHeader>
-                        <CardTitle>Vente en cours</CardTitle>
+                        <CardTitle>Ventes en cours</CardTitle>
                         <div className="grid w-full items-center gap-1.5 pt-4">
-                            <Label htmlFor="customer-select">Associer à un client</Label>
-                             <Select onValueChange={setSelectedCustomerId} value={selectedCustomerId} disabled={isLoadingCustomers || !customers?.length}>
+                            <Label htmlFor="customer-select">Ouvrir un onglet de vente pour un client</Label>
+                             <Select onValueChange={handleCustomerSelect} value="none" disabled={isLoadingCustomers || !customers?.length}>
                                 <SelectTrigger id="customer-select" className="w-full">
                                     <div className="flex items-center gap-2">
                                         <User className="h-4 w-4 text-muted-foreground" />
@@ -291,9 +361,9 @@ export default function SellPage() {
                                     </div>
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="none">Aucun client (Vente au comptoir)</SelectItem>
+                                    <SelectItem value="none" disabled>Sélectionner un client...</SelectItem>
                                     {customers?.map(customer => (
-                                        <SelectItem key={customer.id} value={customer.id}>
+                                        <SelectItem key={customer.id} value={customer.id} disabled={!!carts[customer.id]}>
                                             {customer.firstName} {customer.lastName}
                                         </SelectItem>
                                     ))}
@@ -306,47 +376,68 @@ export default function SellPage() {
                             )}
                         </div>
                     </CardHeader>
-                    <CardContent className="flex-1 overflow-auto">
-                        {cart.length === 0 ? (
-                            <div className="flex h-full flex-col items-center justify-center text-center">
-                                {statusMessage?.type === 'success' && !isProcessingSale ? (
-                                    <p className="text-green-500">{statusMessage.text}</p>
-                                ) : (
-                                    <p className="text-muted-foreground">
-                                        Le panier est vide.
-                                    </p>
-                                )}
-                            </div>
-                        ) : (
-                           <div className="space-y-2">
-                               {cart.map((item) => (
-                                   <div key={item.id} className="flex items-center justify-between">
-                                       <div>
-                                           <p className="font-medium">{item.name}</p>
-                                           <p className="text-sm text-muted-foreground">{item.cartQuantity} x {item.price.toFixed(2)} DA</p>
-                                       </div>
-                                       <div className="flex items-center gap-2">
-                                           <span className="font-semibold">{(item.cartQuantity * item.price).toFixed(2)} DA</span>
-                                           <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => addToCart(item)}><PlusCircle className="h-4 w-4" /></Button>
-                                           <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => decreaseQuantity(item.id)}><MinusCircle className="h-4 w-4" /></Button>
-                                           <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => removeFromCart(item.id)}><XCircle className="h-4 w-4" /></Button>
-                                       </div>
-                                   </div>
-                               ))}
-                           </div>
-                        )}
-                    </CardContent>
+
+                    <Tabs value={activeCartId} onValueChange={setActiveCartId} className="flex-1 flex flex-col overflow-hidden">
+                        <div className="px-4">
+                            <TabsList className="grid w-full grid-cols-2">
+                                {Object.values(carts).map(cart => (
+                                    <TabsTrigger key={cart.customerId} value={cart.customerId} className="relative">
+                                        {cart.customerName}
+                                        {cart.customerId !== 'none' && (
+                                            <button onClick={(e) => closeCart(e, cart.customerId)} className="absolute top-1 right-1 rounded-full p-0.5 hover:bg-muted-foreground/20">
+                                                <X className="h-3 w-3" />
+                                            </button>
+                                        )}
+                                    </TabsTrigger>
+                                ))}
+                            </TabsList>
+                        </div>
+                        
+                        {Object.values(carts).map(cart => (
+                             <TabsContent key={cart.customerId} value={cart.customerId} className="flex-1 flex flex-col overflow-hidden mt-0">
+                                <CardContent className="flex-1 overflow-auto pt-4">
+                                    {cart.items.length === 0 ? (
+                                        <div className="flex h-full flex-col items-center justify-center text-center">
+                                             {statusMessage?.type === 'success' && statusMessage.cartId === cart.customerId && !isProcessingSale ? (
+                                                <p className="text-green-500">{statusMessage.text}</p>
+                                             ) : (
+                                                <p className="text-muted-foreground">Le panier est vide.</p>
+                                             )}
+                                        </div>
+                                    ) : (
+                                    <div className="space-y-2">
+                                        {cart.items.map((item) => (
+                                            <div key={item.id} className="flex items-center justify-between">
+                                                <div>
+                                                    <p className="font-medium">{item.name}</p>
+                                                    <p className="text-sm text-muted-foreground">{item.cartQuantity} x {item.price.toFixed(2)} DA</p>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-semibold">{(item.cartQuantity * item.price).toFixed(2)} DA</span>
+                                                    <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => updateCartItemQuantity(item.id, item.cartQuantity + 1)}><PlusCircle className="h-4 w-4" /></Button>
+                                                    <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => updateCartItemQuantity(item.id, item.cartQuantity - 1)}><MinusCircle className="h-4 w-4" /></Button>
+                                                    <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => removeFromCart(item.id)}><XCircle className="h-4 w-4" /></Button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    )}
+                                </CardContent>
+                             </TabsContent>
+                        ))}
+                    </Tabs>
+
                     <CardFooter className="flex flex-col gap-2 mt-auto pt-4 border-t">
-                         <div className="flex w-full justify-between font-semibold">
+                            <div className="flex w-full justify-between font-semibold">
                             <span>Total</span>
                             <span>{total.toFixed(2)} DA</span>
                         </div>
                         <Button 
                             className="w-full" 
-                            disabled={cart.length === 0 || isProcessingSale}
+                            disabled={!activeCart || activeCart.items.length === 0 || isProcessingSale}
                             onClick={() => setIsPaymentDialogOpen(true)}
                         >
-                            {isProcessingSale ? 'Encaissement...' : 'Encaisser'}
+                            {isProcessingSale ? 'Encaissement...' : `Encaisser pour ${activeCart?.customerName}`}
                         </Button>
                     </CardFooter>
                 </Card>
@@ -355,3 +446,5 @@ export default function SellPage() {
     </>
   );
 }
+
+    
