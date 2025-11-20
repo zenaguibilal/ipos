@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
@@ -19,12 +20,20 @@ export interface Sale {
     remainingBalance: number;
     createdAt: Timestamp; 
     customerId?: string;
+    items: SaleItem[];
+}
+export interface SaleItem {
+    id: string; // This is the product ID
+    name: string;
+    price: number;
+    quantity: number;
 }
 export interface Product {
     id: string;
     name: string;
     quantity: number;
     minStockLevel: number;
+    purchasePrice: number;
 }
 export interface Customer {
     id: string;
@@ -72,6 +81,7 @@ export default function DashboardPage() {
     const stats = {
       dailyRevenue: 0,
       dailySalesCount: 0,
+      dailyNetProfit: 0,
       totalDebt: 0,
       lowStockCount: 0,
       lowStockProducts: []
@@ -79,11 +89,26 @@ export default function DashboardPage() {
      const chartData: ChartData[] = [];
 
     if (!sales || !products || !customers || !payments) return { stats, chartData };
-
-    // Daily stats
+    
     const todaySales = sales.filter(sale => sale.createdAt && isToday(sale.createdAt.toDate()));
+    
+    // Daily stats
     stats.dailyRevenue = todaySales.reduce((sum, sale) => sum + sale.total, 0);
     stats.dailySalesCount = todaySales.length;
+
+    // Daily Net Profit
+    stats.dailyNetProfit = todaySales.reduce((totalProfit, sale) => {
+      const saleProfit = sale.items.reduce((currentSaleProfit, item) => {
+        const product = products.find(p => p.id === item.id);
+        if (product) {
+          const itemProfit = (item.price - product.purchasePrice) * item.quantity;
+          return currentSaleProfit + itemProfit;
+        }
+        return currentSaleProfit; // Or handle case where product not found
+      }, 0);
+      return totalProfit + saleProfit;
+    }, 0);
+
 
     // Low stock
     stats.lowStockProducts = products.filter(p => p.quantity <= p.minStockLevel);
