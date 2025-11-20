@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useUser, useFirestore, updateDocumentNonBlocking } from '@/firebase';
+import { useUser, useFirestore, updateDocumentNonBlocking, useDoc, useMemoFirebase } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { doc } from 'firebase/firestore';
@@ -11,57 +11,69 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 
+interface UserProfile {
+    firstName: string;
+    lastName: string;
+    phone?: string;
+    email: string;
+}
+
 export default function ProfilePage() {
-    const { user, isUserLoading } = useUser();
+    const { user, isUserLoading: isAuthLoading } = useUser();
     const firestore = useFirestore();
     const router = useRouter();
 
-    const [firstName, setFirstName] = useState('');
-    const [lastName, setLastName] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-
-    // This fetches the user's profile data from Firestore
-    const userDocRef = useMemo(() => {
+    const userDocRef = useMemoFirebase(() => {
         if (!user || !firestore) return null;
         return doc(firestore, 'users', user.uid);
     }, [user, firestore]);
+    
+    const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userDocRef);
 
-    // When the user data loads, populate the form
+    const [firstName, setFirstName] = useState('');
+    const [lastName, setLastName] = useState('');
+    const [phone, setPhone] = useState('');
+    const [isSaving, setIsSaving] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    
+    // When the user data loads from firestore, populate the form
     useEffect(() => {
-        if (user && user.displayName) {
-            const nameParts = user.displayName.split(' ');
-            setFirstName(nameParts[0] || '');
-            setLastName(nameParts.slice(1).join(' ') || '');
+        if (userProfile) {
+            setFirstName(userProfile.firstName || '');
+            setLastName(userProfile.lastName || '');
+            setPhone(userProfile.phone || '');
         }
-    }, [user]);
+    }, [userProfile]);
 
     // Handle form submission
     const handleUpdateProfile = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         if (!userDocRef) return;
         
-        setIsLoading(true);
+        setIsSaving(true);
         setError(null);
         
         updateDocumentNonBlocking(userDocRef, {
             firstName: firstName,
             lastName: lastName,
+            phone: phone
         }, {
             onSuccess: () => {
-                setIsLoading(false);
+                setIsSaving(false);
                 toast.success('Profil mis à jour avec succès.');
             },
             onError: (err) => {
-                setIsLoading(false);
+                setIsSaving(false);
                 setError("Une erreur est survenue lors de la mise à jour du profil.");
                 console.error(err);
                 toast.error("Échec de la mise à jour du profil.");
             }
         });
     };
+    
+    const isLoading = isAuthLoading || isProfileLoading;
 
-    if (isUserLoading || !user) {
+    if (isLoading || !user) {
         return (
             <div className="flex h-full items-center justify-center">
                 <p>Chargement du profil...</p>
@@ -91,7 +103,7 @@ export default function ProfilePage() {
                                 id="firstName" 
                                 value={firstName} 
                                 onChange={(e) => setFirstName(e.target.value)} 
-                                disabled={isLoading}
+                                disabled={isSaving}
                                 required
                             />
                         </div>
@@ -101,12 +113,22 @@ export default function ProfilePage() {
                                 id="lastName" 
                                 value={lastName} 
                                 onChange={(e) => setLastName(e.target.value)} 
-                                disabled={isLoading}
+                                disabled={isSaving}
                                 required
                             />
                         </div>
-                         <Button type="submit" className="w-full" disabled={isLoading}>
-                            {isLoading ? 'Enregistrement...' : 'Enregistrer les modifications'}
+                         <div className="space-y-2">
+                            <Label htmlFor="phone">Téléphone</Label>
+                            <Input 
+                                id="phone" 
+                                type="tel"
+                                value={phone} 
+                                onChange={(e) => setPhone(e.target.value)} 
+                                disabled={isSaving}
+                            />
+                        </div>
+                         <Button type="submit" className="w-full" disabled={isSaving}>
+                            {isSaving ? 'Enregistrement...' : 'Enregistrer les modifications'}
                         </Button>
                     </CardContent>
                 </form>
