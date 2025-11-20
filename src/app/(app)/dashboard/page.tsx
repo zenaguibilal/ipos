@@ -16,6 +16,7 @@ export interface Sale {
     total: number;
     remainingBalance: number;
     createdAt: Timestamp; 
+    customerId?: string;
 }
 export interface Product {
     id: string;
@@ -70,7 +71,7 @@ export default function DashboardPage() {
     };
 
     // Daily stats
-    const todaySales = sales.filter(sale => isToday(sale.createdAt.toDate()));
+    const todaySales = sales.filter(sale => sale.createdAt && isToday(sale.createdAt.toDate()));
     const dailyRevenue = todaySales.reduce((sum, sale) => sum + sale.total, 0);
     const dailySalesCount = todaySales.length;
 

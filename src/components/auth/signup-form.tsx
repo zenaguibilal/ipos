@@ -1,3 +1,4 @@
+
 'use client';
 
 import { initiateEmailSignUp } from '@/firebase/non-blocking-login';
@@ -6,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState, Suspense } from 'react';
 import Link from 'next/link';
 import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import { doc, getFirestore } from 'firebase/firestore';
+import { doc, getFirestore, serverTimestamp } from 'firebase/firestore';
 import { sendEmailVerification } from 'firebase/auth';
 import { Button } from "@/components/ui/button"
 import {
@@ -27,6 +28,7 @@ function SignupFormComponent() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const auth = useAuth();
   const { user, isUserLoading } = useUser();
   const router = useRouter();
@@ -46,6 +48,7 @@ function SignupFormComponent() {
       return;
     }
     
+    setIsLoading(true);
     initiateEmailSignUp(auth, email, password)
         .then(userCredential => {
             if (userCredential.user) {
@@ -56,12 +59,13 @@ function SignupFormComponent() {
                     firstName: firstName,
                     lastName: lastName,
                     email: userCredential.user.email,
-                    createdAt: new Date().toISOString(),
-                    updatedAt: new Date().toISOString(),
+                    createdAt: serverTimestamp(),
+                    updatedAt: serverTimestamp(),
                 }, { merge: true });
 
                 sendEmailVerification(userCredential.user);
                 setMessage("Votre compte a été créé avec succès ! Nous avons envoyé un lien de vérification à votre adresse e-mail.");
+                setIsLoading(false);
             }
         })
         .catch((err: any) => {
@@ -73,6 +77,7 @@ function SignupFormComponent() {
                 setError("Une erreur s'est produite lors de la création du compte. Veuillez réessayer.");
                 console.error(err);
             }
+            setIsLoading(false);
         });
   };
 
@@ -101,6 +106,7 @@ function SignupFormComponent() {
                 required 
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
+                disabled={isLoading}
               />
             </div>
             <div className="grid gap-2">
@@ -111,6 +117,7 @@ function SignupFormComponent() {
                 required 
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
+                disabled={isLoading}
               />
             </div>
           </div>
@@ -123,6 +130,7 @@ function SignupFormComponent() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              disabled={isLoading}
             />
           </div>
           <div className="grid gap-2">
@@ -133,17 +141,27 @@ function SignupFormComponent() {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              disabled={isLoading}
             />
           </div>
         </CardContent>
         <CardFooter className="flex flex-col">
-          <Button type="submit" className="w-full">Créer un compte</Button>
-          <p className="mt-4 text-xs text-center text-gray-400">
-            Vous avez déjà un compte ?{" "}
-            <Link href="/login" className=" underline">
-              Se connecter
-            </Link>
-          </p>
+          <Button type="submit" className="w-full" disabled={isLoading || !!message}>
+            {isLoading ? 'Création...' : 'Créer un compte'}
+          </Button>
+          {!message && (
+             <p className="mt-4 text-xs text-center text-gray-400">
+                Vous avez déjà un compte ?{" "}
+                <Link href="/login" className=" underline">
+                  Se connecter
+                </Link>
+            </p>
+          )}
+          {message && (
+             <p className="mt-4 text-xs text-center text-gray-400">
+                Vous pouvez maintenant vous <Link href="/login" className="underline">connecter</Link>.
+             </p>
+          )}
         </CardFooter>
       </form>
     </Card>

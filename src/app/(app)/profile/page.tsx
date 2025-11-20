@@ -4,11 +4,12 @@
 import { useEffect, useState } from 'react';
 import { useUser, useFirestore, useDoc, useMemoFirebase, updateDocumentNonBlocking } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { doc } from 'firebase/firestore';
+import { doc, serverTimestamp } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { toast } from 'sonner';
 
 export default function ProfilePage() {
   const { user, isUserLoading } = useUser();
@@ -29,8 +30,6 @@ export default function ProfilePage() {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [isSaving, setIsSaving] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -50,21 +49,19 @@ export default function ProfilePage() {
     if (!userDocRef) return;
 
     setIsSaving(true);
-    setMessage(null);
-    setError(null);
 
     updateDocumentNonBlocking(userDocRef, {
       firstName: firstName,
       lastName: lastName,
-      updatedAt: new Date().toISOString(),
+      updatedAt: serverTimestamp(),
     }, {
       onSuccess: () => {
         setIsSaving(false);
-        setMessage('Votre profil a été mis à jour avec succès !');
+        toast.success('Votre profil a été mis à jour avec succès !');
       },
       onError: (err) => {
         setIsSaving(false);
-        setError("Une erreur est survenue lors de la mise à jour.");
+        toast.error("Une erreur est survenue lors de la mise à jour.");
         // The global error handler will also catch and display this.
         console.error(err);
       }
@@ -100,8 +97,6 @@ export default function ProfilePage() {
             <CardDescription>Mettez à jour vos informations personnelles.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {message && <p className="text-sm text-green-500 text-center">{message}</p>}
-            {error && <p className="text-sm text-red-500 text-center">{error}</p>}
             <div className="grid gap-2">
               <Label htmlFor="first-name">Prénom</Label>
               <Input
@@ -109,6 +104,7 @@ export default function ProfilePage() {
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
                 required
+                disabled={isSaving}
               />
             </div>
             <div className="grid gap-2">
@@ -118,6 +114,7 @@ export default function ProfilePage() {
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
                 required
+                disabled={isSaving}
               />
             </div>
             <div className="grid gap-2">

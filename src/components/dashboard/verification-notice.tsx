@@ -10,16 +10,21 @@ export function VerificationNotice() {
   const { user } = useUser();
   const auth = useAuth();
   const [message, setMessage] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleResendVerification = () => {
     if (user && auth) {
+      setIsLoading(true);
+      setMessage(null);
       sendEmailVerification(user)
         .then(() => {
           setMessage("Un nouvel e-mail de vérification a été envoyé. Veuillez consulter votre boîte de réception.");
+          setIsLoading(false);
         })
         .catch((error) => {
           setMessage("Une erreur s'est produite lors de l'envoi de l'e-mail. Veuillez réessayer.");
           console.error(error);
+          setIsLoading(false);
         });
     }
   };
@@ -35,8 +40,9 @@ export function VerificationNotice() {
         variant="link"
         className="h-auto p-0 text-yellow-400"
         onClick={handleResendVerification}
+        disabled={isLoading}
       >
-        Renvoyer l'e-mail de vérification
+        {isLoading ? 'Envoi en cours...' : "Renvoyer l'e-mail de vérification"}
       </Button>
       {message && <p className="mt-2 text-xs">{message}</p>}
     </div>
