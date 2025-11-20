@@ -1,9 +1,9 @@
 
 'use client';
 
-import { useUser, useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { collection, doc, serverTimestamp, writeBatch } from 'firebase/firestore';
@@ -44,7 +44,7 @@ export default function SellPage() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isAddingProduct, setIsAddingProduct] = useState(false);
   const [isProcessingSale, setIsProcessingSale] = useState(false);
-  const [saleStatus, setSaleStatus] = useState<{ success?: string, error?: string } | null>(null);
+  const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [barcodeSearch, setBarcodeSearch] = useState('');
   const [productSearch, setProductSearch] = useState('');
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>('none');
@@ -70,32 +70,34 @@ export default function SellPage() {
       router.push('/login');
     }
   }, [user, isUserLoading, router]);
+
+  const showStatusMessage = useCallback((type: 'success' | 'error', text: string) => {
+    setStatusMessage({ type, text });
+    setTimeout(() => setStatusMessage(null), 3000);
+  }, []);
   
-  const addToCart = (product: Product) => {
+  const addToCart = useCallback((product: Product) => {
     if (product.quantity <= 0) {
-        setSaleStatus({ error: `Stock épuisé pour ${product.name}.` });
-        setTimeout(() => setSaleStatus(null), 3000);
+        showStatusMessage('error', `Stock épuisé pour ${product.name}.`);
         return;
     }
-    setSaleStatus(null);
     setCart((prevCart) => {
         const existingItem = prevCart.find((item) => item.id === product.id);
         if (existingItem) {
             if (existingItem.cartQuantity >= product.quantity) {
-                setSaleStatus({ error: `Quantité maximale atteinte pour ${product.name}.` });
-                setTimeout(() => setSaleStatus(null), 3000);
+                showStatusMessage('error', `Quantité maximale atteinte pour ${product.name}.`);
                 return prevCart;
             }
             return prevCart.map((item) =>
                 item.id === product.id ? { ...item, cartQuantity: item.cartQuantity + 1 } : item
             );
         }
+        showStatusMessage('success', `${product.name} ajouté.`);
         return [...prevCart, { ...product, cartQuantity: 1 }];
     });
-  };
+  }, [showStatusMessage]);
 
   const decreaseQuantity = (productId: string) => {
-      setSaleStatus(null);
       setCart((prevCart) => {
           const existingItem = prevCart.find((item) => item.id === productId);
           if (existingItem && existingItem.cartQuantity > 1) {
@@ -108,7 +110,6 @@ export default function SellPage() {
   };
 
   const removeFromCart = (productId: string) => {
-    setSaleStatus(null);
     setCart((prevCart) => prevCart.filter((item) => item.id !== productId));
   };
 
@@ -121,7 +122,7 @@ export default function SellPage() {
     if (!firestore || !user || cart.length === 0) return;
     
     setIsProcessingSale(true);
-    setSaleStatus(null);
+    setStatusMessage(null);
 
     const selectedCustomer = customers?.find(c => c.id === selectedCustomerId);
     const remainingBalance = total - amountPaid;
@@ -145,50 +146,47 @@ export default function SellPage() {
 
     const batch = writeBatch(firestore);
 
-    // 1. Create the sale document
     const salesCollectionRef = collection(firestore, 'users', user.uid, 'sales');
-    const newSaleRef = doc(salesCollectionRef); // Create a new doc ref with a unique ID
+    const newSaleRef = doc(salesCollectionRef);
     batch.set(newSaleRef, saleData);
 
-    // 2. Update product quantities
     for (const item of cart) {
         const productRef = doc(firestore, 'users', user.uid, 'products', item.id);
         const newQuantity = item.quantity - item.cartQuantity;
         batch.update(productRef, { quantity: newQuantity });
     }
 
-    // 3. Commit the batch
     batch.commit()
       .then(() => {
             setCart([]);
             setSelectedCustomerId('none');
             setIsProcessingSale(false);
-            setSaleStatus({ success: `Vente enregistrée avec succès (Facture ${invoiceNumber})` });
+            showStatusMessage('success', `Vente enregistrée avec succès (Facture ${invoiceNumber})`);
             setIsPaymentDialogOpen(false);
       })
       .catch((err) => {
             console.error("Erreur lors de la vente :", err);
             setIsProcessingSale(false);
-            setSaleStatus({ error: "Échec de l'enregistrement de la vente." });
+            showStatusMessage('error', "Échec de l'enregistrement de la vente.");
             setIsPaymentDialogOpen(false);
       });
   };
   
-  const handleBarcodeSearch = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!barcodeSearch.trim() || !products) return;
+    useEffect(() => {
+        if (!barcodeSearch.trim() || !products) return;
 
-    const foundProduct = products.find(p => p.barcode === barcodeSearch.trim());
-    if (foundProduct) {
-        addToCart(foundProduct);
-        setSaleStatus({ success: `${foundProduct.name} ajouté.` });
-    } else {
-        setSaleStatus({ error: "Aucun produit trouvé avec ce code-barres." });
-    }
-    setBarcodeSearch('');
-    setTimeout(() => setSaleStatus(null), 2000);
-  };
-  
+        const foundProduct = products.find(p => p.barcode === barcodeSearch.trim());
+        if (foundProduct) {
+            addToCart(foundProduct);
+            setBarcodeSearch(''); // Clear input after successful scan
+        } else {
+            // Only show error if input is reasonably long, prevents errors while typing
+            if (barcodeSearch.length > 3) { 
+                 showStatusMessage('error', "Produit non trouvé.");
+            }
+        }
+    }, [barcodeSearch, products, addToCart, showStatusMessage]);
+
   const filteredProducts = useMemo(() => {
     if (!products) return [];
     if (!productSearch.trim()) return products;
@@ -224,7 +222,7 @@ export default function SellPage() {
                     <CardHeader>
                         <CardTitle>Produits</CardTitle>
                         <CardDescription>
-                            Cliquez sur un produit pour l'ajouter, ou effectuez une recherche.
+                            Scannez un code-barres, recherchez un produit par nom, ou cliquez pour l'ajouter au panier.
                         </CardDescription>
                          <div className="flex flex-col gap-2 pt-2 sm:flex-row">
                              <Input 
@@ -233,17 +231,20 @@ export default function SellPage() {
                                 onChange={(e) => setProductSearch(e.target.value)}
                                 className="w-full"
                             />
-                            <form onSubmit={handleBarcodeSearch} className="w-full">
-                                <Input 
-                                    placeholder="Rechercher par code-barres..."
-                                    value={barcodeSearch}
-                                    onChange={(e) => setBarcodeSearch(e.target.value)}
-                                />
-                            </form>
+                            <Input 
+                                placeholder="Scanner ou taper le code-barres..."
+                                value={barcodeSearch}
+                                onChange={(e) => setBarcodeSearch(e.target.value)}
+                                className="w-full"
+                                autoFocus
+                            />
                         </div>
                         <div className="h-5 pt-1">
-                            {saleStatus?.error && <p className="text-xs text-red-500">{saleStatus.error}</p>}
-                            {saleStatus?.success && !isProcessingSale && cart.length > 0 && <p className="text-xs text-green-500">{saleStatus.success}</p>}
+                            {statusMessage && (
+                                <p className={`text-xs ${statusMessage.type === 'error' ? 'text-red-500' : 'text-green-500'}`}>
+                                    {statusMessage.text}
+                                </p>
+                            )}
                         </div>
                     </CardHeader>
                     <CardContent className="flex-1 overflow-auto">
@@ -261,10 +262,12 @@ export default function SellPage() {
                                     >
                                         <CardHeader className="flex-1 p-4">
                                             <CardTitle className="text-sm">{product.name}</CardTitle>
-                                            {product.barcode && <CardDescription className="text-xs">{product.barcode}</CardDescription>}
                                         </CardHeader>
-                                        <CardFooter className="p-4 pt-0">
-                                            <p className="text-xs font-semibold">{product.price.toFixed(2)} €</p>
+                                        <CardFooter className="p-4 pt-0 flex justify-between items-center text-xs">
+                                            <span className="font-semibold">{product.price.toFixed(2)} €</span>
+                                            <span className={product.quantity <= product.minStockLevel ? 'text-destructive font-bold' : 'text-muted-foreground'}>
+                                                Stock: {product.quantity}
+                                            </span>
                                         </CardFooter>
                                     </Card>
                                 ))}
@@ -276,20 +279,17 @@ export default function SellPage() {
                                 </div>
                             </div>
                         ) : (
-                            <div className="flex h-full items-center justify-center rounded-md border-2 border-dashed border-border">
-                                <div className="text-center">
-                                    <p className="text-muted-foreground">Aucun produit à afficher.</p>
-
-                                    <Button variant="link" onClick={() => setIsAddingProduct(true)}>Ajouter un premier produit</Button>
-                                </div>
-                            </div>
-                        )}
-                         {products && products.length > 0 && (
-                            <div className="mt-4 flex justify-center">
-                               <Button onClick={() => setIsAddingProduct(true)}>Ajouter un nouveau produit</Button>
+                            <div className="flex h-full flex-col items-center justify-center rounded-md border-2 border-dashed border-border text-center">
+                                <p className="text-muted-foreground">Vous n'avez aucun produit dans votre inventaire.</p>
+                                <Button variant="link" onClick={() => setIsAddingProduct(true)}>Ajouter votre premier produit</Button>
                             </div>
                         )}
                     </CardContent>
+                     {products && products.length > 0 && (
+                        <CardFooter className="border-t pt-4">
+                            <Button variant="outline" onClick={() => setIsAddingProduct(true)}>Ajouter un nouveau produit</Button>
+                        </CardFooter>
+                    )}
                 </Card>
             </div>
             <div className="flex flex-col gap-4 md:col-span-1 h-full">
@@ -306,7 +306,7 @@ export default function SellPage() {
                                     </div>
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="none">Aucun client</SelectItem>
+                                    <SelectItem value="none">Aucun client (Vente au comptoir)</SelectItem>
                                     {customers?.map(customer => (
                                         <SelectItem key={customer.id} value={customer.id}>
                                             {customer.firstName} {customer.lastName}
@@ -324,8 +324,8 @@ export default function SellPage() {
                     <CardContent className="flex-1 overflow-auto">
                         {cart.length === 0 ? (
                             <div className="flex h-full flex-col items-center justify-center text-center">
-                                {saleStatus?.success && !isProcessingSale ? (
-                                    <p className="text-green-500">{saleStatus.success}</p>
+                                {statusMessage?.type === 'success' && !isProcessingSale ? (
+                                    <p className="text-green-500">{statusMessage.text}</p>
                                 ) : (
                                     <p className="text-muted-foreground">
                                         Le panier est vide.
@@ -370,3 +370,5 @@ export default function SellPage() {
     </>
   );
 }
+
+    
