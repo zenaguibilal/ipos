@@ -4,13 +4,14 @@
 import { useUser, useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useMemo } from 'react';
-import { collection, doc } from 'firebase/firestore';
+import { collection, doc, writeBatch, query, where } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { AddOrderForm } from '@/components/bread-orders/add-order-form';
 import { EditOrderForm } from '@/components/bread-orders/edit-order-form';
 import { DeleteOrderDialog } from '@/components/bread-orders/delete-order-dialog';
-import { MoreHorizontal, Pencil, Trash2, Repeat } from 'lucide-react';
+import { ResetRecurringDialog } from '@/components/bread-orders/reset-recurring-dialog';
+import { MoreHorizontal, Pencil, Trash2, Repeat, RefreshCw } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
@@ -33,6 +34,8 @@ export default function BreadOrdersPage() {
     const [isAddingOrder, setIsAddingOrder] = useState(false);
     const [editingOrder, setEditingOrder] = useState<BreadOrder | null>(null);
     const [deletingOrder, setDeletingOrder] = useState<BreadOrder | null>(null);
+    const [isResetting, setIsResetting] = useState(false);
+    const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
 
     const ordersCollectionRef = useMemoFirebase(() => {
@@ -46,6 +49,10 @@ export default function BreadOrdersPage() {
             router.push('/login');
         }
     }, [user, isUserLoading, router]);
+
+    const recurringOrdersCount = useMemo(() => {
+        return orders?.filter(o => o.isRecurring).length || 0;
+    }, [orders]);
 
     const filteredOrders = useMemo(() => {
         if (!orders) return [];
@@ -73,6 +80,39 @@ export default function BreadOrdersPage() {
             }
         });
     }
+
+    const handleResetRecurringOrders = async () => {
+        if (!firestore || !user || !orders) return;
+
+        setIsResetting(true);
+        const recurringOrders = orders.filter(o => o.isRecurring);
+
+        if (recurringOrders.length === 0) {
+            toast.info("Aucune commande récurrente à réinitialiser.");
+            setIsResetting(false);
+            setIsResetDialogOpen(false);
+            return;
+        }
+
+        const batch = writeBatch(firestore);
+
+        recurringOrders.forEach(order => {
+            const orderRef = doc(firestore, 'users', user.uid, 'breadOrders', order.id);
+            batch.update(orderRef, { isPaid: false, isDelivered: false });
+        });
+
+        try {
+            await batch.commit();
+            toast.success(`${recurringOrders.length} commande(s) récurrente(s) ont été réinitialisées.`);
+        } catch (error) {
+            console.error("Failed to reset recurring orders:", error);
+            toast.error("Une erreur est survenue lors de la réinitialisation.");
+        } finally {
+            setIsResetting(false);
+            setIsResetDialogOpen(false);
+        }
+    };
+
 
     const isLoading = isUserLoading || isLoadingOrders;
 
@@ -103,17 +143,30 @@ export default function BreadOrdersPage() {
                     orderName={deletingOrder.name}
                 />
             )}
+             <ResetRecurringDialog
+                isOpen={isResetDialogOpen}
+                onOpenChange={setIsResetDialogOpen}
+                onConfirm={handleResetRecurringOrders}
+                isResetting={isResetting}
+                recurringOrdersCount={recurringOrdersCount}
+            />
            
             <main className="flex-1 overflow-auto p-4 sm:p-6">
                 <Card className="w-full">
-                    <CardHeader className="flex flex-row items-center justify-between pt-4">
-                        <Input 
+                    <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 pt-4">
+                         <Input 
                             placeholder="Rechercher par nom..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                             className="w-full max-w-sm"
+                             className="w-full max-w-sm order-2 sm:order-1"
                         />
-                        <Button onClick={() => setIsAddingOrder(true)}>Ajouter une commande</Button>
+                        <div className="flex gap-2 order-1 sm:order-2 w-full sm:w-auto">
+                            <Button variant="outline" onClick={() => setIsResetDialogOpen(true)} disabled={recurringOrdersCount === 0 || isLoading}>
+                                <RefreshCw className="mr-2 h-4 w-4" />
+                                Réinitialiser les récurrences
+                            </Button>
+                            <Button onClick={() => setIsAddingOrder(true)} className="flex-grow sm:flex-grow-0">Ajouter une commande</Button>
+                        </div>
                     </CardHeader>
                     <CardContent>
                         {isLoading ? (
