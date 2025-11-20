@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 
-export default function ProfilePage() {
+export default function SettingsPage() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const router = useRouter();
@@ -62,7 +62,6 @@ export default function ProfilePage() {
       onError: (err) => {
         setIsSaving(false);
         toast.error("Une erreur est survenue lors de la mise à jour.");
-        // The global error handler will also catch and display this.
         console.error(err);
       }
     });
@@ -73,12 +72,11 @@ export default function ProfilePage() {
   if (isLoading || !user) {
     return (
       <div className="flex h-full items-center justify-center">
-        <p>Chargement du profil...</p>
+        <p>Chargement des paramètres...</p>
       </div>
     );
   }
 
-  // This might happen briefly if the user document hasn't been created yet
   if (!userData) {
       return (
         <div className="flex h-full items-center justify-center">
@@ -93,7 +91,7 @@ export default function ProfilePage() {
       <Card className="w-full max-w-md">
         <form onSubmit={handleSubmit}>
           <CardHeader>
-            <CardTitle>Votre Profil</CardTitle>
+            <CardTitle>Paramètres du Profil</CardTitle>
             <CardDescription>Mettez à jour vos informations personnelles.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">

@@ -13,6 +13,7 @@ import {
   LogOut,
   User as UserIcon,
   Store,
+  Settings,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -32,6 +33,7 @@ const navLinks = [
   { href: '/products', icon: Package, label: 'Produits' },
   { href: '/customers', icon: Users, label: 'Clients' },
   { href: '/sales-history', icon: LineChart, label: 'Historique' },
+  { href: '/settings', icon: Settings, label: 'Paramètres' },
 ];
 
 function NavLink({
@@ -154,7 +156,7 @@ export function Sidebar({ children }: { children: React.ReactNode }) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => router.push('/profile')}>
+              <DropdownMenuItem onClick={() => router.push('/settings')}>
                 <UserIcon className="mr-2 h-4 w-4" />
                 Profil
               </DropdownMenuItem>
