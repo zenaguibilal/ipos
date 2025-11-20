@@ -2,7 +2,7 @@
 'use client';
 
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { CircleDollarSign, ShoppingBag, Users, Archive, TrendingUp } from "lucide-react";
+import { CircleDollarSign, ShoppingBag, Users, Archive, TrendingUp, Warehouse } from "lucide-react";
 
 interface Stats {
     dailyRevenue: number;
@@ -10,6 +10,7 @@ interface Stats {
     dailySalesCount: number;
     totalDebt: number;
     lowStockCount: number;
+    inventoryValue: number;
 }
 
 interface StatsCardsProps {
@@ -18,7 +19,7 @@ interface StatsCardsProps {
 
 export function StatsCards({ stats }: StatsCardsProps) {
     return (
-        <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-5">
+        <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-3">
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">
@@ -82,6 +83,18 @@ export function StatsCards({ stats }: StatsCardsProps) {
                     <div className="text-2xl font-bold">{stats.lowStockCount}</div>
                     <p className="text-xs text-muted-foreground">
                         Produits nécessitant un réapprovisionnement
+                    </p>
+                </CardContent>
+            </Card>
+             <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Valeur du stock</CardTitle>
+                    <Warehouse className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold">{stats.inventoryValue.toFixed(2)} DA</div>
+                    <p className="text-xs text-muted-foreground">
+                        Valeur d'achat totale de l'inventaire
                     </p>
                 </CardContent>
             </Card>

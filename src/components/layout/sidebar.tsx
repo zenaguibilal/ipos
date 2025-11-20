@@ -16,6 +16,7 @@ import {
   Cookie,
   Bell,
   Building,
+  Warehouse,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {

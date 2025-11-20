@@ -47,6 +47,7 @@ export default function DashboardPage() {
       dailyNetProfit: 0,
       totalDebt: 0,
       lowStockCount: 0,
+      inventoryValue: 0,
       lowStockProducts: [] as Product[]
     };
     const chartData: ChartData[] = [];
@@ -73,9 +74,11 @@ export default function DashboardPage() {
       return totalProfit + saleProfit;
     }, 0);
 
-    // --- Low Stock ---
+    // --- Inventory Stats ---
     stats.lowStockProducts = products.filter(p => p.quantity <= p.minStockLevel);
     stats.lowStockCount = stats.lowStockProducts.length;
+    stats.inventoryValue = products.reduce((sum, p) => sum + (p.purchasePrice * p.quantity), 0);
+
 
     // --- Total Debt ---
     const salesByCustomer = sales.reduce((acc, sale) => {
