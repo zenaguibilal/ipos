@@ -266,13 +266,13 @@ export default function SellPage() {
             onOpenChange={setIsAddingProduct}
             userId={user.uid}
         />
-        <PaymentDialog
+        {activeCart && <PaymentDialog
             isOpen={isPaymentDialogOpen}
             onOpenChange={setIsPaymentDialogOpen}
             total={total}
             isProcessing={isProcessingSale}
             onConfirm={handleProcessSale}
-        />
+        />}
         <main className="grid flex-1 grid-cols-1 gap-4 p-4 md:grid-cols-2 lg:grid-cols-3 h-full overflow-hidden">
             <div className="flex flex-col gap-4 md:col-span-1 lg:col-span-2 h-full overflow-hidden">
                 <Card className='flex flex-col h-full'>
@@ -297,11 +297,16 @@ export default function SellPage() {
                             />
                         </div>
                         <div className="h-5 pt-1">
-                            {statusMessage && statusMessage.cartId === activeCartId && (
-                                <p className={`text-xs ${statusMessage.type === 'error' ? 'text-red-500' : 'text-green-500'}`}>
+                            {statusMessage && statusMessage.cartId === activeCartId && statusMessage.type === 'error' && (
+                                <p className="text-xs text-red-500">
                                     {statusMessage.text}
                                 </p>
                             )}
+                            {statusMessage && statusMessage.cartId === activeCartId && statusMessage.type === 'success' && !isProcessingSale && (
+                                <p className="text-xs text-green-500">
+                                    {statusMessage.text}
+                                </p>
+                             )}
                         </div>
                     </CardHeader>
                     <CardContent className="flex-1 overflow-auto">
@@ -403,7 +408,10 @@ export default function SellPage() {
                                     {cart.items.length === 0 ? (
                                         <div className="flex h-full flex-col items-center justify-center text-center">
                                              {statusMessage?.type === 'success' && statusMessage.cartId === cart.customerId && !isProcessingSale ? (
-                                                <p className="text-green-500">{statusMessage.text}</p>
+                                                <div className="flex flex-col items-center gap-2">
+                                                    <p className="text-green-500 font-medium">Vente enregistrée !</p>
+                                                    <p className="text-xs text-muted-foreground">{statusMessage.text}</p>
+                                                </div>
                                              ) : (
                                                 <p className="text-muted-foreground">Le panier est vide.</p>
                                              )}
@@ -431,19 +439,19 @@ export default function SellPage() {
                         ))}
                     </Tabs>
 
-                    <CardFooter className="flex flex-col gap-2 mt-auto pt-4 border-t">
+                    {activeCart && <CardFooter className="flex flex-col gap-2 mt-auto pt-4 border-t">
                             <div className="flex w-full justify-between font-semibold">
                             <span>Total</span>
                             <span>{total.toFixed(2)} DA</span>
                         </div>
                         <Button 
                             className="w-full" 
-                            disabled={!activeCart || activeCart.items.length === 0 || isProcessingSale}
+                            disabled={activeCart.items.length === 0 || isProcessingSale}
                             onClick={() => setIsPaymentDialogOpen(true)}
                         >
                             {isProcessingSale ? 'Encaissement...' : `Encaisser pour ${activeCart?.customerName}`}
                         </Button>
-                    </CardFooter>
+                    </CardFooter>}
                 </Card>
             </div>
         </main>
@@ -451,3 +459,5 @@ export default function SellPage() {
   );
 }
  
+
+    
