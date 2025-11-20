@@ -36,12 +36,14 @@ function AuthButtons() {
 
 export default function Home() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center">
+    <div className="flex min-h-screen flex-col items-center justify-center text-center p-4">
       <div className="flex items-center gap-4 mb-6">
         <Store className="h-16 w-16 text-primary" />
         <h1 className="text-5xl font-bold">iPOS</h1>
       </div>
-      <p className="mt-2 text-lg text-muted-foreground">Votre solution de point de vente simple et efficace.</p>
+      <p className="mt-2 max-w-2xl text-lg text-muted-foreground">
+        iPOS est votre solution de point de vente tout-en-un, conçue pour être simple, rapide et puissante. Gérez vos ventes, suivez votre inventaire, fidélisez vos clients et pilotez votre activité grâce à un tableau de bord intelligent. Le tout, même hors-ligne.
+      </p>
       <AuthButtons />
     </div>
   );
