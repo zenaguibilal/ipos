@@ -6,10 +6,11 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { doc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+import { ChangePasswordDialog } from '@/components/profile/change-password-dialog';
 
 interface UserProfile {
     firstName: string;
@@ -35,6 +36,7 @@ export default function ProfilePage() {
     const [phone, setPhone] = useState('');
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
     
     // When the user data loads from firestore, populate the form
     useEffect(() => {
@@ -81,58 +83,77 @@ export default function ProfilePage() {
         );
     }
     
+    const isEmailProvider = user.providerData.some(
+        (provider) => provider.providerId === 'password'
+    );
+
     return (
-        <main className="flex-1 overflow-auto p-4 sm:p-6 flex items-center justify-center">
-            <Card className="w-full max-w-md">
-                <CardHeader>
-                    <CardTitle>Profil</CardTitle>
-                    <CardDescription>
-                        Gérez les informations de votre compte.
-                    </CardDescription>
-                </CardHeader>
-                <form onSubmit={handleUpdateProfile}>
-                    <CardContent className="space-y-4">
-                         {error && <p className="text-sm text-red-500 text-center">{error}</p>}
-                        <div className="space-y-2">
-                            <Label htmlFor="email">E-mail</Label>
-                            <Input id="email" type="email" value={user.email || ''} disabled />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="firstName">Prénom</Label>
-                            <Input 
-                                id="firstName" 
-                                value={firstName} 
-                                onChange={(e) => setFirstName(e.target.value)} 
-                                disabled={isSaving}
-                                required
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="lastName">Nom de famille</Label>
-                            <Input 
-                                id="lastName" 
-                                value={lastName} 
-                                onChange={(e) => setLastName(e.target.value)} 
-                                disabled={isSaving}
-                                required
-                            />
-                        </div>
-                         <div className="space-y-2">
-                            <Label htmlFor="phone">Téléphone</Label>
-                            <Input 
-                                id="phone" 
-                                type="tel"
-                                value={phone} 
-                                onChange={(e) => setPhone(e.target.value)} 
-                                disabled={isSaving}
-                            />
-                        </div>
-                         <Button type="submit" className="w-full" disabled={isSaving}>
-                            {isSaving ? 'Enregistrement...' : 'Enregistrer les modifications'}
-                        </Button>
-                    </CardContent>
-                </form>
-            </Card>
-        </main>
+        <>
+            {isEmailProvider && (
+                <ChangePasswordDialog 
+                    isOpen={isPasswordDialogOpen}
+                    onOpenChange={setIsPasswordDialogOpen}
+                />
+            )}
+            <main className="flex-1 overflow-auto p-4 sm:p-6 flex items-center justify-center">
+                <Card className="w-full max-w-md">
+                    <form onSubmit={handleUpdateProfile}>
+                        <CardHeader>
+                            <CardTitle>Profil</CardTitle>
+                            <CardDescription>
+                                Gérez les informations de votre compte.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                             {error && <p className="text-sm text-red-500 text-center">{error}</p>}
+                            <div className="space-y-2">
+                                <Label htmlFor="email">E-mail</Label>
+                                <Input id="email" type="email" value={user.email || ''} disabled />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="firstName">Prénom</Label>
+                                <Input 
+                                    id="firstName" 
+                                    value={firstName} 
+                                    onChange={(e) => setFirstName(e.target.value)} 
+                                    disabled={isSaving}
+                                    required
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="lastName">Nom de famille</Label>
+                                <Input 
+                                    id="lastName" 
+                                    value={lastName} 
+                                    onChange={(e) => setLastName(e.target.value)} 
+                                    disabled={isSaving}
+                                    required
+                                />
+                            </div>
+                             <div className="space-y-2">
+                                <Label htmlFor="phone">Téléphone</Label>
+                                <Input 
+                                    id="phone" 
+                                    type="tel"
+                                    value={phone} 
+                                    onChange={(e) => setPhone(e.target.value)} 
+                                    disabled={isSaving}
+                                />
+                            </div>
+                             <Button type="submit" className="w-full" disabled={isSaving}>
+                                {isSaving ? 'Enregistrement...' : 'Enregistrer les modifications'}
+                            </Button>
+                        </CardContent>
+                    </form>
+                    {isEmailProvider && (
+                        <CardFooter className="border-t pt-4">
+                            <Button variant="outline" className="w-full" onClick={() => setIsPasswordDialogOpen(true)}>
+                                Changer le mot de passe
+                            </Button>
+                        </CardFooter>
+                    )}
+                </Card>
+            </main>
+        </>
     );
 }
