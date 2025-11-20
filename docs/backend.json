@@ -1,4 +1,3 @@
-
 {
   "entities": {
     "User": {
@@ -221,6 +220,47 @@
         "customerId",
         "createdAt"
       ]
+    },
+    "CompanyProfile": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Company Profile",
+      "type": "object",
+      "description": "Represents the user's company information.",
+      "properties": {
+        "companyName": {
+          "type": "string",
+          "description": "Name of the company."
+        },
+        "address": {
+          "type": "string",
+          "description": "Company's street address."
+        },
+        "city": {
+          "type": "string",
+          "description": "City where the company is located."
+        },
+        "zipCode": {
+          "type": "string",
+          "description": "Postal or ZIP code."
+        },
+        "country": {
+          "type": "string",
+          "description": "Country where the company is located."
+        },
+        "phone": {
+          "type": "string",
+          "description": "Company's phone number."
+        },
+        "vatNumber": {
+          "type": "string",
+          "description": "VAT (Value Added Tax) identification number."
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the profile was last updated.",
+          "format": "date-time"
+        }
+      }
     }
   },
   "auth": {
@@ -256,6 +296,12 @@
         "$ref": "#/entities/Payment"
       },
       "description": "Payments made by customers to settle debts."
+    },
+    "/users/{userId}/companyProfile/main": {
+      "schema": {
+        "$ref": "#/entities/CompanyProfile"
+      },
+      "description": "Singleton document for the user's company profile."
     }
   }
 }

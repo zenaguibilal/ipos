@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 
-export default function SettingsPage() {
+export default function ProfilePage() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const router = useRouter();
@@ -85,17 +85,15 @@ export default function SettingsPage() {
       );
   }
 
-
   return (
-    <div className="flex flex-1 items-center justify-center p-4">
-      <Card className="w-full max-w-md">
+    <Card className="border-none shadow-none">
         <form onSubmit={handleSubmit}>
           <CardHeader>
-            <CardTitle>Paramètres du Profil</CardTitle>
+            <CardTitle>Profil</CardTitle>
             <CardDescription>Mettez à jour vos informations personnelles.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid gap-2">
+            <div className="grid gap-2 max-w-sm">
               <Label htmlFor="first-name">Prénom</Label>
               <Input
                 id="first-name"
@@ -105,7 +103,7 @@ export default function SettingsPage() {
                 disabled={isSaving}
               />
             </div>
-            <div className="grid gap-2">
+            <div className="grid gap-2 max-w-sm">
               <Label htmlFor="last-name">Nom de famille</Label>
               <Input
                 id="last-name"
@@ -115,18 +113,17 @@ export default function SettingsPage() {
                 disabled={isSaving}
               />
             </div>
-            <div className="grid gap-2">
+            <div className="grid gap-2 max-w-sm">
               <Label htmlFor="email">E-mail</Label>
               <Input id="email" type="email" value={userData.email} disabled />
             </div>
           </CardContent>
-          <CardFooter className="flex justify-end">
+          <CardFooter className="border-t pt-6 flex justify-start">
             <Button type="submit" disabled={isSaving}>
               {isSaving ? 'Enregistrement...' : 'Enregistrer'}
             </Button>
           </CardFooter>
         </form>
       </Card>
-    </div>
   );
 }
