@@ -7,6 +7,7 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { Button } from '../ui/button';
+import { Printer } from 'lucide-react';
 
 
 function StatusBadge({ status }: { status: Sale['paymentStatus'] }) {
@@ -31,10 +32,15 @@ interface SaleDetailsDialogProps {
 }
 
 export function SaleDetailsDialog({ isOpen, onOpenChange, sale }: SaleDetailsDialogProps) {
+    
+    const handlePrint = () => {
+        window.print();
+    }
+
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-lg">
-                <DialogHeader>
+            <DialogContent className="sm:max-w-lg print-content">
+                <DialogHeader className="print-header">
                     <DialogTitle>Détails de la Facture</DialogTitle>
                     <DialogDescription>
                         Récapitulatif de la vente <span className="font-mono">{sale.invoiceNumber}</span>.
@@ -97,7 +103,11 @@ export function SaleDetailsDialog({ isOpen, onOpenChange, sale }: SaleDetailsDia
                         </div>
                     </div>
                 </div>
-                 <DialogFooter>
+                 <DialogFooter className="print-hide">
+                    <Button type="button" variant="outline" onClick={handlePrint}>
+                        <Printer className="mr-2 h-4 w-4" />
+                        Imprimer
+                    </Button>
                     <Button type="button" onClick={() => onOpenChange(false)}>
                         Fermer
                     </Button>

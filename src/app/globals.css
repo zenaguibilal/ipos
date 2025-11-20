@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -74,5 +75,34 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-content, .print-content * {
+    visibility: visible;
+  }
+  .print-content {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    border: none !important;
+    box-shadow: none !important;
+    background: white !important;
+    color: black !important;
+  }
+  .print-content .text-muted-foreground {
+    color: #4a5568 !important;
+  }
+  .print-content .font-mono {
+    font-family: monospace !important;
+  }
+  .print-hide {
+    display: none;
   }
 }
