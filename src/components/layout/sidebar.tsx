@@ -32,6 +32,7 @@ const navLinks = [
   { href: '/products', icon: Package, label: 'Produits' },
   { href: '/customers', icon: Users, label: 'Clients' },
   { href: '/sales-history', icon: LineChart, label: 'Historique' },
+  { href: '/profile', icon: UserIcon, label: 'Profil' },
 ];
 
 function NavLink({
@@ -159,6 +160,11 @@ export function Sidebar({ children }: { children: React.ReactNode }) {
                   <span className="text-sm font-medium">{user.displayName || 'Utilisateur'}</span>
                   <span className="text-xs text-muted-foreground">{user.email}</span>
                 </div>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => router.push('/profile')}>
+                <UserIcon className="mr-2 h-4 w-4" />
+                <span>Profil</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive-foreground focus:bg-destructive">
