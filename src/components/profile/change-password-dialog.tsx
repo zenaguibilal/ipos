@@ -52,9 +52,14 @@ export function ChangePasswordDialog({ isOpen, onOpenChange }: ChangePasswordDia
         return;
     }
 
+    if (!auth) {
+        setError("Le service d'authentification n'est pas disponible.");
+        return;
+    }
+
     const user = auth.currentUser;
     if (!user || !user.email) {
-      setError('Utilisateur non trouvé ou e-mail manquant.');
+      setError('Utilisateur non trouvé ou e-mail manquant. Impossible de continuer.');
       return;
     }
 
@@ -67,7 +72,7 @@ export function ChangePasswordDialog({ isOpen, onOpenChange }: ChangePasswordDia
       await updatePassword(user, newPassword);
 
       toast.success('Mot de passe mis à jour avec succès.');
-      onOpenChange(false);
+      onOpenChange(false); // This will trigger a re-render of the parent, which will call resetForm
 
     } catch (err: any) {
       console.error(err);
@@ -82,10 +87,12 @@ export function ChangePasswordDialog({ isOpen, onOpenChange }: ChangePasswordDia
   };
 
   const handleOpenChange = (open: boolean) => {
-    if (!open) {
-      resetForm();
+    if (!isLoading) { // prevent closing while processing
+        if (!open) {
+            resetForm();
+        }
+        onOpenChange(open);
     }
-    onOpenChange(open);
   };
 
   return (
