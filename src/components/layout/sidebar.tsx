@@ -14,7 +14,7 @@ import {
   User as UserIcon,
   Store,
   Cookie,
-  RefreshCw,
+  Bell,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -35,6 +35,7 @@ const navLinks = [
   { href: '/customers', icon: Users, label: 'Clients' },
   { href: '/bread-orders', icon: Cookie, label: 'Commandes de Pain' },
   { href: '/sales-history', icon: LineChart, label: 'Historique' },
+  { href: '/notifications', icon: Bell, label: 'Alertes' },
   { href: '/profile', icon: UserIcon, label: 'Profil' },
 ];
 

@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import type { Product } from '@/app/(app)/products/page';
+import type { Product } from '@/lib/types';
 
 interface EditProductFormProps {
     isOpen: boolean;

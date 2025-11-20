@@ -7,12 +7,14 @@ import type { Product } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "../ui/button";
+import { PackageWarning } from "lucide-react";
+import Link from "next/link";
 
-interface LowStockProductsProps {
+interface LowStockAlertsProps {
     products: Product[];
 }
 
-export function LowStockProducts({ products }: LowStockProductsProps) {
+export function LowStockAlerts({ products }: LowStockAlertsProps) {
     const router = useRouter();
 
     if (products.length === 0) {
@@ -21,11 +23,19 @@ export function LowStockProducts({ products }: LowStockProductsProps) {
 
     return (
         <Card>
-            <CardHeader>
-                <CardTitle>Produits à faible stock</CardTitle>
-                <CardDescription>
-                    Ces produits ont atteint ou sont en dessous de leur seuil de stock minimum.
-                </CardDescription>
+            <CardHeader className="flex flex-row items-start justify-between gap-2">
+                <div>
+                    <CardTitle className="flex items-center gap-2">
+                        <PackageWarning className="h-5 w-5 text-yellow-500" />
+                        Alertes de stock faible ({products.length})
+                    </CardTitle>
+                    <CardDescription>
+                        Ces produits ont atteint ou sont en dessous de leur seuil de stock minimum.
+                    </CardDescription>
+                </div>
+                 <Button asChild variant="outline">
+                    <Link href="/products">Gérer les produits</Link>
+                </Button>
             </CardHeader>
             <CardContent>
                  <Table>

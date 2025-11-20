@@ -16,15 +16,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { StatusToggle } from '@/components/bread-orders/status-toggle';
+import type { BreadOrder } from '@/lib/types';
 
-export interface BreadOrder {
-    id: string;
-    name: string;
-    quantity: number;
-    isPaid: boolean;
-    isDelivered: boolean;
-    isRecurring: boolean;
-}
 
 export default function BreadOrdersPage() {
     const { user, isUserLoading } = useUser();

@@ -14,27 +14,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { PaymentDialog } from '@/components/sell/payment-dialog';
 import Link from 'next/link';
-
-
-interface Product {
-    id: string;
-    name: string;
-    price: number; // Selling price
-    purchasePrice: number;
-    quantity: number;
-    minStockLevel: number;
-    barcode?: string;
-}
+import type { Product, Customer } from '@/lib/types';
 
 interface CartItem extends Product {
     cartQuantity: number;
 }
 
-interface Customer {
-    id: string;
-    firstName: string;
-    lastName: string;
-}
 
 export default function SellPage() {
   const { user, isUserLoading } = useUser();

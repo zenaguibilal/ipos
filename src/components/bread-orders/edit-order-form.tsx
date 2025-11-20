@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import type { BreadOrder } from '@/app/(app)/bread-orders/page';
+import type { BreadOrder } from '@/lib/types';
 import { toast } from 'sonner';
 
 interface EditOrderFormProps {

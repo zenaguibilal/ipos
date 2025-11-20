@@ -12,46 +12,7 @@ import { fr } from 'date-fns/locale';
 import { VerificationNotice } from '@/components/dashboard/verification-notice';
 import { SalesChart } from '@/components/dashboard/sales-chart';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-
-// Re-using interfaces from other pages for consistency
-export interface Sale {
-    id: string;
-    total: number;
-    remainingBalance: number;
-    createdAt: Timestamp; 
-    customerId?: string;
-    items: SaleItem[];
-}
-export interface SaleItem {
-    id: string; // This is the product ID
-    name: string;
-    price: number;
-    quantity: number;
-}
-export interface Product {
-    id: string;
-    name: string;
-    quantity: number;
-    minStockLevel: number;
-    purchasePrice: number;
-}
-export interface Customer {
-    id: string;
-}
-export interface Payment {
-    id: string;
-    customerId: string;
-    amount: number;
-}
-export interface CustomerWithSalesData extends Customer {
-    totalSpent: number;
-    outstandingBalance: number;
-}
-
-export interface ChartData {
-  date: string;
-  revenue: number;
-}
+import type { Sale, SaleItem, Product, Customer, Payment, CustomerWithSalesData, ChartData } from '@/lib/types';
 
 
 export default function DashboardPage() {

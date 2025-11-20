@@ -14,16 +14,8 @@ import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import type { Product } from '@/lib/types';
 
-export interface Product {
-    id: string;
-    name: string;
-    price: number; // Selling price
-    purchasePrice: number;
-    quantity: number;
-    minStockLevel: number;
-    barcode?: string;
-}
 
 export default function ProductsPage() {
     const { user, isUserLoading } = useUser();

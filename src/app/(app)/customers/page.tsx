@@ -15,33 +15,8 @@ import { MoreHorizontal, CreditCard, Pencil, Trash2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
+import type { Customer, Sale, Payment, CustomerWithSalesData } from '@/lib/types';
 
-
-export interface Customer {
-    id: string;
-    firstName: string;
-    lastName: string;
-    phone?: string;
-    settlementDay?: number;
-}
-
-export interface Sale {
-    id: string;
-    customerId?: string;
-    total: number;
-    remainingBalance: number;
-}
-
-export interface Payment {
-    id: string;
-    customerId: string;
-    amount: number;
-}
-
-export interface CustomerWithSalesData extends Customer {
-    totalSpent: number;
-    outstandingBalance: number;
-}
 
 export default function CustomersPage() {
     const { user, isUserLoading } = useUser();

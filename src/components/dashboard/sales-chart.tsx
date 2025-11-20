@@ -2,7 +2,7 @@
 'use client';
 
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { ChartData } from '@/app/(app)/dashboard/page';
+import { ChartData } from '@/lib/types';
 
 interface SalesChartProps {
     data: ChartData[];
