@@ -16,11 +16,13 @@ import {
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { getAuth, sendEmailVerification } from 'firebase/auth';
+import { Checkbox } from "@/components/ui/checkbox"
+import { getAuth, setPersistence, browserSessionPersistence, localPersistence } from 'firebase/auth';
 
 function LoginFormComponent() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const auth = useAuth();
   const { user, isUserLoading } = useUser();
@@ -41,15 +43,20 @@ function LoginFormComponent() {
       setError("Le service d'authentification n'est pas disponible.");
       return;
     }
-    initiateEmailSignIn(auth, email, password)
-        .catch((err: any) => {
-            if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
-                setError('E-mail ou mot de passe incorrect.');
-            } else {
-                setError("Une erreur s'est produite lors de la connexion. Veuillez réessayer.");
-                console.error(err);
-            }
-        });
+
+    const persistence = rememberMe ? localPersistence : browserSessionPersistence;
+    setPersistence(auth, persistence)
+      .then(() => {
+        return initiateEmailSignIn(auth, email, password);
+      })
+      .catch((err: any) => {
+          if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+              setError('E-mail ou mot de passe incorrect.');
+          } else {
+              setError("Une erreur s'est produite lors de la connexion. Veuillez réessayer.");
+              console.error(err);
+          }
+      });
   };
 
   if (isUserLoading || user) {
@@ -96,6 +103,19 @@ function LoginFormComponent() {
               onChange={(e) => setPassword(e.target.value)}
             />
           </div>
+           <div className="flex items-center space-x-2">
+              <Checkbox 
+                id="remember-me"
+                checked={rememberMe}
+                onCheckedChange={(checked) => setRememberMe(checked as boolean)}
+              />
+              <label
+                htmlFor="remember-me"
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >
+                Se souvenir de moi
+              </label>
+            </div>
         </CardContent>
         <CardFooter className="flex flex-col">
           <Button type="submit" className="w-full">Se connecter</Button>

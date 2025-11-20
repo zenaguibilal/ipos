@@ -5,6 +5,9 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   UserCredential,
+  setPersistence,
+  browserSessionPersistence,
+  localPersistence,
   // Assume getAuth and app are initialized elsewhere
 } from 'firebase/auth';
 
