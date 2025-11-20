@@ -12,6 +12,7 @@
  * /users/{userId}/customers/{customerId} - Customers created by the user.
  * /users/{userId}/payments/{paymentId} - Payments made by customers.
  * /users/{userId}/companyProfile/main - Singleton for company information.
+ * /users/{userId}/breadOrders/{breadOrderId} - Simple bread orders.
  *
  */
 rules_version = '2';
@@ -62,6 +63,12 @@ service cloud.firestore {
       // Rules for the 'companyProfile' subcollection.
       match /companyProfile/{docId} {
          // Only the owner can read or write their company profile.
+        allow read, write: if isOwner(userId);
+      }
+        
+      // Rules for the 'breadOrders' subcollection.
+      match /breadOrders/{breadOrderId} {
+        // Only the owner of the parent user document can read or write to the bread orders subcollection.
         allow read, write: if isOwner(userId);
       }
     }

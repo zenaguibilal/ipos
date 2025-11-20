@@ -13,6 +13,7 @@ import {
   LogOut,
   User as UserIcon,
   Store,
+  Cookie,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -31,6 +32,7 @@ const navLinks = [
   { href: '/sell', icon: ShoppingCart, label: 'Vendre' },
   { href: '/products', icon: Package, label: 'Produits' },
   { href: '/customers', icon: Users, label: 'Clients' },
+  { href: '/bread-orders', icon: Cookie, label: 'Commandes de Pain' },
   { href: '/sales-history', icon: LineChart, label: 'Historique' },
   { href: '/profile', icon: UserIcon, label: 'Profil' },
 ];

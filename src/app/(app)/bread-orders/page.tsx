@@ -1,0 +1,176 @@
+
+'use client';
+
+import { useUser, useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking } from '@/firebase';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState, useMemo } from 'react';
+import { collection, doc } from 'firebase/firestore';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { AddOrderForm } from '@/components/bread-orders/add-order-form';
+import { EditOrderForm } from '@/components/bread-orders/edit-order-form';
+import { DeleteOrderDialog } from '@/components/bread-orders/delete-order-dialog';
+import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Input } from '@/components/ui/input';
+import { toast } from 'sonner';
+
+export interface BreadOrder {
+    id: string;
+    name: string;
+    quantity: number;
+}
+
+export default function BreadOrdersPage() {
+    const { user, isUserLoading } = useUser();
+    const firestore = useFirestore();
+    const router = useRouter();
+
+    const [isAddingOrder, setIsAddingOrder] = useState(false);
+    const [editingOrder, setEditingOrder] = useState<BreadOrder | null>(null);
+    const [deletingOrder, setDeletingOrder] = useState<BreadOrder | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
+
+    const ordersCollectionRef = useMemoFirebase(() => {
+        if (!user || !firestore) return null;
+        return collection(firestore, 'users', user.uid, 'breadOrders');
+    }, [user, firestore]);
+    const { data: orders, isLoading: isLoadingOrders } = useCollection<BreadOrder>(ordersCollectionRef);
+
+    useEffect(() => {
+        if (!isUserLoading && !user) {
+            router.push('/login');
+        }
+    }, [user, isUserLoading, router]);
+
+    const filteredOrders = useMemo(() => {
+        if (!orders) return [];
+        const sortedOrders = [...orders].sort((a, b) => (a.name > b.name) ? 1 : -1);
+        if (!searchQuery) return sortedOrders;
+        
+        const lowercasedQuery = searchQuery.toLowerCase();
+        
+        return sortedOrders.filter(order => 
+            order.name.toLowerCase().includes(lowercasedQuery)
+        );
+    }, [orders, searchQuery]);
+    
+    const handleDeleteOrder = () => {
+        if (!deletingOrder || !firestore || !user) return;
+        const orderDocRef = doc(firestore, 'users', user.uid, 'breadOrders', deletingOrder.id);
+        deleteDocumentNonBlocking(orderDocRef, {
+            onSuccess: () => {
+                setDeletingOrder(null);
+                toast.success(`La commande "${deletingOrder.name}" a été supprimée.`);
+            },
+            onError: (err) => {
+                 toast.error("Échec de la suppression de la commande.");
+                 console.error("Failed to delete order:", err)
+            }
+        });
+    }
+
+    const isLoading = isUserLoading || isLoadingOrders;
+
+    if (isLoading || !user) {
+        return <div className="flex h-full items-center justify-center"><p>Chargement...</p></div>;
+    }
+
+    return (
+        <>
+            <AddOrderForm 
+                isOpen={isAddingOrder}
+                onOpenChange={setIsAddingOrder}
+                userId={user.uid}
+            />
+            {editingOrder && (
+                 <EditOrderForm
+                    isOpen={!!editingOrder}
+                    onOpenChange={(isOpen) => !isOpen && setEditingOrder(null)}
+                    userId={user.uid}
+                    order={editingOrder}
+                />
+            )}
+            {deletingOrder && (
+                <DeleteOrderDialog
+                    isOpen={!!deletingOrder}
+                    onOpenChange={(isOpen) => !isOpen && setDeletingOrder(null)}
+                    onConfirm={handleDeleteOrder}
+                    orderName={deletingOrder.name}
+                />
+            )}
+           
+            <main className="flex-1 overflow-auto p-4 sm:p-6">
+                <Card className="w-full">
+                    <CardHeader className="flex flex-row items-center justify-between pt-4">
+                        <Input 
+                            placeholder="Rechercher par nom..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                             className="w-full max-w-sm"
+                        />
+                        <Button onClick={() => setIsAddingOrder(true)}>Ajouter une commande</Button>
+                    </CardHeader>
+                    <CardContent>
+                        {isLoading ? (
+                            <div className="text-center">Chargement des données...</div>
+                        ) : filteredOrders && filteredOrders.length > 0 ? (
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full divide-y divide-border">
+                                    <thead className="bg-muted/50">
+                                        <tr>
+                                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Nom de la commande</th>
+                                            <th scope="col" className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Quantité</th>
+                                            <th scope="col" className="relative px-6 py-3">
+                                                <span className="sr-only">Actions</span>
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-border">
+                                        {filteredOrders.map(order => (
+                                            <tr key={order.id}>
+                                                <td className="whitespace-nowrap px-6 py-4 font-medium">{order.name}</td>
+                                                <td className="whitespace-nowrap px-6 py-4 text-right font-medium">{order.quantity}</td>
+                                                <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" className="h-8 w-8 p-0">
+                                                                <span className="sr-only">Ouvrir le menu</span>
+                                                                <MoreHorizontal className="h-4 w-4" />
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end">
+                                                            <DropdownMenuItem onClick={() => setEditingOrder(order)}>
+                                                                <Pencil className="mr-2 h-4 w-4" />
+                                                                <span>Modifier</span>
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem onClick={() => setDeletingOrder(order)} className="text-destructive focus:text-destructive-foreground focus:bg-destructive">
+                                                                <Trash2 className="mr-2 h-4 w-4" />
+                                                                <span>Supprimer</span>
+                                                            </DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ) : orders && orders.length > 0 && searchQuery ? (
+                            <div className="flex h-40 items-center justify-center rounded-md border-2 border-dashed border-border">
+                                <p className="text-muted-foreground">Aucune commande ne correspond à votre recherche.</p>
+                            </div>
+                        ) : (
+                            <div className="flex h-40 items-center justify-center rounded-md border-2 border-dashed border-border">
+                                <div className="text-center">
+                                    <p className="text-muted-foreground">Vous n'avez pas encore de commandes de pain.</p>
+                                    <Button variant="link" onClick={() => setIsAddingOrder(true)}>Ajouter votre première commande</Button>
+                                </div>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            </main>
+        </>
+    );
+}
