@@ -72,3 +72,13 @@ export interface TopProduct extends Product {
 export interface TopCustomer extends Customer {
     totalSpent: number;
 }
+
+export interface CompanyProfile {
+    companyName?: string;
+    address?: string;
+    city?: string;
+    zipCode?: string;
+    country?: string;
+    phone?: string;
+    vatNumber?: string;
+}

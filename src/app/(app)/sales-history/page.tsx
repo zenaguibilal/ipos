@@ -1,10 +1,10 @@
 
 'use client';
 
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useMemo } from 'react';
-import { collection, Timestamp } from 'firebase/firestore';
+import { collection, Timestamp, doc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -16,26 +16,8 @@ import { DateRange } from 'react-day-picker';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { SaleDetailsDialog } from '@/components/sales/sale-details-dialog';
+import type { Sale, CompanyProfile } from '@/lib/types';
 
-interface SaleItem {
-    id: string;
-    name: string;
-    price: number;
-    quantity: number;
-}
-
-export interface Sale {
-    id: string;
-    invoiceNumber: string;
-    items: SaleItem[];
-    total: number;
-    amountPaid: number;
-    remainingBalance: number;
-    paymentStatus: 'paid' | 'partial' | 'unpaid';
-    customerId?: string;
-    customerName?: string;
-    createdAt: Timestamp; 
-}
 
 function StatusBadge({ status }: { status: Sale['paymentStatus'] }) {
     return (
@@ -66,6 +48,13 @@ export default function SalesHistoryPage() {
         return collection(firestore, 'users', user.uid, 'sales');
     }, [user, firestore]);
     const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesCollectionRef);
+
+    // Fetch Company Profile
+    const companyDocRef = useMemoFirebase(() => {
+        if (!user || !firestore) return null;
+        return doc(firestore, 'users', user.uid, 'companyProfile', 'main');
+    }, [user, firestore]);
+    const { data: companyProfile, isLoading: isLoadingCompanyProfile } = useDoc<CompanyProfile>(companyDocRef);
 
     useEffect(() => {
         if (!isUserLoading && !user) {
@@ -109,7 +98,7 @@ export default function SalesHistoryPage() {
 
     }, [sales, searchQuery, dateRange]);
 
-    const isLoading = isUserLoading || isLoadingSales;
+    const isLoading = isUserLoading || isLoadingSales || isLoadingCompanyProfile;
 
     if (isLoading || !user) {
         return <div className="flex h-full items-center justify-center"><p>Chargement...</p></div>;
@@ -122,6 +111,7 @@ export default function SalesHistoryPage() {
                     isOpen={!!selectedSale}
                     onOpenChange={(isOpen) => !isOpen && setSelectedSale(null)}
                     sale={selectedSale}
+                    companyProfile={companyProfile}
                 />
             )}
             <main className="flex-1 overflow-auto p-4 sm:p-6">

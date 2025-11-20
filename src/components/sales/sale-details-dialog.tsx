@@ -2,7 +2,7 @@
 'use client';
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import type { Sale } from '@/app/(app)/sales-history/page';
+import type { Sale, CompanyProfile } from '@/lib/types';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -29,9 +29,10 @@ interface SaleDetailsDialogProps {
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
     sale: Sale;
+    companyProfile?: CompanyProfile | null;
 }
 
-export function SaleDetailsDialog({ isOpen, onOpenChange, sale }: SaleDetailsDialogProps) {
+export function SaleDetailsDialog({ isOpen, onOpenChange, sale, companyProfile }: SaleDetailsDialogProps) {
     
     const handlePrint = () => {
         window.print();
@@ -40,11 +41,21 @@ export function SaleDetailsDialog({ isOpen, onOpenChange, sale }: SaleDetailsDia
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-lg print-content">
-                <DialogHeader className="print-header">
-                    <DialogTitle>Détails de la Facture</DialogTitle>
-                    <DialogDescription>
-                        Récapitulatif de la vente <span className="font-mono">{sale.invoiceNumber}</span>.
-                    </DialogDescription>
+                <DialogHeader className="print-header space-y-4">
+                     {companyProfile?.companyName && (
+                        <div className="text-center">
+                            <h3 className="text-xl font-bold">{companyProfile.companyName}</h3>
+                            {companyProfile.address && <p className="text-xs text-muted-foreground">{companyProfile.address}</p>}
+                            {companyProfile.phone && <p className="text-xs text-muted-foreground">Tél: {companyProfile.phone}</p>}
+                            {companyProfile.vatNumber && <p className="text-xs text-muted-foreground">N° TVA: {companyProfile.vatNumber}</p>}
+                        </div>
+                    )}
+                    <div className="border-t border-dashed pt-4">
+                        <DialogTitle>Détails de la Facture</DialogTitle>
+                        <DialogDescription>
+                            Récapitulatif de la vente <span className="font-mono">{sale.invoiceNumber}</span>.
+                        </DialogDescription>
+                    </div>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                     <div className="flex justify-between items-center text-sm">

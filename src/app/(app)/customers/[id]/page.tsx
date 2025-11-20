@@ -14,6 +14,8 @@ import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import type { Sale, Customer, CompanyProfile } from '@/lib/types';
+
 
 // Duplicated interfaces for simplicity, can be moved to a shared types file
 interface SaleItem {
@@ -23,40 +25,6 @@ interface SaleItem {
     quantity: number;
 }
 
-export interface Sale {
-    id: string;
-    invoiceNumber: string;
-    items: SaleItem[];
-    total: number;
-    amountPaid: number;
-    remainingBalance: number;
-    paymentStatus: 'paid' | 'partial' | 'unpaid';
-    customerId?: string;
-    customerName?: string;
-    createdAt: Timestamp; 
-}
-
-export interface Customer {
-    id: string;
-    firstName: string;
-    lastName: string;
-    phone?: string;
-}
-
-function StatusBadge({ status }: { status: Sale['paymentStatus'] }) {
-    return (
-        <span className={cn(
-            'rounded-full px-2 py-1 text-xs font-semibold',
-            status === 'paid' && 'bg-green-500/20 text-green-400',
-            status === 'partial' && 'bg-yellow-500/20 text-yellow-400',
-            status === 'unpaid' && 'bg-red-500/20 text-red-400',
-        )}>
-            {status === 'paid' && 'Payé'}
-            {status === 'partial' && 'Partiel'}
-            {status === 'unpaid' && 'Impayé'}
-        </span>
-    );
-}
 
 export default function CustomerDetailsPage() {
     const { user, isUserLoading } = useUser();
@@ -83,6 +51,14 @@ export default function CustomerDetailsPage() {
         );
     }, [user, firestore, customerId]);
     const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesCollectionRef);
+    
+    // Fetch Company Profile
+    const companyDocRef = useMemoFirebase(() => {
+        if (!user || !firestore) return null;
+        return doc(firestore, 'users', user.uid, 'companyProfile', 'main');
+    }, [user, firestore]);
+    const { data: companyProfile, isLoading: isLoadingCompanyProfile } = useDoc<CompanyProfile>(companyDocRef);
+
 
     useEffect(() => {
         if (!isUserLoading && !user) {
@@ -96,7 +72,7 @@ export default function CustomerDetailsPage() {
     }, [sales]);
 
 
-    const isLoading = isUserLoading || isLoadingCustomer || isLoadingSales;
+    const isLoading = isUserLoading || isLoadingCustomer || isLoadingSales || isLoadingCompanyProfile;
 
     if (isLoading || !user) {
         return <div className="flex h-full items-center justify-center"><p>Chargement des détails du client...</p></div>;
@@ -120,6 +96,7 @@ export default function CustomerDetailsPage() {
                     isOpen={!!selectedSale}
                     onOpenChange={(isOpen) => !isOpen && setSelectedSale(null)}
                     sale={selectedSale}
+                    companyProfile={companyProfile}
                 />
             )}
             <main className="flex-1 overflow-auto p-4 sm:p-6">
@@ -177,5 +154,20 @@ export default function CustomerDetailsPage() {
                 </Card>
             </main>
         </>
+    );
+}
+
+function StatusBadge({ status }: { status: Sale['paymentStatus'] }) {
+    return (
+        <span className={cn(
+            'rounded-full px-2 py-1 text-xs font-semibold',
+            status === 'paid' && 'bg-green-500/20 text-green-400',
+            status === 'partial' && 'bg-yellow-500/20 text-yellow-400',
+            status === 'unpaid' && 'bg-red-500/20 text-red-400',
+        )}>
+            {status === 'paid' && 'Payé'}
+            {status === 'partial' && 'Partiel'}
+            {status === 'unpaid' && 'Impayé'}
+        </span>
     );
 }
