@@ -1,10 +1,11 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
+import { Toaster } from 'sonner';
 
 export const metadata: Metadata = {
-  title: 'Nouvelle Application',
-  description: 'Créé par Firebase Studio',
+  title: 'iPOS',
+  description: 'Votre solution de point de vente simple et efficace.',
 };
 
 export default function RootLayout({
@@ -23,6 +24,7 @@ export default function RootLayout({
       <body className="min-h-screen">
         <FirebaseClientProvider>
           {children}
+          <Toaster richColors />
         </FirebaseClientProvider>
       </body>
     </html>
