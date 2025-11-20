@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
@@ -7,8 +6,11 @@ import { useEffect, useMemo } from 'react';
 import { collection, Timestamp } from 'firebase/firestore';
 import { StatsCards } from '@/components/dashboard/stats-cards';
 import { LowStockProducts } from '@/components/dashboard/low-stock-products';
-import { isToday } from 'date-fns';
+import { isToday, subDays, format } from 'date-fns';
+import { fr } from 'date-fns/locale';
 import { VerificationNotice } from '@/components/dashboard/verification-notice';
+import { SalesChart } from '@/components/dashboard/sales-chart';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 
 // Re-using interfaces from other pages for consistency
 export interface Sale {
@@ -37,6 +39,11 @@ export interface CustomerWithSalesData extends Customer {
     outstandingBalance: number;
 }
 
+export interface ChartData {
+  date: string;
+  revenue: number;
+}
+
 
 export default function DashboardPage() {
   const { user, isUserLoading } = useUser();
@@ -60,24 +67,27 @@ export default function DashboardPage() {
     }
   }, [user, isUserLoading, router]);
 
-  // --- STATS CALCULATION ---
-  const dashboardStats = useMemo(() => {
-    if (!sales || !products || !customers || !payments) return {
+  // --- STATS & CHART CALCULATION ---
+  const { stats, chartData } = useMemo(() => {
+    const stats = {
       dailyRevenue: 0,
       dailySalesCount: 0,
       totalDebt: 0,
       lowStockCount: 0,
       lowStockProducts: []
     };
+     const chartData: ChartData[] = [];
+
+    if (!sales || !products || !customers || !payments) return { stats, chartData };
 
     // Daily stats
     const todaySales = sales.filter(sale => sale.createdAt && isToday(sale.createdAt.toDate()));
-    const dailyRevenue = todaySales.reduce((sum, sale) => sum + sale.total, 0);
-    const dailySalesCount = todaySales.length;
+    stats.dailyRevenue = todaySales.reduce((sum, sale) => sum + sale.total, 0);
+    stats.dailySalesCount = todaySales.length;
 
     // Low stock
-    const lowStockProducts = products.filter(p => p.quantity <= p.minStockLevel);
-    const lowStockCount = lowStockProducts.length;
+    stats.lowStockProducts = products.filter(p => p.quantity <= p.minStockLevel);
+    stats.lowStockCount = stats.lowStockProducts.length;
 
     // Total Debt Calculation
     const salesByCustomer = sales.reduce((acc, sale) => {
@@ -100,20 +110,30 @@ export default function DashboardPage() {
         return acc;
     }, {} as Record<string, number>);
 
-    const totalDebt = customers.reduce((total, customer) => {
+    stats.totalDebt = customers.reduce((total, customer) => {
       const debtFromSales = salesByCustomer[customer.id] || 0;
       const totalPayments = paymentsByCustomer[customer.id] || 0;
       const outstandingBalance = debtFromSales - totalPayments;
       return total + (outstandingBalance > 0 ? outstandingBalance : 0);
     }, 0);
 
+     // Chart Data (last 7 days)
+    const last7Days = Array.from({ length: 7 }, (_, i) => subDays(new Date(), i)).reverse();
+    const salesByDay = last7Days.map(day => {
+        const dayString = format(day, 'yyyy-MM-dd');
+        const revenue = sales
+            .filter(sale => format(sale.createdAt.toDate(), 'yyyy-MM-dd') === dayString)
+            .reduce((sum, sale) => sum + sale.total, 0);
+        return {
+            date: format(day, 'd MMM', { locale: fr }),
+            revenue: revenue,
+        };
+    });
+
 
     return {
-      dailyRevenue,
-      dailySalesCount,
-      totalDebt,
-      lowStockCount,
-      lowStockProducts
+      stats: stats,
+      chartData: salesByDay
     };
 
   }, [sales, products, customers, payments]);
@@ -132,12 +152,23 @@ export default function DashboardPage() {
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
         <div className="flex items-center">
-          <h1 className="text-lg font-semibold md:text-2xl">Aperçu de la journée</h1>
+          <h1 className="text-lg font-semibold md:text-2xl">Aperçu</h1>
         </div>
         <VerificationNotice />
-        <StatsCards stats={dashboardStats} />
-        <div className="grid gap-4 md:gap-8">
-            <LowStockProducts products={dashboardStats.lowStockProducts} />
+        <StatsCards stats={stats} />
+        <div className="grid gap-4 md:gap-8 lg:grid-cols-2">
+            <Card className="lg:col-span-1">
+                <CardHeader>
+                    <CardTitle>Ventes des 7 derniers jours</CardTitle>
+                    <CardDescription>
+                        Aperçu du chiffre d'affaires quotidien.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="pl-2">
+                    <SalesChart data={chartData} />
+                </CardContent>
+            </Card>
+            <LowStockProducts products={stats.lowStockProducts} />
         </div>
     </div>
   );
