@@ -248,6 +248,8 @@ export default function SellPage() {
     return products.filter(p => p.name.toLowerCase().includes(productSearch.toLowerCase()));
   }, [products, productSearch]);
 
+  const showTabs = Object.keys(carts).length > 1;
+
 
   if (isUserLoading || !user) {
     return (
@@ -350,10 +352,10 @@ export default function SellPage() {
             <div className="flex flex-col gap-4 md:col-span-1 h-full">
                 <Card className="flex flex-col h-full">
                     <CardHeader>
-                        <CardTitle>Ventes en cours</CardTitle>
+                        {!showTabs && <CardTitle>Vente en cours</CardTitle>}
                         <div className="grid w-full items-center gap-1.5 pt-4">
                             <Label htmlFor="customer-select">Ouvrir un onglet de vente pour un client</Label>
-                             <Select onValueChange={handleCustomerSelect} value="none" disabled={isLoadingCustomers || !customers?.length}>
+                             <Select onValueChange={handleCustomerSelect} value="" disabled={isLoadingCustomers || !customers?.length}>
                                 <SelectTrigger id="customer-select" className="w-full">
                                     <div className="flex items-center gap-2">
                                         <User className="h-4 w-4 text-muted-foreground" />
@@ -361,7 +363,7 @@ export default function SellPage() {
                                     </div>
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="none" disabled>Sélectionner un client...</SelectItem>
+                                    <SelectItem value="" disabled>Sélectionner un client...</SelectItem>
                                     {customers?.map(customer => (
                                         <SelectItem key={customer.id} value={customer.id} disabled={!!carts[customer.id]}>
                                             {customer.firstName} {customer.lastName}
@@ -378,20 +380,22 @@ export default function SellPage() {
                     </CardHeader>
 
                     <Tabs value={activeCartId} onValueChange={setActiveCartId} className="flex-1 flex flex-col overflow-hidden">
-                        <div className="px-4">
-                            <TabsList className="grid w-full grid-cols-2">
-                                {Object.values(carts).map(cart => (
-                                    <TabsTrigger key={cart.customerId} value={cart.customerId} className="relative">
-                                        {cart.customerName}
-                                        {cart.customerId !== 'none' && (
-                                            <button onClick={(e) => closeCart(e, cart.customerId)} className="absolute top-1 right-1 rounded-full p-0.5 hover:bg-muted-foreground/20">
-                                                <X className="h-3 w-3" />
-                                            </button>
-                                        )}
-                                    </TabsTrigger>
-                                ))}
-                            </TabsList>
-                        </div>
+                        {showTabs && (
+                            <div className="px-4">
+                                <TabsList className="grid w-full" style={{ gridTemplateColumns: `repeat(${Object.keys(carts).length}, minmax(0, 1fr))` }}>
+                                    {Object.values(carts).map(cart => (
+                                        <TabsTrigger key={cart.customerId} value={cart.customerId} className="relative">
+                                            {cart.customerName}
+                                            {cart.customerId !== 'none' && (
+                                                <button onClick={(e) => closeCart(e, cart.customerId)} className="absolute top-1 right-1 rounded-full p-0.5 hover:bg-muted-foreground/20">
+                                                    <X className="h-3 w-3" />
+                                                </button>
+                                            )}
+                                        </TabsTrigger>
+                                    ))}
+                                </TabsList>
+                            </div>
+                        )}
                         
                         {Object.values(carts).map(cart => (
                              <TabsContent key={cart.customerId} value={cart.customerId} className="flex-1 flex flex-col overflow-hidden mt-0">
@@ -446,5 +450,4 @@ export default function SellPage() {
     </>
   );
 }
-
-    
+ 
