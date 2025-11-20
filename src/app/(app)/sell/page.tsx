@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { PaymentDialog } from '@/components/sell/payment-dialog';
 import Link from 'next/link';
-import type { Product, Customer } from '@/lib/types';
+import type { Product, Customer, Sale, Payment } from '@/lib/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -27,6 +27,7 @@ interface Cart {
     customerId: string;
     customerName: string;
     items: CartItem[];
+    outstandingBalance?: number;
 }
 
 export default function SellPage() {
@@ -49,19 +50,31 @@ export default function SellPage() {
   
   const barcodeInputRef = useRef<HTMLInputElement>(null);
 
-  // Products collection
+  // --- DATA FETCHING ---
   const productsCollectionRef = useMemoFirebase(() => {
     if (!firestore || !user) return null;
     return collection(firestore, 'users', user.uid, 'products');
   }, [firestore, user]);
   const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsCollectionRef);
   
-  // Customers collection
   const customersCollectionRef = useMemoFirebase(() => {
     if (!user || !firestore) return null;
     return collection(firestore, 'users', user.uid, 'customers');
   }, [user, firestore]);
   const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersCollectionRef);
+
+  const salesCollectionRef = useMemoFirebase(() => {
+    if (!user || !firestore) return null;
+    return collection(firestore, 'users', user.uid, 'sales');
+  }, [user, firestore]);
+  const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesCollectionRef);
+
+  const paymentsCollectionRef = useMemoFirebase(() => {
+    if (!user || !firestore) return null;
+    return collection(firestore, 'users', user.uid, 'payments');
+  }, [user, firestore]);
+  const { data: payments, isLoading: isLoadingPayments } = useCollection<Payment>(paymentsCollectionRef);
+
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -95,6 +108,44 @@ export default function SellPage() {
         };
     }, [carts, activeCartId, isPaymentDialogOpen]); // Rerun if these dependencies change
   
+  // Combine customer and sales data to calculate debt
+  const customersWithDebt = useMemo(() => {
+        if (!customers || !sales || !payments) return [];
+
+        const salesByCustomer = sales.reduce((acc, sale) => {
+            if (sale.customerId) {
+                if (!acc[sale.customerId]) {
+                    acc[sale.customerId] = { totalSpent: 0, debtFromSales: 0 };
+                }
+                acc[sale.customerId].totalSpent += sale.total;
+                acc[sale.customerId].debtFromSales += sale.remainingBalance;
+            }
+            return acc;
+        }, {} as Record<string, { totalSpent: number, debtFromSales: number }>);
+
+        const paymentsByCustomer = payments.reduce((acc, payment) => {
+             if (payment.customerId) {
+                if (!acc[payment.customerId]) {
+                    acc[payment.customerId] = 0;
+                }
+                acc[payment.customerId] += payment.amount;
+            }
+            return acc;
+        }, {} as Record<string, number>);
+
+        return customers.map(customer => {
+            const customerSales = salesByCustomer[customer.id] || { totalSpent: 0, debtFromSales: 0 };
+            const customerPayments = paymentsByCustomer[customer.id] || 0;
+            const outstandingBalance = customerSales.debtFromSales - customerPayments;
+
+            return {
+                ...customer,
+                outstandingBalance: outstandingBalance > 0 ? outstandingBalance : 0,
+            }
+        });
+    }, [customers, sales, payments]);
+
+
   const showStatusMessage = useCallback((type: 'success' | 'error', text: string, cartId: string) => {
     setStatusMessage({ type, text, cartId });
     setTimeout(() => setStatusMessage(null), 3000);
@@ -169,14 +220,15 @@ export default function SellPage() {
     if (customerId === 'none' || !customerId || carts[customerId]) {
       return; // Do nothing if it's the placeholder or cart already exists
     }
-    const customer = customers?.find(c => c.id === customerId);
+    const customer = customersWithDebt?.find(c => c.id === customerId);
     if (customer) {
         setCarts(prev => ({
             ...prev,
             [customerId]: {
                 customerId,
                 customerName: `${customer.firstName} ${customer.lastName}`,
-                items: []
+                items: [],
+                outstandingBalance: customer.outstandingBalance
             }
         }));
         setActiveCartId(customerId);
@@ -282,8 +334,9 @@ export default function SellPage() {
 
   const showTabs = Object.keys(carts).length > 1;
 
+  const isLoading = isUserLoading || isLoadingProducts || isLoadingCustomers || isLoadingSales || isLoadingPayments;
 
-  if (isUserLoading || !user) {
+  if (isLoading || !user) {
     return (
       <div className="flex h-full items-center justify-center">
         <p>Chargement...</p>
@@ -430,16 +483,23 @@ export default function SellPage() {
                         <div className="grid w-full items-center gap-1.5 pt-4">
                             <Label htmlFor="customer-select">Ouvrir un onglet de vente pour un client</Label>
                              <Select onValueChange={handleCustomerSelect} value="">
-                                <SelectTrigger id="customer-select" className="w-full" disabled={isLoadingCustomers || !customers?.length}>
+                                <SelectTrigger id="customer-select" className="w-full" disabled={isLoadingCustomers || !customersWithDebt?.length}>
                                     <div className="flex items-center gap-2">
                                         <User className="h-4 w-4 text-muted-foreground" />
                                         <SelectValue placeholder="Sélectionner un client..." />
                                     </div>
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {customers?.map(customer => (
+                                    {customersWithDebt?.map(customer => (
                                         <SelectItem key={customer.id} value={customer.id} disabled={!!carts[customer.id]}>
-                                            {customer.firstName} {customer.lastName}
+                                            <div className="flex justify-between w-full">
+                                                <span>{customer.firstName} {customer.lastName}</span>
+                                                {customer.outstandingBalance > 0 && (
+                                                    <span className="text-xs text-destructive ml-2">
+                                                        ({customer.outstandingBalance.toFixed(2)} DA)
+                                                    </span>
+                                                )}
+                                            </div>
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
@@ -457,8 +517,13 @@ export default function SellPage() {
                             <div className="px-4">
                                 <TabsList className="grid w-full" style={{ gridTemplateColumns: `repeat(${Object.keys(carts).length}, minmax(0, 1fr))` }}>
                                     {Object.values(carts).map(cart => (
-                                        <TabsTrigger key={cart.customerId} value={cart.customerId} className="relative">
-                                            {cart.customerName}
+                                        <TabsTrigger key={cart.customerId} value={cart.customerId} className="relative text-xs sm:text-sm">
+                                            <span>
+                                                {cart.customerName}
+                                                {cart.outstandingBalance && cart.outstandingBalance > 0 && (
+                                                    <span className="hidden sm:inline text-destructive ml-1">({cart.outstandingBalance.toFixed(2)})</span>
+                                                )}
+                                            </span>
                                             {cart.customerId !== 'none' && (
                                                 <div role="button" onClick={(e) => closeCart(e, cart.customerId)} className="absolute top-1 right-1 rounded-full p-0.5 hover:bg-muted-foreground/20">
                                                     <X className="h-3 w-3" />
@@ -526,7 +591,5 @@ export default function SellPage() {
     </>
   );
 }
-
-    
 
     
