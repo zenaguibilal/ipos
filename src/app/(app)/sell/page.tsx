@@ -3,7 +3,7 @@
 
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { collection, doc, serverTimestamp, writeBatch } from 'firebase/firestore';
@@ -44,6 +44,8 @@ export default function SellPage() {
   const [barcodeSearch, setBarcodeSearch] = useState('');
   const [productSearch, setProductSearch] = useState('');
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+  
+  const barcodeInputRef = useRef<HTMLInputElement>(null);
 
   // Products collection
   const productsCollectionRef = useMemoFirebase(() => {
@@ -64,6 +66,32 @@ export default function SellPage() {
       router.push('/login');
     }
   }, [user, isUserLoading, router]);
+
+    // Keyboard shortcuts handler
+    useEffect(() => {
+        const handleKeyDown = (event: KeyboardEvent) => {
+            // F8 to focus barcode input
+            if (event.key === 'F8') {
+                event.preventDefault();
+                barcodeInputRef.current?.focus();
+            }
+
+            // F9 to open payment dialog
+            if (event.key === 'F9') {
+                event.preventDefault();
+                const activeCart = carts[activeCartId];
+                if (activeCart && activeCart.items.length > 0 && !isPaymentDialogOpen) {
+                    setIsPaymentDialogOpen(true);
+                }
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [carts, activeCartId, isPaymentDialogOpen]); // Rerun if these dependencies change
   
   const showStatusMessage = useCallback((type: 'success' | 'error', text: string, cartId: string) => {
     setStatusMessage({ type, text, cartId });
@@ -209,14 +237,15 @@ export default function SellPage() {
 
     batch.commit()
       .then(() => {
+            const activeCartIdBeforeSale = activeCartId;
             // Reset only the active cart
             setCarts(prev => ({
                 ...prev,
-                [activeCartId]: { ...prev[activeCartId], items: [] }
+                [activeCartIdBeforeSale]: { ...prev[activeCartIdBeforeSale], items: [] }
             }));
             
             setIsProcessingSale(false);
-            showStatusMessage('success', `Vente enregistrée (Facture ${invoiceNumber})`, activeCartId);
+            showStatusMessage('success', `Vente enregistrée (Facture ${invoiceNumber})`, activeCartIdBeforeSale);
             setIsPaymentDialogOpen(false);
       })
       .catch((err) => {
@@ -279,7 +308,7 @@ export default function SellPage() {
                     <CardHeader>
                         <CardTitle>Produits</CardTitle>
                         <CardDescription>
-                            Scannez un code-barres, recherchez un produit par nom, ou cliquez pour l'ajouter au panier actif.
+                            Scannez (F8), recherchez, ou cliquez sur un produit pour l'ajouter au panier actif.
                         </CardDescription>
                          <div className="flex flex-col gap-2 pt-2 sm:flex-row">
                              <Input 
@@ -289,11 +318,11 @@ export default function SellPage() {
                                 className="w-full"
                             />
                             <Input 
-                                placeholder="Scanner ou taper le code-barres..."
+                                ref={barcodeInputRef}
+                                placeholder="Scanner ou taper le code-barres (F8)..."
                                 value={barcodeSearch}
                                 onChange={(e) => setBarcodeSearch(e.target.value)}
                                 className="w-full"
-                                autoFocus
                             />
                         </div>
                         <div className="h-5 pt-1">
@@ -360,8 +389,8 @@ export default function SellPage() {
                         {!showTabs && <CardTitle>Vente en cours</CardTitle>}
                         <div className="grid w-full items-center gap-1.5 pt-4">
                             <Label htmlFor="customer-select">Ouvrir un onglet de vente pour un client</Label>
-                             <Select onValueChange={handleCustomerSelect} value="" disabled={isLoadingCustomers || !customers?.length}>
-                                <SelectTrigger id="customer-select" className="w-full">
+                             <Select onValueChange={handleCustomerSelect} value="">
+                                <SelectTrigger id="customer-select" className="w-full" disabled={isLoadingCustomers || !customers?.length}>
                                     <div className="flex items-center gap-2">
                                         <User className="h-4 w-4 text-muted-foreground" />
                                         <SelectValue placeholder="Sélectionner un client..." />
@@ -406,7 +435,7 @@ export default function SellPage() {
                                 <CardContent className="flex-1 overflow-auto pt-4">
                                     {cart.items.length === 0 ? (
                                         <div className="flex h-full flex-col items-center justify-center text-center">
-                                             {statusMessage?.type === 'success' && statusMessage.cartId === cart.customerId && isProcessingSale ? (
+                                             {statusMessage?.type === 'success' && statusMessage.cartId === cart.customerId ? (
                                                 <div className="flex flex-col items-center gap-2">
                                                     <p className="text-green-500 font-medium">Vente enregistrée !</p>
                                                     <p className="text-xs text-muted-foreground">{statusMessage.text}</p>
@@ -448,7 +477,7 @@ export default function SellPage() {
                             disabled={activeCart.items.length === 0 || isProcessingSale}
                             onClick={() => setIsPaymentDialogOpen(true)}
                         >
-                            {isProcessingSale ? 'Encaissement...' : `Encaisser pour ${activeCart?.customerName}`}
+                            {isProcessingSale ? 'Encaissement...' : `Encaisser (F9) pour ${activeCart?.customerName}`}
                         </Button>
                     </CardFooter>}
                 </Card>
@@ -457,3 +486,5 @@ export default function SellPage() {
     </>
   );
 }
+
+    
