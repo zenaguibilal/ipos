@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { collection, doc, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { AddProductForm } from '@/components/sell/add-product-form';
-import { MinusCircle, PlusCircle, User, XCircle, X } from 'lucide-react';
+import { MinusCircle, PlusCircle, User, XCircle, X, LayoutGrid, List } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
@@ -17,6 +17,7 @@ import Link from 'next/link';
 import type { Product, Customer } from '@/lib/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 interface CartItem extends Product {
     cartQuantity: number;
@@ -44,6 +45,7 @@ export default function SellPage() {
   const [barcodeSearch, setBarcodeSearch] = useState('');
   const [productSearch, setProductSearch] = useState('');
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   
   const barcodeInputRef = useRef<HTMLInputElement>(null);
 
@@ -273,8 +275,9 @@ export default function SellPage() {
 
   const filteredProducts = useMemo(() => {
     if (!products) return [];
-    if (!productSearch.trim()) return products;
-    return products.filter(p => p.name.toLowerCase().includes(productSearch.toLowerCase()));
+    const sortedProducts = [...products].sort((a,b) => a.name.localeCompare(b.name));
+    if (!productSearch.trim()) return sortedProducts;
+    return sortedProducts.filter(p => p.name.toLowerCase().includes(productSearch.toLowerCase()));
   }, [products, productSearch]);
 
   const showTabs = Object.keys(carts).length > 1;
@@ -306,10 +309,22 @@ export default function SellPage() {
             <div className="flex flex-col gap-4 md:col-span-1 lg:col-span-2 h-full overflow-hidden">
                 <Card className='flex flex-col h-full'>
                     <CardHeader>
-                        <CardTitle>Produits</CardTitle>
-                        <CardDescription>
-                            Scannez (F8), recherchez, ou cliquez sur un produit pour l'ajouter au panier actif.
-                        </CardDescription>
+                        <div className="flex justify-between items-start">
+                            <div>
+                                <CardTitle>Produits</CardTitle>
+                                <CardDescription>
+                                    Scannez (F8), recherchez, ou cliquez sur un produit pour l'ajouter au panier actif.
+                                </CardDescription>
+                            </div>
+                            <div className="flex items-center gap-1">
+                                <Button variant={viewMode === 'grid' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('grid')}>
+                                    <LayoutGrid className="h-5 w-5" />
+                                </Button>
+                                <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('list')}>
+                                    <List className="h-5 w-5" />
+                                </Button>
+                            </div>
+                        </div>
                          <div className="flex flex-col gap-2 pt-2 sm:flex-row">
                              <Input 
                                 placeholder="Rechercher par nom..."
@@ -344,25 +359,50 @@ export default function SellPage() {
                                 <p>Chargement des produits...</p>
                             </div>
                         ) : filteredProducts && filteredProducts.length > 0 ? (
-                           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                                {filteredProducts.map((product) => (
-                                    <Card 
-                                        key={product.id}
-                                        onClick={() => addToCart(product)}
-                                        className="cursor-pointer hover:border-primary transition-colors flex flex-col"
-                                    >
-                                        <CardHeader className="flex-1 p-4">
-                                            <CardTitle className="text-sm">{product.name}</CardTitle>
-                                        </CardHeader>
-                                        <CardFooter className="p-4 pt-0 flex justify-between items-center text-xs">
-                                            <span className="font-semibold">{product.price.toFixed(2)} DA</span>
-                                            <span className={product.quantity <= product.minStockLevel ? 'text-destructive font-bold' : 'text-muted-foreground'}>
-                                                Stock: {product.quantity}
-                                            </span>
-                                        </CardFooter>
-                                    </Card>
-                                ))}
-                           </div>
+                           <>
+                           {viewMode === 'grid' ? (
+                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                                    {filteredProducts.map((product) => (
+                                        <Card 
+                                            key={product.id}
+                                            onClick={() => addToCart(product)}
+                                            className="cursor-pointer hover:border-primary transition-colors flex flex-col"
+                                        >
+                                            <CardHeader className="flex-1 p-4">
+                                                <CardTitle className="text-sm">{product.name}</CardTitle>
+                                            </CardHeader>
+                                            <CardFooter className="p-4 pt-0 flex justify-between items-center text-xs">
+                                                <span className="font-semibold">{product.price.toFixed(2)} DA</span>
+                                                <span className={product.quantity <= product.minStockLevel ? 'text-destructive font-bold' : 'text-muted-foreground'}>
+                                                    Stock: {product.quantity}
+                                                </span>
+                                            </CardFooter>
+                                        </Card>
+                                    ))}
+                               </div>
+                           ) : (
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Produit</TableHead>
+                                            <TableHead className="text-right">Prix</TableHead>
+                                            <TableHead className="text-right">Stock</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {filteredProducts.map(product => (
+                                            <TableRow key={product.id} onClick={() => addToCart(product)} className="cursor-pointer">
+                                                <TableCell className="font-medium">{product.name}</TableCell>
+                                                <TableCell className="text-right font-semibold">{product.price.toFixed(2)} DA</TableCell>
+                                                <TableCell className={cn("text-right", product.quantity <= product.minStockLevel ? 'text-destructive font-bold' : 'text-muted-foreground')}>
+                                                    {product.quantity}
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                           )}
+                           </>
                         ) : products && products.length > 0 && productSearch ? (
                              <div className="flex h-full items-center justify-center rounded-md border-2 border-dashed border-border">
                                 <div className="text-center">
@@ -486,5 +526,7 @@ export default function SellPage() {
     </>
   );
 }
+
+    
 
     
