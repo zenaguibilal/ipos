@@ -7,7 +7,7 @@ import type { Product } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "../ui/button";
-import { PackageWarning } from "lucide-react";
+import { Archive } from "lucide-react";
 import Link from "next/link";
 
 interface LowStockAlertsProps {
@@ -26,7 +26,7 @@ export function LowStockAlerts({ products }: LowStockAlertsProps) {
             <CardHeader className="flex flex-row items-start justify-between gap-2">
                 <div>
                     <CardTitle className="flex items-center gap-2">
-                        <PackageWarning className="h-5 w-5 text-yellow-500" />
+                        <Archive className="h-5 w-5 text-yellow-500" />
                         Alertes de stock faible ({products.length})
                     </CardTitle>
                     <CardDescription>

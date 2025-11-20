@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import type { CustomerWithSalesData } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { Button } from "../ui/button";
-import { UserWarning } from "lucide-react";
+import { Users } from "lucide-react";
 import Link from "next/link";
 
 interface DebtAlertsProps {
@@ -25,7 +25,7 @@ export function DebtAlerts({ customers }: DebtAlertsProps) {
             <CardHeader className="flex flex-row items-start justify-between gap-2">
                 <div>
                     <CardTitle className="flex items-center gap-2">
-                         <UserWarning className="h-5 w-5 text-orange-500" />
+                         <Users className="h-5 w-5 text-orange-500" />
                         Rappels de paiement ({customers.length})
                     </CardTitle>
                     <CardDescription>
