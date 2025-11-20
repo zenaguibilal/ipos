@@ -14,11 +14,14 @@ import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
+import { StatusToggle } from '@/components/bread-orders/status-toggle';
 
 export interface BreadOrder {
     id: string;
     name: string;
     quantity: number;
+    isPaid: boolean;
+    isDelivered: boolean;
 }
 
 export default function BreadOrdersPage() {
@@ -121,6 +124,8 @@ export default function BreadOrdersPage() {
                                         <tr>
                                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Nom de la commande</th>
                                             <th scope="col" className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Quantité</th>
+                                            <th scope="col" className="px-6 py-3 text-center text-xs font-medium uppercase tracking-wider text-muted-foreground">Payé</th>
+                                            <th scope="col" className="px-6 py-3 text-center text-xs font-medium uppercase tracking-wider text-muted-foreground">Livré</th>
                                             <th scope="col" className="relative px-6 py-3">
                                                 <span className="sr-only">Actions</span>
                                             </th>
@@ -131,6 +136,22 @@ export default function BreadOrdersPage() {
                                             <tr key={order.id}>
                                                 <td className="whitespace-nowrap px-6 py-4 font-medium">{order.name}</td>
                                                 <td className="whitespace-nowrap px-6 py-4 text-right font-medium">{order.quantity}</td>
+                                                <td className="whitespace-nowrap px-6 py-4 text-center">
+                                                    <StatusToggle 
+                                                        userId={user.uid}
+                                                        orderId={order.id}
+                                                        field="isPaid"
+                                                        currentStatus={order.isPaid}
+                                                    />
+                                                </td>
+                                                <td className="whitespace-nowrap px-6 py-4 text-center">
+                                                     <StatusToggle 
+                                                        userId={user.uid}
+                                                        orderId={order.id}
+                                                        field="isDelivered"
+                                                        currentStatus={order.isDelivered}
+                                                    />
+                                                </td>
                                                 <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
                                                     <DropdownMenu>
                                                         <DropdownMenuTrigger asChild>

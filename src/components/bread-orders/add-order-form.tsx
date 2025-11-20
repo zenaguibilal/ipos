@@ -51,6 +51,8 @@ export function AddOrderForm({ isOpen, onOpenChange, userId }: AddOrderFormProps
         addDocumentNonBlocking(ordersCollectionRef, {
             name: name,
             quantity: quantityNumber,
+            isPaid: false,
+            isDelivered: false,
             createdAt: serverTimestamp(),
         }, {
             onSuccess: () => {

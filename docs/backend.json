@@ -276,6 +276,14 @@
           "type": "integer",
           "description": "Number of bread units ordered."
         },
+        "isPaid": {
+          "type": "boolean",
+          "description": "Indicates if the order has been paid for."
+        },
+        "isDelivered": {
+          "type": "boolean",
+          "description": "Indicates if the order has been delivered/picked up."
+        },
         "createdAt": {
           "type": "string",
           "description": "Timestamp indicating when the order was created.",
