@@ -63,3 +63,12 @@ export interface BreadOrder {
     isDelivered: boolean;
     isRecurring: boolean;
 }
+
+export interface TopProduct extends Product {
+    totalRevenue: number;
+    unitsSold: number;
+}
+
+export interface TopCustomer extends Customer {
+    totalSpent: number;
+}
