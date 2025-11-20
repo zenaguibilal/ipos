@@ -136,7 +136,7 @@ export default function SellPage() {
 
 
   const handleCustomerSelect = (customerId: string) => {
-    if (customerId === 'none' || carts[customerId]) {
+    if (customerId === 'none' || !customerId || carts[customerId]) {
       return; // Do nothing if it's the placeholder or cart already exists
     }
     const customer = customers?.find(c => c.id === customerId);
@@ -360,7 +360,7 @@ export default function SellPage() {
                         {!showTabs && <CardTitle>Vente en cours</CardTitle>}
                         <div className="grid w-full items-center gap-1.5 pt-4">
                             <Label htmlFor="customer-select">Ouvrir un onglet de vente pour un client</Label>
-                             <Select onValueChange={handleCustomerSelect} value="" disabled={isLoadingCustomers || !customers?.length}>
+                             <Select onValueChange={handleCustomerSelect} value={activeCartId} disabled={isLoadingCustomers || !customers?.length}>
                                 <SelectTrigger id="customer-select" className="w-full">
                                     <div className="flex items-center gap-2">
                                         <User className="h-4 w-4 text-muted-foreground" />
@@ -368,7 +368,6 @@ export default function SellPage() {
                                     </div>
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="" disabled>Sélectionner un client...</SelectItem>
                                     {customers?.map(customer => (
                                         <SelectItem key={customer.id} value={customer.id} disabled={!!carts[customer.id]}>
                                             {customer.firstName} {customer.lastName}
@@ -407,7 +406,7 @@ export default function SellPage() {
                                 <CardContent className="flex-1 overflow-auto pt-4">
                                     {cart.items.length === 0 ? (
                                         <div className="flex h-full flex-col items-center justify-center text-center">
-                                             {statusMessage?.type === 'success' && statusMessage.cartId === cart.customerId && !isProcessingSale ? (
+                                             {statusMessage?.type === 'success' && statusMessage.cartId === cart.customerId && isProcessingSale ? (
                                                 <div className="flex flex-col items-center gap-2">
                                                     <p className="text-green-500 font-medium">Vente enregistrée !</p>
                                                     <p className="text-xs text-muted-foreground">{statusMessage.text}</p>
@@ -458,6 +457,3 @@ export default function SellPage() {
     </>
   );
 }
- 
-
-    
