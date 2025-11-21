@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { collection, doc, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { AddProductForm } from '@/components/sell/add-product-form';
+import { AddCustomProductForm } from '@/components/sell/add-custom-product-form';
 import { MinusCircle, PlusCircle, User, XCircle, X, LayoutGrid, List } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -21,6 +22,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 
 interface CartItem extends Product {
     cartQuantity: number;
+    isCustom?: boolean;
 }
 
 interface Cart {
@@ -41,6 +43,7 @@ export default function SellPage() {
   const [activeCartId, setActiveCartId] = useState<string>('none');
 
   const [isAddingProduct, setIsAddingProduct] = useState(false);
+  const [isAddingCustomProduct, setIsAddingCustomProduct] = useState(false);
   const [isProcessingSale, setIsProcessingSale] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{ cartId: string; type: 'success' | 'error'; text: string } | null>(null);
   const [barcodeSearch, setBarcodeSearch] = useState('');
@@ -151,8 +154,8 @@ export default function SellPage() {
     setTimeout(() => setStatusMessage(null), 3000);
   }, []);
   
-  const addToCart = useCallback((product: Product) => {
-    if (product.quantity <= 0) {
+  const addToCart = useCallback((product: Product, isCustom: boolean = false) => {
+    if (!isCustom && product.quantity <= 0) {
         showStatusMessage('error', `Stock épuisé pour ${product.name}.`, activeCartId);
         return;
     }
@@ -162,14 +165,18 @@ export default function SellPage() {
         const existingItemIndex = newItems.findIndex((item) => item.id === product.id);
 
         if (existingItemIndex > -1) {
-            if (newItems[existingItemIndex].cartQuantity >= product.quantity) {
+            if (!isCustom && newItems[existingItemIndex].cartQuantity >= product.quantity) {
                 showStatusMessage('error', `Quantité maximale atteinte pour ${product.name}.`, activeCartId);
                 return prevCarts;
             }
             newItems[existingItemIndex] = { ...newItems[existingItemIndex], cartQuantity: newItems[existingItemIndex].cartQuantity + 1 };
         } else {
             showStatusMessage('success', `${product.name} ajouté.`, activeCartId);
-            newItems.push({ ...product, cartQuantity: 1 });
+            const cartItem: CartItem = { ...product, cartQuantity: 1 };
+            if (isCustom) {
+                cartItem.isCustom = true;
+            }
+            newItems.push(cartItem);
         }
         
         return {
@@ -178,6 +185,19 @@ export default function SellPage() {
         };
     });
   }, [activeCartId, showStatusMessage]);
+
+  const handleAddCustomProduct = (name: string, price: number) => {
+    const customProduct: Product = {
+        id: `custom-${Date.now()}`,
+        name: name,
+        price: price,
+        purchasePrice: 0, // No purchase price for custom items
+        quantity: 9999, // Effectively infinite quantity
+        minStockLevel: 0,
+    };
+    addToCart(customProduct, true);
+    setIsAddingCustomProduct(false);
+  };
 
   const updateCartItemQuantity = (productId: string, newQuantity: number) => {
     setCarts(prevCarts => {
@@ -189,12 +209,16 @@ export default function SellPage() {
         } else {
             const itemIndex = newItems.findIndex(item => item.id === productId);
             if (itemIndex > -1) {
-                const originalProduct = products?.find(p => p.id === productId);
-                if (originalProduct && newQuantity > originalProduct.quantity) {
-                    showStatusMessage('error', `Stock insuffisant pour ${newItems[itemIndex].name}.`, activeCartId);
-                    return prevCarts;
+                const cartItem = newItems[itemIndex];
+                // Only check stock for non-custom items
+                if (!cartItem.isCustom) {
+                    const originalProduct = products?.find(p => p.id === productId);
+                    if (originalProduct && newQuantity > originalProduct.quantity) {
+                        showStatusMessage('error', `Stock insuffisant pour ${cartItem.name}.`, activeCartId);
+                        return prevCarts;
+                    }
                 }
-                newItems[itemIndex] = { ...newItems[itemIndex], cartQuantity: newQuantity };
+                newItems[itemIndex] = { ...cartItem, cartQuantity: newQuantity };
             }
         }
         
@@ -284,9 +308,12 @@ export default function SellPage() {
     batch.set(newSaleRef, saleData);
 
     for (const item of activeCart.items) {
-        const productRef = doc(firestore, 'users', user.uid, 'products', item.id);
-        const newQuantity = item.quantity - item.cartQuantity;
-        batch.update(productRef, { quantity: newQuantity });
+        // Only update quantity for non-custom items
+        if (!item.isCustom) {
+            const productRef = doc(firestore, 'users', user.uid, 'products', item.id);
+            const newQuantity = item.quantity - item.cartQuantity;
+            batch.update(productRef, { quantity: newQuantity });
+        }
     }
 
     batch.commit()
@@ -351,6 +378,11 @@ export default function SellPage() {
             onOpenChange={setIsAddingProduct}
             userId={user.uid}
         />
+        <AddCustomProductForm
+            isOpen={isAddingCustomProduct}
+            onOpenChange={setIsAddingCustomProduct}
+            onConfirm={handleAddCustomProduct}
+        />
         {activeCart && <PaymentDialog
             isOpen={isPaymentDialogOpen}
             onOpenChange={setIsPaymentDialogOpen}
@@ -392,6 +424,11 @@ export default function SellPage() {
                                 onChange={(e) => setBarcodeSearch(e.target.value)}
                                 className="w-full"
                             />
+                        </div>
+                        <div className="flex pt-2">
+                             <Button variant="outline" size="sm" onClick={() => setIsAddingCustomProduct(true)}>
+                                Produit personnalisé
+                            </Button>
                         </div>
                         <div className="h-5 pt-1">
                             {statusMessage && statusMessage.cartId === activeCartId && statusMessage.type === 'error' && (
@@ -496,7 +533,7 @@ export default function SellPage() {
                                                 <span>{customer.firstName} {customer.lastName}</span>
                                                 {customer.outstandingBalance > 0 && (
                                                     <span className="text-xs text-destructive ml-2">
-                                                        ({customer.outstandingBalance.toFixed(2)} DA)
+                                                        (Dette: {customer.outstandingBalance.toFixed(2)} DA)
                                                     </span>
                                                 )}
                                             </div>
