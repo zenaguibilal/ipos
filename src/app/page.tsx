@@ -14,18 +14,18 @@ function AuthButtons() {
   }
 
   return (
-    <div className="mt-8 flex gap-4">
+    <div className="mt-8 flex flex-col sm:flex-row items-center gap-4">
       {user ? (
-        <Button asChild>
-          <Link href="/dashboard">Aller au tableau de bord</Link>
+        <Button asChild size="lg">
+          <Link href="/dashboard">Accéder à mon tableau de bord</Link>
         </Button>
       ) : (
         <>
-          <Button variant="outline" asChild>
-            <Link href="/login">Se connecter</Link>
+          <Button asChild size="lg">
+            <Link href="/signup">Créer un compte</Link>
           </Button>
-          <Button asChild>
-            <Link href="/signup">S'inscrire</Link>
+          <Button variant="outline" asChild size="lg">
+            <Link href="/login">Se connecter</Link>
           </Button>
         </>
       )}
@@ -36,15 +36,20 @@ function AuthButtons() {
 
 export default function Home() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center text-center p-4">
-      <div className="flex items-center gap-4 mb-6">
-        <Store className="h-16 w-16 text-primary" />
-        <h1 className="text-5xl font-bold">iPOS</h1>
+    <div className="flex min-h-screen flex-col items-center justify-center text-center p-6 bg-background">
+      <div className="max-w-3xl">
+        <div className="flex items-center justify-center gap-4 mb-6">
+          <Store className="h-16 w-16 text-primary" />
+          <h1 className="text-6xl font-bold tracking-tight">iPOS</h1>
+        </div>
+        <p className="mt-4 text-2xl font-medium text-foreground">
+          Votre point de vente, simplifié et intelligent.
+        </p>
+        <p className="mt-4 max-w-2xl mx-auto text-lg text-muted-foreground">
+          Gérez vos ventes, suivez votre inventaire, fidélisez vos clients et pilotez votre activité avec un tableau de bord puissant. Conçu pour être rapide, fiable et fonctionner même hors ligne.
+        </p>
+        <AuthButtons />
       </div>
-      <p className="mt-2 max-w-2xl text-lg text-muted-foreground">
-        iPOS est votre solution de point de vente tout-en-un, conçue pour être simple, rapide et puissante. Gérez vos ventes, suivez votre inventaire, fidélisez vos clients et pilotez votre activité grâce à un tableau de bord intelligent. Le tout, même hors-ligne.
-      </p>
-      <AuthButtons />
     </div>
   );
 }
