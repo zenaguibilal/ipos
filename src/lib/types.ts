@@ -48,6 +48,8 @@ export interface Payment {
 export interface CustomerWithSalesData extends Customer {
     totalSpent: number;
     outstandingBalance: number;
+    daysLate?: number;      // Optional: Days overdue for payment
+    isReminderDue?: boolean; // Optional: Flag to show reminder
 }
 
 export interface ChartData {

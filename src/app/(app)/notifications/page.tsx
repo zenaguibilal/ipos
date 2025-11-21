@@ -8,6 +8,7 @@ import { collection } from 'firebase/firestore';
 import { LowStockAlerts } from '@/components/notifications/low-stock-alerts';
 import { DebtAlerts } from '@/components/notifications/debt-alerts';
 import type { Product, Customer, Sale, Payment, CustomerWithSalesData } from '@/lib/types';
+import { differenceInDays } from 'date-fns';
 
 
 export default function NotificationsPage() {
@@ -33,15 +34,15 @@ export default function NotificationsPage() {
   }, [user, isUserLoading, router]);
 
   // --- ALERTS CALCULATION ---
-  const { lowStockProducts, customersWithDebt } = useMemo(() => {
+  const { lowStockProducts, debtAlertCustomers } = useMemo(() => {
     if (!products || !customers || !sales || !payments) {
-      return { lowStockProducts: [], customersWithDebt: [] };
+      return { lowStockProducts: [], debtAlertCustomers: [] };
     }
 
     // Low stock alerts
     const lowStockProducts = products.filter(p => p.quantity <= p.minStockLevel);
 
-    // Debt alerts
+    // --- Debt Alerts Logic ---
     const salesByCustomer = sales.reduce((acc, sale) => {
         if (sale.customerId) {
             if (!acc[sale.customerId]) {
@@ -75,8 +76,42 @@ export default function NotificationsPage() {
         };
     }).filter(c => c.outstandingBalance > 0);
 
+    const today = new Date();
+    const currentDayOfMonth = today.getDate();
 
-    return { lowStockProducts, customersWithDebt };
+    const debtAlertCustomers = customersWithDebt.map(customer => {
+        let isReminderDue = false;
+        let daysLate: number | undefined = undefined;
+        
+        if (customer.settlementDay) {
+            const settlementDay = customer.settlementDay;
+            // Reminder is due one day before settlement day
+            const reminderDay = settlementDay === 1 ? 31 : settlementDay - 1; // Simplified for now
+
+            if (currentDayOfMonth === reminderDay) {
+                isReminderDue = true;
+            } else if (currentDayOfMonth > settlementDay) {
+                isReminderDue = true;
+                daysLate = currentDayOfMonth - settlementDay;
+            } else if (currentDayOfMonth < settlementDay) {
+                // Check if we are in the next month but before the settlement day
+                const lastMonthSettlementDate = new Date(today.getFullYear(), today.getMonth() -1, settlementDay);
+                 if (today > lastMonthSettlementDate) {
+                    isReminderDue = true;
+                    daysLate = differenceInDays(today, new Date(today.getFullYear(), today.getMonth(), settlementDay));
+                 }
+            }
+        } else {
+            // For customers with no settlement day, maybe always show reminder if they have debt?
+            // For now, let's stick to the logic for customers with a settlement day.
+            // isReminderDue = true; // Or some other business logic
+        }
+
+        return { ...customer, isReminderDue, daysLate };
+    }).filter(c => c.isReminderDue);
+
+
+    return { lowStockProducts, debtAlertCustomers };
 
   }, [products, customers, sales, payments]);
 
@@ -90,7 +125,7 @@ export default function NotificationsPage() {
     );
   }
 
-  const totalAlerts = lowStockProducts.length + customersWithDebt.length;
+  const totalAlerts = lowStockProducts.length + debtAlertCustomers.length;
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
@@ -105,7 +140,7 @@ export default function NotificationsPage() {
       ) : (
         <div className="grid gap-4 md:gap-8">
           <LowStockAlerts products={lowStockProducts} />
-          <DebtAlerts customers={customersWithDebt} />
+          <DebtAlerts customers={debtAlertCustomers} />
         </div>
       )}
     </div>

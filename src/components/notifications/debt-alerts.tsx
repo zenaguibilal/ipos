@@ -20,7 +20,10 @@ export function DebtAlerts({ customers }: DebtAlertsProps) {
         e.stopPropagation(); // Prevent row click
         if (!customer.phone) return;
 
-        const message = `Bonjour ${customer.firstName} ${customer.lastName}, juste un petit rappel concernant votre solde de ${customer.outstandingBalance.toFixed(2)} DA. Merci.`;
+        let message = `Bonjour ${customer.firstName} ${customer.lastName}, juste un petit rappel concernant votre solde de ${customer.outstandingBalance.toFixed(2)} DA.`;
+        if (customer.daysLate && customer.daysLate > 0) {
+            message = `Bonjour ${customer.firstName} ${customer.lastName}, sauf erreur de notre part, votre solde de ${customer.outstandingBalance.toFixed(2)} DA est en attente de règlement depuis ${customer.daysLate} jour(s). Merci de régulariser votre situation.`;
+        }
         const whatsappUrl = `https://wa.me/${customer.phone}?text=${encodeURIComponent(message)}`;
         window.open(whatsappUrl, '_blank');
     };
@@ -35,10 +38,10 @@ export function DebtAlerts({ customers }: DebtAlertsProps) {
                 <div>
                     <CardTitle className="flex items-center gap-2">
                          <Users className="h-5 w-5 text-orange-500" />
-                        Clients avec dettes impayées ({customers.length})
+                        Rappels de Paiement ({customers.length})
                     </CardTitle>
                     <CardDescription>
-                        Ces clients ont un solde impayé.
+                        Clients avec un paiement à venir ou en retard.
                     </CardDescription>
                 </div>
                  <Button asChild variant="outline">
@@ -50,7 +53,8 @@ export function DebtAlerts({ customers }: DebtAlertsProps) {
                     <TableHeader>
                         <TableRow>
                             <TableHead>Client</TableHead>
-                            <TableHead>Téléphone</TableHead>
+                            <TableHead className="text-center">Jour de règlement</TableHead>
+                            <TableHead className="text-center">Jours de retard</TableHead>
                             <TableHead className="text-right">Solde Impayé</TableHead>
                             <TableHead className="text-right">Action</TableHead>
                         </TableRow>
@@ -60,9 +64,17 @@ export function DebtAlerts({ customers }: DebtAlertsProps) {
                             <TableRow key={customer.id} onClick={() => router.push(`/customers/${customer.id}`)} className="cursor-pointer">
                                 <TableCell>
                                     <div className="font-medium">{customer.firstName} {customer.lastName}</div>
+                                    <div className="text-sm text-muted-foreground">{customer.phone || '-'}</div>
                                 </TableCell>
-                                <TableCell>
-                                    {customer.phone || '-'}
+                                <TableCell className="text-center font-medium">
+                                    {customer.settlementDay ? `Le ${customer.settlementDay} de chaque mois` : '-'}
+                                </TableCell>
+                                <TableCell className="text-center">
+                                    {customer.daysLate && customer.daysLate > 0 ? (
+                                        <span className="font-bold text-destructive">{customer.daysLate}</span>
+                                    ) : (
+                                        <span className="text-muted-foreground">0</span>
+                                    )}
                                 </TableCell>
                                 <TableCell className="text-right font-bold text-destructive">
                                     {customer.outstandingBalance.toFixed(2)} DA
