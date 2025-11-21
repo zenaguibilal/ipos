@@ -1,13 +1,13 @@
 
 'use client';
 
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo } from 'react';
-import { collection } from 'firebase/firestore';
+import { collection, doc } from 'firebase/firestore';
 import { LowStockAlerts } from '@/components/notifications/low-stock-alerts';
 import { DebtAlerts } from '@/components/notifications/debt-alerts';
-import type { Product, Customer, Sale, Payment, CustomerWithSalesData } from '@/lib/types';
+import type { Product, Customer, Sale, Payment, CustomerWithSalesData, CompanyProfile } from '@/lib/types';
 import { differenceInDays } from 'date-fns';
 
 
@@ -21,11 +21,14 @@ export default function NotificationsPage() {
   const customersCollectionRef = useMemoFirebase(() => user && firestore ? collection(firestore, 'users', user.uid, 'customers') : null, [user, firestore]);
   const salesCollectionRef = useMemoFirebase(() => user && firestore ? collection(firestore, 'users', user.uid, 'sales') : null, [user, firestore]);
   const paymentsCollectionRef = useMemoFirebase(() => user && firestore ? collection(firestore, 'users', user.uid, 'payments') : null, [user, firestore]);
+  const companyDocRef = useMemoFirebase(() => user && firestore ? doc(firestore, 'users', user.uid, 'companyProfile', 'main') : null, [user, firestore]);
 
   const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsCollectionRef);
   const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersCollectionRef);
   const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesCollectionRef);
   const { data: payments, isLoading: isLoadingPayments } = useCollection<Payment>(paymentsCollectionRef);
+  const { data: companyProfile, isLoading: isLoadingCompanyProfile } = useDoc<CompanyProfile>(companyDocRef);
+
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -102,9 +105,8 @@ export default function NotificationsPage() {
                  }
             }
         } else {
-            // For customers with no settlement day, maybe always show reminder if they have debt?
-            // For now, let's stick to the logic for customers with a settlement day.
-            // isReminderDue = true; // Or some other business logic
+            // For customers with no settlement day, always show reminder if they have debt.
+            isReminderDue = true; 
         }
 
         return { ...customer, isReminderDue, daysLate };
@@ -115,7 +117,7 @@ export default function NotificationsPage() {
 
   }, [products, customers, sales, payments]);
 
-  const isLoading = isUserLoading || isLoadingProducts || isLoadingCustomers || isLoadingSales || isLoadingPayments;
+  const isLoading = isUserLoading || isLoadingProducts || isLoadingCustomers || isLoadingSales || isLoadingPayments || isLoadingCompanyProfile;
 
   if (isLoading || !user) {
     return (
@@ -140,7 +142,7 @@ export default function NotificationsPage() {
       ) : (
         <div className="grid gap-4 md:gap-8">
           <LowStockAlerts products={lowStockProducts} />
-          <DebtAlerts customers={debtAlertCustomers} />
+          <DebtAlerts customers={debtAlertCustomers} companyProfile={companyProfile} />
         </div>
       )}
     </div>

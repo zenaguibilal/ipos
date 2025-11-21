@@ -3,7 +3,7 @@
 
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import type { CustomerWithSalesData } from "@/lib/types";
+import type { CustomerWithSalesData, CompanyProfile } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { Button } from "../ui/button";
 import { Users, MessageSquare } from "lucide-react";
@@ -11,19 +11,25 @@ import Link from "next/link";
 
 interface DebtAlertsProps {
     customers: CustomerWithSalesData[];
+    companyProfile?: CompanyProfile | null;
 }
 
-export function DebtAlerts({ customers }: DebtAlertsProps) {
+export function DebtAlerts({ customers, companyProfile }: DebtAlertsProps) {
     const router = useRouter();
 
     const handleWhatsAppClick = (e: React.MouseEvent, customer: CustomerWithSalesData) => {
         e.stopPropagation(); // Prevent row click
         if (!customer.phone) return;
 
-        let message = `Bonjour ${customer.firstName} ${customer.lastName}, juste un petit rappel concernant votre solde de ${customer.outstandingBalance.toFixed(2)} DA.`;
+        const companyName = companyProfile?.companyName || 'notre magasin';
+        let message;
+
         if (customer.daysLate && customer.daysLate > 0) {
-            message = `Bonjour ${customer.firstName} ${customer.lastName}, sauf erreur de notre part, votre solde de ${customer.outstandingBalance.toFixed(2)} DA est en attente de règlement depuis ${customer.daysLate} jour(s). Merci de régulariser votre situation.`;
+            message = `Bonjour ${customer.firstName} ${customer.lastName}, sauf erreur de notre part, votre solde de ${customer.outstandingBalance.toFixed(2)} DA auprès de ${companyName} est en attente de règlement depuis ${customer.daysLate} jour(s). Merci de régulariser votre situation.`;
+        } else {
+            message = `Bonjour ${customer.firstName} ${customer.lastName}, juste un petit rappel de la part de ${companyName} concernant votre solde de ${customer.outstandingBalance.toFixed(2)} DA.`;
         }
+        
         const whatsappUrl = `https://wa.me/${customer.phone}?text=${encodeURIComponent(message)}`;
         window.open(whatsappUrl, '_blank');
     };
@@ -38,7 +44,7 @@ export function DebtAlerts({ customers }: DebtAlertsProps) {
                 <div>
                     <CardTitle className="flex items-center gap-2">
                          <Users className="h-5 w-5 text-orange-500" />
-                        Rappels de Paiement ({customers.length})
+                        Clients avec dettes impayées ({customers.length})
                     </CardTitle>
                     <CardDescription>
                         Clients avec un paiement à venir ou en retard.
