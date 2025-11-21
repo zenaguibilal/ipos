@@ -63,6 +63,10 @@ export function StockIntakeForm({ userId, products }: StockIntakeFormProps) {
                 item.purchasePrice = existingProduct.purchasePrice;
                 item.price = existingProduct.price;
                 item.isNew = false;
+            } else {
+                 // If barcode doesn't match, treat as potentially new item
+                 item.productId = undefined;
+                 item.isNew = true;
             }
         }
         
@@ -72,7 +76,8 @@ export function StockIntakeForm({ userId, products }: StockIntakeFormProps) {
         } else {
             (item[field] as string) = value;
         }
-
+        
+        newItems[index] = item;
         setItems(newItems);
     };
 
@@ -92,6 +97,13 @@ export function StockIntakeForm({ userId, products }: StockIntakeFormProps) {
     const totalValue = useMemo(() => {
         return items.reduce((sum, item) => sum + (item.purchasePrice * item.quantity), 0);
     }, [items]);
+    
+    const resetForm = () => {
+        setInvoiceNumber('');
+        setInvoiceDate(new Date());
+        setItems([createNewItem()]);
+        setIsProcessing(false);
+    }
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -104,10 +116,15 @@ export function StockIntakeForm({ userId, products }: StockIntakeFormProps) {
             toast.error("Veuillez choisir une date pour la facture.");
             return;
         }
-        if (items.some(item => !item.name.trim() || item.quantity <= 0 || item.purchasePrice < 0 || item.price < 0)) {
-            toast.error("Veuillez vérifier que tous les articles ont un nom, une quantité positive et des prix valides.");
+        if (items.some(item => !item.name.trim() || item.quantity <= 0 || item.purchasePrice < 0)) {
+            toast.error("Veuillez vérifier que tous les articles ont un nom, une quantité positive et un prix d'achat valide.");
             return;
         }
+         if (items.some(item => item.isNew && item.price <= 0)) {
+            toast.error("Les nouveaux produits doivent avoir un prix de vente supérieur à zéro.");
+            return;
+        }
+
 
         if (!firestore) {
             toast.error("Le service de base de données n'est pas disponible.");
@@ -121,27 +138,27 @@ export function StockIntakeForm({ userId, products }: StockIntakeFormProps) {
 
         try {
             for (const item of items) {
+                let productId = item.productId;
+
                 if (item.isNew) {
-                    // Create new product
                     const newProductRef = doc(productsRef);
+                    productId = newProductRef.id; 
                     batch.set(newProductRef, {
                         name: item.name,
                         barcode: item.barcode,
                         quantity: item.quantity,
                         purchasePrice: item.purchasePrice,
                         price: item.price,
-                        minStockLevel: 10, // Default min stock level
+                        minStockLevel: 10,
                         createdAt: serverTimestamp(),
                     });
-                } else if (item.productId) {
-                    // Update existing product
-                    const productRef = doc(productsRef, item.productId);
-                    const existingProduct = products.find(p => p.id === item.productId);
+                } else if (productId) {
+                    const productRef = doc(productsRef, productId);
+                    const existingProduct = products.find(p => p.id === productId);
                     if (existingProduct) {
                          const newQuantity = existingProduct.quantity + item.quantity;
                          batch.update(productRef, { 
                             quantity: newQuantity,
-                            // Optionally update prices if they've changed
                             purchasePrice: item.purchasePrice,
                             price: item.price
                         });
@@ -149,12 +166,26 @@ export function StockIntakeForm({ userId, products }: StockIntakeFormProps) {
                 }
             }
 
+            // Also save the stock intake record itself
+            const stockIntakesRef = collection(firestore, 'users', userId, 'stockIntakes');
+            const newIntakeRef = doc(stockIntakesRef);
+            batch.set(newIntakeRef, {
+                invoiceNumber: invoiceNumber,
+                invoiceDate: serverTimestamp.fromDate(invoiceDate),
+                items: items.map(i => ({ 
+                    productId: i.productId, 
+                    productName: i.name, 
+                    quantityReceived: i.quantity, 
+                    purchasePrice: i.purchasePrice 
+                })),
+                totalValue: totalValue,
+                createdAt: serverTimestamp()
+            });
+
+
             await batch.commit();
             toast.success("Le stock a été mis à jour avec succès !");
-            // Reset form
-            setInvoiceNumber('');
-            setInvoiceDate(new Date());
-            setItems([createNewItem()]);
+            resetForm();
 
         } catch (error) {
             console.error("Error processing stock intake: ", error);
@@ -208,6 +239,7 @@ export function StockIntakeForm({ userId, products }: StockIntakeFormProps) {
                                     onSelect={setInvoiceDate}
                                     initialFocus
                                     locale={fr}
+                                    disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
                                 />
                                 </PopoverContent>
                             </Popover>
@@ -264,6 +296,7 @@ export function StockIntakeForm({ userId, products }: StockIntakeFormProps) {
                                                     onChange={(e) => handleItemChange(index, 'purchasePrice', e.target.value)}
                                                     required
                                                     step="0.01"
+                                                    min="0"
                                                 />
                                             </TableCell>
                                             <TableCell>
@@ -273,6 +306,7 @@ export function StockIntakeForm({ userId, products }: StockIntakeFormProps) {
                                                     onChange={(e) => handleItemChange(index, 'price', e.target.value)}
                                                     required
                                                     step="0.01"
+                                                     min="0"
                                                 />
                                             </TableCell>
                                             <TableCell>
