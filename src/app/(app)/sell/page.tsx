@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
@@ -319,8 +320,11 @@ export default function SellPage() {
         // Only update quantity for non-custom items
         if (!item.isCustom) {
             const productRef = doc(firestore, 'users', user.uid, 'products', item.id);
-            const newQuantity = item.quantity - item.cartQuantity;
-            batch.update(productRef, { quantity: newQuantity });
+            const originalProduct = products?.find(p => p.id === item.id);
+            if (originalProduct) {
+              const newQuantity = originalProduct.quantity - item.cartQuantity;
+              batch.update(productRef, { quantity: newQuantity });
+            }
         }
     }
 
@@ -500,26 +504,28 @@ export default function SellPage() {
                                     ))}
                                </div>
                            ) : (
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Produit</TableHead>
-                                            <TableHead className="text-right">Prix</TableHead>
-                                            <TableHead className="text-right">Stock</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {filteredProducts.map(product => (
-                                            <TableRow key={product.id} onClick={() => addToCart(product)} className="cursor-pointer">
-                                                <TableCell className="font-medium">{product.name}</TableCell>
-                                                <TableCell className="text-right font-semibold">{product.price.toFixed(2)} DA</TableCell>
-                                                <TableCell className={cn("text-right", product.quantity <= product.minStockLevel ? 'text-destructive font-bold' : 'text-muted-foreground')}>
-                                                    {product.quantity}
-                                                </TableCell>
+                                <div className="h-full overflow-y-auto">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Produit</TableHead>
+                                                <TableHead className="text-right">Prix</TableHead>
+                                                <TableHead className="text-right">Stock</TableHead>
                                             </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {filteredProducts.map(product => (
+                                                <TableRow key={product.id} onClick={() => addToCart(product)} className="cursor-pointer">
+                                                    <TableCell className="font-medium">{product.name}</TableCell>
+                                                    <TableCell className="text-right font-semibold">{product.price.toFixed(2)} DA</TableCell>
+                                                    <TableCell className={cn("text-right", product.quantity <= product.minStockLevel ? 'text-destructive font-bold' : 'text-muted-foreground')}>
+                                                        {product.quantity}
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </div>
                            )}
                            </>
                         ) : products && products.length > 0 && searchQuery ? (
