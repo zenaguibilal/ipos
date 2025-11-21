@@ -99,7 +99,14 @@ export interface StockIntake {
     id: string;
     invoiceNumber: string;
     invoiceDate: Timestamp;
-    items: StockIntakeItem[];
+    items: {
+        productId?: string;
+        productName: string;
+        quantityReceived: number;
+        purchasePrice: number;
+    }[];
     totalValue: number;
     createdAt: Timestamp;
 }
+
+    

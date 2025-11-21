@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
@@ -15,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { PaymentDialog } from '@/components/sell/payment-dialog';
 import Link from 'next/link';
-import type { Product, Customer, Sale, Payment } from '@/lib/types';
+import type { Product, Customer, Sale, Payment, TopProduct } from '@/lib/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -352,12 +351,39 @@ export default function SellPage() {
         }
     }, [barcodeSearch, products, addToCart, showStatusMessage, activeCartId]);
 
+  const top10Products = useMemo(() => {
+    if (!products || !sales) return [];
+
+    const productSales = sales.flatMap(s => s.items).reduce((acc, item) => {
+        if (!acc[item.id]) {
+            acc[item.id] = { totalRevenue: 0, unitsSold: 0 };
+        }
+        acc[item.id].totalRevenue += item.price * item.quantity;
+        acc[item.id].unitsSold += item.quantity;
+        return acc;
+    }, {} as Record<string, { totalRevenue: number, unitsSold: number }>);
+
+    const topProductIds = Object.keys(productSales)
+        .sort((a, b) => productSales[b].totalRevenue - productSales[a].totalRevenue)
+        .slice(0, 10);
+    
+    return products.filter(p => topProductIds.includes(p.id))
+      .sort((a,b) => productSales[b.id].totalRevenue - productSales[a.id].totalRevenue);
+
+  }, [products, sales]);
+
   const filteredProducts = useMemo(() => {
     if (!products) return [];
-    const sortedProducts = [...products].sort((a,b) => a.name.localeCompare(b.name));
-    if (!productSearch.trim()) return sortedProducts;
-    return sortedProducts.filter(p => p.name.toLowerCase().includes(productSearch.toLowerCase()));
-  }, [products, productSearch]);
+
+    // If there is a search query, filter all products
+    if (productSearch.trim()) {
+        const sortedProducts = [...products].sort((a,b) => a.name.localeCompare(b.name));
+        return sortedProducts.filter(p => p.name.toLowerCase().includes(productSearch.toLowerCase()));
+    }
+    
+    // Otherwise, show the top 10
+    return top10Products;
+  }, [products, productSearch, top10Products]);
 
   const showTabs = Object.keys(carts).length > 1;
 
@@ -398,7 +424,7 @@ export default function SellPage() {
                             <div>
                                 <CardTitle>Produits</CardTitle>
                                 <CardDescription>
-                                    Scannez (F8), recherchez, ou cliquez sur un produit pour l'ajouter au panier actif.
+                                    Par défaut, les 10 articles les plus vendus sont affichés. Utilisez la recherche pour trouver tous les produits.
                                 </CardDescription>
                             </div>
                             <div className="flex items-center gap-1">
@@ -628,5 +654,7 @@ export default function SellPage() {
     </>
   );
 }
+
+    
 
     
