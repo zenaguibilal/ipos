@@ -91,14 +91,22 @@ export default function ProductsPage() {
            
             <main className="flex-1 overflow-auto p-4 sm:p-6">
                 <Card className="w-full">
-                    <CardHeader className="flex flex-row items-center justify-between pt-4">
-                        <Input 
-                            placeholder="Rechercher par nom ou code-barres..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                             className="w-full max-w-sm"
-                        />
-                        <Button onClick={() => setIsAddingProduct(true)}>Ajouter un produit</Button>
+                    <CardHeader>
+                        <CardTitle>Produits</CardTitle>
+                        <CardDescription>
+                            Gérez vos produits. Vous avez actuellement {products?.length || 0} produits dans votre inventaire.
+                        </CardDescription>
+                        <div className="flex flex-col sm:flex-row items-center gap-2 pt-2">
+                            <Input 
+                                placeholder="Rechercher par nom ou code-barres..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full sm:w-auto sm:flex-grow max-w-sm"
+                            />
+                            <div className="w-full sm:w-auto">
+                                <Button onClick={() => setIsAddingProduct(true)} className="w-full">Ajouter un produit</Button>
+                            </div>
+                        </div>
                     </CardHeader>
                     <CardContent>
                         {isLoading ? (
