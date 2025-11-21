@@ -40,11 +40,13 @@ export default function ProductsPage() {
     }, [user, isUserLoading, router]);
 
     const filteredProducts = useMemo(() => {
-        if (!searchQuery) return products;
+        if (!products) return [];
+        const sortedProducts = [...products].sort((a,b) => a.name.localeCompare(b.name));
+        if (!searchQuery) return sortedProducts;
         
         const lowercasedQuery = searchQuery.toLowerCase();
         
-        return products?.filter(product => 
+        return sortedProducts.filter(product => 
             product.name.toLowerCase().includes(lowercasedQuery) ||
             (product.barcode && product.barcode.toLowerCase().includes(lowercasedQuery))
         );
@@ -90,7 +92,7 @@ export default function ProductsPage() {
             )}
            
             <main className="flex-1 overflow-auto p-4 sm:p-6">
-                <Card className="w-full">
+                <Card className="w-full h-full flex flex-col">
                     <CardHeader>
                         <CardTitle>Produits</CardTitle>
                         <CardDescription>
@@ -108,13 +110,13 @@ export default function ProductsPage() {
                             </div>
                         </div>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="flex-1 overflow-hidden">
                         {isLoading ? (
                             <div className="text-center">Chargement des données...</div>
                         ) : filteredProducts && filteredProducts.length > 0 ? (
-                            <div className="overflow-x-auto">
+                            <div className="h-full overflow-auto">
                                 <table className="min-w-full divide-y divide-border">
-                                    <thead className="bg-muted/50">
+                                    <thead className="bg-muted/50 sticky top-0">
                                         <tr>
                                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Nom</th>
                                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Code-barres</th>
