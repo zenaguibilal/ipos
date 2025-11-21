@@ -35,10 +35,10 @@ export function DebtAlerts({ customers }: DebtAlertsProps) {
                 <div>
                     <CardTitle className="flex items-center gap-2">
                          <Users className="h-5 w-5 text-orange-500" />
-                        Rappels de paiement ({customers.length})
+                        Clients avec dettes impayées ({customers.length})
                     </CardTitle>
                     <CardDescription>
-                        Ces clients ont un paiement de dette prévu pour demain.
+                        Ces clients ont un solde impayé.
                     </CardDescription>
                 </div>
                  <Button asChild variant="outline">

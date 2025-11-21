@@ -33,9 +33,9 @@ export default function NotificationsPage() {
   }, [user, isUserLoading, router]);
 
   // --- ALERTS CALCULATION ---
-  const { lowStockProducts, customersWithUpcomingPayments } = useMemo(() => {
+  const { lowStockProducts, customersWithDebt } = useMemo(() => {
     if (!products || !customers || !sales || !payments) {
-      return { lowStockProducts: [], customersWithUpcomingPayments: [] };
+      return { lowStockProducts: [], customersWithDebt: [] };
     }
 
     // Low stock alerts
@@ -73,15 +73,10 @@ export default function NotificationsPage() {
             totalSpent: customerSales.totalSpent,
             outstandingBalance: outstandingBalance > 0 ? outstandingBalance : 0,
         };
-    }).filter(c => c.outstandingBalance > 0 && c.settlementDay);
+    }).filter(c => c.outstandingBalance > 0);
 
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const tomorrowDayOfMonth = tomorrow.getDate();
-    
-    const customersWithUpcomingPayments = customersWithDebt.filter(c => c.settlementDay === tomorrowDayOfMonth);
 
-    return { lowStockProducts, customersWithUpcomingPayments };
+    return { lowStockProducts, customersWithDebt };
 
   }, [products, customers, sales, payments]);
 
@@ -95,7 +90,7 @@ export default function NotificationsPage() {
     );
   }
 
-  const totalAlerts = lowStockProducts.length + customersWithUpcomingPayments.length;
+  const totalAlerts = lowStockProducts.length + customersWithDebt.length;
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
@@ -110,10 +105,9 @@ export default function NotificationsPage() {
       ) : (
         <div className="grid gap-4 md:gap-8">
           <LowStockAlerts products={lowStockProducts} />
-          <DebtAlerts customers={customersWithUpcomingPayments} />
+          <DebtAlerts customers={customersWithDebt} />
         </div>
       )}
     </div>
   );
 }
-
