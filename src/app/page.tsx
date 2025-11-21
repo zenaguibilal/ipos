@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useUser } from '@/firebase';
@@ -50,7 +49,7 @@ export default function Home() {
       </main>
       <footer className="w-full text-center text-muted-foreground text-sm pb-4">
           <p className="mb-2 max-w-2xl mx-auto">iPOS est une solution de point de vente moderne conçue pour vous aider à gérer votre inventaire, vos ventes et vos clients avec simplicité et efficacité.</p>
-          <p>Développé par Salim DEV</p>
+          <p>Développé par zenagui bilal</p>
       </footer>
     </div>
   );
