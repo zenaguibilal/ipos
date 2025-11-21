@@ -45,12 +45,11 @@ export default function SellPage() {
   const [isAddingCustomProduct, setIsAddingCustomProduct] = useState(false);
   const [isProcessingSale, setIsProcessingSale] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{ cartId: string; type: 'success' | 'error'; text: string } | null>(null);
-  const [barcodeSearch, setBarcodeSearch] = useState('');
-  const [productSearch, setProductSearch] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   
-  const barcodeInputRef = useRef<HTMLInputElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // --- DATA FETCHING ---
   const productsCollectionRef = useMemoFirebase(() => {
@@ -90,7 +89,7 @@ export default function SellPage() {
             // F8 to focus barcode input
             if (event.key === 'F8') {
                 event.preventDefault();
-                barcodeInputRef.current?.focus();
+                searchInputRef.current?.focus();
             }
 
             // F9 to open payment dialog
@@ -347,19 +346,14 @@ export default function SellPage() {
   };
   
     useEffect(() => {
-        if (!barcodeSearch.trim() || !products) return;
+        if (!searchQuery.trim() || !products) return;
 
-        const foundProduct = products.find(p => p.barcode === barcodeSearch.trim());
+        const foundProduct = products.find(p => p.barcode === searchQuery.trim());
         if (foundProduct) {
             addToCart(foundProduct);
-            setBarcodeSearch(''); // Clear input after successful scan
-        } else {
-            // Only show error if input is reasonably long, prevents errors while typing
-            if (barcodeSearch.length > 3) { 
-                 showStatusMessage('error', "Produit non trouvé.", activeCartId);
-            }
+            setSearchQuery(''); // Clear input after successful scan
         }
-    }, [barcodeSearch, products, addToCart, showStatusMessage, activeCartId]);
+    }, [searchQuery, products, addToCart]);
 
   const top10Products = useMemo(() => {
     if (!products || !sales) return [];
@@ -385,15 +379,20 @@ export default function SellPage() {
   const filteredProducts = useMemo(() => {
     if (!products) return [];
 
-    // If there is a search query, filter all products
-    if (productSearch.trim()) {
+    const lowercasedQuery = searchQuery.trim().toLowerCase();
+
+    // If there is a search query, filter all products by name or barcode
+    if (lowercasedQuery) {
         const sortedProducts = [...products].sort((a,b) => a.name.localeCompare(b.name));
-        return sortedProducts.filter(p => p.name.toLowerCase().includes(productSearch.toLowerCase()));
+        return sortedProducts.filter(p => 
+            p.name.toLowerCase().includes(lowercasedQuery) ||
+            (p.barcode && p.barcode.toLowerCase().includes(lowercasedQuery))
+        );
     }
     
     // Otherwise, show the top 10
     return top10Products;
-  }, [products, productSearch, top10Products]);
+  }, [products, searchQuery, top10Products]);
 
   const showTabs = Object.keys(carts).length > 1;
 
@@ -448,16 +447,10 @@ export default function SellPage() {
                         </div>
                          <div className="flex flex-col gap-2 pt-2 sm:flex-row">
                              <Input 
-                                placeholder="Rechercher par nom..."
-                                value={productSearch}
-                                onChange={(e) => setProductSearch(e.target.value)}
-                                className="w-full"
-                            />
-                            <Input 
-                                ref={barcodeInputRef}
-                                placeholder="Scanner ou taper le code-barres (F8)..."
-                                value={barcodeSearch}
-                                onChange={(e) => setBarcodeSearch(e.target.value)}
+                                ref={searchInputRef}
+                                placeholder="Rechercher par nom ou scanner un code-barres (F8)..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
                                 className="w-full"
                             />
                         </div>
@@ -529,7 +522,7 @@ export default function SellPage() {
                                 </Table>
                            )}
                            </>
-                        ) : products && products.length > 0 && productSearch ? (
+                        ) : products && products.length > 0 && searchQuery ? (
                              <div className="flex h-full items-center justify-center rounded-md border-2 border-dashed border-border">
                                 <div className="text-center">
                                     <p className="text-muted-foreground">Aucun produit ne correspond à votre recherche.</p>
