@@ -10,7 +10,6 @@ import { AddProductForm } from '@/components/sell/add-product-form';
 import { AddCustomProductForm } from '@/components/sell/add-custom-product-form';
 import { MinusCircle, PlusCircle, User, XCircle, X, LayoutGrid, List } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { PaymentDialog } from '@/components/sell/payment-dialog';
 import Link from 'next/link';
@@ -18,6 +17,7 @@ import type { Product, Customer, Sale, Payment, TopProduct } from '@/lib/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Combobox } from '@/components/ui/combobox';
 
 interface CartItem extends Product {
     cartQuantity: number;
@@ -146,6 +146,16 @@ export default function SellPage() {
             }
         });
     }, [customers, sales, payments]);
+
+  const customerOptionsForCombobox = useMemo(() => {
+    if (!customersWithDebt) return [];
+    return customersWithDebt.map(c => ({
+        value: c.id,
+        label: `${c.firstName} ${c.lastName}`,
+        subLabel: c.outstandingBalance > 0 ? `Dette: ${c.outstandingBalance.toFixed(2)} DA` : undefined,
+        disabled: !!carts[c.id]
+    }))
+  },[customersWithDebt, carts])
 
 
   const showStatusMessage = useCallback((type: 'success' | 'error', text: string, cartId: string) => {
@@ -545,28 +555,13 @@ export default function SellPage() {
                         {!showTabs && <CardTitle>Vente en cours</CardTitle>}
                         <div className="grid w-full items-center gap-1.5 pt-4">
                             <Label htmlFor="customer-select">Ouvrir un onglet de vente pour un client</Label>
-                             <Select onValueChange={handleCustomerSelect} value="">
-                                <SelectTrigger id="customer-select" className="w-full" disabled={isLoadingCustomers || !customersWithDebt?.length}>
-                                    <div className="flex items-center gap-2">
-                                        <User className="h-4 w-4 text-muted-foreground" />
-                                        <SelectValue placeholder="Sélectionner un client..." />
-                                    </div>
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {customersWithDebt?.map(customer => (
-                                        <SelectItem key={customer.id} value={customer.id} disabled={!!carts[customer.id]}>
-                                            <div className="flex justify-between w-full">
-                                                <span>{customer.firstName} {customer.lastName}</span>
-                                                {customer.outstandingBalance > 0 && (
-                                                    <span className="text-xs text-destructive ml-2">
-                                                        (Dette: {customer.outstandingBalance.toFixed(2)} DA)
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <Combobox
+                                options={customerOptionsForCombobox}
+                                onSelect={handleCustomerSelect}
+                                placeholder="Sélectionner un client..."
+                                searchPlaceholder="Rechercher un client..."
+                                notFoundMessage="Aucun client trouvé."
+                            />
                             {!isLoadingCustomers && !customers?.length && (
                                 <p className="text-xs text-muted-foreground mt-1">
                                     Aucun client trouvé. <Link href="/customers" className="underline">En ajouter un ?</Link>
@@ -654,7 +649,3 @@ export default function SellPage() {
     </>
   );
 }
-
-    
-
-    
