@@ -1,4 +1,3 @@
-
 import { Timestamp } from "firebase/firestore";
 
 export interface Product {
@@ -83,4 +82,24 @@ export interface CompanyProfile {
     country?: string;
     phone?: string;
     vatNumber?: string;
+}
+
+export interface StockIntakeItem {
+    id: string; // Unique ID for the item row
+    productId?: string; // ID of the product if it exists
+    barcode: string;
+    name: string;
+    quantity: number;
+    purchasePrice: number;
+    price: number;
+    isNew: boolean;
+}
+
+export interface StockIntake {
+    id: string;
+    invoiceNumber: string;
+    invoiceDate: Timestamp;
+    items: StockIntakeItem[];
+    totalValue: number;
+    createdAt: Timestamp;
 }

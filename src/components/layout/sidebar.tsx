@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -35,6 +34,7 @@ const navLinks = [
   { href: '/dashboard', icon: Home, label: 'Tableau de bord' },
   { href: '/sell', icon: ShoppingCart, label: 'Vendre' },
   { href: '/products', icon: Package, label: 'Produits' },
+  { href: '/stock-intake', icon: Warehouse, label: 'Réception Stock' },
   { href: '/customers', icon: Users, label: 'Clients' },
   { href: '/bread-orders', icon: Cookie, label: 'Commandes de Pain' },
   { href: '/sales-history', icon: LineChart, label: 'Historique' },
