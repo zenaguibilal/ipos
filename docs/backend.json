@@ -114,7 +114,7 @@
               "id": { "type": "string" },
               "name": { "type": "string" },
               "price": { "type": "number" },
-              "quantity": { "type": "integer" }
+              "quantity": { "type": "number" }
             },
             "required": ["id", "name", "price", "quantity"]
           }
@@ -276,7 +276,7 @@
           "description": "Name of the order or customer."
         },
         "quantity": {
-          "type": "integer",
+          "type": "number",
           "description": "Number of bread units ordered."
         },
         "isPaid": {
@@ -326,7 +326,7 @@
             "properties": {
               "productId": { "type": "string", "description": "The ID of the product in the inventory." },
               "productName": { "type": "string", "description": "The name of the product." },
-              "quantityReceived": { "type": "integer", "description": "The quantity of this product received." },
+              "quantityReceived": { "type": "number", "description": "The quantity of this product received." },
               "purchasePrice": { "type": "number", "description": "The purchase price per unit for this intake." }
             },
             "required": ["productId", "productName", "quantityReceived", "purchasePrice"]
@@ -397,3 +397,4 @@
     }
   }
 }
+    

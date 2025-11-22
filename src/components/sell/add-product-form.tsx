@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -22,7 +21,7 @@ export function AddProductForm({ isOpen, onOpenChange, userId }: AddProductFormP
     const [purchasePrice, setPurchasePrice] = useState('');
     const [quantity, setQuantity] = useState('');
     const [minStockLevel, setMinStockLevel] = useState('');
-    const [barcode, setBarcode] = useState('');
+    const [barcodes, setBarcodes] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
 
@@ -32,7 +31,7 @@ export function AddProductForm({ isOpen, onOpenChange, userId }: AddProductFormP
         setPurchasePrice('');
         setQuantity('');
         setMinStockLevel('');
-        setBarcode('');
+        setBarcodes('');
         setError(null);
     };
 
@@ -71,13 +70,15 @@ export function AddProductForm({ isOpen, onOpenChange, userId }: AddProductFormP
         setIsLoading(true);
         const productsCollectionRef = collection(firestore, 'users', userId, 'products');
         
+        const barcodesArray = barcodes.split(',').map(b => b.trim()).filter(b => b);
+
         addDocumentNonBlocking(productsCollectionRef, {
             name: name,
             price: priceNumber, // selling price
             purchasePrice: purchasePriceNumber,
             quantity: quantityNumber,
             minStockLevel: minStockLevelNumber,
-            barcode: barcode,
+            barcodes: barcodesArray,
             createdAt: serverTimestamp(),
         }, {
             onSuccess: () => {
@@ -178,16 +179,19 @@ export function AddProductForm({ isOpen, onOpenChange, userId }: AddProductFormP
                                 required
                             />
                         </div>
-                        <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="sell-add-barcode" className="text-right">
-                                Code-barres
+                        <div className="grid grid-cols-4 items-start gap-4">
+                            <Label htmlFor="sell-add-barcodes" className="text-right pt-2">
+                                Codes-barres
                             </Label>
-                            <Input
-                                id="sell-add-barcode"
-                                value={barcode}
-                                onChange={(e) => setBarcode(e.target.value)}
-                                className="col-span-3"
-                            />
+                             <div className="col-span-3">
+                                <Input
+                                    id="sell-add-barcodes"
+                                    value={barcodes}
+                                    onChange={(e) => setBarcodes(e.target.value)}
+                                    placeholder="ex: 123, 456, 789"
+                                />
+                                <p className="text-xs text-muted-foreground mt-1">Séparez plusieurs codes-barres par une virgule.</p>
+                            </div>
                         </div>
                     </div>
                     <DialogFooter>
@@ -203,5 +207,4 @@ export function AddProductForm({ isOpen, onOpenChange, userId }: AddProductFormP
         </Dialog>
     );
 }
-
     

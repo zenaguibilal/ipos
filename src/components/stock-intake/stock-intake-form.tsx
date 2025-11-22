@@ -15,7 +15,18 @@ import { fr } from 'date-fns/locale';
 import { CalendarIcon, PlusCircle, Trash2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import type { Product, StockIntakeItem } from '@/lib/types';
+import type { Product } from '@/lib/types';
+
+interface StockIntakeItem {
+    id: string;
+    productId?: string;
+    barcode: string;
+    name: string;
+    quantity: number;
+    purchasePrice: number;
+    price: number;
+    isNew: boolean;
+}
 
 
 interface StockIntakeFormProps {
@@ -44,8 +55,10 @@ export function StockIntakeForm({ userId, products }: StockIntakeFormProps) {
 
     const productsByBarcode = useMemo(() => {
         return products.reduce((acc, product) => {
-            if (product.barcode) {
-                acc[product.barcode] = product;
+            if (product.barcodes && product.barcodes.length > 0) {
+                 product.barcodes.forEach(barcode => {
+                    acc[barcode] = product;
+                });
             }
             return acc;
         }, {} as Record<string, Product>);
@@ -145,7 +158,7 @@ export function StockIntakeForm({ userId, products }: StockIntakeFormProps) {
                     productId = newProductRef.id; 
                     batch.set(newProductRef, {
                         name: item.name,
-                        barcode: item.barcode,
+                        barcodes: item.barcode ? [item.barcode] : [],
                         quantity: item.quantity,
                         purchasePrice: item.purchasePrice,
                         price: item.price,
@@ -307,6 +320,7 @@ export function StockIntakeForm({ userId, products }: StockIntakeFormProps) {
                                                     required
                                                     step="0.01"
                                                      min="0"
+                                                     disabled={!item.isNew}
                                                 />
                                             </TableCell>
                                             <TableCell>
@@ -343,3 +357,4 @@ export function StockIntakeForm({ userId, products }: StockIntakeFormProps) {
         </Card>
     );
 }
+    

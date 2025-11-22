@@ -201,3 +201,4 @@ export function EditProductForm({ isOpen, onOpenChange, userId, product }: EditP
         </Dialog>
     );
 }
+    

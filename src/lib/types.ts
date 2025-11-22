@@ -87,7 +87,7 @@ export interface CompanyProfile {
 export interface StockIntakeItem {
     id: string; // Unique ID for the item row
     productId?: string; // ID of the product if it exists
-    barcode: string;
+    barcodes: string[];
     name: string;
     quantity: number;
     purchasePrice: number;
@@ -108,3 +108,4 @@ export interface StockIntake {
     totalValue: number;
     createdAt: Timestamp;
 }
+    
