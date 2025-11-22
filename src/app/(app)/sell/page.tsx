@@ -110,22 +110,27 @@ export default function SellPage() {
         if (scannedProduct) {
             addProductToCart(scannedProduct);
             setSearchQuery(''); // Clear input after scan
-            searchInputRef.current?.focus(); // Keep focus for next scan
+            if (searchInputRef.current) {
+                searchInputRef.current.focus();
+            }
         }
     }, [products, addProductToCart]);
 
     useEffect(() => {
-        const timer = setTimeout(() => {
-            handleBarcodeScan(searchQuery);
-        }, 300); // Debounce to avoid firing on every keystroke
+        // Only trigger scan logic if the input is not empty
+        if (searchQuery) {
+            const timer = setTimeout(() => {
+                handleBarcodeScan(searchQuery);
+            }, 300); // Debounce to avoid firing on every keystroke
 
-        return () => clearTimeout(timer);
+            return () => clearTimeout(timer);
+        }
     }, [searchQuery, handleBarcodeScan]);
 
 
     // --- Memos & Derived State ---
-    const customerOptions = useMemo(() => {
-        if (!customers || !sales || !payments) return [];
+    const customersWithDebt = useMemo(() => {
+         if (!customers || !sales || !payments) return [];
 
         const salesByCustomer = sales.reduce((acc, sale) => {
             if (sale.customerId && sale.remainingBalance > 0) {
@@ -149,12 +154,24 @@ export default function SellPage() {
             const outstandingBalance = debtFromSales - totalPayments;
             
             return {
-                value: customer.id,
-                label: `${customer.firstName} ${customer.lastName}`,
-                subLabel: outstandingBalance > 0 ? `Dette: ${outstandingBalance.toFixed(2)} DA` : undefined
+                ...customer,
+                outstandingBalance: outstandingBalance > 0 ? outstandingBalance : 0,
             };
         });
     }, [customers, sales, payments]);
+
+    const customerOptions = useMemo(() => {
+        return customersWithDebt.map(customer => ({
+            value: customer.id,
+            label: `${customer.firstName} ${customer.lastName}`,
+            subLabel: customer.outstandingBalance > 0 ? `Dette: ${customer.outstandingBalance.toFixed(2)} DA` : undefined
+        }));
+    }, [customersWithDebt]);
+
+    const activeCustomerInfo = useMemo(() => {
+        if (activeCartId === GUEST_CUSTOMER_ID || activeCartId.startsWith('guest-')) return null;
+        return customersWithDebt.find(c => c.id === activeCartId);
+    }, [activeCartId, customersWithDebt]);
 
 
     const filteredProducts = useMemo(() => {
@@ -183,7 +200,7 @@ export default function SellPage() {
         const topProductsList = Object.keys(productSales)
             .map(productId => {
                 const productInfo = products.find(p => p.id === productId);
-                if (!productInfo || !productInfo.price) return null; // FIX: If product was deleted, skip it
+                if (!productInfo || typeof productInfo.price === 'undefined') return null;
     
                 return {
                     ...productInfo,
@@ -192,7 +209,7 @@ export default function SellPage() {
                     unitsSold: productSales[productId].unitsSold,
                 } as TopProduct;
             })
-            .filter((p): p is TopProduct => p !== null) // FIX: Filter out null (deleted) products
+            .filter((p): p is TopProduct => p !== null) 
             .sort((a, b) => b.unitsSold - a.unitsSold)
             .slice(0, 10);
     
@@ -212,19 +229,7 @@ export default function SellPage() {
         setCarts(prevCarts => {
             const currentCart = prevCarts[activeCartId];
             if (!currentCart) return prevCarts;
-
-            if (newQuantity === 0) {
-                 const newItems = currentCart.items.map(item =>
-                    item.id === productId
-                        ? { ...item, cartQuantity: 0 }
-                        : item
-                );
-                 return {
-                    ...prevCarts,
-                    [activeCartId]: { ...currentCart, items: newItems }
-                };
-            }
-
+            
             const newItems = currentCart.items.map(item =>
                 item.id === productId
                     ? { ...item, cartQuantity: newQuantity }
@@ -440,9 +445,9 @@ export default function SellPage() {
                                     </Card>
                                 ))}
                                 {productsToShow?.length === 0 && (
-                                     <p className="text-center text-muted-foreground col-span-full">
+                                     <div className="text-center text-muted-foreground col-span-full">
                                         {searchQuery ? "Aucun produit ne correspond à votre recherche." : "Pas encore assez de données de vente pour afficher les meilleurs produits."}
-                                     </p>
+                                     </div>
                                 )}
                             </div>
                         )}
@@ -459,6 +464,18 @@ export default function SellPage() {
                             searchPlaceholder="Rechercher un client..."
                             notFoundMessage="Aucun client trouvé."
                         />
+                         {activeCustomerInfo && (
+                            <div className="mt-4 text-center">
+                                <p className="text-lg font-bold">{activeCustomerInfo.firstName} {activeCustomerInfo.lastName}</p>
+                                {activeCustomerInfo.outstandingBalance > 0 ? (
+                                    <p className="text-destructive font-semibold">
+                                        Dette : {activeCustomerInfo.outstandingBalance.toFixed(2)} DA
+                                    </p>
+                                ): (
+                                     <p className="text-sm text-muted-foreground">Aucune dette impayée</p>
+                                )}
+                            </div>
+                        )}
                     </div>
                     {/* --- Tabs for Carts --- */}
                     <Tabs value={activeCartId} onValueChange={setActiveCartId} className="flex-shrink-0">
@@ -549,4 +566,5 @@ export default function SellPage() {
     
 
     
+
 
