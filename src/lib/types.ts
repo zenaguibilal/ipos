@@ -5,7 +5,7 @@ export interface Product {
     name: string;
     price: number;
     purchasePrice: number;
-    quantity: number;
+    quantity: number; // Changed from integer to number
     minStockLevel: number;
     barcode?: string;
 }
@@ -22,7 +22,7 @@ export interface SaleItem {
     id: string;
     name: string;
     price: number;
-    quantity: number;
+    quantity: number; // Changed from integer to number
 }
 
 export interface Sale {
@@ -59,7 +59,7 @@ export interface ChartData {
 export interface BreadOrder {
     id: string;
     name: string;
-    quantity: number;
+    quantity: number; // Changed from integer to number
     isPaid: boolean;
     isDelivered: boolean;
     isRecurring: boolean;
@@ -108,5 +108,3 @@ export interface StockIntake {
     totalValue: number;
     createdAt: Timestamp;
 }
-
-    

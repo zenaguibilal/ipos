@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
@@ -174,11 +173,12 @@ export default function SellPage() {
         const existingItemIndex = newItems.findIndex((item) => item.id === product.id);
 
         if (existingItemIndex > -1) {
-            if (!isCustom && newItems[existingItemIndex].cartQuantity >= product.quantity) {
+            const newQuantity = newItems[existingItemIndex].cartQuantity + 1;
+            if (!isCustom && newQuantity > product.quantity) {
                 showStatusMessage('error', `Quantité maximale atteinte pour ${product.name}.`, activeCartId);
                 return prevCarts;
             }
-            newItems[existingItemIndex] = { ...newItems[existingItemIndex], cartQuantity: newItems[existingItemIndex].cartQuantity + 1 };
+            newItems[existingItemIndex] = { ...newItems[existingItemIndex], cartQuantity: newQuantity };
         } else {
             showStatusMessage('success', `${product.name} ajouté.`, activeCartId);
             const cartItem: CartItem = { ...product, cartQuantity: 1 };
@@ -208,7 +208,14 @@ export default function SellPage() {
     setIsAddingCustomProduct(false);
   };
 
-  const updateCartItemQuantity = (productId: string, newQuantity: number) => {
+  const updateCartItemQuantity = (productId: string, newQuantityStr: string) => {
+    const newQuantity = parseFloat(newQuantityStr);
+
+    if (isNaN(newQuantity)) {
+        // handle case where input is cleared or invalid
+        return;
+    }
+
     setCarts(prevCarts => {
         const activeCart = prevCarts[activeCartId];
         let newItems = [...activeCart.items];
@@ -223,11 +230,14 @@ export default function SellPage() {
                 if (!cartItem.isCustom) {
                     const originalProduct = products?.find(p => p.id === productId);
                     if (originalProduct && newQuantity > originalProduct.quantity) {
-                        showStatusMessage('error', `Stock insuffisant pour ${cartItem.name}.`, activeCartId);
-                        return prevCarts;
+                        showStatusMessage('error', `Stock insuffisant pour ${cartItem.name}. Maximum: ${originalProduct.quantity}.`, activeCartId);
+                        newItems[itemIndex] = { ...cartItem, cartQuantity: originalProduct.quantity };
+                    } else {
+                         newItems[itemIndex] = { ...cartItem, cartQuantity: newQuantity };
                     }
+                } else {
+                     newItems[itemIndex] = { ...cartItem, cartQuantity: newQuantity };
                 }
-                newItems[itemIndex] = { ...cartItem, cartQuantity: newQuantity };
             }
         }
         
@@ -238,8 +248,16 @@ export default function SellPage() {
     });
 };
 
+
   const removeFromCart = (productId: string) => {
-    updateCartItemQuantity(productId, 0);
+     setCarts(prevCarts => {
+        const activeCart = prevCarts[activeCartId];
+        const newItems = activeCart.items.filter(item => item.id !== productId);
+        return {
+            ...prevCarts,
+            [activeCartId]: { ...activeCart, items: newItems }
+        };
+    });
   };
   
   const activeCart = carts[activeCartId];
@@ -609,16 +627,22 @@ export default function SellPage() {
                                     ) : (
                                     <div className="space-y-2">
                                         {cart.items.map((item) => (
-                                            <div key={item.id} className="flex items-center justify-between">
-                                                <div>
-                                                    <p className="font-medium">{item.name}</p>
-                                                    <p className="text-sm text-muted-foreground">{item.cartQuantity} x {item.price.toFixed(2)} DA</p>
+                                            <div key={item.id} className="flex items-center justify-between gap-2">
+                                                <div className="flex-1">
+                                                    <p className="font-medium truncate">{item.name}</p>
+                                                     <p className="text-sm text-muted-foreground">{item.price.toFixed(2)} DA</p>
                                                 </div>
                                                 <div className="flex items-center gap-2">
-                                                    <span className="font-semibold">{(item.cartQuantity * item.price).toFixed(2)} DA</span>
-                                                    <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => updateCartItemQuantity(item.id, item.cartQuantity + 1)}><PlusCircle className="h-4 w-4" /></Button>
-                                                    <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => updateCartItemQuantity(item.id, item.cartQuantity - 1)}><MinusCircle className="h-4 w-4" /></Button>
-                                                    <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => removeFromCart(item.id)}><XCircle className="h-4 w-4" /></Button>
+                                                    <Input 
+                                                        type="number"
+                                                        value={item.cartQuantity}
+                                                        onChange={(e) => updateCartItemQuantity(item.id, e.target.value)}
+                                                        className="h-8 w-20 text-center"
+                                                        step="any"
+                                                        min="0"
+                                                    />
+                                                    <span className="font-semibold w-24 text-right">{(item.cartQuantity * item.price).toFixed(2)} DA</span>
+                                                    <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive flex-shrink-0" onClick={() => removeFromCart(item.id)}><XCircle className="h-4 w-4" /></Button>
                                                 </div>
                                             </div>
                                         ))}

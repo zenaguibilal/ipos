@@ -36,7 +36,7 @@ export function AddOrderForm({ isOpen, onOpenChange, userId }: AddOrderFormProps
         e.preventDefault();
         setError(null);
         
-        const quantityNumber = parseInt(quantity, 10);
+        const quantityNumber = parseFloat(quantity);
 
         if (isNaN(quantityNumber) || quantityNumber <= 0) {
              setError("Veuillez entrer une quantité valide.");
@@ -116,6 +116,7 @@ export function AddOrderForm({ isOpen, onOpenChange, userId }: AddOrderFormProps
                                 onChange={(e) => setQuantity(e.target.value)}
                                 className="col-span-3"
                                 required
+                                step="any"
                             />
                         </div>
                         <div className="flex items-center space-x-2 justify-center col-span-4 pt-2">

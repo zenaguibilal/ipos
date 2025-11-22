@@ -42,7 +42,7 @@ export function AddProductForm({ isOpen, onOpenChange, userId }: AddProductFormP
         
         const priceNumber = parseFloat(price);
         const purchasePriceNumber = parseFloat(purchasePrice);
-        const quantityNumber = parseInt(quantity, 10);
+        const quantityNumber = parseFloat(quantity);
         const minStockLevelNumber = parseInt(minStockLevel, 10);
 
         if (isNaN(priceNumber) || priceNumber <= 0) {
@@ -163,6 +163,7 @@ export function AddProductForm({ isOpen, onOpenChange, userId }: AddProductFormP
                                 onChange={(e) => setQuantity(e.target.value)}
                                 className="col-span-3"
                                 required
+                                step="any"
                             />
                         </div>
                          <div className="grid grid-cols-4 items-center gap-4">
