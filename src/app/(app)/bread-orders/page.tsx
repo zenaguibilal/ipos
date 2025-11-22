@@ -63,7 +63,16 @@ export default function BreadOrdersPage() {
 
     const filteredOrders = useMemo(() => {
         if (!orders) return [];
-        const sortedOrders = [...orders].sort((a, b) => (a.name > b.name) ? 1 : -1);
+
+        const sortedOrders = [...orders].sort((a, b) => {
+            // Sort by isDelivered status (false comes first)
+            if (a.isDelivered !== b.isDelivered) {
+                return a.isDelivered ? 1 : -1;
+            }
+            // Then sort by name alphabetically
+            return a.name.localeCompare(b.name);
+        });
+
         if (!searchQuery) return sortedOrders;
         
         const lowercasedQuery = searchQuery.toLowerCase();
