@@ -43,11 +43,14 @@ export default function BreadOrdersPage() {
         }
     }, [user, isUserLoading, router]);
 
-    const { recurringOrdersCount, totalOrdered, totalDelivered, totalRemaining } = useMemo(() => {
+    const { recurringOrdersCount, nonRecurringOrdersCount, totalOrdered, totalDelivered, totalRemaining } = useMemo(() => {
         if (!orders) {
-            return { recurringOrdersCount: 0, totalOrdered: 0, totalDelivered: 0, totalRemaining: 0 };
+            return { recurringOrdersCount: 0, nonRecurringOrdersCount: 0, totalOrdered: 0, totalDelivered: 0, totalRemaining: 0 };
         }
-        const recurring = orders.filter(o => o.isRecurring).length;
+        let recurring = 0;
+        let nonRecurring = 0;
+        orders.forEach(o => o.isRecurring ? recurring++ : nonRecurring++);
+
         const ordered = orders.reduce((sum, order) => sum + order.quantity, 0);
         const delivered = orders
             .filter(order => order.isDelivered)
@@ -55,6 +58,7 @@ export default function BreadOrdersPage() {
 
         return {
             recurringOrdersCount: recurring,
+            nonRecurringOrdersCount: nonRecurring,
             totalOrdered: ordered,
             totalDelivered: delivered,
             totalRemaining: ordered - delivered
@@ -97,32 +101,33 @@ export default function BreadOrdersPage() {
         });
     }
 
-    const handleResetRecurringOrders = async () => {
+    const handleDailyCleanup = async () => {
         if (!firestore || !user || !orders) return;
 
         setIsResetting(true);
-        const recurringOrders = orders.filter(o => o.isRecurring);
-
-        if (recurringOrders.length === 0) {
-            toast.info("Aucune commande récurrente à réinitialiser.");
-            setIsResetting(false);
-            setIsResetDialogOpen(false);
-            return;
-        }
-
         const batch = writeBatch(firestore);
+        let recurringCount = 0;
+        let deletedCount = 0;
 
-        recurringOrders.forEach(order => {
+        orders.forEach(order => {
             const orderRef = doc(firestore, 'users', user.uid, 'breadOrders', order.id);
-            batch.update(orderRef, { isPaid: false, isDelivered: false });
+            if (order.isRecurring) {
+                // Reset recurring orders
+                batch.update(orderRef, { isPaid: false, isDelivered: false });
+                recurringCount++;
+            } else {
+                // Delete non-recurring orders
+                batch.delete(orderRef);
+                deletedCount++;
+            }
         });
 
         try {
             await batch.commit();
-            toast.success(`${recurringOrders.length} commande(s) récurrente(s) ont été réinitialisées.`);
+            toast.success(`Nettoyage terminé : ${deletedCount} commande(s) supprimée(s) et ${recurringCount} récurrente(s) réinitialisée(s).`);
         } catch (error) {
-            console.error("Failed to reset recurring orders:", error);
-            toast.error("Une erreur est survenue lors de la réinitialisation.");
+            console.error("Failed to perform daily cleanup:", error);
+            toast.error("Une erreur est survenue lors du nettoyage quotidien.");
         } finally {
             setIsResetting(false);
             setIsResetDialogOpen(false);
@@ -162,9 +167,10 @@ export default function BreadOrdersPage() {
              <ResetRecurringDialog
                 isOpen={isResetDialogOpen}
                 onOpenChange={setIsResetDialogOpen}
-                onConfirm={handleResetRecurringOrders}
+                onConfirm={handleDailyCleanup}
                 isResetting={isResetting}
                 recurringOrdersCount={recurringOrdersCount}
+                nonRecurringOrdersCount={nonRecurringOrdersCount}
             />
            
             <main className="flex-1 overflow-auto p-4 sm:p-6">
@@ -177,9 +183,9 @@ export default function BreadOrdersPage() {
                              className="w-full max-w-sm order-2 sm:order-1"
                         />
                         <div className="flex gap-2 order-1 sm:order-2 w-full sm:w-auto">
-                            <Button variant="outline" onClick={() => setIsResetDialogOpen(true)} disabled={recurringOrdersCount === 0 || isLoading}>
+                            <Button variant="outline" onClick={() => setIsResetDialogOpen(true)} disabled={isLoading}>
                                 <RefreshCw className="mr-2 h-4 w-4" />
-                                Réinitialiser les récurrences
+                                Nettoyage quotidien
                             </Button>
                             <Button onClick={() => setIsAddingOrder(true)} className="flex-grow sm:flex-grow-0">Ajouter une commande</Button>
                         </div>
