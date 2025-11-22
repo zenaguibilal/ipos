@@ -13,7 +13,7 @@ interface EditProductFormProps {
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
     userId: string;
-    product: Product;
+    product: Product & { barcode?: string }; // Allow old barcode property
 }
 
 export function EditProductForm({ isOpen, onOpenChange, userId, product }: EditProductFormProps) {
@@ -34,7 +34,9 @@ export function EditProductForm({ isOpen, onOpenChange, userId, product }: EditP
             setPurchasePrice(String(product.purchasePrice));
             setQuantity(String(product.quantity));
             setMinStockLevel(String(product.minStockLevel));
-            setBarcodes(product.barcodes?.join(', ') || '');
+            // Handle both new 'barcodes' array and old 'barcode' string for backward compatibility
+            const existingBarcodes = product.barcodes?.join(', ') || product.barcode || '';
+            setBarcodes(existingBarcodes);
         }
     }, [product]);
 
@@ -81,6 +83,7 @@ export function EditProductForm({ isOpen, onOpenChange, userId, product }: EditP
             quantity: quantityNumber,
             minStockLevel: minStockLevelNumber,
             barcodes: barcodesArray,
+            barcode: null // Explicitly remove old field during migration
         }, {
             onSuccess: () => {
                 setIsLoading(false);

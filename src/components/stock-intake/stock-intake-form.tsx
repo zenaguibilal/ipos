@@ -28,10 +28,12 @@ interface StockIntakeItem {
     isNew: boolean;
 }
 
+type ProductWithOptionalBarcode = Product & { barcode?: string };
+
 
 interface StockIntakeFormProps {
     userId: string;
-    products: Product[];
+    products: ProductWithOptionalBarcode[];
 }
 
 const createNewItem = (): StockIntakeItem => ({
@@ -60,8 +62,11 @@ export function StockIntakeForm({ userId, products }: StockIntakeFormProps) {
                     acc[barcode] = product;
                 });
             }
+            if (product.barcode) { // Handle old single barcode
+                acc[product.barcode] = product;
+            }
             return acc;
-        }, {} as Record<string, Product>);
+        }, {} as Record<string, ProductWithOptionalBarcode>);
     }, [products]);
     
     const handleItemChange = (index: number, field: keyof StockIntakeItem, value: any) => {

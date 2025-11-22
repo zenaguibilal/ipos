@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import type { Product } from '@/lib/types';
 
+type ProductWithOptionalBarcode = Product & { barcode?: string };
 
 export default function ProductsPage() {
     const { user, isUserLoading } = useUser();
@@ -30,7 +31,7 @@ export default function ProductsPage() {
         if (!user || !firestore) return null;
         return collection(firestore, 'users', user.uid, 'products');
     }, [user, firestore]);
-    const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsCollectionRef);
+    const { data: products, isLoading: isLoadingProducts } = useCollection<ProductWithOptionalBarcode>(productsCollectionRef);
 
     useEffect(() => {
         if (!isUserLoading && !user) {
@@ -47,7 +48,8 @@ export default function ProductsPage() {
         
         return sortedProducts.filter(product => 
             product.name.toLowerCase().includes(lowercasedQuery) ||
-            (product.barcodes && product.barcodes.some(b => b.toLowerCase().includes(lowercasedQuery)))
+            (product.barcodes && product.barcodes.some(b => b.toLowerCase().includes(lowercasedQuery))) ||
+            (product.barcode && product.barcode.toLowerCase().includes(lowercasedQuery))
         );
     }, [products, searchQuery]);
     
@@ -131,10 +133,11 @@ export default function ProductsPage() {
                                     <tbody className="divide-y divide-border">
                                         {filteredProducts.map(product => {
                                             const isLowStock = product.quantity <= product.minStockLevel;
+                                            const displayBarcodes = product.barcodes?.join(', ') || product.barcode || '-';
                                             return (
                                                 <tr key={product.id} className={cn(isLowStock && 'bg-destructive/10')}>
                                                     <td className="whitespace-nowrap px-6 py-4 font-medium">{product.name}</td>
-                                                    <td className="whitespace-nowrap px-6 py-4 text-muted-foreground">{product.barcodes?.join(', ') || '-'}</td>
+                                                    <td className="whitespace-nowrap px-6 py-4 text-muted-foreground">{displayBarcodes}</td>
                                                     <td className="whitespace-nowrap px-6 py-4 text-right font-medium">{product.purchasePrice.toFixed(2)} DA</td>
                                                     <td className="whitespace-nowrap px-6 py-4 text-right font-medium">{product.price.toFixed(2)} DA</td>
                                                     <td className={cn("whitespace-nowrap px-6 py-4 text-right font-medium", isLowStock && 'text-destructive font-bold')}>{product.quantity}</td>

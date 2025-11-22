@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { collection, doc, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { AddProductForm } from '@/components/sell/add-product-form';
 import { AddCustomProductForm } from '@/components/sell/add-custom-product-form';
-import { MinusCircle, PlusCircle, User, XCircle, X, LayoutGrid, List } from 'lucide-react';
+import { MinusCircle, PlusCircle, User, XCircle, X, LayoutGrid, List, ShoppingCart } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PaymentDialog } from '@/components/sell/payment-dialog';
@@ -19,7 +19,9 @@ import { cn } from '@/lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Combobox } from '@/components/ui/combobox';
 
-interface CartItem extends Product {
+type ProductWithOptionalBarcode = Product & { barcode?: string };
+
+interface CartItem extends ProductWithOptionalBarcode {
     cartQuantity: number;
     isCustom?: boolean;
 }
@@ -40,7 +42,7 @@ export default function SellPage() {
 
     // --- Data Fetching ---
     const productsCollectionRef = useMemoFirebase(() => (user && firestore) ? collection(firestore, 'users', user.uid, 'products') : null, [user, firestore]);
-    const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsCollectionRef);
+    const { data: products, isLoading: isLoadingProducts } = useCollection<ProductWithOptionalBarcode>(productsCollectionRef);
 
     const customersCollectionRef = useMemoFirebase(() => (user && firestore) ? collection(firestore, 'users', user.uid, 'customers') : null, [user, firestore]);
     const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersCollectionRef);
@@ -112,14 +114,15 @@ export default function SellPage() {
         const lowercasedQuery = searchQuery.toLowerCase();
         return products.filter(product =>
             product.name.toLowerCase().includes(lowercasedQuery) ||
-            (product.barcodes && product.barcodes.some(b => b.toLowerCase().includes(lowercasedQuery)))
+            (product.barcodes && product.barcodes.some(b => b.toLowerCase().includes(lowercasedQuery))) ||
+            (product.barcode && product.barcode.toLowerCase().includes(lowercasedQuery))
         );
     }, [products, searchQuery]);
 
 
     const handleBarcodeScan = useCallback((query: string) => {
         if (!products) return;
-        const scannedProduct = products.find(p => p.barcodes?.includes(query));
+        const scannedProduct = products.find(p => p.barcodes?.includes(query) || p.barcode === query);
         if (scannedProduct) {
             addProductToCart(scannedProduct);
             setSearchQuery(''); // Clear input after scan
@@ -168,14 +171,8 @@ export default function SellPage() {
         
         if (newQuantity < 0) {
            return; // Do nothing if quantity is negative
-        } else if (newQuantity === 0) {
-             newItems = activeCart.items.map(item =>
-                item.id === productId
-                    ? { ...item, cartQuantity: 0 }
-                    : item
-            );
         } else {
-            newItems = activeCart.items.map(item =>
+             newItems = activeCart.items.map(item =>
                 item.id === productId
                     ? { ...item, cartQuantity: newQuantity }
                     : item
