@@ -105,16 +105,21 @@ export default function SellPage() {
     }, [activeCartId]);
     
     const handleBarcodeScan = useCallback((query: string) => {
-        if (!products) return;
+        if (!query || !products) return;
         const scannedProduct = products.find(p => p.barcodes?.includes(query) || p.barcode === query);
         if (scannedProduct) {
             addProductToCart(scannedProduct);
             setSearchQuery(''); // Clear input after scan
+            searchInputRef.current?.focus(); // Keep focus for next scan
         }
     }, [products, addProductToCart]);
 
     useEffect(() => {
-        handleBarcodeScan(searchQuery);
+        const timer = setTimeout(() => {
+            handleBarcodeScan(searchQuery);
+        }, 300); // Debounce to avoid firing on every keystroke
+
+        return () => clearTimeout(timer);
     }, [searchQuery, handleBarcodeScan]);
 
 
@@ -544,3 +549,4 @@ export default function SellPage() {
     
 
     
+
