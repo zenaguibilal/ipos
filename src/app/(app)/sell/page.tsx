@@ -72,9 +72,40 @@ export default function SellPage() {
         }
     }, [user, isUserLoading, router]);
 
-    // --- Memos & Derived State ---
     const activeCart = carts[activeCartId];
 
+    // --- Cart Management Functions ---
+    const addProductToCart = useCallback((product: Product) => {
+        if (product.quantity <= 0) {
+            // Optionally, provide feedback that the product is out of stock.
+            return;
+        }
+    
+        setCarts(prevCarts => {
+            const currentCart = prevCarts[activeCartId];
+            if (!currentCart) return prevCarts;
+    
+            const existingItem = currentCart.items.find(item => item.id === product.id);
+            let newItems;
+    
+            if (existingItem) {
+                newItems = currentCart.items.map(item =>
+                    item.id === product.id
+                        ? { ...item, cartQuantity: item.cartQuantity + 1 }
+                        : item
+                );
+            } else {
+                newItems = [...currentCart.items, { ...product, cartQuantity: 1 }];
+            }
+            
+            return {
+                ...prevCarts,
+                [activeCartId]: { ...currentCart, items: newItems }
+            };
+        });
+    }, [activeCartId]);
+
+    // --- Memos & Derived State ---
     const customerOptions = useMemo(() => {
         if (!customers || !sales || !payments) return [];
 
@@ -131,7 +162,7 @@ export default function SellPage() {
             return acc;
         }, {} as Record<string, { unitsSold: number }>);
     
-        const topProducts = Object.keys(productSales).map(productId => {
+        const topProductsList = Object.keys(productSales).map(productId => {
             const productInfo = products.find(p => p.id === productId);
             return {
                 ...productInfo,
@@ -141,7 +172,7 @@ export default function SellPage() {
             } as TopProduct;
         }).sort((a, b) => b.unitsSold - a.unitsSold).slice(0, 10);
 
-        return topProducts;
+        return topProductsList;
 
     }, [sales, products]);
 
@@ -164,38 +195,6 @@ export default function SellPage() {
         if (!activeCart) return 0;
         return activeCart.items.reduce((sum, item) => sum + (item.price * item.cartQuantity), 0);
     }, [activeCart]);
-
-
-    // --- Cart Management Functions ---
-    const addProductToCart = useCallback((product: Product) => {
-        if (product.quantity <= 0) {
-            // Optionally, provide feedback that the product is out of stock.
-            return;
-        }
-    
-        setCarts(prevCarts => {
-            const currentCart = prevCarts[activeCartId];
-            if (!currentCart) return prevCarts;
-    
-            const existingItem = currentCart.items.find(item => item.id === product.id);
-            let newItems;
-    
-            if (existingItem) {
-                newItems = currentCart.items.map(item =>
-                    item.id === product.id
-                        ? { ...item, cartQuantity: item.cartQuantity + 1 }
-                        : item
-                );
-            } else {
-                newItems = [...currentCart.items, { ...product, cartQuantity: 1 }];
-            }
-            
-            return {
-                ...prevCarts,
-                [activeCartId]: { ...currentCart, items: newItems }
-            };
-        });
-    }, [activeCartId]);
     
     const updateCartItemQuantity = (productId: string, newQuantity: number) => {
         if (newQuantity < 0) return; // Prevent negative quantity
