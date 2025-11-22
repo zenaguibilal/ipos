@@ -64,7 +64,6 @@ export default function SellPage() {
     const [carts, setCarts] = useState<Record<string, Cart>>({
         [GUEST_CUSTOMER_ID]: { customerId: GUEST_CUSTOMER_ID, customerName: 'Vente au comptoir', items: [] },
     });
-     const [viewMode, setViewMode] = useState<'grid' | 'list' | 'top'>('grid');
 
     useEffect(() => {
         if (!isUserLoading && !user) {
@@ -104,7 +103,7 @@ export default function SellPage() {
             };
         });
     }, [activeCartId]);
-
+    
     const handleBarcodeScan = useCallback((query: string) => {
         if (!products) return;
         const scannedProduct = products.find(p => p.barcodes?.includes(query) || p.barcode === query);
@@ -155,7 +154,7 @@ export default function SellPage() {
 
     const filteredProducts = useMemo(() => {
         if (!products) return [];
-        if (!searchQuery) return products;
+        if (!searchQuery) return []; // Don't show anything if search is empty, rely on top selling
 
         const lowercasedQuery = searchQuery.toLowerCase();
         return products.filter(product =>
@@ -179,7 +178,7 @@ export default function SellPage() {
         const topProductsList = Object.keys(productSales)
             .map(productId => {
                 const productInfo = products.find(p => p.id === productId);
-                if (!productInfo) return null; // FIX: If product was deleted, skip it
+                if (!productInfo || !productInfo.price) return null; // FIX: If product was deleted, skip it
     
                 return {
                     ...productInfo,
@@ -208,6 +207,18 @@ export default function SellPage() {
         setCarts(prevCarts => {
             const currentCart = prevCarts[activeCartId];
             if (!currentCart) return prevCarts;
+
+            if (newQuantity === 0) {
+                 const newItems = currentCart.items.map(item =>
+                    item.id === productId
+                        ? { ...item, cartQuantity: 0 }
+                        : item
+                );
+                 return {
+                    ...prevCarts,
+                    [activeCartId]: { ...currentCart, items: newItems }
+                };
+            }
 
             const newItems = currentCart.items.map(item =>
                 item.id === productId
@@ -362,6 +373,8 @@ export default function SellPage() {
 
 
     const isLoading = isUserLoading || isLoadingProducts || isLoadingCustomers || isLoadingSales || isLoadingPayments;
+    const productsToShow = searchQuery ? filteredProducts : topSellingProducts;
+
 
     if (isLoading || !user) {
         return <div className="flex h-full items-center justify-center"><p>Chargement de l'interface de vente...</p></div>;
@@ -394,17 +407,6 @@ export default function SellPage() {
                             <div className="flex gap-2">
                                 <Button variant="outline" onClick={() => setIsAddingProduct(true)}>Nouveau produit</Button>
                                 <Button variant="outline" onClick={() => setIsAddingCustomProduct(true)}>Produit Personnalisé</Button>
-                                <div className="hidden sm:flex items-center rounded-md border bg-background">
-                                     <Button variant={viewMode === 'grid' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('grid')} aria-label="Grid View">
-                                        <LayoutGrid className="h-4 w-4"/>
-                                    </Button>
-                                    <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('list')} aria-label="List View">
-                                        <List className="h-4 w-4"/>
-                                    </Button>
-                                    <Button variant={viewMode === 'top' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('top')} aria-label="Top Selling View">
-                                        <TrendingUp className="h-4 w-4"/>
-                                    </Button>
-                                </div>
                             </div>
                          </div>
                     </div>
@@ -412,65 +414,9 @@ export default function SellPage() {
                     <div className="flex-1 overflow-y-auto p-4">
                         {isLoadingProducts ? (
                             <p>Chargement des produits...</p>
-                        ) : viewMode === 'grid' ? (
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                                {filteredProducts?.map(product => (
-                                    <Card 
-                                        key={product.id}
-                                        onClick={() => addProductToCart(product)}
-                                        className={cn("cursor-pointer hover:shadow-lg transition-shadow", product.quantity <= 0 && "opacity-50 cursor-not-allowed")}
-                                        aria-disabled={product.quantity <= 0}
-                                    >
-                                        <CardContent className="p-2 aspect-square flex flex-col justify-center items-center text-center">
-                                            <p className="font-semibold text-sm line-clamp-2">{product.name}</p>
-                                            <p className="text-xs text-muted-foreground">{product.price.toFixed(2)} DA</p>
-                                        </CardContent>
-                                        <CardFooter className="p-2 bg-muted/50 text-center justify-center">
-                                            <span className={cn("text-xs font-medium", product.quantity > 0 ? "text-primary" : "text-destructive")}>
-                                                Stock: {product.quantity}
-                                            </span>
-                                        </CardFooter>
-                                    </Card>
-                                ))}
-                                {filteredProducts?.length === 0 && (
-                                    <p className="text-center text-muted-foreground col-span-full">Aucun produit ne correspond à votre recherche.</p>
-                                )}
-                            </div>
-                        ) : viewMode === 'list' ? (
-                             <div className="border rounded-lg overflow-hidden h-full">
-                                <div className="h-full overflow-auto">
-                                    <Table>
-                                        <TableHeader className="sticky top-0 bg-background z-10">
-                                            <TableRow>
-                                                <TableHead>Produit</TableHead>
-                                                <TableHead className="text-right">Prix</TableHead>
-                                                <TableHead className="text-right">Stock</TableHead>
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {filteredProducts?.map(product => (
-                                                 <TableRow 
-                                                    key={product.id}
-                                                    onClick={() => product.quantity > 0 && addProductToCart(product)}
-                                                    className={cn(
-                                                        product.quantity > 0 ? "cursor-pointer" : "opacity-50 cursor-not-allowed",
-                                                    )}
-                                                >
-                                                    <TableCell className="font-medium">{product.name}</TableCell>
-                                                    <TableCell className="text-right">{product.price.toFixed(2)} DA</TableCell>
-                                                    <TableCell className="text-right">{product.quantity}</TableCell>
-                                                </TableRow>
-                                            ))}
-                                        </TableBody>
-                                    </Table>
-                                     {filteredProducts?.length === 0 && (
-                                        <div className="text-center p-4 text-muted-foreground">Aucun produit ne correspond à votre recherche.</div>
-                                    )}
-                                </div>
-                            </div>
                         ) : (
                             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                                {topSellingProducts?.map(product => (
+                                {productsToShow?.map(product => (
                                     <Card 
                                         key={product.id}
                                         onClick={() => addProductToCart(product)}
@@ -488,8 +434,10 @@ export default function SellPage() {
                                         </CardFooter>
                                     </Card>
                                 ))}
-                                {topSellingProducts?.length === 0 && (
-                                     <p className="text-center text-muted-foreground col-span-full">Pas encore assez de données de vente.</p>
+                                {productsToShow?.length === 0 && (
+                                     <p className="text-center text-muted-foreground col-span-full">
+                                        {searchQuery ? "Aucun produit ne correspond à votre recherche." : "Pas encore assez de données de vente pour afficher les meilleurs produits."}
+                                     </p>
                                 )}
                             </div>
                         )}
