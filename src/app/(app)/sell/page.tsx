@@ -105,6 +105,20 @@ export default function SellPage() {
         });
     }, [activeCartId]);
 
+    const handleBarcodeScan = useCallback((query: string) => {
+        if (!products) return;
+        const scannedProduct = products.find(p => p.barcodes?.includes(query) || p.barcode === query);
+        if (scannedProduct) {
+            addProductToCart(scannedProduct);
+            setSearchQuery(''); // Clear input after scan
+        }
+    }, [products, addProductToCart]);
+
+    useEffect(() => {
+        handleBarcodeScan(searchQuery);
+    }, [searchQuery, handleBarcodeScan]);
+
+
     // --- Memos & Derived State ---
     const customerOptions = useMemo(() => {
         if (!customers || !sales || !payments) return [];
@@ -153,7 +167,7 @@ export default function SellPage() {
 
     const topSellingProducts = useMemo(() => {
         if (!sales || !products) return [];
-
+    
         const productSales = sales.flatMap(s => s.items).reduce((acc, item) => {
             if (!acc[item.id]) {
                 acc[item.id] = { unitsSold: 0 };
@@ -162,33 +176,25 @@ export default function SellPage() {
             return acc;
         }, {} as Record<string, { unitsSold: number }>);
     
-        const topProductsList = Object.keys(productSales).map(productId => {
-            const productInfo = products.find(p => p.id === productId);
-            return {
-                ...productInfo,
-                id: productId,
-                name: productInfo?.name || 'Produit inconnu',
-                unitsSold: productSales[productId].unitsSold,
-            } as TopProduct;
-        }).sort((a, b) => b.unitsSold - a.unitsSold).slice(0, 10);
-
+        const topProductsList = Object.keys(productSales)
+            .map(productId => {
+                const productInfo = products.find(p => p.id === productId);
+                if (!productInfo) return null; // FIX: If product was deleted, skip it
+    
+                return {
+                    ...productInfo,
+                    id: productId,
+                    name: productInfo.name,
+                    unitsSold: productSales[productId].unitsSold,
+                } as TopProduct;
+            })
+            .filter((p): p is TopProduct => p !== null) // FIX: Filter out null (deleted) products
+            .sort((a, b) => b.unitsSold - a.unitsSold)
+            .slice(0, 10);
+    
         return topProductsList;
-
+    
     }, [sales, products]);
-
-
-    const handleBarcodeScan = useCallback((query: string) => {
-        if (!products) return;
-        const scannedProduct = products.find(p => p.barcodes?.includes(query) || p.barcode === query);
-        if (scannedProduct) {
-            addProductToCart(scannedProduct);
-            setSearchQuery(''); // Clear input after scan
-        }
-    }, [products, addProductToCart]);
-
-    useEffect(() => {
-        handleBarcodeScan(searchQuery);
-    }, [searchQuery, handleBarcodeScan]);
 
 
     const total = useMemo(() => {
@@ -197,7 +203,7 @@ export default function SellPage() {
     }, [activeCart]);
     
     const updateCartItemQuantity = (productId: string, newQuantity: number) => {
-        if (newQuantity < 0) return; // Prevent negative quantity
+        if (newQuantity < 0) return;
 
         setCarts(prevCarts => {
             const currentCart = prevCarts[activeCartId];
