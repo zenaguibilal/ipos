@@ -36,13 +36,14 @@ interface ComboboxProps {
 }
 
 
-export function Combobox({ options, onSelect, placeholder, searchPlaceholder, notFoundMessage}: ComboboxProps) {
+export const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(({ options, onSelect, placeholder, searchPlaceholder, notFoundMessage }, ref) => {
   const [open, setOpen] = React.useState(false)
   
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
+          ref={ref}
           variant="outline"
           role="combobox"
           aria-expanded={open}
@@ -93,4 +94,5 @@ export function Combobox({ options, onSelect, placeholder, searchPlaceholder, no
       </PopoverContent>
     </Popover>
   )
-}
+});
+Combobox.displayName = "Combobox";

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
@@ -9,16 +8,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { collection, doc, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { AddProductForm } from '@/components/sell/add-product-form';
 import { AddCustomProductForm } from '@/components/sell/add-custom-product-form';
-import { MinusCircle, PlusCircle, User, XCircle, X, LayoutGrid, List, ShoppingCart, TrendingUp } from 'lucide-react';
+import { MinusCircle, PlusCircle, User, XCircle, X, ShoppingCart, HelpCircle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PaymentDialog } from '@/components/sell/payment-dialog';
-import Link from 'next/link';
 import type { Product, Customer, Sale, Payment, TopProduct } from '@/lib/types';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Combobox } from '@/components/ui/combobox';
+import { ShortcutsHelpDialog } from '@/components/sell/shortcuts-help-dialog';
 
 type ProductWithOptionalBarcode = Product & { barcode?: string };
 
@@ -40,6 +37,8 @@ export default function SellPage() {
     const firestore = useFirestore();
     const router = useRouter();
     const searchInputRef = useRef<HTMLInputElement>(null);
+    const customerComboboxTriggerRef = useRef<HTMLButtonElement>(null);
+
 
     // --- Data Fetching ---
     const productsCollectionRef = useMemoFirebase(() => (user && firestore) ? collection(firestore, 'users', user.uid, 'products') : null, [user, firestore]);
@@ -60,6 +59,7 @@ export default function SellPage() {
     const [isAddingCustomProduct, setIsAddingCustomProduct] = useState(false);
     const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
     const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+    const [isShortcutsHelpOpen, setIsShortcutsHelpOpen] = useState(false);
     const [activeCartId, setActiveCartId] = useState<string>(GUEST_CUSTOMER_ID);
     const [carts, setCarts] = useState<Record<string, Cart>>({
         [GUEST_CUSTOMER_ID]: { customerId: GUEST_CUSTOMER_ID, customerName: 'Vente au comptoir', items: [] },
@@ -104,7 +104,7 @@ export default function SellPage() {
         });
     }, [activeCartId]);
     
-    const handleBarcodeScan = useCallback((query: string) => {
+     const handleBarcodeScan = useCallback((query: string) => {
         if (!query || !products) return;
         const scannedProduct = products.find(p => p.barcodes?.includes(query) || p.barcode === query);
         if (scannedProduct) {
@@ -117,8 +117,8 @@ export default function SellPage() {
     }, [products, addProductToCart]);
 
     useEffect(() => {
-        // Only trigger scan logic if the input is not empty
-        if (searchQuery) {
+        // Only trigger scan logic if the input is not focused to prevent interfering with manual search
+        if (searchQuery && document.activeElement === searchInputRef.current) {
             const timer = setTimeout(() => {
                 handleBarcodeScan(searchQuery);
             }, 300); // Debounce to avoid firing on every keystroke
@@ -126,6 +126,36 @@ export default function SellPage() {
             return () => clearTimeout(timer);
         }
     }, [searchQuery, handleBarcodeScan]);
+
+
+    // --- Keyboard Shortcuts ---
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'F1') {
+                e.preventDefault();
+                setIsShortcutsHelpOpen(true);
+            }
+            if (e.key === 'F2') {
+                e.preventDefault();
+                searchInputRef.current?.focus();
+            }
+            if (e.key === 'F4' && activeCart?.items.length > 0) {
+                e.preventDefault();
+                setIsPaymentDialogOpen(true);
+            }
+            if (e.altKey && e.key.toLowerCase() === 'a') {
+                e.preventDefault();
+                setIsAddingCustomProduct(true);
+            }
+            if (e.altKey && e.key.toLowerCase() === 'n') {
+                e.preventDefault();
+                setIsAddingProduct(true);
+            }
+        };
+
+        document.addEventListener('keydown', handleKeyDown);
+        return () => document.removeEventListener('keydown', handleKeyDown);
+    }, [activeCart]); // Dependency on activeCart to check if F4 should work
 
 
     // --- Memos & Derived State ---
@@ -401,6 +431,8 @@ export default function SellPage() {
                 isProcessing={isProcessingPayment}
                 onConfirm={handleFinalizeSale}
             />
+            <ShortcutsHelpDialog isOpen={isShortcutsHelpOpen} onOpenChange={setIsShortcutsHelpOpen} />
+
 
             <div className="grid h-full grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {/* --- Left Column: Product Selection --- */}
@@ -409,19 +441,27 @@ export default function SellPage() {
                          <div className="flex flex-col sm:flex-row gap-2">
                              <Input
                                 ref={searchInputRef}
-                                placeholder="Scanner un code-barres ou rechercher par nom..."
+                                placeholder="Scanner un code-barres ou rechercher par nom... (F2)"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 className="flex-grow"
                             />
                             <div className="flex gap-2">
-                                <Button variant="outline" onClick={() => setIsAddingProduct(true)}>Nouveau produit</Button>
-                                <Button variant="outline" onClick={() => setIsAddingCustomProduct(true)}>Produit Personnalisé</Button>
+                                <Button variant="outline" onClick={() => setIsAddingProduct(true)}>Nouveau produit (Alt+N)</Button>
+                                <Button variant="outline" onClick={() => setIsAddingCustomProduct(true)}>Produit Personnalisé (Alt+A)</Button>
+                                <Button variant="ghost" size="icon" onClick={() => setIsShortcutsHelpOpen(true)}>
+                                    <HelpCircle className="h-5 w-5" />
+                                </Button>
                             </div>
                          </div>
                     </div>
                     
                     <div className="flex-1 overflow-y-auto p-4">
+                       
+                        {!searchQuery && (
+                            <h2 className="text-lg font-semibold mb-4 text-muted-foreground">Top 10 des produits les plus vendus</h2>
+                        )}
+
                         {isLoadingProducts ? (
                             <p>Chargement des produits...</p>
                         ) : (
@@ -458,6 +498,7 @@ export default function SellPage() {
                 <div className="lg:col-span-1 h-full flex flex-col bg-card">
                     <div className="p-4 border-b">
                          <Combobox
+                            ref={customerComboboxTriggerRef}
                             options={customerOptions}
                             onSelect={selectCustomer}
                             placeholder={activeCart?.customerName || "Sélectionner un client"}
@@ -551,7 +592,7 @@ export default function SellPage() {
                                 <span>{total.toFixed(2)} DA</span>
                             </div>
                             <Button size="lg" onClick={() => setIsPaymentDialogOpen(true)} disabled={total <= 0}>
-                                Payer
+                                Payer (F4)
                             </Button>
                             <Button variant="outline" onClick={clearCart}>
                                 Vider le panier
@@ -563,8 +604,3 @@ export default function SellPage() {
         </>
     );
 }
-    
-
-    
-
-
