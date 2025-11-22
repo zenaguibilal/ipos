@@ -5,9 +5,9 @@ export interface Product {
     name: string;
     price: number;
     purchasePrice: number;
-    quantity: number; // Changed from integer to number
+    quantity: number; 
     minStockLevel: number;
-    barcode?: string;
+    barcodes?: string[];
 }
 
 export interface Customer {
@@ -22,7 +22,7 @@ export interface SaleItem {
     id: string;
     name: string;
     price: number;
-    quantity: number; // Changed from integer to number
+    quantity: number; 
 }
 
 export interface Sale {
@@ -59,7 +59,7 @@ export interface ChartData {
 export interface BreadOrder {
     id: string;
     name: string;
-    quantity: number; // Changed from integer to number
+    quantity: number;
     isPaid: boolean;
     isDelivered: boolean;
     isRecurring: boolean;

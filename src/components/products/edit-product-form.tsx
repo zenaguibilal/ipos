@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -24,7 +23,7 @@ export function EditProductForm({ isOpen, onOpenChange, userId, product }: EditP
     const [purchasePrice, setPurchasePrice] = useState('');
     const [quantity, setQuantity] = useState('');
     const [minStockLevel, setMinStockLevel] = useState('');
-    const [barcode, setBarcode] = useState('');
+    const [barcodes, setBarcodes] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
 
@@ -35,7 +34,7 @@ export function EditProductForm({ isOpen, onOpenChange, userId, product }: EditP
             setPurchasePrice(String(product.purchasePrice));
             setQuantity(String(product.quantity));
             setMinStockLevel(String(product.minStockLevel));
-            setBarcode(product.barcode || '');
+            setBarcodes(product.barcodes?.join(', ') || '');
         }
     }, [product]);
 
@@ -73,13 +72,15 @@ export function EditProductForm({ isOpen, onOpenChange, userId, product }: EditP
         setIsLoading(true);
         const productDocRef = doc(firestore, 'users', userId, 'products', product.id);
         
+        const barcodesArray = barcodes.split(',').map(b => b.trim()).filter(b => b);
+
         updateDocumentNonBlocking(productDocRef, {
             name: name,
             price: priceNumber,
             purchasePrice: purchasePriceNumber,
             quantity: quantityNumber,
             minStockLevel: minStockLevelNumber,
-            barcode: barcode,
+            barcodes: barcodesArray,
         }, {
             onSuccess: () => {
                 setIsLoading(false);
@@ -172,16 +173,19 @@ export function EditProductForm({ isOpen, onOpenChange, userId, product }: EditP
                                 required
                             />
                         </div>
-                        <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="edit-barcode" className="text-right">
-                                Code-barres
+                        <div className="grid grid-cols-4 items-start gap-4">
+                            <Label htmlFor="edit-barcodes" className="text-right pt-2">
+                                Codes-barres
                             </Label>
-                            <Input
-                                id="edit-barcode"
-                                value={barcode}
-                                onChange={(e) => setBarcode(e.target.value)}
-                                className="col-span-3"
-                            />
+                            <div className="col-span-3">
+                                <Input
+                                    id="edit-barcodes"
+                                    value={barcodes}
+                                    onChange={(e) => setBarcodes(e.target.value)}
+                                    placeholder="ex: 123, 456, 789"
+                                />
+                                <p className="text-xs text-muted-foreground mt-1">Séparez plusieurs codes-barres par une virgule.</p>
+                            </div>
                         </div>
                     </div>
                     <DialogFooter>

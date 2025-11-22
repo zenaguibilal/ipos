@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useUser, useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking } from '@/firebase';
@@ -48,7 +47,7 @@ export default function ProductsPage() {
         
         return sortedProducts.filter(product => 
             product.name.toLowerCase().includes(lowercasedQuery) ||
-            (product.barcode && product.barcode.toLowerCase().includes(lowercasedQuery))
+            (product.barcodes && product.barcodes.some(b => b.toLowerCase().includes(lowercasedQuery)))
         );
     }, [products, searchQuery]);
     
@@ -119,7 +118,7 @@ export default function ProductsPage() {
                                     <thead className="bg-muted/50 sticky top-0">
                                         <tr>
                                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Nom</th>
-                                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Code-barres</th>
+                                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Codes-barres</th>
                                             <th scope="col" className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Prix Achat</th>
                                             <th scope="col" className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Prix Vente</th>
                                             <th scope="col" className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Quantité</th>
@@ -135,7 +134,7 @@ export default function ProductsPage() {
                                             return (
                                                 <tr key={product.id} className={cn(isLowStock && 'bg-destructive/10')}>
                                                     <td className="whitespace-nowrap px-6 py-4 font-medium">{product.name}</td>
-                                                    <td className="whitespace-nowrap px-6 py-4 text-muted-foreground">{product.barcode || '-'}</td>
+                                                    <td className="whitespace-nowrap px-6 py-4 text-muted-foreground">{product.barcodes?.join(', ') || '-'}</td>
                                                     <td className="whitespace-nowrap px-6 py-4 text-right font-medium">{product.purchasePrice.toFixed(2)} DA</td>
                                                     <td className="whitespace-nowrap px-6 py-4 text-right font-medium">{product.price.toFixed(2)} DA</td>
                                                     <td className={cn("whitespace-nowrap px-6 py-4 text-right font-medium", isLowStock && 'text-destructive font-bold')}>{product.quantity}</td>

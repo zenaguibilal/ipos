@@ -66,16 +66,19 @@
           "description": "Purchase price of the product."
         },
         "quantity": {
-          "type": "integer",
+          "type": "number",
           "description": "Quantity in stock."
         },
         "minStockLevel": {
           "type": "integer",
           "description": "Minimum stock level for alert."
         },
-        "barcode": {
-          "type": "string",
-          "description": "Barcode (UPC, EAN, etc.) of the product."
+        "barcodes": {
+          "type": "array",
+          "description": "A list of barcodes (UPC, EAN, etc.) for the product.",
+          "items": {
+            "type": "string"
+          }
         },
         "createdAt": {
           "type": "string",
