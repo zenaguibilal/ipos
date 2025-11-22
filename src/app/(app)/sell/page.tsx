@@ -211,33 +211,37 @@ export default function SellPage() {
   const updateCartItemQuantity = (productId: string, newQuantityStr: string) => {
     const newQuantity = parseFloat(newQuantityStr);
 
-    if (isNaN(newQuantity)) {
-        // handle case where input is cleared or invalid
+    if (isNaN(newQuantity) && newQuantityStr !== '') {
+        // handle case where input is invalid but not empty
         return;
     }
 
     setCarts(prevCarts => {
         const activeCart = prevCarts[activeCartId];
         let newItems = [...activeCart.items];
+        const itemIndex = newItems.findIndex(item => item.id === productId);
 
-        if (newQuantity <= 0) {
+        if (itemIndex === -1) return prevCarts;
+
+        // If input is cleared or becomes 0
+        if (newQuantityStr === '' || newQuantity === 0) {
+            newItems[itemIndex] = { ...newItems[itemIndex], cartQuantity: 0 };
+        } else if (newQuantity < 0) {
+            // Remove item if quantity becomes negative
             newItems = newItems.filter(item => item.id !== productId);
         } else {
-            const itemIndex = newItems.findIndex(item => item.id === productId);
-            if (itemIndex > -1) {
-                const cartItem = newItems[itemIndex];
-                // Only check stock for non-custom items
-                if (!cartItem.isCustom) {
-                    const originalProduct = products?.find(p => p.id === productId);
-                    if (originalProduct && newQuantity > originalProduct.quantity) {
-                        showStatusMessage('error', `Stock insuffisant pour ${cartItem.name}. Maximum: ${originalProduct.quantity}.`, activeCartId);
-                        newItems[itemIndex] = { ...cartItem, cartQuantity: originalProduct.quantity };
-                    } else {
-                         newItems[itemIndex] = { ...cartItem, cartQuantity: newQuantity };
-                    }
+            const cartItem = newItems[itemIndex];
+            // Only check stock for non-custom items
+            if (!cartItem.isCustom) {
+                const originalProduct = products?.find(p => p.id === productId);
+                if (originalProduct && newQuantity > originalProduct.quantity) {
+                    showStatusMessage('error', `Stock insuffisant pour ${cartItem.name}. Maximum: ${originalProduct.quantity}.`, activeCartId);
+                    newItems[itemIndex] = { ...cartItem, cartQuantity: originalProduct.quantity };
                 } else {
                      newItems[itemIndex] = { ...cartItem, cartQuantity: newQuantity };
                 }
+            } else {
+                 newItems[itemIndex] = { ...cartItem, cartQuantity: newQuantity };
             }
         }
         
