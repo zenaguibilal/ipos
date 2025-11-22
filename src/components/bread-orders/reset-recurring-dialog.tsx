@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -49,22 +50,23 @@ export function ResetRecurringDialog({ isOpen, onOpenChange, onConfirm, isResett
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Effectuer le nettoyage quotidien ?</AlertDialogTitle>
-          <AlertDialogDescription>
-            Cette action est irréversible.
-            <ul className="list-disc pl-5 mt-2 space-y-1">
-                {nonRecurringOrdersCount > 0 && (
-                    <li className="text-destructive">
-                        Les **{nonRecurringOrdersCount}** commandes non récurrentes seront **supprimées**.
-                    </li>
-                )}
-                {recurringOrdersCount > 0 && (
-                     <li>
-                        Le statut de "Payé" et "Livré" des **{recurringOrdersCount}** commandes récurrentes sera réinitialisé.
-                    </li>
-                )}
-            </ul>
-             <br/>
-            Êtes-vous sûr de vouloir continuer ?
+          <AlertDialogDescription asChild>
+            <div>
+              <p>Cette action est irréversible.</p>
+              <ul className="list-disc pl-5 mt-2 space-y-1">
+                  {nonRecurringOrdersCount > 0 && (
+                      <li className="text-destructive">
+                          Les **{nonRecurringOrdersCount}** commandes non récurrentes seront **supprimées**.
+                      </li>
+                  )}
+                  {recurringOrdersCount > 0 && (
+                       <li>
+                          Le statut de "Payé" et "Livré" des **{recurringOrdersCount}** commandes récurrentes sera réinitialisé.
+                      </li>
+                  )}
+              </ul>
+               <p className="mt-2">Êtes-vous sûr de vouloir continuer ?</p>
+            </div>
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
