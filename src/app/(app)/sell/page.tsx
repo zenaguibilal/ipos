@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
@@ -8,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { collection, doc, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { AddProductForm } from '@/components/sell/add-product-form';
 import { AddCustomProductForm } from '@/components/sell/add-custom-product-form';
-import { MinusCircle, PlusCircle, User, XCircle, X, LayoutGrid, List, ShoppingCart } from 'lucide-react';
+import { MinusCircle, PlusCircle, User, XCircle, X, LayoutGrid, List, ShoppingCart, TrendingUp } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PaymentDialog } from '@/components/sell/payment-dialog';
@@ -63,7 +64,7 @@ export default function SellPage() {
     const [carts, setCarts] = useState<Record<string, Cart>>({
         [GUEST_CUSTOMER_ID]: { customerId: GUEST_CUSTOMER_ID, customerName: 'Vente au comptoir', items: [] },
     });
-     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+     const [viewMode, setViewMode] = useState<'grid' | 'list' | 'top'>('grid');
 
     useEffect(() => {
         if (!isUserLoading && !user) {
@@ -119,6 +120,31 @@ export default function SellPage() {
         );
     }, [products, searchQuery]);
 
+    const topSellingProducts = useMemo(() => {
+        if (!sales || !products) return [];
+
+        const productSales = sales.flatMap(s => s.items).reduce((acc, item) => {
+            if (!acc[item.id]) {
+                acc[item.id] = { unitsSold: 0 };
+            }
+            acc[item.id].unitsSold += item.quantity;
+            return acc;
+        }, {} as Record<string, { unitsSold: number }>);
+    
+        const topProducts = Object.keys(productSales).map(productId => {
+            const productInfo = products.find(p => p.id === productId);
+            return {
+                ...productInfo,
+                id: productId,
+                name: productInfo?.name || 'Produit inconnu',
+                unitsSold: productSales[productId].unitsSold,
+            } as TopProduct;
+        }).sort((a, b) => b.unitsSold - a.unitsSold).slice(0, 10);
+
+        return topProducts;
+
+    }, [sales, products]);
+
 
     const handleBarcodeScan = useCallback((query: string) => {
         if (!products) return;
@@ -127,7 +153,7 @@ export default function SellPage() {
             addProductToCart(scannedProduct);
             setSearchQuery(''); // Clear input after scan
         }
-    }, [products]); // Recreate if products change
+    }, [products, addProductToCart]);
 
     useEffect(() => {
         handleBarcodeScan(searchQuery);
@@ -141,56 +167,68 @@ export default function SellPage() {
 
 
     // --- Cart Management Functions ---
-    const addProductToCart = (product: Product) => {
+    const addProductToCart = useCallback((product: Product) => {
         if (product.quantity <= 0) {
             // Optionally, provide feedback that the product is out of stock.
             return;
         }
-
-        const existingItem = activeCart.items.find(item => item.id === product.id);
-
-        let newItems;
-        if (existingItem) {
-            newItems = activeCart.items.map(item =>
-                item.id === product.id
-                    ? { ...item, cartQuantity: item.cartQuantity + 1 }
-                    : item
-            );
-        } else {
-            newItems = [...activeCart.items, { ...product, cartQuantity: 1 }];
-        }
-        
-        setCarts(prevCarts => ({
-            ...prevCarts,
-            [activeCartId]: { ...activeCart, items: newItems }
-        }));
-    };
+    
+        setCarts(prevCarts => {
+            const currentCart = prevCarts[activeCartId];
+            if (!currentCart) return prevCarts;
+    
+            const existingItem = currentCart.items.find(item => item.id === product.id);
+            let newItems;
+    
+            if (existingItem) {
+                newItems = currentCart.items.map(item =>
+                    item.id === product.id
+                        ? { ...item, cartQuantity: item.cartQuantity + 1 }
+                        : item
+                );
+            } else {
+                newItems = [...currentCart.items, { ...product, cartQuantity: 1 }];
+            }
+            
+            return {
+                ...prevCarts,
+                [activeCartId]: { ...currentCart, items: newItems }
+            };
+        });
+    }, [activeCartId]);
     
     const updateCartItemQuantity = (productId: string, newQuantity: number) => {
-        let newItems;
-        
-        if (newQuantity < 0) {
-           return; // Do nothing if quantity is negative
-        } else {
-             newItems = activeCart.items.map(item =>
+        if (newQuantity < 0) return; // Prevent negative quantity
+
+        setCarts(prevCarts => {
+            const currentCart = prevCarts[activeCartId];
+            if (!currentCart) return prevCarts;
+
+            const newItems = currentCart.items.map(item =>
                 item.id === productId
                     ? { ...item, cartQuantity: newQuantity }
                     : item
             );
-        }
-
-        setCarts(prevCarts => ({
-            ...prevCarts,
-            [activeCartId]: { ...activeCart, items: newItems }
-        }));
+        
+            return {
+                ...prevCarts,
+                [activeCartId]: { ...currentCart, items: newItems }
+            };
+        });
     };
     
     const removeCartItem = (productId: string) => {
-        const newItems = activeCart.items.filter(item => item.id !== productId);
-        setCarts(prevCarts => ({
-            ...prevCarts,
-            [activeCartId]: { ...activeCart, items: newItems }
-        }));
+        setCarts(prevCarts => {
+            const currentCart = prevCarts[activeCartId];
+            if (!currentCart) return prevCarts;
+    
+            const newItems = currentCart.items.filter(item => item.id !== productId);
+            
+            return {
+                ...prevCarts,
+                [activeCartId]: { ...currentCart, items: newItems }
+            };
+        });
     };
 
     const addCustomProductToCart = (name: string, price: number) => {
@@ -293,7 +331,7 @@ export default function SellPage() {
             amountPaid: amountPaid,
             remainingBalance: remainingBalance,
             paymentStatus: paymentStatus,
-            customerId: activeCart.customerId !== GUEST_CUSTOMER_ID ? activeCart.customerId : null,
+            customerId: activeCart.customerId !== GUEST_CUSTOMER_ID && !activeCart.customerId.startsWith('guest-') ? activeCart.customerId : null,
             customerName: activeCart.customerName,
             createdAt: serverTimestamp(),
         };
@@ -352,11 +390,14 @@ export default function SellPage() {
                                 <Button variant="outline" onClick={() => setIsAddingProduct(true)}>Nouveau produit</Button>
                                 <Button variant="outline" onClick={() => setIsAddingCustomProduct(true)}>Produit Personnalisé</Button>
                                 <div className="hidden sm:flex items-center rounded-md border bg-background">
-                                     <Button variant={viewMode === 'grid' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('grid')}>
+                                     <Button variant={viewMode === 'grid' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('grid')} aria-label="Grid View">
                                         <LayoutGrid className="h-4 w-4"/>
                                     </Button>
-                                    <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('list')}>
+                                    <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('list')} aria-label="List View">
                                         <List className="h-4 w-4"/>
+                                    </Button>
+                                    <Button variant={viewMode === 'top' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('top')} aria-label="Top Selling View">
+                                        <TrendingUp className="h-4 w-4"/>
                                     </Button>
                                 </div>
                             </div>
@@ -386,8 +427,11 @@ export default function SellPage() {
                                         </CardFooter>
                                     </Card>
                                 ))}
+                                {filteredProducts?.length === 0 && (
+                                    <p className="text-center text-muted-foreground col-span-full">Aucun produit ne correspond à votre recherche.</p>
+                                )}
                             </div>
-                        ) : (
+                        ) : viewMode === 'list' ? (
                              <div className="border rounded-lg overflow-hidden h-full">
                                 <div className="h-full overflow-auto">
                                     <Table>
@@ -414,11 +458,35 @@ export default function SellPage() {
                                             ))}
                                         </TableBody>
                                     </Table>
+                                     {filteredProducts?.length === 0 && (
+                                        <div className="text-center p-4 text-muted-foreground">Aucun produit ne correspond à votre recherche.</div>
+                                    )}
                                 </div>
                             </div>
-                        )}
-                        {filteredProducts?.length === 0 && (
-                            <p className="text-center text-muted-foreground">Aucun produit ne correspond à votre recherche.</p>
+                        ) : (
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                                {topSellingProducts?.map(product => (
+                                    <Card 
+                                        key={product.id}
+                                        onClick={() => addProductToCart(product)}
+                                        className={cn("cursor-pointer hover:shadow-lg transition-shadow", product.quantity <= 0 && "opacity-50 cursor-not-allowed")}
+                                        aria-disabled={product.quantity <= 0}
+                                    >
+                                        <CardContent className="p-2 aspect-square flex flex-col justify-center items-center text-center">
+                                            <p className="font-semibold text-sm line-clamp-2">{product.name}</p>
+                                            <p className="text-xs text-muted-foreground">{product.price.toFixed(2)} DA</p>
+                                        </CardContent>
+                                        <CardFooter className="p-2 bg-muted/50 text-center justify-center">
+                                            <span className={cn("text-xs font-medium", product.quantity > 0 ? "text-primary" : "text-destructive")}>
+                                                Stock: {product.quantity}
+                                            </span>
+                                        </CardFooter>
+                                    </Card>
+                                ))}
+                                {topSellingProducts?.length === 0 && (
+                                     <p className="text-center text-muted-foreground col-span-full">Pas encore assez de données de vente.</p>
+                                )}
+                            </div>
                         )}
                     </div>
                 </div>
@@ -520,4 +588,6 @@ export default function SellPage() {
         </>
     );
 }
+    
+
     
