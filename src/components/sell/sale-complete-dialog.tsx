@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -11,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import type { Sale, CustomerWithSalesData, CompanyProfile } from "@/lib/types";
 import { CheckCircle, MessageSquare } from "lucide-react";
+import { toast } from "sonner";
 
 interface SaleCompleteDialogProps {
     isOpen: boolean;
@@ -23,12 +25,15 @@ interface SaleCompleteDialogProps {
 export function SaleCompleteDialog({ isOpen, onOpenChange, sale, customer, companyProfile }: SaleCompleteDialogProps) {
     
     const handleWhatsAppClick = () => {
-        if (!customer || !customer.phone) return;
+        if (!customer || !customer.phone) {
+            toast.error("Le numéro de téléphone du client n'est pas disponible.");
+            return;
+        }
 
         const companyName = companyProfile?.companyName || 'notre magasin';
-        const message = `Bonjour ${customer.firstName}, merci pour votre achat chez ${companyName}. Le total de votre facture N°${sale.invoiceNumber} est de ${sale.total.toFixed(2)} DA. Montant payé : ${sale.amountPaid.toFixed(2)} DA. Solde restant : ${sale.remainingBalance.toFixed(2)} DA.`;
+        const message = `Bonjour ${customer.firstName} ${customer.lastName}, merci pour votre achat chez ${companyName}. Le total de votre facture N°${sale.invoiceNumber} est de ${sale.total.toFixed(2)} DA. Montant payé : ${sale.amountPaid.toFixed(2)} DA. Solde restant : ${sale.remainingBalance.toFixed(2)} DA.`;
         
-        const whatsappUrl = `https://wa.me/${customer.phone}?text=${encodeURIComponent(message)}`;
+        const whatsappUrl = `https://wa.me/${customer.phone.replace(/\s+/g, '')}?text=${encodeURIComponent(message)}`;
         window.open(whatsappUrl, '_blank');
         onOpenChange(false); // Close dialog after opening whatsapp
     };
@@ -37,7 +42,7 @@ export function SaleCompleteDialog({ isOpen, onOpenChange, sale, customer, compa
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-        <DialogContent>
+        <DialogContent onInteractOutside={(e) => e.preventDefault()}>
             <DialogHeader>
                 <div className="flex flex-col items-center text-center">
                     <CheckCircle className="h-16 w-16 text-green-500 mb-4" />
