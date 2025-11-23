@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import type { Customer } from '@/app/(app)/customers/page';
+import type { Customer } from '@/lib/types';
 import { toast } from 'sonner';
 
 interface EditCustomerFormProps {

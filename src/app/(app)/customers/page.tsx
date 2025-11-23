@@ -11,12 +11,14 @@ import { AddCustomerForm } from '@/components/customers/add-customer-form';
 import { EditCustomerForm } from '@/components/customers/edit-customer-form';
 import { DeleteCustomerDialog } from '@/components/customers/delete-customer-dialog';
 import { SettleDebtDialog } from '@/components/customers/settle-debt-dialog';
-import { MoreHorizontal, CreditCard, Pencil, Trash2 } from 'lucide-react';
+import { MoreHorizontal, CreditCard, Pencil, Trash2, ArrowUp, ArrowDown } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import type { Customer, Sale, Payment, CustomerWithSalesData } from '@/lib/types';
+import { cn } from '@/lib/utils';
 
+type SortableKeys = keyof Pick<CustomerWithSalesData, 'firstName' | 'lastName' | 'settlementDay' | 'totalSpent' | 'outstandingBalance'>;
 
 export default function CustomersPage() {
     const { user, isUserLoading } = useUser();
@@ -28,6 +30,7 @@ export default function CustomersPage() {
     const [deletingCustomer, setDeletingCustomer] = useState<Customer | null>(null);
     const [settlingDebtForCustomer, setSettlingDebtForCustomer] = useState<CustomerWithSalesData | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
+    const [sortConfig, setSortConfig] = useState<{ key: SortableKeys; direction: 'ascending' | 'descending' } | null>({ key: 'lastName', direction: 'ascending' });
 
     // Fetch Customers
     const customersCollectionRef = useMemoFirebase(() => {
@@ -88,17 +91,51 @@ export default function CustomersPage() {
         });
     }, [customers, sales, payments]);
 
-    const filteredCustomers = useMemo(() => {
-        if (!searchQuery) return customersWithSales;
+    const sortedAndFilteredCustomers = useMemo(() => {
+        let sortableItems = [...customersWithSales];
+
+        if (sortConfig !== null) {
+            sortableItems.sort((a, b) => {
+                const aValue = a[sortConfig.key];
+                const bValue = b[sortConfig.key];
+
+                if (aValue === undefined || aValue === null) return 1;
+                if (bValue === undefined || bValue === null) return -1;
+                
+                if (aValue < bValue) {
+                    return sortConfig.direction === 'ascending' ? -1 : 1;
+                }
+                if (aValue > bValue) {
+                    return sortConfig.direction === 'ascending' ? 1 : -1;
+                }
+                return 0;
+            });
+        }
+        
+        if (!searchQuery) return sortableItems;
         
         const lowercasedQuery = searchQuery.toLowerCase();
         
-        return customersWithSales.filter(customer => 
+        return sortableItems.filter(customer => 
             customer.firstName.toLowerCase().includes(lowercasedQuery) ||
             customer.lastName.toLowerCase().includes(lowercasedQuery)
         );
-    }, [customersWithSales, searchQuery]);
+    }, [customersWithSales, searchQuery, sortConfig]);
 
+     const requestSort = (key: SortableKeys) => {
+        let direction: 'ascending' | 'descending' = 'ascending';
+        if (sortConfig && sortConfig.key === key && sortConfig.direction === 'ascending') {
+            direction = 'descending';
+        }
+        setSortConfig({ key, direction });
+    };
+
+    const getSortIcon = (key: SortableKeys) => {
+        if (!sortConfig || sortConfig.key !== key) {
+            return null;
+        }
+        return sortConfig.direction === 'ascending' ? <ArrowUp className="ml-2 h-3 w-3" /> : <ArrowDown className="ml-2 h-3 w-3" />;
+    };
 
     useEffect(() => {
         if (!isUserLoading && !user) {
@@ -148,6 +185,15 @@ export default function CustomersPage() {
         return <div className="flex h-full items-center justify-center"><p>Chargement...</p></div>;
     }
 
+    const SortableHeader = ({ sortKey, children, className }: { sortKey: SortableKeys, children: React.ReactNode, className?: string }) => (
+        <th scope="col" className={cn("px-6 py-3 text-xs font-medium uppercase tracking-wider text-muted-foreground", className)}>
+            <button onClick={() => requestSort(sortKey)} className="flex items-center">
+                {children}
+                {getSortIcon(sortKey)}
+            </button>
+        </th>
+    );
+
     return (
         <>
             <AddCustomerForm 
@@ -195,23 +241,23 @@ export default function CustomersPage() {
                     <CardContent>
                         {isLoading ? (
                             <div className="text-center">Chargement des données...</div>
-                        ) : filteredCustomers && filteredCustomers.length > 0 ? (
+                        ) : sortedAndFilteredCustomers && sortedAndFilteredCustomers.length > 0 ? (
                             <div className="overflow-x-auto">
                                 <table className="min-w-full divide-y divide-border">
                                     <thead className="bg-muted/50">
                                         <tr>
-                                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Nom</th>
+                                            <SortableHeader sortKey="lastName" className="text-left">Nom</SortableHeader>
                                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Téléphone</th>
-                                            <th scope="col" className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Jour de règlement</th>
-                                            <th scope="col" className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Total Dépensé</th>
-                                            <th scope="col" className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Solde Impayé</th>
+                                            <SortableHeader sortKey="settlementDay" className="text-right">Jour de règlement</SortableHeader>
+                                            <SortableHeader sortKey="totalSpent" className="text-right">Total Dépensé</SortableHeader>
+                                            <SortableHeader sortKey="outstandingBalance" className="text-right">Solde Impayé</SortableHeader>
                                             <th scope="col" className="relative px-6 py-3">
                                                 <span className="sr-only">Actions</span>
                                             </th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-border">
-                                        {filteredCustomers.map(customer => (
+                                        {sortedAndFilteredCustomers.map(customer => (
                                             <tr key={customer.id} onClick={() => router.push(`/customers/${customer.id}`)} className="cursor-pointer hover:bg-muted/50">
                                                 <td className="whitespace-nowrap px-6 py-4 font-medium">{customer.firstName} {customer.lastName}</td>
                                                 <td className="whitespace-nowrap px-6 py-4 text-muted-foreground">{customer.phone || '-'}</td>
