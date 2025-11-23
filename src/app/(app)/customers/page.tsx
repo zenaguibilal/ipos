@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useUser, useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
@@ -18,7 +17,7 @@ import { toast } from 'sonner';
 import type { Customer, Sale, Payment, CustomerWithSalesData } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
-type SortableKeys = keyof Pick<CustomerWithSalesData, 'firstName' | 'lastName' | 'settlementDay' | 'totalSpent' | 'outstandingBalance'>;
+type SortableKeys = keyof Pick<CustomerWithSalesData, 'lastName' | 'settlementDay' | 'totalSpent' | 'outstandingBalance'>;
 
 export default function CustomersPage() {
     const { user, isUserLoading } = useUser();
@@ -102,13 +101,14 @@ export default function CustomersPage() {
                 if (aValue === undefined || aValue === null) return 1;
                 if (bValue === undefined || bValue === null) return -1;
                 
-                if (aValue < bValue) {
-                    return sortConfig.direction === 'ascending' ? -1 : 1;
+                let comparison = 0;
+                if (typeof aValue === 'string' && typeof bValue === 'string') {
+                    comparison = aValue.localeCompare(bValue);
+                } else if (typeof aValue === 'number' && typeof bValue === 'number') {
+                    comparison = aValue - bValue;
                 }
-                if (aValue > bValue) {
-                    return sortConfig.direction === 'ascending' ? 1 : -1;
-                }
-                return 0;
+
+                return sortConfig.direction === 'ascending' ? comparison : -comparison;
             });
         }
         
