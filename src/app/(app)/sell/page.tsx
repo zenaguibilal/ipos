@@ -210,7 +210,7 @@ export default function SellPage() {
     const customerOptions = useMemo(() => {
         return customersWithDebt.map(customer => ({
             value: customer.id,
-            label: `${customer.firstName} ${customer.lastName}`,
+            label: `${''}${customer.firstName} ${customer.lastName}`,
             subLabel: customer.outstandingBalance > 0 ? `Dette: ${customer.outstandingBalance.toFixed(2)} DA` : undefined
         }));
     }, [customersWithDebt]);
