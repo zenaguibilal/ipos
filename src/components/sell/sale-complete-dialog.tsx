@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -9,14 +10,14 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button";
-import type { Sale, Customer, CompanyProfile } from "@/lib/types";
+import type { Sale, CustomerWithSalesData, CompanyProfile } from "@/lib/types";
 import { CheckCircle, MessageSquare } from "lucide-react";
 
 interface SaleCompleteDialogProps {
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
     sale: Sale;
-    customer: Customer | null;
+    customer: CustomerWithSalesData | null;
     companyProfile: CompanyProfile | null;
 }
 
