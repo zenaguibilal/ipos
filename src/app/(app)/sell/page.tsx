@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase } from '@/firebase';
@@ -437,6 +436,7 @@ export default function SellPage() {
     
     const handleCloseSaleCompleteDialog = () => {
         setCompletedSale(null);
+        searchInputRef.current?.focus();
     }
 
 
@@ -460,7 +460,7 @@ export default function SellPage() {
                 onConfirm={handleFinalizeSale}
             />
             <ShortcutsHelpDialog isOpen={isShortcutsHelpOpen} onOpenChange={setIsShortcutsHelpOpen} />
-            {completedSale && activeCustomerInfo && (
+            {completedSale && (
                 <SaleCompleteDialog
                     isOpen={!!completedSale}
                     onOpenChange={handleCloseSaleCompleteDialog}
@@ -646,3 +646,5 @@ export default function SellPage() {
         </>
     );
 }
+
+    

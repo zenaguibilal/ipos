@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -74,3 +73,5 @@ export function SaleCompleteDialog({ isOpen, onOpenChange, sale, customer, compa
         </Dialog>
     )
 }
+
+    
