@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
@@ -12,7 +13,8 @@ import { MinusCircle, PlusCircle, User, XCircle, X, ShoppingCart, HelpCircle } f
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PaymentDialog } from '@/components/sell/payment-dialog';
-import type { Product, Customer, Sale, Payment, TopProduct } from '@/lib/types';
+import { SaleCompleteDialog } from '@/components/sell/sale-complete-dialog';
+import type { Product, Customer, Sale, Payment, TopProduct, CompanyProfile } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { Combobox } from '@/components/ui/combobox';
 import { ShortcutsHelpDialog } from '@/components/sell/shortcuts-help-dialog';
@@ -53,6 +55,12 @@ export default function SellPage() {
     
     const paymentsCollectionRef = useMemoFirebase(() => user && firestore ? collection(firestore, 'users', user.uid, 'payments') : null, [user, firestore]);
     const { data: payments, isLoading: isLoadingPayments } = useCollection<Payment>(paymentsCollectionRef);
+    
+    const companyDocRef = useMemoFirebase(() => {
+        if (!user || !firestore) return null;
+        return doc(firestore, 'users', user.uid, 'companyProfile', 'main');
+    }, [user, firestore]);
+    const { data: companyProfile, isLoading: isLoadingCompanyProfile } = useDoc<CompanyProfile>(companyDocRef);
 
     // --- Local State ---
     const [searchQuery, setSearchQuery] = useState('');
@@ -61,6 +69,7 @@ export default function SellPage() {
     const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
     const [isProcessingPayment, setIsProcessingPayment] = useState(false);
     const [isShortcutsHelpOpen, setIsShortcutsHelpOpen] = useState(false);
+    const [completedSale, setCompletedSale] = useState<Sale | null>(null);
     const [activeCartId, setActiveCartId] = useState<string>(GUEST_CUSTOMER_ID);
     const [carts, setCarts] = useState<Record<string, Cart>>({
         [GUEST_CUSTOMER_ID]: { customerId: GUEST_CUSTOMER_ID, customerName: 'Vente au comptoir', items: [] },
@@ -379,8 +388,11 @@ export default function SellPage() {
         activeCart.items.forEach(item => {
             if (!item.isCustom) {
                 const productRef = doc(firestore, 'users', user.uid, 'products', item.id);
-                const newQuantity = item.quantity - item.cartQuantity;
-                batch.update(productRef, { quantity: newQuantity });
+                const product = products?.find(p => p.id === item.id);
+                if (product) {
+                    const newQuantity = product.quantity - item.cartQuantity;
+                    batch.update(productRef, { quantity: newQuantity });
+                }
             }
         });
 
@@ -389,14 +401,14 @@ export default function SellPage() {
         const remainingBalance = total - amountPaid;
         const paymentStatus = remainingBalance <= 0 ? 'paid' : (amountPaid > 0 ? 'partial' : 'unpaid');
         
-        const saleData = {
+        const saleData: Omit<Sale, 'id' | 'createdAt'> & { createdAt: any } = {
             invoiceNumber: saleRef.id.substring(0, 8).toUpperCase(),
             items: activeCart.items.map(i => ({ id: i.id, name: i.name, price: i.price, quantity: i.cartQuantity })),
             total: total,
             amountPaid: amountPaid,
             remainingBalance: remainingBalance,
             paymentStatus: paymentStatus,
-            customerId: activeCart.customerId !== GUEST_CUSTOMER_ID && !activeCart.customerId.startsWith('guest-') ? activeCart.customerId : null,
+            customerId: activeCart.customerId !== GUEST_CUSTOMER_ID && !activeCart.customerId.startsWith('guest-') ? activeCart.customerId : undefined,
             customerName: activeCart.customerName,
             createdAt: serverTimestamp(),
         };
@@ -404,10 +416,13 @@ export default function SellPage() {
 
         try {
             await batch.commit();
+            
+            // Set completed sale to show dialog
+            setCompletedSale({ ...saleData, id: saleRef.id, createdAt: new Date() } as Sale);
             setIsPaymentDialogOpen(false);
             
              // Reset or close the cart
-            if (activeCart.customerId.startsWith('guest') && Object.keys(carts).length > 1) {
+            if (activeCart.customerId.startsWith('guest-') && Object.keys(carts).length > 1) {
                 closeTab(activeCart.customerId);
             } else {
                 clearCart();
@@ -419,9 +434,13 @@ export default function SellPage() {
             setIsProcessingPayment(false);
         }
     };
+    
+    const handleCloseSaleCompleteDialog = () => {
+        setCompletedSale(null);
+    }
 
 
-    const isLoading = isUserLoading || isLoadingProducts || isLoadingCustomers || isLoadingSales || isLoadingPayments;
+    const isLoading = isUserLoading || isLoadingProducts || isLoadingCustomers || isLoadingSales || isLoadingPayments || isLoadingCompanyProfile;
     const productsToShow = searchQuery ? filteredProducts : topSellingProducts;
 
 
@@ -441,6 +460,15 @@ export default function SellPage() {
                 onConfirm={handleFinalizeSale}
             />
             <ShortcutsHelpDialog isOpen={isShortcutsHelpOpen} onOpenChange={setIsShortcutsHelpOpen} />
+            {completedSale && activeCustomerInfo && (
+                <SaleCompleteDialog
+                    isOpen={!!completedSale}
+                    onOpenChange={handleCloseSaleCompleteDialog}
+                    sale={completedSale}
+                    customer={activeCustomerInfo}
+                    companyProfile={companyProfile}
+                />
+            )}
 
 
             <div className="grid h-full grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
