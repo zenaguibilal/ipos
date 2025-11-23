@@ -29,6 +29,7 @@ import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from 
 import { cn } from '@/lib/utils';
 import { useAuth, useUser } from '@/firebase';
 import { Clock } from '@/components/layout/clock';
+import { ThemeToggle } from './theme-toggle';
 
 const navLinks = [
   { href: '/dashboard', icon: Home, label: 'Tableau de bord' },
@@ -157,6 +158,7 @@ export function Sidebar({ children }: { children: React.ReactNode }) {
             {currentPage?.label}
           </h1>
           <Clock />
+          <ThemeToggle />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="secondary" size="icon" className="rounded-full">

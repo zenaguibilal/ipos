@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
 import { Toaster } from 'sonner';
+import { ThemeProvider } from '@/components/layout/theme-provider';
 
 const APP_NAME = "iPOS";
 const APP_DEFAULT_TITLE = "iPOS";
@@ -55,7 +56,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="fr" className="dark">
+    <html lang="fr" suppressHydrationWarning>
       <head>
         <link
           rel="icon"
@@ -63,10 +64,17 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-screen">
-        <FirebaseClientProvider>
-          {children}
-          <Toaster richColors />
-        </FirebaseClientProvider>
+        <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+        >
+            <FirebaseClientProvider>
+            {children}
+            <Toaster richColors />
+            </FirebaseClientProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
