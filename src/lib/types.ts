@@ -16,6 +16,7 @@ export interface Customer {
     lastName: string;
     phone?: string;
     settlementDay?: number;
+    outstandingBalance?: number;
 }
 
 export interface SaleItem {
@@ -108,4 +109,3 @@ export interface StockIntake {
     totalValue: number;
     createdAt: Timestamp;
 }
-    

@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PaymentDialog } from '@/components/sell/payment-dialog';
 import { SaleCompleteDialog } from '@/components/sell/sale-complete-dialog';
-import type { Product, Customer, Sale, Payment, TopProduct, CompanyProfile } from '@/lib/types';
+import type { Product, Customer, Sale, Payment, TopProduct, CompanyProfile, CustomerWithSalesData } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { Combobox } from '@/components/ui/combobox';
 import { ShortcutsHelpDialog } from '@/components/sell/shortcuts-help-dialog';
@@ -417,7 +417,7 @@ export default function SellPage() {
             await batch.commit();
             
             // Set completed sale to show dialog
-            setCompletedSale({ ...saleData, id: saleRef.id, createdAt: new Date() } as Sale);
+            setCompletedSale({ ...saleData, id: saleRef.id, createdAt: new Date() } as unknown as Sale);
             setIsPaymentDialogOpen(false);
             
              // Reset or close the cart
@@ -646,5 +646,3 @@ export default function SellPage() {
         </>
     );
 }
-
-    
