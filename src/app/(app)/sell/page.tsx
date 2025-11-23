@@ -16,6 +16,7 @@ import type { Product, Customer, Sale, Payment, TopProduct } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { Combobox } from '@/components/ui/combobox';
 import { ShortcutsHelpDialog } from '@/components/sell/shortcuts-help-dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 type ProductWithOptionalBarcode = Product & { barcode?: string };
 
@@ -102,6 +103,7 @@ export default function SellPage() {
                 [activeCartId]: { ...currentCart, items: newItems }
             };
         });
+        setSearchQuery('');
     }, [activeCartId]);
     
      const handleBarcodeScan = useCallback((query: string) => {
@@ -131,22 +133,29 @@ export default function SellPage() {
     // --- Keyboard Shortcuts ---
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
+            // Allow shortcuts to work even if an input is focused, unless it's for typing
+            const isInputFocused = document.activeElement instanceof HTMLInputElement || document.activeElement instanceof HTMLTextAreaElement;
+
             if (e.key === 'F1') {
                 e.preventDefault();
                 setIsShortcutsHelpOpen(true);
             }
+            // F2 focuses search input
             if (e.key === 'F2') {
                 e.preventDefault();
                 searchInputRef.current?.focus();
             }
+            // F4 triggers payment
             if (e.key === 'F4' && activeCart?.items.length > 0) {
                 e.preventDefault();
                 setIsPaymentDialogOpen(true);
             }
+            // Alt + A for custom product
             if (e.altKey && e.key.toLowerCase() === 'a') {
                 e.preventDefault();
                 setIsAddingCustomProduct(true);
             }
+             // Alt + N for new product
             if (e.altKey && e.key.toLowerCase() === 'n') {
                 e.preventDefault();
                 setIsAddingProduct(true);
@@ -193,7 +202,7 @@ export default function SellPage() {
     const customerOptions = useMemo(() => {
         return customersWithDebt.map(customer => ({
             value: customer.id,
-            label: `${'customer.firstName'} ${'customer.lastName'}`,
+            label: `${customer.firstName} ${customer.lastName}`,
             subLabel: customer.outstandingBalance > 0 ? `Dette: ${customer.outstandingBalance.toFixed(2)} DA` : undefined
         }));
     }, [customersWithDebt]);
@@ -451,6 +460,7 @@ export default function SellPage() {
                                 <Button variant="outline" onClick={() => setIsAddingCustomProduct(true)}>Produit Personnalisé (Alt+A)</Button>
                                 <Button variant="ghost" size="icon" onClick={() => setIsShortcutsHelpOpen(true)}>
                                     <HelpCircle className="h-5 w-5" />
+                                    <span className="sr-only">Aide raccourcis</span>
                                 </Button>
                             </div>
                          </div>
@@ -472,6 +482,8 @@ export default function SellPage() {
                                         onClick={() => addProductToCart(product)}
                                         className={cn("cursor-pointer hover:shadow-lg transition-shadow", product.quantity <= 0 && "opacity-50 cursor-not-allowed")}
                                         aria-disabled={product.quantity <= 0}
+                                        tabIndex={0}
+                                        onKeyDown={(e) => e.key === 'Enter' && addProductToCart(product)}
                                     >
                                         <CardContent className="p-2 aspect-square flex flex-col justify-center items-center text-center">
                                             <p className="font-semibold text-sm line-clamp-2">{product.name}</p>
@@ -519,31 +531,33 @@ export default function SellPage() {
                         )}
                     </div>
                     {/* --- Tabs for Carts --- */}
-                    <Tabs value={activeCartId} onValueChange={setActiveCartId} className="flex-shrink-0">
-                         <TabsList className="p-1 h-auto bg-muted rounded-none justify-start overflow-x-auto">
-                            {Object.values(carts).map(cart => (
-                                <div key={cart.customerId} className="relative group">
-                                     <TabsTrigger 
-                                        value={cart.customerId} 
-                                        className="h-8 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
-                                    >
-                                        {cart.customerName}
-                                    </TabsTrigger>
-                                     {Object.keys(carts).length > 1 && (
-                                        <button 
-                                            onClick={() => closeTab(cart.customerId)} 
-                                            className="absolute top-0 right-0 p-0.5 rounded-full bg-destructive text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                    <div className="flex-shrink-0 border-b">
+                         <Tabs value={activeCartId} onValueChange={setActiveCartId} className="w-full">
+                             <TabsList className="p-1 h-auto bg-muted rounded-none justify-start overflow-x-auto w-full">
+                                {Object.values(carts).map(cart => (
+                                    <div key={cart.customerId} className="relative group flex-shrink-0">
+                                         <TabsTrigger 
+                                            value={cart.customerId} 
+                                            className="h-8 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
                                         >
-                                            <X className="h-3 w-3" />
-                                        </button>
-                                    )}
-                                </div>
-                            ))}
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={addGuestTab}>
-                                <PlusCircle className="h-4 w-4" />
-                            </Button>
-                        </TabsList>
-                    </Tabs>
+                                            {cart.customerName}
+                                        </TabsTrigger>
+                                         {Object.keys(carts).length > 1 && (
+                                            <button 
+                                                onClick={(e) => { e.stopPropagation(); closeTab(cart.customerId); }}
+                                                className="absolute -top-1 -right-1 p-0.5 rounded-full bg-destructive text-destructive-foreground opacity-0 group-hover:opacity-100 hover:bg-destructive/80 transition-opacity z-10"
+                                            >
+                                                <X className="h-3 w-3" />
+                                            </button>
+                                        )}
+                                    </div>
+                                ))}
+                                <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0" onClick={addGuestTab}>
+                                    <PlusCircle className="h-4 w-4" />
+                                </Button>
+                            </TabsList>
+                        </Tabs>
+                    </div>
                    
                     <div className="flex-1 overflow-y-auto p-4">
                         {activeCart && activeCart.items.length > 0 ? (
