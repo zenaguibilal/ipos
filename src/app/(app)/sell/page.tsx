@@ -1,15 +1,15 @@
 
 'use client';
 
-import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase, addDocumentNonBlocking } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { collection, doc, serverTimestamp, writeBatch } from 'firebase/firestore';
+import { collection, doc, serverTimestamp, writeBatch, Timestamp } from 'firebase/firestore';
 import { AddProductForm } from '@/components/sell/add-product-form';
 import { AddCustomProductForm } from '@/components/sell/add-custom-product-form';
-import { MinusCircle, PlusCircle, User, XCircle, X, ShoppingCart, HelpCircle } from 'lucide-react';
+import { MinusCircle, PlusCircle, User, XCircle, X, ShoppingCart, HelpCircle, CreditCard } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PaymentDialog } from '@/components/sell/payment-dialog';
@@ -19,6 +19,8 @@ import { cn } from '@/lib/utils';
 import { Combobox } from '@/components/ui/combobox';
 import { ShortcutsHelpDialog } from '@/components/sell/shortcuts-help-dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { SettleDebtDialog } from '@/components/customers/settle-debt-dialog';
+import { toast } from 'sonner';
 
 type ProductWithOptionalBarcode = Product & { barcode?: string };
 
@@ -70,6 +72,7 @@ export default function SellPage() {
     const [isProcessingPayment, setIsProcessingPayment] = useState(false);
     const [isShortcutsHelpOpen, setIsShortcutsHelpOpen] = useState(false);
     const [completedSale, setCompletedSale] = useState<Sale | null>(null);
+    const [settlingDebtForCustomer, setSettlingDebtForCustomer] = useState<CustomerWithSalesData | null>(null);
     const [activeCartId, setActiveCartId] = useState<string>(GUEST_CUSTOMER_ID);
     const [carts, setCarts] = useState<Record<string, Cart>>({
         [GUEST_CUSTOMER_ID]: { customerId: GUEST_CUSTOMER_ID, customerName: 'Vente au comptoir', items: [] },
@@ -376,6 +379,29 @@ export default function SellPage() {
         }
     };
 
+    const handleSettleDebt = (amount: number) => {
+        if (!settlingDebtForCustomer || !firestore || !user) return;
+
+        const paymentsRef = collection(firestore, 'users', user.uid, 'payments');
+        const paymentData = {
+            amount: amount,
+            customerId: settlingDebtForCustomer.id,
+            customerName: `${settlingDebtForCustomer.firstName} ${settlingDebtForCustomer.lastName}`,
+            createdAt: serverTimestamp() as Timestamp,
+        };
+
+        addDocumentNonBlocking(paymentsRef, paymentData, {
+            onSuccess: () => {
+                setSettlingDebtForCustomer(null);
+                toast.success(`Paiement de ${amount.toFixed(2)} DA enregistré pour ${settlingDebtForCustomer.firstName} ${settlingDebtForCustomer.lastName}.`);
+            },
+            onError: (err) => {
+                console.error("Failed to add payment:", err);
+                toast.error("Échec de l'enregistrement du paiement.");
+            }
+        })
+    };
+
 
     // --- Payment Processing ---
     const handleFinalizeSale = async (amountPaid: number) => {
@@ -460,6 +486,15 @@ export default function SellPage() {
                 isProcessing={isProcessingPayment}
                 onConfirm={handleFinalizeSale}
             />
+            {settlingDebtForCustomer && (
+                <SettleDebtDialog
+                    isOpen={!!settlingDebtForCustomer}
+                    onOpenChange={(isOpen) => !isOpen && setSettlingDebtForCustomer(null)}
+                    onConfirm={handleSettleDebt}
+                    customerName={`${settlingDebtForCustomer.firstName} ${settlingDebtForCustomer.lastName}`}
+                    outstandingBalance={settlingDebtForCustomer.outstandingBalance}
+                />
+            )}
             <ShortcutsHelpDialog isOpen={isShortcutsHelpOpen} onOpenChange={setIsShortcutsHelpOpen} />
             {completedSale && (
                 <SaleCompleteDialog
@@ -547,12 +582,18 @@ export default function SellPage() {
                             notFoundMessage="Aucun client trouvé."
                         />
                          {activeCustomerInfo && (
-                            <div className="mt-4 text-center">
+                            <div className="mt-4 text-center space-y-2">
                                 <p className="text-lg font-bold">{activeCustomerInfo.firstName} {activeCustomerInfo.lastName}</p>
                                 {activeCustomerInfo.outstandingBalance > 0 ? (
-                                    <p className="text-destructive font-semibold">
-                                        Dette : {activeCustomerInfo.outstandingBalance.toFixed(2)} DA
-                                    </p>
+                                    <div className="flex flex-col items-center gap-2">
+                                        <p className="text-destructive font-semibold">
+                                            Dette : {activeCustomerInfo.outstandingBalance.toFixed(2)} DA
+                                        </p>
+                                         <Button variant="outline" size="sm" onClick={() => setSettlingDebtForCustomer(activeCustomerInfo)}>
+                                            <CreditCard className="mr-2 h-4 w-4" />
+                                            Régler la dette
+                                        </Button>
+                                    </div>
                                 ): (
                                      <p className="text-sm text-muted-foreground">Aucune dette impayée</p>
                                 )}
@@ -647,3 +688,5 @@ export default function SellPage() {
         </>
     );
 }
+
+    
