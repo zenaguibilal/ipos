@@ -88,7 +88,7 @@ export default function SellPage() {
     // --- Cart Management Functions ---
     const addProductToCart = useCallback((product: Product) => {
         if (product.quantity <= 0) {
-            // Optionally, provide feedback that the product is out of stock.
+            toast.warning(`Le produit "${product.name}" est en rupture de stock.`);
             return;
         }
     
@@ -100,6 +100,10 @@ export default function SellPage() {
             let newItems;
     
             if (existingItem) {
+                 if (existingItem.cartQuantity >= product.quantity) {
+                    toast.warning(`La quantité maximale en stock pour "${product.name}" est atteinte.`);
+                    return prevCarts;
+                }
                 newItems = currentCart.items.map(item =>
                     item.id === product.id
                         ? { ...item, cartQuantity: item.cartQuantity + 1 }
@@ -130,14 +134,13 @@ export default function SellPage() {
     }, [products, addProductToCart]);
 
     useEffect(() => {
-        // Only trigger scan logic if the input is not focused to prevent interfering with manual search
-        if (searchQuery && document.activeElement === searchInputRef.current) {
-            const timer = setTimeout(() => {
+        const timer = setTimeout(() => {
+            if (searchQuery.length > 2) {
                 handleBarcodeScan(searchQuery);
-            }, 300); // Debounce to avoid firing on every keystroke
+            }
+        }, 300); // Small delay to prevent firing on every keystroke
 
-            return () => clearTimeout(timer);
-        }
+        return () => clearTimeout(timer);
     }, [searchQuery, handleBarcodeScan]);
 
 
@@ -205,6 +208,7 @@ export default function SellPage() {
             
             return {
                 ...customer,
+                totalSpent: 0, // This part is not needed here
                 outstandingBalance: outstandingBalance > 0 ? outstandingBalance : 0,
             };
         });
@@ -279,12 +283,18 @@ export default function SellPage() {
         setCarts(prevCarts => {
             const currentCart = prevCarts[activeCartId];
             if (!currentCart) return prevCarts;
+
+            const itemToUpdate = currentCart.items.find(item => item.id === productId);
+            if (itemToUpdate && !itemToUpdate.isCustom && newQuantity > itemToUpdate.quantity) {
+                toast.warning(`La quantité maximale en stock pour "${itemToUpdate.name}" est atteinte.`);
+                return prevCarts;
+            }
             
             const newItems = currentCart.items.map(item =>
                 item.id === productId
                     ? { ...item, cartQuantity: newQuantity }
                     : item
-            );
+            ).filter(item => item.cartQuantity > 0); // remove if quantity is 0
         
             return {
                 ...prevCarts,
@@ -337,6 +347,11 @@ export default function SellPage() {
     // --- Tab / Cart Switching ---
     const selectCustomer = (customerId: string) => {
         if (!customers) return;
+
+        if(customerId === GUEST_CUSTOMER_ID) {
+            setActiveCartId(GUEST_CUSTOMER_ID);
+            return;
+        }
 
         const customer = customers.find(c => c.id === customerId);
         if (!customer) return;
@@ -431,7 +446,7 @@ export default function SellPage() {
             items: activeCart.items.map(i => ({ id: i.id, name: i.name, price: i.price, quantity: i.cartQuantity })),
             total: total,
             amountPaid: amountPaid,
-            remainingBalance: remainingBalance,
+            remainingBalance: remainingBalance > 0 ? remainingBalance : 0,
             paymentStatus: paymentStatus,
             customerId: activeCart.customerId !== GUEST_CUSTOMER_ID && !activeCart.customerId.startsWith('guest-') ? activeCart.customerId : undefined,
             customerName: activeCart.customerName,
@@ -455,6 +470,7 @@ export default function SellPage() {
 
         } catch (error) {
             console.error("Failed to finalize sale: ", error);
+             toast.error("Échec de la finalisation de la vente.");
         } finally {
             setIsProcessingPayment(false);
         }
@@ -545,15 +561,15 @@ export default function SellPage() {
                                         onClick={() => addProductToCart(product)}
                                         className={cn("cursor-pointer hover:shadow-lg transition-shadow", product.quantity <= 0 && "opacity-50 cursor-not-allowed")}
                                         aria-disabled={product.quantity <= 0}
-                                        tabIndex={0}
-                                        onKeyDown={(e) => e.key === 'Enter' && addProductToCart(product)}
+                                        tabIndex={product.quantity > 0 ? 0 : -1}
+                                        onKeyDown={(e) => e.key === 'Enter' && product.quantity > 0 && addProductToCart(product)}
                                     >
                                         <CardContent className="p-2 aspect-square flex flex-col justify-center items-center text-center">
                                             <p className="font-semibold text-sm line-clamp-2">{product.name}</p>
                                             <p className="text-xs text-muted-foreground">{product.price.toFixed(2)} DA</p>
                                         </CardContent>
                                         <CardFooter className="p-2 bg-muted/50 text-center justify-center">
-                                            <span className={cn("text-xs font-medium", product.quantity > 0 ? "text-primary" : "text-destructive")}>
+                                            <span className={cn("text-xs font-medium", product.quantity > product.minStockLevel ? "text-primary" : "text-destructive")}>
                                                 Stock: {product.quantity}
                                             </span>
                                         </CardFooter>
@@ -571,10 +587,41 @@ export default function SellPage() {
 
                 {/* --- Right Column: Cart --- */}
                 <div className="lg:col-span-1 h-full flex flex-col bg-card">
-                    <div className="p-4 border-b">
+                    {/* --- Tabs for Carts --- */}
+                    <div className="flex-shrink-0 border-b">
+                         <Tabs value={activeCartId} onValueChange={setActiveCartId} className="w-full">
+                             <TabsList className="p-1 h-auto bg-muted rounded-none justify-start overflow-x-auto w-full">
+                                {Object.values(carts).map(cart => (
+                                    <div key={cart.customerId} className="relative group flex-shrink-0">
+                                         <TabsTrigger 
+                                            value={cart.customerId} 
+                                            className="h-8 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
+                                        >
+                                            {cart.customerName}
+                                        </TabsTrigger>
+                                         {Object.keys(carts).length > 1 && cart.customerId !== GUEST_CUSTOMER_ID && (
+                                            <button 
+                                                onClick={(e) => { e.stopPropagation(); closeTab(cart.customerId); }}
+                                                className="absolute -top-1 -right-1 p-0.5 rounded-full bg-destructive text-destructive-foreground opacity-0 group-hover:opacity-100 hover:bg-destructive/80 transition-opacity z-10"
+                                            >
+                                                <X className="h-3 w-3" />
+                                            </button>
+                                        )}
+                                    </div>
+                                ))}
+                                <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0" onClick={addGuestTab}>
+                                    <PlusCircle className="h-4 w-4" />
+                                </Button>
+                            </TabsList>
+                        </Tabs>
+                    </div>
+                     <div className="p-4 border-b">
                          <Combobox
                             ref={customerComboboxTriggerRef}
-                            options={customerOptions}
+                            options={[
+                                { value: GUEST_CUSTOMER_ID, label: 'Vente au comptoir'},
+                                ...customerOptions
+                            ]}
                             onSelect={selectCustomer}
                             placeholder={activeCart?.customerName || "Sélectionner un client"}
                             searchPlaceholder="Rechercher un client..."
@@ -598,34 +645,6 @@ export default function SellPage() {
                                 )}
                             </div>
                         )}
-                    </div>
-                    {/* --- Tabs for Carts --- */}
-                    <div className="flex-shrink-0 border-b">
-                         <Tabs value={activeCartId} onValueChange={setActiveCartId} className="w-full">
-                             <TabsList className="p-1 h-auto bg-muted rounded-none justify-start overflow-x-auto w-full">
-                                {Object.values(carts).map(cart => (
-                                    <div key={cart.customerId} className="relative group flex-shrink-0">
-                                         <TabsTrigger 
-                                            value={cart.customerId} 
-                                            className="h-8 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
-                                        >
-                                            {cart.customerName}
-                                        </TabsTrigger>
-                                         {Object.keys(carts).length > 1 && (
-                                            <button 
-                                                onClick={(e) => { e.stopPropagation(); closeTab(cart.customerId); }}
-                                                className="absolute -top-1 -right-1 p-0.5 rounded-full bg-destructive text-destructive-foreground opacity-0 group-hover:opacity-100 hover:bg-destructive/80 transition-opacity z-10"
-                                            >
-                                                <X className="h-3 w-3" />
-                                            </button>
-                                        )}
-                                    </div>
-                                ))}
-                                <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0" onClick={addGuestTab}>
-                                    <PlusCircle className="h-4 w-4" />
-                                </Button>
-                            </TabsList>
-                        </Tabs>
                     </div>
                    
                     <div className="flex-1 overflow-y-auto p-4">
