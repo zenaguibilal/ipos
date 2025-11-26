@@ -10,21 +10,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { SaleDetailsDialog } from '@/components/sales/sale-details-dialog';
+import { PaymentDetailsDialog } from '@/components/sales/payment-details-dialog';
 import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Receipt } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import type { Sale, Customer, CompanyProfile } from '@/lib/types';
+import type { Sale, Customer, CompanyProfile, Payment } from '@/lib/types';
 
 
-// Duplicated interfaces for simplicity, can be moved to a shared types file
-interface SaleItem {
-    id: string;
-    name: string;
-    price: number;
-    quantity: number;
-}
-
+type HistoryItem = 
+    | { type: 'sale'; data: Sale }
+    | { type: 'payment'; data: Payment };
 
 export default function CustomerDetailsPage() {
     const { user, isUserLoading } = useUser();
@@ -33,7 +29,7 @@ export default function CustomerDetailsPage() {
     const params = useParams();
     const customerId = params.id as string;
 
-    const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
+    const [selectedItem, setSelectedItem] = useState<HistoryItem | null>(null);
 
     // Fetch this specific customer's data
     const customerDocRef = useMemoFirebase(() => {
@@ -43,14 +39,24 @@ export default function CustomerDetailsPage() {
     const { data: customer, isLoading: isLoadingCustomer } = useDoc<Customer>(customerDocRef);
 
     // Fetch sales only for this customer
-    const salesCollectionRef = useMemoFirebase(() => {
+    const salesQuery = useMemoFirebase(() => {
         if (!user || !firestore || !customerId) return null;
         return query(
             collection(firestore, 'users', user.uid, 'sales'),
             where('customerId', '==', customerId)
         );
     }, [user, firestore, customerId]);
-    const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesCollectionRef);
+    const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
+
+    // Fetch payments only for this customer
+    const paymentsQuery = useMemoFirebase(() => {
+        if (!user || !firestore || !customerId) return null;
+        return query(
+            collection(firestore, 'users', user.uid, 'payments'),
+            where('customerId', '==', customerId)
+        );
+    }, [user, firestore, customerId]);
+    const { data: payments, isLoading: isLoadingPayments } = useCollection<Payment>(paymentsQuery);
     
     // Fetch Company Profile
     const companyDocRef = useMemoFirebase(() => {
@@ -66,13 +72,20 @@ export default function CustomerDetailsPage() {
         }
     }, [user, isUserLoading, router]);
     
-    const sortedSales = useMemo(() => {
-        if (!sales) return [];
-        return [...sales].sort((a, b) => b.createdAt.toDate().getTime() - a.createdAt.toDate().getTime());
-    }, [sales]);
+    const sortedHistory = useMemo(() => {
+        if (!sales && !payments) return [];
+
+        const combined: HistoryItem[] = [
+            ...(sales || []).map(s => ({ type: 'sale' as const, data: s })),
+            ...(payments || []).map(p => ({ type: 'payment' as const, data: p }))
+        ];
+        
+        // Sort by most recent
+        return combined.sort((a, b) => b.data.createdAt.toDate().getTime() - a.data.createdAt.toDate().getTime());
+    }, [sales, payments]);
 
 
-    const isLoading = isUserLoading || isLoadingCustomer || isLoadingSales || isLoadingCompanyProfile;
+    const isLoading = isUserLoading || isLoadingCustomer || isLoadingSales || isLoadingPayments || isLoadingCompanyProfile;
 
     if (isLoading || !user) {
         return <div className="flex h-full items-center justify-center"><p>Chargement des détails du client...</p></div>;
@@ -91,12 +104,19 @@ export default function CustomerDetailsPage() {
 
     return (
         <>
-            {selectedSale && (
+            {selectedItem?.type === 'sale' && (
                 <SaleDetailsDialog
-                    isOpen={!!selectedSale}
-                    onOpenChange={(isOpen) => !isOpen && setSelectedSale(null)}
-                    sale={selectedSale}
+                    isOpen={true}
+                    onOpenChange={(isOpen) => !isOpen && setSelectedItem(null)}
+                    sale={selectedItem.data}
                     companyProfile={companyProfile}
+                />
+            )}
+             {selectedItem?.type === 'payment' && (
+                <PaymentDetailsDialog
+                    isOpen={true}
+                    onOpenChange={(isOpen) => !isOpen && setSelectedItem(null)}
+                    payment={selectedItem.data}
                 />
             )}
             <main className="flex-1 overflow-auto p-4 sm:p-6">
@@ -112,32 +132,49 @@ export default function CustomerDetailsPage() {
                     <CardHeader>
                         <CardTitle className="text-2xl">{customer?.firstName} {customer?.lastName}</CardTitle>
                         <CardDescription>
-                            Historique des factures pour ce client.
+                            Historique des transactions pour ce client.
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        {isLoadingSales ? (
-                            <div className="text-center">Chargement des factures...</div>
-                        ) : sortedSales.length > 0 ? (
+                        {isLoading ? (
+                            <div className="text-center">Chargement de l'historique...</div>
+                        ) : sortedHistory.length > 0 ? (
                             <div className="overflow-x-auto">
                                 <table className="min-w-full divide-y divide-border">
                                     <thead className="bg-muted/50">
                                         <tr>
-                                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Facture N°</th>
+                                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Type / N° Facture</th>
                                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Date</th>
                                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Statut</th>
-                                            <th scope="col" className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Total</th>
-                                            <th scope="col" className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Solde</th>
+                                            <th scope="col" className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Montant / Total</th>
+                                            <th scope="col" className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Solde Restant</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-border">
-                                        {sortedSales.map(sale => (
-                                            <tr key={sale.id} onClick={() => setSelectedSale(sale)} className="cursor-pointer hover:bg-muted/50">
-                                                <td className="whitespace-nowrap px-6 py-4 font-mono text-xs">{sale.invoiceNumber}</td>
-                                                <td className="whitespace-nowrap px-6 py-4 font-medium">{format(sale.createdAt.toDate(), 'd MMM yyyy, HH:mm', { locale: fr })}</td>
-                                                <td className="whitespace-nowrap px-6 py-4"><StatusBadge status={sale.paymentStatus} /></td>
-                                                <td className="whitespace-nowrap px-6 py-4 text-right font-medium">{sale.total.toFixed(2)} DA</td>
-                                                <td className={`whitespace-nowrap px-6 py-4 text-right font-medium ${sale.remainingBalance > 0 ? 'text-destructive' : ''}`}>{sale.remainingBalance.toFixed(2)} DA</td>
+                                        {sortedHistory.map((item, index) => (
+                                            <tr key={`${item.type}-${index}`} onClick={() => setSelectedItem(item)} className="cursor-pointer hover:bg-muted/50">
+                                                {item.type === 'sale' ? (
+                                                    <>
+                                                        <td className="whitespace-nowrap px-6 py-4 font-mono text-xs">{item.data.invoiceNumber}</td>
+                                                        <td className="whitespace-nowrap px-6 py-4 font-medium">{format(item.data.createdAt.toDate(), 'd MMM yyyy, HH:mm', { locale: fr })}</td>
+                                                        <td className="whitespace-nowrap px-6 py-4"><StatusBadge status={item.data.paymentStatus} /></td>
+                                                        <td className="whitespace-nowrap px-6 py-4 text-right font-medium">{item.data.total.toFixed(2)} DA</td>
+                                                        <td className={`whitespace-nowrap px-6 py-4 text-right font-medium ${item.data.remainingBalance > 0 ? 'text-destructive' : ''}`}>{item.data.remainingBalance.toFixed(2)} DA</td>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <td className="whitespace-nowrap px-6 py-4 font-medium">
+                                                            <div className="flex items-center gap-2">
+                                                                <Receipt className="h-4 w-4 text-green-500" />
+                                                                <span>Paiement</span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="whitespace-nowrap px-6 py-4 font-medium">{format(item.data.createdAt.toDate(), 'd MMM yyyy, HH:mm', { locale: fr })}</td>
+                                                        <td className="whitespace-nowrap px-6 py-4"><span className="text-green-400 font-semibold">Règlement</span></td>
+                                                        <td className="whitespace-nowrap px-6 py-4 text-right font-medium text-green-500">{item.data.amount.toFixed(2)} DA</td>
+                                                        <td className="whitespace-nowrap px-6 py-4 text-right">-</td>
+                                                    </>
+                                                )}
                                             </tr>
                                         ))}
                                     </tbody>
@@ -146,7 +183,7 @@ export default function CustomerDetailsPage() {
                         ) : (
                             <div className="flex h-40 items-center justify-center rounded-md border-2 border-dashed border-border">
                                 <p className="text-muted-foreground">
-                                    Aucune facture trouvée pour ce client.
+                                    Aucune transaction trouvée pour ce client.
                                 </p>
                             </div>
                         )}
