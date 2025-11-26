@@ -420,7 +420,7 @@ export default function SellPage() {
     // --- Payment Processing ---
     const handleFinalizeSale = async (amountPaid: number) => {
         if (!firestore || !user || !activeCart || activeCart.items.length === 0) return;
-        setIsProcessing(true);
+        setIsProcessingPayment(true);
 
         const batch = writeBatch(firestore);
         
@@ -472,7 +472,7 @@ export default function SellPage() {
             console.error("Failed to finalize sale: ", error);
              toast.error("Échec de la finalisation de la vente.");
         } finally {
-            setIsProcessing(false);
+            setIsProcessingPayment(false);
         }
     };
     
