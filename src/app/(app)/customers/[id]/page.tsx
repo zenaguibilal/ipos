@@ -152,7 +152,7 @@ export default function CustomerDetailsPage() {
                                     </thead>
                                     <tbody className="divide-y divide-border">
                                         {sortedHistory.map((item, index) => (
-                                            <tr key={`${item.type}-${index}`} onClick={() => setSelectedItem(item)} className="cursor-pointer hover:bg-muted/50">
+                                            <tr key={`${item.type}-${item.data.id}`} onClick={() => setSelectedItem(item)} className="cursor-pointer hover:bg-muted/50">
                                                 {item.type === 'sale' ? (
                                                     <>
                                                         <td className="whitespace-nowrap px-6 py-4 font-mono text-xs">{item.data.invoiceNumber}</td>
@@ -208,3 +208,5 @@ function StatusBadge({ status }: { status: Sale['paymentStatus'] }) {
         </span>
     );
 }
+
+    
