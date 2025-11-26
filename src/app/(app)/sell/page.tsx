@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase, addDocumentNonBlocking } from '@/firebase';
@@ -441,6 +442,8 @@ export default function SellPage() {
         const remainingBalance = total - amountPaid;
         const paymentStatus = remainingBalance <= 0 ? 'paid' : (amountPaid > 0 ? 'partial' : 'unpaid');
         
+        const isGuestSale = activeCart.customerId === GUEST_CUSTOMER_ID || activeCart.customerId.startsWith('guest-');
+        
         const saleData: Omit<Sale, 'id' | 'createdAt'> & { createdAt: any } = {
             invoiceNumber: saleRef.id.substring(0, 8).toUpperCase(),
             items: activeCart.items.map(i => ({ id: i.id, name: i.name, price: i.price, quantity: i.cartQuantity })),
@@ -448,10 +451,12 @@ export default function SellPage() {
             amountPaid: amountPaid,
             remainingBalance: remainingBalance > 0 ? remainingBalance : 0,
             paymentStatus: paymentStatus,
-            customerId: activeCart.customerId !== GUEST_CUSTOMER_ID && !activeCart.customerId.startsWith('guest-') ? activeCart.customerId : undefined,
             customerName: activeCart.customerName,
             createdAt: serverTimestamp(),
+            // Conditionally add customerId only if it's not a guest sale
+            ...( !isGuestSale && { customerId: activeCart.customerId } )
         };
+
         batch.set(saleRef, saleData);
 
         try {
@@ -706,3 +711,5 @@ export default function SellPage() {
         </>
     );
 }
+
+    
