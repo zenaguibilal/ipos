@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase, addDocumentNonBlocking } from '@/firebase';
@@ -688,5 +687,3 @@ export default function SellPage() {
         </>
     );
 }
-
-    
