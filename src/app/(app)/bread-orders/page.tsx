@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useUser, useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking } from '@/firebase';
@@ -243,7 +244,7 @@ export default function BreadOrdersPage() {
                                             <tr key={order.id} className={cn({
                                                 "bg-red-500/10 hover:bg-red-500/20": !order.isPaid && !order.isDelivered,
                                                 "bg-yellow-500/10 hover:bg-yellow-500/20": order.isPaid && !order.isDelivered,
-                                                "bg-green-500/10 hover:bg-green-500/20": order.isPaid && order.isDelivered,
+                                                "bg-green-500/10 hover:bg-green-500/20 text-muted-foreground": order.isPaid && order.isDelivered,
                                             })}>
                                                 <td className="whitespace-nowrap px-6 py-4 font-medium">{order.name}</td>
                                                 <td className="whitespace-nowrap px-6 py-4 text-right font-medium">{order.quantity}</td>
