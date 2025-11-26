@@ -42,7 +42,9 @@ export interface Sale {
 export interface Payment {
     id: string;
     customerId: string;
+    customerName?: string;
     amount: number;
+    createdAt: Timestamp;
 }
 
 export interface CustomerWithSalesData extends Customer {

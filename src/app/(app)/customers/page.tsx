@@ -1,9 +1,10 @@
+
 'use client';
 
 import { useUser, useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useMemo } from 'react';
-import { collection, doc, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AddCustomerForm } from '@/components/customers/add-customer-form';
@@ -162,12 +163,14 @@ export default function CustomersPage() {
         if (!settlingDebtForCustomer || !firestore || !user) return;
 
         const paymentsRef = collection(firestore, 'users', user.uid, 'payments');
-        addDocumentNonBlocking(paymentsRef, {
+        const paymentData = {
             amount: amount,
             customerId: settlingDebtForCustomer.id,
             customerName: `${settlingDebtForCustomer.firstName} ${settlingDebtForCustomer.lastName}`,
-            createdAt: serverTimestamp(),
-        }, {
+            createdAt: serverTimestamp() as Timestamp,
+        };
+
+        addDocumentNonBlocking(paymentsRef, paymentData, {
             onSuccess: () => {
                 setSettlingDebtForCustomer(null);
                 toast.success(`Paiement de ${amount.toFixed(2)} DA enregistré pour ${settlingDebtForCustomer.firstName} ${settlingDebtForCustomer.lastName}.`);

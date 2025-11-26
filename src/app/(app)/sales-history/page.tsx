@@ -10,14 +10,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon } from 'lucide-react';
+import { CalendarIcon, Receipt } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { DateRange } from 'react-day-picker';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { SaleDetailsDialog } from '@/components/sales/sale-details-dialog';
-import type { Sale, CompanyProfile } from '@/lib/types';
+import { PaymentDetailsDialog } from '@/components/sales/payment-details-dialog';
+import type { Sale, CompanyProfile, Payment } from '@/lib/types';
 
+
+type HistoryItem = 
+    | { type: 'sale'; data: Sale }
+    | { type: 'payment'; data: Payment };
 
 function StatusBadge({ status }: { status: Sale['paymentStatus'] }) {
     return (
@@ -41,13 +46,19 @@ export default function SalesHistoryPage() {
 
     const [searchQuery, setSearchQuery] = useState('');
     const [dateRange, setDateRange] = useState<DateRange | undefined>();
-    const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
+    const [selectedItem, setSelectedItem] = useState<HistoryItem | null>(null);
 
     const salesCollectionRef = useMemoFirebase(() => {
         if (!user || !firestore) return null;
         return collection(firestore, 'users', user.uid, 'sales');
     }, [user, firestore]);
     const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesCollectionRef);
+    
+    const paymentsCollectionRef = useMemoFirebase(() => {
+        if (!user || !firestore) return null;
+        return collection(firestore, 'users', user.uid, 'payments');
+    }, [user, firestore]);
+    const { data: payments, isLoading: isLoadingPayments } = useCollection<Payment>(paymentsCollectionRef);
 
     // Fetch Company Profile
     const companyDocRef = useMemoFirebase(() => {
@@ -62,43 +73,49 @@ export default function SalesHistoryPage() {
         }
     }, [user, isUserLoading, router]);
 
-    const filteredSales = useMemo(() => {
-        if (!sales) return [];
+    const filteredHistory = useMemo(() => {
+        if (!sales && !payments) return [];
 
-        let filtered = sales;
+        const combined: HistoryItem[] = [
+            ...(sales || []).map(s => ({ type: 'sale' as const, data: s })),
+            ...(payments || []).map(p => ({ type: 'payment' as const, data: p }))
+        ];
+
+        let filtered = combined;
 
         // Filter by search query (customer name or invoice number)
         if (searchQuery) {
             const lowercasedQuery = searchQuery.toLowerCase();
-            filtered = filtered.filter(sale => 
-                sale.customerName?.toLowerCase().includes(lowercasedQuery) ||
-                sale.invoiceNumber?.toLowerCase().includes(lowercasedQuery)
-            );
+            filtered = filtered.filter(item => {
+                const customerName = item.data.customerName?.toLowerCase() || '';
+                const invoiceNumber = item.type === 'sale' ? item.data.invoiceNumber?.toLowerCase() : '';
+                 return customerName.includes(lowercasedQuery) || invoiceNumber.includes(lowercasedQuery);
+            });
         }
 
         // Filter by date range
         if (dateRange?.from) {
-             filtered = filtered.filter(sale => {
-                const saleDate = sale.createdAt.toDate();
+             filtered = filtered.filter(item => {
+                const itemDate = item.data.createdAt.toDate();
                 if (dateRange.to) {
                     // Set 'to' date to the end of the day
                     const toDate = new Date(dateRange.to);
                     toDate.setHours(23, 59, 59, 999);
-                    return saleDate >= dateRange.from && saleDate <= toDate;
+                    return itemDate >= dateRange.from && itemDate <= toDate;
                 }
                 // If only 'from' is selected, filter for that day
                 const fromDayStart = new Date(dateRange.from.setHours(0,0,0,0));
                 const fromDayEnd = new Date(dateRange.from.setHours(23,59,59,999));
-                return saleDate >= fromDayStart && saleDate <= fromDayEnd;
+                return itemDate >= fromDayStart && itemDate <= fromDayEnd;
              });
         }
         
         // Sort by most recent
-        return filtered.sort((a, b) => b.createdAt.toDate().getTime() - a.createdAt.toDate().getTime());
+        return filtered.sort((a, b) => b.data.createdAt.toDate().getTime() - a.data.createdAt.toDate().getTime());
 
-    }, [sales, searchQuery, dateRange]);
+    }, [sales, payments, searchQuery, dateRange]);
 
-    const isLoading = isUserLoading || isLoadingSales || isLoadingCompanyProfile;
+    const isLoading = isUserLoading || isLoadingSales || isLoadingPayments || isLoadingCompanyProfile;
 
     if (isLoading || !user) {
         return <div className="flex h-full items-center justify-center"><p>Chargement...</p></div>;
@@ -106,12 +123,19 @@ export default function SalesHistoryPage() {
 
     return (
         <>
-            {selectedSale && (
+            {selectedItem?.type === 'sale' && (
                 <SaleDetailsDialog
-                    isOpen={!!selectedSale}
-                    onOpenChange={(isOpen) => !isOpen && setSelectedSale(null)}
-                    sale={selectedSale}
+                    isOpen={true}
+                    onOpenChange={(isOpen) => !isOpen && setSelectedItem(null)}
+                    sale={selectedItem.data}
                     companyProfile={companyProfile}
+                />
+            )}
+             {selectedItem?.type === 'payment' && (
+                <PaymentDetailsDialog
+                    isOpen={true}
+                    onOpenChange={(isOpen) => !isOpen && setSelectedItem(null)}
+                    payment={selectedItem.data}
                 />
             )}
             <main className="flex-1 overflow-auto p-4 sm:p-6">
@@ -170,30 +194,49 @@ export default function SalesHistoryPage() {
                     <CardContent>
                         {isLoading ? (
                             <div className="text-center">Chargement des données...</div>
-                        ) : filteredSales.length > 0 ? (
+                        ) : filteredHistory.length > 0 ? (
                             <div className="overflow-x-auto">
                                 <table className="min-w-full divide-y divide-border">
                                     <thead className="bg-muted/50">
                                         <tr>
-                                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Facture N°</th>
+                                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Type / N°</th>
                                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Date</th>
                                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Client</th>
                                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Statut</th>
-                                            <th scope="col" className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Total</th>
+                                            <th scope="col" className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Total / Montant</th>
                                             <th scope="col" className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Payé</th>
                                             <th scope="col" className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Solde</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-border">
-                                        {filteredSales.map(sale => (
-                                            <tr key={sale.id} onClick={() => setSelectedSale(sale)} className="cursor-pointer hover:bg-muted/50">
-                                                <td className="whitespace-nowrap px-6 py-4 font-mono text-xs">{sale.invoiceNumber}</td>
-                                                <td className="whitespace-nowrap px-6 py-4 font-medium">{format(sale.createdAt.toDate(), 'd MMM yyyy, HH:mm', { locale: fr })}</td>
-                                                <td className="whitespace-nowrap px-6 py-4 text-muted-foreground">{sale.customerName || 'Vente au comptoir'}</td>
-                                                <td className="whitespace-nowrap px-6 py-4"><StatusBadge status={sale.paymentStatus} /></td>
-                                                <td className="whitespace-nowrap px-6 py-4 text-right font-medium">{sale.total.toFixed(2)} DA</td>
-                                                <td className="whitespace-nowrap px-6 py-4 text-right font-medium text-green-400">{sale.amountPaid.toFixed(2)} DA</td>
-                                                <td className={`whitespace-nowrap px-6 py-4 text-right font-medium ${sale.remainingBalance > 0 ? 'text-destructive' : ''}`}>{sale.remainingBalance.toFixed(2)} DA</td>
+                                        {filteredHistory.map(item => (
+                                            <tr key={`${item.type}-${item.data.id}`} onClick={() => setSelectedItem(item)} className="cursor-pointer hover:bg-muted/50">
+                                                {item.type === 'sale' ? (
+                                                    <>
+                                                        <td className="whitespace-nowrap px-6 py-4 font-mono text-xs">{item.data.invoiceNumber}</td>
+                                                        <td className="whitespace-nowrap px-6 py-4 font-medium">{format(item.data.createdAt.toDate(), 'd MMM yyyy, HH:mm', { locale: fr })}</td>
+                                                        <td className="whitespace-nowrap px-6 py-4 text-muted-foreground">{item.data.customerName || 'Vente au comptoir'}</td>
+                                                        <td className="whitespace-nowrap px-6 py-4"><StatusBadge status={item.data.paymentStatus} /></td>
+                                                        <td className="whitespace-nowrap px-6 py-4 text-right font-medium">{item.data.total.toFixed(2)} DA</td>
+                                                        <td className="whitespace-nowrap px-6 py-4 text-right font-medium text-green-400">{item.data.amountPaid.toFixed(2)} DA</td>
+                                                        <td className={`whitespace-nowrap px-6 py-4 text-right font-medium ${item.data.remainingBalance > 0 ? 'text-destructive' : ''}`}>{item.data.remainingBalance.toFixed(2)} DA</td>
+                                                    </>
+                                                ) : (
+                                                     <>
+                                                        <td className="whitespace-nowrap px-6 py-4 font-medium">
+                                                            <div className="flex items-center gap-2">
+                                                                <Receipt className="h-4 w-4 text-green-500" />
+                                                                <span>Paiement</span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="whitespace-nowrap px-6 py-4 font-medium">{format(item.data.createdAt.toDate(), 'd MMM yyyy, HH:mm', { locale: fr })}</td>
+                                                        <td className="whitespace-nowrap px-6 py-4 text-muted-foreground">{item.data.customerName || '-'}</td>
+                                                        <td className="whitespace-nowrap px-6 py-4"><span className="text-green-400 font-semibold">Règlement</span></td>
+                                                        <td className="whitespace-nowrap px-6 py-4 text-right font-medium text-green-500">{item.data.amount.toFixed(2)} DA</td>
+                                                        <td className="whitespace-nowrap px-6 py-4 text-right">-</td>
+                                                        <td className="whitespace-nowrap px-6 py-4 text-right">-</td>
+                                                    </>
+                                                )}
                                             </tr>
                                         ))}
                                     </tbody>
@@ -202,7 +245,7 @@ export default function SalesHistoryPage() {
                         ) : (
                             <div className="flex h-40 items-center justify-center rounded-md border-2 border-dashed border-border">
                                 <p className="text-muted-foreground">
-                                    {sales && sales.length === 0 ? "Vous n'avez pas encore de ventes enregistrées." : "Aucune vente ne correspond à vos filtres."}
+                                    {(sales && sales.length === 0 && payments && payments.length === 0) ? "Vous n'avez pas encore de transactions enregistrées." : "Aucune transaction ne correspond à vos filtres."}
                                 </p>
                             </div>
                         )}
