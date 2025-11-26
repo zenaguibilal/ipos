@@ -1,39 +1,54 @@
 
 'use client';
 
-import { useUser } from '@/firebase';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
-import {
-  ShoppingCart,
-  Package,
-  Users,
-  LineChart,
-  Store,
-  Cookie,
-  Bell,
-  Building,
-  Warehouse,
-} from 'lucide-react';
-import Link from 'next/link';
-import { Card, CardHeader, CardTitle } from '@/components/ui/card';
-import { cn } from '@/lib/utils';
+import { useEffect, useMemo } from 'react';
+import { collection, query, where, Timestamp } from 'firebase/firestore';
+import { startOfDay, endOfDay, subDays, format } from 'date-fns';
+import { fr } from 'date-fns/locale';
+import { StatsCards } from '@/components/dashboard/stats-cards';
+import { SalesChart } from '@/components/dashboard/sales-chart';
+import { VerificationNotice } from '@/components/dashboard/verification-notice';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { LowStockProducts } from '@/components/dashboard/low-stock-products';
+import { TopProducts } from '@/components/dashboard/top-products';
+import { TopCustomers } from '@/components/dashboard/top-customers';
 
-const navLinks = [
-  { href: '/sell', icon: ShoppingCart, label: 'Vendre' },
-  { href: '/products', icon: Package, label: 'Produits' },
-  { href: '/stock-intake', icon: Warehouse, label: 'Réception Stock' },
-  { href: '/customers', icon: Users, label: 'Clients' },
-  { href: '/bread-orders', icon: Cookie, label: 'Commandes de Pain' },
-  { href: '/sales-history', icon: LineChart, label: 'Historique' },
-  { href: '/notifications', icon: Bell, label: 'Alertes' },
-  { href: '/profile', icon: Building, label: 'Profil' },
-];
+import type { Sale, Product, Customer, Payment, ChartData, TopProduct, TopCustomer, CustomerWithSalesData } from '@/lib/types';
 
 
 export default function DashboardPage() {
   const { user, isUserLoading } = useUser();
+  const firestore = useFirestore();
   const router = useRouter();
+
+  // --- Data Fetching ---
+  const todayStart = useMemo(() => startOfDay(new Date()), []);
+  const todayEnd = useMemo(() => endOfDay(new Date()), []);
+
+  const salesCollectionRef = useMemoFirebase(() => user && firestore ? collection(firestore, 'users', user.uid, 'sales') : null, [user, firestore]);
+  const productsCollectionRef = useMemoFirebase(() => user && firestore ? collection(firestore, 'users', user.uid, 'products') : null, [user, firestore]);
+  const customersCollectionRef = useMemoFirebase(() => user && firestore ? collection(firestore, 'users', user.uid, 'customers') : null, [user, firestore]);
+  const paymentsCollectionRef = useMemoFirebase(() => user && firestore ? collection(firestore, 'users', user.uid, 'payments') : null, [user, firestore]);
+
+
+  // Queries
+  const todaySalesQuery = useMemoFirebase(() => {
+    if (!salesCollectionRef) return null;
+    return query(
+        salesCollectionRef, 
+        where('createdAt', '>=', Timestamp.fromDate(todayStart)),
+        where('createdAt', '<=', Timestamp.fromDate(todayEnd))
+    );
+  }, [salesCollectionRef, todayStart, todayEnd]);
+
+  // Hooks
+  const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesCollectionRef);
+  const { data: todaySales, isLoading: isLoadingTodaySales } = useCollection<Sale>(todaySalesQuery);
+  const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsCollectionRef);
+  const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersCollectionRef);
+  const { data: payments, isLoading: isLoadingPayments } = useCollection<Payment>(paymentsCollectionRef);
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -41,7 +56,143 @@ export default function DashboardPage() {
     }
   }, [user, isUserLoading, router]);
 
-  if (isUserLoading || !user) {
+  // --- Memos for derived data ---
+  
+  const stats = useMemo(() => {
+    if (!todaySales || !products || !customers || !sales || !payments) {
+      return { dailyRevenue: 0, dailyNetProfit: 0, dailySalesCount: 0, totalDebt: 0, lowStockCount: 0, inventoryValue: 0 };
+    }
+
+    // Daily stats
+    const dailyRevenue = todaySales.reduce((sum, sale) => sum + sale.total, 0);
+    const dailySalesCount = todaySales.length;
+
+    const dailyNetProfit = todaySales.reduce((profit, sale) => {
+        const saleCost = sale.items.reduce((cost, item) => {
+            const product = products.find(p => p.id === item.id);
+            // Use purchase price if available, otherwise assume cost is selling price (0 profit)
+            const itemCost = product ? product.purchasePrice * item.quantity : item.price * item.quantity;
+            return cost + itemCost;
+        }, 0);
+        return profit + (sale.total - saleCost);
+    }, 0);
+
+    // Global stats
+    const salesByCustomer = sales.reduce((acc, sale) => {
+        if (sale.customerId && sale.remainingBalance > 0) {
+            if (!acc[sale.customerId]) acc[sale.customerId] = 0;
+            acc[sale.customerId] += sale.remainingBalance;
+        }
+        return acc;
+    }, {} as Record<string, number>);
+
+    const paymentsByCustomer = payments.reduce((acc, payment) => {
+         if (payment.customerId) {
+            if (!acc[payment.customerId]) acc[payment.customerId] = 0;
+            acc[payment.customerId] += payment.amount;
+        }
+        return acc;
+    }, {} as Record<string, number>);
+    
+    const totalDebt = Object.keys(salesByCustomer).reduce((sum, customerId) => {
+        const debt = salesByCustomer[customerId] || 0;
+        const paid = paymentsByCustomer[customerId] || 0;
+        const balance = debt - paid;
+        return sum + (balance > 0 ? balance : 0);
+    }, 0);
+
+    const lowStockCount = products.filter(p => p.quantity <= p.minStockLevel).length;
+
+    const inventoryValue = products.reduce((sum, p) => sum + (p.purchasePrice * p.quantity), 0);
+
+    return { dailyRevenue, dailyNetProfit, dailySalesCount, totalDebt, lowStockCount, inventoryValue };
+  }, [todaySales, sales, products, customers, payments]);
+
+
+  const salesChartData: ChartData[] = useMemo(() => {
+    if (!sales) return [];
+    
+    const last7Days = Array.from({ length: 7 }, (_, i) => subDays(new Date(), i)).reverse();
+    
+    return last7Days.map(day => {
+      const dayStart = startOfDay(day);
+      const dayEnd = endOfDay(day);
+      const daySales = sales.filter(sale => {
+        const saleDate = sale.createdAt.toDate();
+        return saleDate >= dayStart && saleDate <= dayEnd;
+      });
+      const revenue = daySales.reduce((sum, sale) => sum + sale.total, 0);
+      return {
+        date: format(day, 'd MMM', { locale: fr }),
+        revenue: revenue,
+      };
+    });
+  }, [sales]);
+
+  const lowStockProducts = useMemo(() => {
+      if (!products) return [];
+      return products
+        .filter(p => p.quantity <= p.minStockLevel)
+        .sort((a,b) => a.quantity - b.quantity);
+  }, [products]);
+
+  const topSellingProducts: TopProduct[] = useMemo(() => {
+    if (!sales || !products) return [];
+
+    const productSales = sales.flatMap(s => s.items).reduce((acc, item) => {
+        if (!acc[item.id]) {
+            acc[item.id] = { totalRevenue: 0, unitsSold: 0 };
+        }
+        acc[item.id].totalRevenue += item.price * item.quantity;
+        acc[item.id].unitsSold += item.quantity;
+        return acc;
+    }, {} as Record<string, { totalRevenue: number, unitsSold: number }>);
+
+    return Object.keys(productSales)
+        .map(productId => {
+            const productInfo = products.find(p => p.id === productId);
+            if (!productInfo) return null; // In case product was deleted
+            return { 
+                ...productInfo, 
+                totalRevenue: productSales[productId].totalRevenue,
+                unitsSold: productSales[productId].unitsSold
+            };
+        })
+        .filter((p): p is TopProduct => p !== null)
+        .sort((a, b) => b.totalRevenue - a.totalRevenue)
+        .slice(0, 5);
+  }, [sales, products]);
+
+   const topCustomers: TopCustomer[] = useMemo(() => {
+    if (!sales || !customers) return [];
+
+    const customerSpending = sales.reduce((acc, sale) => {
+        if (sale.customerId) {
+            if (!acc[sale.customerId]) {
+                acc[sale.customerId] = 0;
+            }
+            acc[sale.customerId] += sale.total;
+        }
+        return acc;
+    }, {} as Record<string, number>);
+
+    return Object.keys(customerSpending)
+        .map(customerId => {
+            const customerInfo = customers.find(c => c.id === customerId);
+            if (!customerInfo) return null;
+            return {
+                ...customerInfo,
+                totalSpent: customerSpending[customerId]
+            };
+        })
+        .filter((c): c is TopCustomer => c !== null)
+        .sort((a, b) => b.totalSpent - a.totalSpent)
+        .slice(0, 5);
+  }, [sales, customers]);
+
+  const isLoading = isUserLoading || isLoadingTodaySales || isLoadingProducts || isLoadingCustomers || isLoadingSales || isLoadingPayments;
+
+  if (isLoading || !user) {
     return (
       <div className="flex h-full items-center justify-center">
         <p>Chargement du tableau de bord...</p>
@@ -51,18 +202,23 @@ export default function DashboardPage() {
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
-            {navLinks.map((link) => (
-                <Link href={link.href} key={link.href} passHref>
-                    <Card className="h-full transform transition-transform duration-200 hover:scale-105 hover:shadow-xl focus:scale-105 focus:shadow-xl focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
-                        <CardHeader className="flex flex-col items-center justify-center text-center p-4 h-full">
-                            <link.icon className="h-10 w-10 mb-3 text-primary" />
-                            <CardTitle className="text-base md:text-lg font-semibold">{link.label}</CardTitle>
-                        </CardHeader>
-                    </Card>
-                </Link>
-            ))}
-        </div>
+      <VerificationNotice />
+      <StatsCards stats={stats} />
+      <div className="grid gap-4 md:gap-8 lg:grid-cols-2 xl:grid-cols-3">
+        <Card className="xl:col-span-2">
+            <CardHeader>
+                <CardTitle>Ventes des 7 derniers jours</CardTitle>
+            </CardHeader>
+            <CardContent className="pl-2">
+                <SalesChart data={salesChartData} />
+            </CardContent>
+        </Card>
+        <TopCustomers customers={topCustomers} />
+      </div>
+       <div className="grid gap-4 md:gap-8 lg:grid-cols-2">
+        <TopProducts products={topSellingProducts} />
+        <LowStockProducts products={lowStockProducts} />
+      </div>
     </div>
   );
 }
