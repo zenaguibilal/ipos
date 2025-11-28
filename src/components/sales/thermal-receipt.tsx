@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useRef } from 'react';
@@ -67,6 +66,7 @@ export function ThermalReceipt({ sale, companyProfile }: ThermalReceiptProps) {
                 </div>
                 {companyProfile?.companyName && <h1 className="text-lg font-bold">{companyProfile.companyName}</h1>}
                 {companyProfile?.address && <p className="text-xs">{companyProfile.address}</p>}
+                {companyProfile?.city && <p className="text-xs">{companyProfile.city}</p>}
                 {companyProfile?.phone && <p className="text-xs">Tél: {companyProfile.phone}</p>}
                 
                 <div className="text-xs pt-2">
@@ -75,10 +75,12 @@ export function ThermalReceipt({ sale, companyProfile }: ThermalReceiptProps) {
                     <p>Client: {sale.customerName || 'Vente au comptoir'}</p>
                 </div>
             </header>
+            
+            <div className="border-t border-b border-dashed border-black my-2"></div>
 
             <table className="w-full text-xs my-2">
                 <thead>
-                    <tr className="border-t border-b border-dashed border-black">
+                    <tr>
                         <th className="text-left py-1">Article</th>
                         <th className="text-center">Qté</th>
                         <th className="text-right">Prix</th>
@@ -87,15 +89,17 @@ export function ThermalReceipt({ sale, companyProfile }: ThermalReceiptProps) {
                 </thead>
                 <tbody>
                     {sale.items.map((item, index) => (
-                        <tr key={index} className="border-b border-dashed border-black">
-                            <td className="py-1 w-1/2">{item.name}</td>
-                            <td className="text-center">{item.quantity}</td>
-                            <td className="text-right">{item.price.toFixed(2)}</td>
-                            <td className="text-right font-bold">{(item.price * item.quantity).toFixed(2)}</td>
+                        <tr key={index} >
+                            <td className="py-1 w-1/2 align-top">{item.name}</td>
+                            <td className="text-center align-top">{item.quantity}</td>
+                            <td className="text-right align-top">{item.price.toFixed(2)}</td>
+                            <td className="text-right font-bold align-top">{(item.price * item.quantity).toFixed(2)}</td>
                         </tr>
                     ))}
                 </tbody>
             </table>
+            
+            <div className="border-t border-dashed border-black my-2"></div>
 
             <div className="text-xs space-y-1 mt-2">
                 <div className="flex justify-between">
@@ -120,4 +124,3 @@ export function ThermalReceipt({ sale, companyProfile }: ThermalReceiptProps) {
         </div>
     );
 }
-

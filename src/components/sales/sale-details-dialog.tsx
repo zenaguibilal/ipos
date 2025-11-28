@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -20,7 +19,7 @@ export function SaleDetailsDialog({ isOpen, onOpenChange, sale, companyProfile }
     const receiptRef = useRef<HTMLDivElement>(null);
 
     const handlePrint = () => {
-        const printableContent = document.getElementById('receipt-for-print-details');
+        const printableContent = document.getElementById('receipt-for-print');
         if (!printableContent || !receiptRef.current) return;
 
         // Clone the receipt content to the dedicated print container
@@ -56,14 +55,11 @@ export function SaleDetailsDialog({ isOpen, onOpenChange, sale, companyProfile }
                     </DialogDescription>
                 </DialogHeader>
                 
-                <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-md max-h-[60vh] overflow-y-auto">
+                <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded-md max-h-[60vh] overflow-y-auto">
                    <div ref={receiptRef}>
                      <ThermalReceipt sale={sale} companyProfile={companyProfile} />
                    </div>
                 </div>
-
-                {/* Hidden container exclusively for printing */}
-                <div id="receipt-for-print-details" className="print-container hidden"></div>
 
 
                 <DialogFooter className="print-hide">

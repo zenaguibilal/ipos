@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -44,7 +43,7 @@ export function SaleCompleteDialog({ isOpen, onOpenChange, sale, customer, compa
     };
     
     const handlePrint = () => {
-        const printableContent = document.getElementById('receipt-for-print-complete');
+        const printableContent = document.getElementById('receipt-for-print');
         if (!printableContent || !receiptRef.current) return;
         
         // Clone the receipt content to the dedicated print container
@@ -85,14 +84,11 @@ export function SaleCompleteDialog({ isOpen, onOpenChange, sale, customer, compa
                 </DialogHeader>
                  
                  {/* Container visible for preview */}
-                 <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-md max-h-[50vh] overflow-y-auto">
+                 <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded-md max-h-[50vh] overflow-y-auto">
                     <div ref={receiptRef}>
                        <ThermalReceipt sale={sale} companyProfile={companyProfile} />
                     </div>
                  </div>
-
-                {/* Hidden container exclusively for printing */}
-                <div id="receipt-for-print-complete" className="print-container hidden"></div>
 
                 <DialogFooter className="sm:justify-center flex-col sm:flex-col sm:space-x-0 gap-2">
                      <div className="flex gap-2 w-full">
@@ -106,7 +102,7 @@ export function SaleCompleteDialog({ isOpen, onOpenChange, sale, customer, compa
                         </Button>
                     </div>
                     {canSendWhatsApp && (
-                        <Button onClick={handleWhatsAppClick} className="w-full">
+                        <Button onClick={handleWhatsAppClick} className="w-full bg-green-600 hover:bg-green-700">
                             <MessageSquare className="mr-2 h-4 w-4" />
                             Envoyer reçu WhatsApp
                         </Button>
