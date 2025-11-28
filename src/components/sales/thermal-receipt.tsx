@@ -21,7 +21,7 @@ export function ThermalReceipt({ sale, companyProfile }: ThermalReceiptProps) {
     // Data for QR Code
     const receiptData = JSON.stringify({
         invoice: sale.invoiceNumber,
-        date: sale.createdAt.toDate().toISOString(),
+        date: sale.createdAt instanceof Date ? sale.createdAt.toISOString() : sale.createdAt.toDate().toISOString(),
         total: sale.total,
     });
 
@@ -58,6 +58,7 @@ export function ThermalReceipt({ sale, companyProfile }: ThermalReceiptProps) {
         }
     }, [receiptData]);
 
+    const saleDate = sale.createdAt instanceof Date ? sale.createdAt : sale.createdAt.toDate();
 
     return (
         <div className="thermal-receipt bg-white text-black font-mono">
@@ -72,7 +73,7 @@ export function ThermalReceipt({ sale, companyProfile }: ThermalReceiptProps) {
                 
                 <div className="text-xs pt-2">
                     <p>Facture N°: <span className="font-bold">{sale.invoiceNumber}</span></p>
-                    <p>{format(sale.createdAt.toDate(), 'd MMM yyyy, HH:mm', { locale: fr })}</p>
+                    <p>{format(saleDate, 'd MMM yyyy, HH:mm', { locale: fr })}</p>
                     <p>Client: {sale.customerName || 'Vente au comptoir'}</p>
                 </div>
             </header>
@@ -92,9 +93,9 @@ export function ThermalReceipt({ sale, companyProfile }: ThermalReceiptProps) {
                     {sale.items.map((item, index) => (
                         <tr key={index} >
                             <td className="py-1 w-1/2 align-top break-words">{item.name}</td>
-                            <td className="text-center align-top">{item.quantity}</td>
+                            <td className="text-center align-top">{item.cartQuantity || item.quantity}</td>
                             <td className="text-right align-top">{item.price.toFixed(2)}</td>
-                            <td className="text-right font-bold align-top">{(item.price * item.quantity).toFixed(2)}</td>
+                            <td className="text-right font-bold align-top">{(item.price * (item.cartQuantity || item.quantity)).toFixed(2)}</td>
                         </tr>
                     ))}
                 </tbody>

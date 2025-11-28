@@ -48,10 +48,14 @@ export function SaleCompleteDialog({ isOpen, onOpenChange, sale, customer, compa
         if (!printableContent || !receiptRef.current) return;
         
         // Clone the receipt content to the dedicated print container
+        const receiptClone = receiptRef.current.cloneNode(true);
         printableContent.innerHTML = ''; // Clear previous content
-        printableContent.appendChild(receiptRef.current.cloneNode(true));
+        printableContent.appendChild(receiptClone);
         
-        window.print();
+        // Allow images to load before printing
+        setTimeout(() => {
+            window.print();
+        }, 300);
     };
     
     const handleDownloadPdf = () => {
@@ -59,10 +63,10 @@ export function SaleCompleteDialog({ isOpen, onOpenChange, sale, customer, compa
         if (!element) return;
 
         const opt = {
-          margin:       0.5,
+          margin:       [5, 0, 5, 0], // top, left, bottom, right in mm
           filename:     `facture-${sale.invoiceNumber}.pdf`,
           image:        { type: 'jpeg', quality: 0.98 },
-          html2canvas:  { scale: 2, useCORS: true },
+          html2canvas:  { scale: 3, useCORS: true, logging: false },
           jsPDF:        { unit: 'mm', format: [80, 297], orientation: 'portrait' }
         };
 

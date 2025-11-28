@@ -23,7 +23,8 @@ export interface SaleItem {
     id: string;
     name: string;
     price: number;
-    quantity: number; 
+    quantity: number;
+    cartQuantity?: number;
 }
 
 export interface Sale {
@@ -36,7 +37,7 @@ export interface Sale {
     paymentStatus: 'paid' | 'partial' | 'unpaid';
     customerId?: string;
     customerName?: string;
-    createdAt: Timestamp;
+    createdAt: Timestamp | Date;
 }
 
 export interface Payment {

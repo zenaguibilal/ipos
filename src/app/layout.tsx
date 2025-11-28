@@ -74,7 +74,7 @@ export default function RootLayout({
                 {children}
                 <Toaster richColors />
                 {/* Dedicated container for printing thermal receipts */}
-                <div id="receipt-for-print" className="print-container hidden"></div>
+                <div id="receipt-for-print" className="hidden"></div>
             </FirebaseClientProvider>
         </ThemeProvider>
       </body>
