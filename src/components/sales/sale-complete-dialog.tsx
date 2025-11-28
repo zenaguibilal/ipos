@@ -44,38 +44,14 @@ export function SaleCompleteDialog({ isOpen, onOpenChange, sale, customer, compa
     };
     
     const handlePrint = () => {
-        const printableContent = document.getElementById('receipt-for-print');
+        // We use a hidden container that is only visible for printing
+        const printableContent = document.getElementById('receipt-for-print-complete');
         if (!printableContent) return;
 
-        const printWindow = window.open('', '_blank');
-        if (!printWindow) {
-            toast.error("Veuillez autoriser les popups pour imprimer.");
-            return;
-        }
-
-        printWindow.document.write('<html><head><title>Facture</title>');
-        // Inclure les styles CSS nécessaires à l'impression
-        const styles = Array.from(document.styleSheets)
-            .map(styleSheet => {
-                try {
-                    return Array.from(styleSheet.cssRules).map(rule => rule.cssText).join('');
-                } catch (e) {
-                    console.warn("Could not read stylesheet rules", e);
-                    return '';
-                }
-            }).join('\n');
-        
-        printWindow.document.write(`<style>${styles}</style></head><body>`);
-        printWindow.document.write(printableContent.innerHTML);
-        printWindow.document.write('</body></html>');
-        printWindow.document.close();
-
-        // Un petit délai pour s'assurer que tout est chargé avant l'impression
-        setTimeout(() => {
-            printWindow.focus();
-            printWindow.print();
-            printWindow.close();
-        }, 250);
+        // Temporarily make it visible for printing
+        printableContent.style.display = 'block';
+        window.print();
+        printableContent.style.display = 'none';
     };
     
     const handleDownloadPdf = () => {
@@ -108,15 +84,15 @@ export function SaleCompleteDialog({ isOpen, onOpenChange, sale, customer, compa
                     </div>
                 </DialogHeader>
                  
-                 {/* Conteneur visible pour l'aperçu */}
+                 {/* Container visible for preview */}
                  <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-md max-h-[50vh] overflow-y-auto">
                     <div ref={receiptRef}>
                        <ThermalReceipt sale={sale} companyProfile={companyProfile} />
                     </div>
                  </div>
 
-                 {/* Conteneur caché optimisé pour l'impression */}
-                 <div id="receipt-for-print" className="hidden">
+                 {/* Hidden container optimized for printing */}
+                 <div id="receipt-for-print-complete" className="hidden print-container">
                     <ThermalReceipt sale={sale} companyProfile={companyProfile} />
                  </div>
 

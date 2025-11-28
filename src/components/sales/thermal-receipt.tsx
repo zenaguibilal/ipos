@@ -58,6 +58,10 @@ export function ThermalReceipt({ sale, companyProfile }: ThermalReceiptProps) {
     return (
         <div className="thermal-receipt bg-white text-black font-mono">
             <header className="text-center space-y-1 mb-2">
+                 <div className="flex justify-center my-2">
+                    {/* The user must add a logo at /public/logo.png */}
+                    <Image src="/logo.png" alt="Logo" width={60} height={60} />
+                </div>
                 {companyProfile?.companyName && <h1 className="text-lg font-bold">{companyProfile.companyName}</h1>}
                 {companyProfile?.address && <p className="text-xs">{companyProfile.address}</p>}
                 {companyProfile?.phone && <p className="text-xs">Tél: {companyProfile.phone}</p>}
