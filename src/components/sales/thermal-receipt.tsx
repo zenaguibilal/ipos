@@ -126,3 +126,4 @@ export function ThermalReceipt({ sale, companyProfile }: ThermalReceiptProps) {
         </div>
     );
 }
+
