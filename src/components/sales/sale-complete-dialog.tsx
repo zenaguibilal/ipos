@@ -44,14 +44,14 @@ export function SaleCompleteDialog({ isOpen, onOpenChange, sale, customer, compa
     };
     
     const handlePrint = () => {
-        // We use a hidden container that is only visible for printing
         const printableContent = document.getElementById('receipt-for-print-complete');
-        if (!printableContent) return;
-
-        // Temporarily make it visible for printing
-        printableContent.style.display = 'block';
+        if (!printableContent || !receiptRef.current) return;
+        
+        // Clone the receipt content to the dedicated print container
+        printableContent.innerHTML = ''; // Clear previous content
+        printableContent.appendChild(receiptRef.current.cloneNode(true));
+        
         window.print();
-        printableContent.style.display = 'none';
     };
     
     const handleDownloadPdf = () => {
@@ -63,7 +63,7 @@ export function SaleCompleteDialog({ isOpen, onOpenChange, sale, customer, compa
           filename:     `facture-${sale.invoiceNumber}.pdf`,
           image:        { type: 'jpeg', quality: 0.98 },
           html2canvas:  { scale: 2, useCORS: true },
-          jsPDF:        { unit: 'mm', format: [80, 297], orientation: 'portrait' }
+          jsPDF:        { unit: 'mm', format: [80, 'auto' as 'auto'], orientation: 'portrait' }
         };
 
         html2pdf().from(element).set(opt).save();
@@ -91,11 +91,8 @@ export function SaleCompleteDialog({ isOpen, onOpenChange, sale, customer, compa
                     </div>
                  </div>
 
-                 {/* Hidden container optimized for printing */}
-                 <div id="receipt-for-print-complete" className="hidden print-container">
-                    <ThermalReceipt sale={sale} companyProfile={companyProfile} />
-                 </div>
-
+                {/* Hidden container exclusively for printing */}
+                <div id="receipt-for-print-complete" className="print-container hidden"></div>
 
                 <DialogFooter className="sm:justify-center flex-col sm:flex-col sm:space-x-0 gap-2">
                      <div className="flex gap-2 w-full">

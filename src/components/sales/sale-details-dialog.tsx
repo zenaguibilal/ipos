@@ -8,7 +8,6 @@ import { Printer, Download } from 'lucide-react';
 import { ThermalReceipt } from './thermal-receipt';
 import html2pdf from 'html2pdf.js';
 import { useRef } from 'react';
-import { toast } from 'sonner';
 
 interface SaleDetailsDialogProps {
     isOpen: boolean;
@@ -21,14 +20,14 @@ export function SaleDetailsDialog({ isOpen, onOpenChange, sale, companyProfile }
     const receiptRef = useRef<HTMLDivElement>(null);
 
     const handlePrint = () => {
-        // We use a hidden container that is only visible for printing
         const printableContent = document.getElementById('receipt-for-print-details');
-        if (!printableContent) return;
+        if (!printableContent || !receiptRef.current) return;
 
-        // Temporarily make it visible for printing
-        printableContent.style.display = 'block';
+        // Clone the receipt content to the dedicated print container
+        printableContent.innerHTML = ''; // Clear previous content
+        printableContent.appendChild(receiptRef.current.cloneNode(true));
+        
         window.print();
-        printableContent.style.display = 'none';
     };
 
     const handleDownloadPdf = () => {
@@ -40,7 +39,7 @@ export function SaleDetailsDialog({ isOpen, onOpenChange, sale, companyProfile }
           filename:     `facture-${sale.invoiceNumber}.pdf`,
           image:        { type: 'jpeg', quality: 0.98 },
           html2canvas:  { scale: 2, useCORS: true },
-          jsPDF:        { unit: 'mm', format: [80, 297], orientation: 'portrait' }
+          jsPDF:        { unit: 'mm', format: [80, 'auto' as 'auto'], orientation: 'portrait' }
         };
 
         html2pdf().from(element).set(opt).save();
@@ -63,10 +62,9 @@ export function SaleDetailsDialog({ isOpen, onOpenChange, sale, companyProfile }
                    </div>
                 </div>
 
-                {/* Hidden container optimized for printing */}
-                 <div id="receipt-for-print-details" className="hidden print-container">
-                    <ThermalReceipt sale={sale} companyProfile={companyProfile} />
-                 </div>
+                {/* Hidden container exclusively for printing */}
+                <div id="receipt-for-print-details" className="print-container hidden"></div>
+
 
                 <DialogFooter className="print-hide">
                     <Button type="button" variant="outline" onClick={handlePrint}>

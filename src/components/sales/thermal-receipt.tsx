@@ -38,6 +38,10 @@ export function ThermalReceipt({ sale, companyProfile }: ThermalReceiptProps) {
                 });
             } catch (e) {
                 console.error("Erreur de génération du code-barres:", e);
+                // Hide barcode on error
+                if (barcodeRef.current) {
+                    barcodeRef.current.style.display = 'none';
+                }
             }
         }
     }, [sale.invoiceNumber]);
@@ -59,8 +63,7 @@ export function ThermalReceipt({ sale, companyProfile }: ThermalReceiptProps) {
         <div className="thermal-receipt bg-white text-black font-mono">
             <header className="text-center space-y-1 mb-2">
                  <div className="flex justify-center my-2">
-                    {/* The user must add a logo at /public/logo.png */}
-                    <Image src="/logo.png" alt="Logo" width={60} height={60} />
+                    <Image src="/logo.png" alt="Logo" width={60} height={60} unoptimized />
                 </div>
                 {companyProfile?.companyName && <h1 className="text-lg font-bold">{companyProfile.companyName}</h1>}
                 {companyProfile?.address && <p className="text-xs">{companyProfile.address}</p>}
