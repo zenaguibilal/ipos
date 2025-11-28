@@ -1,0 +1,136 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 20% 98%;
+    --foreground: 224 71.4% 4.1%;
+
+    --card: 210 20% 98%;
+    --card-foreground: 224 71.4% 4.1%;
+ 
+    --popover: 210 20% 98%;
+    --popover-foreground: 224 71.4% 4.1%;
+ 
+    --primary: 216 91% 47%;
+    --primary-foreground: 210 20% 98%;
+ 
+    --secondary: 215 28% 90%;
+    --secondary-foreground: 224 71.4% 4.1%;
+ 
+    --muted: 215 28% 90%;
+    --muted-foreground: 215 25% 45%;
+ 
+    --accent: 215 28% 90%;
+    --accent-foreground: 224 71.4% 4.1%;
+ 
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 20% 98%;
+
+    --border: 215 28% 85%;
+    --input: 215 28% 85%;
+    --ring: 216 91% 47%;
+ 
+    --radius: 0.5rem;
+  }
+ 
+  .dark {
+    --background: 224 71.4% 4.1%;
+    --foreground: 210 20% 98%;
+ 
+    --card: 224 71.4% 4.1%;
+    --card-foreground: 210 20% 98%;
+ 
+    --popover: 224 71.4% 4.1%;
+    --popover-foreground: 210 20% 98%;
+ 
+    --primary: 216 91% 57%;
+    --primary-foreground: 224 71.4% 4.1%;
+ 
+    --secondary: 215 28% 15%;
+    --secondary-foreground: 210 20% 98%;
+ 
+    --muted: 215 28% 15%;
+    --muted-foreground: 215 25% 65%;
+ 
+    --accent: 215 28% 15%;
+    --accent-foreground: 210 20% 98%;
+ 
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 20% 98%;
+ 
+    --border: 215 28% 25%;
+    --input: 215 28% 25%;
+    --ring: 216 91% 57%;
+  }
+}
+ 
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Styles pour l'impression thermique */
+@media print {
+    @page {
+        size: 80mm auto; /* Taille du papier pour imprimante thermique */
+        margin: 0;
+    }
+
+    body {
+        -webkit-print-color-adjust: exact; /* Forcer l'impression des couleurs et images sur Chrome/Safari */
+        print-color-adjust: exact; /* Standard */
+        margin: 0;
+        background: white;
+    }
+
+    /* Cache tous les éléments par défaut */
+    body * {
+        visibility: hidden;
+    }
+
+    /* Affiche uniquement le conteneur d'impression et son contenu */
+    .print-container, .print-container * {
+        visibility: visible;
+    }
+
+    /* Positionne le conteneur d'impression pour remplir la page */
+    .print-container {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: auto;
+    }
+
+    /* Style spécifique pour le reçu thermique */
+    .thermal-receipt {
+        display: block !important;
+        visibility: visible !important;
+        font-family: 'Courier New', Courier, monospace; /* Police à chasse fixe pour un meilleur alignement */
+        width: 80mm;
+        padding: 3mm;
+        color: black !important;
+        background: white !important;
+        box-shadow: none !important;
+        border: none !important;
+    }
+
+    /* S'assure que tous les enfants du reçu sont visibles et en noir */
+    .thermal-receipt * {
+        visibility: visible !important;
+        color: black !important;
+        background: transparent !important;
+    }
+
+    /* Cacher les éléments non désirés dans le reçu lors de l'impression */
+    .print-hide {
+        display: none !important;
+    }
+}
