@@ -44,34 +44,39 @@ export function SaleCompleteDialog({ isOpen, onOpenChange, sale, customer, compa
     };
     
     const handlePrint = () => {
-        const printableContent = receiptRef.current;
+        const printableContent = document.getElementById('receipt-for-print');
         if (!printableContent) return;
-        
+
         const printWindow = window.open('', '_blank');
         if (!printWindow) {
             toast.error("Veuillez autoriser les popups pour imprimer.");
             return;
         }
-        
+
+        printWindow.document.write('<html><head><title>Facture</title>');
+        // Inclure les styles CSS nécessaires à l'impression
         const styles = Array.from(document.styleSheets)
             .map(styleSheet => {
                 try {
                     return Array.from(styleSheet.cssRules).map(rule => rule.cssText).join('');
-                } catch (e) { return ''; }
-            }).join('');
-
-        printWindow.document.write('<html><head><title>Facture</title>');
+                } catch (e) {
+                    console.warn("Could not read stylesheet rules", e);
+                    return '';
+                }
+            }).join('\n');
+        
         printWindow.document.write(`<style>${styles}</style></head><body>`);
-        printWindow.document.write('<div class="print-container">');
+        printWindow.document.write('<div class="print-container">'); // Un conteneur pour l'impression
         printWindow.document.write(printableContent.innerHTML);
         printWindow.document.write('</div></body></html>');
         printWindow.document.close();
 
+        // Un petit délai pour s'assurer que tout est chargé avant l'impression
         setTimeout(() => {
             printWindow.focus();
             printWindow.print();
             printWindow.close();
-        }, 250);
+        }, 500);
     };
     
     const handleDownloadPdf = () => {
@@ -103,12 +108,20 @@ export function SaleCompleteDialog({ isOpen, onOpenChange, sale, customer, compa
                         </DialogDescription>
                     </div>
                 </DialogHeader>
-
+                 
+                 {/* Conteneur visible pour l'aperçu */}
                  <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-md max-h-[50vh] overflow-y-auto">
-                   <div ref={receiptRef}>
-                     <ThermalReceipt sale={sale} companyProfile={companyProfile} />
-                   </div>
-                </div>
+                    <div ref={receiptRef}>
+                       <ThermalReceipt sale={sale} companyProfile={companyProfile} />
+                    </div>
+                 </div>
+
+                 {/* Conteneur caché optimisé pour l'impression */}
+                 <div className="hidden">
+                    <div id="receipt-for-print">
+                        <ThermalReceipt sale={sale} companyProfile={companyProfile} />
+                    </div>
+                 </div>
 
 
                 <DialogFooter className="sm:justify-center flex-col sm:flex-col sm:space-x-0 gap-2">

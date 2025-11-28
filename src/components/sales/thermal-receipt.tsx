@@ -56,15 +56,12 @@ export function ThermalReceipt({ sale, companyProfile }: ThermalReceiptProps) {
 
 
     return (
-        <div className="thermal-receipt">
+        <div className="thermal-receipt bg-white text-black font-mono">
             <header className="text-center space-y-1 mb-2">
-                 {/* Logo */}
                 <div className="flex justify-center my-2">
-                    {/* Le logo est chargé mais peut ne pas s'imprimer selon les paramètres du navigateur */}
                     <Image src="/logo.png" alt="Logo" width={60} height={60} className="object-contain"/>
                 </div>
 
-                {/* Company Info */}
                 {companyProfile?.companyName && <h1 className="text-lg font-bold">{companyProfile.companyName}</h1>}
                 {companyProfile?.address && <p className="text-xs">{companyProfile.address}</p>}
                 {companyProfile?.phone && <p className="text-xs">Tél: {companyProfile.phone}</p>}
@@ -76,7 +73,6 @@ export function ThermalReceipt({ sale, companyProfile }: ThermalReceiptProps) {
                 </div>
             </header>
 
-            {/* Items Table */}
             <table className="w-full text-xs my-2">
                 <thead>
                     <tr className="border-t border-b border-dashed border-black">
@@ -98,7 +94,6 @@ export function ThermalReceipt({ sale, companyProfile }: ThermalReceiptProps) {
                 </tbody>
             </table>
 
-            {/* Totals */}
             <div className="text-xs space-y-1 mt-2">
                 <div className="flex justify-between">
                     <span>Montant Payé:</span>
@@ -114,7 +109,6 @@ export function ThermalReceipt({ sale, companyProfile }: ThermalReceiptProps) {
                 </div>
             </div>
 
-            {/* Barcode & QR */}
             <footer className="flex flex-col items-center mt-4 space-y-4">
                 <svg ref={barcodeRef}></svg>
                 <canvas ref={qrCodeRef}></canvas>

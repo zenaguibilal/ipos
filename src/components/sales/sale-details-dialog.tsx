@@ -21,7 +21,7 @@ export function SaleDetailsDialog({ isOpen, onOpenChange, sale, companyProfile }
     const receiptRef = useRef<HTMLDivElement>(null);
 
     const handlePrint = () => {
-        const printableContent = receiptRef.current;
+        const printableContent = document.getElementById('receipt-for-print-details');
         if (!printableContent) return;
 
         const printWindow = window.open('', '_blank');
@@ -34,8 +34,11 @@ export function SaleDetailsDialog({ isOpen, onOpenChange, sale, companyProfile }
             .map(styleSheet => {
                 try {
                     return Array.from(styleSheet.cssRules).map(rule => rule.cssText).join('');
-                } catch (e) { return ''; }
-            }).join('');
+                } catch (e) {
+                     console.warn("Could not read stylesheet rules", e);
+                    return '';
+                }
+            }).join('\n');
 
         printWindow.document.write('<html><head><title>Facture</title>');
         printWindow.document.write(`<style>${styles}</style></head><body>`);
@@ -48,7 +51,7 @@ export function SaleDetailsDialog({ isOpen, onOpenChange, sale, companyProfile }
             printWindow.focus();
             printWindow.print();
             printWindow.close();
-        }, 250);
+        }, 500);
     };
 
     const handleDownloadPdf = () => {
@@ -82,6 +85,13 @@ export function SaleDetailsDialog({ isOpen, onOpenChange, sale, companyProfile }
                      <ThermalReceipt sale={sale} companyProfile={companyProfile} />
                    </div>
                 </div>
+
+                {/* Conteneur caché optimisé pour l'impression */}
+                 <div className="hidden">
+                    <div id="receipt-for-print-details">
+                        <ThermalReceipt sale={sale} companyProfile={companyProfile} />
+                    </div>
+                 </div>
 
                 <DialogFooter className="print-hide">
                     <Button type="button" variant="outline" onClick={handlePrint}>
