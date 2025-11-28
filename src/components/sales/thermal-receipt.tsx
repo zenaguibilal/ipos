@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useRef } from 'react';
@@ -25,7 +26,7 @@ export function ThermalReceipt({ sale, companyProfile }: ThermalReceiptProps) {
     });
 
     useEffect(() => {
-        if (barcodeRef.current) {
+        if (barcodeRef.current && sale.invoiceNumber) {
             try {
                 JsBarcode(barcodeRef.current, sale.invoiceNumber, {
                     format: "CODE128",
@@ -90,7 +91,7 @@ export function ThermalReceipt({ sale, companyProfile }: ThermalReceiptProps) {
                 <tbody>
                     {sale.items.map((item, index) => (
                         <tr key={index} >
-                            <td className="py-1 w-1/2 align-top">{item.name}</td>
+                            <td className="py-1 w-1/2 align-top break-words">{item.name}</td>
                             <td className="text-center align-top">{item.quantity}</td>
                             <td className="text-right align-top">{item.price.toFixed(2)}</td>
                             <td className="text-right font-bold align-top">{(item.price * item.quantity).toFixed(2)}</td>

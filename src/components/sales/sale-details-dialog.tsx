@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -34,11 +35,11 @@ export function SaleDetailsDialog({ isOpen, onOpenChange, sale, companyProfile }
         if (!element) return;
 
         const opt = {
-          margin:       0,
+          margin:       0.5,
           filename:     `facture-${sale.invoiceNumber}.pdf`,
           image:        { type: 'jpeg', quality: 0.98 },
           html2canvas:  { scale: 2, useCORS: true },
-          jsPDF:        { unit: 'mm', format: [80, 'auto' as 'auto'], orientation: 'portrait' }
+          jsPDF:        { unit: 'mm', format: [80, 297], orientation: 'portrait' }
         };
 
         html2pdf().from(element).set(opt).save();

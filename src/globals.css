@@ -128,12 +128,15 @@
         background: transparent !important;
         font-size: 10pt !important;
         line-height: 1.3 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
     }
 
-    .thermal-receipt .text-lg { font-size: 12pt !important; }
+    .thermal-receipt .text-lg { font-size: 12pt !important; font-weight: 700 !important;}
     .thermal-receipt .text-base { font-size: 10pt !important; }
     .thermal-receipt .text-xs { font-size: 8pt !important; }
-    .thermal-receipt table { width: 100% !important; table-layout: fixed; }
+    .thermal-receipt table { width: 100% !important; table-layout: fixed; border-collapse: collapse; }
+    .thermal-receipt th, .thermal-receipt td { padding: 1px 0 !important; }
     .thermal-receipt .border-dashed { border-style: dashed !important; }
     .thermal-receipt .border-black { border-color: black !important; }
     .thermal-receipt .font-bold { font-weight: 700 !important; }
@@ -142,3 +145,4 @@
         display: none !important;
     }
 }
+
