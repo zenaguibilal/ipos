@@ -42,16 +42,15 @@ export function SaleDetailsDialog({ isOpen, onOpenChange, sale, companyProfile }
 
         printWindow.document.write('<html><head><title>Facture</title>');
         printWindow.document.write(`<style>${styles}</style></head><body>`);
-        printWindow.document.write('<div class="print-container">');
         printWindow.document.write(printableContent.innerHTML);
-        printWindow.document.write('</div></body></html>');
+        printWindow.document.write('</body></html>');
         printWindow.document.close();
 
         setTimeout(() => {
             printWindow.focus();
             printWindow.print();
             printWindow.close();
-        }, 500);
+        }, 250);
     };
 
     const handleDownloadPdf = () => {
@@ -87,10 +86,8 @@ export function SaleDetailsDialog({ isOpen, onOpenChange, sale, companyProfile }
                 </div>
 
                 {/* Conteneur caché optimisé pour l'impression */}
-                 <div className="hidden">
-                    <div id="receipt-for-print-details">
-                        <ThermalReceipt sale={sale} companyProfile={companyProfile} />
-                    </div>
+                 <div id="receipt-for-print-details" className="hidden">
+                    <ThermalReceipt sale={sale} companyProfile={companyProfile} />
                  </div>
 
                 <DialogFooter className="print-hide">

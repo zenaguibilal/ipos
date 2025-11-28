@@ -66,9 +66,8 @@ export function SaleCompleteDialog({ isOpen, onOpenChange, sale, customer, compa
             }).join('\n');
         
         printWindow.document.write(`<style>${styles}</style></head><body>`);
-        printWindow.document.write('<div class="print-container">'); // Un conteneur pour l'impression
         printWindow.document.write(printableContent.innerHTML);
-        printWindow.document.write('</div></body></html>');
+        printWindow.document.write('</body></html>');
         printWindow.document.close();
 
         // Un petit délai pour s'assurer que tout est chargé avant l'impression
@@ -76,7 +75,7 @@ export function SaleCompleteDialog({ isOpen, onOpenChange, sale, customer, compa
             printWindow.focus();
             printWindow.print();
             printWindow.close();
-        }, 500);
+        }, 250);
     };
     
     const handleDownloadPdf = () => {
@@ -117,10 +116,8 @@ export function SaleCompleteDialog({ isOpen, onOpenChange, sale, customer, compa
                  </div>
 
                  {/* Conteneur caché optimisé pour l'impression */}
-                 <div className="hidden">
-                    <div id="receipt-for-print">
-                        <ThermalReceipt sale={sale} companyProfile={companyProfile} />
-                    </div>
+                 <div id="receipt-for-print" className="hidden">
+                    <ThermalReceipt sale={sale} companyProfile={companyProfile} />
                  </div>
 
 

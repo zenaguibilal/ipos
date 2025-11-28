@@ -76,31 +76,74 @@
   }
 }
 
+/* Styles pour l'impression thermique */
 @media print {
-  body * {
-    visibility: hidden;
-  }
-  .print-content, .print-content * {
-    visibility: visible;
-  }
-  .print-content {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    border: none !important;
-    box-shadow: none !important;
-    background: white !important;
-    color: black !important;
-  }
-  .print-content .text-muted-foreground {
-    color: #4a5568 !important;
-  }
-  .print-content .font-mono {
-    font-family: monospace !important;
-  }
-  .print-hide {
-    display: none;
-  }
+    @page {
+        size: 80mm auto; /* Taille du papier pour imprimante thermique */
+        margin: 0;
+    }
+
+    html, body {
+      width: 80mm;
+      background: white !important;
+    }
+
+    body {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    /* Cache tous les éléments par défaut */
+    body > *:not(#receipt-for-print):not(#receipt-for-print-details) {
+        display: none;
+    }
+
+    /* Affiche uniquement le conteneur d'impression et son contenu */
+    #receipt-for-print, #receipt-for-print-details {
+        display: block !important;
+        visibility: visible !important;
+        position: absolute;
+        left: 0;
+        top: 0;
+        margin: 0;
+        padding: 0;
+        width: 80mm;
+    }
+    
+    #receipt-for-print *, #receipt-for-print-details * {
+       visibility: visible !important;
+    }
+
+
+    .thermal-receipt {
+        font-family: 'Courier New', Courier, monospace !important; /* Police à chasse fixe pour un meilleur alignement */
+        width: 100% !important;
+        padding: 3mm !important;
+        color: black !important;
+        background: white !important;
+        box-shadow: none !important;
+        border: none !important;
+        font-size: 10pt !important; /* Taille de police lisible pour les reçus */
+        line-height: 1.2 !important;
+    }
+
+    .thermal-receipt * {
+        font-family: 'Courier New', Courier, monospace !important;
+        color: black !important;
+        background: transparent !important;
+        font-size: 10pt !important;
+        line-height: 1.2 !important;
+    }
+
+    .thermal-receipt .text-lg { font-size: 12pt !important; }
+    .thermal-receipt .text-base { font-size: 10pt !important; }
+    .thermal-receipt .text-xs { font-size: 8pt !important; }
+    .thermal-receipt table { width: 100% !important; }
+    .thermal-receipt .border-dashed { border-style: dashed !important; }
+    .thermal-receipt .border-black { border-color: black !important; }
+    .thermal-receipt .font-bold { font-weight: 700 !important; }
+    
+    .print-hide {
+        display: none !important;
+    }
 }
