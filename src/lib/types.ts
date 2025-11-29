@@ -130,3 +130,6 @@ export interface PurchaseOrder {
     notes?: string;
     createdAt: Timestamp;
 }
+
+export type PurchaseOrderStatus = PurchaseOrder['status'];
+
