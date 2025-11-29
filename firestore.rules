@@ -82,9 +82,9 @@ service cloud.firestore {
       }
 
       // Rules for the 'purchaseOrders' subcollection.
-      // This rule grants read (get, list) and write (create, update, delete)
-      // permissions to the entire collection for the owner.
       match /purchaseOrders/{purchaseOrderId} {
+        // This rule grants read (get, list) and write (create, update, delete)
+        // permissions to the entire collection for the owner.
         allow read, write: if isOwner(userId);
       }
     }
