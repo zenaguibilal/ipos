@@ -83,8 +83,8 @@ service cloud.firestore {
 
       // Rules for the 'purchaseOrders' subcollection.
       match /purchaseOrders/{purchaseOrderId} {
-        // Only the owner of the parent user document can read or write to the purchase orders subcollection.
-        allow read, write: if isOwner(userId);
+        // Only the owner of the parent user document can read, list, and write to the purchase orders subcollection.
+        allow list, read, write: if isOwner(userId);
       }
     }
   }
