@@ -8,7 +8,7 @@ import { collection, doc } from 'firebase/firestore';
 import { LowStockAlerts } from '@/components/notifications/low-stock-alerts';
 import { DebtAlerts } from '@/components/notifications/debt-alerts';
 import { InactiveCustomersAlerts } from '@/components/notifications/inactive-customers-alerts';
-import type { Product, Customer, Sale, Payment, CustomerWithSalesData, CompanyProfile } from '@/lib/types';
+import type { Product, Customer, Sale, Payment, CompanyProfile } from '@/lib/types';
 import { differenceInDays, subDays } from 'date-fns';
 
 
@@ -103,21 +103,20 @@ export default function NotificationsPage() {
         
         if (customer.settlementDay) {
             const settlementDay = customer.settlementDay;
-            const reminderDay = settlementDay === 1 ? 31 : settlementDay - 1; // Simplified for now
-
-            if (currentDayOfMonth === reminderDay) {
-                isReminderDue = true;
-            } else if (currentDayOfMonth > settlementDay) {
+            
+            // Check if today is past this month's settlement day
+            if (currentDayOfMonth > settlementDay) {
                 isReminderDue = true;
                 daysLate = currentDayOfMonth - settlementDay;
-            } else if (currentDayOfMonth < settlementDay) {
+            } else { // If not past this month's, check against last month's
                 const lastMonthSettlementDate = new Date(today.getFullYear(), today.getMonth() -1, settlementDay);
                  if (today > lastMonthSettlementDate) {
                     isReminderDue = true;
+                    // Calculate days late relative to THIS month's settlement day, as it's the one that was missed most recently
                     daysLate = differenceInDays(today, new Date(today.getFullYear(), today.getMonth(), settlementDay));
                  }
             }
-        } else {
+        } else { // If no settlement day, always consider them due for a reminder if they have debt
             isReminderDue = true; 
         }
 

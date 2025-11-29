@@ -69,7 +69,7 @@ export function InactiveCustomersAlerts({ customers }: InactiveCustomersAlertsPr
 
     const getSortIcon = (key: SortableKeys) => {
         if (!sortConfig || sortConfig.key !== key) {
-            return null;
+            return <div className="h-3 w-3 ml-2" />; // Placeholder for alignment
         }
         return sortConfig.direction === 'ascending' ? <ArrowUp className="ml-2 h-3 w-3" /> : <ArrowDown className="ml-2 h-3 w-3" />;
     };
@@ -129,7 +129,7 @@ export function InactiveCustomersAlerts({ customers }: InactiveCustomersAlertsPr
                                             : 'Aucune transaction'}
                                     </TableCell>
                                     <TableCell className="text-center font-bold">
-                                        {daysInactive !== null ? daysInactive : '-'}
+                                        {daysInactive !== null ? daysInactive : 'N/A'}
                                     </TableCell>
                                     <TableCell className={cn("text-right font-medium", customer.outstandingBalance > 0 && "text-destructive")}>
                                         {customer.outstandingBalance.toFixed(2)} DA
