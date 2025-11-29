@@ -191,7 +191,8 @@ export function StockIntakeForm({ userId, products }: StockIntakeFormProps) {
                 invoiceNumber: invoiceNumber,
                 invoiceDate: serverTimestamp.fromDate(invoiceDate),
                 items: items.map(i => ({ 
-                    productId: i.productId, 
+                    // This is intentionally simplified. A real app might need the new productId for new items.
+                    productId: i.productId || 'N/A', 
                     productName: i.name, 
                     quantityReceived: i.quantity, 
                     purchasePrice: i.purchasePrice 
@@ -218,9 +219,9 @@ export function StockIntakeForm({ userId, products }: StockIntakeFormProps) {
         <Card>
             <form onSubmit={handleSubmit}>
                 <CardHeader>
-                    <CardTitle>Réception de Stock</CardTitle>
+                    <CardTitle>Réception de Stock (Manuelle)</CardTitle>
                     <CardDescription>
-                        Entrez les détails de la facture fournisseur et les produits reçus pour mettre à jour votre inventaire.
+                        Utilisez ce formulaire pour les réceptions qui n'ont pas de bon de commande associé.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
