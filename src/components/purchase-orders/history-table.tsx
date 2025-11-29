@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { PurchaseOrder } from '@/lib/types';
@@ -103,3 +104,5 @@ export function HistoryTable({ purchaseOrders, onViewOrder, onChangeStatus, onDe
         </div>
     );
 }
+
+    

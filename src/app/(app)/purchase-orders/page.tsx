@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
@@ -179,7 +180,13 @@ export default function PurchaseOrdersPage() {
                                 <HistoryTable
                                     purchaseOrders={purchaseOrders || []}
                                     onViewOrder={setSelectedOrder}
-                                    onChangeStatus={(order, status) => setActionToConfirm({ action: status, order })}
+                                    onChangeStatus={(order, status) => {
+                                        if (status === 'receive') {
+                                            setActionToConfirm({action: 'receive', order});
+                                        } else if (status === 'send') {
+                                            setActionToConfirm({action: 'send', order});
+                                        }
+                                    }}
                                     onDeleteOrder={(order) => setActionToConfirm({ action: 'delete', order })}
                                 />
                             </CardContent>
@@ -190,3 +197,5 @@ export default function PurchaseOrdersPage() {
         </>
     );
 }
+
+    
