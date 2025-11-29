@@ -64,3 +64,5 @@ export function HistoryTable({ purchaseOrders, onViewOrder }: HistoryTableProps)
         </div>
     );
 }
+
+    
