@@ -27,8 +27,7 @@ export function PurchaseOrderReceipt({ purchaseOrder, companyProfile }: Purchase
                     {companyProfile?.vatNumber && <p className="text-xs text-gray-600">N° TVA: {companyProfile.vatNumber}</p>}
                 </div>
                  <div className="flex-shrink-0 w-24 h-24 relative">
-                    {/* Placeholder for a logo, assuming one exists at public/logo.png */}
-                    {/* <Image src="/logo.png" alt="Logo" layout="fill" objectFit="contain" unoptimized /> */}
+                    {/* Placeholder for a logo */}
                 </div>
             </header>
             
@@ -95,3 +94,5 @@ export function PurchaseOrderReceipt({ purchaseOrder, companyProfile }: Purchase
         </div>
     );
 }
+
+    

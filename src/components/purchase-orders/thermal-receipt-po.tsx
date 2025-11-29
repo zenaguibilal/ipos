@@ -18,7 +18,7 @@ export function ThermalReceiptPO({ purchaseOrder, companyProfile }: ThermalRecei
         <div className="thermal-receipt bg-white text-black font-mono">
             <header className="text-center space-y-1 mb-2">
                  <div className="flex justify-center my-2">
-                    {/* <Image src="/logo.png" alt="Logo" width={60} height={60} unoptimized /> */}
+                    {/* Placeholder for logo */}
                 </div>
                 {companyProfile?.companyName && <h1 className="text-lg font-bold">{companyProfile.companyName}</h1>}
                 {companyProfile?.address && <p className="text-xs">{companyProfile.address}</p>}
@@ -77,3 +77,5 @@ export function ThermalReceiptPO({ purchaseOrder, companyProfile }: ThermalRecei
         </div>
     );
 }
+
+    
