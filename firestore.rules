@@ -38,6 +38,9 @@ service cloud.firestore {
       allow create: if isOwner(userId) && request.resource.data.id == userId;
       // Allow a user to read, update, and delete their own document.
       allow read, update, delete: if isOwner(userId);
+        
+      // Allow the owner to list their own purchase orders.
+      allow list: if isOwner(userId) && request.path[4] == 'purchaseOrders';
 
       // Rules for the 'products' subcollection nested under a user document.
       match /products/{productId} {
@@ -86,8 +89,6 @@ service cloud.firestore {
         // Only the owner of the parent user document can read, and write to the purchase orders subcollection.
         allow read, write: if isOwner(userId);
       }
-       // Allow the owner to list their own purchase orders.
-      allow list: if isOwner(userId) && request.path[4] == 'purchaseOrders';
     }
   }
 }
