@@ -1,4 +1,3 @@
-
 import { Timestamp } from "firebase/firestore";
 
 export interface Product {
@@ -131,4 +130,3 @@ export interface PurchaseOrder {
     notes?: string;
     createdAt: Timestamp;
 }
-

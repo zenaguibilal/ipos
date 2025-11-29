@@ -110,13 +110,12 @@
 }
 
 /* A4 Print Specific Styles */
-@page a4-page {
+@page {
     size: a4;
     margin: 20mm;
 }
 
 .a4-receipt {
-    page: a4-page;
     page-break-before: always;
 }
 
