@@ -17,7 +17,6 @@ import {
   Bell,
   Building,
   Warehouse,
-  ClipboardList,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -38,7 +37,6 @@ const navLinks = [
   { href: '/sell', icon: ShoppingCart, label: 'Vendre' },
   { href: '/products', icon: Package, label: 'Produits' },
   { href: '/stock-intake', icon: Warehouse, label: 'Réception Stock' },
-  { href: '/purchase-orders', icon: ClipboardList, label: 'Bons de Commande' },
   { href: '/customers', icon: Users, label: 'Clients' },
   { href: '/bread-orders', icon: Cookie, label: 'Commandes de Pain' },
   { href: '/sales-history', icon: LineChart, label: 'Historique' },

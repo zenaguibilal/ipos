@@ -15,7 +15,6 @@
  * /users/{userId}/companyProfile/main - Singleton for company information.
  * /users/{userId}/breadOrders/{breadOrderId} - Simple bread orders.
  * /users/{userId}/stockIntakes/{stockIntakeId} - Records of stock received.
- * /users/{userId}/purchaseOrders/{purchaseOrderId} - Purchase orders for suppliers.
  *
  */
 rules_version = '2';
@@ -80,14 +79,6 @@ service cloud.firestore {
         // Only the owner of the parent user document can read or write to the stock intakes subcollection.
         allow read, write: if isOwner(userId);
       }
-
-      // Rules for the 'purchaseOrders' subcollection.
-      match /purchaseOrders/{purchaseOrderId} {
-        // This rule grants read (get, list) and write (create, update, delete)
-        // permissions to the entire collection for the owner.
-        allow read, write: if isOwner(userId);
-      }
     }
   }
 }
-
