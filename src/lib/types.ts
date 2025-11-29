@@ -113,3 +113,23 @@ export interface StockIntake {
     totalValue: number;
     createdAt: Timestamp;
 }
+
+export interface PurchaseOrderItem {
+    productId: string;
+    productName: string;
+    quantity: number;
+    purchasePrice: number;
+}
+
+export interface PurchaseOrder {
+    id: string;
+    poNumber: string;
+    supplierName: string;
+    status: 'draft' | 'sent' | 'received';
+    items: PurchaseOrderItem[];
+    totalValue: number;
+    notes?: string;
+    createdAt: Timestamp;
+}
+
+    

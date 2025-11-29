@@ -344,6 +344,55 @@
         }
       },
       "required": ["invoiceNumber", "invoiceDate", "items", "totalValue", "createdAt"]
+    },
+    "PurchaseOrder": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Purchase Order",
+      "description": "Represents a purchase order for a supplier.",
+      "type": "object",
+      "properties": {
+        "poNumber": {
+          "type": "string",
+          "description": "Unique identifier for the purchase order."
+        },
+        "supplierName": {
+          "type": "string",
+          "description": "Name of the supplier."
+        },
+        "status": {
+          "type": "string",
+          "description": "The status of the purchase order.",
+          "enum": ["draft", "sent", "received"]
+        },
+        "items": {
+          "type": "array",
+          "description": "List of products to order.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "productId": { "type": "string" },
+              "productName": { "type": "string" },
+              "quantity": { "type": "number" },
+              "purchasePrice": { "type": "number" }
+            },
+            "required": ["productId", "productName", "quantity", "purchasePrice"]
+          }
+        },
+        "totalValue": {
+            "type": "number",
+            "description": "The total purchase value of this order."
+        },
+        "notes": {
+            "type": "string",
+            "description": "Optional notes for the supplier or for internal use."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp indicating when this purchase order was created."
+        }
+      },
+      "required": ["poNumber", "supplierName", "status", "items", "totalValue", "createdAt"]
     }
   },
   "auth": {
@@ -395,6 +444,12 @@
     "/users/{userId}/stockIntakes/{stockIntakeId}": {
         "schema": { "$ref": "#/entities/StockIntake" },
         "description": "Records of stock received from suppliers."
+    },
+    "/users/{userId}/purchaseOrders/{purchaseOrderId}": {
+        "schema": { "$ref": "#/entities/PurchaseOrder" },
+        "description": "Purchase orders created by the user for their suppliers."
     }
   }
 }
+
+    
