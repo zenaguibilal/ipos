@@ -104,13 +104,12 @@ export function PurchaseOrderForm({ userId, products }: PurchaseOrderFormProps) 
         }
 
         setIsProcessing(true);
+        
         const poCollectionRef = collection(firestore, 'users', userId, 'purchaseOrders');
-        const newPoRef = doc(poCollectionRef);
-
         const poData = {
-            poNumber: newPoRef.id.substring(0, 8).toUpperCase(),
+            poNumber: doc(poCollectionRef).id.substring(0, 8).toUpperCase(),
             supplierName: supplierName,
-            status: 'draft',
+            status: 'draft' as const,
             items: items.map(i => ({ 
                 productId: i.productId, 
                 productName: i.productName, 
@@ -286,5 +285,3 @@ export function PurchaseOrderForm({ userId, products }: PurchaseOrderFormProps) 
         </Card>
     );
 }
-
-    

@@ -94,5 +94,3 @@ export function PurchaseOrderReceipt({ purchaseOrder, companyProfile }: Purchase
         </div>
     );
 }
-
-    

@@ -104,5 +104,3 @@ export function PurchaseOrderDetailsDialog({ isOpen, onOpenChange, purchaseOrder
         </Dialog>
     );
 }
-
-    

@@ -77,5 +77,3 @@ export function ThermalReceiptPO({ purchaseOrder, companyProfile }: ThermalRecei
         </div>
     );
 }
-
-    
