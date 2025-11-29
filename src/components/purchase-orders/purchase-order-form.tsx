@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo } from 'react';
 import { useFirestore, addDocumentNonBlocking } from '@/firebase';
 import { collection, serverTimestamp, doc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
@@ -10,13 +10,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
-import { PlusCircle, Trash2, Loader2, Search } from 'lucide-react';
+import { PlusCircle, Trash2, Loader2, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import type { Product, PurchaseOrderItem, CompanyProfile } from '@/lib/types';
+import type { Product, PurchaseOrderItem } from '@/lib/types';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
-import { Check } from 'lucide-react';
 
 interface PurchaseOrderFormProps {
     userId: string;
@@ -176,7 +175,7 @@ export function PurchaseOrderForm({ userId, products }: PurchaseOrderFormProps) 
                             <h3 className="text-lg font-medium">Articles à commander</h3>
                             <Popover open={openProductSearch} onOpenChange={setOpenProductSearch}>
                                 <PopoverTrigger asChild>
-                                    <Button variant="outline" size="sm">
+                                    <Button type="button" variant="outline" size="sm">
                                         <PlusCircle className="mr-2 h-4 w-4" />
                                         Ajouter un produit
                                     </Button>
@@ -250,7 +249,7 @@ export function PurchaseOrderForm({ userId, products }: PurchaseOrderFormProps) 
                                                     {(item.purchasePrice * item.quantity).toFixed(2)} DA
                                                 </TableCell>
                                                 <TableCell className="text-right">
-                                                    <Button variant="ghost" size="icon" onClick={() => removeItem(index)}>
+                                                    <Button type="button" variant="ghost" size="icon" onClick={() => removeItem(index)}>
                                                         <Trash2 className="h-4 w-4 text-destructive" />
                                                     </Button>
                                                 </TableCell>
@@ -285,5 +284,3 @@ export function PurchaseOrderForm({ userId, products }: PurchaseOrderFormProps) 
         </Card>
     );
 }
-
-    

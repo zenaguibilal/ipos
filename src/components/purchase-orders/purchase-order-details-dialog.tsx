@@ -31,8 +31,11 @@ export function PurchaseOrderDetailsDialog({ isOpen, onOpenChange, purchaseOrder
         document.documentElement.classList.toggle('thermal', thermal);
         
         const receiptClone = receiptRef.current.cloneNode(true) as HTMLElement;
-        receiptClone.classList.toggle('thermal-receipt', thermal);
-        receiptClone.classList.toggle('a4-receipt', !thermal);
+        if(thermal) {
+            receiptClone.classList.add('thermal-receipt');
+        } else {
+            receiptClone.classList.add('a4-receipt');
+        }
 
         printableContent.innerHTML = '';
         printableContent.appendChild(receiptClone);
@@ -71,7 +74,7 @@ export function PurchaseOrderDetailsDialog({ isOpen, onOpenChange, purchaseOrder
                 </DialogHeader>
                 
                 <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-md max-h-[70vh] overflow-y-auto">
-                   <div ref={a4ReceiptRef} className="bg-white text-black p-8 shadow-lg">
+                   <div ref={a4ReceiptRef}>
                      <PurchaseOrderReceipt purchaseOrder={purchaseOrder} companyProfile={companyProfile} />
                    </div>
                 </div>
@@ -83,7 +86,7 @@ export function PurchaseOrderDetailsDialog({ isOpen, onOpenChange, purchaseOrder
                     </div>
                 </div>
 
-                <DialogFooter className="print-hide">
+                <DialogFooter className="print-hide sm:justify-start gap-2">
                     <Button type="button" variant="outline" onClick={() => handlePrint(true)}>
                         <Printer className="mr-2 h-4 w-4" />
                         Imprimer (Thermique)
@@ -96,7 +99,7 @@ export function PurchaseOrderDetailsDialog({ isOpen, onOpenChange, purchaseOrder
                         <Download className="mr-2 h-4 w-4" />
                         Télécharger PDF (A4)
                     </Button>
-                    <Button type="button" onClick={() => onOpenChange(false)}>
+                    <Button type="button" onClick={() => onOpenChange(false)} className="sm:ml-auto">
                         Fermer
                     </Button>
                 </DialogFooter>
@@ -104,5 +107,3 @@ export function PurchaseOrderDetailsDialog({ isOpen, onOpenChange, purchaseOrder
         </Dialog>
     );
 }
-
-    

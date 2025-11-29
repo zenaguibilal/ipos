@@ -4,7 +4,6 @@
 import type { PurchaseOrder, CompanyProfile } from '@/lib/types';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import Image from 'next/image';
 
 interface PurchaseOrderReceiptProps {
     purchaseOrder: PurchaseOrder;
@@ -25,9 +24,6 @@ export function PurchaseOrderReceipt({ purchaseOrder, companyProfile }: Purchase
                     {companyProfile?.country && <p className="text-xs text-gray-600">{companyProfile.country}</p>}
                     {companyProfile?.phone && <p className="text-xs text-gray-600">Tél: {companyProfile.phone}</p>}
                     {companyProfile?.vatNumber && <p className="text-xs text-gray-600">N° TVA: {companyProfile.vatNumber}</p>}
-                </div>
-                 <div className="flex-shrink-0 w-24 h-24 relative">
-                    {/* Placeholder for a logo */}
                 </div>
             </header>
             
@@ -94,5 +90,3 @@ export function PurchaseOrderReceipt({ purchaseOrder, companyProfile }: Purchase
         </div>
     );
 }
-
-    

@@ -110,20 +110,21 @@
 }
 
 /* A4 Print Specific Styles */
-@page {
+@page a4-page {
     size: a4;
     margin: 20mm;
 }
 
 .a4-receipt {
-    page-break-before: always; /* Ensure it starts on a new page */
+    page: a4-page;
+    page-break-before: always;
 }
 
 
 /* Thermal Print Specific Styles */
-@page {
+@page thermal-page {
     size: 80mm auto;
-    margin: 0;
+    margin: 3mm;
 }
 
 html.thermal, body.thermal {
@@ -132,10 +133,10 @@ html.thermal, body.thermal {
 }
 
 .thermal-receipt {
-    page-break-before: always; /* Ensure it starts on a new page */
+    page: thermal-page;
+    page-break-before: always;
     font-family: 'Courier New', Courier, monospace !important;
-    width: 80mm !important;
-    padding: 3mm !important;
+    width: 100% !important;
     color: black !important;
     background: white !important;
     box-shadow: none !important;
@@ -159,5 +160,3 @@ html.thermal, body.thermal {
 .thermal-receipt .border-dashed { border-style: dashed !important; }
 .thermal-receipt .border-black { border-color: black !important; }
 .thermal-receipt .font-bold { font-weight: 700 !important; }
-
-    

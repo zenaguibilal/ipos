@@ -48,7 +48,7 @@ export function HistoryTable({ purchaseOrders, onViewOrder }: HistoryTableProps)
                                         order.status === 'sent' ? 'secondary' : 'outline'
                                     }
                                     className={
-                                        order.status === 'received' ? 'bg-green-600' : ''
+                                        order.status === 'received' ? 'bg-green-600 hover:bg-green-600/90' : ''
                                     }
                                 >
                                     {order.status === 'draft' && 'Brouillon'}
@@ -65,4 +65,3 @@ export function HistoryTable({ purchaseOrders, onViewOrder }: HistoryTableProps)
     );
 }
 
-    

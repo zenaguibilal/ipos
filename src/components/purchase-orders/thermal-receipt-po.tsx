@@ -4,7 +4,6 @@
 import type { PurchaseOrder, CompanyProfile } from '@/lib/types';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import Image from 'next/image';
 
 interface ThermalReceiptPOProps {
     purchaseOrder: PurchaseOrder;
@@ -17,9 +16,6 @@ export function ThermalReceiptPO({ purchaseOrder, companyProfile }: ThermalRecei
     return (
         <div className="thermal-receipt bg-white text-black font-mono">
             <header className="text-center space-y-1 mb-2">
-                 <div className="flex justify-center my-2">
-                    {/* Placeholder for logo */}
-                </div>
                 {companyProfile?.companyName && <h1 className="text-lg font-bold">{companyProfile.companyName}</h1>}
                 {companyProfile?.address && <p className="text-xs">{companyProfile.address}</p>}
                 {companyProfile?.phone && <p className="text-xs">Tél: {companyProfile.phone}</p>}
@@ -77,5 +73,3 @@ export function ThermalReceiptPO({ purchaseOrder, companyProfile }: ThermalRecei
         </div>
     );
 }
-
-    
