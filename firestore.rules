@@ -84,7 +84,8 @@ service cloud.firestore {
       // Rules for the 'purchaseOrders' subcollection.
       // The `read` permission includes both `get` (single doc) and `list` (collection query).
       match /purchaseOrders/{purchaseOrderId} {
-        // Only the owner of the parent user document can read, and write to the purchase orders subcollection.
+        // Only the owner of the parent user document can read, create, update, and delete purchase orders.
+        // `read` covers `get` and `list`. `write` covers `create`, `update`, `delete`.
         allow read, write: if isOwner(userId);
       }
     }
