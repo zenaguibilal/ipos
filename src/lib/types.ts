@@ -124,12 +124,11 @@ export interface PurchaseOrder {
     id: string;
     poNumber: string;
     supplierName: string;
-    status: 'draft' | 'sent' | 'received';
+    status: PurchaseOrderStatus;
     items: PurchaseOrderItem[];
     totalValue: number;
     notes?: string;
     createdAt: Timestamp;
 }
 
-export type PurchaseOrderStatus = PurchaseOrder['status'];
-
+export type PurchaseOrderStatus = 'draft' | 'sent' | 'received';

@@ -1,7 +1,6 @@
-
 'use client';
 
-import type { PurchaseOrder, PurchaseOrderStatus } from '@/lib/types';
+import type { PurchaseOrder } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
