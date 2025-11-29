@@ -7,8 +7,9 @@ import { useEffect, useMemo } from 'react';
 import { collection, doc } from 'firebase/firestore';
 import { LowStockAlerts } from '@/components/notifications/low-stock-alerts';
 import { DebtAlerts } from '@/components/notifications/debt-alerts';
+import { InactiveCustomersAlerts } from '@/components/notifications/inactive-customers-alerts';
 import type { Product, Customer, Sale, Payment, CustomerWithSalesData, CompanyProfile } from '@/lib/types';
-import { differenceInDays } from 'date-fns';
+import { differenceInDays, subDays } from 'date-fns';
 
 
 export default function NotificationsPage() {
@@ -37,15 +38,12 @@ export default function NotificationsPage() {
   }, [user, isUserLoading, router]);
 
   // --- ALERTS CALCULATION ---
-  const { lowStockProducts, debtAlertCustomers } = useMemo(() => {
+  const { lowStockProducts, debtAlertCustomers, inactiveCustomers } = useMemo(() => {
     if (!products || !customers || !sales || !payments) {
-      return { lowStockProducts: [], debtAlertCustomers: [] };
+      return { lowStockProducts: [], debtAlertCustomers: [], inactiveCustomers: [] };
     }
 
-    // Low stock alerts
-    const lowStockProducts = products.filter(p => p.quantity <= p.minStockLevel);
-
-    // --- Debt Alerts Logic ---
+    // --- Shared Customer Data Calculation ---
     const salesByCustomer = sales.reduce((acc, sale) => {
         if (sale.customerId) {
             if (!acc[sale.customerId]) {
@@ -67,7 +65,18 @@ export default function NotificationsPage() {
         return acc;
     }, {} as Record<string, number>);
 
-    const customersWithDebt = customers.map(customer => {
+    const lastActivityByCustomer = [...sales, ...payments].reduce((acc, transaction) => {
+        const customerId = transaction.customerId;
+        if (customerId) {
+            const transactionDate = transaction.createdAt.toDate();
+            if (!acc[customerId] || transactionDate > acc[customerId]) {
+                acc[customerId] = transactionDate;
+            }
+        }
+        return acc;
+    }, {} as Record<string, Date>);
+
+    const customersWithFullData = customers.map(customer => {
         const customerSales = salesByCustomer[customer.id] || { totalSpent: 0, debtFromSales: 0 };
         const customerPayments = paymentsByCustomer[customer.id] || 0;
         const outstandingBalance = customerSales.debtFromSales - customerPayments;
@@ -76,11 +85,17 @@ export default function NotificationsPage() {
             ...customer,
             totalSpent: customerSales.totalSpent,
             outstandingBalance: outstandingBalance > 0 ? outstandingBalance : 0,
+            lastActivityDate: lastActivityByCustomer[customer.id] || null,
         };
-    }).filter(c => c.outstandingBalance > 0);
+    });
 
+    // --- Low stock alerts ---
+    const lowStockProducts = products.filter(p => p.quantity <= p.minStockLevel);
+
+    // --- Debt Alerts Logic ---
     const today = new Date();
     const currentDayOfMonth = today.getDate();
+    const customersWithDebt = customersWithFullData.filter(c => c.outstandingBalance > 0);
 
     const debtAlertCustomers = customersWithDebt.map(customer => {
         let isReminderDue = false;
@@ -88,7 +103,6 @@ export default function NotificationsPage() {
         
         if (customer.settlementDay) {
             const settlementDay = customer.settlementDay;
-            // Reminder is due one day before settlement day
             const reminderDay = settlementDay === 1 ? 31 : settlementDay - 1; // Simplified for now
 
             if (currentDayOfMonth === reminderDay) {
@@ -97,7 +111,6 @@ export default function NotificationsPage() {
                 isReminderDue = true;
                 daysLate = currentDayOfMonth - settlementDay;
             } else if (currentDayOfMonth < settlementDay) {
-                // Check if we are in the next month but before the settlement day
                 const lastMonthSettlementDate = new Date(today.getFullYear(), today.getMonth() -1, settlementDay);
                  if (today > lastMonthSettlementDate) {
                     isReminderDue = true;
@@ -105,15 +118,23 @@ export default function NotificationsPage() {
                  }
             }
         } else {
-            // For customers with no settlement day, always show reminder if they have debt.
             isReminderDue = true; 
         }
 
         return { ...customer, isReminderDue, daysLate };
     }).filter(c => c.isReminderDue);
+    
+    // --- Inactive Customers Logic ---
+    const twentyDaysAgo = subDays(new Date(), 20);
+    const inactiveCustomers = customersWithFullData.filter(customer => {
+        // Customers with no activity at all are considered inactive
+        if (!customer.lastActivityDate) return true;
+        // Customers whose last activity was more than 20 days ago
+        return customer.lastActivityDate < twentyDaysAgo;
+    });
 
 
-    return { lowStockProducts, debtAlertCustomers };
+    return { lowStockProducts, debtAlertCustomers, inactiveCustomers };
 
   }, [products, customers, sales, payments]);
 
@@ -127,7 +148,7 @@ export default function NotificationsPage() {
     );
   }
 
-  const totalAlerts = lowStockProducts.length + debtAlertCustomers.length;
+  const totalAlerts = lowStockProducts.length + debtAlertCustomers.length + inactiveCustomers.length;
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
@@ -143,6 +164,7 @@ export default function NotificationsPage() {
         <div className="grid gap-4 md:gap-8">
           <LowStockAlerts products={lowStockProducts} />
           <DebtAlerts customers={debtAlertCustomers} companyProfile={companyProfile} />
+          <InactiveCustomersAlerts customers={inactiveCustomers} />
         </div>
       )}
     </div>
