@@ -23,14 +23,21 @@ export function SaleDetailsDialog({ isOpen, onOpenChange, sale, companyProfile }
         const printableContent = document.getElementById('receipt-for-print');
         if (!printableContent || !receiptRef.current) return;
 
+        // Add class to html/body to trigger correct @page rule
+        document.documentElement.classList.add('thermal');
+
         // Clone the receipt content to the dedicated print container
-        const receiptClone = receiptRef.current.cloneNode(true);
+        const receiptClone = receiptRef.current.cloneNode(true) as HTMLElement;
+        receiptClone.classList.add('thermal-receipt');
+        
         printableContent.innerHTML = ''; // Clear previous content
         printableContent.appendChild(receiptClone);
         
         // Allow images to load before printing
         setTimeout(() => {
             window.print();
+            // Clean up class after printing
+            document.documentElement.classList.remove('thermal');
         }, 300);
     };
 

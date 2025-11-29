@@ -8,6 +8,7 @@ import { Printer, Download } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
 import { useRef } from 'react';
 import { PurchaseOrderReceipt } from './purchase-order-receipt';
+import { ThermalReceiptPO } from './thermal-receipt-po';
 
 interface PurchaseOrderDetailsDialogProps {
     isOpen: boolean;
@@ -17,23 +18,33 @@ interface PurchaseOrderDetailsDialogProps {
 }
 
 export function PurchaseOrderDetailsDialog({ isOpen, onOpenChange, purchaseOrder, companyProfile }: PurchaseOrderDetailsDialogProps) {
-    const receiptRef = useRef<HTMLDivElement>(null);
+    const a4ReceiptRef = useRef<HTMLDivElement>(null);
+    const thermalReceiptRef = useRef<HTMLDivElement>(null);
 
-    const handlePrint = () => {
+
+    const handlePrint = (thermal=false) => {
         const printableContent = document.getElementById('receipt-for-print');
+        const receiptRef = thermal ? thermalReceiptRef : a4ReceiptRef;
         if (!printableContent || !receiptRef.current) return;
 
-        const receiptClone = receiptRef.current.cloneNode(true);
+        // Add class to html/body to trigger correct @page rule
+        document.documentElement.classList.toggle('thermal', thermal);
+        
+        const receiptClone = receiptRef.current.cloneNode(true) as HTMLElement;
+        receiptClone.classList.toggle('thermal-receipt', thermal);
+        receiptClone.classList.toggle('a4-receipt', !thermal);
+
         printableContent.innerHTML = '';
         printableContent.appendChild(receiptClone);
         
         setTimeout(() => {
             window.print();
+            document.documentElement.classList.remove('thermal');
         }, 300);
     };
 
     const handleDownloadPdf = () => {
-        const element = receiptRef.current;
+        const element = a4ReceiptRef.current;
         if (!element) return;
 
         const opt = {
@@ -59,20 +70,31 @@ export function PurchaseOrderDetailsDialog({ isOpen, onOpenChange, purchaseOrder
                     </DialogDescription>
                 </DialogHeader>
                 
-                <div className="bg-white p-4 rounded-md max-h-[70vh] overflow-y-auto">
-                   <div ref={receiptRef} className="bg-white text-black p-8">
+                <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-md max-h-[70vh] overflow-y-auto">
+                   <div ref={a4ReceiptRef} className="bg-white text-black p-8 shadow-lg">
                      <PurchaseOrderReceipt purchaseOrder={purchaseOrder} companyProfile={companyProfile} />
                    </div>
                 </div>
 
+                {/* Hidden container for thermal receipt clone */}
+                <div className="hidden">
+                    <div ref={thermalReceiptRef}>
+                        <ThermalReceiptPO purchaseOrder={purchaseOrder} companyProfile={companyProfile} />
+                    </div>
+                </div>
+
                 <DialogFooter className="print-hide">
-                    <Button type="button" variant="outline" onClick={handlePrint}>
+                    <Button type="button" variant="outline" onClick={() => handlePrint(true)}>
                         <Printer className="mr-2 h-4 w-4" />
-                        Imprimer
+                        Imprimer (Thermique)
+                    </Button>
+                    <Button type="button" variant="outline" onClick={() => handlePrint(false)}>
+                        <Printer className="mr-2 h-4 w-4" />
+                        Imprimer (A4)
                     </Button>
                      <Button type="button" variant="outline" onClick={handleDownloadPdf}>
                         <Download className="mr-2 h-4 w-4" />
-                        Télécharger PDF
+                        Télécharger PDF (A4)
                     </Button>
                     <Button type="button" onClick={() => onOpenChange(false)}>
                         Fermer
@@ -82,5 +104,3 @@ export function PurchaseOrderDetailsDialog({ isOpen, onOpenChange, purchaseOrder
         </Dialog>
     );
 }
-
-    

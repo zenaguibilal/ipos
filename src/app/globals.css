@@ -76,30 +76,20 @@
   }
 }
 
-/* Styles pour l'impression thermique */
+/* Common print styles */
 @media print {
-    @page {
-        size: 80mm auto; /* Taille du papier pour imprimante thermique */
-        margin: 0;
-    }
-
-    html, body {
-      width: 80mm;
-      background: white !important;
-    }
-
     body {
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
     }
 
-    /* Cache tous les éléments par défaut */
-    body > *:not(#receipt-for-print):not(#receipt-for-print-details) {
-        display: none;
+    /* Hide everything by default */
+    body > *:not(#receipt-for-print) {
+        display: none !important;
     }
 
-    /* Affiche uniquement le conteneur d'impression et son contenu */
-    #receipt-for-print, #receipt-for-print-details {
+    /* Only show the print container and its content */
+    #receipt-for-print {
         display: block !important;
         visibility: visible !important;
         position: absolute;
@@ -107,23 +97,53 @@
         top: 0;
         margin: 0;
         padding: 0;
-        width: 80mm;
+        width: 100%;
     }
     
-    #receipt-for-print *, #receipt-for-print-details * {
+    #receipt-for-print * {
        visibility: visible !important;
     }
 
+    .print-hide {
+        display: none !important;
+    }
+}
+
+/* A4 Print Specific Styles */
+@page a4-receipt {
+    size: a4;
+    margin: 20mm;
+}
+
+@media print {
+    .a4-receipt {
+        page: a4-receipt;
+    }
+}
+
+
+/* Thermal Print Specific Styles */
+@page thermal-receipt {
+    size: 80mm auto;
+    margin: 0;
+}
+
+@media print {
+    html.thermal, body.thermal {
+      width: 80mm;
+      background: white !important;
+    }
 
     .thermal-receipt {
-        font-family: 'Courier New', Courier, monospace !important; /* Police à chasse fixe pour un meilleur alignement */
-        width: 100% !important;
+        page: thermal-receipt;
+        font-family: 'Courier New', Courier, monospace !important;
+        width: 80mm !important;
         padding: 3mm !important;
         color: black !important;
         background: white !important;
         box-shadow: none !important;
         border: none !important;
-        font-size: 10pt !important; /* Taille de police lisible pour les reçus */
+        font-size: 10pt !important;
         line-height: 1.2 !important;
     }
 
@@ -142,8 +162,4 @@
     .thermal-receipt .border-dashed { border-style: dashed !important; }
     .thermal-receipt .border-black { border-color: black !important; }
     .thermal-receipt .font-bold { font-weight: 700 !important; }
-    
-    .print-hide {
-        display: none !important;
-    }
 }

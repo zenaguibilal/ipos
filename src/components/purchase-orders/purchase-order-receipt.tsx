@@ -21,8 +21,10 @@ export function PurchaseOrderReceipt({ purchaseOrder, companyProfile }: Purchase
                 <div className="flex-1">
                     {companyProfile?.companyName && <h1 className="text-2xl font-bold text-gray-800">{companyProfile.companyName}</h1>}
                     {companyProfile?.address && <p className="text-xs text-gray-600">{companyProfile.address}</p>}
-                    {companyProfile?.city && <p className="text-xs text-gray-600">{companyProfile.city}</p>}
+                    {companyProfile?.city && <p className="text-xs text-gray-600">{companyProfile.city}, {companyProfile.zipCode}</p>}
+                    {companyProfile?.country && <p className="text-xs text-gray-600">{companyProfile.country}</p>}
                     {companyProfile?.phone && <p className="text-xs text-gray-600">Tél: {companyProfile.phone}</p>}
+                    {companyProfile?.vatNumber && <p className="text-xs text-gray-600">N° TVA: {companyProfile.vatNumber}</p>}
                 </div>
                  <div className="flex-shrink-0 w-24 h-24 relative">
                     <Image src="/logo.png" alt="Logo" layout="fill" objectFit="contain" unoptimized />
@@ -92,5 +94,3 @@ export function PurchaseOrderReceipt({ purchaseOrder, companyProfile }: Purchase
         </div>
     );
 }
-
-    

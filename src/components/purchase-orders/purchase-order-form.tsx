@@ -21,7 +21,6 @@ import { Check } from 'lucide-react';
 interface PurchaseOrderFormProps {
     userId: string;
     products: Product[];
-    companyProfile: CompanyProfile | null;
 }
 
 const createNewItem = (product?: Product): PurchaseOrderItem => ({
@@ -32,7 +31,7 @@ const createNewItem = (product?: Product): PurchaseOrderItem => ({
 });
 
 
-export function PurchaseOrderForm({ userId, products, companyProfile }: PurchaseOrderFormProps) {
+export function PurchaseOrderForm({ userId, products }: PurchaseOrderFormProps) {
     const firestore = useFirestore();
     
     const [supplierName, setSupplierName] = useState('');
@@ -227,7 +226,7 @@ export function PurchaseOrderForm({ userId, products, companyProfile }: Purchase
                                     </TableHeader>
                                     <TableBody>
                                         {items.map((item, index) => (
-                                            <TableRow key={item.productId}>
+                                            <TableRow key={index}>
                                                 <TableCell className="font-medium">{item.productName}</TableCell>
                                                 <TableCell>
                                                     <Input
@@ -287,5 +286,3 @@ export function PurchaseOrderForm({ userId, products, companyProfile }: Purchase
         </Card>
     );
 }
-
-    

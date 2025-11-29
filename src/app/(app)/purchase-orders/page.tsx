@@ -74,7 +74,6 @@ export default function PurchaseOrdersPage() {
                          <PurchaseOrderForm 
                             userId={user.uid}
                             products={products || []}
-                            companyProfile={companyProfile}
                         />
                     </TabsContent>
                     <TabsContent value="history">
@@ -96,5 +95,3 @@ export default function PurchaseOrdersPage() {
         </>
     );
 }
-
-    
