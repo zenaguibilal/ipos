@@ -30,7 +30,7 @@ export function DebtAlerts({ customers, companyProfile }: DebtAlertsProps) {
             message = `Bonjour ${customer.firstName} ${customer.lastName}, juste un petit rappel de la part de ${companyName} concernant votre solde de ${customer.outstandingBalance.toFixed(2)} DA.`;
         }
         
-        const whatsappUrl = `https://wa.me/${customer.phone}?text=${encodeURIComponent(message)}`;
+        const whatsappUrl = `https://wa.me/${customer.phone.replace(/\s/g, '')}?text=${encodeURIComponent(message)}`;
         window.open(whatsappUrl, '_blank');
     };
 
