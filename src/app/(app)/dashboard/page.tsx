@@ -26,7 +26,7 @@ export default function DashboardPage() {
   const router = useRouter();
 
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
-    from: startOfDay(new Date()),
+    from: startOfDay(subDays(new Date(), 6)),
     to: endOfDay(new Date()),
   });
 
@@ -62,7 +62,6 @@ export default function DashboardPage() {
 
   // --- Memos for derived data ---
   const stats = useMemo(() => {
-    // Note: Some stats are global and not affected by the date range (e.g., inventory value)
     if (!allProducts || !allCustomers || !allSales || !allPayments) {
       return { revenue: 0, netProfit: 0, salesCount: 0, totalDebt: 0, lowStockCount: 0, inventoryValue: 0 };
     }
