@@ -3,9 +3,9 @@
 
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { useEffect, useMemo } from 'react';
-import { collection, query, where, Timestamp } from 'firebase/firestore';
-import { startOfDay, endOfDay, subDays, format } from 'date-fns';
+import { useEffect, useMemo, useState } from 'react';
+import { collection } from 'firebase/firestore';
+import { startOfDay, endOfDay, subDays, format, startOfMonth, endOfMonth } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { StatsCards } from '@/components/dashboard/stats-cards';
 import { SalesChart } from '@/components/dashboard/sales-chart';
@@ -14,8 +14,10 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { LowStockProducts } from '@/components/dashboard/low-stock-products';
 import { TopProducts } from '@/components/dashboard/top-products';
 import { TopCustomers } from '@/components/dashboard/top-customers';
+import { DateRangePicker } from '@/components/dashboard/date-range-picker';
+import { DateRange } from 'react-day-picker';
 
-import type { Sale, Product, Customer, Payment, ChartData, TopProduct, TopCustomer, CustomerWithSalesData } from '@/lib/types';
+import type { Sale, Product, Customer, Payment, ChartData, TopProduct, TopCustomer } from '@/lib/types';
 
 
 export default function DashboardPage() {
@@ -23,32 +25,22 @@ export default function DashboardPage() {
   const firestore = useFirestore();
   const router = useRouter();
 
-  // --- Data Fetching ---
-  const todayStart = useMemo(() => startOfDay(new Date()), []);
-  const todayEnd = useMemo(() => endOfDay(new Date()), []);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
+    from: startOfDay(new Date()),
+    to: endOfDay(new Date()),
+  });
 
+  // --- Data Fetching ---
   const salesCollectionRef = useMemoFirebase(() => user && firestore ? collection(firestore, 'users', user.uid, 'sales') : null, [user, firestore]);
   const productsCollectionRef = useMemoFirebase(() => user && firestore ? collection(firestore, 'users', user.uid, 'products') : null, [user, firestore]);
   const customersCollectionRef = useMemoFirebase(() => user && firestore ? collection(firestore, 'users', user.uid, 'customers') : null, [user, firestore]);
   const paymentsCollectionRef = useMemoFirebase(() => user && firestore ? collection(firestore, 'users', user.uid, 'payments') : null, [user, firestore]);
 
-
-  // Queries
-  const todaySalesQuery = useMemoFirebase(() => {
-    if (!salesCollectionRef) return null;
-    return query(
-        salesCollectionRef, 
-        where('createdAt', '>=', Timestamp.fromDate(todayStart)),
-        where('createdAt', '<=', Timestamp.fromDate(todayEnd))
-    );
-  }, [salesCollectionRef, todayStart, todayEnd]);
-
-  // Hooks
-  const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesCollectionRef);
-  const { data: todaySales, isLoading: isLoadingTodaySales } = useCollection<Sale>(todaySalesQuery);
-  const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsCollectionRef);
-  const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersCollectionRef);
-  const { data: payments, isLoading: isLoadingPayments } = useCollection<Payment>(paymentsCollectionRef);
+  // Hooks - Fetch all data, then filter locally
+  const { data: allSales, isLoading: isLoadingSales } = useCollection<Sale>(salesCollectionRef);
+  const { data: allProducts, isLoading: isLoadingProducts } = useCollection<Product>(productsCollectionRef);
+  const { data: allCustomers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersCollectionRef);
+  const { data: allPayments, isLoading: isLoadingPayments } = useCollection<Payment>(paymentsCollectionRef);
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -56,28 +48,41 @@ export default function DashboardPage() {
     }
   }, [user, isUserLoading, router]);
 
+  // Filtered data based on date range
+  const sales = useMemo(() => {
+    if (!allSales || !dateRange?.from) return [];
+    const from = startOfDay(dateRange.from);
+    const to = dateRange.to ? endOfDay(dateRange.to) : endOfDay(dateRange.from);
+    return allSales.filter(sale => {
+      const saleDate = sale.createdAt.toDate();
+      return saleDate >= from && saleDate <= to;
+    });
+  }, [allSales, dateRange]);
+
+
   // --- Memos for derived data ---
-  
   const stats = useMemo(() => {
-    if (!todaySales || !products || !customers || !sales || !payments) {
-      return { dailyRevenue: 0, dailyNetProfit: 0, dailySalesCount: 0, totalDebt: 0, lowStockCount: 0, inventoryValue: 0 };
+    // Note: Some stats are global and not affected by the date range (e.g., inventory value)
+    if (!allProducts || !allCustomers || !allSales || !allPayments) {
+      return { revenue: 0, netProfit: 0, salesCount: 0, totalDebt: 0, lowStockCount: 0, inventoryValue: 0 };
     }
 
-    // Daily stats
-    const dailyRevenue = todaySales.reduce((sum, sale) => sum + sale.total, 0);
-    const dailySalesCount = todaySales.length;
+    // Date-range specific stats
+    const revenue = sales.reduce((sum, sale) => sum + sale.total, 0);
+    const salesCount = sales.length;
 
-    const dailyNetProfit = todaySales.reduce((profit, sale) => {
+    const netProfit = sales.reduce((profit, sale) => {
         const saleCost = sale.items.reduce((cost, item) => {
-            const product = products.find(p => p.id === item.id);
-            const itemCost = product ? product.purchasePrice * item.quantity : item.price * item.quantity;
-            return cost + itemCost;
+            const product = allProducts.find(p => p.id === item.id);
+            // Fallback to item price if product not found (e.g., custom item)
+            const purchasePrice = product?.purchasePrice ?? item.price;
+            return cost + (purchasePrice * item.quantity);
         }, 0);
         return profit + (sale.total - saleCost);
     }, 0);
 
-    // Global stats
-    const salesByCustomer = sales.reduce((acc, sale) => {
+    // Global stats (not affected by date range)
+    const salesByCustomer = allSales.reduce((acc, sale) => {
         if (sale.customerId && sale.remainingBalance > 0) {
             if (!acc[sale.customerId]) acc[sale.customerId] = 0;
             acc[sale.customerId] += sale.remainingBalance;
@@ -85,7 +90,7 @@ export default function DashboardPage() {
         return acc;
     }, {} as Record<string, number>);
 
-    const paymentsByCustomer = payments.reduce((acc, payment) => {
+    const paymentsByCustomer = allPayments.reduce((acc, payment) => {
          if (payment.customerId) {
             if (!acc[payment.customerId]) acc[payment.customerId] = 0;
             acc[payment.customerId] += payment.amount;
@@ -100,24 +105,30 @@ export default function DashboardPage() {
         return sum + (balance > 0 ? balance : 0);
     }, 0);
 
-    const lowStockCount = products.filter(p => p.quantity <= p.minStockLevel).length;
+    const lowStockCount = allProducts.filter(p => p.quantity <= p.minStockLevel).length;
+    const inventoryValue = allProducts.reduce((sum, p) => sum + (p.purchasePrice * p.quantity), 0);
 
-    const inventoryValue = products.reduce((sum, p) => sum + (p.purchasePrice * p.quantity), 0);
-
-    return { dailyRevenue, dailyNetProfit, dailySalesCount, totalDebt, lowStockCount, inventoryValue };
-  }, [todaySales, sales, products, customers, payments]);
+    return { revenue, netProfit, salesCount, totalDebt, lowStockCount, inventoryValue };
+  }, [sales, allSales, allProducts, allCustomers, allPayments]);
 
 
   const { salesChartData, profitChartData } = useMemo(() => {
-    const defaultData = { salesChartData: [], profitChartData: [] };
-    if (!sales || !products) return defaultData;
+    if (!sales || !allProducts || !dateRange?.from) return { salesChartData: [], profitChartData: [] };
     
-    const last7Days = Array.from({ length: 7 }, (_, i) => subDays(new Date(), i)).reverse();
+    const from = startOfDay(dateRange.from);
+    const to = dateRange.to ? endOfDay(dateRange.to) : endOfDay(dateRange.from);
+    
+    const diffDays = Math.ceil((to.getTime() - from.getTime()) / (1000 * 60 * 60 * 24)) +1;
+    const days = Array.from({ length: diffDays }, (_, i) => {
+        const d = new Date(from);
+        d.setDate(d.getDate() + i);
+        return d;
+    });
     
     const salesData: ChartData[] = [];
     const profitData: ChartData[] = [];
 
-    last7Days.forEach(day => {
+    days.forEach(day => {
       const dayStart = startOfDay(day);
       const dayEnd = endOfDay(day);
       
@@ -129,9 +140,9 @@ export default function DashboardPage() {
       const revenue = daySales.reduce((sum, sale) => sum + sale.total, 0);
       const profit = daySales.reduce((profit, sale) => {
         const saleCost = sale.items.reduce((cost, item) => {
-            const product = products.find(p => p.id === item.id);
-            const itemCost = product ? product.purchasePrice * item.quantity : item.price * item.quantity;
-            return cost + itemCost;
+            const product = allProducts.find(p => p.id === item.id);
+            const purchasePrice = product?.purchasePrice ?? item.price;
+            return cost + purchasePrice * item.quantity;
         }, 0);
         return profit + (sale.total - saleCost);
     }, 0);
@@ -142,23 +153,23 @@ export default function DashboardPage() {
     });
 
     return { salesChartData: salesData, profitChartData: profitData };
-  }, [sales, products]);
+  }, [sales, allProducts, dateRange]);
 
   const lowStockProducts = useMemo(() => {
-      if (!products) return [];
-      return products
+      if (!allProducts) return [];
+      return allProducts
         .filter(p => p.quantity <= p.minStockLevel)
         .sort((a,b) => a.quantity - b.quantity);
-  }, [products]);
+  }, [allProducts]);
 
   const topSellingProducts: TopProduct[] = useMemo(() => {
-    if (!sales || !products) return [];
+    if (!sales || !allProducts) return [];
 
     const productMetrics = sales.flatMap(s => s.items).reduce((acc, item) => {
         if (!acc[item.id]) {
             acc[item.id] = { totalRevenue: 0, unitsSold: 0, totalProfit: 0 };
         }
-        const productInfo = products.find(p => p.id === item.id);
+        const productInfo = allProducts.find(p => p.id === item.id);
         const purchasePrice = productInfo ? productInfo.purchasePrice : item.price;
         
         acc[item.id].totalRevenue += item.price * item.quantity;
@@ -169,7 +180,7 @@ export default function DashboardPage() {
 
     return Object.keys(productMetrics)
         .map(productId => {
-            const productInfo = products.find(p => p.id === productId);
+            const productInfo = allProducts.find(p => p.id === productId);
             if (!productInfo) return null;
             return { 
                 ...productInfo, 
@@ -181,10 +192,10 @@ export default function DashboardPage() {
         .filter((p): p is TopProduct => p !== null)
         .sort((a, b) => b.totalProfit - a.totalProfit)
         .slice(0, 5);
-  }, [sales, products]);
+  }, [sales, allProducts]);
 
    const topCustomers: TopCustomer[] = useMemo(() => {
-    if (!sales || !customers) return [];
+    if (!sales || !allCustomers) return [];
 
     const customerSpending = sales.reduce((acc, sale) => {
         if (sale.customerId) {
@@ -198,7 +209,7 @@ export default function DashboardPage() {
 
     return Object.keys(customerSpending)
         .map(customerId => {
-            const customerInfo = customers.find(c => c.id === customerId);
+            const customerInfo = allCustomers.find(c => c.id === customerId);
             if (!customerInfo) return null;
             return {
                 ...customerInfo,
@@ -208,9 +219,9 @@ export default function DashboardPage() {
         .filter((c): c is TopCustomer => c !== null)
         .sort((a, b) => b.totalSpent - a.totalSpent)
         .slice(0, 5);
-  }, [sales, customers]);
+  }, [sales, allCustomers]);
 
-  const isLoading = isUserLoading || isLoadingTodaySales || isLoadingProducts || isLoadingCustomers || isLoadingSales || isLoadingPayments;
+  const isLoading = isUserLoading || isLoadingSales || isLoadingProducts || isLoadingCustomers || isLoadingPayments;
 
   if (isLoading || !user) {
     return (
@@ -223,11 +234,21 @@ export default function DashboardPage() {
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
       <VerificationNotice />
-      <StatsCards stats={stats} />
+      <div className="flex justify-end">
+          <DateRangePicker onUpdate={setDateRange} />
+      </div>
+      <StatsCards 
+        revenue={stats.revenue}
+        netProfit={stats.netProfit}
+        salesCount={stats.salesCount}
+        totalDebt={stats.totalDebt}
+        lowStockCount={stats.lowStockCount}
+        inventoryValue={stats.inventoryValue}
+       />
       <div className="grid gap-4 md:gap-8 lg:grid-cols-2">
         <Card>
             <CardHeader>
-                <CardTitle>Ventes des 7 derniers jours</CardTitle>
+                <CardTitle>Chiffre d'affaires</CardTitle>
             </CardHeader>
             <CardContent className="pl-2">
                 <SalesChart data={salesChartData} dataKey="revenue" yAxisLabel="Chiffre d'affaires" />
@@ -235,7 +256,7 @@ export default function DashboardPage() {
         </Card>
         <Card>
             <CardHeader>
-                <CardTitle>Bénéfice net des 7 derniers jours</CardTitle>
+                <CardTitle>Bénéfice net</CardTitle>
             </CardHeader>
             <CardContent className="pl-2">
                 <SalesChart data={profitChartData} dataKey="profit" yAxisLabel="Bénéfice net" barFill="hsl(var(--secondary))" />
@@ -250,5 +271,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    
