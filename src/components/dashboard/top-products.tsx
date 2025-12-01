@@ -22,7 +22,7 @@ export function TopProducts({ products }: TopProductsProps) {
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                         <TrendingUp className="h-5 w-5 text-muted-foreground" />
-                        Produits les plus rentables
+                        Top 5 Produits (Bénéfice)
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -35,15 +35,15 @@ export function TopProducts({ products }: TopProductsProps) {
     }
 
     return (
-        <Card>
+        <Card className="xl:col-span-2">
             <CardHeader className="flex flex-row items-start justify-between gap-2">
                 <div>
                      <CardTitle className="flex items-center gap-2">
                         <TrendingUp className="h-5 w-5 text-muted-foreground" />
-                        Produits les plus rentables
+                        Top 5 Produits (Bénéfice)
                     </CardTitle>
                     <CardDescription>
-                        Le top 5 des produits par chiffre d'affaires.
+                        Le top 5 des produits par bénéfice net généré.
                     </CardDescription>
                 </div>
                 <Button asChild variant="outline">
@@ -56,7 +56,7 @@ export function TopProducts({ products }: TopProductsProps) {
                         <TableRow>
                             <TableHead>Produit</TableHead>
                             <TableHead className="text-right">Unités Vendues</TableHead>
-                            <TableHead className="text-right">Chiffre d'Affaires</TableHead>
+                            <TableHead className="text-right">Bénéfice Total</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -69,7 +69,7 @@ export function TopProducts({ products }: TopProductsProps) {
                                     {product.unitsSold}
                                 </TableCell>
                                 <TableCell className="text-right font-bold text-primary">
-                                    {product.totalRevenue.toFixed(2)} DA
+                                    {product.totalProfit.toFixed(2)} DA
                                 </TableCell>
                             </TableRow>
                         ))}
@@ -79,3 +79,5 @@ export function TopProducts({ products }: TopProductsProps) {
         </Card>
     );
 }
+
+    

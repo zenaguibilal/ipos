@@ -1,14 +1,17 @@
 
 'use client';
 
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from 'recharts';
 import { ChartData } from '@/lib/types';
 
 interface SalesChartProps {
     data: ChartData[];
+    dataKey: "revenue" | "profit";
+    yAxisLabel: string;
+    barFill?: string;
 }
 
-export function SalesChart({ data }: SalesChartProps) {
+export function SalesChart({ data, dataKey, yAxisLabel, barFill }: SalesChartProps) {
     return (
         <ResponsiveContainer width="100%" height={350}>
             <BarChart data={data}>
@@ -33,10 +36,12 @@ export function SalesChart({ data }: SalesChartProps) {
                         border: "1px solid hsl(var(--border))"
                     }}
                     labelStyle={{ color: "hsl(var(--foreground))" }}
-                    itemStyle={{ color: "hsl(var(--primary))" }}
+                    formatter={(value: number) => [value.toFixed(2) + ' DA', yAxisLabel]}
                 />
-                <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                 <Bar dataKey={dataKey} name={yAxisLabel} fill={barFill || "hsl(var(--primary))"} radius={[4, 4, 0, 0]} />
             </BarChart>
         </ResponsiveContainer>
     );
 }
+
+    

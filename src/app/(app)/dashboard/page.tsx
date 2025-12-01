@@ -70,7 +70,6 @@ export default function DashboardPage() {
     const dailyNetProfit = todaySales.reduce((profit, sale) => {
         const saleCost = sale.items.reduce((cost, item) => {
             const product = products.find(p => p.id === item.id);
-            // Use purchase price if available, otherwise assume cost is selling price (0 profit)
             const itemCost = product ? product.purchasePrice * item.quantity : item.price * item.quantity;
             return cost + itemCost;
         }, 0);
@@ -109,25 +108,41 @@ export default function DashboardPage() {
   }, [todaySales, sales, products, customers, payments]);
 
 
-  const salesChartData: ChartData[] = useMemo(() => {
-    if (!sales) return [];
+  const { salesChartData, profitChartData } = useMemo(() => {
+    const defaultData = { salesChartData: [], profitChartData: [] };
+    if (!sales || !products) return defaultData;
     
     const last7Days = Array.from({ length: 7 }, (_, i) => subDays(new Date(), i)).reverse();
     
-    return last7Days.map(day => {
+    const salesData: ChartData[] = [];
+    const profitData: ChartData[] = [];
+
+    last7Days.forEach(day => {
       const dayStart = startOfDay(day);
       const dayEnd = endOfDay(day);
+      
       const daySales = sales.filter(sale => {
         const saleDate = sale.createdAt.toDate();
         return saleDate >= dayStart && saleDate <= dayEnd;
       });
+
       const revenue = daySales.reduce((sum, sale) => sum + sale.total, 0);
-      return {
-        date: format(day, 'd MMM', { locale: fr }),
-        revenue: revenue,
-      };
+      const profit = daySales.reduce((profit, sale) => {
+        const saleCost = sale.items.reduce((cost, item) => {
+            const product = products.find(p => p.id === item.id);
+            const itemCost = product ? product.purchasePrice * item.quantity : item.price * item.quantity;
+            return cost + itemCost;
+        }, 0);
+        return profit + (sale.total - saleCost);
+    }, 0);
+      
+      const formattedDate = format(day, 'd MMM', { locale: fr });
+      salesData.push({ date: formattedDate, revenue: revenue });
+      profitData.push({ date: formattedDate, revenue: profit, profit: profit });
     });
-  }, [sales]);
+
+    return { salesChartData: salesData, profitChartData: profitData };
+  }, [sales, products]);
 
   const lowStockProducts = useMemo(() => {
       if (!products) return [];
@@ -139,27 +154,32 @@ export default function DashboardPage() {
   const topSellingProducts: TopProduct[] = useMemo(() => {
     if (!sales || !products) return [];
 
-    const productSales = sales.flatMap(s => s.items).reduce((acc, item) => {
+    const productMetrics = sales.flatMap(s => s.items).reduce((acc, item) => {
         if (!acc[item.id]) {
-            acc[item.id] = { totalRevenue: 0, unitsSold: 0 };
+            acc[item.id] = { totalRevenue: 0, unitsSold: 0, totalProfit: 0 };
         }
+        const productInfo = products.find(p => p.id === item.id);
+        const purchasePrice = productInfo ? productInfo.purchasePrice : item.price;
+        
         acc[item.id].totalRevenue += item.price * item.quantity;
         acc[item.id].unitsSold += item.quantity;
+        acc[item.id].totalProfit += (item.price - purchasePrice) * item.quantity;
         return acc;
-    }, {} as Record<string, { totalRevenue: number, unitsSold: number }>);
+    }, {} as Record<string, { totalRevenue: number, unitsSold: number, totalProfit: number }>);
 
-    return Object.keys(productSales)
+    return Object.keys(productMetrics)
         .map(productId => {
             const productInfo = products.find(p => p.id === productId);
-            if (!productInfo) return null; // In case product was deleted
+            if (!productInfo) return null;
             return { 
                 ...productInfo, 
-                totalRevenue: productSales[productId].totalRevenue,
-                unitsSold: productSales[productId].unitsSold
+                totalRevenue: productMetrics[productId].totalRevenue,
+                unitsSold: productMetrics[productId].unitsSold,
+                totalProfit: productMetrics[productId].totalProfit,
             };
         })
         .filter((p): p is TopProduct => p !== null)
-        .sort((a, b) => b.totalRevenue - a.totalRevenue)
+        .sort((a, b) => b.totalProfit - a.totalProfit)
         .slice(0, 5);
   }, [sales, products]);
 
@@ -204,21 +224,31 @@ export default function DashboardPage() {
     <div className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
       <VerificationNotice />
       <StatsCards stats={stats} />
-      <div className="grid gap-4 md:gap-8 lg:grid-cols-2 xl:grid-cols-3">
-        <Card className="xl:col-span-2">
+      <div className="grid gap-4 md:gap-8 lg:grid-cols-2">
+        <Card>
             <CardHeader>
                 <CardTitle>Ventes des 7 derniers jours</CardTitle>
             </CardHeader>
             <CardContent className="pl-2">
-                <SalesChart data={salesChartData} />
+                <SalesChart data={salesChartData} dataKey="revenue" yAxisLabel="Chiffre d'affaires" />
             </CardContent>
         </Card>
-        <TopCustomers customers={topCustomers} />
+        <Card>
+            <CardHeader>
+                <CardTitle>Bénéfice net des 7 derniers jours</CardTitle>
+            </CardHeader>
+            <CardContent className="pl-2">
+                <SalesChart data={profitChartData} dataKey="profit" yAxisLabel="Bénéfice net" barFill="hsl(var(--secondary))" />
+            </CardContent>
+        </Card>
       </div>
-       <div className="grid gap-4 md:gap-8 lg:grid-cols-2">
+      <div className="grid gap-4 md:gap-8 lg:grid-cols-2 xl:grid-cols-3">
         <TopProducts products={topSellingProducts} />
+        <TopCustomers customers={topCustomers} />
         <LowStockProducts products={lowStockProducts} />
       </div>
     </div>
   );
 }
+
+    
