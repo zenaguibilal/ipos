@@ -5,23 +5,36 @@ import { useMemo, useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
-import type { CustomerWithSalesData } from "@/lib/types";
+import type { CustomerWithSalesData, CompanyProfile } from "@/lib/types";
 import { useRouter } from "next/navigation";
-import { UserX, ArrowDown, ArrowUp } from "lucide-react";
+import { UserX, ArrowDown, ArrowUp, MessageSquare } from "lucide-react";
 import { format, differenceInDays } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { cn } from "@/lib/utils";
+import { Button } from "../ui/button";
 
 interface InactiveCustomersAlertsProps {
     customers: CustomerWithSalesData[];
+    companyProfile?: CompanyProfile | null;
 }
 
 type SortableKeys = 'lastName' | 'lastActivityDate' | 'outstandingBalance';
 
-export function InactiveCustomersAlerts({ customers }: InactiveCustomersAlertsProps) {
+export function InactiveCustomersAlerts({ customers, companyProfile }: InactiveCustomersAlertsProps) {
     const router = useRouter();
     const [searchQuery, setSearchQuery] = useState('');
     const [sortConfig, setSortConfig] = useState<{ key: SortableKeys; direction: 'ascending' | 'descending' } | null>({ key: 'lastActivityDate', direction: 'ascending' });
+
+    const handleWhatsAppClick = (e: React.MouseEvent, customer: CustomerWithSalesData) => {
+        e.stopPropagation(); // Prevent row click
+        if (!customer.phone) return;
+
+        const companyName = companyProfile?.companyName || 'notre magasin';
+        const message = `Bonjour ${customer.firstName} ${customer.lastName}, cela fait un moment que nous ne vous avons pas vu chez ${companyName}. Votre avis nous est précieux ! Y a-t-il quelque chose que nous pouvons améliorer ?`;
+        
+        const whatsappUrl = `https://wa.me/${customer.phone}?text=${encodeURIComponent(message)}`;
+        window.open(whatsappUrl, '_blank');
+    };
 
     const sortedAndFilteredCustomers = useMemo(() => {
         let filteredCustomers = [...customers];
@@ -112,6 +125,7 @@ export function InactiveCustomersAlerts({ customers }: InactiveCustomersAlertsPr
                             <TableHead>Dernière transaction</TableHead>
                             <SortableHeader sortKey="lastActivityDate" className="text-center">Jours d'inactivité</SortableHeader>
                             <SortableHeader sortKey="outstandingBalance" className="text-right">Solde du Compte</SortableHeader>
+                            <TableHead className="text-right">Action</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -133,6 +147,17 @@ export function InactiveCustomersAlerts({ customers }: InactiveCustomersAlertsPr
                                     </TableCell>
                                     <TableCell className={cn("text-right font-medium", customer.outstandingBalance > 0 && "text-destructive")}>
                                         {customer.outstandingBalance.toFixed(2)} DA
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={(e) => handleWhatsAppClick(e, customer)}
+                                            disabled={!customer.phone}
+                                            aria-label="Envoyer un message WhatsApp"
+                                        >
+                                            <MessageSquare className="h-5 w-5 text-green-500" />
+                                        </Button>
                                     </TableCell>
                                 </TableRow>
                             )

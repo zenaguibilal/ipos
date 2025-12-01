@@ -163,7 +163,7 @@ export default function NotificationsPage() {
         <div className="grid gap-4 md:gap-8">
           <LowStockAlerts products={lowStockProducts} />
           <DebtAlerts customers={debtAlertCustomers} companyProfile={companyProfile} />
-          <InactiveCustomersAlerts customers={inactiveCustomers} />
+          <InactiveCustomersAlerts customers={inactiveCustomers} companyProfile={companyProfile} />
         </div>
       )}
     </div>
