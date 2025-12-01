@@ -97,3 +97,4 @@ export function StatsCards({ revenue, netProfit, salesCount, totalDebt, lowStock
         </div>
     );
 }
+
