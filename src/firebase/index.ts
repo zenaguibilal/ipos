@@ -1,14 +1,14 @@
+
 'use client';
 
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
-import { getFirestore, initializeFirestore, enableIndexedDbPersistence, Firestore } from 'firebase/firestore'
+import { getFirestore, initializeFirestore, enableIndexedDbPersistence, Firestore, persistentLocalCache } from 'firebase/firestore'
 
 let firebaseApp: FirebaseApp;
 let auth: Auth;
 let firestore: Firestore;
-let persistenceEnabled = false;
 
 // IMPORTANT: DO NOT MODIFY THIS FUNCTION
 export async function initializeFirebase() {
@@ -27,24 +27,28 @@ export async function initializeFirebase() {
   // Initialize services. We need to do this check every time
   // in case this async function is called multiple times.
   if (!firestore) {
-    const fs = getFirestore(firebaseApp);
-    // Enable persistence if it hasn't been enabled yet.
-    if (!persistenceEnabled) {
-      try {
-        await enableIndexedDbPersistence(fs);
-        persistenceEnabled = true;
-      } catch (err: any) {
+    // Use the new API to initialize Firestore with persistence settings
+    try {
+        firestore = initializeFirestore(firebaseApp, {
+            localCache: persistentLocalCache({})
+        });
+    } catch (err: any) {
         if (err.code == 'failed-precondition') {
-          // This can happen if multiple tabs are open.
-          // The app will still work, but with degraded offline performance.
-          console.warn('Firestore persistence could not be enabled. This can happen with multiple tabs open.');
+            // This can happen if multiple tabs are open.
+            // The app will still work, but with degraded offline performance.
+            console.warn('Firestore persistence could not be enabled. This can happen with multiple tabs open.');
+            // Fallback to in-memory Firestore instance if persistence fails
+            firestore = getFirestore(firebaseApp);
         } else if (err.code == 'unimplemented') {
-          // The browser doesn't support IndexedDB.
-          console.warn('Your browser does not support offline persistence.');
+            // The browser doesn't support IndexedDB.
+            console.warn('Your browser does not support offline persistence.');
+            firestore = getFirestore(firebaseApp);
+        } else {
+            console.error("An unexpected error occurred during Firestore initialization:", err);
+            // Fallback for other errors
+            firestore = getFirestore(firebaseApp);
         }
-      }
     }
-    firestore = fs;
   }
   
   if (!auth) {
@@ -80,3 +84,4 @@ export * from './non-blocking-updates';
 export * from './non-blocking-login';
 export * from './errors';
 export * from './error-emitter';
+
