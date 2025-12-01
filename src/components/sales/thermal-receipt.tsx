@@ -63,13 +63,11 @@ export function ThermalReceipt({ sale, companyProfile }: ThermalReceiptProps) {
     return (
         <div className="thermal-receipt bg-white text-black font-mono">
             <header className="text-center space-y-1 mb-2">
-                 <div className="flex justify-center my-2">
-                    <Image src="/logo.png" alt="Logo" width={60} height={60} unoptimized />
-                </div>
                 {companyProfile?.companyName && <h1 className="text-lg font-bold">{companyProfile.companyName}</h1>}
                 {companyProfile?.address && <p className="text-xs">{companyProfile.address}</p>}
-                {companyProfile?.city && <p className="text-xs">{companyProfile.city}</p>}
+                {companyProfile?.city && <p className="text-xs">{`${companyProfile.zipCode || ''} ${companyProfile.city}`.trim()}</p>}
                 {companyProfile?.phone && <p className="text-xs">Tél: {companyProfile.phone}</p>}
+                {companyProfile?.vatNumber && <p className="text-xs">N° TVA: {companyProfile.vatNumber}</p>}
                 
                 <div className="text-xs pt-2">
                     <p>Facture N°: <span className="font-bold">{sale.invoiceNumber}</span></p>
