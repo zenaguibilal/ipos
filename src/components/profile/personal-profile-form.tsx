@@ -142,7 +142,7 @@ export function PersonalProfileForm({ user }: PersonalProfileFormProps) {
                             {isSaving ? 'Enregistrement...' : 'Enregistrer les modifications'}
                         </Button>
                         {isEmailProvider && (
-                            <Button variant="outline" className="w-full" onClick={() => setIsPasswordDialogOpen(true)}>
+                            <Button type="button" variant="outline" className="w-full" onClick={() => setIsPasswordDialogOpen(true)}>
                                 Changer le mot de passe
                             </Button>
                         )}
