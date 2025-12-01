@@ -7,7 +7,7 @@ import type { Product } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "../ui/button";
-import { Archive } from "lucide-react";
+import { Archive, Warehouse } from "lucide-react";
 import Link from "next/link";
 
 interface LowStockAlertsProps {
@@ -33,9 +33,17 @@ export function LowStockAlerts({ products }: LowStockAlertsProps) {
                         Ces produits ont atteint ou sont en dessous de leur seuil de stock minimum.
                     </CardDescription>
                 </div>
-                 <Button asChild variant="outline">
-                    <Link href="/products">Gérer les produits</Link>
-                </Button>
+                 <div className="flex gap-2">
+                     <Button asChild variant="secondary">
+                        <Link href="/stock-intake">
+                             <Warehouse className="mr-2 h-4 w-4" />
+                            Créer une réception
+                        </Link>
+                    </Button>
+                    <Button asChild variant="outline">
+                        <Link href="/products">Gérer les produits</Link>
+                    </Button>
+                </div>
             </CardHeader>
             <CardContent>
                  <Table>
