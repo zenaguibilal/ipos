@@ -6,9 +6,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import type { CustomerWithSalesData, CompanyProfile } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { Button } from "../ui/button";
-import { Users, MessageSquare, ArrowDown } from "lucide-react";
+import { Users, MessageSquare, ArrowDown, Clock } from "lucide-react";
 import Link from "next/link";
 import { useMemo } from "react";
+import { cn } from "@/lib/utils";
+
 
 interface DebtAlertsProps {
     customers: CustomerWithSalesData[];
@@ -19,7 +21,7 @@ export function DebtAlerts({ customers, companyProfile }: DebtAlertsProps) {
     const router = useRouter();
 
     const sortedCustomers = useMemo(() => {
-        return [...customers].sort((a, b) => (b.daysLate ?? -1) - (a.daysLate ?? -1));
+        return [...customers].sort((a, b) => (b.daysLate ?? -Infinity) - (a.daysLate ?? -Infinity));
     }, [customers]);
 
     const handleWhatsAppClick = (e: React.MouseEvent, customer: CustomerWithSalesData) => {
@@ -29,10 +31,10 @@ export function DebtAlerts({ customers, companyProfile }: DebtAlertsProps) {
         const companyName = companyProfile?.companyName || 'notre magasin';
         let message;
 
-        if (customer.daysLate && customer.daysLate > 0) {
-            message = `Bonjour ${customer.firstName} ${customer.lastName}, sauf erreur de notre part, votre solde de ${customer.outstandingBalance.toFixed(2)} DA auprès de ${companyName} est en attente de règlement depuis ${customer.daysLate} jour(s). Merci de régulariser votre situation.`;
+        if (customer.daysLate !== undefined && customer.daysLate >= 0) {
+            message = `Bonjour ${customer.firstName} ${customer.lastName}, sauf erreur de notre part, votre solde de ${customer.outstandingBalance.toFixed(2)} DA auprès de ${companyName} est en attente de règlement. Merci de régulariser votre situation.`;
         } else {
-            message = `Bonjour ${customer.firstName} ${customer.lastName}, juste un petit rappel de la part de ${companyName} concernant votre solde de ${customer.outstandingBalance.toFixed(2)} DA.`;
+            message = `Bonjour ${customer.firstName} ${customer.lastName}, juste un petit rappel de la part de ${companyName} concernant votre solde de ${customer.outstandingBalance.toFixed(2)} DA. Votre règlement est attendu pour bientôt.`;
         }
         
         const whatsappUrl = `https://wa.me/${customer.phone.replace(/\s/g, '')}?text=${encodeURIComponent(message)}`;
@@ -67,7 +69,7 @@ export function DebtAlerts({ customers, companyProfile }: DebtAlertsProps) {
                             <TableHead className="text-center">Jour de règlement</TableHead>
                             <TableHead className="text-center">
                                 <div className="flex items-center justify-center">
-                                    <span>Jours de retard</span>
+                                    <span>Jours de retard/restants</span>
                                     <ArrowDown className="ml-2 h-4 w-4" />
                                 </div>
                             </TableHead>
@@ -86,8 +88,13 @@ export function DebtAlerts({ customers, companyProfile }: DebtAlertsProps) {
                                     {customer.settlementDay ? `Le ${customer.settlementDay} de chaque mois` : '-'}
                                 </TableCell>
                                 <TableCell className="text-center">
-                                    {customer.daysLate !== undefined && customer.daysLate >= 0 ? (
-                                        <span className="font-bold text-destructive">{customer.daysLate}</span>
+                                    {customer.daysLate !== undefined ? (
+                                        <span className={cn(
+                                            "font-bold",
+                                            customer.daysLate >= 0 ? "text-destructive" : "text-blue-500"
+                                        )}>
+                                            {customer.daysLate >= 0 ? `${customer.daysLate} jour(s) de retard` : `${Math.abs(customer.daysLate)} jour(s) restants`}
+                                        </span>
                                     ) : (
                                         <span className="text-muted-foreground">-</span>
                                     )}

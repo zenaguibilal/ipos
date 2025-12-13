@@ -115,13 +115,15 @@ export default function NotificationsPage() {
         
         if (customer.settlementDay) {
             const settlementDay = customer.settlementDay;
-            // Check if today is on or past this month's settlement day
-            if (currentDayOfMonth >= settlementDay) {
-                const settlementDateThisMonth = new Date(today.getFullYear(), today.getMonth(), settlementDay);
-                const lastPaymentDate = lastPaymentByCustomer[customer.id];
-                // The reminder is due if they have a balance AND they haven't made a payment since this month's settlement day
+            const settlementDateThisMonth = new Date(today.getFullYear(), today.getMonth(), settlementDay);
+            const lastPaymentDate = lastPaymentByCustomer[customer.id];
+
+            // Show alert if settlement day is today, in the past, or tomorrow.
+            if (currentDayOfMonth + 1 >= settlementDay) {
+                // The reminder is due if they have a balance AND they haven't made a payment since this month's settlement day began.
                 if (!lastPaymentDate || lastPaymentDate < settlementDateThisMonth) {
                     isReminderDue = true;
+                    // daysLate will be negative if the settlement day is in the future (e.g., tomorrow).
                     daysLate = currentDayOfMonth - settlementDay;
                 }
             }
