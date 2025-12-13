@@ -88,8 +88,18 @@ export default function SalesHistoryPage() {
             const lowercasedQuery = searchQuery.toLowerCase();
             filtered = filtered.filter(item => {
                 const customerName = item.data.customerName?.toLowerCase() || '';
-                const invoiceNumber = item.type === 'sale' ? item.data.invoiceNumber?.toLowerCase() : '';
-                 return customerName.includes(lowercasedQuery) || invoiceNumber.includes(lowercasedQuery);
+                if (customerName.includes(lowercasedQuery)) {
+                    return true;
+                }
+
+                if (item.type === 'sale') {
+                    const invoiceNumber = item.data.invoiceNumber?.toLowerCase() || '';
+                    if (invoiceNumber.includes(lowercasedQuery)) {
+                        return true;
+                    }
+                }
+
+                return false;
             });
         }
 
