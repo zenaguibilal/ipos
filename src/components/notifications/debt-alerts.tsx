@@ -6,8 +6,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import type { CustomerWithSalesData, CompanyProfile } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { Button } from "../ui/button";
-import { Users, MessageSquare } from "lucide-react";
+import { Users, MessageSquare, ArrowDown } from "lucide-react";
 import Link from "next/link";
+import { useMemo } from "react";
 
 interface DebtAlertsProps {
     customers: CustomerWithSalesData[];
@@ -16,6 +17,10 @@ interface DebtAlertsProps {
 
 export function DebtAlerts({ customers, companyProfile }: DebtAlertsProps) {
     const router = useRouter();
+
+    const sortedCustomers = useMemo(() => {
+        return [...customers].sort((a, b) => (b.daysLate ?? -1) - (a.daysLate ?? -1));
+    }, [customers]);
 
     const handleWhatsAppClick = (e: React.MouseEvent, customer: CustomerWithSalesData) => {
         e.stopPropagation(); // Prevent row click
@@ -60,13 +65,18 @@ export function DebtAlerts({ customers, companyProfile }: DebtAlertsProps) {
                         <TableRow>
                             <TableHead>Client</TableHead>
                             <TableHead className="text-center">Jour de règlement</TableHead>
-                            <TableHead className="text-center">Jours de retard</TableHead>
+                            <TableHead className="text-center">
+                                <div className="flex items-center justify-center">
+                                    <span>Jours de retard</span>
+                                    <ArrowDown className="ml-2 h-4 w-4" />
+                                </div>
+                            </TableHead>
                             <TableHead className="text-right">Solde Impayé</TableHead>
                             <TableHead className="text-right">Action</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {customers.map(customer => (
+                        {sortedCustomers.map(customer => (
                             <TableRow key={customer.id} onClick={() => router.push(`/customers/${customer.id}`)} className="cursor-pointer">
                                 <TableCell>
                                     <div className="font-medium">{customer.firstName} {customer.lastName}</div>
@@ -76,10 +86,10 @@ export function DebtAlerts({ customers, companyProfile }: DebtAlertsProps) {
                                     {customer.settlementDay ? `Le ${customer.settlementDay} de chaque mois` : '-'}
                                 </TableCell>
                                 <TableCell className="text-center">
-                                    {customer.daysLate && customer.daysLate > 0 ? (
+                                    {customer.daysLate !== undefined && customer.daysLate >= 0 ? (
                                         <span className="font-bold text-destructive">{customer.daysLate}</span>
                                     ) : (
-                                        <span className="text-muted-foreground">0</span>
+                                        <span className="text-muted-foreground">-</span>
                                     )}
                                 </TableCell>
                                 <TableCell className="text-right font-bold text-destructive">

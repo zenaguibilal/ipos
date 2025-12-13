@@ -77,6 +77,17 @@ export default function NotificationsPage() {
         return acc;
     }, {} as Record<string, Date>);
 
+    const lastPaymentByCustomer = payments.reduce((acc, payment) => {
+        const customerId = payment.customerId;
+        if (customerId) {
+            const paymentDate = safeToDate(payment.createdAt);
+            if (!acc[customerId] || paymentDate > acc[customerId]) {
+                acc[customerId] = paymentDate;
+            }
+        }
+        return acc;
+    }, {} as Record<string, Date>);
+
     const customersWithFullData = customers.map(customer => {
         const customerSales = salesByCustomer[customer.id] || { totalSpent: 0, debtFromSales: 0 };
         const customerPayments = paymentsByCustomer[customer.id] || 0;
@@ -107,15 +118,23 @@ export default function NotificationsPage() {
             // Check if today is on or past this month's settlement day
             if (currentDayOfMonth >= settlementDay) {
                 const settlementDateThisMonth = new Date(today.getFullYear(), today.getMonth(), settlementDay);
-                // Only consider it late if they haven't paid since that day
-                const lastPayment = lastActivityByCustomer[customer.id];
-                if (!lastPayment || lastPayment < settlementDateThisMonth) {
+                const lastPaymentDate = lastPaymentByCustomer[customer.id];
+                // The reminder is due if they have a balance AND they haven't made a payment since this month's settlement day
+                if (!lastPaymentDate || lastPaymentDate < settlementDateThisMonth) {
                     isReminderDue = true;
                     daysLate = currentDayOfMonth - settlementDay;
                 }
             }
         } else { // If no settlement day, always consider them due for a reminder if they have debt
-            isReminderDue = true; 
+            isReminderDue = true;
+            // Calculate days late based on the last transaction if available
+            if (customer.lastActivityDate) {
+                 const diff = differenceInDays(today, customer.lastActivityDate);
+                 // Only show as "late" if the last activity was some time ago, e.g. > 0 days
+                 if (diff > 0) daysLate = diff;
+            } else {
+                daysLate = 0; // Or some other indicator for new customers with debt
+            }
         }
 
         return { ...customer, isReminderDue, daysLate };
