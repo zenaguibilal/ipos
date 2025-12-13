@@ -16,6 +16,7 @@ import { TopProducts } from '@/components/dashboard/top-products';
 import { TopCustomers } from '@/components/dashboard/top-customers';
 import { DateRangePicker } from '@/components/dashboard/date-range-picker';
 import { DateRange } from 'react-day-picker';
+import { safeToDate } from '@/lib/utils';
 
 import type { Sale, Product, Customer, Payment, ChartData, TopProduct, TopCustomer } from '@/lib/types';
 
@@ -54,7 +55,7 @@ export default function DashboardPage() {
     const from = startOfDay(dateRange.from);
     const to = dateRange.to ? endOfDay(dateRange.to) : endOfDay(dateRange.from);
     return allSales.filter(sale => {
-      const saleDate = sale.createdAt.toDate();
+      const saleDate = safeToDate(sale.createdAt);
       return saleDate >= from && saleDate <= to;
     });
   }, [allSales, dateRange]);
@@ -132,7 +133,7 @@ export default function DashboardPage() {
       const dayEnd = endOfDay(day);
       
       const daySales = sales.filter(sale => {
-        const saleDate = sale.createdAt.toDate();
+        const saleDate = safeToDate(sale.createdAt);
         return saleDate >= dayStart && saleDate <= dayEnd;
       });
 

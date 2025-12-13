@@ -10,6 +10,7 @@ import { DebtAlerts } from '@/components/notifications/debt-alerts';
 import { InactiveCustomersAlerts } from '@/components/notifications/inactive-customers-alerts';
 import type { Product, Customer, Sale, Payment, CompanyProfile } from '@/lib/types';
 import { differenceInDays, subDays } from 'date-fns';
+import { safeToDate } from '@/lib/utils';
 
 
 export default function NotificationsPage() {
@@ -68,7 +69,7 @@ export default function NotificationsPage() {
     const lastActivityByCustomer = [...sales, ...payments].reduce((acc, transaction) => {
         const customerId = transaction.customerId;
         if (customerId) {
-            const transactionDate = transaction.createdAt.toDate();
+            const transactionDate = safeToDate(transaction.createdAt);
             if (!acc[customerId] || transactionDate > acc[customerId]) {
                 acc[customerId] = transactionDate;
             }

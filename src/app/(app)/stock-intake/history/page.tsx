@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
@@ -13,6 +14,7 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import type { StockIntake } from '@/lib/types';
 import { StockIntakeDetailsDialog } from '@/components/stock-intake/stock-intake-details-dialog';
+import { safeToDate } from '@/lib/utils';
 
 export default function StockIntakeHistoryPage() {
     const { user, isUserLoading } = useUser();
@@ -35,7 +37,7 @@ export default function StockIntakeHistoryPage() {
 
     const sortedIntakes = useMemo(() => {
         if (!stockIntakes) return [];
-        return [...stockIntakes].sort((a, b) => b.createdAt.toDate().getTime() - a.createdAt.toDate().getTime());
+        return [...stockIntakes].sort((a, b) => safeToDate(b.createdAt).getTime() - safeToDate(a.createdAt).getTime());
     }, [stockIntakes]);
 
     const isLoading = isUserLoading || isLoadingIntakes;
@@ -87,7 +89,7 @@ export default function StockIntakeHistoryPage() {
                                     {sortedIntakes.map((intake) => (
                                         <TableRow key={intake.id} onClick={() => setSelectedIntake(intake)} className="cursor-pointer">
                                             <TableCell className="font-medium">
-                                                {format(intake.createdAt.toDate(), 'd LLL yyyy, HH:mm', { locale: fr })}
+                                                {format(safeToDate(intake.createdAt), 'd LLL yyyy, HH:mm', { locale: fr })}
                                             </TableCell>
                                             <TableCell>{intake.invoiceNumber}</TableCell>
                                             <TableCell className="text-right font-medium">{intake.totalValue.toFixed(2)} DA</TableCell>

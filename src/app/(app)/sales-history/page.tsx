@@ -8,7 +8,7 @@ import { collection, Timestamp, doc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { cn } from '@/lib/utils';
+import { cn, safeToDate } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CalendarIcon, Receipt } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
@@ -106,7 +106,7 @@ export default function SalesHistoryPage() {
         // Filter by date range
         if (dateRange?.from) {
              filtered = filtered.filter(item => {
-                const itemDate = item.data.createdAt.toDate();
+                const itemDate = safeToDate(item.data.createdAt);
                 if (dateRange.to) {
                     // Set 'to' date to the end of the day
                     const toDate = new Date(dateRange.to);
@@ -121,7 +121,7 @@ export default function SalesHistoryPage() {
         }
         
         // Sort by most recent
-        return filtered.sort((a, b) => b.data.createdAt.toDate().getTime() - a.data.createdAt.toDate().getTime());
+        return filtered.sort((a, b) => safeToDate(b.data.createdAt).getTime() - safeToDate(a.data.createdAt).getTime());
 
     }, [sales, payments, searchQuery, dateRange]);
 
@@ -224,7 +224,7 @@ export default function SalesHistoryPage() {
                                                 {item.type === 'sale' ? (
                                                     <>
                                                         <td className="whitespace-nowrap px-6 py-4 font-mono text-xs">{item.data.invoiceNumber}</td>
-                                                        <td className="whitespace-nowrap px-6 py-4 font-medium">{format(item.data.createdAt.toDate(), 'd MMM yyyy, HH:mm', { locale: fr })}</td>
+                                                        <td className="whitespace-nowrap px-6 py-4 font-medium">{format(safeToDate(item.data.createdAt), 'd MMM yyyy, HH:mm', { locale: fr })}</td>
                                                         <td className="whitespace-nowrap px-6 py-4 text-muted-foreground">{item.data.customerName || 'Vente au comptoir'}</td>
                                                         <td className="whitespace-nowrap px-6 py-4"><StatusBadge status={item.data.paymentStatus} /></td>
                                                         <td className="whitespace-nowrap px-6 py-4 text-right font-medium">{item.data.total.toFixed(2)} DA</td>
@@ -239,7 +239,7 @@ export default function SalesHistoryPage() {
                                                                 <span>Paiement</span>
                                                             </div>
                                                         </td>
-                                                        <td className="whitespace-nowrap px-6 py-4 font-medium">{format(item.data.createdAt.toDate(), 'd MMM yyyy, HH:mm', { locale: fr })}</td>
+                                                        <td className="whitespace-nowrap px-6 py-4 font-medium">{format(safeToDate(item.data.createdAt), 'd MMM yyyy, HH:mm', { locale: fr })}</td>
                                                         <td className="whitespace-nowrap px-6 py-4 text-muted-foreground">{item.data.customerName || '-'}</td>
                                                         <td className="whitespace-nowrap px-6 py-4"><span className="text-green-400 font-semibold">Règlement</span></td>
                                                         <td className="whitespace-nowrap px-6 py-4 text-right font-medium text-green-500">{item.data.amount.toFixed(2)} DA</td>

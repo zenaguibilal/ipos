@@ -8,6 +8,7 @@ import { fr } from 'date-fns/locale';
 import Image from 'next/image';
 import JsBarcode from 'jsbarcode';
 import QRCode from 'qrcode';
+import { safeToDate } from '@/lib/utils';
 
 interface ThermalReceiptProps {
     sale: Sale;
@@ -17,11 +18,12 @@ interface ThermalReceiptProps {
 export function ThermalReceipt({ sale, companyProfile }: ThermalReceiptProps) {
     const barcodeRef = useRef<SVGSVGElement | null>(null);
     const qrCodeRef = useRef<HTMLCanvasElement | null>(null);
-    
+    const saleDate = safeToDate(sale.createdAt);
+
     // Data for QR Code
     const receiptData = JSON.stringify({
         invoice: sale.invoiceNumber,
-        date: sale.createdAt instanceof Date ? sale.createdAt.toISOString() : sale.createdAt.toDate().toISOString(),
+        date: saleDate.toISOString(),
         total: sale.total,
     });
 
@@ -58,7 +60,6 @@ export function ThermalReceipt({ sale, companyProfile }: ThermalReceiptProps) {
         }
     }, [receiptData]);
 
-    const saleDate = sale.createdAt instanceof Date ? sale.createdAt : sale.createdAt.toDate();
 
     return (
         <div className="thermal-receipt bg-white text-black font-mono">
@@ -124,4 +125,3 @@ export function ThermalReceipt({ sale, companyProfile }: ThermalReceiptProps) {
         </div>
     );
 }
-

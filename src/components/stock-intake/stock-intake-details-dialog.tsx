@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -6,6 +7,7 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Button } from '../ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { safeToDate } from '@/lib/utils';
 
 interface StockIntakeDetailsDialogProps {
     isOpen: boolean;
@@ -28,11 +30,11 @@ export function StockIntakeDetailsDialog({ isOpen, onOpenChange, stockIntake }: 
                 <div className="grid gap-4 py-4">
                     <div className="flex justify-between items-center text-sm">
                         <span className="text-muted-foreground">Date de réception :</span>
-                        <span className="font-medium">{format(stockIntake.createdAt.toDate(), 'd LLL yyyy, HH:mm', { locale: fr })}</span>
+                        <span className="font-medium">{format(safeToDate(stockIntake.createdAt), 'd LLL yyyy, HH:mm', { locale: fr })}</span>
                     </div>
                     <div className="flex justify-between items-center text-sm">
                         <span className="text-muted-foreground">Date de facture :</span>
-                        <span className="font-medium">{format(stockIntake.invoiceDate.toDate(), 'd LLL yyyy', { locale: fr })}</span>
+                        <span className="font-medium">{format(safeToDate(stockIntake.invoiceDate), 'd LLL yyyy', { locale: fr })}</span>
                     </div>
 
                     <div className="mt-4">
