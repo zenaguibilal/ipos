@@ -1,24 +1,22 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useFirestore, updateDocumentNonBlocking } from '@/firebase';
-import { doc } from 'firebase/firestore';
+import { useState } from 'react';
+import { useFirestore, addDocumentNonBlocking } from '@/firebase';
+import { collection, serverTimestamp } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import type { Customer } from '@/lib/types';
 import { toast } from 'sonner';
 
-interface EditCustomerFormProps {
+interface AddCustomerFormProps {
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
     userId: string;
-    customer: Customer;
 }
 
-export function EditCustomerForm({ isOpen, onOpenChange, userId, customer }: EditCustomerFormProps) {
+export function AddCustomerForm({ isOpen, onOpenChange, userId }: AddCustomerFormProps) {
     const firestore = useFirestore();
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
@@ -27,14 +25,13 @@ export function EditCustomerForm({ isOpen, onOpenChange, userId, customer }: Edi
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
 
-    useEffect(() => {
-        if (customer) {
-            setFirstName(customer.firstName);
-            setLastName(customer.lastName);
-            setPhone(customer.phone || '');
-            setSettlementDay(customer.settlementDay?.toString() || '');
-        }
-    }, [customer]);
+    const resetForm = () => {
+        setFirstName('');
+        setLastName('');
+        setPhone('');
+        setSettlementDay('');
+        setError(null);
+    }
 
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -52,46 +49,55 @@ export function EditCustomerForm({ isOpen, onOpenChange, userId, customer }: Edi
         }
 
         setIsLoading(true);
-        const customerDocRef = doc(firestore, 'users', userId, 'customers', customer.id);
+        const customersCollectionRef = collection(firestore, 'users', userId, 'customers');
         
-        updateDocumentNonBlocking(customerDocRef, {
-            firstName,
-            lastName,
-            phone,
-            settlementDay: settlementDayNumber
+        addDocumentNonBlocking(customersCollectionRef, {
+            firstName: firstName,
+            lastName: lastName,
+            phone: phone,
+            settlementDay: settlementDayNumber,
+            createdAt: serverTimestamp(),
         }, {
             onSuccess: () => {
                 setIsLoading(false);
                 onOpenChange(false);
-                toast.success('Client mis à jour avec succès.');
+                resetForm();
+                toast.success('Client ajouté avec succès.');
             },
             onError: (err) => {
                 setIsLoading(false);
-                setError("Une erreur est survenue lors de la mise à jour du client.");
-                toast.error("Échec de la mise à jour du client.");
+                setError("Une erreur est survenue lors de l'ajout du client.");
+                toast.error("Échec de l'ajout du client.");
                 console.error(err);
             }
         });
     };
+    
+    const handleOpenChange = (open: boolean) => {
+        if (!open) {
+            resetForm();
+        }
+        onOpenChange(open);
+    }
 
     return (
-        <Dialog open={isOpen} onOpenChange={onOpenChange}>
+        <Dialog open={isOpen} onOpenChange={handleOpenChange}>
             <DialogContent className="sm:max-w-[425px]">
                 <form onSubmit={handleSubmit}>
                     <DialogHeader>
-                        <DialogTitle>Modifier le client</DialogTitle>
+                        <DialogTitle>Ajouter un nouveau client</DialogTitle>
                         <DialogDescription>
-                            Mettez à jour les informations ci-dessous.
+                            Remplissez les informations ci-dessous.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
                         {error && <p className="text-sm text-red-500 text-center">{error}</p>}
                         <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="edit-first-name" className="text-right">
+                            <Label htmlFor="first-name" className="text-right">
                                 Prénom
                             </Label>
                             <Input
-                                id="edit-first-name"
+                                id="first-name"
                                 value={firstName}
                                 onChange={(e) => setFirstName(e.target.value)}
                                 className="col-span-3"
@@ -99,11 +105,11 @@ export function EditCustomerForm({ isOpen, onOpenChange, userId, customer }: Edi
                             />
                         </div>
                          <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="edit-last-name" className="text-right">
+                            <Label htmlFor="last-name" className="text-right">
                                 Nom
                             </Label>
                             <Input
-                                id="edit-last-name"
+                                id="last-name"
                                 value={lastName}
                                 onChange={(e) => setLastName(e.target.value)}
                                 className="col-span-3"
@@ -111,22 +117,22 @@ export function EditCustomerForm({ isOpen, onOpenChange, userId, customer }: Edi
                             />
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="edit-phone" className="text-right">
+                            <Label htmlFor="phone" className="text-right">
                                 Téléphone
                             </Label>
                             <Input
-                                id="edit-phone"
+                                id="phone"
                                 value={phone}
                                 onChange={(e) => setPhone(e.target.value)}
                                 className="col-span-3"
                             />
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="edit-settlementDay" className="text-right">
+                            <Label htmlFor="settlementDay" className="text-right">
                                 Jour de règlement
                             </Label>
                             <Input
-                                id="edit-settlementDay"
+                                id="settlementDay"
                                 type="number"
                                 value={settlementDay}
                                 onChange={(e) => setSettlementDay(e.target.value)}
@@ -137,11 +143,11 @@ export function EditCustomerForm({ isOpen, onOpenChange, userId, customer }: Edi
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button type="button" variant="secondary" onClick={() => onOpenChange(false)} disabled={isLoading}>
+                        <Button type="button" variant="secondary" onClick={() => handleOpenChange(false)} disabled={isLoading}>
                             Annuler
                         </Button>
                         <Button type="submit" disabled={isLoading}>
-                            {isLoading ? 'Enregistrement...' : 'Enregistrer les modifications'}
+                            {isLoading ? 'Ajout...' : 'Ajouter le client'}
                         </Button>
                     </DialogFooter>
                 </form>
@@ -149,3 +155,5 @@ export function EditCustomerForm({ isOpen, onOpenChange, userId, customer }: Edi
         </Dialog>
     );
 }
+
+    
