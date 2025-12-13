@@ -1,5 +1,4 @@
 
-import type {NextConfig} from 'next';
 import withPWAInit from '@ducanh2912/next-pwa';
 
 const withPWA = withPWAInit({
@@ -9,7 +8,8 @@ const withPWA = withPWAInit({
   skipWaiting: true,
 });
 
-const config: NextConfig = {
+/** @type {import('next').NextConfig} */
+const config = {
   /* config options here */
   typescript: {
     ignoreBuildErrors: true,
@@ -32,7 +32,7 @@ const config: NextConfig = {
         pathname: '/**',
       },
       {
-        protocol: 'https',
+        protocol: 'https://picsum.photos',
         hostname: 'picsum.photos',
         port: '',
         pathname: '/**',
