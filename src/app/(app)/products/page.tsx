@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useUser, useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking } from '@/firebase';
@@ -73,7 +74,7 @@ export default function ProductsPage() {
         }
 
         const headers = ['id', 'name', 'price', 'purchasePrice', 'quantity', 'minStockLevel', 'barcodes'];
-        const csvRows = [headers.join(',')];
+        const csvRows = [headers.join(';')]; // Utiliser un point-virgule comme délimiteur
 
         products.forEach(product => {
             const row = [
@@ -83,13 +84,14 @@ export default function ProductsPage() {
                 product.purchasePrice,
                 product.quantity,
                 product.minStockLevel,
-                `"${(product.barcodes || []).join(',')}"`
+                `"${(product.barcodes || []).join(',')}"` // Garder la virgule pour les codes-barres internes
             ];
-            csvRows.push(row.join(','));
+            csvRows.push(row.join(';')); // Utiliser un point-virgule comme délimiteur
         });
 
         const csvString = csvRows.join('\n');
-        const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+        // Ajouter un BOM pour garantir la bonne interprétation de l'UTF-8 dans Excel
+        const blob = new Blob(['\uFEFF' + csvString], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement('a');
         const url = URL.createObjectURL(blob);
         link.setAttribute('href', url);
