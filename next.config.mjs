@@ -1,15 +1,23 @@
-
-/** @type {import('next').NextConfig} */
+// @ts-check
 
 import withPWAInit from '@ducanh2912/next-pwa';
 
 const withPWA = withPWAInit({
   dest: 'public',
   disable: process.env.NODE_ENV === 'development',
+  // add your own strategies to the existing ones
+  // cacheOnFrontEndNav: true,
+  // aggressiveFrontEndNavCaching: true,
+  reloadOnOnline: true,
+  swcMinify: true,
+  workboxOptions: {
+    disableDevLogs: true,
+  },
 });
 
+/** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Your Next.js configuration options
+  reactStrictMode: true,
   images: {
     remotePatterns: [
       {
@@ -18,18 +26,14 @@ const nextConfig = {
         port: '',
         pathname: '/a/**',
       },
-      {
+       {
         protocol: 'https',
-        hostname: 'i.pravatar.cc',
-        port: '',
-        pathname: '/**',
+        hostname: 'firebasestorage.googleapis.com',
       },
       {
         protocol: 'https',
         hostname: 'picsum.photos',
-        port: '',
-        pathname: '/**',
-      },
+      }
     ],
   },
 };

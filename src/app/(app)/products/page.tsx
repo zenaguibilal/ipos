@@ -3,17 +3,20 @@
 import { useUser, useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useMemo } from 'react';
-import { collection, doc } from 'firebase/firestore';
+import { collection, doc, writeBatch, serverTimestamp } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AddProductForm } from '@/components/products/add-product-form';
 import { EditProductForm } from '@/components/products/edit-product-form';
 import { DeleteProductDialog } from '@/components/products/delete-product-dialog';
-import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { ImportProductsDialog } from '@/components/products/import-products-dialog';
+import { MoreHorizontal, Pencil, Trash2, Upload, Download } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import type { Product } from '@/lib/types';
+import { toast } from 'sonner';
+
 
 type ProductWithOptionalBarcode = Product & { barcode?: string };
 
@@ -23,6 +26,7 @@ export default function ProductsPage() {
     const router = useRouter();
 
     const [isAddingProduct, setIsAddingProduct] = useState(false);
+    const [isImporting, setIsImporting] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
     const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
@@ -62,6 +66,41 @@ export default function ProductsPage() {
         });
     }
 
+    const handleExportToCSV = () => {
+        if (!products) {
+            toast.error("Aucun produit à exporter.");
+            return;
+        }
+
+        const headers = ['id', 'name', 'price', 'purchasePrice', 'quantity', 'minStockLevel', 'barcodes'];
+        const csvRows = [headers.join(',')];
+
+        products.forEach(product => {
+            const row = [
+                product.id,
+                `"${product.name.replace(/"/g, '""')}"`,
+                product.price,
+                product.purchasePrice,
+                product.quantity,
+                product.minStockLevel,
+                `"${(product.barcodes || []).join(',')}"`
+            ];
+            csvRows.push(row.join(','));
+        });
+
+        const csvString = csvRows.join('\n');
+        const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', 'produits.csv');
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast.success("Produits exportés avec succès.");
+    };
+
     const isLoading = isUserLoading || isLoadingProducts;
 
     if (isLoading || !user) {
@@ -74,6 +113,12 @@ export default function ProductsPage() {
                 isOpen={isAddingProduct}
                 onOpenChange={setIsAddingProduct}
                 userId={user.uid}
+            />
+            <ImportProductsDialog
+                isOpen={isImporting}
+                onOpenChange={setIsImporting}
+                userId={user.uid}
+                existingProducts={products || []}
             />
             {editingProduct && (
                  <EditProductForm
@@ -106,8 +151,10 @@ export default function ProductsPage() {
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 className="w-full sm:w-auto sm:flex-grow max-w-sm"
                             />
-                            <div className="w-full sm:w-auto">
-                                <Button onClick={() => setIsAddingProduct(true)} className="w-full">Ajouter un produit</Button>
+                            <div className="flex gap-2 w-full sm:w-auto justify-end flex-wrap">
+                                 <Button variant="outline" onClick={handleExportToCSV}><Download className="mr-2 h-4 w-4" />Exporter</Button>
+                                <Button variant="outline" onClick={() => setIsImporting(true)}><Upload className="mr-2 h-4 w-4" />Importer</Button>
+                                <Button onClick={() => setIsAddingProduct(true)} className="flex-grow sm:flex-grow-0">Ajouter un produit</Button>
                             </div>
                         </div>
                     </CardHeader>
