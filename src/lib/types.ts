@@ -115,3 +115,19 @@ export interface StockIntake {
     totalValue: number;
     createdAt: Timestamp;
 }
+
+export interface PurchaseOrder {
+    id: string;
+    poNumber: string;
+    supplierId: string;
+    supplierName: string;
+    items: {
+        productId: string;
+        productName: string;
+        quantity: number;
+        purchasePrice: number;
+    }[];
+    totalValue: number;
+    status: 'pending' | 'partially-received' | 'received' | 'cancelled';
+    createdAt: Timestamp;
+}

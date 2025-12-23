@@ -225,7 +225,7 @@ export default function SellPage() {
 
     const activeCustomerInfo = useMemo(() => {
         if (activeCartId === GUEST_CUSTOMER_ID || activeCartId.startsWith('guest-')) return null;
-        return customersWithDebt.find(c => c.id === activeCartId);
+        return customersWithDebt.find(c => c.id === activeCartId) ?? null;
     }, [activeCartId, customersWithDebt]);
 
 
@@ -265,7 +265,7 @@ export default function SellPage() {
                 } as TopProduct;
             })
             .filter((p): p is TopProduct => p !== null) 
-            .sort((a, b) => b.unitsSold - a.unitsSold)
+            .sort((a, b) => b.unitsSold - a.totalProfit)
             .slice(0, 10);
     
         return topProductsList;
@@ -711,5 +711,3 @@ export default function SellPage() {
         </>
     );
 }
-
-    
