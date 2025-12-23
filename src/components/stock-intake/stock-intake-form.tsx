@@ -285,7 +285,7 @@ export function StockIntakeForm({ userId, products }: StockIntakeFormProps) {
                                         <TableRow key={item.id}>
                                             <TableCell>
                                                 <Input
-                                                    ref={(el) => barcodeRefs.current[index] = el}
+                                                    ref={el => { barcodeRefs.current[index] = el; }}
                                                     placeholder="Scanner..."
                                                     value={item.barcode}
                                                     onChange={(e) => handleItemChange(index, 'barcode', e.target.value)}
@@ -364,4 +364,6 @@ export function StockIntakeForm({ userId, products }: StockIntakeFormProps) {
         </Card>
     );
 }
+    
+
     
