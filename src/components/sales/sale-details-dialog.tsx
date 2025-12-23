@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -6,8 +5,7 @@ import type { Sale, CompanyProfile } from '@/lib/types';
 import { Button } from '../ui/button';
 import { Printer, Download } from 'lucide-react';
 import { ThermalReceipt } from './thermal-receipt';
-import html2pdf from 'html2pdf.js';
-import { useRef } from 'react';
+import { useRef, useEffect, useState } from 'react';
 
 interface SaleDetailsDialogProps {
     isOpen: boolean;
@@ -18,6 +16,15 @@ interface SaleDetailsDialogProps {
 
 export function SaleDetailsDialog({ isOpen, onOpenChange, sale, companyProfile }: SaleDetailsDialogProps) {
     const receiptRef = useRef<HTMLDivElement>(null);
+    const [html2pdf, setHtml2pdf] = useState<any>(null);
+
+    useEffect(() => {
+        if (isOpen) {
+            import('html2pdf.js').then(module => {
+                setHtml2pdf(() => module.default);
+            });
+        }
+    }, [isOpen]);
 
     const handlePrint = () => {
         const printableContent = document.getElementById('receipt-for-print');
@@ -43,7 +50,7 @@ export function SaleDetailsDialog({ isOpen, onOpenChange, sale, companyProfile }
 
     const handleDownloadPdf = () => {
         const element = receiptRef.current;
-        if (!element) return;
+        if (!element || !html2pdf) return;
 
         const opt = {
           margin:       [5, 0, 5, 0], // top, left, bottom, right in mm
@@ -79,7 +86,7 @@ export function SaleDetailsDialog({ isOpen, onOpenChange, sale, companyProfile }
                         <Printer className="mr-2 h-4 w-4" />
                         Imprimer
                     </Button>
-                     <Button type="button" variant="outline" onClick={handleDownloadPdf}>
+                     <Button type="button" variant="outline" onClick={handleDownloadPdf} disabled={!html2pdf}>
                         <Download className="mr-2 h-4 w-4" />
                         Télécharger PDF
                     </Button>

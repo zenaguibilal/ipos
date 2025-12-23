@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -14,8 +13,7 @@ import type { Sale, CustomerWithSalesData, CompanyProfile } from "@/lib/types";
 import { CheckCircle, MessageSquare, Printer, Download } from "lucide-react";
 import { toast } from "sonner";
 import { ThermalReceipt } from "./thermal-receipt";
-import { useRef } from 'react';
-import html2pdf from 'html2pdf.js';
+import { useRef, useState, useEffect } from 'react';
 
 
 interface SaleCompleteDialogProps {
@@ -28,6 +26,15 @@ interface SaleCompleteDialogProps {
 
 export function SaleCompleteDialog({ isOpen, onOpenChange, sale, customer, companyProfile }: SaleCompleteDialogProps) {
     const receiptRef = useRef<HTMLDivElement>(null);
+    const [html2pdf, setHtml2pdf] = useState<any>(null);
+
+    useEffect(() => {
+        if (isOpen) {
+            import('html2pdf.js').then(module => {
+                setHtml2pdf(() => module.default);
+            });
+        }
+    }, [isOpen]);
     
     const handleWhatsAppClick = () => {
         if (!customer || !customer.phone) {
@@ -67,7 +74,7 @@ export function SaleCompleteDialog({ isOpen, onOpenChange, sale, customer, compa
     
     const handleDownloadPdf = () => {
         const element = receiptRef.current;
-        if (!element) return;
+        if (!element || !html2pdf) return;
 
         const opt = {
           margin:       [5, 0, 5, 0], // top, left, bottom, right in mm
@@ -108,7 +115,7 @@ export function SaleCompleteDialog({ isOpen, onOpenChange, sale, customer, compa
                             <Printer className="mr-2 h-4 w-4" />
                             Imprimer
                         </Button>
-                        <Button variant="outline" className="flex-1" onClick={handleDownloadPdf}>
+                        <Button variant="outline" className="flex-1" onClick={handleDownloadPdf} disabled={!html2pdf}>
                             <Download className="mr-2 h-4 w-4" />
                             PDF
                         </Button>
