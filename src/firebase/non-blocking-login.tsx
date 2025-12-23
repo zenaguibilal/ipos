@@ -7,7 +7,7 @@ import {
   UserCredential,
   setPersistence,
   browserSessionPersistence,
-  localPersistence,
+  browserLocalPersistence,
   // Assume getAuth and app are initialized elsewhere
 } from 'firebase/auth';
 
