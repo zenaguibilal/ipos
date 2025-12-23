@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { type ReactNode } from 'react';
@@ -6,7 +7,7 @@ import { initializeFirebase } from '@/firebase';
 import useSWR from 'swr';
 
 interface FirebaseClientProviderProps {
-  children: React.Node;
+  children: ReactNode;
 }
 
 // The key for SWR to cache our Firebase services initialization
