@@ -105,17 +105,20 @@ export default function SalesHistoryPage() {
 
         // Filter by date range
         if (dateRange?.from) {
+             const fromDate = dateRange.from;
              filtered = filtered.filter(item => {
                 const itemDate = safeToDate(item.data.createdAt);
                 if (dateRange.to) {
                     // Set 'to' date to the end of the day
                     const toDate = new Date(dateRange.to);
                     toDate.setHours(23, 59, 59, 999);
-                    return itemDate >= dateRange.from && itemDate <= toDate;
+                    return itemDate >= fromDate && itemDate <= toDate;
                 }
                 // If only 'from' is selected, filter for that day
-                const fromDayStart = new Date(dateRange.from.setHours(0,0,0,0));
-                const fromDayEnd = new Date(dateRange.from.setHours(23,59,59,999));
+                const fromDayStart = new Date(fromDate);
+                fromDayStart.setHours(0,0,0,0);
+                const fromDayEnd = new Date(fromDate);
+                fromDayEnd.setHours(23,59,59,999);
                 return itemDate >= fromDayStart && itemDate <= fromDayEnd;
              });
         }
@@ -265,3 +268,5 @@ export default function SalesHistoryPage() {
         </>
     );
 }
+
+    
