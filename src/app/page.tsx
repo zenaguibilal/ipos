@@ -4,12 +4,12 @@
 import { useUser } from '@/firebase';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Store, ShoppingCart, Package, Users, LineChart, Cookie, Bell, Building, Warehouse } from 'lucide-react';
+import { Home as HomeIcon, Store, ShoppingCart, Package, Users, LineChart, Cookie, Bell, Building, Warehouse } from 'lucide-react';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { InstallPWAButton } from '@/components/layout/install-pwa-button';
 
 const navLinks = [
-  { href: '/dashboard', icon: Home, label: 'Tableau de bord' },
+  { href: '/dashboard', icon: HomeIcon, label: 'Tableau de bord' },
   { href: '/sell', icon: ShoppingCart, label: 'Vendre' },
   { href: '/products', icon: Package, label: 'Produits' },
   { href: '/stock-intake', icon: Warehouse, label: 'Réception Stock' },
