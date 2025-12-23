@@ -46,9 +46,11 @@ export function EditCustomerForm({ isOpen, onOpenChange, userId, customer }: Edi
         }
 
         const settlementDayNumber = settlementDay ? parseInt(settlementDay, 10) : undefined;
-        if (settlementDay && (isNaN(settlementDayNumber) || settlementDayNumber < 1 || settlementDayNumber > 31)) {
-            setError("Le jour de règlement doit être un nombre entre 1 et 31.");
-            return;
+        if (settlementDay) {
+            if (isNaN(settlementDayNumber!) || settlementDayNumber! < 1 || settlementDayNumber! > 31) {
+                setError("Le jour de règlement doit être un nombre entre 1 et 31.");
+                return;
+            }
         }
 
         setIsLoading(true);
