@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -189,7 +190,7 @@ export function StockIntakeForm({ userId, products }: StockIntakeFormProps) {
             const newIntakeRef = doc(stockIntakesRef);
             batch.set(newIntakeRef, {
                 invoiceNumber: invoiceNumber,
-                invoiceDate: serverTimestamp.fromDate(invoiceDate),
+                invoiceDate: invoiceDate,
                 items: items.map(i => ({ 
                     // This is intentionally simplified. A real app might need the new productId for new items.
                     productId: i.productId || 'N/A', 
