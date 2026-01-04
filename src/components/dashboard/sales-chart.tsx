@@ -15,16 +15,16 @@ export function SalesChart({ data, dataKey, yAxisLabel, barFill }: SalesChartPro
     return (
         <ResponsiveContainer width="100%" height={350}>
             <BarChart data={data}>
-                <CartesianGrid strokeDasharray="3 3" />
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis 
                     dataKey="date" 
-                    stroke="#888888"
+                    stroke="hsl(var(--muted-foreground))"
                     fontSize={12}
                     tickLine={false}
                     axisLine={false}
                 />
                 <YAxis 
-                    stroke="#888888"
+                    stroke="hsl(var(--muted-foreground))"
                     fontSize={12}
                     tickLine={false}
                     axisLine={false}
@@ -38,7 +38,7 @@ export function SalesChart({ data, dataKey, yAxisLabel, barFill }: SalesChartPro
                     labelStyle={{ color: "hsl(var(--foreground))" }}
                     formatter={(value: number) => [value.toFixed(2) + ' DA', yAxisLabel]}
                 />
-                 <Bar dataKey={dataKey} name={yAxisLabel} fill={barFill || "hsl(var(--primary))"} radius={[4, 4, 0, 0]} />
+                 <Bar dataKey={dataKey} name={yAxisLabel} fill={barFill || "hsl(var(--chart-primary))"} radius={[4, 4, 0, 0]} />
             </BarChart>
         </ResponsiveContainer>
     );

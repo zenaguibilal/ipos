@@ -231,7 +231,7 @@ export default function CustomersPage() {
             )}
            
             <main className="flex-1 overflow-auto p-4 sm:p-6">
-                <Card className="w-full">
+                <Card className="w-full bg-card">
                     <CardHeader className="flex flex-row items-center justify-between pt-4">
                         <Input 
                             placeholder="Rechercher par nom ou prénom..."
@@ -315,4 +315,5 @@ export default function CustomersPage() {
         </>
     );
 }
+
     

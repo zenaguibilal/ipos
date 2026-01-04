@@ -140,7 +140,7 @@ export default function ProductsPage() {
             )}
            
             <main className="flex-1 overflow-auto p-4 sm:p-6">
-                <Card className="w-full h-full flex flex-col">
+                <Card className="w-full h-full flex flex-col bg-card">
                     <CardHeader>
                         <CardTitle>Produits</CardTitle>
                         <CardDescription>
@@ -184,7 +184,7 @@ export default function ProductsPage() {
                                             const isLowStock = product.quantity <= product.minStockLevel;
                                             const displayBarcodes = product.barcodes?.join(', ') || product.barcode || '-';
                                             return (
-                                                <tr key={product.id} className={cn(isLowStock && 'bg-destructive/10')}>
+                                                <tr key={product.id} className={cn("hover:bg-muted/50", isLowStock && 'bg-destructive/10 hover:bg-destructive/20')}>
                                                     <td className="whitespace-nowrap px-6 py-4 font-medium">{product.name}</td>
                                                     <td className="whitespace-nowrap px-6 py-4 text-muted-foreground">{displayBarcodes}</td>
                                                     <td className="whitespace-nowrap px-6 py-4 text-right font-medium">{product.purchasePrice.toFixed(2)} DA</td>
@@ -235,4 +235,5 @@ export default function ProductsPage() {
         </>
     );
 }
+
     

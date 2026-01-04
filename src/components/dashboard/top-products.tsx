@@ -18,7 +18,7 @@ export function TopProducts({ products }: TopProductsProps) {
 
     if (products.length === 0) {
         return (
-             <Card>
+             <Card className="bg-card xl:col-span-2">
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                         <TrendingUp className="h-5 w-5 text-muted-foreground" />
@@ -35,7 +35,7 @@ export function TopProducts({ products }: TopProductsProps) {
     }
 
     return (
-        <Card className="xl:col-span-2">
+        <Card className="bg-card xl:col-span-2">
             <CardHeader className="flex flex-row items-start justify-between gap-2">
                 <div>
                      <CardTitle className="flex items-center gap-2">
@@ -61,7 +61,7 @@ export function TopProducts({ products }: TopProductsProps) {
                     </TableHeader>
                     <TableBody>
                         {products.map(product => (
-                            <TableRow key={product.id} onClick={() => router.push('/products')} className="cursor-pointer">
+                            <TableRow key={product.id} onClick={() => router.push('/products')} className="cursor-pointer hover:bg-muted/50">
                                 <TableCell>
                                     <div className="font-medium">{product.name}</div>
                                 </TableCell>

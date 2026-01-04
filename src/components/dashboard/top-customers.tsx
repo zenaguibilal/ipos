@@ -18,7 +18,7 @@ export function TopCustomers({ customers }: TopCustomersProps) {
 
     if (customers.length === 0) {
         return (
-             <Card>
+             <Card className="bg-card">
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                         <Award className="h-5 w-5 text-muted-foreground" />
@@ -35,7 +35,7 @@ export function TopCustomers({ customers }: TopCustomersProps) {
     }
 
     return (
-        <Card>
+        <Card className="bg-card">
             <CardHeader className="flex flex-row items-start justify-between gap-2">
                 <div>
                      <CardTitle className="flex items-center gap-2">
@@ -60,7 +60,7 @@ export function TopCustomers({ customers }: TopCustomersProps) {
                     </TableHeader>
                     <TableBody>
                         {customers.map(customer => (
-                            <TableRow key={customer.id} onClick={() => router.push(`/customers/${customer.id}`)} className="cursor-pointer">
+                            <TableRow key={customer.id} onClick={() => router.push(`/customers/${customer.id}`)} className="cursor-pointer hover:bg-muted/50">
                                 <TableCell>
                                     <div className="font-medium">{customer.firstName} {customer.lastName}</div>
                                 </TableCell>
@@ -75,3 +75,5 @@ export function TopCustomers({ customers }: TopCustomersProps) {
         </Card>
     );
 }
+
+    

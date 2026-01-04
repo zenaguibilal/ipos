@@ -246,7 +246,7 @@ export default function DashboardPage() {
         inventoryValue={stats.inventoryValue}
        />
       <div className="grid gap-4 md:gap-8 lg:grid-cols-2">
-        <Card>
+        <Card className="bg-card">
             <CardHeader>
                 <CardTitle>Chiffre d'affaires</CardTitle>
             </CardHeader>
@@ -254,12 +254,12 @@ export default function DashboardPage() {
                 <SalesChart data={salesChartData} dataKey="revenue" yAxisLabel="Chiffre d'affaires" />
             </CardContent>
         </Card>
-        <Card>
+        <Card className="bg-card">
             <CardHeader>
                 <CardTitle>Bénéfice net</CardTitle>
             </CardHeader>
             <CardContent className="pl-2">
-                <SalesChart data={profitChartData} dataKey="profit" yAxisLabel="Bénéfice net" barFill="hsl(var(--secondary))" />
+                <SalesChart data={profitChartData} dataKey="profit" yAxisLabel="Bénéfice net" barFill="hsl(var(--chart-secondary))" />
             </CardContent>
         </Card>
       </div>
@@ -271,3 +271,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    

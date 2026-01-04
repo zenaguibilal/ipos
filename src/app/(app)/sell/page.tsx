@@ -225,7 +225,8 @@ export default function SellPage() {
 
     const activeCustomerInfo = useMemo(() => {
         if (activeCartId === GUEST_CUSTOMER_ID || activeCartId.startsWith('guest-')) return null;
-        return customersWithDebt.find(c => c.id === activeCartId) ?? null;
+        const customer = customersWithDebt.find(c => c.id === activeCartId);
+        return customer || null;
     }, [activeCartId, customersWithDebt]);
 
 
@@ -564,7 +565,10 @@ export default function SellPage() {
                                     <Card 
                                         key={product.id}
                                         onClick={() => addProductToCart(product)}
-                                        className={cn("cursor-pointer hover:shadow-lg transition-shadow", product.quantity <= 0 && "opacity-50 cursor-not-allowed")}
+                                        className={cn(
+                                            "cursor-pointer hover:shadow-lg transition-shadow bg-card/80 hover:bg-card", 
+                                            product.quantity <= 0 && "opacity-50 cursor-not-allowed"
+                                        )}
                                         aria-disabled={product.quantity <= 0}
                                         tabIndex={product.quantity > 0 ? 0 : -1}
                                         onKeyDown={(e) => e.key === 'Enter' && product.quantity > 0 && addProductToCart(product)}
@@ -591,11 +595,11 @@ export default function SellPage() {
                 </div>
 
                 {/* --- Right Column: Cart --- */}
-                <div className="lg:col-span-1 h-full flex flex-col bg-card">
+                <div className="lg:col-span-1 h-full flex flex-col bg-card/50">
                     {/* --- Tabs for Carts --- */}
                     <div className="flex-shrink-0 border-b">
                          <Tabs value={activeCartId} onValueChange={setActiveCartId} className="w-full">
-                             <TabsList className="p-1 h-auto bg-muted rounded-none justify-start overflow-x-auto w-full">
+                             <TabsList className="p-1 h-auto bg-muted/80 rounded-none justify-start overflow-x-auto w-full">
                                 {Object.values(carts).map(cart => (
                                     <div key={cart.customerId} className="relative group flex-shrink-0">
                                          <TabsTrigger 
@@ -711,3 +715,5 @@ export default function SellPage() {
         </>
     );
 }
+
+    
