@@ -4,20 +4,23 @@
 import { useUser } from '@/firebase';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Home as HomeIcon, Store, ShoppingCart, Package, Users, LineChart, Cookie, Bell, Building, Warehouse } from 'lucide-react';
+import { Home as HomeIcon, Store, ShoppingCart, Package, Users, LineChart, Cookie, Bell, Building, Warehouse, FileText, BarChart2, DollarSign, Box, HandCoins, Settings, TrendingUp, Receipt } from 'lucide-react';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { InstallPWAButton } from '@/components/layout/install-pwa-button';
 
 const navLinks = [
-  { href: '/dashboard', icon: HomeIcon, label: 'Tableau de bord' },
-  { href: '/sell', icon: ShoppingCart, label: 'Vendre' },
-  { href: '/products', icon: Package, label: 'Produits' },
-  { href: '/stock-intake', icon: Warehouse, label: 'Réception Stock' },
-  { href: '/customers', icon: Users, label: 'Clients' },
-  { href: '/bread-orders', icon: Cookie, label: 'Commandes de Pain' },
-  { href: '/sales-history', icon: LineChart, label: 'Historique' },
-  { href: '/notifications', icon: Bell, label: 'Alertes' },
-  { href: '/profile', icon: Building, label: 'Profil' },
+  { href: '/customers', icon: Users , label: 'العملاء', color: 'bg-cyan-500' },
+  { href: '/products', icon: ShoppingCart, label: 'الاصناف', color: 'bg-purple-600' },
+  { href: '/stock-intake', icon: Users , label: 'المورديين', color: 'bg-red-500' },
+  { href: '/sales-history', icon: FileText , label: 'الحسابات الاخري', color: 'bg-teal-500' },
+  { href: '/dashboard', icon: DollarSign, label: 'حركه الخزينه', color: 'bg-green-500' },
+  { href: '/products', icon: Box, label: 'حركه صنف', color: 'bg-rose-500' },
+  { href: '/stock-intake', icon: HandCoins, label: 'كشف حساب مورد', color: 'bg-blue-600' },
+  { href: '/customers', icon: Receipt, label: 'كشف حساب عميل', color: 'bg-orange-500' },
+  { href: '/sell', icon: Settings, label: 'شاشه الادخال اليومي', color: 'bg-blue-700' },
+  { href: '/dashboard', icon: HandCoins, label: 'ملخص حركه الخزينه', color: 'bg-orange-600' },
+  { href: '/dashboard', icon: TrendingUp, label: 'تحليل المشتريات', color: 'bg-emerald-500' },
+  { href: '/dashboard', icon: BarChart2, label: 'تحليل المبيعات', color: 'bg-rose-500' },
 ];
 
 
@@ -25,29 +28,23 @@ function AuthContent() {
   const { user, isUserLoading } = useUser();
 
   if (isUserLoading) {
-    return <div className="mt-8 h-11 w-64 rounded-md animate-pulse bg-muted" />;
+    return <div className="mt-8 h-64 w-full max-w-4xl rounded-md animate-pulse bg-muted" />;
   }
 
   if (user) {
     return (
-        <div className="w-full max-w-4xl">
-            <h2 className="text-2xl md:text-3xl font-bold tracking-tight mb-6">Accès Rapide</h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+        <div className="w-full max-w-5xl">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5">
                 {navLinks.map((link) => (
                     <Link href={link.href} key={link.href} passHref>
-                        <Card className="h-full transform transition-transform duration-200 hover:scale-105 hover:shadow-xl focus:scale-105 focus:shadow-xl focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
-                            <CardHeader className="flex flex-col items-center justify-center text-center p-4 h-full">
-                                <link.icon className="h-10 w-10 mb-3 text-primary" />
-                                <CardTitle className="text-base md:text-lg font-semibold">{link.label}</CardTitle>
+                        <Card className={`text-white transition-transform duration-200 hover:scale-105 hover:shadow-xl focus:scale-105 focus:shadow-xl focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 ${link.color}`}>
+                            <CardHeader className="flex flex-col items-center justify-center text-center p-4 h-32">
+                                <link.icon className="h-10 w-10 mb-3" />
+                                <CardTitle className="text-lg md:text-xl font-bold">{link.label}</CardTitle>
                             </CardHeader>
                         </Card>
                     </Link>
                 ))}
-            </div>
-            <div className="mt-8 text-center">
-                 <Button asChild variant="secondary">
-                    <Link href="/dashboard">Voir le tableau de bord complet</Link>
-                </Button>
             </div>
         </div>
     );
@@ -78,12 +75,11 @@ function AuthContent() {
 
 export default function Home() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center text-center p-6 bg-background">
-      <main className="flex flex-col items-center flex-1 justify-center">
+    <div className="flex min-h-screen flex-col items-center justify-center text-center p-4 md:p-6 bg-background">
+      <main className="flex flex-col items-center flex-1 justify-center w-full">
         <AuthContent />
       </main>
-      <footer className="w-full text-center text-muted-foreground text-sm py-4">
-          <p className="mb-2 max-w-2xl mx-auto">iPOS est une solution de point de vente moderne conçue pour vous aider à gérer votre inventaire, vos ventes et vos clients avec simplicité et efficacité.</p>
+      <footer className="w-full text-center text-muted-foreground text-sm py-4 mt-8">
           <p>Développé par zenagui bilal</p>
       </footer>
     </div>
