@@ -37,6 +37,12 @@ interface Cart {
 
 const GUEST_CUSTOMER_ID = 'guest';
 
+const productCardColors = [
+    'bg-cyan-500', 'bg-purple-600', 'bg-red-500', 'bg-teal-500', 'bg-green-500', 
+    'bg-rose-500', 'bg-blue-600', 'bg-orange-500', 'bg-blue-700', 'bg-orange-600',
+    'bg-emerald-500', 'bg-indigo-500', 'bg-pink-500'
+];
+
 export default function SellPage() {
     const { user, isUserLoading } = useUser();
     const firestore = useFirestore();
@@ -226,7 +232,7 @@ export default function SellPage() {
     const activeCustomerInfo = useMemo(() => {
         if (activeCartId === GUEST_CUSTOMER_ID || activeCartId.startsWith('guest-')) return null;
         const customer = customersWithDebt.find(c => c.id === activeCartId);
-        return customer || null;
+        return customer ?? null;
     }, [activeCartId, customersWithDebt]);
 
 
@@ -478,7 +484,7 @@ export default function SellPage() {
             console.error("Failed to finalize sale: ", error);
              toast.error("Échec de la finalisation de la vente.");
         } finally {
-            setIsProcessingPayment(false);
+            setIsProcessing(false);
         }
     };
     
@@ -528,9 +534,9 @@ export default function SellPage() {
             )}
 
 
-            <div className="grid h-full grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid h-screen max-h-screen grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 overflow-hidden">
                 {/* --- Left Column: Product Selection --- */}
-                <div className="md:col-span-1 lg:col-span-2 xl:col-span-3 h-full flex flex-col border-r">
+                <div className="md:col-span-1 lg:col-span-2 xl:col-span-3 h-full flex flex-col">
                     <div className="p-4 border-b">
                          <div className="flex flex-col sm:flex-row gap-2">
                              <Input
@@ -561,31 +567,32 @@ export default function SellPage() {
                             <p>Chargement des produits...</p>
                         ) : (
                             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                                {productsToShow?.map(product => (
+                                {productsToShow?.map((product, index) => (
                                     <Card 
                                         key={product.id}
                                         onClick={() => addProductToCart(product)}
                                         className={cn(
-                                            "cursor-pointer hover:shadow-lg transition-shadow bg-card/80 hover:bg-card", 
-                                            product.quantity <= 0 && "opacity-50 cursor-not-allowed"
+                                            "cursor-pointer text-white transition-transform duration-200 hover:scale-105 hover:shadow-xl focus:scale-105 focus:shadow-xl focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+                                            productCardColors[index % productCardColors.length],
+                                            product.quantity <= 0 && "opacity-50 grayscale cursor-not-allowed hover:scale-100"
                                         )}
                                         aria-disabled={product.quantity <= 0}
                                         tabIndex={product.quantity > 0 ? 0 : -1}
                                         onKeyDown={(e) => e.key === 'Enter' && product.quantity > 0 && addProductToCart(product)}
                                     >
                                         <CardContent className="p-2 aspect-square flex flex-col justify-center items-center text-center">
-                                            <p className="font-semibold text-sm line-clamp-2">{product.name}</p>
-                                            <p className="text-xs text-muted-foreground">{product.price.toFixed(2)} DA</p>
+                                            <p className="font-bold text-sm md:text-base line-clamp-2">{product.name}</p>
+                                            <p className="text-xs font-semibold opacity-90">{product.price.toFixed(2)} DA</p>
                                         </CardContent>
-                                        <CardFooter className="p-2 bg-muted/50 text-center justify-center">
-                                            <span className={cn("text-xs font-medium", product.quantity > product.minStockLevel ? "text-primary" : "text-destructive")}>
+                                        <CardFooter className="p-1 px-2 bg-black/20 text-center justify-center">
+                                            <span className={cn("text-xs font-bold", product.quantity <= product.minStockLevel ? "text-yellow-300" : "text-white/90")}>
                                                 Stock: {product.quantity}
                                             </span>
                                         </CardFooter>
                                     </Card>
                                 ))}
                                 {productsToShow?.length === 0 && (
-                                     <div className="text-center text-muted-foreground col-span-full">
+                                     <div className="text-center text-muted-foreground col-span-full py-10">
                                         {searchQuery ? "Aucun produit ne correspond à votre recherche." : "Pas encore assez de données de vente pour afficher les meilleurs produits."}
                                      </div>
                                 )}
@@ -595,7 +602,7 @@ export default function SellPage() {
                 </div>
 
                 {/* --- Right Column: Cart --- */}
-                <div className="lg:col-span-1 h-full flex flex-col bg-card/50">
+                <div className="lg:col-span-1 h-full flex flex-col bg-card/50 border-l">
                     {/* --- Tabs for Carts --- */}
                     <div className="flex-shrink-0 border-b">
                          <Tabs value={activeCartId} onValueChange={setActiveCartId} className="w-full">
@@ -697,7 +704,7 @@ export default function SellPage() {
                     </div>
                     
                     {activeCart && activeCart.items.length > 0 && (
-                        <CardFooter className="flex-col items-stretch gap-2 border-t p-4">
+                        <CardFooter className="flex-col items-stretch gap-2 border-t p-4 bg-background">
                             <div className="flex justify-between font-semibold text-lg">
                                 <span>Total</span>
                                 <span>{total.toFixed(2)} DA</span>
@@ -705,7 +712,7 @@ export default function SellPage() {
                             <Button size="lg" onClick={() => setIsPaymentDialogOpen(true)} disabled={total <= 0}>
                                 Payer (F4)
                             </Button>
-                            <Button variant="outline" onClick={clearCart}>
+                            <Button variant="destructive" onClick={clearCart}>
                                 Vider le panier
                             </Button>
                         </CardFooter>
