@@ -175,7 +175,7 @@ export default function BreadOrdersPage() {
             />
            
             <main className="flex-1 overflow-auto p-4 sm:p-6">
-                <Card className="w-full">
+                <Card className="w-full bg-card">
                     <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 pt-4">
                          <Input 
                             placeholder="Rechercher par nom..."
@@ -193,7 +193,7 @@ export default function BreadOrdersPage() {
                     </CardHeader>
                     <CardContent>
                         <div className="grid gap-4 md:grid-cols-3 mb-4">
-                             <Card>
+                             <Card className="bg-background/50">
                                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                     <CardTitle className="text-sm font-medium">Total Commandé</CardTitle>
                                     <Cookie className="h-4 w-4 text-muted-foreground" />
@@ -202,7 +202,7 @@ export default function BreadOrdersPage() {
                                     <div className="text-2xl font-bold">{totalOrdered}</div>
                                 </CardContent>
                             </Card>
-                             <Card>
+                             <Card className="bg-background/50">
                                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                     <CardTitle className="text-sm font-medium">Total Livré</CardTitle>
                                     <CheckCircle className="h-4 w-4 text-muted-foreground" />
@@ -211,7 +211,7 @@ export default function BreadOrdersPage() {
                                     <div className="text-2xl font-bold">{totalDelivered}</div>
                                 </CardContent>
                             </Card>
-                            <Card>
+                            <Card className="bg-background/50">
                                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                     <CardTitle className="text-sm font-medium">Restant à Livrer</CardTitle>
                                     <PackageMinus className="h-4 w-4 text-muted-foreground" />
@@ -241,7 +241,7 @@ export default function BreadOrdersPage() {
                                     </thead>
                                     <tbody className="divide-y divide-border">
                                         {filteredOrders.map(order => (
-                                            <tr key={order.id} className={cn({
+                                            <tr key={order.id} className={cn("transition-colors", {
                                                 "bg-red-500/10 hover:bg-red-500/20": !order.isPaid && !order.isDelivered,
                                                 "bg-yellow-500/10 hover:bg-yellow-500/20": order.isPaid && !order.isDelivered,
                                                 "bg-green-500/10 hover:bg-green-500/20 text-muted-foreground": order.isPaid && order.isDelivered,

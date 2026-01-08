@@ -18,7 +18,7 @@ export default function ProfilePage() {
     }
 
     return (
-        <main className="flex-1 overflow-auto p-4 sm:p-6 flex items-center justify-center">
+        <main className="flex-1 overflow-auto p-4 sm:p-6 flex items-start justify-center">
              <Tabs defaultValue="personal" className="w-full max-w-2xl">
                 <TabsList className="grid w-full grid-cols-2">
                     <TabsTrigger value="personal">Profil Personnel</TabsTrigger>

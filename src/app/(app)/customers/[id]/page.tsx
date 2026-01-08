@@ -128,7 +128,7 @@ export default function CustomerDetailsPage() {
                         </Link>
                     </Button>
                 </div>
-                <Card className="w-full">
+                <Card className="w-full bg-card">
                     <CardHeader>
                         <CardTitle className="text-2xl">{customer?.firstName} {customer?.lastName}</CardTitle>
                         <CardDescription>
@@ -208,5 +208,3 @@ function StatusBadge({ status }: { status: Sale['paymentStatus'] }) {
         </span>
     );
 }
-
-    

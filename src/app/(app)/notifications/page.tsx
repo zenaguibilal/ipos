@@ -175,7 +175,7 @@ export default function NotificationsPage() {
       </div>
       
       {totalAlerts === 0 ? (
-        <div className="flex h-40 items-center justify-center rounded-md border-2 border-dashed border-border">
+        <div className="flex h-40 items-center justify-center rounded-md border-2 border-dashed border-border bg-card">
           <p className="text-muted-foreground">Aucune alerte pour le moment.</p>
         </div>
       ) : (

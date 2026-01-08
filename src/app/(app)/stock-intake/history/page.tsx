@@ -64,7 +64,7 @@ export default function StockIntakeHistoryPage() {
                         </Link>
                     </Button>
                 </div>
-                <Card>
+                <Card className="bg-card">
                     <CardHeader>
                         <CardTitle>Historique des réceptions de stock</CardTitle>
                         <CardDescription>Liste de toutes les réceptions de stock enregistrées.</CardDescription>
