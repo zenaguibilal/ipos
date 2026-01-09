@@ -1,88 +1,59 @@
 
 'use client';
 
-import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase, addDocumentNonBlocking } from '@/firebase';
+import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { collection, doc, serverTimestamp, writeBatch, Timestamp } from 'firebase/firestore';
+import { collection, doc, writeBatch, serverTimestamp, updateDoc, increment } from 'firebase/firestore';
 import { AddProductForm } from '@/components/sell/add-product-form';
-import { AddCustomProductForm } from '@/components/sell/add-custom-product-form';
-import { MinusCircle, PlusCircle, User, XCircle, X, ShoppingCart, HelpCircle, CreditCard } from 'lucide-react';
+import { MinusCircle, PlusCircle, Trash2, UserPlus, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PaymentDialog } from '@/components/sell/payment-dialog';
-import { SaleCompleteDialog } from '@/components/sell/sale-complete-dialog';
-import type { Product, Customer, Sale, Payment, TopProduct, CompanyProfile, CustomerWithSalesData } from '@/lib/types';
+// import { Receipt } from '@/components/receipt';
+import ReactDOM from 'react-dom';
+import type { Product, Customer } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { Combobox } from '@/components/ui/combobox';
-import { ShortcutsHelpDialog } from '@/components/sell/shortcuts-help-dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { SettleDebtDialog } from '@/components/customers/settle-debt-dialog';
+import { Combobox, ComboboxOption } from '@/components/ui/combobox';
 import { toast } from 'sonner';
 
-type ProductWithOptionalBarcode = Product & { barcode?: string };
-
-interface CartItem extends ProductWithOptionalBarcode {
+interface CartItem extends Product {
     cartQuantity: number;
-    isCustom?: boolean;
 }
 
 interface Cart {
-    customerId: string;
-    customerName: string;
+    id: number;
+    name: string;
     items: CartItem[];
+    customerId?: string;
+    customerName?: string;
+    customerDebt?: number;
 }
 
-const GUEST_CUSTOMER_ID = 'guest';
-
-const productCardColors = [
-    'bg-cyan-500', 'bg-purple-600', 'bg-red-500', 'bg-teal-500', 'bg-green-500', 
-    'bg-rose-500', 'bg-blue-600', 'bg-orange-500', 'bg-blue-700', 'bg-orange-600',
-    'bg-emerald-500', 'bg-indigo-500', 'bg-pink-500'
-];
+let cartIdCounter = 1;
 
 export default function SellPage() {
     const { user, isUserLoading } = useUser();
     const firestore = useFirestore();
     const router = useRouter();
-    const searchInputRef = useRef<HTMLInputElement>(null);
-    const customerComboboxTriggerRef = useRef<HTMLButtonElement>(null);
 
-
-    // --- Data Fetching ---
+    const [carts, setCarts] = useState<Cart[]>([{ id: cartIdCounter++, name: `Vente ${cartIdCounter-1}`, items: [] }]);
+    const [activeCartId, setActiveCartId] = useState<number>(1);
+    
+    const [isAddingProduct, setIsAddingProduct] = useState(false);
+    const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+    const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+    
+    // Fetch Products
     const productsCollectionRef = useMemoFirebase(() => (user && firestore) ? collection(firestore, 'users', user.uid, 'products') : null, [user, firestore]);
-    const { data: products, isLoading: isLoadingProducts } = useCollection<ProductWithOptionalBarcode>(productsCollectionRef);
+    const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsCollectionRef);
 
+    // Fetch Customers
     const customersCollectionRef = useMemoFirebase(() => (user && firestore) ? collection(firestore, 'users', user.uid, 'customers') : null, [user, firestore]);
     const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersCollectionRef);
 
-    const salesCollectionRef = useMemoFirebase(() => user && firestore ? collection(firestore, 'users', user.uid, 'sales') : null, [user, firestore]);
-    const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesCollectionRef);
-    
-    const paymentsCollectionRef = useMemoFirebase(() => user && firestore ? collection(firestore, 'users', user.uid, 'payments') : null, [user, firestore]);
-    const { data: payments, isLoading: isLoadingPayments } = useCollection<Payment>(paymentsCollectionRef);
-    
-    const companyDocRef = useMemoFirebase(() => {
-        if (!user || !firestore) return null;
-        return doc(firestore, 'users', user.uid, 'companyProfile', 'main');
-    }, [user, firestore]);
-    const { data: companyProfile, isLoading: isLoadingCompanyProfile } = useDoc<CompanyProfile>(companyDocRef);
-
-    // --- Local State ---
-    const [searchQuery, setSearchQuery] = useState('');
-    const [isAddingProduct, setIsAddingProduct] = useState(false);
-    const [isAddingCustomProduct, setIsAddingCustomProduct] = useState(false);
-    const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
-    const [isProcessingPayment, setIsProcessingPayment] = useState(false);
-    const [isShortcutsHelpOpen, setIsShortcutsHelpOpen] = useState(false);
-    const [completedSale, setCompletedSale] = useState<Sale | null>(null);
-    const [settlingDebtForCustomer, setSettlingDebtForCustomer] = useState<CustomerWithSalesData | null>(null);
-    const [activeCartId, setActiveCartId] = useState<string>(GUEST_CUSTOMER_ID);
-    const [carts, setCarts] = useState<Record<string, Cart>>({
-        [GUEST_CUSTOMER_ID]: { customerId: GUEST_CUSTOMER_ID, customerName: 'Vente au comptoir', items: [] },
-    });
 
     useEffect(() => {
         if (!isUserLoading && !user) {
@@ -90,637 +61,295 @@ export default function SellPage() {
         }
     }, [user, isUserLoading, router]);
 
-    const activeCart = carts[activeCartId];
+    const activeCart = useMemo(() => carts.find(cart => cart.id === activeCartId), [carts, activeCartId]);
 
-    // --- Cart Management Functions ---
+    const customerOptions: ComboboxOption[] = useMemo(() => {
+        if (!customers) return [];
+        return customers.map(c => ({
+            value: c.id,
+            label: `${c.firstName} ${c.lastName}`,
+            subLabel: c.phone,
+        }));
+    }, [customers]);
+
+    const handleSelectCustomer = (customerId: string) => {
+        if (!activeCart) return;
+
+        const customer = customers?.find(c => c.id === customerId);
+        if (!customer) return;
+        
+        const updatedCarts = carts.map(cart => 
+            cart.id === activeCartId 
+            ? { ...cart, customerId: customer.id, customerName: `${customer.firstName} ${customer.lastName}` } 
+            : cart
+        );
+        setCarts(updatedCarts);
+    };
+
     const addProductToCart = useCallback((product: Product) => {
+        if (!activeCart) return;
+
         if (product.quantity <= 0) {
             toast.warning(`Le produit "${product.name}" est en rupture de stock.`);
             return;
         }
-    
-        setCarts(prevCarts => {
-            const currentCart = prevCarts[activeCartId];
-            if (!currentCart) return prevCarts;
-    
-            const existingItem = currentCart.items.find(item => item.id === product.id);
-            let newItems;
-    
-            if (existingItem) {
-                 if (existingItem.cartQuantity >= product.quantity) {
-                    toast.warning(`La quantité maximale en stock pour "${product.name}" est atteinte.`);
-                    return prevCarts;
-                }
-                newItems = currentCart.items.map(item =>
-                    item.id === product.id
-                        ? { ...item, cartQuantity: item.cartQuantity + 1 }
-                        : item
-                );
-            } else {
-                newItems = [...currentCart.items, { ...product, cartQuantity: 1 }];
+
+        const existingItem = activeCart.items.find(item => item.id === product.id);
+
+        let newItems;
+        if (existingItem) {
+            if (existingItem.cartQuantity >= product.quantity) {
+                toast.warning(`La quantité maximale en stock pour "${product.name}" est atteinte.`);
+                return;
             }
-            
-            return {
-                ...prevCarts,
-                [activeCartId]: { ...currentCart, items: newItems }
-            };
-        });
-        setSearchQuery('');
-    }, [activeCartId]);
-    
-     const handleBarcodeScan = useCallback((query: string) => {
-        if (!query || !products) return;
-        const scannedProduct = products.find(p => p.barcodes?.includes(query) || p.barcode === query);
-        if (scannedProduct) {
-            addProductToCart(scannedProduct);
-            setSearchQuery(''); // Clear input after scan
-            if (searchInputRef.current) {
-                searchInputRef.current.focus();
-            }
+            newItems = activeCart.items.map(item =>
+                item.id === product.id ? { ...item, cartQuantity: item.cartQuantity + 1 } : item
+            );
+        } else {
+            newItems = [...activeCart.items, { ...product, cartQuantity: 1 }];
         }
-    }, [products, addProductToCart]);
 
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            if (searchQuery.length > 2) {
-                handleBarcodeScan(searchQuery);
-            }
-        }, 300); // Small delay to prevent firing on every keystroke
+        const updatedCarts = carts.map(cart => cart.id === activeCartId ? { ...cart, items: newItems } : cart);
+        setCarts(updatedCarts);
+    }, [activeCart, carts, activeCartId]);
 
-        return () => clearTimeout(timer);
-    }, [searchQuery, handleBarcodeScan]);
+    const updateCartItemQuantity = (productId: string, newQuantity: number) => {
+        if (!activeCart) return;
 
+        const itemToUpdate = activeCart.items.find(item => item.id === productId);
+        if (!itemToUpdate) return;
+        
+        if (newQuantity > itemToUpdate.quantity) {
+            toast.warning(`La quantité maximale en stock pour "${itemToUpdate.name}" est atteinte.`);
+            newQuantity = itemToUpdate.quantity;
+        }
 
-    // --- Keyboard Shortcuts ---
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            // Allow shortcuts to work even if an input is focused, unless it's for typing
-            const isInputFocused = document.activeElement instanceof HTMLInputElement || document.activeElement instanceof HTMLTextAreaElement;
+        const newItems = newQuantity > 0
+            ? activeCart.items.map(item => item.id === productId ? { ...item, cartQuantity: newQuantity } : item)
+            : activeCart.items.filter(item => item.id !== productId);
 
-            if (e.key === 'F1') {
-                e.preventDefault();
-                setIsShortcutsHelpOpen(true);
-            }
-            // F2 focuses search input
-            if (e.key === 'F2') {
-                e.preventDefault();
-                searchInputRef.current?.focus();
-            }
-            // F4 triggers payment
-            if (e.key === 'F4' && activeCart?.items.length > 0) {
-                e.preventDefault();
-                setIsPaymentDialogOpen(true);
-            }
-            // Alt + A for custom product
-            if (e.altKey && e.key.toLowerCase() === 'a') {
-                e.preventDefault();
-                setIsAddingCustomProduct(true);
-            }
-             // Alt + N for new product
-            if (e.altKey && e.key.toLowerCase() === 'n') {
-                e.preventDefault();
-                setIsAddingProduct(true);
-            }
-        };
-
-        document.addEventListener('keydown', handleKeyDown);
-        return () => document.removeEventListener('keydown', handleKeyDown);
-    }, [activeCart]); // Dependency on activeCart to check if F4 should work
-
-
-    // --- Memos & Derived State ---
-    const customersWithDebt = useMemo(() => {
-         if (!customers || !sales || !payments) return [];
-
-        const salesByCustomer = sales.reduce((acc, sale) => {
-            if (sale.customerId && sale.remainingBalance > 0) {
-                if (!acc[sale.customerId]) acc[sale.customerId] = 0;
-                acc[sale.customerId] += sale.remainingBalance;
-            }
-            return acc;
-        }, {} as Record<string, number>);
-
-        const paymentsByCustomer = payments.reduce((acc, payment) => {
-             if (payment.customerId) {
-                if (!acc[payment.customerId]) acc[payment.customerId] = 0;
-                acc[payment.customerId] += payment.amount;
-            }
-            return acc;
-        }, {} as Record<string, number>);
-
-        return customers.map(customer => {
-            const debtFromSales = salesByCustomer[customer.id] || 0;
-            const totalPayments = paymentsByCustomer[customer.id] || 0;
-            const outstandingBalance = debtFromSales - totalPayments;
-            
-            return {
-                ...customer,
-                totalSpent: 0, // This part is not needed here
-                outstandingBalance: outstandingBalance > 0 ? outstandingBalance : 0,
-            };
-        });
-    }, [customers, sales, payments]);
-
-    const customerOptions = useMemo(() => {
-        return customersWithDebt.map(customer => ({
-            value: customer.id,
-            label: `${''}${customer.firstName} ${customer.lastName}`,
-            subLabel: customer.outstandingBalance > 0 ? `Dette: ${customer.outstandingBalance.toFixed(2)} DA` : undefined
-        }));
-    }, [customersWithDebt]);
-
-    const activeCustomerInfo = useMemo(() => {
-        if (activeCartId === GUEST_CUSTOMER_ID || activeCartId.startsWith('guest-')) return null;
-        const customer = customersWithDebt.find(c => c.id === activeCartId);
-        return customer ?? null;
-    }, [activeCartId, customersWithDebt]);
-
-
-    const filteredProducts = useMemo(() => {
-        if (!products) return [];
-        if (!searchQuery) return []; // Don't show anything if search is empty, rely on top selling
-
-        const lowercasedQuery = searchQuery.toLowerCase();
-        return products.filter(product =>
-            product.name.toLowerCase().includes(lowercasedQuery) ||
-            (product.barcodes && product.barcodes.some(b => b.toLowerCase().includes(lowercasedQuery))) ||
-            (product.barcode && product.barcode.toLowerCase().includes(lowercasedQuery))
-        );
-    }, [products, searchQuery]);
-
-    const topSellingProducts = useMemo(() => {
-        if (!sales || !products) return [];
-    
-        const productSales = sales.flatMap(s => s.items).reduce((acc, item) => {
-            if (!acc[item.id]) {
-                acc[item.id] = { unitsSold: 0 };
-            }
-            acc[item.id].unitsSold += item.quantity;
-            return acc;
-        }, {} as Record<string, { unitsSold: number }>);
-    
-        const topProductsList = Object.keys(productSales)
-            .map(productId => {
-                const productInfo = products.find(p => p.id === productId);
-                if (!productInfo || typeof productInfo.price === 'undefined') return null;
-    
-                return {
-                    ...productInfo,
-                    id: productId,
-                    name: productInfo.name,
-                    unitsSold: productSales[productId].unitsSold,
-                } as TopProduct;
-            })
-            .filter((p): p is TopProduct => p !== null) 
-            .sort((a, b) => b.unitsSold - a.totalProfit)
-            .slice(0, 10);
-    
-        return topProductsList;
-    
-    }, [sales, products]);
-
+        const updatedCarts = carts.map(cart => cart.id === activeCartId ? { ...cart, items: newItems } : cart);
+        setCarts(updatedCarts);
+    };
 
     const total = useMemo(() => {
         if (!activeCart) return 0;
-        return activeCart.items.reduce((sum, item) => sum + (item.price * item.cartQuantity), 0);
+        return activeCart.items.reduce((sum, item) => sum + item.price * item.cartQuantity, 0);
     }, [activeCart]);
     
-    const updateCartItemQuantity = (productId: string, newQuantity: number) => {
-        if (newQuantity < 0) return;
-
-        setCarts(prevCarts => {
-            const currentCart = prevCarts[activeCartId];
-            if (!currentCart) return prevCarts;
-
-            const itemToUpdate = currentCart.items.find(item => item.id === productId);
-            if (itemToUpdate && !itemToUpdate.isCustom && newQuantity > itemToUpdate.quantity) {
-                toast.warning(`La quantité maximale en stock pour "${itemToUpdate.name}" est atteinte.`);
-                return prevCarts;
-            }
+    // const handlePrintReceipt = (cart: Cart, total: number) => {
+    //     const printableContent = document.getElementById('receipt-for-print');
+    //     if (printableContent) {
+    //         const receiptElement = <Receipt cart={cart} total={total} />;
             
-            const newItems = currentCart.items.map(item =>
-                item.id === productId
-                    ? { ...item, cartQuantity: newQuantity }
-                    : item
-            ).filter(item => item.cartQuantity > 0); // remove if quantity is 0
-        
-            return {
-                ...prevCarts,
-                [activeCartId]: { ...currentCart, items: newItems }
-            };
-        });
-    };
-    
-    const removeCartItem = (productId: string) => {
-        setCarts(prevCarts => {
-            const currentCart = prevCarts[activeCartId];
-            if (!currentCart) return prevCarts;
-    
-            const newItems = currentCart.items.filter(item => item.id !== productId);
-            
-            return {
-                ...prevCarts,
-                [activeCartId]: { ...currentCart, items: newItems }
-            };
-        });
-    };
+    //         // Add class to html/body to trigger correct @page rule
+    //         document.documentElement.classList.add('thermal');
 
-    const addCustomProductToCart = (name: string, price: number) => {
-        const customProduct: CartItem = {
-            id: `custom-${Date.now()}`,
-            name,
-            price,
-            purchasePrice: 0, 
-            quantity: Infinity, // Custom products don't have stock tracking
-            minStockLevel: 0,
-            cartQuantity: 1,
-            isCustom: true,
-        };
-        const newItems = [...activeCart.items, customProduct];
-        setCarts(prevCarts => ({
-            ...prevCarts,
-            [activeCartId]: { ...activeCart, items: newItems }
-        }));
-        setIsAddingCustomProduct(false);
-    };
+    //         // Use a portal to render the receipt into the dedicated div
+    //         ReactDOM.createPortal(receiptElement, printableContent);
 
-    const clearCart = () => {
-         setCarts(prevCarts => ({
-            ...prevCarts,
-            [activeCartId]: { ...activeCart, items: [] }
-        }));
-    };
+    //         // Allow images to load before printing
+    //         setTimeout(() => {
+    //             window.print();
+    //             // Clean up class after printing
+    //             document.documentElement.classList.remove('thermal');
+    //             // Unmount component after printing
+    //             ReactDOM.createPortal(null, printableContent);
+    //         }, 300);
+    //     }
+    // };
 
-
-    // --- Tab / Cart Switching ---
-    const selectCustomer = (customerId: string) => {
-        if (!customers) return;
-
-        if(customerId === GUEST_CUSTOMER_ID) {
-            setActiveCartId(GUEST_CUSTOMER_ID);
+    const handleFinalizeSale = async (paymentType: 'paid' | 'credit' | 'partial', amountPaid: number) => {
+        if (!activeCart || !firestore || !user) return;
+        if (activeCart.items.length === 0) {
+            toast.error("Le panier est vide.");
+            return;
+        }
+        if (paymentType === 'credit' && !activeCart.customerId) {
+            toast.error("Veuillez sélectionner un client pour une vente à crédit.");
             return;
         }
 
-        const customer = customers.find(c => c.id === customerId);
-        if (!customer) return;
-
-        if (!carts[customerId]) {
-            setCarts(prev => ({
-                ...prev,
-                [customerId]: {
-                    customerId: customerId,
-                    customerName: `${customer.firstName} ${customer.lastName}`,
-                    items: []
-                }
-            }));
-        }
-        setActiveCartId(customerId);
-    };
-
-    const addGuestTab = () => {
-        const newGuestId = `guest-${Date.now()}`;
-        setCarts(prev => ({
-            ...prev,
-            [newGuestId]: { customerId: newGuestId, customerName: 'Vente au comptoir', items: [] }
-        }));
-        setActiveCartId(newGuestId);
-    };
-
-    const closeTab = (cartIdToClose: string) => {
-        // Prevent closing the last tab
-        if (Object.keys(carts).length <= 1) return;
-
-        // Remove the cart
-        const newCarts = { ...carts };
-        delete newCarts[cartIdToClose];
-        setCarts(newCarts);
-        
-        // If the active cart was closed, switch to the first available cart
-        if (activeCartId === cartIdToClose) {
-            setActiveCartId(Object.keys(newCarts)[0]);
-        }
-    };
-
-    const handleSettleDebt = (amount: number) => {
-        if (!settlingDebtForCustomer || !firestore || !user) return;
-
-        const paymentsRef = collection(firestore, 'users', user.uid, 'payments');
-        const paymentData = {
-            amount: amount,
-            customerId: settlingDebtForCustomer.id,
-            customerName: `${settlingDebtForCustomer.firstName} ${settlingDebtForCustomer.lastName}`,
-            createdAt: serverTimestamp() as Timestamp,
-        };
-
-        addDocumentNonBlocking(paymentsRef, paymentData, {
-            onSuccess: () => {
-                setSettlingDebtForCustomer(null);
-                toast.success(`Paiement de ${amount.toFixed(2)} DA enregistré pour ${settlingDebtForCustomer.firstName} ${settlingDebtForCustomer.lastName}.`);
-            },
-            onError: (err) => {
-                console.error("Failed to add payment:", err);
-                toast.error("Échec de l'enregistrement du paiement.");
-            }
-        })
-    };
-
-
-    // --- Payment Processing ---
-    const handleFinalizeSale = async (amountPaid: number) => {
-        if (!firestore || !user || !activeCart || activeCart.items.length === 0) return;
         setIsProcessingPayment(true);
-
         const batch = writeBatch(firestore);
-        
-        // 1. Decrement stock for non-custom products
-        activeCart.items.forEach(item => {
-            if (!item.isCustom) {
-                const productRef = doc(firestore, 'users', user.uid, 'products', item.id);
-                const product = products?.find(p => p.id === item.id);
-                if (product) {
-                    const newQuantity = product.quantity - item.cartQuantity;
-                    batch.update(productRef, { quantity: newQuantity });
-                }
-            }
-        });
-
-        // 2. Create sale document
-        const saleRef = doc(collection(firestore, 'users', user.uid, 'sales'));
-        const remainingBalance = total - amountPaid;
-        const paymentStatus = remainingBalance <= 0 ? 'paid' : (amountPaid > 0 ? 'partial' : 'unpaid');
-        
-        const isGuestSale = activeCart.customerId === GUEST_CUSTOMER_ID || activeCart.customerId.startsWith('guest-');
-        
-        const saleData: Omit<Sale, 'id' | 'createdAt'> & { createdAt: any } = {
-            invoiceNumber: saleRef.id.substring(0, 8).toUpperCase(),
-            items: activeCart.items.map(i => ({ id: i.id, name: i.name, price: i.price, quantity: i.cartQuantity })),
-            total: total,
-            amountPaid: amountPaid,
-            remainingBalance: remainingBalance > 0 ? remainingBalance : 0,
-            paymentStatus: paymentStatus,
-            customerName: activeCart.customerName,
-            createdAt: serverTimestamp(),
-            // Conditionally add customerId only if it's not a guest sale
-            ...( !isGuestSale && { customerId: activeCart.customerId } )
-        };
-
-        batch.set(saleRef, saleData);
 
         try {
+            // 1. Update product stock
+            for (const item of activeCart.items) {
+                const productRef = doc(firestore, 'users', user.uid, 'products', item.id);
+                batch.update(productRef, { quantity: increment(-item.cartQuantity) });
+            }
+
+            // 2. Create Sale Record
+            const saleRef = doc(collection(firestore, 'users', user.uid, 'sales'));
+            const saleTotal = total;
+            const remainingBalance = saleTotal - amountPaid;
+            
+            batch.set(saleRef, {
+                items: activeCart.items.map(i => ({ id: i.id, name: i.name, price: i.price, quantity: i.cartQuantity })),
+                total: saleTotal,
+                amountPaid: amountPaid,
+                remainingBalance: remainingBalance > 0 ? remainingBalance : 0,
+                paymentStatus: paymentType,
+                customerId: activeCart.customerId || null,
+                customerName: activeCart.customerName || 'Vente au comptoir',
+                createdAt: serverTimestamp()
+            });
+
+            // 3. Update customer debt if applicable
+            if (paymentType !== 'paid' && activeCart.customerId) {
+                const customerRef = doc(firestore, 'users', user.uid, 'customers', activeCart.customerId);
+                batch.update(customerRef, { debt: increment(remainingBalance) });
+            }
+
             await batch.commit();
-            
-            // Set completed sale to show dialog
-            setCompletedSale({ ...saleData, id: saleRef.id, createdAt: new Date() } as unknown as Sale);
-            setIsPaymentDialogOpen(false);
-            
-             // Reset or close the cart
-            if (activeCart.customerId.startsWith('guest-') && Object.keys(carts).length > 1) {
-                closeTab(activeCart.customerId);
+
+            toast.success("Vente finalisée avec succès !");
+
+            // handlePrintReceipt(activeCart, saleTotal);
+
+            // Reset cart or remove it
+            if (carts.length > 1) {
+                setCarts(carts.filter(c => c.id !== activeCartId));
+                setActiveCartId(carts[0].id);
             } else {
-                clearCart();
+                 setCarts([{ id: activeCart.id, name: activeCart.name, items: [] }]);
             }
 
         } catch (error) {
-            console.error("Failed to finalize sale: ", error);
-             toast.error("Échec de la finalisation de la vente.");
+            console.error("Erreur lors de la finalisation de la vente: ", error);
+            toast.error("Une erreur est survenue. La vente n'a pas été enregistrée.");
         } finally {
-            setIsProcessingPayment(false);
+            setIsProcessing(false);
+            setIsPaymentDialogOpen(false);
+        }
+    };
+
+    const addCart = () => {
+        const newCartId = cartIdCounter++;
+        setCarts([...carts, { id: newCartId, name: `Vente ${newCartId}`, items: [] }]);
+        setActiveCartId(newCartId);
+    };
+
+    const removeCart = (id: number) => {
+        if (carts.length === 1) return; // Can't remove the last cart
+        const newCarts = carts.filter(cart => cart.id !== id);
+        setCarts(newCarts);
+        if (activeCartId === id) {
+            setActiveCartId(newCarts[0].id);
         }
     };
     
-    const handleCloseSaleCompleteDialog = () => {
-        setCompletedSale(null);
-        searchInputRef.current?.focus();
-    }
-
-
-    const isLoading = isUserLoading || isLoadingProducts || isLoadingCustomers || isLoadingSales || isLoadingPayments || isLoadingCompanyProfile;
-    const productsToShow = searchQuery ? filteredProducts : topSellingProducts;
-
-
-    if (isLoading || !user) {
-        return <div className="flex h-full items-center justify-center"><p>Chargement de l'interface de vente...</p></div>;
+    if (isLoadingProducts || isLoadingCustomers || !user) {
+        return <div className="flex h-full items-center justify-center"><p>Chargement des données...</p></div>
     }
 
     return (
         <>
             <AddProductForm isOpen={isAddingProduct} onOpenChange={setIsAddingProduct} userId={user.uid} />
-            <AddCustomProductForm isOpen={isAddingCustomProduct} onOpenChange={setIsAddingCustomProduct} onConfirm={addCustomProductToCart} />
             <PaymentDialog 
                 isOpen={isPaymentDialogOpen}
                 onOpenChange={setIsPaymentDialogOpen}
                 total={total}
-                isProcessing={isProcessingPayment}
+                customerName={activeCart?.customerName}
+                customerDebt={activeCart?.customerDebt}
+                isProcessing={isProcessing}
                 onConfirm={handleFinalizeSale}
             />
-            {settlingDebtForCustomer && (
-                <SettleDebtDialog
-                    isOpen={!!settlingDebtForCustomer}
-                    onOpenChange={(isOpen) => !isOpen && setSettlingDebtForCustomer(null)}
-                    onConfirm={handleSettleDebt}
-                    customerName={`${settlingDebtForCustomer.firstName} ${settlingDebtForCustomer.lastName}`}
-                    outstandingBalance={settlingDebtForCustomer.outstandingBalance}
-                />
-            )}
-            <ShortcutsHelpDialog isOpen={isShortcutsHelpOpen} onOpenChange={setIsShortcutsHelpOpen} />
-            {completedSale && (
-                <SaleCompleteDialog
-                    isOpen={!!completedSale}
-                    onOpenChange={handleCloseSaleCompleteDialog}
-                    sale={completedSale}
-                    customer={activeCustomerInfo}
-                    companyProfile={companyProfile}
-                />
-            )}
-
-
-            <div className="grid h-screen max-h-screen grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 overflow-hidden">
+            <div className="grid h-screen max-h-screen grid-cols-1 md:grid-cols-2 lg:grid-cols-5 overflow-hidden">
                 {/* --- Left Column: Product Selection --- */}
-                <div className="md:col-span-1 lg:col-span-2 xl:col-span-3 h-full flex flex-col">
+                <div className="md:col-span-1 lg:col-span-3 h-full flex flex-col border-r">
                     <div className="p-4 border-b">
-                         <div className="flex flex-col sm:flex-row gap-2">
-                             <Input
-                                ref={searchInputRef}
-                                placeholder="Scanner un code-barres ou rechercher par nom... (F2)"
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="flex-grow"
-                            />
-                            <div className="flex gap-2">
-                                <Button variant="outline" onClick={() => setIsAddingProduct(true)}>Nouveau produit (Alt+N)</Button>
-                                <Button variant="outline" onClick={() => setIsAddingCustomProduct(true)}>Produit Personnalisé (Alt+A)</Button>
-                                <Button variant="ghost" size="icon" onClick={() => setIsShortcutsHelpOpen(true)}>
-                                    <HelpCircle className="h-5 w-5" />
-                                    <span className="sr-only">Aide raccourcis</span>
-                                </Button>
-                            </div>
-                         </div>
+                        <div className="flex flex-col sm:flex-row gap-4">
+                            <Input placeholder="Rechercher ou scanner un produit..." className="flex-grow" />
+                            <Button onClick={() => setIsAddingProduct(true)}>Ajouter un produit</Button>
+                        </div>
                     </div>
-                    
                     <div className="flex-1 overflow-y-auto p-4">
-                       
-                        {!searchQuery && (
-                            <h2 className="text-lg font-semibold mb-4 text-muted-foreground">Top 10 des produits les plus vendus</h2>
-                        )}
-
-                        {isLoadingProducts ? (
-                            <p>Chargement des produits...</p>
-                        ) : (
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                                {productsToShow?.map((product, index) => (
-                                    <Card 
-                                        key={product.id}
-                                        onClick={() => addProductToCart(product)}
-                                        className={cn(
-                                            "cursor-pointer text-white transition-transform duration-200 hover:scale-105 hover:shadow-xl focus:scale-105 focus:shadow-xl focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 overflow-hidden",
-                                            productCardColors[index % productCardColors.length],
-                                            product.quantity <= 0 && "opacity-50 grayscale cursor-not-allowed hover:scale-100"
-                                        )}
-                                        aria-disabled={product.quantity <= 0}
-                                        tabIndex={product.quantity > 0 ? 0 : -1}
-                                        onKeyDown={(e) => e.key === 'Enter' && product.quantity > 0 && addProductToCart(product)}
-                                    >
-                                        <CardContent className="p-3 h-32 flex flex-col justify-between items-center text-center">
-                                            <p className="font-bold text-sm md:text-base line-clamp-3 self-start text-left">{product.name}</p>
-                                            <p className="text-lg font-bold self-end">{product.price.toFixed(2)} DA</p>
-                                        </CardContent>
-                                        <CardFooter className="p-1 px-2 bg-black/20 text-center justify-center">
-                                            <span className={cn("text-xs font-bold", product.quantity <= product.minStockLevel ? "text-yellow-300" : "text-white/90")}>
-                                                Stock: {product.quantity}
-                                            </span>
-                                        </CardFooter>
-                                    </Card>
-                                ))}
-                                {productsToShow?.length === 0 && (
-                                     <div className="text-center text-muted-foreground col-span-full py-10">
-                                        {searchQuery ? "Aucun produit ne correspond à votre recherche." : "Pas encore assez de données de vente pour afficher les meilleurs produits."}
-                                     </div>
-                                )}
-                            </div>
-                        )}
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                            {products?.map(product => (
+                                <Card key={product.id} onClick={() => addProductToCart(product)} className={cn("cursor-pointer hover:shadow-lg transition-shadow", product.quantity <= 0 ? 'opacity-50 cursor-not-allowed' : '')}
+                                >
+                                    <CardContent className="p-2 text-center">
+                                        <div className="font-semibold line-clamp-2 h-10">{product.name}</div>
+                                        <p className="text-lg font-bold text-primary mt-2">{product.price.toFixed(2)} DA</p>
+                                        <p className={cn("text-xs", product.quantity <= product.minStockLevel ? "text-destructive" : "text-muted-foreground")}>
+                                            Stock: {product.quantity}
+                                        </p>
+                                    </CardContent>
+                                </Card>
+                            ))}
+                        </div>
                     </div>
                 </div>
 
                 {/* --- Right Column: Cart --- */}
-                <div className="lg:col-span-1 h-full flex flex-col bg-card/50 border-l">
-                    {/* --- Tabs for Carts --- */}
-                    <div className="flex-shrink-0 border-b">
-                         <Tabs value={activeCartId} onValueChange={setActiveCartId} className="w-full">
-                             <TabsList className="p-1 h-auto bg-muted/80 rounded-none justify-start overflow-x-auto w-full">
-                                {Object.values(carts).map(cart => (
-                                    <div key={cart.customerId} className="relative group flex-shrink-0">
-                                         <TabsTrigger 
-                                            value={cart.customerId} 
-                                            className="h-8 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
-                                        >
-                                            {cart.customerName}
-                                        </TabsTrigger>
-                                         {Object.keys(carts).length > 1 && cart.customerId !== GUEST_CUSTOMER_ID && (
-                                            <button 
-                                                onClick={(e) => { e.stopPropagation(); closeTab(cart.customerId); }}
-                                                className="absolute -top-1 -right-1 p-0.5 rounded-full bg-destructive text-destructive-foreground opacity-0 group-hover:opacity-100 hover:bg-destructive/80 transition-opacity z-10"
-                                            >
-                                                <X className="h-3 w-3" />
-                                            </button>
-                                        )}
-                                    </div>
-                                ))}
-                                <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0" onClick={addGuestTab}>
-                                    <PlusCircle className="h-4 w-4" />
-                                </Button>
-                            </TabsList>
-                        </Tabs>
+                <div className="lg:col-span-2 h-full flex flex-col bg-card/50">
+                    <div className="flex border-b overflow-x-auto">
+                        {carts.map(cart => (
+                            <div key={cart.id} className={cn("flex items-center p-2 border-r cursor-pointer", activeCartId === cart.id && "bg-background")}>
+                                <span onClick={() => setActiveCartId(cart.id)} className="px-4 py-2 whitespace-nowrap">{cart.name}</span>
+                                {carts.length > 1 && <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => removeCart(cart.id)}><X className="h-4 w-4" /></Button>}
+                            </div>
+                        ))}
+                        <Button variant="ghost" onClick={addCart} className="border-l">Ajouter</Button>
                     </div>
-                     <div className="p-4 border-b">
-                         <Combobox
-                            ref={customerComboboxTriggerRef}
-                            options={[
-                                { value: GUEST_CUSTOMER_ID, label: 'Vente au comptoir'},
-                                ...customerOptions
-                            ]}
-                            onSelect={selectCustomer}
-                            placeholder={activeCart?.customerName || "Sélectionner un client"}
-                            searchPlaceholder="Rechercher un client..."
-                            notFoundMessage="Aucun client trouvé."
-                        />
-                         {activeCustomerInfo && (
-                            <div className="mt-4 text-center space-y-2">
-                                <p className="text-lg font-bold">{activeCustomerInfo.firstName} {activeCustomerInfo.lastName}</p>
-                                {activeCustomerInfo.outstandingBalance > 0 ? (
-                                    <div className="flex flex-col items-center gap-2">
-                                        <p className="text-destructive font-semibold">
-                                            Dette : {activeCustomerInfo.outstandingBalance.toFixed(2)} DA
-                                        </p>
-                                         <Button variant="outline" size="sm" onClick={() => setSettlingDebtForCustomer(activeCustomerInfo)}>
-                                            <CreditCard className="mr-2 h-4 w-4" />
-                                            Régler la dette
-                                        </Button>
-                                    </div>
-                                ): (
-                                     <p className="text-sm text-muted-foreground">Aucune dette impayée</p>
+
+                    {activeCart && (
+                        <div className="flex-1 flex flex-col">
+                            <div className="p-4 border-b">
+                                <div className="flex items-center gap-4">
+                                     <Combobox
+                                        options={customerOptions}
+                                        onSelect={handleSelectCustomer}
+                                        placeholder={activeCart.customerName || "Sélectionner un client"}
+                                        searchPlaceholder="Rechercher un client..."
+                                        notFoundMessage="Aucun client trouvé."
+                                    />
+                                    <Button variant="outline" size="icon">
+                                        <UserPlus className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            </div>
+                            <div className="flex-1 overflow-y-auto p-4">
+                                {activeCart.items.length > 0 ? (
+                                    <ul className="space-y-4">
+                                        {activeCart.items.map(item => (
+                                            <li key={item.id} className="flex items-center gap-4">
+                                                <div className="flex-1">
+                                                    <p className="font-medium">{item.name}</p>
+                                                    <p className="text-sm text-muted-foreground">{(item.price * item.cartQuantity).toFixed(2)} DA</p>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => updateCartItemQuantity(item.id, item.cartQuantity - 1)}>
+                                                        <MinusCircle className="h-4 w-4" />
+                                                    </Button>
+                                                    <Input type="number" value={item.cartQuantity} onChange={(e) => updateCartItemQuantity(item.id, parseInt(e.target.value) || 0)} className="w-16 h-8 text-center" />
+                                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => updateCartItemQuantity(item.id, item.cartQuantity + 1)}>
+                                                        <PlusCircle className="h-4 w-4" />
+                                                    </Button>
+                                                     <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => updateCartItemQuantity(item.id, 0)}>
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                ) : (
+                                    <p className="text-center text-muted-foreground">Le panier est vide.</p>
                                 )}
                             </div>
-                        )}
-                    </div>
-                   
-                    <div className="flex-1 overflow-y-auto p-4">
-                        {activeCart && activeCart.items.length > 0 ? (
-                            <ul className="space-y-4">
-                                {activeCart.items.map(item => (
-                                    <li key={item.id} className="flex items-center gap-4">
-                                        <div className="flex-1">
-                                            <p className="font-medium line-clamp-1">{item.name}</p>
-                                            <p className="text-sm text-muted-foreground">
-                                                {(item.price * item.cartQuantity).toFixed(2)} DA
-                                            </p>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => updateCartItemQuantity(item.id, item.cartQuantity - 1)}>
-                                                <MinusCircle className="h-4 w-4" />
-                                            </Button>
-                                             <Input 
-                                                type="number" 
-                                                value={item.cartQuantity} 
-                                                onChange={(e) => updateCartItemQuantity(item.id, parseFloat(e.target.value) || 0)}
-                                                className="w-16 h-8 text-center"
-                                                step="any"
-                                            />
-                                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => updateCartItemQuantity(item.id, item.cartQuantity + 1)}>
-                                                <PlusCircle className="h-4 w-4" />
-                                            </Button>
-                                        </div>
-                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => removeCartItem(item.id)}>
-                                            <XCircle className="h-4 w-4" />
-                                        </Button>
-                                    </li>
-                                ))}
-                            </ul>
-                        ) : (
-                            <div className="h-full flex flex-col items-center justify-center text-center">
-                                <ShoppingCart className="h-16 w-16 text-muted-foreground" />
-                                <p className="mt-4 text-muted-foreground">Le panier est vide.</p>
-                            </div>
-                        )}
-                    </div>
-                    
-                    {activeCart && activeCart.items.length > 0 && (
-                        <CardFooter className="flex-col items-stretch gap-2 border-t p-4 bg-background">
-                            <div className="flex justify-between font-semibold text-lg">
-                                <span>Total</span>
-                                <span>{total.toFixed(2)} DA</span>
-                            </div>
-                            <Button size="lg" onClick={() => setIsPaymentDialogOpen(true)} disabled={total <= 0}>
-                                Payer (F4)
-                            </Button>
-                            <Button variant="destructive" onClick={clearCart}>
-                                Vider le panier
-                            </Button>
-                        </CardFooter>
+                            <CardFooter className="flex-col items-stretch gap-2 border-t p-4">
+                                <div className="flex justify-between font-semibold text-xl">
+                                    <span>Total</span>
+                                    <span>{total.toFixed(2)} DA</span>
+                                </div>
+                                <Button size="lg" onClick={() => setIsPaymentDialogOpen(true)} disabled={activeCart.items.length === 0}>Paiement</Button>
+                            </CardFooter>
+                        </div>
                     )}
                 </div>
             </div>
         </>
     );
 }
-
-    
