@@ -484,7 +484,7 @@ export default function SellPage() {
             console.error("Failed to finalize sale: ", error);
              toast.error("Échec de la finalisation de la vente.");
         } finally {
-            setIsProcessing(false);
+            setIsProcessingPayment(false);
         }
     };
     
@@ -572,7 +572,7 @@ export default function SellPage() {
                                         key={product.id}
                                         onClick={() => addProductToCart(product)}
                                         className={cn(
-                                            "cursor-pointer text-white transition-transform duration-200 hover:scale-105 hover:shadow-xl focus:scale-105 focus:shadow-xl focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+                                            "cursor-pointer text-white transition-transform duration-200 hover:scale-105 hover:shadow-xl focus:scale-105 focus:shadow-xl focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 overflow-hidden",
                                             productCardColors[index % productCardColors.length],
                                             product.quantity <= 0 && "opacity-50 grayscale cursor-not-allowed hover:scale-100"
                                         )}
@@ -580,9 +580,9 @@ export default function SellPage() {
                                         tabIndex={product.quantity > 0 ? 0 : -1}
                                         onKeyDown={(e) => e.key === 'Enter' && product.quantity > 0 && addProductToCart(product)}
                                     >
-                                        <CardContent className="p-2 aspect-square flex flex-col justify-center items-center text-center">
-                                            <p className="font-bold text-sm md:text-base line-clamp-2">{product.name}</p>
-                                            <p className="text-xs font-semibold opacity-90">{product.price.toFixed(2)} DA</p>
+                                        <CardContent className="p-3 h-32 flex flex-col justify-between items-center text-center">
+                                            <p className="font-bold text-sm md:text-base line-clamp-3 self-start text-left">{product.name}</p>
+                                            <p className="text-lg font-bold self-end">{product.price.toFixed(2)} DA</p>
                                         </CardContent>
                                         <CardFooter className="p-1 px-2 bg-black/20 text-center justify-center">
                                             <span className={cn("text-xs font-bold", product.quantity <= product.minStockLevel ? "text-yellow-300" : "text-white/90")}>
