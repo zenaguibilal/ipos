@@ -67,6 +67,7 @@ export function PaymentDialog({ isOpen, onOpenChange, total, isProcessing, onCon
                                 className="col-span-3"
                                 step="0.01"
                                 autoFocus
+                                onFocus={(e) => e.target.select()}
                             />
                         </div>
                     </div>
