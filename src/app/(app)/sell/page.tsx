@@ -36,14 +36,13 @@ interface Cart {
     customerDebt?: number;
 }
 
-let nextCartId = 1;
 
 export default function SellPage() {
     const { user, isUserLoading } = useUser();
     const firestore = useFirestore();
     const router = useRouter();
-
-    const [carts, setCarts] = useState<Cart[]>([{ id: nextCartId++, name: `Vente 1`, items: [] }]);
+    
+    const [carts, setCarts] = useState<Cart[]>([{ id: 1, name: `Vente 1`, items: [] }]);
     const [activeCartId, setActiveCartId] = useState<number>(1);
     
     const [isAddingProduct, setIsAddingProduct] = useState(false);
@@ -336,41 +335,8 @@ export default function SellPage() {
         }
     };
     
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'F1') {
-                e.preventDefault();
-                setIsHelpOpen(true);
-            }
-            if (e.key === 'F2') {
-                e.preventDefault();
-                searchInputRef(document.getElementById('product-search') as HTMLInputElement);
-            }
-            if (e.key === 'F4') {
-                e.preventDefault();
-                if (activeCart && activeCart.items.length > 0) {
-                    setIsPaymentDialogOpen(true);
-                }
-            }
-            if (e.altKey && e.key.toLowerCase() === 'n') {
-                e.preventDefault();
-                setIsAddingProduct(true);
-            }
-             if (e.altKey && e.key.toLowerCase() === 'a') {
-                e.preventDefault();
-                setIsAddingCustomProduct(true);
-            }
-        };
-
-        window.addEventListener('keydown', handleKeyDown);
-        return () => {
-            window.removeEventListener('keydown', handleKeyDown);
-        };
-    }, [activeCart, searchInputRef]);
-
-
     const addCart = () => {
-        const newCartId = nextCartId++;
+       const newCartId = carts.length > 0 ? Math.max(...carts.map(c => c.id)) + 1 : 1;
         const newCartName = `Vente ${carts.length + 1}`;
         setCarts([...carts, { id: newCartId, name: newCartName, items: [] }]);
         setActiveCartId(newCartId);
@@ -404,6 +370,42 @@ export default function SellPage() {
     };
     
     const isLoading = isLoadingProducts || isLoadingCustomers || isUserLoading || isLoadingSales || isLoadingPayments;
+
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'F1') {
+                e.preventDefault();
+                setIsHelpOpen(true);
+            }
+            if (e.key === 'F2') {
+                e.preventDefault();
+                const searchInput = document.getElementById('product-search') as HTMLInputElement;
+                if (searchInput) {
+                    searchInput.focus();
+                }
+            }
+            if (e.key === 'F4') {
+                e.preventDefault();
+                if (activeCart && activeCart.items.length > 0) {
+                    setIsPaymentDialogOpen(true);
+                }
+            }
+            if (e.altKey && e.key.toLowerCase() === 'n') {
+                e.preventDefault();
+                setIsAddingProduct(true);
+            }
+             if (e.altKey && e.key.toLowerCase() === 'a') {
+                e.preventDefault();
+                setIsAddingCustomProduct(true);
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [activeCart]);
+
 
     if (isLoading || !user) {
         return <div className="flex h-full items-center justify-center"><p>Chargement des données...</p></div>
@@ -568,5 +570,4 @@ export default function SellPage() {
         </>
     );
 }
-
     
