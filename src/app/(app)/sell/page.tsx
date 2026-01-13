@@ -377,7 +377,7 @@ export default function SellPage() {
             : cart
         );
         setCarts(updatedCarts);
-        toast.info("La salla a été vidé.");
+        toast.info("Le panier a été vidé.");
     };
     
     const isLoading = isLoadingProducts || isLoadingCustomers || isUserLoading || isLoadingSales || isLoadingPayments;
@@ -599,3 +599,4 @@ export default function SellPage() {
     );
 }
 
+    
