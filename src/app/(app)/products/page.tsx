@@ -18,7 +18,11 @@ import type { Product } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
-type SortableKeys = keyof Pick<Product, 'name' | 'price' | 'purchasePrice' | 'quantity'>;
+interface ProductWithProfit extends Product {
+    profitMargin?: number;
+}
+
+type SortableKeys = keyof Pick<ProductWithProfit, 'name' | 'price' | 'purchasePrice' | 'quantity' | 'profitMargin'>;
 
 export default function ProductsPage() {
     const { user, isUserLoading } = useUser();
@@ -46,13 +50,20 @@ export default function ProductsPage() {
     
     const sortedAndFilteredProducts = useMemo(() => {
         if (!products) return [];
-        let sortableItems = [...products];
+        let sortableItems: ProductWithProfit[] = products.map(p => {
+             const profit = p.price - p.purchasePrice;
+             const margin = p.price > 0 ? (profit / p.price) * 100 : 0;
+             return { ...p, profitMargin: margin };
+        });
 
         if (sortConfig !== null) {
             sortableItems.sort((a, b) => {
                 const aValue = a[sortConfig.key];
                 const bValue = b[sortConfig.key];
 
+                if (aValue === undefined) return 1;
+                if (bValue === undefined) return -1;
+                
                 let comparison = 0;
                 if (typeof aValue === 'string' && typeof bValue === 'string') {
                     comparison = aValue.localeCompare(bValue);
@@ -119,6 +130,12 @@ export default function ProductsPage() {
         </th>
     );
 
+    const getProfitMarginColor = (margin: number) => {
+        if (margin > 50) return "text-green-500";
+        if (margin > 20) return "text-yellow-500";
+        return "text-red-500";
+    }
+
     return (
         <>
             <AddProductForm 
@@ -166,6 +183,7 @@ export default function ProductsPage() {
                                             <TableHead className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Codes-barres</TableHead>
                                             <SortableHeader sortKey="purchasePrice" className="text-right">Prix d'achat</SortableHeader>
                                             <SortableHeader sortKey="price" className="text-right">Prix de vente</SortableHeader>
+                                            <SortableHeader sortKey="profitMargin" className="text-right">Marge Bénéfice</SortableHeader>
                                             <SortableHeader sortKey="quantity" className="text-right">Quantité</SortableHeader>
                                             <TableHead className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Stock Min.</TableHead>
                                             <TableHead className="relative px-4 py-3">
@@ -180,6 +198,9 @@ export default function ProductsPage() {
                                                 <TableCell className="text-muted-foreground text-xs">{product.barcodes?.join(', ') || '-'}</TableCell>
                                                 <TableCell className="text-right">{product.purchasePrice.toFixed(2)} DA</TableCell>
                                                 <TableCell className="text-right font-semibold text-primary">{product.price.toFixed(2)} DA</TableCell>
+                                                 <TableCell className={cn("text-right font-bold", getProfitMarginColor(product.profitMargin || 0))}>
+                                                    {product.profitMargin !== undefined ? `${product.profitMargin.toFixed(1)}%` : '-'}
+                                                </TableCell>
                                                 <TableCell className={cn(
                                                     "text-right font-bold",
                                                     product.quantity <= product.minStockLevel && product.quantity > 0 && "text-yellow-500",
