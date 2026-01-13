@@ -54,8 +54,8 @@ export interface CustomerWithSalesData extends Customer {
     totalSpent: number;
     outstandingBalance: number;
     lastActivityDate?: Date | null;
-    daysLate?: number;      // Optional: Days overdue for payment
-    isReminderDue?: boolean; // Optional: Flag to show reminder
+    daysLate?: number;
+    isReminderDue?: boolean;
 }
 
 
@@ -135,3 +135,5 @@ export interface StockIntake {
     totalValue: number;
     createdAt: Timestamp | Date;
 }
+
+    

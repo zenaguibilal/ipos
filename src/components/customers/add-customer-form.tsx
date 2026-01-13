@@ -38,6 +38,12 @@ export function AddCustomerForm({ isOpen, onOpenChange, userId, onCustomerAdded 
         e.preventDefault();
         setError(null);
 
+        const settlementDayNumber = parseInt(settlementDay);
+        if (settlementDay && (isNaN(settlementDayNumber) || settlementDayNumber < 1 || settlementDayNumber > 31)) {
+            setError("Le jour de règlement doit être un nombre entre 1 et 31.");
+            return;
+        }
+
         if (!firestore) {
             setError("Le service de base de données n'est pas disponible.");
             return;
@@ -50,7 +56,7 @@ export function AddCustomerForm({ isOpen, onOpenChange, userId, onCustomerAdded 
             firstName: firstName,
             lastName: lastName,
             phone: phone,
-            settlementDay: parseInt(settlementDay) || null,
+            settlementDay: settlementDayNumber || null,
             createdAt: serverTimestamp(),
         }, {
             onSuccess: () => {
@@ -118,3 +124,5 @@ export function AddCustomerForm({ isOpen, onOpenChange, userId, onCustomerAdded 
         </Dialog>
     );
 }
+
+    

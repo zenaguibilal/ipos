@@ -40,6 +40,12 @@ export function EditCustomerForm({ isOpen, onOpenChange, userId, customer }: Edi
         e.preventDefault();
         setError(null);
        
+        const settlementDayNumber = parseInt(settlementDay);
+        if (settlementDay && (isNaN(settlementDayNumber) || settlementDayNumber < 1 || settlementDayNumber > 31)) {
+            setError("Le jour de règlement doit être un nombre entre 1 et 31.");
+            return;
+        }
+
         if (!firestore) {
             setError("Le service de base de données n'est pas disponible.");
             return;
@@ -52,7 +58,7 @@ export function EditCustomerForm({ isOpen, onOpenChange, userId, customer }: Edi
             firstName,
             lastName,
             phone,
-            settlementDay: parseInt(settlementDay) || null,
+            settlementDay: settlementDayNumber || null,
         }, {
             onSuccess: () => {
                 setIsLoading(false);
@@ -105,3 +111,4 @@ export function EditCustomerForm({ isOpen, onOpenChange, userId, customer }: Edi
     );
 }
 
+    
