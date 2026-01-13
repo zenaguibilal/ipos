@@ -4,7 +4,7 @@
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useMemo, useCallback } from 'react';
-import { collection, writeBatch, serverTimestamp, doc, runTransaction } from 'firebase/firestore';
+import { collection, writeBatch, serverTimestamp, doc, runTransaction, query, where } from 'firebase/firestore';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -16,7 +16,8 @@ import { IntakeItemsTable } from '@/components/stock-intake/items-table';
 import { SaveIntakeDialog } from '@/components/stock-intake/save-intake-dialog';
 import { History, Save } from 'lucide-react';
 import Link from 'next/link';
-import type { Product } from '@/lib/types';
+import type { Product, PurchaseOrder } from '@/lib/types';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 // Define the StockIntakeItem type locally as it's specific to this feature area
 export interface StockIntakeItem {
@@ -26,7 +27,7 @@ export interface StockIntakeItem {
     name: string;
     quantity: number;
     purchasePrice: number;
-    price: number;
+    price: number; // Selling price
     isNew: boolean;
 }
 
@@ -39,6 +40,13 @@ export default function StockIntakePage() {
     // Data fetching
     const productsCollectionRef = useMemoFirebase(() => (user && firestore) ? collection(firestore, 'users', user.uid, 'products') : null, [user, firestore]);
     const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsCollectionRef);
+    
+    // Fetch pending purchase orders
+    const pendingPOsQuery = useMemoFirebase(() => {
+        if (!user || !firestore) return null;
+        return query(collection(firestore, 'users', user.uid, 'purchaseOrders'), where('status', '==', 'pending'));
+    }, [user, firestore]);
+    const { data: pendingPOs, isLoading: isLoadingPOs } = useCollection<PurchaseOrder>(pendingPOsQuery);
 
     // Page State
     const [invoiceNumber, setInvoiceNumber] = useState('');
@@ -46,6 +54,7 @@ export default function StockIntakePage() {
     const [intakeItems, setIntakeItems] = useState<StockIntakeItem[]>([]);
     const [isSaving, setIsSaving] = useState(false);
     const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
+    const [selectedPOId, setSelectedPOId] = useState<string | null>(null);
 
     useEffect(() => {
         if (!isUserLoading && !user) {
@@ -70,6 +79,7 @@ export default function StockIntakePage() {
                 updateItem(itemInList.id, 'quantity', itemInList.quantity + 1);
             } else {
                  // Add existing product to the list
+                const existingProductDetails = products.find(p => p.id === existingProduct.id);
                 setIntakeItems(prev => [...prev, {
                     id: `item-${Date.now()}`,
                     productId: existingProduct.id,
@@ -77,7 +87,7 @@ export default function StockIntakePage() {
                     name: existingProduct.name,
                     quantity: 1,
                     purchasePrice: existingProduct.purchasePrice,
-                    price: existingProduct.price,
+                    price: existingProductDetails?.price || 0, // Get selling price
                     isNew: false,
                 }]);
             }
@@ -100,7 +110,6 @@ export default function StockIntakePage() {
             if (item.id === itemId) {
                 const updatedItem = { ...item, [field]: value };
                 
-                // If barcodes field is updated, convert string to array
                 if (field === 'barcodes' && typeof value === 'string') {
                     updatedItem.barcodes = value.split(',').map(b => b.trim()).filter(Boolean);
                 }
@@ -114,6 +123,35 @@ export default function StockIntakePage() {
     const removeItem = useCallback((itemId: string) => {
         setIntakeItems(prev => prev.filter(item => item.id !== itemId));
     }, []);
+
+    const handleSelectPO = (poId: string) => {
+        setSelectedPOId(poId);
+        if (!poId) {
+            setIntakeItems([]);
+            setInvoiceNumber('');
+            return;
+        }
+
+        const selectedPO = pendingPOs?.find(po => po.id === poId);
+        if (!selectedPO || !products) return;
+
+        setInvoiceNumber(selectedPO.supplier); // Use supplier name as invoice ref
+
+        const itemsFromPO: StockIntakeItem[] = selectedPO.items.map(poItem => {
+            const productDetails = products.find(p => p.id === poItem.productId);
+            return {
+                id: `item-${poItem.productId}-${Date.now()}`,
+                productId: poItem.productId,
+                barcodes: productDetails?.barcodes || [],
+                name: poItem.productName,
+                quantity: poItem.quantity,
+                purchasePrice: poItem.purchasePrice,
+                price: productDetails?.price || 0,
+                isNew: !productDetails,
+            };
+        });
+        setIntakeItems(itemsFromPO);
+    };
     
     const handleSaveIntake = async () => {
         if (!firestore || !user) {
@@ -126,7 +164,6 @@ export default function StockIntakePage() {
             return;
         }
         
-        // Validation
         for(const item of intakeItems) {
             if (!item.name || item.quantity <= 0 || item.purchasePrice < 0 || item.price < 0) {
                  toast.error(`Veuillez remplir toutes les informations pour le produit "${item.name || 'Inconnu'}"`);
@@ -141,10 +178,10 @@ export default function StockIntakePage() {
                 const productsRef = collection(firestore, 'users', user.uid, 'products');
 
                 for (const item of intakeItems) {
-                    if (item.isNew) {
-                        // Create a new product
-                        const newProductRef = doc(productsRef);
-                        transaction.set(newProductRef, {
+                    let productRef;
+                    if (item.isNew || !item.productId) {
+                        productRef = doc(productsRef); // Create a new product ref
+                        transaction.set(productRef, {
                             name: item.name,
                             quantity: item.quantity,
                             purchasePrice: item.purchasePrice,
@@ -153,9 +190,8 @@ export default function StockIntakePage() {
                             minStockLevel: 0, // Default min stock level
                             createdAt: serverTimestamp()
                         });
-                    } else if (item.productId) {
-                        // Update existing product
-                        const productRef = doc(firestore, 'users', user.uid, 'products', item.productId);
+                    } else {
+                        productRef = doc(firestore, 'users', user.uid, 'products', item.productId);
                         const productDoc = await transaction.get(productRef);
                         if (productDoc.exists()) {
                             const currentQuantity = productDoc.data().quantity || 0;
@@ -167,8 +203,13 @@ export default function StockIntakePage() {
                         }
                     }
                 }
+                
+                // If a PO was selected, update its status
+                if (selectedPOId) {
+                    const poRef = doc(firestore, 'users', user.uid, 'purchaseOrders', selectedPOId);
+                    transaction.update(poRef, { status: 'received' });
+                }
 
-                // Create the stock intake record
                 const intakeRef = doc(collection(firestore, 'users', user.uid, 'stockIntakes'));
                 transaction.set(intakeRef, {
                     invoiceNumber: invoiceNumber || `intake-${Date.now()}`,
@@ -189,6 +230,7 @@ export default function StockIntakePage() {
             setIntakeItems([]);
             setInvoiceNumber('');
             setInvoiceDate(new Date());
+            setSelectedPOId(null);
 
         } catch (error) {
             console.error("Erreur lors de l'enregistrement de la réception :", error);
@@ -203,7 +245,7 @@ export default function StockIntakePage() {
         return intakeItems.reduce((sum, item) => sum + (item.purchasePrice * item.quantity), 0);
     }, [intakeItems]);
 
-    const isLoading = isUserLoading || isLoadingProducts;
+    const isLoading = isUserLoading || isLoadingProducts || isLoadingPOs;
 
     if (isLoading || !user) {
         return <div className="flex h-full items-center justify-center"><p>Chargement...</p></div>;
@@ -226,7 +268,7 @@ export default function StockIntakePage() {
                             <div>
                                 <CardTitle className="text-2xl">Réception de Stock</CardTitle>
                                 <CardDescription>
-                                    Scannez, ajoutez et mettez à jour votre inventaire.
+                                    Scannez, sélectionnez un BC, ou ajoutez manuellement des produits pour mettre à jour l'inventaire.
                                 </CardDescription>
                             </div>
                             <div className="flex gap-2">
@@ -242,14 +284,30 @@ export default function StockIntakePage() {
                                 </Button>
                             </div>
                         </div>
-                        <div className="grid sm:grid-cols-2 gap-4 pt-4">
+                        <div className="grid sm:grid-cols-3 gap-4 pt-4">
                              <div>
-                                <Label htmlFor="invoice-number">N° de Facture Fournisseur</Label>
+                                <Label htmlFor="purchase-order">Bon de Commande (Optionnel)</Label>
+                                 <Select onValueChange={handleSelectPO} value={selectedPOId || ''} disabled={isLoadingPOs}>
+                                     <SelectTrigger id="purchase-order">
+                                         <SelectValue placeholder="Sélectionner un BC..." />
+                                     </SelectTrigger>
+                                     <SelectContent>
+                                        <SelectItem value="">Aucun</SelectItem>
+                                        {(pendingPOs || []).map(po => (
+                                            <SelectItem key={po.id} value={po.id}>
+                                               {po.poNumber} - {po.supplier}
+                                            </SelectItem>
+                                        ))}
+                                     </SelectContent>
+                                 </Select>
+                             </div>
+                             <div>
+                                <Label htmlFor="invoice-number">Réf. ou N° Facture Fournisseur</Label>
                                 <Input 
                                     id="invoice-number"
                                     value={invoiceNumber}
                                     onChange={(e) => setInvoiceNumber(e.target.value)}
-                                    placeholder="Ex: F2024-123"
+                                    placeholder="Ex: Facture #123 ou Fournisseur X"
                                 />
                              </div>
                              <div>
@@ -289,3 +347,5 @@ export default function StockIntakePage() {
         </>
     );
 }
+
+    
