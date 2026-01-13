@@ -35,9 +35,9 @@ export function LowStockAlerts({ products }: LowStockAlertsProps) {
                 </div>
                  <div className="flex gap-2">
                      <Button asChild variant="default" size="sm">
-                        <Link href="/stock-intake">
+                        <Link href="/products/purchase-orders">
                              <Warehouse className="mr-2 h-4 w-4" />
-                            Créer une réception
+                            Créer un bon de commande
                         </Link>
                     </Button>
                 </div>

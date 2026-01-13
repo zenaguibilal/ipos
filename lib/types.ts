@@ -92,27 +92,19 @@ export interface CompanyProfile {
     vatNumber?: string;
 }
 
-export interface StockIntakeItem {
-    id: string; // Unique ID for the item row
-    productId?: string; // ID of the product if it exists
-    barcodes: string[];
-    name: string;
+export interface PurchaseOrderItem {
+    productId: string;
+    productName: string;
     quantity: number;
     purchasePrice: number;
-    price: number;
-    isNew: boolean;
 }
 
-export interface StockIntake {
+export interface PurchaseOrder {
     id: string;
-    invoiceNumber: string;
-    invoiceDate: Timestamp;
-    items: {
-        productId?: string;
-        productName: string;
-        quantityReceived: number;
-        purchasePrice: number;
-    }[];
+    poNumber: string;
+    supplier: string;
+    items: PurchaseOrderItem[];
     totalValue: number;
+    status: 'pending' | 'received';
     createdAt: Timestamp;
 }
