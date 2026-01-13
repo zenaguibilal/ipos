@@ -16,21 +16,8 @@ import { IntakeItemsTable } from '@/components/stock-intake/items-table';
 import { SaveIntakeDialog } from '@/components/stock-intake/save-intake-dialog';
 import { History, Save } from 'lucide-react';
 import Link from 'next/link';
-import type { Product, PurchaseOrder } from '@/lib/types';
+import type { Product, PurchaseOrder, StockIntakeItem } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-
-// Define the StockIntakeItem type locally as it's specific to this feature area
-export interface StockIntakeItem {
-    id: string; // Unique ID for the item row
-    productId?: string; // ID of the product if it exists
-    barcodes: string[];
-    name: string;
-    quantity: number;
-    purchasePrice: number;
-    price: number; // Selling price
-    isNew: boolean;
-}
-
 
 export default function StockIntakePage() {
     const { user, isUserLoading } = useUser();
@@ -110,6 +97,7 @@ export default function StockIntakePage() {
             if (item.id === itemId) {
                 const updatedItem = { ...item, [field]: value };
                 
+                // If the value is a string, handle barcode array conversion
                 if (field === 'barcodes' && typeof value === 'string') {
                     updatedItem.barcodes = value.split(',').map(b => b.trim()).filter(Boolean);
                 }
@@ -125,7 +113,7 @@ export default function StockIntakePage() {
     }, []);
 
     const handleSelectPO = (poId: string) => {
-        if (poId === 'none' || !poId) {
+        if (poId === 'none') {
             setSelectedPOId(null);
             setIntakeItems([]);
             setInvoiceNumber('');
