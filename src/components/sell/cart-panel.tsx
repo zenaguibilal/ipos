@@ -219,13 +219,12 @@ export function CartPanel({
                         <Trash2 className="h-4 w-4" />
                     </Button>
                      <Button size="lg" onClick={onFinalize} disabled={cart.length === 0} className="flex-1 text-lg h-14">
-                        Finaliser (F4)
+                        <HardDriveDownload className="mr-2 h-5 w-5" />
+                        VENTE (F4)
                     </Button>
                  </div>
             </div>
         </div>
     );
 }
-    
-
     
