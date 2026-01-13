@@ -1,22 +1,25 @@
 
 'use client';
 
-import { useUser, useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking } from '@/firebase';
+import { useUser, useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking, addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useMemo } from 'react';
-import { collection, doc } from 'firebase/firestore';
+import { collection, doc, writeBatch } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { AddProductForm } from '@/components/products/add-product-form';
 import { EditProductForm } from '@/components/products/edit-product-form';
 import { DeleteProductDialog } from '@/components/products/delete-product-dialog';
-import { MoreHorizontal, Pencil, Trash2, ArrowUp, ArrowDown } from 'lucide-react';
+import { ProductImportDialog } from '@/components/products/product-import-dialog';
+import { MoreHorizontal, Pencil, Trash2, ArrowUp, ArrowDown, Upload, Download } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import type { Product } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import Papa from 'papaparse';
+
 
 interface ProductWithProfit extends Product {
     profitMargin?: number;
@@ -32,6 +35,7 @@ export default function ProductsPage() {
     const [isAddingProduct, setIsAddingProduct] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
     const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
+    const [isImporting, setIsImporting] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [sortConfig, setSortConfig] = useState<{ key: SortableKeys; direction: 'ascending' | 'descending' } | null>({ key: 'name', direction: 'ascending' });
 
@@ -115,6 +119,84 @@ export default function ProductsPage() {
         });
     }
 
+    const handleExportToCSV = () => {
+        if (!products) {
+            toast.error("Aucun produit à exporter.");
+            return;
+        }
+        const csvData = products.map(p => ({
+            "id": p.id,
+            "name": p.name,
+            "purchasePrice": p.purchasePrice,
+            "price": p.price,
+            "quantity": p.quantity,
+            "minStockLevel": p.minStockLevel,
+            "barcodes": p.barcodes?.join(',') || ''
+        }));
+
+        const csv = Papa.unparse(csvData);
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.setAttribute('download', `produits_${new Date().toISOString().split('T')[0]}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast.success("Produits exportés avec succès.");
+    };
+
+    const handleImportCSV = async (file: File) => {
+        if (!firestore || !user) return;
+        
+        Papa.parse(file, {
+            header: true,
+            skipEmptyLines: true,
+            complete: async (results) => {
+                const importedProducts = results.data as any[];
+                if (!products) return;
+
+                const batch = writeBatch(firestore);
+                let updatedCount = 0;
+                let addedCount = 0;
+
+                for (const imported of importedProducts) {
+                     const existingProduct = products.find(p => p.name.toLowerCase() === imported.name?.toLowerCase());
+
+                     const productData = {
+                        name: imported.name,
+                        purchasePrice: parseFloat(imported.purchasePrice) || 0,
+                        price: parseFloat(imported.price) || 0,
+                        quantity: parseInt(imported.quantity, 10) || 0,
+                        minStockLevel: parseInt(imported.minStockLevel, 10) || 0,
+                        barcodes: imported.barcodes?.split(',').map((b:string) => b.trim()) || []
+                     };
+                     
+                     if (existingProduct) {
+                         const docRef = doc(firestore, 'users', user.uid, 'products', existingProduct.id);
+                         batch.update(docRef, productData);
+                         updatedCount++;
+                     } else {
+                         const docRef = doc(collection(firestore, 'users', user.uid, 'products'));
+                         batch.set(docRef, productData);
+                         addedCount++;
+                     }
+                }
+
+                try {
+                    await batch.commit();
+                    toast.success(`${updatedCount} produit(s) mis à jour et ${addedCount} produit(s) ajouté(s).`);
+                } catch (error) {
+                    toast.error("Erreur lors de l'importation des produits.");
+                    console.error(error);
+                }
+            },
+            error: (error: any) => {
+                toast.error("Erreur lors de la lecture du fichier CSV.");
+                console.error(error);
+            }
+        });
+    };
+
     const isLoading = isUserLoading || isLoadingProducts;
 
     if (isLoading || !user) {
@@ -159,17 +241,30 @@ export default function ProductsPage() {
                     productName={deletingProduct.name}
                 />
             )}
+             <ProductImportDialog
+                isOpen={isImporting}
+                onOpenChange={setIsImporting}
+                onConfirm={handleImportCSV}
+            />
            
             <main className="flex-1 overflow-auto p-4 sm:p-6">
                 <Card className="w-full bg-card">
-                    <CardHeader className="flex flex-row items-center justify-between pt-4">
+                    <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between pt-4 gap-2">
                         <Input 
                             placeholder="Rechercher par nom ou code-barres..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full max-w-sm"
+                            className="w-full max-w-sm order-1 sm:order-1"
                         />
-                         <Button onClick={() => setIsAddingProduct(true)}>Ajouter un produit</Button>
+                         <div className="flex gap-2 w-full sm:w-auto order-2 sm:order-2">
+                            <Button variant="outline" onClick={() => setIsImporting(true)}>
+                                <Upload className="mr-2 h-4 w-4" /> Importer CSV
+                            </Button>
+                            <Button variant="outline" onClick={handleExportToCSV}>
+                                <Download className="mr-2 h-4 w-4" /> Exporter CSV
+                            </Button>
+                            <Button onClick={() => setIsAddingProduct(true)} className="flex-grow">Ajouter un produit</Button>
+                         </div>
                     </CardHeader>
                     <CardContent>
                         {isLoading ? (
