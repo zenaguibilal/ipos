@@ -36,14 +36,14 @@ interface Cart {
     customerDebt?: number;
 }
 
-let cartIdCounter = 1;
+let nextCartId = 1;
 
 export default function SellPage() {
     const { user, isUserLoading } = useUser();
     const firestore = useFirestore();
     const router = useRouter();
 
-    const [carts, setCarts] = useState<Cart[]>([{ id: cartIdCounter++, name: `Vente ${cartIdCounter-1}`, items: [] }]);
+    const [carts, setCarts] = useState<Cart[]>([{ id: nextCartId++, name: `Vente 1`, items: [] }]);
     const [activeCartId, setActiveCartId] = useState<number>(1);
     
     const [isAddingProduct, setIsAddingProduct] = useState(false);
@@ -285,10 +285,15 @@ export default function SellPage() {
             // Reset cart or remove it
             if (carts.length > 1) {
                 const newCarts = carts.filter(c => c.id !== activeCartId);
-                setCarts(newCarts);
-                setActiveCartId(newCarts[0].id);
+                const renumberedCarts = newCarts.map((cart, index) => ({
+                    ...cart,
+                    name: `Vente ${index + 1}`
+                }));
+                setCarts(renumberedCarts);
+                setActiveCartId(renumberedCarts[0].id);
             } else {
-                 setCarts([{ id: cartIdCounter++, name: `Vente ${cartIdCounter-1}`, items: [] }]);
+                setCarts([{ id: nextCartId++, name: `Vente 1`, items: [] }]);
+                setActiveCartId(nextCartId - 1);
             }
 
         } catch (error) {
@@ -334,18 +339,37 @@ export default function SellPage() {
 
 
     const addCart = () => {
-        const newCartId = cartIdCounter++;
-        setCarts([...carts, { id: newCartId, name: `Vente ${newCartId}`, items: [] }]);
+        const newCartId = nextCartId++;
+        const newCartName = `Vente ${carts.length + 1}`;
+        setCarts([...carts, { id: newCartId, name: newCartName, items: [] }]);
         setActiveCartId(newCartId);
     };
 
     const removeCart = (id: number) => {
         if (carts.length === 1) return; // Can't remove the last cart
+        
+        let newActiveCartId = activeCartId;
+        const removedCartIndex = carts.findIndex(cart => cart.id === id);
+        
         const newCarts = carts.filter(cart => cart.id !== id);
-        setCarts(newCarts);
+
+        // If the active cart is the one being removed, switch to the previous one or the first one
         if (activeCartId === id) {
-            setActiveCartId(newCarts[0].id);
+             if (removedCartIndex > 0) {
+                newActiveCartId = carts[removedCartIndex - 1].id;
+             } else {
+                newActiveCartId = newCarts[0].id;
+             }
         }
+        
+        // Rename carts to be sequential
+        const renumberedCarts = newCarts.map((cart, index) => ({
+            ...cart,
+            name: `Vente ${index + 1}`
+        }));
+        
+        setCarts(renumberedCarts);
+        setActiveCartId(newActiveCartId);
     };
     
     const isLoading = isLoadingProducts || isLoadingCustomers || isUserLoading;
