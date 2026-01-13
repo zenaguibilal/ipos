@@ -568,5 +568,3 @@ export default function SellPage() {
 }
 
     
-
-    
