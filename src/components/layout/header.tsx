@@ -39,7 +39,6 @@ import { cn } from '@/lib/utils';
 
 const navLinks = [
   { href: '/sell', label: 'Vendre', icon: ShoppingBasket },
-  { href: '/dashboard', label: 'Tableau de Bord', icon: LayoutDashboard },
   { href: '/products', label: 'Produits', icon: Package },
   { href: '/stock-intake', label: 'Réception Stock', icon: Truck },
   { href: '/customers', label: 'Clients', icon: Users },
@@ -61,27 +60,16 @@ export function AppHeader() {
     }
   };
 
-  const getPageTitle = () => {
-     if (pathname === '/profile') return 'Profil';
-     if (pathname.startsWith('/customers/')) return 'Détails du Client';
-     if (pathname.startsWith('/stock-intake/history')) return 'Historique des Réceptions';
-
-     const activeLink = navLinks.find(link => pathname.startsWith(link.href));
-     return activeLink?.label || 'iPOS';
-  }
-
-
   return (
     <header className="flex h-14 shrink-0 items-center gap-4 border-b bg-background px-4 sm:px-6 print-hide sticky top-0 z-10">
-       <div className="flex items-center gap-4">
+       <div className="flex items-center gap-2">
             <Link
-                href="/dashboard"
+                href="/sell"
                 className="flex items-center gap-2 font-semibold"
             >
                 <Store className="h-6 w-6" />
-                <span className="sr-only">iPOS</span>
+                <span className="text-xl font-semibold">iPOS</span>
             </Link>
-            <h1 className="text-xl font-semibold hidden sm:block">{getPageTitle()}</h1>
         </div>
 
         {/* Central Navigation */}
