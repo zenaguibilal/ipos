@@ -152,7 +152,7 @@ export function CartPanel({
                             <div>
                                 <p className="font-semibold">{selectedCustomer.firstName} {selectedCustomer.lastName}</p>
                                 <p className="text-sm text-muted-foreground">{selectedCustomer.phone || 'Pas de numéro'}</p>
-                                <p className={cn("text-sm font-semibold", selectedCustomer.outstandingBalance > 0 ? "text-destructive" : "text-green-500")}>
+                                <p className={cn("text-lg font-bold", selectedCustomer.outstandingBalance > 0 ? "text-yellow-500" : "text-green-500")}>
                                     Solde: {selectedCustomer.outstandingBalance.toFixed(2)} DA
                                 </p>
                             </div>
