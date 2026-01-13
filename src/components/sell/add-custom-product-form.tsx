@@ -103,5 +103,3 @@ export function AddCustomProductForm({ isOpen, onOpenChange, onConfirm }: AddCus
         </Dialog>
     );
 }
-
-    
