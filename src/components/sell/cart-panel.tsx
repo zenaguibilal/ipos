@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo } from 'react';
@@ -104,7 +103,7 @@ export function CartPanel({
     return (
         <div className="h-full flex flex-col">
             {/* Sessions Bar */}
-            <div className="flex items-center gap-2 mb-4 border-b pb-3">
+            <div className="flex-shrink-0 flex items-center gap-2 mb-4 border-b pb-3">
                 <ScrollArea className="w-full whitespace-nowrap">
                     <div className="flex gap-2">
                         {sessions.map((session, index) => (
@@ -134,7 +133,7 @@ export function CartPanel({
             </div>
 
 
-            <Card className="w-full mb-4">
+            <Card className="w-full mb-4 flex-shrink-0">
                 <CardHeader className="p-3 flex-row items-center justify-between">
                     <CardTitle className="text-base flex items-center gap-2">
                         <User className="h-5 w-5" /> Client
@@ -173,37 +172,35 @@ export function CartPanel({
                     <p className="text-muted-foreground">Ajoutez des produits pour commencer.</p>
                 </div>
             ) : (
-                <div className="flex-1 overflow-hidden">
-                    <ScrollArea className="h-full">
-                        <div className="space-y-3 pr-3">
-                            {cart.map(item => (
-                                <Card key={item.id} className="p-3 flex items-center gap-3">
-                                    <div className="flex-1">
-                                        <p className="font-medium line-clamp-1">{item.name}</p>
-                                        <p className="text-sm text-muted-foreground">{item.price.toFixed(2)} DA</p>
-                                    </div>
-                                    <div className="flex items-center gap-1">
-                                        <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => onUpdateQuantity(item.id, item.cartQuantity - 1)}>-</Button>
-                                        <Input
-                                            type="number"
-                                            value={item.cartQuantity}
-                                            onChange={(e) => onUpdateQuantity(item.id, parseInt(e.target.value) || 0)}
-                                            className="w-12 h-7 text-center"
-                                        />
-                                        <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => onUpdateQuantity(item.id, item.cartQuantity + 1)}>+</Button>
-                                    </div>
-                                    <p className="font-semibold w-20 text-right">{(item.price * item.cartQuantity).toFixed(2)} DA</p>
-                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onUpdateQuantity(item.id, 0)}>
-                                        <XCircle className="h-5 w-5 text-destructive" />
-                                    </Button>
-                                </Card>
-                            ))}
-                        </div>
-                    </ScrollArea>
-                </div>
+                <ScrollArea className="flex-1 h-full">
+                    <div className="space-y-3 pr-3">
+                        {cart.map(item => (
+                            <Card key={item.id} className="p-3 flex items-center gap-3">
+                                <div className="flex-1">
+                                    <p className="font-medium line-clamp-1">{item.name}</p>
+                                    <p className="text-sm text-muted-foreground">{item.price.toFixed(2)} DA</p>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                    <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => onUpdateQuantity(item.id, item.cartQuantity - 1)}>-</Button>
+                                    <Input
+                                        type="number"
+                                        value={item.cartQuantity}
+                                        onChange={(e) => onUpdateQuantity(item.id, parseInt(e.target.value) || 0)}
+                                        className="w-12 h-7 text-center"
+                                    />
+                                    <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => onUpdateQuantity(item.id, item.cartQuantity + 1)}>+</Button>
+                                </div>
+                                <p className="font-semibold w-20 text-right">{(item.price * item.cartQuantity).toFixed(2)} DA</p>
+                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onUpdateQuantity(item.id, 0)}>
+                                    <XCircle className="h-5 w-5 text-destructive" />
+                                </Button>
+                            </Card>
+                        ))}
+                    </div>
+                </ScrollArea>
             )}
             
-            <div className="mt-4 border-t pt-4">
+            <div className="flex-shrink-0 mt-4 border-t pt-4">
                  <div className="space-y-2 mb-4">
                     <div className="flex justify-between text-sm text-muted-foreground">
                         <span>Articles</span>
@@ -227,4 +224,3 @@ export function CartPanel({
         </div>
     );
 }
-    
