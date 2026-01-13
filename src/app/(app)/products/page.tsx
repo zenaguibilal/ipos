@@ -1,0 +1,233 @@
+
+'use client';
+
+import { useUser, useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking } from '@/firebase';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState, useMemo } from 'react';
+import { collection, doc } from 'firebase/firestore';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { AddProductForm } from '@/components/products/add-product-form';
+import { EditProductForm } from '@/components/products/edit-product-form';
+import { DeleteProductDialog } from '@/components/products/delete-product-dialog';
+import { MoreHorizontal, Pencil, Trash2, ArrowUp, ArrowDown } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Input } from '@/components/ui/input';
+import { toast } from 'sonner';
+import type { Product } from '@/lib/types';
+import { cn } from '@/lib/utils';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+
+type SortableKeys = keyof Pick<Product, 'name' | 'price' | 'purchasePrice' | 'quantity'>;
+
+export default function ProductsPage() {
+    const { user, isUserLoading } = useUser();
+    const firestore = useFirestore();
+    const router = useRouter();
+
+    const [isAddingProduct, setIsAddingProduct] = useState(false);
+    const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+    const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [sortConfig, setSortConfig] = useState<{ key: SortableKeys; direction: 'ascending' | 'descending' } | null>({ key: 'name', direction: 'ascending' });
+
+    // Fetch Products
+    const productsCollectionRef = useMemoFirebase(() => {
+        if (!user || !firestore) return null;
+        return collection(firestore, 'users', user.uid, 'products');
+    }, [user, firestore]);
+    const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsCollectionRef);
+
+    useEffect(() => {
+        if (!isUserLoading && !user) {
+            router.push('/login');
+        }
+    }, [user, isUserLoading, router]);
+    
+    const sortedAndFilteredProducts = useMemo(() => {
+        if (!products) return [];
+        let sortableItems = [...products];
+
+        if (sortConfig !== null) {
+            sortableItems.sort((a, b) => {
+                const aValue = a[sortConfig.key];
+                const bValue = b[sortConfig.key];
+
+                let comparison = 0;
+                if (typeof aValue === 'string' && typeof bValue === 'string') {
+                    comparison = aValue.localeCompare(bValue);
+                } else if (typeof aValue === 'number' && typeof bValue === 'number') {
+                    comparison = aValue - bValue;
+                }
+
+                return sortConfig.direction === 'ascending' ? comparison : -comparison;
+            });
+        }
+        
+        if (!searchQuery) return sortableItems;
+        
+        const lowercasedQuery = searchQuery.toLowerCase();
+        
+        return sortableItems.filter(product => 
+            product.name.toLowerCase().includes(lowercasedQuery) ||
+            (product.barcodes && product.barcodes.some(b => b.includes(lowercasedQuery)))
+        );
+    }, [products, searchQuery, sortConfig]);
+
+     const requestSort = (key: SortableKeys) => {
+        let direction: 'ascending' | 'descending' = 'ascending';
+        if (sortConfig && sortConfig.key === key && sortConfig.direction === 'ascending') {
+            direction = 'descending';
+        }
+        setSortConfig({ key, direction });
+    };
+
+    const getSortIcon = (key: SortableKeys) => {
+        if (!sortConfig || sortConfig.key !== key) {
+            return null;
+        }
+        return sortConfig.direction === 'ascending' ? <ArrowUp className="ml-2 h-3 w-3" /> : <ArrowDown className="ml-2 h-3 w-3" />;
+    };
+    
+    const handleDeleteProduct = () => {
+        if (!deletingProduct || !firestore || !user) return;
+        const productDocRef = doc(firestore, 'users', user.uid, 'products', deletingProduct.id);
+        deleteDocumentNonBlocking(productDocRef, {
+            onSuccess: () => {
+                setDeletingProduct(null);
+                toast.success(`Le produit "${deletingProduct.name}" a été supprimé.`);
+            },
+            onError: (err) => {
+                console.error("Failed to delete product:", err);
+                toast.error("Échec de la suppression du produit.");
+            }
+        });
+    }
+
+    const isLoading = isUserLoading || isLoadingProducts;
+
+    if (isLoading || !user) {
+        return <div className="flex h-full items-center justify-center"><p>Chargement...</p></div>;
+    }
+
+    const SortableHeader = ({ sortKey, children, className }: { sortKey: SortableKeys, children: React.ReactNode, className?: string }) => (
+        <th scope="col" className={cn("px-4 py-3 text-xs font-medium uppercase tracking-wider text-muted-foreground", className)}>
+            <button onClick={() => requestSort(sortKey)} className="flex items-center">
+                {children}
+                {getSortIcon(sortKey)}
+            </button>
+        </th>
+    );
+
+    return (
+        <>
+            <AddProductForm 
+                isOpen={isAddingProduct}
+                onOpenChange={setIsAddingProduct}
+                userId={user.uid}
+            />
+            {editingProduct && (
+                 <EditProductForm
+                    isOpen={!!editingProduct}
+                    onOpenChange={(isOpen) => !isOpen && setEditingProduct(null)}
+                    userId={user.uid}
+                    product={editingProduct}
+                />
+            )}
+            {deletingProduct && (
+                <DeleteProductDialog
+                    isOpen={!!deletingProduct}
+                    onOpenChange={(isOpen) => !isOpen && setDeletingProduct(null)}
+                    onConfirm={handleDeleteProduct}
+                    productName={deletingProduct.name}
+                />
+            )}
+           
+            <main className="flex-1 overflow-auto p-4 sm:p-6">
+                <Card className="w-full bg-card">
+                    <CardHeader className="flex flex-row items-center justify-between pt-4">
+                        <Input 
+                            placeholder="Rechercher par nom ou code-barres..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full max-w-sm"
+                        />
+                         <Button onClick={() => setIsAddingProduct(true)}>Ajouter un produit</Button>
+                    </CardHeader>
+                    <CardContent>
+                        {isLoading ? (
+                            <div className="text-center">Chargement des données...</div>
+                        ) : sortedAndFilteredProducts && sortedAndFilteredProducts.length > 0 ? (
+                            <div className="overflow-x-auto">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <SortableHeader sortKey="name" className="text-left">Produit</SortableHeader>
+                                            <TableHead className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Codes-barres</TableHead>
+                                            <SortableHeader sortKey="purchasePrice" className="text-right">Prix d'achat</SortableHeader>
+                                            <SortableHeader sortKey="price" className="text-right">Prix de vente</SortableHeader>
+                                            <SortableHeader sortKey="quantity" className="text-right">Quantité</SortableHeader>
+                                            <TableHead className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Stock Min.</TableHead>
+                                            <TableHead className="relative px-4 py-3">
+                                                <span className="sr-only">Actions</span>
+                                            </TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {sortedAndFilteredProducts.map(product => (
+                                            <TableRow key={product.id}>
+                                                <TableCell className="font-medium">{product.name}</TableCell>
+                                                <TableCell className="text-muted-foreground text-xs">{product.barcodes?.join(', ') || '-'}</TableCell>
+                                                <TableCell className="text-right">{product.purchasePrice.toFixed(2)} DA</TableCell>
+                                                <TableCell className="text-right font-semibold text-primary">{product.price.toFixed(2)} DA</TableCell>
+                                                <TableCell className={cn(
+                                                    "text-right font-bold",
+                                                    product.quantity <= product.minStockLevel && product.quantity > 0 && "text-yellow-500",
+                                                    product.quantity === 0 && "text-destructive"
+                                                )}>
+                                                    {product.quantity}
+                                                </TableCell>
+                                                <TableCell className="text-right text-muted-foreground">{product.minStockLevel}</TableCell>
+                                                <TableCell className="text-right">
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" className="h-8 w-8 p-0">
+                                                                <span className="sr-only">Ouvrir le menu</span>
+                                                                <MoreHorizontal className="h-4 w-4" />
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end">
+                                                            <DropdownMenuItem onClick={() => setEditingProduct(product)}>
+                                                                <Pencil className="mr-2 h-4 w-4" />
+                                                                <span>Modifier</span>
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem onClick={() => setDeletingProduct(product)} className="text-destructive focus:text-destructive-foreground focus:bg-destructive">
+                                                                <Trash2 className="mr-2 h-4 w-4" />
+                                                                <span>Supprimer</span>
+                                                            </DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        ) : products && products.length > 0 && searchQuery ? (
+                            <div className="flex h-40 items-center justify-center rounded-md border-2 border-dashed border-border">
+                                <p className="text-muted-foreground">Aucun produit ne correspond à votre recherche.</p>
+                            </div>
+                        ) : (
+                            <div className="flex h-40 items-center justify-center rounded-md border-2 border-dashed border-border">
+                                <div className="text-center">
+                                    <p className="text-muted-foreground">Vous n'avez pas encore de produits.</p>
+                                    <Button variant="link" onClick={() => setIsAddingProduct(true)}>Ajouter votre premier produit</Button>
+                                </div>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            </main>
+        </>
+    );
+}
