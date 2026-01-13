@@ -45,8 +45,9 @@ service cloud.firestore {
 
       // Rules for the 'sales' subcollection nested under a user document.
       match /sales/{saleId} {
-        // Only the owner of the parent user document can read or write to the sales subcollection.
-        allow read, write: if isOwner(userId);
+        // Allow the owner to read/write individual documents and list the collection.
+        allow get, write: if isOwner(userId);
+        allow list: if isOwner(userId);
       }
 
        // Rules for the 'customers' subcollection.
