@@ -213,7 +213,7 @@ export default function SellPage() {
         const updatedCarts = carts.map(cart => cart.id === activeCartId ? { ...cart, items: newItems } : cart);
         setCarts(updatedCarts);
         setIsAddingCustomProduct(false);
-    }
+    };
 
     const updateCartItemQuantity = (productId: string, newQuantity: number) => {
         if (!activeCart) return;
@@ -408,7 +408,7 @@ export default function SellPage() {
 
 
     if (isLoading || !user) {
-        return <div className="flex h-full items-center justify-center"><p>Chargement des données...</p></div>
+        return <div className="flex h-full items-center justify-center"><p>Chargement des données...</p></div>;
     }
 
     return (
@@ -478,7 +478,7 @@ export default function SellPage() {
                         </div>
                        ) : (
                            <div className="text-center text-muted-foreground pt-10">
-                                {products && products.length > 0 ? 'Aucun produit ne correspond à votre recherche.' : 'Aucun produit dans l\\'inventaire.'}
+                                {products && products.length > 0 ? 'Aucun produit ne correspond à votre recherche.' : 'Aucun produit dans l\'inventaire.'}
                            </div>
                        )}
                     </div>
@@ -570,6 +570,5 @@ export default function SellPage() {
         </>
     );
 }
-    
 
     
