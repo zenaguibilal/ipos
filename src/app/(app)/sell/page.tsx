@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { collection, doc, writeBatch, serverTimestamp, increment } from 'firebase/firestore';
 import { AddProductForm } from '@/components/sell/add-product-form';
-import { MinusCircle, PlusCircle, Trash2, User, UserX, X } from 'lucide-react';
+import { MinusCircle, PlusCircle, Trash2, User, UserX, X, ShoppingCart } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PaymentDialog } from '@/components/sell/payment-dialog';
@@ -368,6 +368,17 @@ export default function SellPage() {
         setCarts(renumberedCarts);
         setActiveCartId(newActiveCartId);
     };
+
+    const clearCart = () => {
+        if (!activeCart) return;
+        const updatedCarts = carts.map(cart => 
+            cart.id === activeCartId 
+            ? { ...cart, items: [], customerId: undefined, customerName: undefined, customerDebt: undefined } 
+            : cart
+        );
+        setCarts(updatedCarts);
+        toast.info("La salla a été vidé.");
+    };
     
     const isLoading = isLoadingProducts || isLoadingCustomers || isUserLoading || isLoadingSales || isLoadingPayments;
 
@@ -478,7 +489,7 @@ export default function SellPage() {
                         </div>
                        ) : (
                            <div className="text-center text-muted-foreground pt-10">
-                                {products && products.length > 0 ? 'Aucun produit ne correspond à votre recherche.' : 'Aucun produit dans l\'inventaire.'}
+                                {products && products.length > 0 ? 'Aucun produit ne correspond à votre recherche.' : 'Aucun produit dans l\\'inventaire.'}
                            </div>
                        )}
                     </div>
@@ -559,7 +570,24 @@ export default function SellPage() {
                                     <span>Total</span>
                                     <span>{total.toFixed(2)} DA</span>
                                 </div>
-                                <Button size="lg" onClick={() => setIsPaymentDialogOpen(true)} disabled={activeCart.items.length === 0 || isProcessingPayment}>Paiement (F4)</Button>
+                                <div className="flex gap-2">
+                                    <Button 
+                                        variant="outline"
+                                        onClick={clearCart}
+                                        disabled={activeCart.items.length === 0 || isProcessingPayment}
+                                    >
+                                        <ShoppingCart className="mr-2 h-4 w-4" />
+                                        Vider
+                                    </Button>
+                                    <Button 
+                                        className="flex-grow"
+                                        size="lg" 
+                                        onClick={() => setIsPaymentDialogOpen(true)} 
+                                        disabled={activeCart.items.length === 0 || isProcessingPayment}
+                                    >
+                                        Éditer la vente (F4)
+                                    </Button>
+                                </div>
                             </CardFooter>
                         </div>
                     ) : (
@@ -570,5 +598,3 @@ export default function SellPage() {
         </>
     );
 }
-
-    
