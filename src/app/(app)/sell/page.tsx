@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { collection, doc, writeBatch, serverTimestamp, updateDoc, increment } from 'firebase/firestore';
+import { collection, doc, writeBatch, serverTimestamp, increment } from 'firebase/firestore';
 import { AddProductForm } from '@/components/sell/add-product-form';
 import { MinusCircle, PlusCircle, Trash2, UserPlus, UserX, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -476,7 +476,7 @@ export default function SellPage() {
                         </div>
                        ) : (
                            <div className="text-center text-muted-foreground pt-10">
-                                {products && products.length > 0 ? 'Aucun produit ne correspond à votre recherche.' : 'Aucun produit dans l\'inventaire.'}
+                                {products && products.length > 0 ? 'Aucun produit ne correspond à votre recherche.' : 'Aucun produit dans l\\'inventaire.'}
                            </div>
                        )}
                     </div>
@@ -566,7 +566,3 @@ export default function SellPage() {
         </>
     );
 }
-
-    
-
-    
