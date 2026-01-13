@@ -5,36 +5,36 @@
 
 @layer base {
   :root {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
+    --background: 210 20% 98%;
+    --foreground: 224 71.4% 4.1%;
 
-    --card: 240 4% 10%;
-    --card-foreground: 0 0% 98%;
+    --card: 210 20% 98%;
+    --card-foreground: 224 71.4% 4.1%;
  
-    --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 98%;
+    --popover: 210 20% 98%;
+    --popover-foreground: 224 71.4% 4.1%;
  
-    --primary: 216 91% 57%;
-    --primary-foreground: 224 71.4% 4.1%;
+    --primary: 216 91% 47%;
+    --primary-foreground: 210 20% 98%;
 
-    --chart-primary: 216 91% 57%;
+    --chart-primary: 216 91% 47%;
     --chart-secondary: 48 96% 51%;
  
-    --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
+    --secondary: 215 28% 90%;
+    --secondary-foreground: 224 71.4% 4.1%;
  
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
+    --muted: 215 28% 90%;
+    --muted-foreground: 215 25% 45%;
  
-    --accent: 240 3.7% 15.9%;
-    --accent-foreground: 0 0% 98%;
+    --accent: 215 28% 90%;
+    --accent-foreground: 224 71.4% 4.1%;
  
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 20% 98%;
 
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 216 91% 57%;
+    --border: 215 28% 85%;
+    --input: 215 28% 85%;
+    --ring: 216 91% 47%;
  
     --radius: 0.5rem;
   }
@@ -158,3 +158,4 @@ html.thermal, body.thermal {
 .thermal-receipt .border-dashed { border-style: dashed !important; }
 .thermal-receipt .border-black { border-color: black !important; }
 .thermal-receipt .font-bold { font-weight: 700 !important; }
+
