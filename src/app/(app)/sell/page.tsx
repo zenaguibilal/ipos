@@ -6,23 +6,27 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { collection, doc, writeBatch, serverTimestamp } from 'firebase/firestore';
 import { toast } from 'sonner';
-import { HelpCircle } from 'lucide-react';
+import { HelpCircle, UserPlus, UserCheck } from 'lucide-react';
 
 import { AddProductForm } from '@/components/sell/add-product-form';
 import { AddCustomProductForm } from '@/components/sell/add-custom-product-form';
 import { PaymentDialog } from '@/components/sell/payment-dialog';
 import { SaleCompleteDialog } from '@/components/sell/sale-complete-dialog';
 import { ShortcutsHelpDialog } from '@/components/sell/shortcuts-help-dialog';
+import { AddCustomerForm } from '@/components/customers/add-customer-form';
 
-import type { Product, Sale, SaleItem, CompanyProfile } from '@/lib/types';
+import type { Product, Sale, SaleItem, CompanyProfile, Customer } from '@/lib/types';
 import { ProductGrid } from '@/components/sell/product-grid';
 import { CartPanel } from '@/components/sell/cart-panel';
+import { Combobox } from '@/components/ui/combobox';
 
 export type ProductWithOptionalBarcode = Product & { barcode?: string };
 export type CartItem = SaleItem & { cartQuantity: number };
 
 export interface SalesSession {
     cart: CartItem[];
+    customerId?: string;
+    customerName?: string;
 }
 
 export default function SellPage() {
@@ -33,9 +37,12 @@ export default function SellPage() {
     // Data fetching
     const productsCollectionRef = useMemoFirebase(() => (user && firestore) ? collection(firestore, 'users', user.uid, 'products') : null, [user, firestore]);
     const companyDocRef = useMemoFirebase(() => (user && firestore) ? doc(firestore, 'users', user.uid, 'companyProfile', 'main') : null, [user, firestore]);
+    const customersCollectionRef = useMemoFirebase(() => (user && firestore) ? collection(firestore, 'users', user.uid, 'customers') : null, [user, firestore]);
 
     const { data: products, isLoading: isLoadingProducts } = useCollection<ProductWithOptionalBarcode>(productsCollectionRef);
     const { data: companyProfile, isLoading: isLoadingCompany } = useDoc<CompanyProfile>(companyDocRef);
+    const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersCollectionRef);
+
 
     // Component state for multiple sales sessions
     const [sessions, setSessions] = useState<SalesSession[]>([{ cart: [] }]);
@@ -49,6 +56,7 @@ export default function SellPage() {
     // Modal states
     const [isAddingProduct, setIsAddingProduct] = useState(false);
     const [isAddingCustomProduct, setIsAddingCustomProduct] = useState(false);
+    const [isAddingCustomer, setIsAddingCustomer] = useState(false);
     const [isHelpOpen, setIsHelpOpen] = useState(false);
     
     // Get current active session
@@ -136,7 +144,7 @@ export default function SellPage() {
     }, [products, activeSessionIndex]);
 
     const clearCart = useCallback(() => {
-        updateCurrentSession(() => ({ cart: [] }));
+        updateCurrentSession((session) => ({ ...session, cart: [] }));
     }, [activeSessionIndex]);
 
     // Sale processing
@@ -154,7 +162,8 @@ export default function SellPage() {
             amountPaid: amountPaid,
             remainingBalance: total - amountPaid,
             paymentStatus: amountPaid >= total ? 'paid' : (amountPaid > 0 ? 'partial' : 'unpaid'),
-            customerName: 'Vente au comptoir',
+            customerId: activeSession.customerId || undefined,
+            customerName: activeSession.customerName || 'Vente au comptoir',
         };
 
         const batch = writeBatch(firestore);
@@ -212,6 +221,23 @@ export default function SellPage() {
         setLastSale(null);
         // The session is already cleared/closed by handleFinalizeSale
     };
+
+     const handleSelectCustomer = (customerId: string) => {
+        const customer = customers?.find(c => c.id === customerId);
+        updateCurrentSession(session => ({
+            ...session,
+            customerId: customerId,
+            customerName: customer ? `${customer.firstName} ${customer.lastName}` : "Client inconnu"
+        }));
+    };
+
+    const handleClearCustomer = () => {
+        updateCurrentSession(session => ({
+            ...session,
+            customerId: undefined,
+            customerName: undefined
+        }));
+    };
     
     // Keyboard shortcuts
      const handleKeyDown = useCallback((event: KeyboardEvent) => {
@@ -252,7 +278,7 @@ export default function SellPage() {
     }, [handleKeyDown]);
 
 
-    const isLoading = isUserLoading || isLoadingProducts || isLoadingCompany;
+    const isLoading = isUserLoading || isLoadingProducts || isLoadingCompany || isLoadingCustomers;
     
     if (isLoading || !user) {
         return <div className="flex h-full items-center justify-center"><p>Chargement de l'interface de vente...</p></div>;
@@ -266,6 +292,12 @@ export default function SellPage() {
             <AddProductForm isOpen={isAddingProduct} onOpenChange={setIsAddingProduct} userId={user.uid} />
             <AddCustomProductForm isOpen={isAddingCustomProduct} onOpenChange={setIsAddingCustomProduct} onConfirm={addCustomProductToCart} />
             <ShortcutsHelpDialog isOpen={isHelpOpen} onOpenChange={setIsHelpOpen} />
+            <AddCustomerForm 
+                isOpen={isAddingCustomer} 
+                onOpenChange={setIsAddingCustomer} 
+                userId={user.uid}
+                onCustomerAdded={(newId) => handleSelectCustomer(newId)}
+            />
             <PaymentDialog 
                 isOpen={isPaymentDialogOpen}
                 onOpenChange={setIsPaymentDialogOpen}
@@ -279,6 +311,7 @@ export default function SellPage() {
                     onOpenChange={handleNewSale}
                     sale={lastSale}
                     companyProfile={companyProfile}
+                    customer={customers?.find(c => c.id === lastSale.customerId) || null}
                 />
             )}
             
@@ -305,6 +338,11 @@ export default function SellPage() {
                         onSessionAdd={handleAddSession}
                         onSessionChange={setActiveSessionIndex}
                         onSessionClose={handleCloseSession}
+                        customers={customers || []}
+                        selectedCustomer={activeSession.customerId}
+                        onSelectCustomer={handleSelectCustomer}
+                        onClearCustomer={handleClearCustomer}
+                        onAddNewCustomer={() => setIsAddingCustomer(true)}
                    />
                 </div>
             </div>
@@ -322,3 +360,4 @@ export default function SellPage() {
     
 
     
+

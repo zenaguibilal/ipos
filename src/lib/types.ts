@@ -18,6 +18,7 @@ export interface Customer {
     lastName: string;
     phone?: string;
     settlementDay?: number;
+    createdAt: Timestamp;
 }
 
 export interface SaleItem {
@@ -56,6 +57,7 @@ export interface CustomerWithSalesData extends Customer {
     daysLate?: number;      // Optional: Days overdue for payment
     isReminderDue?: boolean; // Optional: Flag to show reminder
 }
+
 
 export interface ChartData {
   date: string;

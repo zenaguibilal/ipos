@@ -5,9 +5,12 @@ import { useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Trash2, XCircle, HardDriveDownload, PlusCircle } from 'lucide-react';
+import { Trash2, XCircle, HardDriveDownload, PlusCircle, UserPlus, UserX } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Combobox, ComboboxOption } from '@/components/ui/combobox';
 import type { CartItem, SalesSession } from '@/app/(app)/sell/page';
+import type { Customer } from '@/lib/types';
+
 
 interface CartPanelProps {
     cart: CartItem[];
@@ -19,6 +22,11 @@ interface CartPanelProps {
     onSessionChange: (index: number) => void;
     onSessionAdd: () => void;
     onSessionClose: (index: number) => void;
+    customers: Customer[];
+    selectedCustomer?: string;
+    onSelectCustomer: (customerId: string) => void;
+    onClearCustomer: () => void;
+    onAddNewCustomer: () => void;
 }
 
 export function CartPanel({
@@ -30,7 +38,12 @@ export function CartPanel({
     activeSessionIndex,
     onSessionChange,
     onSessionAdd,
-    onSessionClose
+    onSessionClose,
+    customers,
+    selectedCustomer,
+    onSelectCustomer,
+    onClearCustomer,
+    onAddNewCustomer,
 }: CartPanelProps) {
     
     const total = useMemo(() => {
@@ -41,12 +54,21 @@ export function CartPanel({
         return cart.reduce((sum, item) => sum + item.cartQuantity, 0);
     }, [cart]);
 
+    const customerOptions = useMemo<ComboboxOption[]>(() => {
+        return customers.map(c => ({
+            value: c.id,
+            label: `${c.firstName} ${c.lastName}`
+        }));
+    }, [customers]);
+
+    const selectedCustomerLabel = selectedCustomer ? customerOptions.find(c => c.value === selectedCustomer)?.label : 'Vente au comptoir';
+
     return (
         <div className="h-full flex flex-col">
             {/* Top section: Sessions and Customer */}
             <div className="flex-shrink-0">
                 {/* Sessions Bar */}
-                <div className="flex items-center gap-2 mb-4 border-b pb-3">
+                <div className="flex items-center gap-2 mb-2 border-b pb-3">
                     <ScrollArea className="w-full whitespace-nowrap">
                         <div className="flex gap-2">
                             {sessions.map((session, index) => (
@@ -74,6 +96,32 @@ export function CartPanel({
                         <PlusCircle className="h-4 w-4" />
                     </Button>
                 </div>
+
+                {/* Customer Selection */}
+                <div className="mb-4 space-y-2">
+                    <div className="flex justify-between items-center">
+                        <label className="text-sm font-medium">Client</label>
+                        <Button variant="link" className="h-auto p-0" onClick={onAddNewCustomer}>
+                           <UserPlus className="mr-1 h-4 w-4" /> Nouveau client
+                        </Button>
+                    </div>
+                    <div className="flex gap-2">
+                        <Combobox
+                            options={customerOptions}
+                            onSelect={onSelectCustomer}
+                            value={selectedCustomer}
+                            placeholder={selectedCustomerLabel || "Sélectionner un client"}
+                            searchPlaceholder="Rechercher un client..."
+                            notFoundMessage="Aucun client trouvé."
+                        />
+                         {selectedCustomer && (
+                             <Button variant="ghost" size="icon" onClick={onClearCustomer}>
+                                <UserX className="h-4 w-4 text-destructive" />
+                             </Button>
+                        )}
+                    </div>
+                </div>
+
 
                  {/* Action buttons */}
                  <div className="flex gap-2 mb-4">

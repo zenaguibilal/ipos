@@ -48,6 +48,16 @@ service cloud.firestore {
         // Only the owner of the parent user document can read or write to the sales subcollection.
         allow read, write: if isOwner(userId);
       }
+
+       // Rules for the 'customers' subcollection.
+      match /customers/{customerId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // Rules for the 'payments' subcollection.
+      match /payments/{paymentId} {
+        allow read, write: if isOwner(userId);
+      }
       
       // Rules for the 'companyProfile' subcollection.
       match /companyProfile/{docId} {

@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "User": {
@@ -100,6 +101,36 @@
         "createdAt"
       ]
     },
+     "Customer": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Customer",
+      "type": "object",
+      "description": "Represents a customer.",
+      "properties": {
+        "firstName": {
+          "type": "string",
+          "description": "First name of the customer."
+        },
+        "lastName": {
+          "type": "string",
+          "description": "Last name of the customer."
+        },
+        "phone": {
+          "type": "string",
+          "description": "Phone number of the customer."
+        },
+        "settlementDay": {
+            "type": "integer",
+            "description": "The day of the month the customer typically settles their debts."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the customer was added.",
+          "format": "date-time"
+        }
+      },
+      "required": ["firstName", "lastName", "createdAt"]
+    },
     "Sale": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Sale",
@@ -164,6 +195,32 @@
         "paymentStatus",
         "createdAt"
       ]
+    },
+    "Payment": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Payment",
+      "description": "Represents a standalone payment made by a customer to settle their debt.",
+      "type": "object",
+      "properties": {
+        "customerId": {
+          "type": "string",
+          "description": "The ID of the customer making the payment."
+        },
+        "customerName": {
+          "type": "string",
+          "description": "Name of the customer for quick reference."
+        },
+        "amount": {
+          "type": "number",
+          "description": "The amount paid."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp indicating when the payment was recorded."
+        }
+      },
+      "required": ["customerId", "amount", "createdAt"]
     },
     "CompanyProfile": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -347,11 +404,21 @@
       },
       "description": "Products created by the user."
     },
+    "/users/{userId}/customers/{customerId}": {
+      "schema": {
+        "$ref": "#/entities/Customer"
+      },
+      "description": "Customers of the user."
+    },
     "/users/{userId}/sales/{saleId}": {
       "schema": {
         "$ref": "#/entities/Sale"
       },
       "description": "Sales recorded by the user."
+    },
+    "/users/{userId}/payments/{paymentId}": {
+        "schema": { "$ref": "#/entities/Payment" },
+        "description": "Standalone payments recorded for customers."
     },
     "/users/{userId}/companyProfile/main": {
       "schema": {

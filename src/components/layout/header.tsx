@@ -15,6 +15,7 @@ import {
   Settings,
   Truck,
   Cookie,
+  Users
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -42,6 +43,7 @@ const navLinks = [
   { href: '/sell', label: 'Vendre', icon: ShoppingBasket },
   { href: '/stock-intake', label: 'Réception Stock', icon: Truck },
   { href: '/products', label: 'Produits', icon: Package },
+  { href: '/customers', label: 'Clients', icon: Users },
   { href: '/bread-orders', label: 'Commandes de Pain', icon: Cookie },
   { href: '/sales-history', label: 'Historique', icon: History },
   { href: '/notifications', label: 'Alertes', icon: Bell },
