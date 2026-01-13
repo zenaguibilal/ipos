@@ -380,8 +380,6 @@ export default function SellPage() {
         toast.info("Le panier a été vidé.");
     };
     
-    const isLoading = isLoadingProducts || isLoadingCustomers || isUserLoading || isLoadingSales || isLoadingPayments;
-
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.key === 'F1') {
@@ -416,7 +414,8 @@ export default function SellPage() {
             window.removeEventListener('keydown', handleKeyDown);
         };
     }, [activeCart]);
-
+    
+    const isLoading = isLoadingProducts || isLoadingCustomers || isUserLoading || isLoadingSales || isLoadingPayments;
 
     if (isLoading || !user) {
         return <div className="flex h-full items-center justify-center"><p>Chargement des données...</p></div>;
@@ -577,7 +576,7 @@ export default function SellPage() {
                                         disabled={activeCart.items.length === 0 || isProcessingPayment}
                                     >
                                         <ShoppingCart className="mr-2 h-4 w-4" />
-                                        Vider
+                                        Vider le panier
                                     </Button>
                                     <Button 
                                         className="flex-grow"
@@ -585,7 +584,7 @@ export default function SellPage() {
                                         onClick={() => setIsPaymentDialogOpen(true)} 
                                         disabled={activeCart.items.length === 0 || isProcessingPayment}
                                     >
-                                        Éditer la vente (F4)
+                                        Procéder au paiement (F4)
                                     </Button>
                                 </div>
                             </CardFooter>
@@ -597,5 +596,5 @@ export default function SellPage() {
             </div>
         </>
     );
-}
-
+    
+    
