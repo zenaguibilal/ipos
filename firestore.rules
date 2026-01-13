@@ -10,8 +10,6 @@
  * /users/{userId} - User profile information.
  * /users/{userId}/products/{productId} - Products created by the user.
  * /users/{userId}/sales/{saleId} - Sales recorded by the user.
- * /users/{userId}/customers/{customerId} - Customers created by the user.
- * /users/{userId}/payments/{paymentId} - Payments made by customers.
  * /users/{userId}/companyProfile/main - Singleton for company information.
  * /users/{userId}/breadOrders/{breadOrderId} - Simple bread orders.
  * /users/{userId}/stockIntakes/{stockIntakeId} - Records of stock received.
@@ -50,19 +48,7 @@ service cloud.firestore {
         // Only the owner of the parent user document can read or write to the sales subcollection.
         allow read, write: if isOwner(userId);
       }
-
-      // Rules for the 'customers' subcollection nested under a user document.
-      match /customers/{customerId} {
-        // Only the owner of the parent user document can read or write to the customers subcollection.
-        allow read, write: if isOwner(userId);
-      }
       
-      // Rules for the 'payments' subcollection nested under a user document.
-      match /payments/{paymentId} {
-        // Only the owner of the parent user document can read or write to the payments subcollection.
-        allow read, write: if isOwner(userId);
-      }
-
       // Rules for the 'companyProfile' subcollection.
       match /companyProfile/{docId} {
          // Only the owner can read or write their company profile.

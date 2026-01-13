@@ -12,14 +12,6 @@ export interface Product {
     imageUrl?: string;
 }
 
-export interface Customer {
-    id: string;
-    firstName: string;
-    lastName: string;
-    phone?: string;
-    settlementDay?: number;
-}
-
 export interface SaleItem {
     id: string;
     name: string;
@@ -41,22 +33,6 @@ export interface Sale {
     createdAt: Timestamp | Date;
 }
 
-export interface Payment {
-    id: string;
-    customerId: string;
-    customerName?: string;
-    amount: number;
-    createdAt: Timestamp;
-}
-
-export interface CustomerWithSalesData extends Customer {
-    totalSpent: number;
-    outstandingBalance: number;
-    lastActivityDate?: Date | null;
-    daysLate?: number;      // Optional: Days overdue for payment
-    isReminderDue?: boolean; // Optional: Flag to show reminder
-}
-
 export interface ChartData {
   date: string;
   revenue: number;
@@ -76,10 +52,6 @@ export interface TopProduct extends Product {
     totalRevenue: number;
     unitsSold: number;
     totalProfit: number;
-}
-
-export interface TopCustomer extends Customer {
-    totalSpent: number;
 }
 
 export interface CompanyProfile {
@@ -107,4 +79,29 @@ export interface PurchaseOrder {
     totalValue: number;
     status: 'pending' | 'received';
     createdAt: Timestamp;
+}
+
+export interface StockIntakeItem {
+    id: string; // Unique ID for the item row
+    productId?: string; // ID of the product if it exists
+    barcodes: string[];
+    name: string;
+    quantity: number;
+    purchasePrice: number;
+    price: number;
+    isNew: boolean;
+}
+
+export interface StockIntake {
+    id: string;
+    invoiceNumber: string;
+    invoiceDate: Timestamp | Date;
+    items: {
+        productId?: string;
+        productName: string;
+        quantityReceived: number;
+        purchasePrice: number;
+    }[];
+    totalValue: number;
+    createdAt: Timestamp | Date;
 }

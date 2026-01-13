@@ -16,13 +16,11 @@ import { DateRange } from 'react-day-picker';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { SaleDetailsDialog } from '@/components/sales/sale-details-dialog';
-import { PaymentDetailsDialog } from '@/components/sales/payment-details-dialog';
-import type { Sale, CompanyProfile, Payment } from '@/lib/types';
+import type { Sale, CompanyProfile } from '@/lib/types';
 
 
 type HistoryItem = 
-    | { type: 'sale'; data: Sale }
-    | { type: 'payment'; data: Payment };
+    | { type: 'sale'; data: Sale };
 
 function StatusBadge({ status }: { status: Sale['paymentStatus'] }) {
     return (
@@ -54,11 +52,6 @@ export default function SalesHistoryPage() {
     }, [user, firestore]);
     const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesCollectionRef);
     
-    const paymentsCollectionRef = useMemoFirebase(() => {
-        if (!user || !firestore) return null;
-        return collection(firestore, 'users', user.uid, 'payments');
-    }, [user, firestore]);
-    const { data: payments, isLoading: isLoadingPayments } = useCollection<Payment>(paymentsCollectionRef);
 
     // Fetch Company Profile
     const companyDocRef = useMemoFirebase(() => {
@@ -74,31 +67,24 @@ export default function SalesHistoryPage() {
     }, [user, isUserLoading, router]);
 
     const filteredHistory = useMemo(() => {
-        if (!sales && !payments) return [];
+        if (!sales) return [];
 
         const combined: HistoryItem[] = [
             ...(sales || []).map(s => ({ type: 'sale' as const, data: s })),
-            ...(payments || []).map(p => ({ type: 'payment' as const, data: p }))
         ];
 
         let filtered = combined;
 
-        // Filter by search query (customer name or invoice number)
+        // Filter by search query (invoice number)
         if (searchQuery) {
             const lowercasedQuery = searchQuery.toLowerCase();
             filtered = filtered.filter(item => {
-                const customerName = item.data.customerName?.toLowerCase() || '';
-                if (customerName.includes(lowercasedQuery)) {
-                    return true;
-                }
-
                 if (item.type === 'sale') {
                     const invoiceNumber = item.data.invoiceNumber?.toLowerCase() || '';
                     if (invoiceNumber.includes(lowercasedQuery)) {
                         return true;
                     }
                 }
-
                 return false;
             });
         }
@@ -126,9 +112,9 @@ export default function SalesHistoryPage() {
         // Sort by most recent
         return filtered.sort((a, b) => safeToDate(b.data.createdAt).getTime() - safeToDate(a.data.createdAt).getTime());
 
-    }, [sales, payments, searchQuery, dateRange]);
+    }, [sales, searchQuery, dateRange]);
 
-    const isLoading = isUserLoading || isLoadingSales || isLoadingPayments || isLoadingCompanyProfile;
+    const isLoading = isUserLoading || isLoadingSales || isLoadingCompanyProfile;
 
     if (isLoading || !user) {
         return <div className="flex h-full items-center justify-center"><p>Chargement...</p></div>;
@@ -144,19 +130,12 @@ export default function SalesHistoryPage() {
                     companyProfile={companyProfile}
                 />
             )}
-             {selectedItem?.type === 'payment' && (
-                <PaymentDetailsDialog
-                    isOpen={true}
-                    onOpenChange={(isOpen) => !isOpen && setSelectedItem(null)}
-                    payment={selectedItem.data}
-                />
-            )}
             <main className="flex-1 overflow-auto p-4 sm:p-6">
                 <Card className="w-full bg-card">
                     <CardHeader>
                         <div className="flex flex-wrap items-center gap-2">
                             <Input 
-                                placeholder="Rechercher par client ou N° facture..."
+                                placeholder="Rechercher par N° facture..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 className="w-full sm:w-auto sm:flex-grow max-w-sm"
@@ -212,11 +191,10 @@ export default function SalesHistoryPage() {
                                 <table className="min-w-full divide-y divide-border">
                                     <thead className="bg-muted/50">
                                         <tr>
-                                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Type / N°</th>
+                                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">N° Facture</th>
                                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Date</th>
-                                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Client</th>
                                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Statut</th>
-                                            <th scope="col" className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Total / Montant</th>
+                                            <th scope="col" className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Total</th>
                                             <th scope="col" className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Payé</th>
                                             <th scope="col" className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Solde</th>
                                         </tr>
@@ -224,30 +202,14 @@ export default function SalesHistoryPage() {
                                     <tbody className="divide-y divide-border">
                                         {filteredHistory.map(item => (
                                             <tr key={`${item.type}-${item.data.id}`} onClick={() => setSelectedItem(item)} className="cursor-pointer hover:bg-muted/50">
-                                                {item.type === 'sale' ? (
+                                                {item.type === 'sale' && (
                                                     <>
                                                         <td className="whitespace-nowrap px-6 py-4 font-mono text-xs">{item.data.invoiceNumber}</td>
                                                         <td className="whitespace-nowrap px-6 py-4 font-medium">{format(safeToDate(item.data.createdAt), 'd MMM yyyy, HH:mm', { locale: fr })}</td>
-                                                        <td className="whitespace-nowrap px-6 py-4 text-muted-foreground">{item.data.customerName || 'Vente au comptoir'}</td>
                                                         <td className="whitespace-nowrap px-6 py-4"><StatusBadge status={item.data.paymentStatus} /></td>
                                                         <td className="whitespace-nowrap px-6 py-4 text-right font-medium">{item.data.total.toFixed(2)} DA</td>
                                                         <td className="whitespace-nowrap px-6 py-4 text-right font-medium text-green-400">{item.data.amountPaid.toFixed(2)} DA</td>
                                                         <td className={`whitespace-nowrap px-6 py-4 text-right font-medium ${item.data.remainingBalance > 0 ? 'text-destructive' : ''}`}>{item.data.remainingBalance.toFixed(2)} DA</td>
-                                                    </>
-                                                ) : (
-                                                     <>
-                                                        <td className="whitespace-nowrap px-6 py-4 font-medium">
-                                                            <div className="flex items-center gap-2">
-                                                                <Receipt className="h-4 w-4 text-green-500" />
-                                                                <span>Paiement</span>
-                                                            </div>
-                                                        </td>
-                                                        <td className="whitespace-nowrap px-6 py-4 font-medium">{format(safeToDate(item.data.createdAt), 'd MMM yyyy, HH:mm', { locale: fr })}</td>
-                                                        <td className="whitespace-nowrap px-6 py-4 text-muted-foreground">{item.data.customerName || '-'}</td>
-                                                        <td className="whitespace-nowrap px-6 py-4"><span className="text-green-400 font-semibold">Règlement</span></td>
-                                                        <td className="whitespace-nowrap px-6 py-4 text-right font-medium text-green-500">{item.data.amount.toFixed(2)} DA</td>
-                                                        <td className="whitespace-nowrap px-6 py-4 text-right">-</td>
-                                                        <td className="whitespace-nowrap px-6 py-4 text-right">-</td>
                                                     </>
                                                 )}
                                             </tr>
@@ -258,7 +220,7 @@ export default function SalesHistoryPage() {
                         ) : (
                             <div className="flex h-40 items-center justify-center rounded-md border-2 border-dashed border-border">
                                 <p className="text-muted-foreground">
-                                    {(sales && sales.length === 0 && payments && payments.length === 0) ? "Vous n'avez pas encore de transactions enregistrées." : "Aucune transaction ne correspond à vos filtres."}
+                                    {(sales && sales.length === 0) ? "Vous n'avez pas encore de transactions enregistrées." : "Aucune transaction ne correspond à vos filtres."}
                                 </p>
                             </div>
                         )}

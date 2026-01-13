@@ -14,7 +14,7 @@ import { PaymentDialog } from '@/components/sell/payment-dialog';
 import { SaleCompleteDialog } from '@/components/sell/sale-complete-dialog';
 import { ShortcutsHelpDialog } from '@/components/sell/shortcuts-help-dialog';
 
-import type { Product, Customer, Sale, SaleItem, CustomerWithSalesData, CompanyProfile } from '@/lib/types';
+import type { Product, Sale, SaleItem, CompanyProfile } from '@/lib/types';
 import { ProductGrid } from '@/components/sell/product-grid';
 import { CartPanel } from '@/components/sell/cart-panel';
 
@@ -23,7 +23,6 @@ export type CartItem = SaleItem & { cartQuantity: number };
 
 export interface SalesSession {
     cart: CartItem[];
-    selectedCustomer: CustomerWithSalesData | null;
 }
 
 export default function SellPage() {
@@ -33,19 +32,13 @@ export default function SellPage() {
 
     // Data fetching
     const productsCollectionRef = useMemoFirebase(() => (user && firestore) ? collection(firestore, 'users', user.uid, 'products') : null, [user, firestore]);
-    const customersCollectionRef = useMemoFirebase(() => (user && firestore) ? collection(firestore, 'users', user.uid, 'customers') : null, [user, firestore]);
-    const salesCollectionRef = useMemoFirebase(() => (user && firestore) ? collection(firestore, 'users', user.uid, 'sales') : null, [user, firestore]);
-    const paymentsCollectionRef = useMemoFirebase(() => (user && firestore) ? collection(firestore, 'users', user.uid, 'payments') : null, [user, firestore]);
     const companyDocRef = useMemoFirebase(() => (user && firestore) ? doc(firestore, 'users', user.uid, 'companyProfile', 'main') : null, [user, firestore]);
 
     const { data: products, isLoading: isLoadingProducts } = useCollection<ProductWithOptionalBarcode>(productsCollectionRef);
-    const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersCollectionRef);
-    const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesCollectionRef);
-    const { data: payments, isLoading: isLoadingPayments } = useCollection<Payment>(paymentsCollectionRef);
     const { data: companyProfile, isLoading: isLoadingCompany } = useDoc<CompanyProfile>(companyDocRef);
 
     // Component state for multiple sales sessions
-    const [sessions, setSessions] = useState<SalesSession[]>([{ cart: [], selectedCustomer: null }]);
+    const [sessions, setSessions] = useState<SalesSession[]>([{ cart: [] }]);
     const [activeSessionIndex, setActiveSessionIndex] = useState(0);
 
     const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
@@ -143,7 +136,7 @@ export default function SellPage() {
     }, [products, activeSessionIndex]);
 
     const clearCart = useCallback(() => {
-        updateCurrentSession(() => ({ cart: [], selectedCustomer: null }));
+        updateCurrentSession(() => ({ cart: [] }));
     }, [activeSessionIndex]);
 
     // Sale processing
@@ -152,7 +145,6 @@ export default function SellPage() {
         setIsProcessingSale(true);
 
         const cart = activeSession.cart;
-        const selectedCustomer = activeSession.selectedCustomer;
         const total = cart.reduce((sum, item) => sum + (item.price * item.cartQuantity), 0);
 
         const newSale: Omit<Sale, 'id' | 'createdAt'> = {
@@ -162,8 +154,7 @@ export default function SellPage() {
             amountPaid: amountPaid,
             remainingBalance: total - amountPaid,
             paymentStatus: amountPaid >= total ? 'paid' : (amountPaid > 0 ? 'partial' : 'unpaid'),
-            customerId: selectedCustomer?.id,
-            customerName: selectedCustomer ? `${selectedCustomer.firstName} ${selectedCustomer.lastName}` : 'Vente au comptoir',
+            customerName: 'Vente au comptoir',
         };
 
         const batch = writeBatch(firestore);
@@ -198,14 +189,14 @@ export default function SellPage() {
     
     // Session management
     const handleAddSession = () => {
-        setSessions(s => [...s, { cart: [], selectedCustomer: null }]);
+        setSessions(s => [...s, { cart: [] }]);
         setActiveSessionIndex(sessions.length); // Switch to the new session
     };
     
     const handleCloseSession = (indexToClose: number) => {
         setSessions(currentSessions => {
             if (currentSessions.length === 1) {
-                return [{ cart: [], selectedCustomer: null }]; // Reset the last session
+                return [{ cart: [] }]; // Reset the last session
             }
             const newSessions = currentSessions.filter((_, i) => i !== indexToClose);
             // Adjust active index if necessary
@@ -222,11 +213,6 @@ export default function SellPage() {
         // The session is already cleared/closed by handleFinalizeSale
     };
     
-    const setSelectedCustomerForCurrentSession = (customer: CustomerWithSalesData | null) => {
-        updateCurrentSession(session => ({...session, selectedCustomer: customer}));
-    };
-
-
     // Keyboard shortcuts
      const handleKeyDown = useCallback((event: KeyboardEvent) => {
         const target = event.target as HTMLElement;
@@ -266,7 +252,7 @@ export default function SellPage() {
     }, [handleKeyDown]);
 
 
-    const isLoading = isUserLoading || isLoadingProducts || isLoadingCustomers || isLoadingSales || isLoadingPayments || isLoadingCompany;
+    const isLoading = isUserLoading || isLoadingProducts || isLoadingCompany;
     
     if (isLoading || !user) {
         return <div className="flex h-full items-center justify-center"><p>Chargement de l'interface de vente...</p></div>;
@@ -292,7 +278,6 @@ export default function SellPage() {
                     isOpen={isSaleComplete}
                     onOpenChange={handleNewSale}
                     sale={lastSale}
-                    customer={sessions.find(s => s.selectedCustomer?.id === lastSale.customerId)?.selectedCustomer || null}
                     companyProfile={companyProfile}
                 />
             )}
@@ -312,11 +297,6 @@ export default function SellPage() {
                 <div className="lg:col-span-1 h-full flex flex-col bg-card border-l p-4">
                    <CartPanel
                         cart={activeSession.cart}
-                        customers={customers || []}
-                        sales={sales || []}
-                        payments={payments || []}
-                        selectedCustomer={activeSession.selectedCustomer}
-                        onSelectCustomer={setSelectedCustomerForCurrentSession}
                         onUpdateQuantity={updateCartQuantity}
                         onClearCart={clearCart}
                         onFinalize={() => setIsPaymentDialogOpen(true)}

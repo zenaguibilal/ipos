@@ -5,20 +5,12 @@ import { useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Trash2, User, UserX, XCircle, HardDriveDownload, PlusCircle } from 'lucide-react';
-import { Combobox } from '@/components/ui/combobox';
-import type { Customer, Sale, Payment, CustomerWithSalesData } from '@/lib/types';
+import { Trash2, XCircle, HardDriveDownload, PlusCircle } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { cn } from '@/lib/utils';
 import type { CartItem, SalesSession } from '@/app/(app)/sell/page';
 
 interface CartPanelProps {
     cart: CartItem[];
-    customers: Customer[];
-    sales: Sale[];
-    payments: Payment[];
-    selectedCustomer: CustomerWithSalesData | null;
-    onSelectCustomer: (customer: CustomerWithSalesData | null) => void;
     onUpdateQuantity: (productId: string, quantity: number) => void;
     onClearCart: () => void;
     onFinalize: () => void;
@@ -31,11 +23,6 @@ interface CartPanelProps {
 
 export function CartPanel({
     cart,
-    customers,
-    sales,
-    payments,
-    selectedCustomer,
-    onSelectCustomer,
     onUpdateQuantity,
     onClearCart,
     onFinalize,
@@ -45,53 +32,6 @@ export function CartPanel({
     onSessionAdd,
     onSessionClose
 }: CartPanelProps) {
-    
-    const customersWithSales: CustomerWithSalesData[] = useMemo(() => {
-        if (!customers || !sales || !payments) return [];
-        const salesByCustomer = sales.reduce((acc, sale) => {
-            if (sale.customerId) {
-                if (!acc[sale.customerId]) acc[sale.customerId] = { totalSpent: 0, debtFromSales: 0 };
-                acc[sale.customerId].totalSpent += sale.total;
-                acc[sale.customerId].debtFromSales += sale.remainingBalance;
-            }
-            return acc;
-        }, {} as Record<string, { totalSpent: number; debtFromSales: number }>);
-        const paymentsByCustomer = payments.reduce((acc, payment) => {
-             if (payment.customerId) {
-                if (!acc[payment.customerId]) acc[payment.customerId] = 0;
-                acc[payment.customerId] += payment.amount;
-            }
-            return acc;
-        }, {} as Record<string, number>);
-        return customers.map(customer => {
-            const customerSales = salesByCustomer[customer.id] || { totalSpent: 0, debtFromSales: 0 };
-            const customerPayments = paymentsByCustomer[customer.id] || 0;
-            const outstandingBalance = customerSales.debtFromSales - customerPayments;
-            return {
-                ...customer,
-                totalSpent: customerSales.totalSpent,
-                outstandingBalance: outstandingBalance > 0 ? outstandingBalance : 0,
-            };
-        });
-    }, [customers, sales, payments]);
-
-     const customerOptions = useMemo(() => {
-        if (!customersWithSales) return [];
-        return customersWithSales.map(c => ({
-            value: c.id,
-            label: `${c.firstName} ${c.lastName}`,
-            subLabel: c.outstandingBalance > 0 ? `Dette : ${c.outstandingBalance.toFixed(2)} DA` : undefined
-        }));
-    }, [customersWithSales]);
-
-    const handleSelectCustomer = (customerId: string) => {
-        if (!customerId) {
-            onSelectCustomer(null);
-            return;
-        }
-        const customer = customersWithSales.find(c => c.id === customerId);
-        onSelectCustomer(customer || null);
-    }
     
     const total = useMemo(() => {
         return cart.reduce((sum, item) => sum + (item.price * item.cartQuantity), 0);
@@ -134,39 +74,6 @@ export function CartPanel({
                         <PlusCircle className="h-4 w-4" />
                     </Button>
                 </div>
-
-                {/* Customer Card */}
-                <Card className="w-full mb-4">
-                    <CardHeader className="p-3 flex-row items-center justify-between">
-                        <CardTitle className="text-base flex items-center gap-2">
-                            <User className="h-5 w-5" /> Client
-                        </CardTitle>
-                        {selectedCustomer && (
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onSelectCustomer(null)}>
-                                <UserX className="h-4 w-4 text-destructive" />
-                            </Button>
-                        )}
-                    </CardHeader>
-                    <CardContent className="p-3 pt-0">
-                        {selectedCustomer ? (
-                            <div>
-                                <p className="font-semibold">{selectedCustomer.firstName} {selectedCustomer.lastName}</p>
-                                <p className="text-sm text-muted-foreground">{selectedCustomer.phone || 'Pas de numéro'}</p>
-                                <p className={cn("text-lg font-bold", selectedCustomer.outstandingBalance > 0 ? "text-yellow-500" : "text-green-500")}>
-                                    Solde: {selectedCustomer.outstandingBalance.toFixed(2)} DA
-                                </p>
-                            </div>
-                        ) : (
-                            <Combobox 
-                                options={[{value: '', label: 'Vente au comptoir'}, ...customerOptions]}
-                                onSelect={handleSelectCustomer}
-                                placeholder="Sélectionner un client..."
-                                searchPlaceholder="Rechercher un client..."
-                                notFoundMessage="Aucun client trouvé."
-                            />
-                        )}
-                    </CardContent>
-                </Card>
 
                  {/* Action buttons */}
                  <div className="flex gap-2 mb-4">
