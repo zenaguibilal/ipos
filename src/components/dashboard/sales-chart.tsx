@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from 'recharts';
@@ -6,12 +5,9 @@ import { ChartData } from '@/lib/types';
 
 interface SalesChartProps {
     data: ChartData[];
-    dataKey: "revenue" | "profit";
-    yAxisLabel: string;
-    barFill?: string;
 }
 
-export function SalesChart({ data, dataKey, yAxisLabel, barFill }: SalesChartProps) {
+export function SalesChart({ data }: SalesChartProps) {
     return (
         <ResponsiveContainer width="100%" height={350}>
             <BarChart data={data}>

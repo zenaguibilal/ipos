@@ -8,7 +8,7 @@ import type { Product, Sale, Customer, Payment, ChartData, TopProduct, TopCustom
 import { VerificationNotice } from '@/components/dashboard/verification-notice';
 import { DateRangePicker } from '@/components/dashboard/date-range-picker';
 import { DateRange } from 'react-day-picker';
-import { addDays, differenceInDays, endOfDay, startOfDay, subDays } from 'date-fns';
+import { addDays, endOfDay, startOfDay, subDays } from 'date-fns';
 import { safeToDate } from '@/lib/utils';
 import { StatsCards } from '@/components/dashboard/stats-cards';
 import { SalesChart } from '@/components/dashboard/sales-chart';
@@ -201,8 +201,6 @@ export default function DashboardPage() {
                      {chartData.length > 0 ? (
                         <SalesChart 
                             data={chartData} 
-                            dataKey="revenue" 
-                            yAxisLabel="Chiffre d'affaires"
                         />
                     ) : (
                         <div className="flex h-[350px] items-center justify-center text-muted-foreground">
