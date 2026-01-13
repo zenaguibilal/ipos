@@ -40,9 +40,6 @@ export function LowStockAlerts({ products }: LowStockAlertsProps) {
                             Créer une réception
                         </Link>
                     </Button>
-                    <Button asChild variant="outline" size="sm">
-                        <Link href="/products">Gérer les produits</Link>
-                    </Button>
                 </div>
             </CardHeader>
             <CardContent>
@@ -56,7 +53,7 @@ export function LowStockAlerts({ products }: LowStockAlertsProps) {
                     </TableHeader>
                     <TableBody>
                         {products.map(product => (
-                            <TableRow key={product.id} onClick={() => router.push('/products')} className="cursor-pointer hover:bg-muted">
+                            <TableRow key={product.id} className="cursor-pointer hover:bg-muted">
                                 <TableCell>
                                     <div className="font-medium">{product.name}</div>
                                 </TableCell>

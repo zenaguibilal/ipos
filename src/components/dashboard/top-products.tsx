@@ -46,9 +46,6 @@ export function TopProducts({ products }: TopProductsProps) {
                         Le top 5 des produits par bénéfice net généré sur la période.
                     </CardDescription>
                 </div>
-                <Button asChild variant="outline">
-                    <Link href="/products">Gérer les produits</Link>
-                </Button>
             </CardHeader>
             <CardContent>
                  <Table>
@@ -61,7 +58,7 @@ export function TopProducts({ products }: TopProductsProps) {
                     </TableHeader>
                     <TableBody>
                         {products.map(product => (
-                            <TableRow key={product.id} onClick={() => router.push('/products')} className="cursor-pointer hover:bg-muted/50">
+                            <TableRow key={product.id} className="cursor-pointer hover:bg-muted/50">
                                 <TableCell>
                                     <div className="font-medium">{product.name}</div>
                                 </TableCell>
