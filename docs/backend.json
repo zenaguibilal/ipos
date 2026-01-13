@@ -352,6 +352,47 @@
         }
       },
       "required": ["poNumber", "supplier", "items", "totalValue", "status", "createdAt"]
+    },
+     "StockIntake": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Stock Intake",
+      "description": "Represents a record of stock being received from a supplier.",
+      "type": "object",
+      "properties": {
+        "invoiceNumber": {
+          "type": "string",
+          "description": "The supplier's invoice number for this delivery."
+        },
+        "invoiceDate": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date on the supplier's invoice."
+        },
+        "items": {
+          "type": "array",
+          "description": "List of items received.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "productId": { "type": "string", "description": "ID of the product if it existed before this intake." },
+              "productName": { "type": "string" },
+              "quantityReceived": { "type": "number" },
+              "purchasePrice": { "type": "number", "description": "The purchase price at the time of this intake." }
+            },
+            "required": ["productName", "quantityReceived", "purchasePrice"]
+          }
+        },
+        "totalValue": {
+          "type": "number",
+          "description": "The total value of the received stock based on purchase prices."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp indicating when this intake was recorded in the system."
+        }
+      },
+      "required": ["invoiceNumber", "invoiceDate", "items", "totalValue", "createdAt"]
     }
   },
   "auth": {
@@ -403,6 +444,12 @@
     "/users/{userId}/purchaseOrders/{purchaseOrderId}": {
         "schema": { "$ref": "#/entities/PurchaseOrder" },
         "description": "Purchase orders created by the user."
+    },
+    "/users/{userId}/stockIntakes/{stockIntakeId}": {
+      "schema": {
+        "$ref": "#/entities/StockIntake"
+      },
+      "description": "Records of stock received by the user."
     }
   }
 }

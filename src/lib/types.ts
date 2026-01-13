@@ -92,6 +92,23 @@ export interface CompanyProfile {
     vatNumber?: string;
 }
 
+export interface PurchaseOrderItem {
+    productId: string;
+    productName: string;
+    quantity: number;
+    purchasePrice: number;
+}
+
+export interface PurchaseOrder {
+    id: string;
+    poNumber: string;
+    supplier: string;
+    items: PurchaseOrderItem[];
+    totalValue: number;
+    status: 'pending' | 'received';
+    createdAt: Timestamp;
+}
+
 export interface StockIntakeItem {
     id: string; // Unique ID for the item row
     productId?: string; // ID of the product if it exists
@@ -114,22 +131,5 @@ export interface StockIntake {
         purchasePrice: number;
     }[];
     totalValue: number;
-    createdAt: Timestamp;
-}
-
-export interface PurchaseOrderItem {
-    productId: string;
-    productName: string;
-    quantity: number;
-    purchasePrice: number;
-}
-
-export interface PurchaseOrder {
-    id: string;
-    poNumber: string;
-    supplier: string;
-    items: PurchaseOrderItem[];
-    totalValue: number;
-    status: 'pending' | 'received';
     createdAt: Timestamp;
 }
