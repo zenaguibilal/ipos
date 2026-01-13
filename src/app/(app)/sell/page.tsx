@@ -188,27 +188,6 @@ export default function SellPage() {
         return activeCart.items.reduce((sum, item) => sum + item.price * item.cartQuantity, 0);
     }, [activeCart]);
     
-    // const handlePrintReceipt = (cart: Cart, total: number) => {
-    //     const printableContent = document.getElementById('receipt-for-print');
-    //     if (printableContent) {
-    //         const receiptElement = <Receipt cart={cart} total={total} />;
-            
-    //         // Add class to html/body to trigger correct @page rule
-    //         document.documentElement.classList.add('thermal');
-
-    //         // Use a portal to render the receipt into the dedicated div
-    //         ReactDOM.createPortal(receiptElement, printableContent);
-
-    //         // Allow images to load before printing
-    //         setTimeout(() => {
-    //             window.print();
-    //             // Clean up class after printing
-    //             document.documentElement.classList.remove('thermal');
-    //             // Unmount component after printing
-    //             ReactDOM.createPortal(null, printableContent);
-    //         }, 300);
-    //     }
-    // };
 
     const handleFinalizeSale = async (amountPaid: number) => {
         if (!activeCart || !firestore || !user) return;
@@ -292,8 +271,9 @@ export default function SellPage() {
                 setCarts(renumberedCarts);
                 setActiveCartId(renumberedCarts[0].id);
             } else {
-                setCarts([{ id: nextCartId++, name: `Vente 1`, items: [] }]);
-                setActiveCartId(nextCartId - 1);
+                const newCartId = nextCartId++;
+                setCarts([{ id: newCartId, name: `Vente 1`, items: [] }]);
+                setActiveCartId(newCartId);
             }
 
         } catch (error) {
@@ -467,7 +447,7 @@ export default function SellPage() {
                     </div>
 
                     {activeCart && (
-                        <div className="flex-1 flex flex-col">
+                        <div className="flex-1 flex flex-col overflow-y-hidden">
                             <div className="p-4 border-b">
                                 <div className="flex items-center justify-between">
                                     <Label>Client:</Label>
