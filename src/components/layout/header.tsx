@@ -22,7 +22,6 @@ import { Clock } from '@/components/layout/clock';
 import { ThemeToggle } from './theme-toggle';
 
 const navLinks = [
-  { href: '/dashboard', label: 'Tableau de bord' },
   { href: '/sell', label: 'Vendre' },
   { href: '/products', label: 'Produits' },
   { href: '/stock-intake', label: 'Réception Stock' },
@@ -66,14 +65,14 @@ export function AppHeader() {
   return (
     <header className="sticky top-0 z-40 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6 py-2">
         <Link
-            href="/"
+            href="/sell"
             className="flex items-center gap-2 font-semibold"
         >
             <Store className="h-6 w-6" />
             <span className="sr-only">iPOS</span>
         </Link>
         <div className="flex items-center gap-2">
-            <Link href="/" className="transition-colors hover:text-foreground">
+            <Link href="/sell" className="transition-colors hover:text-foreground">
                 <Home className="h-5 w-5" />
                 <span className="sr-only">Accueil</span>
             </Link>
