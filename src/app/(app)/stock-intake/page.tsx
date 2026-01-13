@@ -16,8 +16,19 @@ import { IntakeItemsTable } from '@/components/stock-intake/items-table';
 import { SaveIntakeDialog } from '@/components/stock-intake/save-intake-dialog';
 import { History, Save } from 'lucide-react';
 import Link from 'next/link';
+import type { Product } from '@/lib/types';
 
-import type { Product, StockIntakeItem } from '@/lib/types';
+// Define the StockIntakeItem type locally as it's specific to this feature area
+export interface StockIntakeItem {
+    id: string; // Unique ID for the item row
+    productId?: string; // ID of the product if it exists
+    barcodes: string[];
+    name: string;
+    quantity: number;
+    purchasePrice: number;
+    price: number;
+    isNew: boolean;
+}
 
 
 export default function StockIntakePage() {
@@ -161,7 +172,7 @@ export default function StockIntakePage() {
                 const intakeRef = doc(collection(firestore, 'users', user.uid, 'stockIntakes'));
                 transaction.set(intakeRef, {
                     invoiceNumber: invoiceNumber || `intake-${Date.now()}`,
-                    invoiceDate: invoiceDate ? serverTimestamp() : serverTimestamp(), //
+                    invoiceDate: invoiceDate || new Date(),
                     items: intakeItems.map(item => ({
                         productId: item.productId,
                         productName: item.name,

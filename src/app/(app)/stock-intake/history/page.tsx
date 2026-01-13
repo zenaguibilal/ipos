@@ -4,15 +4,13 @@
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useMemo } from 'react';
-import { collection, doc } from 'firebase/firestore';
+import { collection } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { MoreHorizontal, ArrowLeft, Eye } from 'lucide-react';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { ArrowLeft } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { toast } from 'sonner';
 import type { StockIntake } from '@/lib/types';
-import { cn, safeToDate } from '@/lib/utils';
+import { safeToDate } from '@/lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import Link from 'next/link';
 

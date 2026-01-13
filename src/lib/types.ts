@@ -123,7 +123,7 @@ export interface StockIntakeItem {
 export interface StockIntake {
     id: string;
     invoiceNumber: string;
-    invoiceDate: Timestamp;
+    invoiceDate: Timestamp | Date;
     items: {
         productId?: string;
         productName: string;
@@ -131,5 +131,5 @@ export interface StockIntake {
         purchasePrice: number;
     }[];
     totalValue: number;
-    createdAt: Timestamp;
+    createdAt: Timestamp | Date;
 }
