@@ -24,11 +24,13 @@ import Image from 'next/image';
 import Link from 'next/link';
 
 
-interface ProductWithProfit extends Product {
+interface ProductWithLegacyBarcode extends Product {
+    barcode?: string;
     profitMargin?: number;
 }
 
-type SortableKeys = keyof Pick<ProductWithProfit, 'name' | 'price' | 'purchasePrice' | 'quantity' | 'profitMargin'>;
+
+type SortableKeys = keyof Pick<ProductWithLegacyBarcode, 'name' | 'price' | 'purchasePrice' | 'quantity' | 'profitMargin'>;
 
 export default function ProductsPage() {
     const { user, isUserLoading } = useUser();
@@ -51,7 +53,7 @@ export default function ProductsPage() {
         if (!user || !firestore) return null;
         return collection(firestore, 'users', user.uid, 'products');
     }, [user, firestore]);
-    const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsCollectionRef);
+    const { data: products, isLoading: isLoadingProducts } = useCollection<ProductWithLegacyBarcode>(productsCollectionRef);
 
     useEffect(() => {
         if (!isUserLoading && !user) {
@@ -61,7 +63,7 @@ export default function ProductsPage() {
     
     const sortedAndFilteredProducts = useMemo(() => {
         if (!products) return [];
-        let sortableItems: ProductWithProfit[] = products.map(p => {
+        let sortableItems: ProductWithLegacyBarcode[] = products.map(p => {
              const profit = p.price - p.purchasePrice;
              const margin = p.price > 0 ? (profit / p.price) * 100 : 0;
              return { ...p, profitMargin: margin };
@@ -92,7 +94,8 @@ export default function ProductsPage() {
         
         return sortableItems.filter(product => 
             product.name.toLowerCase().includes(lowercasedQuery) ||
-            (product.barcodes && product.barcodes.some(b => b.includes(lowercasedQuery)))
+            (product.barcodes && product.barcodes.some(b => b.includes(lowercasedQuery))) ||
+            (product.barcode && product.barcode.includes(lowercasedQuery))
         );
     }, [products, searchQuery, sortConfig]);
 
@@ -138,7 +141,7 @@ export default function ProductsPage() {
             "price": p.price,
             "quantity": p.quantity,
             "minStockLevel": p.minStockLevel,
-            "barcodes": p.barcodes?.join(',') || '',
+            "barcodes": p.barcodes?.join(',') || p.barcode || '', // Handle both cases
             "imageUrl": p.imageUrl || ''
         }));
 
@@ -383,7 +386,7 @@ export default function ProductsPage() {
                                                     </div>
                                                 </TableCell>
                                                 <TableCell className="font-medium">{product.name}</TableCell>
-                                                <TableCell className="text-muted-foreground text-xs">{product.barcodes?.join(', ') || '-'}</TableCell>
+                                                <TableCell className="text-muted-foreground text-xs">{(product.barcodes?.join(', ') || product.barcode) || '-'}</TableCell>
                                                 <TableCell className="text-right">{product.purchasePrice.toFixed(2)} DA</TableCell>
                                                 <TableCell className="text-right font-semibold text-primary">{product.price.toFixed(2)} DA</TableCell>
                                                  <TableCell className={cn("text-right font-bold", getProfitMarginColor(product.profitMargin || 0))}>

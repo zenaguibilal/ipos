@@ -15,7 +15,7 @@ interface EditProductFormProps {
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
     userId: string;
-    product: Product;
+    product: Product & { barcode?: string }; // Support legacy barcode
 }
 
 export function EditProductForm({ isOpen, onOpenChange, userId, product }: EditProductFormProps) {
@@ -26,6 +26,7 @@ export function EditProductForm({ isOpen, onOpenChange, userId, product }: EditP
     const [quantity, setQuantity] = useState('');
     const [minStockLevel, setMinStockLevel] = useState('');
     const [barcodes, setBarcodes] = useState('');
+    const [imageUrl, setImageUrl] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
 
@@ -36,7 +37,11 @@ export function EditProductForm({ isOpen, onOpenChange, userId, product }: EditP
             setPurchasePrice(String(product.purchasePrice));
             setQuantity(String(product.quantity));
             setMinStockLevel(String(product.minStockLevel));
-            setBarcodes(product.barcodes?.join(', ') || '');
+            // Handle both legacy and new barcode fields
+            const allBarcodes = [...(product.barcodes || []), ...(product.barcode ? [product.barcode] : [])];
+            const uniqueBarcodes = [...new Set(allBarcodes)];
+            setBarcodes(uniqueBarcodes.join(', '));
+            setImageUrl(product.imageUrl || '');
         }
     }, [product]);
 
@@ -76,14 +81,24 @@ export function EditProductForm({ isOpen, onOpenChange, userId, product }: EditP
         const productDocRef = doc(firestore, 'users', userId, 'products', product.id);
         const barcodesArray = barcodes.split(',').map(b => b.trim()).filter(b => b);
         
-        updateDocumentNonBlocking(productDocRef, {
+        // When updating, we save to the new `barcodes` array and remove the old `barcode` field.
+        const productDataToUpdate: any = {
             name: name,
             price: priceNumber,
             purchasePrice: purchasePriceNumber,
             quantity: quantityNumber,
             minStockLevel: minStockLevelNumber,
             barcodes: barcodesArray,
-        }, {
+            imageUrl: imageUrl,
+            barcode: null // Set legacy field to null or delete it
+        };
+
+        // To fully remove the field, you'd use deleteField(), but setting to null is often sufficient.
+        // import { deleteField } from 'firebase/firestore';
+        // productDataToUpdate.barcode = deleteField();
+
+
+        updateDocumentNonBlocking(productDocRef, productDataToUpdate, {
             onSuccess: () => {
                 setIsLoading(false);
                 onOpenChange(false);
@@ -134,6 +149,10 @@ export function EditProductForm({ isOpen, onOpenChange, userId, product }: EditP
                                 <Input id="edit-barcodes" value={barcodes} onChange={(e) => setBarcodes(e.target.value)} placeholder="ex: 123, 456" />
                                 <p className="text-xs text-muted-foreground mt-1">Séparez par une virgule.</p>
                             </div>
+                        </div>
+                         <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="edit-imageUrl" className="text-right">URL de l'image</Label>
+                            <Input id="edit-imageUrl" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} className="col-span-3" placeholder="https://example.com/image.png"/>
                         </div>
                     </div>
                     <DialogFooter>
