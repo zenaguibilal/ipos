@@ -34,13 +34,13 @@ export function LowStockAlerts({ products }: LowStockAlertsProps) {
                     </CardDescription>
                 </div>
                  <div className="flex gap-2">
-                     <Button asChild variant="secondary">
+                     <Button asChild variant="default" size="sm">
                         <Link href="/stock-intake">
                              <Warehouse className="mr-2 h-4 w-4" />
                             Créer une réception
                         </Link>
                     </Button>
-                    <Button asChild variant="outline">
+                    <Button asChild variant="outline" size="sm">
                         <Link href="/products">Gérer les produits</Link>
                     </Button>
                 </div>
@@ -56,7 +56,7 @@ export function LowStockAlerts({ products }: LowStockAlertsProps) {
                     </TableHeader>
                     <TableBody>
                         {products.map(product => (
-                            <TableRow key={product.id} onClick={() => router.push('/products')} className="cursor-pointer">
+                            <TableRow key={product.id} onClick={() => router.push('/products')} className="cursor-pointer hover:bg-muted">
                                 <TableCell>
                                     <div className="font-medium">{product.name}</div>
                                 </TableCell>

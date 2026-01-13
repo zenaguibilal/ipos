@@ -143,12 +143,12 @@ export default function NotificationsPage() {
     }).filter(c => c.isReminderDue);
     
     // --- Inactive Customers Logic ---
-    const twentyDaysAgo = subDays(new Date(), 20);
+    const thirtyDaysAgo = subDays(new Date(), 30);
     const inactiveCustomers = customersWithFullData.filter(customer => {
         // Customers with no activity at all are considered inactive
         if (!customer.lastActivityDate) return true;
-        // Customers whose last activity was more than 20 days ago
-        return customer.lastActivityDate < twentyDaysAgo;
+        // Customers whose last activity was more than 30 days ago
+        return customer.lastActivityDate < thirtyDaysAgo;
     });
 
 
@@ -170,13 +170,10 @@ export default function NotificationsPage() {
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
-      <div className="flex items-center">
-        <h1 className="text-lg font-semibold md:text-2xl">Alertes ({totalAlerts})</h1>
-      </div>
       
       {totalAlerts === 0 ? (
         <div className="flex h-40 items-center justify-center rounded-md border-2 border-dashed border-border bg-card">
-          <p className="text-muted-foreground">Aucune alerte pour le moment.</p>
+          <p className="text-muted-foreground">Aucune alerte pour le moment. Tout est en ordre !</p>
         </div>
       ) : (
         <div className="grid gap-4 md:gap-8">

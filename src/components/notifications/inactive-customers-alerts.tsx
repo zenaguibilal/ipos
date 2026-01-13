@@ -32,7 +32,7 @@ export function InactiveCustomersAlerts({ customers, companyProfile }: InactiveC
         const companyName = companyProfile?.companyName || 'notre magasin';
         const message = `Bonjour ${customer.firstName} ${customer.lastName}, cela fait un moment que nous ne vous avons pas vu chez ${companyName}. Votre avis nous est précieux ! Y a-t-il quelque chose que nous pouvons améliorer ?`;
         
-        const whatsappUrl = `https://wa.me/${customer.phone}?text=${encodeURIComponent(message)}`;
+        const whatsappUrl = `https://wa.me/${customer.phone.replace(/\s/g, '')}?text=${encodeURIComponent(message)}`;
         window.open(whatsappUrl, '_blank');
     };
 
@@ -108,7 +108,7 @@ export function InactiveCustomersAlerts({ customers, companyProfile }: InactiveC
                     Clients Inactifs ({customers.length})
                 </CardTitle>
                 <CardDescription>
-                    Clients n'ayant effectué aucune transaction depuis plus de 20 jours.
+                    Clients n'ayant effectué aucune transaction depuis plus de 30 jours.
                 </CardDescription>
                  <Input 
                     placeholder="Rechercher par nom ou téléphone..."
@@ -132,7 +132,7 @@ export function InactiveCustomersAlerts({ customers, companyProfile }: InactiveC
                         {sortedAndFilteredCustomers.map(customer => {
                              const daysInactive = customer.lastActivityDate ? differenceInDays(new Date(), customer.lastActivityDate) : null;
                              return (
-                                <TableRow key={customer.id} onClick={() => router.push(`/customers/${customer.id}`)} className="cursor-pointer">
+                                <TableRow key={customer.id} onClick={() => router.push(`/customers/${customer.id}`)} className="cursor-pointer hover:bg-muted">
                                     <TableCell>
                                         <div className="font-medium">{customer.firstName} {customer.lastName}</div>
                                         <div className="text-sm text-muted-foreground">{customer.phone || '-'}</div>

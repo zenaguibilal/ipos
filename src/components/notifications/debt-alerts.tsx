@@ -57,7 +57,7 @@ export function DebtAlerts({ customers, companyProfile }: DebtAlertsProps) {
                         Clients avec un paiement à venir ou en retard.
                     </CardDescription>
                 </div>
-                 <Button asChild variant="outline">
+                 <Button asChild variant="outline" size="sm">
                     <Link href="/customers">Gérer les clients</Link>
                 </Button>
             </CardHeader>
@@ -79,7 +79,7 @@ export function DebtAlerts({ customers, companyProfile }: DebtAlertsProps) {
                     </TableHeader>
                     <TableBody>
                         {sortedCustomers.map(customer => (
-                            <TableRow key={customer.id} onClick={() => router.push(`/customers/${customer.id}`)} className="cursor-pointer">
+                            <TableRow key={customer.id} onClick={() => router.push(`/customers/${customer.id}`)} className="cursor-pointer hover:bg-muted">
                                 <TableCell>
                                     <div className="font-medium">{customer.firstName} {customer.lastName}</div>
                                     <div className="text-sm text-muted-foreground">{customer.phone || '-'}</div>

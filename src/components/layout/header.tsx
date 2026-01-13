@@ -4,11 +4,18 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
-  Home,
   LogOut,
   User as UserIcon,
   Store,
   LayoutDashboard,
+  ShoppingBasket,
+  Package,
+  Users,
+  History,
+  Bell,
+  Settings,
+  Truck,
+  Cookie,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -21,21 +28,25 @@ import {
 import { useAuth, useUser } from '@/firebase';
 import { Clock } from '@/components/layout/clock';
 import { ThemeToggle } from './theme-toggle';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import { cn } from '@/lib/utils';
+
 
 const navLinks = [
-  { href: '/dashboard', label: 'Tableau de Bord' },
-  { href: '/sell', label: 'Vendre' },
-  { href: '/products', label: 'Produits' },
-  { href: '/stock-intake', label: 'Réception Stock' },
-  { href: '/customers', label: 'Clients' },
-  { href: '/bread-orders', label: 'Commandes de Pain' },
-  { href: '/sales-history', label: 'Historique' },
-  { href: '/notifications', label: 'Alertes' },
-  { href: '/profile', label: 'Profil' },
-  { href: '/customers/[id]', label: 'Détails du client'},
-  { href: '/stock-intake/history', label: 'Historique des réceptions'}
+  { href: '/dashboard', label: 'Tableau de Bord', icon: LayoutDashboard },
+  { href: '/sell', label: 'Vendre', icon: ShoppingBasket },
+  { href: '/products', label: 'Produits', icon: Package },
+  { href: '/stock-intake', label: 'Réception Stock', icon: Truck },
+  { href: '/customers', label: 'Clients', icon: Users },
+  { href: '/bread-orders', label: 'Commandes de Pain', icon: Cookie },
+  { href: '/sales-history', label: 'Historique', icon: History },
+  { href: '/notifications', label: 'Alertes', icon: Bell },
 ];
-
 
 export function AppHeader() {
   const { user } = useUser();
@@ -50,38 +61,61 @@ export function AppHeader() {
     }
   };
 
-  // Find the label for the current page
-  let currentPageLabel = navLinks.find(link => {
-    if (link.href.includes('[id]')) {
-        const baseHref = link.href.split('[id]')[0];
-        return pathname.startsWith(baseHref);
-    }
-    return pathname === link.href;
-  })?.label;
+  const getPageTitle = () => {
+     if (pathname === '/profile') return 'Profil';
+     if (pathname.startsWith('/customers/')) return 'Détails du Client';
+     if (pathname.startsWith('/stock-intake/history')) return 'Historique des Réceptions';
 
-  if (!currentPageLabel && pathname === '/') {
-      currentPageLabel = "Accueil"
+     const activeLink = navLinks.find(link => pathname.startsWith(link.href));
+     return activeLink?.label || 'iPOS';
   }
 
 
   return (
-    <header className="sticky top-0 z-40 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6 py-2">
-        <Link
-            href="/dashboard"
-            className="flex items-center gap-2 font-semibold"
-        >
-            <Store className="h-6 w-6" />
-            <span className="sr-only">iPOS</span>
-        </Link>
-        <div className="flex items-center gap-2">
-            <Link href="/dashboard" className="transition-colors hover:text-foreground">
-                <LayoutDashboard className="h-5 w-5" />
-                <span className="sr-only">Tableau de bord</span>
+    <header className="flex h-14 items-center gap-4 border-b bg-background px-4 sm:h-auto sm:border-0 sm:bg-transparent sm:px-6 py-2 print-hide">
+       <div className="flex items-center gap-4">
+            <Link
+                href="/dashboard"
+                className="flex items-center gap-2 font-semibold"
+            >
+                <Store className="h-6 w-6" />
+                <span className="sr-only">iPOS</span>
             </Link>
-            <h1 className="text-xl font-semibold">{currentPageLabel || 'Page'}</h1>
+            <h1 className="text-xl font-semibold hidden sm:block">{getPageTitle()}</h1>
         </div>
 
-        <div className="ml-auto flex items-center gap-4">
+        {/* Central Navigation */}
+        <nav className="mx-auto hidden md:flex">
+             <TooltipProvider>
+                <ul className="flex items-center gap-2 rounded-full border bg-card p-1">
+                    {navLinks.map(link => (
+                         <li key={link.href}>
+                             <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button 
+                                        asChild
+                                        variant={pathname.startsWith(link.href) ? "secondary" : "ghost"} 
+                                        size="icon"
+                                        className="rounded-full"
+                                     >
+                                        <Link href={link.href}>
+                                            <link.icon className="h-5 w-5" />
+                                            <span className="sr-only">{link.label}</span>
+                                        </Link>
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>{link.label}</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        </li>
+                    ))}
+                </ul>
+            </TooltipProvider>
+        </nav>
+
+
+        <div className="ml-auto flex items-center gap-2 sm:gap-4">
             <Clock />
             <ThemeToggle />
             <DropdownMenu>
@@ -104,8 +138,8 @@ export function AppHeader() {
                     </>
                 )}
                 <DropdownMenuItem onClick={() => router.push('/profile')}>
-                <UserIcon className="mr-2 h-4 w-4" />
-                <span>Profil</span>
+                <Settings className="mr-2 h-4 w-4" />
+                <span>Profil & Paramètres</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive-foreground focus:bg-destructive">
