@@ -167,10 +167,21 @@ export function CartPanel({
                         )}
                     </CardContent>
                 </Card>
+
+                 {/* Action buttons */}
+                 <div className="flex gap-2 mb-4">
+                     <Button variant="destructive" onClick={onClearCart} disabled={cart.length === 0} className="w-1/3">
+                        <Trash2 className="h-4 w-4" />
+                    </Button>
+                     <Button size="lg" onClick={onFinalize} disabled={cart.length === 0} className="flex-1 text-lg h-14">
+                        <HardDriveDownload className="mr-2 h-5 w-5" />
+                        VENTE (F4)
+                    </Button>
+                 </div>
             </div>
 
             {/* Middle section: Cart items (scrollable) */}
-            <div className="flex-1 min-h-0">
+            <div className="flex-1 min-h-0 border-t pt-4">
                 <ScrollArea className="h-full">
                     {cart.length === 0 ? (
                          <div className="flex-1 flex flex-col items-center justify-center text-center p-4 h-full">
@@ -207,9 +218,9 @@ export function CartPanel({
                 </ScrollArea>
             </div>
             
-            {/* Bottom section: Totals and actions */}
+            {/* Bottom section: Totals */}
             <div className="flex-shrink-0 mt-4 border-t pt-4">
-                 <div className="space-y-2 mb-4">
+                 <div className="space-y-2">
                     <div className="flex justify-between text-sm text-muted-foreground">
                         <span>Articles</span>
                         <span>{totalItems}</span>
@@ -218,15 +229,6 @@ export function CartPanel({
                         <span>Total</span>
                         <span>{total.toFixed(2)} DA</span>
                     </div>
-                 </div>
-                 <div className="flex gap-2">
-                     <Button variant="destructive" onClick={onClearCart} disabled={cart.length === 0} className="w-1/3">
-                        <Trash2 className="h-4 w-4" />
-                    </Button>
-                     <Button size="lg" onClick={onFinalize} disabled={cart.length === 0} className="flex-1 text-lg h-14">
-                        <HardDriveDownload className="mr-2 h-5 w-5" />
-                        VENTE (F4)
-                    </Button>
                  </div>
             </div>
         </div>
