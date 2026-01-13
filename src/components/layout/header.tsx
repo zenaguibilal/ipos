@@ -94,7 +94,7 @@ export function AppHeader() {
                                 <TooltipTrigger asChild>
                                     <Button 
                                         asChild
-                                        variant={pathname.startsWith(link.href) ? "secondary" : "ghost"} 
+                                        variant={pathname.startsWith(link.href) ? "default" : "ghost"} 
                                         size="icon"
                                         className="rounded-full"
                                      >
