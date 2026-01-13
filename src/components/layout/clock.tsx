@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -19,7 +18,7 @@ export function Clock() {
   }, []);
 
   return (
-    <div className="hidden sm:flex items-center text-sm font-medium text-muted-foreground">
+    <div className="hidden sm:flex items-center text-sm font-medium text-foreground">
       <span>{format(time, 'd MMMM yyyy, HH:mm:ss', { locale: fr })}</span>
     </div>
   );
