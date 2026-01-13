@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -40,6 +39,7 @@ import { AnimatedLogo } from './animated-logo';
 
 const navLinks = [
   { href: '/dashboard', label: 'Tableau de Bord', icon: LayoutDashboard },
+  { href: '/sell', label: 'Vendre', icon: ShoppingBasket },
   { href: '/products', label: 'Produits', icon: Package },
   { href: '/stock-intake', label: 'Réception Stock', icon: Truck },
   { href: '/customers', label: 'Clients', icon: Users },
