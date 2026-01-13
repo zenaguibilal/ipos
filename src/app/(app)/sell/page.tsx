@@ -8,13 +8,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { collection, doc, writeBatch, serverTimestamp, updateDoc, increment } from 'firebase/firestore';
 import { AddProductForm } from '@/components/sell/add-product-form';
-import { MinusCircle, PlusCircle, Trash2, UserPlus, X } from 'lucide-react';
+import { MinusCircle, PlusCircle, Trash2, UserPlus, UserX, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PaymentDialog } from '@/components/sell/payment-dialog';
 // import { Receipt } from '@/components/receipt';
 import ReactDOM from 'react-dom';
-import type { Product, Customer, Sale, CompanyProfile, CustomerWithSalesData, SaleItem } from '@/lib/types';
+import type { Product, Customer, Sale, CompanyProfile, CustomerWithSalesData, SaleItem, Payment } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { Combobox, ComboboxOption } from '@/components/ui/combobox';
 import { toast } from 'sonner';
@@ -63,19 +63,20 @@ export default function SellPage() {
     }, []);
 
     
-    // Fetch Products
+    // --- Data Fetching ---
     const productsCollectionRef = useMemoFirebase(() => (user && firestore) ? collection(firestore, 'users', user.uid, 'products') : null, [user, firestore]);
     const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsCollectionRef);
 
-    // Fetch Customers
     const customersCollectionRef = useMemoFirebase(() => (user && firestore) ? collection(firestore, 'users', user.uid, 'customers') : null, [user, firestore]);
     const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersCollectionRef);
 
-    // Fetch Company Profile
-    const companyDocRef = useMemoFirebase(() => {
-        if (!user || !firestore) return null;
-        return doc(firestore, 'users', user.uid, 'companyProfile', 'main');
-    }, [user, firestore]);
+    const salesCollectionRef = useMemoFirebase(() => (user && firestore) ? collection(firestore, 'users', user.uid, 'sales') : null, [user, firestore]);
+    const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesCollectionRef);
+
+    const paymentsCollectionRef = useMemoFirebase(() => (user && firestore) ? collection(firestore, 'users', user.uid, 'payments') : null, [user, firestore]);
+    const { data: payments, isLoading: isLoadingPayments } = useCollection<Payment>(paymentsCollectionRef);
+
+    const companyDocRef = useMemoFirebase(() => (user && firestore) ? doc(firestore, 'users', user.uid, 'companyProfile', 'main') : null, [user, firestore]);
     const { data: companyProfile } = useDoc<CompanyProfile>(companyDocRef);
 
 
@@ -87,15 +88,49 @@ export default function SellPage() {
 
     const activeCart = useMemo(() => carts.find(cart => cart.id === activeCartId), [carts, activeCartId]);
 
+    const customerDebts = useMemo(() => {
+        if (!sales || !payments) return {};
+
+        const salesByCustomer = sales.reduce((acc, sale) => {
+            if (sale.customerId) {
+                if (!acc[sale.customerId]) acc[sale.customerId] = 0;
+                acc[sale.customerId] += sale.remainingBalance;
+            }
+            return acc;
+        }, {} as Record<string, number>);
+
+        const paymentsByCustomer = payments.reduce((acc, payment) => {
+             if (payment.customerId) {
+                if (!acc[payment.customerId]) acc[payment.customerId] = 0;
+                acc[payment.customerId] += payment.amount;
+            }
+            return acc;
+        }, {} as Record<string, number>);
+
+        const debts: Record<string, number> = {};
+        const allCustomerIds = new Set([...Object.keys(salesByCustomer), ...Object.keys(paymentsByCustomer)]);
+
+        allCustomerIds.forEach(customerId => {
+            const totalDebtFromSales = salesByCustomer[customerId] || 0;
+            const totalPaid = paymentsByCustomer[customerId] || 0;
+            const outstandingBalance = totalDebtFromSales - totalPaid;
+            debts[customerId] = outstandingBalance > 0 ? outstandingBalance : 0;
+        });
+
+        return debts;
+    }, [sales, payments]);
+
     const customerOptions: ComboboxOption[] = useMemo(() => {
         if (!customers) return [];
-        return customers.map(c => ({
-            value: c.id,
-            label: `${c.firstName} ${c.lastName}`,
-            // In a real app, this subLabel would be calculated
-            subLabel: `Dette: 0.00 DA`, 
-        }));
-    }, [customers]);
+        return customers.map(c => {
+            const debt = customerDebts[c.id] || 0;
+            return {
+                value: c.id,
+                label: `${c.firstName} ${c.lastName}`,
+                subLabel: debt > 0 ? `Dette: ${debt.toFixed(2)} DA` : undefined,
+            }
+        });
+    }, [customers, customerDebts]);
 
     const filteredProducts = useMemo(() => {
         if (!products) return [];
@@ -109,10 +144,27 @@ export default function SellPage() {
 
         const customer = customers?.find(c => c.id === customerId);
         if (!customer) return;
+
+        const debt = customerDebts[customerId] || 0;
         
         const updatedCarts = carts.map(cart => 
             cart.id === activeCartId 
-            ? { ...cart, customerId: customer.id, customerName: `${customer.firstName} ${customer.lastName}` } 
+            ? { 
+                ...cart, 
+                customerId: customer.id, 
+                customerName: `${customer.firstName} ${customer.lastName}`,
+                customerDebt: debt
+              } 
+            : cart
+        );
+        setCarts(updatedCarts);
+    };
+    
+    const handleRemoveCustomer = () => {
+        if (!activeCart) return;
+        const updatedCarts = carts.map(cart => 
+            cart.id === activeCartId 
+            ? { ...cart, customerId: undefined, customerName: undefined, customerDebt: undefined } 
             : cart
         );
         setCarts(updatedCarts);
@@ -271,9 +323,8 @@ export default function SellPage() {
                 setCarts(renumberedCarts);
                 setActiveCartId(renumberedCarts[0].id);
             } else {
-                const newCartId = nextCartId++;
-                setCarts([{ id: newCartId, name: `Vente 1`, items: [] }]);
-                setActiveCartId(newCartId);
+                // Keep a single cart but reset it
+                setCarts([{ id: activeCartId, name: `Vente 1`, items: [] }]);
             }
 
         } catch (error) {
@@ -352,7 +403,7 @@ export default function SellPage() {
         setActiveCartId(newActiveCartId);
     };
     
-    const isLoading = isLoadingProducts || isLoadingCustomers || isUserLoading;
+    const isLoading = isLoadingProducts || isLoadingCustomers || isUserLoading || isLoadingSales || isLoadingPayments;
 
     if (isLoading || !user) {
         return <div className="flex h-full items-center justify-center"><p>Chargement des données...</p></div>
@@ -449,16 +500,29 @@ export default function SellPage() {
                     {activeCart && (
                         <div className="flex-1 flex flex-col overflow-y-hidden">
                             <div className="p-4 border-b">
-                                <div className="flex items-center justify-between">
+                                <div className="flex items-center justify-between gap-4">
                                     <Label>Client:</Label>
-                                    <Combobox
-                                        options={customerOptions}
-                                        onSelect={handleSelectCustomer}
-                                        placeholder={activeCart.customerName || "Vente au comptoir"}
-                                        searchPlaceholder="Rechercher un client..."
-                                        notFoundMessage="Aucun client trouvé."
-                                    />
+                                    <div className="flex-grow">
+                                        <Combobox
+                                            options={customerOptions}
+                                            onSelect={handleSelectCustomer}
+                                            value={activeCart.customerId}
+                                            placeholder={activeCart.customerName || "Vente au comptoir"}
+                                            searchPlaceholder="Rechercher un client..."
+                                            notFoundMessage="Aucun client trouvé."
+                                        />
+                                    </div>
+                                    {activeCart.customerId && (
+                                        <Button variant="ghost" size="icon" onClick={handleRemoveCustomer}>
+                                            <UserX className="h-5 w-5 text-destructive" />
+                                        </Button>
+                                    )}
                                 </div>
+                                {activeCart.customerDebt && activeCart.customerDebt > 0 ? (
+                                    <p className="text-right text-destructive text-sm mt-1">
+                                        Dette précédente : {activeCart.customerDebt.toFixed(2)} DA
+                                    </p>
+                                ) : null}
                             </div>
                             <div className="flex-1 overflow-y-auto p-4">
                                 {activeCart.items.length > 0 ? (
@@ -502,5 +566,7 @@ export default function SellPage() {
         </>
     );
 }
+
+    
 
     

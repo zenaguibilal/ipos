@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -30,13 +31,14 @@ export interface ComboboxOption {
 interface ComboboxProps {
     options: ComboboxOption[];
     onSelect: (value: string) => void;
+    value?: string;
     placeholder: string;
     searchPlaceholder: string;
     notFoundMessage: string;
 }
 
 
-export const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(({ options, onSelect, placeholder, searchPlaceholder, notFoundMessage }, ref) => {
+export const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(({ options, onSelect, value, placeholder, searchPlaceholder, notFoundMessage }, ref) => {
   const [open, setOpen] = React.useState(false)
   
   return (
@@ -79,7 +81,7 @@ export const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(({ op
                   <Check
                     className={cn(
                       "mr-2 h-4 w-4",
-                      "opacity-0"
+                      value === option.value ? "opacity-100" : "opacity-0"
                     )}
                   />
                   <div>
@@ -96,3 +98,5 @@ export const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(({ op
   )
 });
 Combobox.displayName = "Combobox";
+
+    
