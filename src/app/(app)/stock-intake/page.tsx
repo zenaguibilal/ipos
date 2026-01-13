@@ -289,7 +289,7 @@ export default function StockIntakePage() {
                         <div className="grid sm:grid-cols-3 gap-4 pt-4">
                              <div>
                                 <Label htmlFor="purchase-order">Bon de Commande (Optionnel)</Label>
-                                 <Select onValueChange={handleSelectPO} value={selectedPOId || ''} disabled={isLoadingPOs}>
+                                 <Select onValueChange={handleSelectPO} value={selectedPOId || 'none'} disabled={isLoadingPOs}>
                                      <SelectTrigger id="purchase-order">
                                          <SelectValue placeholder="Sélectionner un BC..." />
                                      </SelectTrigger>
