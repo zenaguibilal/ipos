@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
-import { FirebaseClientProvider } from '@/firebase/client-provider';
 import { Toaster } from '@/components/ui/sonner';
 import { ThemeProvider } from '@/components/layout/theme-provider';
 
@@ -70,12 +69,10 @@ export default function RootLayout({
             enableSystem
             disableTransitionOnChange
         >
-            <FirebaseClientProvider>
-                {children}
-                <Toaster richColors />
-                {/* Dedicated container for printing thermal receipts */}
-                <div id="receipt-for-print" className="hidden"></div>
-            </FirebaseClientProvider>
+            {children}
+            <Toaster richColors />
+            {/* Dedicated container for printing thermal receipts */}
+            <div id="receipt-for-print" className="hidden"></div>
         </ThemeProvider>
       </body>
     </html>
