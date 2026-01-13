@@ -9,6 +9,7 @@ export interface Product {
     quantity: number; 
     minStockLevel: number;
     barcodes?: string[];
+    imageUrl?: string;
 }
 
 export interface Customer {
@@ -59,6 +60,7 @@ export interface CustomerWithSalesData extends Customer {
 export interface ChartData {
   date: string;
   revenue: number;
+  profit?: number;
 }
 
 export interface BreadOrder {
@@ -73,6 +75,7 @@ export interface BreadOrder {
 export interface TopProduct extends Product {
     totalRevenue: number;
     unitsSold: number;
+    totalProfit: number;
 }
 
 export interface TopCustomer extends Customer {

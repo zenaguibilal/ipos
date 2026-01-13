@@ -81,6 +81,11 @@
             "type": "string"
           }
         },
+        "imageUrl": {
+            "type": "string",
+            "format": "uri",
+            "description": "URL of the product image."
+        },
         "createdAt": {
           "type": "string",
           "description": "Timestamp indicating when the product was created.",

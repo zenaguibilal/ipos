@@ -5,9 +5,13 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import type { ProductWithOptionalBarcode } from '@/app/(app)/sell/page';
+import type { Product } from '@/lib/types';
 import { PlusCircle, ScanLine } from 'lucide-react';
 import Image from 'next/image';
+
+interface ProductWithOptionalBarcode extends Product {
+    barcode?: string;
+}
 
 interface ProductGridProps {
     products: ProductWithOptionalBarcode[];
@@ -108,7 +112,7 @@ export function ProductGrid({ products, onAddToCart, onAddNewProduct, onAddCusto
                             <CardContent className="p-0 flex flex-col items-center text-center">
                                 <div className="relative w-full h-24 bg-muted overflow-hidden rounded-t-lg">
                                      <Image
-                                        src={`https://picsum.photos/seed/${product.id}/200/200`}
+                                        src={product.imageUrl || `https://picsum.photos/seed/${product.id}/200/200`}
                                         alt={product.name}
                                         fill
                                         style={{ objectFit: 'cover' }}
@@ -138,4 +142,3 @@ export function ProductGrid({ products, onAddToCart, onAddNewProduct, onAddCusto
         </>
     );
 }
-    

@@ -11,7 +11,7 @@ import { AddProductForm } from '@/components/products/add-product-form';
 import { EditProductForm } from '@/components/products/edit-product-form';
 import { DeleteProductDialog } from '@/components/products/delete-product-dialog';
 import { ProductImportDialog } from '@/components/products/product-import-dialog';
-import { MoreHorizontal, Pencil, Trash2, ArrowUp, ArrowDown, Upload, Download } from 'lucide-react';
+import { MoreHorizontal, Pencil, Trash2, ArrowUp, ArrowDown, Upload, Download, Image as ImageIcon } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
@@ -19,6 +19,7 @@ import type { Product } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import Papa from 'papaparse';
+import Image from 'next/image';
 
 
 interface ProductWithProfit extends Product {
@@ -131,7 +132,8 @@ export default function ProductsPage() {
             "price": p.price,
             "quantity": p.quantity,
             "minStockLevel": p.minStockLevel,
-            "barcodes": p.barcodes?.join(',') || ''
+            "barcodes": p.barcodes?.join(',') || '',
+            "imageUrl": p.imageUrl || ''
         }));
 
         const csv = Papa.unparse(csvData);
@@ -168,7 +170,8 @@ export default function ProductsPage() {
                         price: parseFloat(imported.price) || 0,
                         quantity: parseInt(imported.quantity, 10) || 0,
                         minStockLevel: parseInt(imported.minStockLevel, 10) || 0,
-                        barcodes: imported.barcodes?.split(',').map((b:string) => b.trim()) || []
+                        barcodes: imported.barcodes?.split(',').map((b:string) => b.trim()) || [],
+                        imageUrl: imported.imageUrl || ''
                      };
                      
                      if (existingProduct) {
@@ -274,6 +277,7 @@ export default function ProductsPage() {
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
+                                            <TableHead className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Image</TableHead>
                                             <SortableHeader sortKey="name" className="text-left">Produit</SortableHeader>
                                             <TableHead className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Codes-barres</TableHead>
                                             <SortableHeader sortKey="purchasePrice" className="text-right">Prix d'achat</SortableHeader>
@@ -289,6 +293,17 @@ export default function ProductsPage() {
                                     <TableBody>
                                         {sortedAndFilteredProducts.map(product => (
                                             <TableRow key={product.id}>
+                                                <TableCell>
+                                                    <div className="h-10 w-10 relative rounded-md overflow-hidden bg-muted">
+                                                        {product.imageUrl ? (
+                                                            <Image src={product.imageUrl} alt={product.name} fill style={{objectFit: 'cover'}} />
+                                                        ) : (
+                                                            <div className="flex items-center justify-center h-full w-full">
+                                                                <ImageIcon className="h-5 w-5 text-muted-foreground" />
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </TableCell>
                                                 <TableCell className="font-medium">{product.name}</TableCell>
                                                 <TableCell className="text-muted-foreground text-xs">{product.barcodes?.join(', ') || '-'}</TableCell>
                                                 <TableCell className="text-right">{product.purchasePrice.toFixed(2)} DA</TableCell>

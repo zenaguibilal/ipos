@@ -26,6 +26,7 @@ export function EditProductForm({ isOpen, onOpenChange, userId, product }: EditP
     const [quantity, setQuantity] = useState('');
     const [minStockLevel, setMinStockLevel] = useState('');
     const [barcodes, setBarcodes] = useState('');
+    const [imageUrl, setImageUrl] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
 
@@ -37,6 +38,7 @@ export function EditProductForm({ isOpen, onOpenChange, userId, product }: EditP
             setQuantity(String(product.quantity));
             setMinStockLevel(String(product.minStockLevel));
             setBarcodes(product.barcodes?.join(', ') || '');
+            setImageUrl(product.imageUrl || '');
         }
     }, [product]);
 
@@ -83,6 +85,7 @@ export function EditProductForm({ isOpen, onOpenChange, userId, product }: EditP
             quantity: quantityNumber,
             minStockLevel: minStockLevelNumber,
             barcodes: barcodesArray,
+            imageUrl: imageUrl,
         }, {
             onSuccess: () => {
                 setIsLoading(false);
@@ -134,6 +137,10 @@ export function EditProductForm({ isOpen, onOpenChange, userId, product }: EditP
                                 <Input id="edit-barcodes" value={barcodes} onChange={(e) => setBarcodes(e.target.value)} placeholder="ex: 123, 456" />
                                 <p className="text-xs text-muted-foreground mt-1">Séparez par une virgule.</p>
                             </div>
+                        </div>
+                         <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="edit-imageUrl" className="text-right">URL de l'image</Label>
+                            <Input id="edit-imageUrl" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} className="col-span-3" placeholder="https://example.com/image.png"/>
                         </div>
                     </div>
                     <DialogFooter>

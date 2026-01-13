@@ -24,6 +24,7 @@ export function AddProductForm({ isOpen, onOpenChange, userId }: AddProductFormP
     const [quantity, setQuantity] = useState('');
     const [minStockLevel, setMinStockLevel] = useState('');
     const [barcodes, setBarcodes] = useState('');
+    const [imageUrl, setImageUrl] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
 
@@ -34,6 +35,7 @@ export function AddProductForm({ isOpen, onOpenChange, userId }: AddProductFormP
         setQuantity('');
         setMinStockLevel('');
         setBarcodes('');
+        setImageUrl('');
         setError(null);
     };
 
@@ -80,6 +82,7 @@ export function AddProductForm({ isOpen, onOpenChange, userId }: AddProductFormP
             quantity: quantityNumber,
             minStockLevel: minStockLevelNumber,
             barcodes: barcodesArray,
+            imageUrl: imageUrl,
             createdAt: serverTimestamp(),
         }, {
             onSuccess: () => {
@@ -142,6 +145,10 @@ export function AddProductForm({ isOpen, onOpenChange, userId }: AddProductFormP
                                 <Input id="add-barcodes" value={barcodes} onChange={(e) => setBarcodes(e.target.value)} placeholder="ex: 123, 456" />
                                 <p className="text-xs text-muted-foreground mt-1">Séparez par une virgule.</p>
                             </div>
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="add-imageUrl" className="text-right">URL de l'image</Label>
+                            <Input id="add-imageUrl" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} className="col-span-3" placeholder="https://example.com/image.png"/>
                         </div>
                     </div>
                     <DialogFooter>
