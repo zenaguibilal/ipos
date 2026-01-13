@@ -62,7 +62,7 @@ export function AppHeader() {
 
   return (
     <header className="flex h-14 shrink-0 items-center gap-4 border-b bg-background px-4 sm:px-6 print-hide sticky top-0 z-10">
-       <div className="flex items-center gap-2">
+       <div className="flex items-baseline gap-2">
             <Link
                 href="/sell"
                 className="flex items-center gap-2 font-semibold"
@@ -70,6 +70,7 @@ export function AppHeader() {
                 <Store className="h-6 w-6" />
                 <span className="text-xl font-semibold">iPOS</span>
             </Link>
+            <span className="text-xs text-muted-foreground hidden lg:inline">Développé par zenagui bilal</span>
         </div>
 
         {/* Central Navigation */}
