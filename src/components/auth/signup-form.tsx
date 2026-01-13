@@ -35,7 +35,7 @@ function SignupFormComponent() {
 
   useEffect(() => {
     if (user) {
-      router.push('/sell');
+      router.push('/dashboard');
     }
   }, [user, router]);
 

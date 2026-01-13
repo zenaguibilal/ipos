@@ -40,7 +40,6 @@ import { AnimatedLogo } from './animated-logo';
 
 const navLinks = [
   { href: '/dashboard', label: 'Tableau de Bord', icon: LayoutDashboard },
-  { href: '/sell', label: 'Vendre', icon: ShoppingBasket },
   { href: '/products', label: 'Produits', icon: Package },
   { href: '/stock-intake', label: 'Réception Stock', icon: Truck },
   { href: '/customers', label: 'Clients', icon: Users },
@@ -67,7 +66,7 @@ export function AppHeader() {
       <div className="flex-1 flex justify-start">
          <div className="flex items-baseline gap-2">
               <Link
-                  href="/sell"
+                  href="/dashboard"
                   className="flex items-center gap-2 font-semibold"
               >
                   <Store className="h-6 w-6" />
