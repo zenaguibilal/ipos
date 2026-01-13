@@ -21,6 +21,7 @@ import { toast } from 'sonner';
 import { SaleCompleteDialog } from '@/components/sales/sale-complete-dialog';
 import { AddCustomProductForm } from '@/components/sell/add-custom-product-form';
 import { ShortcutsHelpDialog } from '@/components/sell/shortcuts-help-dialog';
+import { format } from 'date-fns';
 
 interface CartItem extends Product {
     cartQuantity: number;
@@ -228,7 +229,10 @@ export default function SellPage() {
 
         setIsProcessingPayment(true);
         const batch = writeBatch(firestore);
+        
+        const now = new Date();
         const saleTimestamp = serverTimestamp();
+        const formattedInvoiceNumber = format(now, 'yyMMdd-HHmmss');
 
         try {
             // 1. Update product stock for non-custom items
@@ -241,11 +245,11 @@ export default function SellPage() {
 
             // 2. Create Sale Record
             const salesCollectionRef = collection(firestore, 'users', user.uid, 'sales');
-            const saleRef = doc(salesCollectionRef);
+            const saleRef = doc(salesCollectionRef); // We still generate a unique ID for the doc
             const remainingBalance = saleTotal - amountPaid;
             
             const saleData: Omit<Sale, 'id' | 'createdAt'> & { createdAt: any } = {
-                invoiceNumber: saleRef.id.substring(0, 8).toUpperCase(),
+                invoiceNumber: formattedInvoiceNumber,
                 items: activeCart.items.map(i => ({ id: i.id, name: i.name, price: i.price, quantity: i.cartQuantity })),
                 total: saleTotal,
                 amountPaid: amountPaid,
@@ -494,3 +498,5 @@ export default function SellPage() {
         </>
     );
 }
+
+    
