@@ -43,7 +43,7 @@ export function TopCustomers({ customers }: TopCustomersProps) {
                         Meilleurs clients
                     </CardTitle>
                     <CardDescription>
-                        Le top 5 des clients par total de dépenses.
+                        Le top 5 des clients par total de dépenses sur la période.
                     </CardDescription>
                 </div>
                  <Button asChild variant="outline">
@@ -75,5 +75,3 @@ export function TopCustomers({ customers }: TopCustomersProps) {
         </Card>
     );
 }
-
-    

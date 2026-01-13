@@ -54,5 +54,3 @@ export function LowStockProducts({ products }: LowStockProductsProps) {
         </Card>
     );
 }
-
-    

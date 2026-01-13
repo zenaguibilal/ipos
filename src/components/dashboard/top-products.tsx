@@ -43,7 +43,7 @@ export function TopProducts({ products }: TopProductsProps) {
                         Top 5 Produits (Bénéfice)
                     </CardTitle>
                     <CardDescription>
-                        Le top 5 des produits par bénéfice net généré.
+                        Le top 5 des produits par bénéfice net généré sur la période.
                     </CardDescription>
                 </div>
                 <Button asChild variant="outline">
@@ -79,5 +79,3 @@ export function TopProducts({ products }: TopProductsProps) {
         </Card>
     );
 }
-
-    

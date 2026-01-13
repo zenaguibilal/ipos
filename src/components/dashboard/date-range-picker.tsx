@@ -29,10 +29,10 @@ interface DateRangePickerProps extends React.HTMLAttributes<HTMLDivElement> {
 
 export function DateRangePicker({ className, onUpdate }: DateRangePickerProps) {
   const [date, setDate] = React.useState<DateRange | undefined>({
-    from: startOfDay(new Date()),
+    from: startOfDay(subDays(new Date(), 6)),
     to: startOfDay(new Date()),
   })
-  const [preset, setPreset] = React.useState<string>("today")
+  const [preset, setPreset] = React.useState<string>("last7")
 
   React.useEffect(() => {
     onUpdate(date)
@@ -43,13 +43,13 @@ export function DateRangePicker({ className, onUpdate }: DateRangePickerProps) {
     const now = new Date()
     switch (value) {
       case "today":
-        setDate({ from: startOfDay(now), to: startOfDay(now) })
+        setDate({ from: startOfDay(now), to: endOfDay(now) })
         break
       case "last7":
-        setDate({ from: startOfDay(subDays(now, 6)), to: startOfDay(now) })
+        setDate({ from: startOfDay(subDays(now, 6)), to: endOfDay(now) })
         break
       case "last30":
-        setDate({ from: startOfDay(subDays(now, 29)), to: startOfDay(now) })
+        setDate({ from: startOfDay(subDays(now, 29)), to: endOfDay(now) })
         break
       case "thisMonth":
         setDate({ from: startOfMonth(now), to: endOfMonth(now) })
@@ -74,7 +74,7 @@ export function DateRangePicker({ className, onUpdate }: DateRangePickerProps) {
             id="date"
             variant={"outline"}
             className={cn(
-              "w-[300px] justify-start text-left font-normal",
+              "w-auto justify-start text-left font-normal",
               !date && "text-muted-foreground"
             )}
           >

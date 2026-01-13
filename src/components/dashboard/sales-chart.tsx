@@ -36,12 +36,15 @@ export function SalesChart({ data, dataKey, yAxisLabel, barFill }: SalesChartPro
                         border: "1px solid hsl(var(--border))"
                     }}
                     labelStyle={{ color: "hsl(var(--foreground))" }}
-                    formatter={(value: number) => [value.toFixed(2) + ' DA', yAxisLabel]}
+                    formatter={(value: number, name) => {
+                        const label = name === 'revenue' ? 'Chiffre d\'affaires' : 'Bénéfice net';
+                        return [value.toFixed(2) + ' DA', label];
+                    }}
                 />
-                 <Bar dataKey={dataKey} name={yAxisLabel} fill={barFill || "hsl(var(--chart-primary))"} radius={[4, 4, 0, 0]} />
+                 <Legend />
+                 <Bar dataKey="revenue" name="Chiffre d'affaires" fill="hsl(var(--chart-primary))" radius={[4, 4, 0, 0]} />
+                 <Bar dataKey="profit" name="Bénéfice net" fill="hsl(var(--chart-secondary))" radius={[4, 4, 0, 0]} />
             </BarChart>
         </ResponsiveContainer>
     );
 }
-
-    
