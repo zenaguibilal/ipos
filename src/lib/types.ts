@@ -9,6 +9,7 @@ export interface Product {
     quantity: number; 
     minStockLevel: number;
     barcodes?: string[];
+    imageUrl?: string;
 }
 
 export interface Customer {
@@ -113,5 +114,22 @@ export interface StockIntake {
         purchasePrice: number;
     }[];
     totalValue: number;
+    createdAt: Timestamp;
+}
+
+export interface PurchaseOrderItem {
+    productId: string;
+    productName: string;
+    quantity: number;
+    purchasePrice: number;
+}
+
+export interface PurchaseOrder {
+    id: string;
+    poNumber: string;
+    supplier: string;
+    items: PurchaseOrderItem[];
+    totalValue: number;
+    status: 'pending' | 'received';
     createdAt: Timestamp;
 }

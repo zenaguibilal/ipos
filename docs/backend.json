@@ -1,4 +1,3 @@
-
 {
   "entities": {
     "User": {
@@ -349,6 +348,51 @@
         }
       },
       "required": ["invoiceNumber", "invoiceDate", "items", "totalValue", "createdAt"]
+    },
+    "PurchaseOrder": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Purchase Order",
+      "description": "Represents a purchase order sent to a supplier.",
+      "type": "object",
+      "properties": {
+        "poNumber": {
+          "type": "string",
+          "description": "Unique identifier for the purchase order."
+        },
+        "supplier": {
+          "type": "string",
+          "description": "Name of the supplier."
+        },
+        "items": {
+          "type": "array",
+          "description": "List of products to order.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "productId": { "type": "string" },
+              "productName": { "type": "string" },
+              "quantity": { "type": "number" },
+              "purchasePrice": { "type": "number" }
+            },
+            "required": ["productId", "productName", "quantity", "purchasePrice"]
+          }
+        },
+        "totalValue": {
+            "type": "number",
+            "description": "The total estimated value of the purchase order."
+        },
+        "status": {
+            "type": "string",
+            "enum": ["pending", "received"],
+            "description": "The status of the purchase order."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp indicating when this PO was created."
+        }
+      },
+      "required": ["poNumber", "supplier", "items", "totalValue", "status", "createdAt"]
     }
   },
   "auth": {
@@ -400,6 +444,10 @@
     "/users/{userId}/stockIntakes/{stockIntakeId}": {
         "schema": { "$ref": "#/entities/StockIntake" },
         "description": "Records of stock received from suppliers."
+    },
+    "/users/{userId}/purchaseOrders/{purchaseOrderId}": {
+        "schema": { "$ref": "#/entities/PurchaseOrder" },
+        "description": "Purchase orders created by the user."
     }
   }
 }

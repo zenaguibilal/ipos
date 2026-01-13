@@ -1,25 +1,27 @@
 
 'use client';
 
-import { useUser, useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking, addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
+import { useUser, useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useMemo } from 'react';
-import { collection, doc, writeBatch } from 'firebase/firestore';
+import { collection, doc, writeBatch, serverTimestamp } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { AddProductForm } from '@/components/products/add-product-form';
 import { EditProductForm } from '@/components/products/edit-product-form';
 import { DeleteProductDialog } from '@/components/products/delete-product-dialog';
 import { ProductImportDialog } from '@/components/products/product-import-dialog';
-import { MoreHorizontal, Pencil, Trash2, ArrowUp, ArrowDown, Upload, Download, Image as ImageIcon } from 'lucide-react';
+import { MoreHorizontal, Pencil, Trash2, ArrowUp, ArrowDown, Upload, Download, Image as ImageIcon, FilePlus2, ListOrdered, ShoppingCart } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import type { Product } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import Papa from 'papaparse';
 import Image from 'next/image';
+import Link from 'next/link';
 
 
 interface ProductWithProfit extends Product {
@@ -39,6 +41,10 @@ export default function ProductsPage() {
     const [isImporting, setIsImporting] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [sortConfig, setSortConfig] = useState<{ key: SortableKeys; direction: 'ascending' | 'descending' } | null>({ key: 'name', direction: 'ascending' });
+    const [selectedProducts, setSelectedProducts] = useState<Record<string, boolean>>({});
+    
+    const selectedProductIds = useMemo(() => Object.keys(selectedProducts).filter(id => selectedProducts[id]), [selectedProducts]);
+
 
     // Fetch Products
     const productsCollectionRef = useMemoFirebase(() => {
@@ -199,6 +205,44 @@ export default function ProductsPage() {
             }
         });
     };
+    
+    const handleCreatePurchaseOrder = () => {
+        if (!firestore || !user || !products) return;
+        if (selectedProductIds.length === 0) {
+            toast.info("Veuillez sélectionner au moins un produit pour créer un bon de commande.");
+            return;
+        }
+
+        const poItems = selectedProductIds.map(id => {
+            const product = products.find(p => p.id === id);
+            return {
+                productId: id,
+                productName: product?.name || '',
+                quantity: 1, // Default quantity
+                purchasePrice: product?.purchasePrice || 0
+            }
+        });
+        
+        const poRef = collection(firestore, 'users', user.uid, 'purchaseOrders');
+        
+        addDocumentNonBlocking(poRef, {
+            poNumber: `BC-${Date.now()}`,
+            supplier: 'Fournisseur non spécifié',
+            items: poItems,
+            totalValue: poItems.reduce((acc, item) => acc + (item.purchasePrice * item.quantity), 0),
+            status: 'pending',
+            createdAt: serverTimestamp()
+        }, {
+            onSuccess: () => {
+                toast.success("Bon de commande créé avec succès. Vous pouvez le gérer dans la page des BCs.");
+                setSelectedProducts({});
+            },
+            onError: (err) => {
+                console.error("Failed to create PO:", err);
+                toast.error("Échec de la création du bon de commande.");
+            }
+        });
+    };
 
     const isLoading = isUserLoading || isLoadingProducts;
 
@@ -259,14 +303,28 @@ export default function ProductsPage() {
                             onChange={(e) => setSearchQuery(e.target.value)}
                             className="w-full max-w-sm order-1 sm:order-1"
                         />
-                         <div className="flex gap-2 w-full sm:w-auto order-2 sm:order-2">
+                         <div className="flex gap-2 w-full sm:w-auto order-2 sm:order-2 flex-wrap justify-end">
+                            {selectedProductIds.length > 0 ? (
+                                 <Button variant="outline" onClick={handleCreatePurchaseOrder}>
+                                    <ShoppingCart className="mr-2 h-4 w-4" /> Créer BC ({selectedProductIds.length})
+                                </Button>
+                            ) : (
+                                <Button asChild variant="outline">
+                                    <Link href="/products/purchase-orders">
+                                        <ListOrdered className="mr-2 h-4 w-4" /> Gérer les BC
+                                    </Link>
+                                </Button>
+                            )}
+                           
                             <Button variant="outline" onClick={() => setIsImporting(true)}>
-                                <Upload className="mr-2 h-4 w-4" /> Importer CSV
+                                <Upload className="mr-2 h-4 w-4" /> Importer
                             </Button>
                             <Button variant="outline" onClick={handleExportToCSV}>
-                                <Download className="mr-2 h-4 w-4" /> Exporter CSV
+                                <Download className="mr-2 h-4 w-4" /> Exporter
                             </Button>
-                            <Button onClick={() => setIsAddingProduct(true)} className="flex-grow">Ajouter un produit</Button>
+                            <Button onClick={() => setIsAddingProduct(true)} className="flex-grow sm:flex-grow-0">
+                                <FilePlus2 className="mr-2 h-4 w-4" /> Ajouter
+                            </Button>
                          </div>
                     </CardHeader>
                     <CardContent>
@@ -277,6 +335,18 @@ export default function ProductsPage() {
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
+                                            <TableHead padding="checkbox" className="px-4">
+                                                <Checkbox
+                                                    checked={selectedProductIds.length > 0 && selectedProductIds.length === sortedAndFilteredProducts.length}
+                                                    onCheckedChange={(checked) => {
+                                                        const newSelected: Record<string, boolean> = {};
+                                                        if (checked) {
+                                                            sortedAndFilteredProducts.forEach(p => newSelected[p.id] = true);
+                                                        }
+                                                        setSelectedProducts(newSelected);
+                                                    }}
+                                                />
+                                            </TableHead>
                                             <TableHead className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Image</TableHead>
                                             <SortableHeader sortKey="name" className="text-left">Produit</SortableHeader>
                                             <TableHead className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Codes-barres</TableHead>
@@ -292,7 +362,15 @@ export default function ProductsPage() {
                                     </TableHeader>
                                     <TableBody>
                                         {sortedAndFilteredProducts.map(product => (
-                                            <TableRow key={product.id}>
+                                            <TableRow key={product.id} data-state={selectedProducts[product.id] && 'selected'}>
+                                                <TableCell padding="checkbox" className="px-4">
+                                                    <Checkbox
+                                                        checked={!!selectedProducts[product.id]}
+                                                        onCheckedChange={(checked) => {
+                                                            setSelectedProducts(prev => ({...prev, [product.id]: !!checked}));
+                                                        }}
+                                                    />
+                                                </TableCell>
                                                 <TableCell>
                                                     <div className="h-10 w-10 relative rounded-md overflow-hidden bg-muted">
                                                         {product.imageUrl ? (
