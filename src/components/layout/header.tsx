@@ -35,6 +35,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { cn } from '@/lib/utils';
+import { AnimatedLogo } from './animated-logo';
 
 
 const navLinks = [
@@ -68,7 +69,7 @@ export function AppHeader() {
                 className="flex items-center gap-2 font-semibold"
             >
                 <Store className="h-6 w-6" />
-                <span className="text-xl font-semibold">iPOS</span>
+                <AnimatedLogo />
             </Link>
             <span className="text-xs text-muted-foreground hidden lg:inline">Développé par zenagui bilal</span>
         </div>
