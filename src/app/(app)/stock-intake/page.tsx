@@ -125,13 +125,15 @@ export default function StockIntakePage() {
     }, []);
 
     const handleSelectPO = (poId: string) => {
-        setSelectedPOId(poId);
-        if (!poId) {
+        if (poId === 'none' || !poId) {
+            setSelectedPOId(null);
             setIntakeItems([]);
             setInvoiceNumber('');
             return;
         }
 
+        setSelectedPOId(poId);
+        
         const selectedPO = pendingPOs?.find(po => po.id === poId);
         if (!selectedPO || !products) return;
 
@@ -292,7 +294,7 @@ export default function StockIntakePage() {
                                          <SelectValue placeholder="Sélectionner un BC..." />
                                      </SelectTrigger>
                                      <SelectContent>
-                                        <SelectItem value="">Aucun</SelectItem>
+                                        <SelectItem value="none">Aucun</SelectItem>
                                         {(pendingPOs || []).map(po => (
                                             <SelectItem key={po.id} value={po.id}>
                                                {po.poNumber} - {po.supplier}
@@ -347,5 +349,3 @@ export default function StockIntakePage() {
         </>
     );
 }
-
-    
