@@ -38,8 +38,8 @@ import { cn } from '@/lib/utils';
 
 
 const navLinks = [
-  { href: '/dashboard', label: 'Tableau de Bord', icon: LayoutDashboard },
   { href: '/sell', label: 'Vendre', icon: ShoppingBasket },
+  { href: '/dashboard', label: 'Tableau de Bord', icon: LayoutDashboard },
   { href: '/products', label: 'Produits', icon: Package },
   { href: '/stock-intake', label: 'Réception Stock', icon: Truck },
   { href: '/customers', label: 'Clients', icon: Users },
@@ -72,7 +72,7 @@ export function AppHeader() {
 
 
   return (
-    <header className="flex h-14 items-center gap-4 border-b bg-background px-4 sm:h-auto sm:border-0 sm:bg-transparent sm:px-6 py-2 print-hide">
+    <header className="flex h-14 shrink-0 items-center gap-4 border-b bg-background px-4 sm:px-6 print-hide sticky top-0 z-10">
        <div className="flex items-center gap-4">
             <Link
                 href="/dashboard"
