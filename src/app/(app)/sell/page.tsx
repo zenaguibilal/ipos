@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { collection, doc, writeBatch, serverTimestamp, increment } from 'firebase/firestore';
 import { AddProductForm } from '@/components/sell/add-product-form';
-import { MinusCircle, PlusCircle, Trash2, UserPlus, UserX, X } from 'lucide-react';
+import { MinusCircle, PlusCircle, Trash2, User, UserX, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PaymentDialog } from '@/components/sell/payment-dialog';
@@ -486,7 +486,7 @@ export default function SellPage() {
                 </div>
 
                 {/* --- Right Column: Cart --- */}
-                <div className="lg:col-span-2 h-full flex flex-col bg-background">
+                 <div className="lg:col-span-2 h-full flex flex-col bg-background">
                     <div className="flex border-b overflow-x-auto">
                         {carts.map(cart => (
                             <div key={cart.id} className={cn("flex items-center p-2 border-r cursor-pointer whitespace-nowrap", activeCartId === cart.id && "bg-muted")}>
@@ -497,7 +497,7 @@ export default function SellPage() {
                         <Button variant="ghost" onClick={addCart} className="border-l">Ajouter +</Button>
                     </div>
 
-                    {activeCart && (
+                    {activeCart ? (
                         <div className="flex-1 flex flex-col overflow-y-hidden">
                             <div className="p-4 border-b">
                                 <div className="flex items-center justify-between gap-4">
@@ -560,9 +560,13 @@ export default function SellPage() {
                                 <Button size="lg" onClick={() => setIsPaymentDialogOpen(true)} disabled={activeCart.items.length === 0 || isProcessingPayment}>Paiement (F4)</Button>
                             </CardFooter>
                         </div>
+                    ) : (
+                         <p className="text-center text-muted-foreground pt-10">Veuillez sélectionner ou créer une vente.</p>
                     )}
                 </div>
             </div>
         </>
     );
 }
+
+    
