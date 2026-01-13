@@ -10,7 +10,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button";
-import type { Sale, CustomerWithSalesData, CompanyProfile } from "@/lib/types";
+import type { Sale, Customer, CompanyProfile } from "@/lib/types";
 import { CheckCircle, MessageSquare, Printer, Download } from "lucide-react";
 import { toast } from "sonner";
 import { ThermalReceipt } from "../sales/thermal-receipt";
@@ -21,7 +21,7 @@ interface SaleCompleteDialogProps {
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
     sale: Sale;
-    customer: CustomerWithSalesData | null;
+    customer: Customer | null;
     companyProfile: CompanyProfile | null;
 }
 
@@ -135,3 +135,5 @@ export function SaleCompleteDialog({ isOpen, onOpenChange, sale, customer, compa
         </Dialog>
     )
 }
+
+    

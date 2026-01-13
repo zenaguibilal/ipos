@@ -3,15 +3,14 @@
 
 import { useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Trash2, User, UserX, XCircle, HardDriveDownload } from 'lucide-react';
+import { Trash2, User, UserX, XCircle, HardDriveDownload, PlusCircle } from 'lucide-react';
 import { Combobox } from '@/components/ui/combobox';
 import type { Customer, Sale, Payment, CustomerWithSalesData } from '@/lib/types';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import type { CartItem } from '@/app/(app)/sell/page';
+import type { CartItem, SalesSession } from '@/app/(app)/sell/page';
 
 interface CartPanelProps {
     cart: CartItem[];
@@ -23,6 +22,11 @@ interface CartPanelProps {
     onUpdateQuantity: (productId: string, quantity: number) => void;
     onClearCart: () => void;
     onFinalize: () => void;
+    sessions: SalesSession[];
+    activeSessionIndex: number;
+    onSessionChange: (index: number) => void;
+    onSessionAdd: () => void;
+    onSessionClose: (index: number) => void;
 }
 
 export function CartPanel({
@@ -34,7 +38,12 @@ export function CartPanel({
     onSelectCustomer,
     onUpdateQuantity,
     onClearCart,
-    onFinalize
+    onFinalize,
+    sessions,
+    activeSessionIndex,
+    onSessionChange,
+    onSessionAdd,
+    onSessionClose
 }: CartPanelProps) {
     
     const customersWithSales: CustomerWithSalesData[] = useMemo(() => {
@@ -94,6 +103,37 @@ export function CartPanel({
 
     return (
         <div className="h-full flex flex-col">
+            {/* Sessions Bar */}
+            <div className="flex items-center gap-2 mb-4 border-b pb-3">
+                <ScrollArea className="w-full whitespace-nowrap">
+                    <div className="flex gap-2">
+                        {sessions.map((session, index) => (
+                            <Button
+                                key={index}
+                                variant={index === activeSessionIndex ? 'default' : 'outline'}
+                                onClick={() => onSessionChange(index)}
+                                className="relative pr-8"
+                            >
+                                Panier {index + 1} ({session.cart.reduce((acc, item) => acc + item.cartQuantity, 0)})
+                                {sessions.length > 1 && (
+                                     <XCircle
+                                        className="h-4 w-4 absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-destructive"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            onSessionClose(index);
+                                        }}
+                                    />
+                                )}
+                            </Button>
+                        ))}
+                    </div>
+                </ScrollArea>
+                <Button variant="outline" size="icon" onClick={onSessionAdd}>
+                    <PlusCircle className="h-4 w-4" />
+                </Button>
+            </div>
+
+
             <Card className="w-full mb-4">
                 <CardHeader className="p-3 flex-row items-center justify-between">
                     <CardTitle className="text-base flex items-center gap-2">
@@ -186,4 +226,6 @@ export function CartPanel({
         </div>
     );
 }
+    
+
     

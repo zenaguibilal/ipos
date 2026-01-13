@@ -21,6 +21,11 @@ import { CartPanel } from '@/components/sell/cart-panel';
 export type ProductWithOptionalBarcode = Product & { barcode?: string };
 export type CartItem = SaleItem & { cartQuantity: number };
 
+export interface SalesSession {
+    cart: CartItem[];
+    selectedCustomer: CustomerWithSalesData | null;
+}
+
 export default function SellPage() {
     const { user, isUserLoading } = useUser();
     const firestore = useFirestore();
@@ -39,9 +44,10 @@ export default function SellPage() {
     const { data: payments, isLoading: isLoadingPayments } = useCollection<Payment>(paymentsCollectionRef);
     const { data: companyProfile, isLoading: isLoadingCompany } = useDoc<CompanyProfile>(companyDocRef);
 
-    // Component state
-    const [cart, setCart] = useState<CartItem[]>([]);
-    const [selectedCustomer, setSelectedCustomer] = useState<CustomerWithSalesData | null>(null);
+    // Component state for multiple sales sessions
+    const [sessions, setSessions] = useState<SalesSession[]>([{ cart: [], selectedCustomer: null }]);
+    const [activeSessionIndex, setActiveSessionIndex] = useState(0);
+
     const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
     const [isSaleComplete, setIsSaleComplete] = useState(false);
     const [lastSale, setLastSale] = useState<Sale | null>(null);
@@ -51,37 +57,55 @@ export default function SellPage() {
     const [isAddingProduct, setIsAddingProduct] = useState(false);
     const [isAddingCustomProduct, setIsAddingCustomProduct] = useState(false);
     const [isHelpOpen, setIsHelpOpen] = useState(false);
+    
+    // Get current active session
+    const activeSession = sessions[activeSessionIndex];
 
     useEffect(() => {
         if (!isUserLoading && !user) {
             router.push('/login');
         }
     }, [user, isUserLoading, router]);
+    
+    const updateCurrentSession = (updater: (session: SalesSession) => SalesSession) => {
+        setSessions(currentSessions => {
+            const newSessions = [...currentSessions];
+            newSessions[activeSessionIndex] = updater(newSessions[activeSessionIndex]);
+            return newSessions;
+        });
+    };
+
 
     // Cart management functions
     const addProductToCart = useCallback((product: Product | SaleItem) => {
-        setCart(currentCart => {
-            const existingItem = currentCart.find(item => item.id === product.id);
+         updateCurrentSession(session => {
+            const existingItem = session.cart.find(item => item.id === product.id);
             const productInStock = products?.find(p => p.id === product.id);
             const stockQuantity = productInStock ? productInStock.quantity : Infinity;
 
             if (existingItem) {
                 if (existingItem.cartQuantity < stockQuantity) {
-                    return currentCart.map(item => item.id === product.id ? { ...item, cartQuantity: item.cartQuantity + 1 } : item);
+                    return {
+                        ...session,
+                        cart: session.cart.map(item => item.id === product.id ? { ...item, cartQuantity: item.cartQuantity + 1 } : item)
+                    };
                 } else {
                     toast.warning(`Stock insuffisant pour ${product.name}.`);
-                    return currentCart;
+                    return session;
                 }
             } else {
                 if (1 <= stockQuantity) {
-                    return [...currentCart, { ...product, cartQuantity: 1 }];
+                    return {
+                        ...session,
+                        cart: [...session.cart, { ...product, cartQuantity: 1 }]
+                    };
                 } else {
                     toast.warning(`Stock insuffisant pour ${product.name}.`);
-                    return currentCart;
+                    return session;
                 }
             }
         });
-    }, [products]);
+    }, [products, activeSessionIndex]);
     
     const addCustomProductToCart = (name: string, price: number) => {
         const customProduct: SaleItem = {
@@ -95,9 +119,9 @@ export default function SellPage() {
     };
 
     const updateCartQuantity = useCallback((productId: string, newQuantity: number) => {
-        setCart(currentCart => {
+        updateCurrentSession(session => {
             if (newQuantity <= 0) {
-                return currentCart.filter(item => item.id !== productId);
+                return { ...session, cart: session.cart.filter(item => item.id !== productId) };
             }
             
             const productInStock = products?.find(p => p.id === productId);
@@ -105,24 +129,30 @@ export default function SellPage() {
 
             if (newQuantity > stockQuantity) {
                 toast.warning(`Stock insuffisant pour ${productInStock?.name}. Quantité max : ${stockQuantity}`);
-                return currentCart.map(item => item.id === productId ? { ...item, cartQuantity: stockQuantity } : item);
+                return {
+                    ...session,
+                    cart: session.cart.map(item => item.id === productId ? { ...item, cartQuantity: stockQuantity } : item)
+                };
             }
             
-            return currentCart.map(item => item.id === productId ? { ...item, cartQuantity: newQuantity } : item);
+            return {
+                ...session,
+                cart: session.cart.map(item => item.id === productId ? { ...item, cartQuantity: newQuantity } : item)
+            };
         });
-    }, [products]);
-
+    }, [products, activeSessionIndex]);
 
     const clearCart = useCallback(() => {
-        setCart([]);
-        setSelectedCustomer(null);
-    }, []);
+        updateCurrentSession(() => ({ cart: [], selectedCustomer: null }));
+    }, [activeSessionIndex]);
 
     // Sale processing
     const handleFinalizeSale = (amountPaid: number) => {
         if (!firestore || !user) return;
         setIsProcessingSale(true);
 
+        const cart = activeSession.cart;
+        const selectedCustomer = activeSession.selectedCustomer;
         const total = cart.reduce((sum, item) => sum + (item.price * item.cartQuantity), 0);
 
         const newSale: Omit<Sale, 'id' | 'createdAt'> = {
@@ -156,7 +186,8 @@ export default function SellPage() {
             setLastSale({ ...newSale, id: newSaleRef.id, createdAt: new Date() });
             setIsPaymentDialogOpen(false);
             setIsSaleComplete(true);
-            clearCart();
+             // Instead of clearCart, we remove the completed session
+            handleCloseSession(activeSessionIndex);
         }).catch((err) => {
             console.error("Error finalizing sale:", err);
             toast.error("Erreur lors de la finalisation de la vente.");
@@ -165,11 +196,35 @@ export default function SellPage() {
         });
     };
     
+    // Session management
+    const handleAddSession = () => {
+        setSessions(s => [...s, { cart: [], selectedCustomer: null }]);
+        setActiveSessionIndex(sessions.length); // Switch to the new session
+    };
+    
+    const handleCloseSession = (indexToClose: number) => {
+        setSessions(currentSessions => {
+            if (currentSessions.length === 1) {
+                return [{ cart: [], selectedCustomer: null }]; // Reset the last session
+            }
+            const newSessions = currentSessions.filter((_, i) => i !== indexToClose);
+            // Adjust active index if necessary
+            if (activeSessionIndex >= indexToClose && activeSessionIndex > 0) {
+                setActiveSessionIndex(activeSessionIndex - 1);
+            }
+            return newSessions;
+        });
+    };
+    
     const handleNewSale = () => {
         setIsSaleComplete(false);
         setLastSale(null);
-        clearCart();
-    }
+        // The session is already cleared/closed by handleFinalizeSale
+    };
+    
+    const setSelectedCustomerForCurrentSession = (customer: CustomerWithSalesData | null) => {
+        updateCurrentSession(session => ({...session, selectedCustomer: customer}));
+    };
 
 
     // Keyboard shortcuts
@@ -188,7 +243,7 @@ export default function SellPage() {
             setIsHelpOpen(true);
         } else if (event.key === 'F4') {
             event.preventDefault();
-            if (cart.length > 0) {
+            if (activeSession.cart.length > 0) {
                 setIsPaymentDialogOpen(true);
             } else {
                 toast.info("Le panier est vide.");
@@ -201,7 +256,7 @@ export default function SellPage() {
             setIsAddingProduct(true);
         }
 
-    }, [cart.length]);
+    }, [activeSession.cart.length]);
 
     useEffect(() => {
         window.addEventListener('keydown', handleKeyDown);
@@ -217,7 +272,7 @@ export default function SellPage() {
         return <div className="flex h-full items-center justify-center"><p>Chargement de l'interface de vente...</p></div>;
     }
 
-    const total = cart.reduce((sum, item) => sum + (item.price * item.cartQuantity), 0);
+    const total = activeSession.cart.reduce((sum, item) => sum + (item.price * item.cartQuantity), 0);
 
     return (
         <>
@@ -237,7 +292,7 @@ export default function SellPage() {
                     isOpen={isSaleComplete}
                     onOpenChange={handleNewSale}
                     sale={lastSale}
-                    customer={selectedCustomer}
+                    customer={sessions.find(s => s.selectedCustomer?.id === lastSale.customerId)?.selectedCustomer || null}
                     companyProfile={companyProfile}
                 />
             )}
@@ -256,15 +311,20 @@ export default function SellPage() {
                 {/* Right Panel: Cart */}
                 <div className="lg:col-span-1 h-full flex flex-col bg-card border-l p-4">
                    <CartPanel
-                        cart={cart}
+                        cart={activeSession.cart}
                         customers={customers || []}
                         sales={sales || []}
                         payments={payments || []}
-                        selectedCustomer={selectedCustomer}
-                        onSelectCustomer={setSelectedCustomer}
+                        selectedCustomer={activeSession.selectedCustomer}
+                        onSelectCustomer={setSelectedCustomerForCurrentSession}
                         onUpdateQuantity={updateCartQuantity}
                         onClearCart={clearCart}
                         onFinalize={() => setIsPaymentDialogOpen(true)}
+                        sessions={sessions}
+                        activeSessionIndex={activeSessionIndex}
+                        onSessionAdd={handleAddSession}
+                        onSessionChange={setActiveSessionIndex}
+                        onSessionClose={handleCloseSession}
                    />
                 </div>
             </div>
@@ -279,4 +339,6 @@ export default function SellPage() {
         </>
     );
 }
+    
+
     
