@@ -37,7 +37,7 @@ export default function DashboardPage() {
     const paymentsCollectionRef = useMemoFirebase(() => (user && firestore) ? collection(firestore, 'users', user.uid, 'payments') : null, [user, firestore]);
 
     const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsCollectionRef);
-    const { data: allSales, isLoading: isLoadingSales } = useCollection<Sale>(allSalesCollectionRef);
+    const { data: allSales, isLoading: isLoadingSales } = useCollection<Sale>(salesCollectionRef);
     const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersCollectionRef);
     const { data: allPayments, isLoading: isLoadingPayments } = useCollection<Payment>(paymentsCollectionRef);
 
