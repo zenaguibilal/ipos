@@ -27,8 +27,8 @@ type HistoryItem =
 export function CustomerHistory({ sales, payments, isLoading, onViewSale }: CustomerHistoryProps) {
     
     const combinedHistory = useMemo(() => {
-        const saleItems: HistoryItem[] = sales.map(s => ({ type: 'sale', data: s, date: safeToDate(s.createdAt) }));
-        const paymentItems: HistoryItem[] = payments.map(p => ({ type: 'payment', data: p, date: safeToDate(p.createdAt) }));
+        const saleItems: HistoryItem[] = (sales || []).map(s => ({ type: 'sale', data: s, date: safeToDate(s.createdAt) }));
+        const paymentItems: HistoryItem[] = (payments || []).map(p => ({ type: 'payment', data: p, date: safeToDate(p.createdAt) }));
 
         return [...saleItems, ...paymentItems].sort((a, b) => b.date.getTime() - a.date.getTime());
     }, [sales, payments]);
@@ -49,11 +49,11 @@ export function CustomerHistory({ sales, payments, isLoading, onViewSale }: Cust
                 ) : (
                     <Timeline>
                         {combinedHistory.map((item, index) => (
-                             <TimelineItem key={`${item.type}-${item.data.id}`}>
+                             <TimelineItem key={`${item.type}-${item.data.id}-${index}`}>
                                 <TimelineConnector />
                                 <TimelineHeader>
-                                    <TimelineIcon>
-                                        {item.type === 'sale' ? <ShoppingCart className="h-4 w-4" /> : <HandCoins className="h-4 w-4"/>}
+                                    <TimelineIcon className={cn(item.type === 'payment' && "bg-green-100 dark:bg-green-900")}>
+                                        {item.type === 'sale' ? <ShoppingCart className="h-4 w-4" /> : <HandCoins className="h-4 w-4 text-green-600"/>}
                                     </TimelineIcon>
                                     <TimelineTitle>
                                         {item.type === 'sale' ? `Vente - ${item.data.invoiceNumber}` : 'Paiement Enregistré'}
@@ -67,7 +67,11 @@ export function CustomerHistory({ sales, payments, isLoading, onViewSale }: Cust
                                         <div className="p-3 rounded-md bg-muted/50 flex flex-col sm:flex-row justify-between items-start gap-2">
                                             <div className="space-y-1">
                                                 <p className="font-semibold">{item.data.total.toFixed(2)} DA</p>
-                                                <p className={cn("text-xs", item.data.paymentStatus === 'paid' && 'text-green-600', item.data.paymentStatus === 'partial' && 'text-yellow-600', item.data.paymentStatus === 'unpaid' && 'text-destructive')}>
+                                                <p className={cn("text-xs font-semibold", 
+                                                    item.data.paymentStatus === 'paid' && 'text-green-600', 
+                                                    item.data.paymentStatus === 'partial' && 'text-yellow-600', 
+                                                    item.data.paymentStatus === 'unpaid' && 'text-destructive'
+                                                )}>
                                                     Statut: {item.data.paymentStatus === 'paid' ? 'Payé' : item.data.paymentStatus === 'partial' ? 'Partiel' : 'Impayé'}
                                                 </p>
                                             </div>
@@ -77,7 +81,7 @@ export function CustomerHistory({ sales, payments, isLoading, onViewSale }: Cust
                                             </Button>
                                         </div>
                                     ) : (
-                                        <div className="p-3 rounded-md bg-muted/50">
+                                        <div className="p-3 rounded-md bg-green-500/10">
                                             <p className="font-semibold text-green-600">
                                                 + {item.data.amount.toFixed(2)} DA
                                             </p>
@@ -92,4 +96,3 @@ export function CustomerHistory({ sales, payments, isLoading, onViewSale }: Cust
         </Card>
     );
 }
-
