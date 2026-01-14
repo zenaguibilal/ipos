@@ -2,7 +2,7 @@
 'use client';
 
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { CircleDollarSign, ShoppingBag, Archive, TrendingUp, Warehouse } from "lucide-react";
+import { CircleDollarSign, ShoppingBag, Archive, TrendingUp, Warehouse, WalletCards } from "lucide-react";
 
 interface StatsCardsProps {
     revenue: number;
@@ -10,11 +10,12 @@ interface StatsCardsProps {
     salesCount: number;
     lowStockCount: number;
     inventoryValue: number;
+    totalOutstandingDebt: number;
 }
 
-export function StatsCards({ revenue, netProfit, salesCount, lowStockCount, inventoryValue }: StatsCardsProps) {
+export function StatsCards({ revenue, netProfit, salesCount, lowStockCount, inventoryValue, totalOutstandingDebt }: StatsCardsProps) {
     return (
-        <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-3 xl:grid-cols-5">
+        <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-3 xl:grid-cols-3">
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">
@@ -59,25 +60,37 @@ export function StatsCards({ revenue, netProfit, salesCount, lowStockCount, inve
             </Card>
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Stock faible (Total)</CardTitle>
-                    <Archive className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                    <div className="text-2xl font-bold">{lowStockCount}</div>
-                    <p className="text-xs text-muted-foreground">
-                        Produits nécessitant un réapprovisionnement
-                    </p>
-                </CardContent>
-            </Card>
-             <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Valeur du stock (Total)</CardTitle>
                     <Warehouse className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                     <div className="text-2xl font-bold">{inventoryValue.toFixed(2)} DA</div>
                     <p className="text-xs text-muted-foreground">
-                        Valeur d'achat totale de l'inventaire
+                        Valeur d'achat de l'inventaire
+                    </p>
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Stock faible (Total)</CardTitle>
+                    <Archive className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold">{lowStockCount}</div>
+                    <p className="text-xs text-muted-foreground">
+                        Produits à réapprovisionner
+                    </p>
+                </CardContent>
+            </Card>
+            <Card className="bg-destructive/10 border-destructive/50">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Total Dettes Clients</CardTitle>
+                    <WalletCards className="h-4 w-4 text-destructive" />
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold text-destructive">{totalOutstandingDebt.toFixed(2)} DA</div>
+                    <p className="text-xs text-muted-foreground">
+                        Montant total dû par les clients
                     </p>
                 </CardContent>
             </Card>

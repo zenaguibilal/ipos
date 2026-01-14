@@ -8,7 +8,7 @@ import { collection, query, orderBy } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { PlusCircle, User, Phone, CircleDollarSign, CalendarDays, AlertTriangle, Search } from 'lucide-react';
+import { PlusCircle, User, Phone, WalletCards, CalendarDays, AlertTriangle, Search } from 'lucide-react';
 import { AddCustomerForm } from './add-customer-form';
 import type { Customer, Sale, Payment, CustomerWithSalesData } from '@/lib/types';
 import Link from 'next/link';
@@ -40,13 +40,15 @@ export default function CustomersPage() {
         }
     }, [user, isUserLoading, router]);
 
-    const customersWithData = useMemo<CustomerWithSalesData[]>(() => {
-        if (!customers || !sales || !payments) return [];
+    const { customersWithData, totalOutstandingDebt } = useMemo(() => {
+        if (!customers || !sales || !payments) return { customersWithData: [], totalOutstandingDebt: 0 };
 
         const today = new Date();
         const currentDayOfMonth = getDate(today);
 
-        return customers.map(customer => {
+        let totalDebt = 0;
+
+        const customerData = customers.map(customer => {
             const customerSales = sales.filter(s => s.customerId === customer.id);
             const totalSpent = customerSales.reduce((acc, s) => acc + s.total, 0);
             
@@ -54,9 +56,12 @@ export default function CustomersPage() {
             const totalStandalonePayments = payments.filter(p => p.customerId === customer.id).reduce((acc, p) => acc + p.amount, 0);
             
             const outstandingBalance = totalSpent - totalPaidFromSales - totalStandalonePayments;
+            const finalBalance = outstandingBalance < 0.01 ? 0 : outstandingBalance;
+            
+            totalDebt += finalBalance;
 
             let isReminderDue = false;
-            if (customer.settlementDay && outstandingBalance > 0) {
+            if (customer.settlementDay && finalBalance > 0) {
                  // Check if today is past the settlement day for this month
                 if (currentDayOfMonth > customer.settlementDay) {
                     isReminderDue = true;
@@ -66,10 +71,12 @@ export default function CustomersPage() {
             return {
                 ...customer,
                 totalSpent,
-                outstandingBalance: outstandingBalance < 0.01 ? 0 : outstandingBalance,
+                outstandingBalance: finalBalance,
                 isReminderDue,
             };
         });
+
+        return { customersWithData: customerData, totalOutstandingDebt: totalDebt };
 
     }, [customers, sales, payments]);
     
@@ -111,6 +118,22 @@ export default function CustomersPage() {
                         Ajouter un client
                     </Button>
                 </div>
+                
+                 <Card className="mb-6 bg-destructive/10 border-destructive/50">
+                    <div className="p-4 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                             <WalletCards className="h-6 w-6 text-destructive" />
+                            <div>
+                                <h3 className="font-bold text-base">Total des Dettes Clients</h3>
+                                <p className="text-xs text-muted-foreground">Montant total que vos clients vous doivent.</p>
+                            </div>
+                        </div>
+                         <div className="text-2xl font-black text-destructive">
+                            {totalOutstandingDebt.toFixed(2)} DA
+                        </div>
+                    </div>
+                 </Card>
+
 
                 {isLoading ? (
                     <div className="text-center">Chargement des données...</div>
