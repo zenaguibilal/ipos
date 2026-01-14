@@ -13,6 +13,7 @@ import { endOfDay, startOfDay, subDays } from 'date-fns';
 import { safeToDate } from '@/lib/utils';
 import { StatsCards } from '@/components/dashboard/stats-cards';
 import { SalesChart } from '@/components/dashboard/sales-chart';
+import { SalesAndDebtsChart } from '@/components/dashboard/sales-and-debts-chart';
 import { TopProducts } from '@/components/dashboard/top-products';
 import { LowStockProducts } from '@/components/dashboard/low-stock-products';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -67,7 +68,7 @@ export default function DashboardPage() {
         
         let totalRevenue = 0;
         let totalProfit = 0;
-        const salesByDay: { [date: string]: { revenue: number, profit: number } } = {};
+        const salesByDay: { [date: string]: { revenue: number, profit: number, newDebt: number } } = {};
         const productSales = new Map<string, { unitsSold: number, totalRevenue: number, totalProfit: number }>();
 
         filteredSales.forEach(sale => {
@@ -75,9 +76,10 @@ export default function DashboardPage() {
 
             const dateStr = safeToDate(sale.createdAt).toISOString().split('T')[0];
             if (!salesByDay[dateStr]) {
-                salesByDay[dateStr] = { revenue: 0, profit: 0 };
+                salesByDay[dateStr] = { revenue: 0, profit: 0, newDebt: 0 };
             }
             salesByDay[dateStr].revenue += sale.total;
+            salesByDay[dateStr].newDebt += sale.remainingBalance;
 
             let saleProfit = 0;
             sale.items.forEach(item => {
@@ -99,7 +101,7 @@ export default function DashboardPage() {
         
         const sortedChartData: ChartData[] = Object.entries(salesByDay)
             .sort(([dateA], [dateB]) => new Date(dateA).getTime() - new Date(dateB).getTime())
-            .map(([date, data]) => ({ date, revenue: data.revenue, profit: data.profit }));
+            .map(([date, data]) => ({ date, revenue: data.revenue, profit: data.profit, newDebt: data.newDebt }));
         
         const sortedTopProducts: TopProduct[] = Array.from(productSales.entries())
             .map(([productId, salesData]) => ({
@@ -169,8 +171,8 @@ export default function DashboardPage() {
                 totalOutstandingDebt={totalOutstandingDebt}
             />
 
-            <div className="grid gap-4 md:gap-8 lg:grid-cols-2 xl:grid-cols-3">
-                <Card className="lg:col-span-2 xl:col-span-3">
+            <div className="grid gap-4 md:gap-8 lg:grid-cols-2">
+                <Card className="lg:col-span-2">
                     <CardHeader>
                         <CardTitle>Analyse des revenus et bénéfices</CardTitle>
                     </CardHeader>
@@ -186,10 +188,26 @@ export default function DashboardPage() {
                         )}
                     </CardContent>
                 </Card>
-                <div className="xl:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
-                    <TopProducts products={topProducts} />
-                    <LowStockProducts products={lowStockProducts} />
-                </div>
+                 <Card className="lg:col-span-2">
+                    <CardHeader>
+                        <CardTitle>Mouvement des ventes et des dettes</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        {chartData.length > 0 ? (
+                            <SalesAndDebtsChart 
+                                data={chartData} 
+                            />
+                        ) : (
+                            <div className="flex h-[350px] items-center justify-center text-muted-foreground">
+                                Aucune donnée pour la période sélectionnée.
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            </div>
+            <div className="grid gap-4 md:gap-8 grid-cols-1 md:grid-cols-2">
+                <TopProducts products={topProducts} />
+                <LowStockProducts products={lowStockProducts} />
             </div>
         </div>
     );

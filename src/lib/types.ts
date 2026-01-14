@@ -50,6 +50,16 @@ export interface Payment {
     createdAt: Timestamp;
 }
 
+export interface BreadOrder {
+    id: string;
+    name: string;
+    quantity: number;
+    isPaid: boolean;
+    isDelivered: boolean;
+    isRecurring: boolean;
+    createdAt: Timestamp;
+}
+
 export interface CustomerWithSalesData extends Customer {
     totalSpent: number;
     outstandingBalance: number;
@@ -63,6 +73,7 @@ export interface ChartData {
   date: string;
   revenue: number;
   profit?: number;
+  newDebt?: number;
 }
 
 export interface TopProduct extends Product {
