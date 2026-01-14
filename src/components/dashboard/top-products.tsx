@@ -4,17 +4,13 @@
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { TopProduct } from "@/lib/types";
-import { useRouter } from "next/navigation";
 import { TrendingUp } from "lucide-react";
-import { Button } from "../ui/button";
-import Link from "next/link";
 
 interface TopProductsProps {
     products: TopProduct[];
 }
 
 export function TopProducts({ products }: TopProductsProps) {
-    const router = useRouter();
 
     return (
         <Card className="bg-card h-full">
@@ -46,7 +42,7 @@ export function TopProducts({ products }: TopProductsProps) {
                             </TableHeader>
                             <TableBody>
                                 {products.map(product => (
-                                    <TableRow key={product.id} className="cursor-pointer hover:bg-muted/50">
+                                    <TableRow key={product.id} className="hover:bg-muted/50">
                                         <TableCell>
                                             <div className="font-medium">{product.name}</div>
                                         </TableCell>
