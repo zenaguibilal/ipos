@@ -16,6 +16,7 @@ import {
   Users,
   Cookie,
   Bell,
+  Info,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -133,6 +134,10 @@ export function AppHeader() {
                     <DropdownMenuItem onClick={() => router.push('/profile')}>
                     <Settings className="mr-2 h-4 w-4" />
                     <span>Profil & Paramètres</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => router.push('/about')}>
+                        <Info className="mr-2 h-4 w-4" />
+                        <span>À propos</span>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive-foreground focus:bg-destructive">
