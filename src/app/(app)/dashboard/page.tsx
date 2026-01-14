@@ -148,10 +148,10 @@ export default function DashboardPage() {
     const { totalOutstandingDebt, debtHistoryChartData } = useMemo(() => {
         if (!allSales || !allPayments) return { totalOutstandingDebt: 0, debtHistoryChartData: [] };
 
-        const allTransactions = [
-            ...allSales.map(s => ({ date: safeToDate(s.createdAt), amount: s.total, type: 'sale' as const })),
-            ...allPayments.map(p => ({ date: safeToDate(p.createdAt), amount: -p.amount, type: 'payment' as const }))
-        ];
+        const allSaleTransactions = allSales.map(s => ({ date: safeToDate(s.createdAt), amount: s.total - s.amountPaid, type: 'sale' as const }));
+        const allPaymentTransactions = allPayments.map(p => ({ date: safeToDate(p.createdAt), amount: -p.amount, type: 'payment' as const }))
+        
+        const allTransactions = [...allSaleTransactions, ...allPaymentTransactions];
 
         // 1. Calculate total debt across all time
         const totalDebt = allTransactions.reduce((acc, t) => acc + t.amount, 0);
