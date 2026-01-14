@@ -139,7 +139,7 @@ export function PersonalProfileForm({ user }: PersonalProfileFormProps) {
                      )}
                 </CardContent>
                 <CardFooter className="border-t pt-6">
-                    <Button type="submit" className="w-full" disabled={isSaving || isLoading}>
+                    <Button type="submit" className="w-full sm:w-auto" disabled={isSaving || isLoading}>
                         {isSaving ? 'Enregistrement...' : 'Enregistrer les modifications'}
                     </Button>
                 </CardFooter>
@@ -147,3 +147,5 @@ export function PersonalProfileForm({ user }: PersonalProfileFormProps) {
         </>
     );
 }
+
+    
