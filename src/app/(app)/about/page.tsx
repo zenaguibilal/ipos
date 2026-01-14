@@ -3,7 +3,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Info, Code, User, Github, Linkedin, Mail } from 'lucide-react';
+import { Info, Code, User, Phone, Mail } from 'lucide-react';
 import Link from 'next/link';
 
 export default function AboutPage() {
@@ -56,7 +56,7 @@ export default function AboutPage() {
                                 <Code className="w-10 h-10 text-muted-foreground" />
                             </div>
                             <div>
-                                <h3 className="text-xl font-bold">Zenagui Bilal</h3>
+                                <h3 className="text-xl font-bold">zenagui bilal</h3>
                                 <p className="text-muted-foreground">Développeur Full-Stack</p>
                             </div>
                         </div>
@@ -65,21 +65,15 @@ export default function AboutPage() {
                         </p>
                         <div className="space-y-2 pt-2">
                              <Button asChild variant="outline" className="w-full justify-start gap-2">
-                                <Link href="https://github.com/zenagui-bilal" target="_blank">
-                                    <Github className="h-4 w-4" />
-                                    <span>zenagui-bilal</span>
-                                </Link>
-                            </Button>
-                            <Button asChild variant="outline" className="w-full justify-start gap-2">
-                                <Link href="https://www.linkedin.com/in/bilal-zenagui/" target="_blank">
-                                    <Linkedin className="h-4 w-4" />
-                                    <span>bilal-zenagui</span>
+                                <Link href="tel:+213668640999">
+                                    <Phone className="h-4 w-4" />
+                                    <span>+213 6 68 64 09 99</span>
                                 </Link>
                             </Button>
                              <Button asChild variant="outline" className="w-full justify-start gap-2">
-                                <Link href="mailto:zenaguibilal.pro@gmail.com">
+                                <Link href="mailto:zenex133@gmail.com">
                                     <Mail className="h-4 w-4" />
-                                    <span>zenaguibilal.pro@gmail.com</span>
+                                    <span>zenex133@gmail.com</span>
                                 </Link>
                             </Button>
                         </div>
