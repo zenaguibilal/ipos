@@ -22,7 +22,7 @@ const navLinks = [
   { href: '/sell', label: 'Vendre', icon: ShoppingBasket },
   { href: '/products', label: 'Produits', icon: Package },
   { href: '/customers', label: 'Clients', icon: Users },
-  { href: '/bread-orders', label: 'Commandes de Pain', icon: Cookie },
+  { href: '/sales-history', label: 'Historique', icon: History },
 ];
 
 export function AppSidebar() {

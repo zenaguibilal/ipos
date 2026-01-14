@@ -82,7 +82,7 @@ export default function CustomerDetailPage() {
 
         const allTransactions = [...(sales || []), ...(payments || [])];
         const lastActivity = allTransactions.length > 0 
-            ? new Date(Math.max(...allTransactions.map(t => t.createdAt.toDate().getTime()))) 
+            ? new Date(Math.max(...allTransactions.map(t => (t.createdAt as any).toDate().getTime()))) 
             : null;
 
         return { 
@@ -212,4 +212,3 @@ export default function CustomerDetailPage() {
         </>
     );
 }
-

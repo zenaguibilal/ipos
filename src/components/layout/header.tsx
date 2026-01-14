@@ -44,7 +44,7 @@ const navLinks = [
   { href: '/stock-intake', label: 'Réception Stock', icon: Truck },
   { href: '/products', label: 'Produits', icon: Package },
   { href: '/customers', label: 'Clients', icon: Users },
-  { href: '/bread-orders', label: 'Commandes de Pain', icon: Cookie },
+  { href: '/sales-history', label: 'Historique des Ventes', icon: History },
   { href: '/notifications', label: 'Alertes', icon: Bell },
 ];
 

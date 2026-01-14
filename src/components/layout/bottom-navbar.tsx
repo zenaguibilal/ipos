@@ -27,7 +27,7 @@ const navLinks = [
   { href: '/sell', label: 'Vendre', icon: ShoppingBasket },
   { href: '/products', label: 'Produits', icon: Package },
   { href: '/customers', label: 'Clients', icon: Users },
-  { href: '/bread-orders', label: 'Pain', icon: Cookie },
+  { href: '/sales-history', label: 'Historique', icon: History },
   { href: '/notifications', label: 'Alertes', icon: Bell },
 ];
 
