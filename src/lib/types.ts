@@ -72,8 +72,6 @@ export interface ChartData {
   date: string;
   revenue: number;
   profit?: number;
-  newDebt?: number;
-  payments?: number;
 }
 
 export interface TopProduct extends Product {
@@ -93,7 +91,10 @@ export interface CompanyProfile {
     zipCode?: string;
     country?: string;
     phone?: string;
+    email?: string;
+    website?: string;
     vatNumber?: string;
+    rcNumber?: string;
 }
 
 export interface PurchaseOrderItem {
@@ -137,5 +138,3 @@ export interface StockIntake {
     totalValue: number;
     createdAt: Timestamp | Date;
 }
-
-    

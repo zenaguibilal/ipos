@@ -286,9 +286,23 @@
           "type": "string",
           "description": "Company's phone number."
         },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Official email address of the company."
+        },
+        "website": {
+          "type": "string",
+          "format": "uri",
+          "description": "Company's official website URL."
+        },
         "vatNumber": {
           "type": "string",
           "description": "VAT (Value Added Tax) identification number."
+        },
+        "rcNumber": {
+          "type": "string",
+          "description": "Trade Register (Registre du Commerce) number."
         },
         "updatedAt": {
           "type": "string",
@@ -438,5 +452,3 @@
     }
   }
 }
-
-    
