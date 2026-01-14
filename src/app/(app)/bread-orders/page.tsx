@@ -3,15 +3,16 @@
 
 import { useUser, useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { collection, query, orderBy, serverTimestamp, doc, writeBatch } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { AddOrderForm } from '@/components/bread-orders/add-order-form';
 import { EditOrderForm } from '@/components/bread-orders/edit-order-form';
 import { ResetOrdersDialog } from '@/components/bread-orders/reset-orders-dialog';
 import { OrderCard } from '@/components/bread-orders/order-card';
 import type { BreadOrder } from '@/lib/types';
-import { PlusCircle, RotateCcw } from 'lucide-react';
+import { PlusCircle, RotateCcw, Search } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function BreadOrdersPage() {
@@ -23,6 +24,8 @@ export default function BreadOrdersPage() {
     const [editingOrder, setEditingOrder] = useState<BreadOrder | null>(null);
     const [isResetting, setIsResetting] = useState(false);
     const [isProcessingReset, setIsProcessingReset] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+
 
     const ordersQuery = useMemoFirebase(() => {
         if (!user || !firestore) return null;
@@ -35,6 +38,14 @@ export default function BreadOrdersPage() {
             router.push('/login');
         }
     }, [user, isUserLoading, router]);
+
+    const filteredOrders = useMemo(() => {
+        if (!orders) return [];
+        if (!searchQuery) return orders;
+        const lowercasedQuery = searchQuery.toLowerCase();
+        return orders.filter(order => order.name.toLowerCase().includes(lowercasedQuery));
+    }, [orders, searchQuery]);
+
 
     const handleAddOrder = (name: string, quantity: number, isRecurring: boolean) => {
         if (!firestore || !user) return;
@@ -156,7 +167,17 @@ export default function BreadOrdersPage() {
                         <h1 className="text-2xl font-bold">Commandes de Pain du Jour</h1>
                         <p className="text-muted-foreground">Gérez les commandes de pain quotidiennes.</p>
                     </div>
-                    <div className="flex gap-2 w-full sm:w-auto">
+                     <div className="flex gap-2 w-full sm:w-auto flex-wrap">
+                        <div className="relative flex-grow sm:flex-grow-0">
+                           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                           <Input
+                                type="search"
+                                placeholder="Rechercher par nom..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="pl-9"
+                            />
+                        </div>
                         <Button variant="outline" onClick={() => setIsResetting(true)}>
                             <RotateCcw className="mr-2 h-4 w-4" />
                             Réinitialiser
@@ -170,22 +191,24 @@ export default function BreadOrdersPage() {
 
                 {isLoading ? (
                     <div className="text-center p-8">Chargement des commandes...</div>
-                ) : !orders || orders.length === 0 ? (
+                ) : filteredOrders.length === 0 ? (
                      <div className="flex h-60 items-center justify-center rounded-md border-2 border-dashed border-border bg-card">
                         <div className="text-center">
-                            <h3 className="text-xl font-bold tracking-tight">Aucune commande aujourd'hui</h3>
+                            <h3 className="text-xl font-bold tracking-tight">{searchQuery ? "Aucun résultat" : "Aucune commande aujourd'hui"}</h3>
                             <p className="text-sm text-muted-foreground mb-4">
-                                Ajoutez votre première commande de la journée.
+                                {searchQuery ? "Aucune commande ne correspond à votre recherche." : "Ajoutez votre première commande de la journée."}
                             </p>
-                            <Button onClick={() => setIsAddingOrder(true)}>
-                                <PlusCircle className="mr-2 h-4 w-4" />
-                                Ajouter une commande
-                            </Button>
+                             {!searchQuery && (
+                                <Button onClick={() => setIsAddingOrder(true)}>
+                                    <PlusCircle className="mr-2 h-4 w-4" />
+                                    Ajouter une commande
+                                </Button>
+                             )}
                         </div>
                     </div>
                 ) : (
                     <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-                        {orders.map(order => (
+                        {filteredOrders.map(order => (
                             <OrderCard 
                                 key={order.id}
                                 order={order}
