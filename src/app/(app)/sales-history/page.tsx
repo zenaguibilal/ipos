@@ -11,7 +11,9 @@ import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
 import type { Sale, CompanyProfile } from '@/lib/types';
 import { SaleDetailsDialog } from '@/components/sales/sale-details-dialog';
-import { cn } from '@/lib/utils';
+import { cn, safeToDate } from '@/lib/utils';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+
 
 type StatusFilter = 'all' | 'paid' | 'partial' | 'unpaid';
 
@@ -104,25 +106,25 @@ export default function SalesHistoryPage() {
                             </div>
                         ) : (
                              <div className="overflow-x-auto">
-                                <table className="w-full text-sm">
-                                    <thead className="text-left text-muted-foreground">
-                                        <tr className="border-b">
-                                            <th className="p-3 font-medium">N° Facture</th>
-                                            <th className="p-3 font-medium">Client</th>
-                                            <th className="p-3 font-medium hidden sm:table-cell">Date</th>
-                                            <th className="p-3 font-medium text-center">Statut</th>
-                                            <th className="p-3 font-medium text-right">Total</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>N° Facture</TableHead>
+                                            <TableHead>Client</TableHead>
+                                            <TableHead className="hidden sm:table-cell">Date</TableHead>
+                                            <TableHead className="text-center">Statut</TableHead>
+                                            <TableHead className="text-right">Total</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
                                         {filteredSales.map(sale => (
-                                            <tr key={sale.id} onClick={() => setSelectedSale(sale)} className="border-b transition-colors hover:bg-muted/50 cursor-pointer">
-                                                <td className="p-3 font-mono text-xs">{sale.invoiceNumber}</td>
-                                                <td className="p-3 font-medium">{sale.customerName}</td>
-                                                <td className="p-3 text-muted-foreground hidden sm:table-cell">
-                                                    {new Date(sale.createdAt.seconds * 1000).toLocaleDateString('fr-FR')}
-                                                </td>
-                                                <td className="p-3 text-center">
+                                            <TableRow key={sale.id} onClick={() => setSelectedSale(sale)} className="border-b transition-colors hover:bg-muted/50 cursor-pointer">
+                                                <TableCell className="p-3 font-mono text-xs">{sale.invoiceNumber}</TableCell>
+                                                <TableCell className="p-3 font-medium">{sale.customerName || 'Vente au comptoir'}</TableCell>
+                                                <TableCell className="p-3 text-muted-foreground hidden sm:table-cell">
+                                                    {safeToDate(sale.createdAt).toLocaleDateString('fr-FR')}
+                                                </TableCell>
+                                                <TableCell className="p-3 text-center">
                                                      <span className={cn(
                                                         'rounded-full px-2.5 py-0.5 text-xs font-semibold',
                                                         sale.paymentStatus === 'paid' && 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
@@ -131,12 +133,12 @@ export default function SalesHistoryPage() {
                                                     )}>
                                                         {sale.paymentStatus === 'paid' ? 'Payé' : sale.paymentStatus === 'partial' ? 'Partiel' : 'Impayé'}
                                                     </span>
-                                                </td>
-                                                <td className="p-3 text-right font-semibold text-primary">{sale.total.toFixed(2)} DA</td>
-                                            </tr>
+                                                </TableCell>
+                                                <TableCell className="p-3 text-right font-semibold text-primary">{sale.total.toFixed(2)} DA</TableCell>
+                                            </TableRow>
                                         ))}
-                                    </tbody>
-                                </table>
+                                    </TableBody>
+                                </Table>
                             </div>
                         )}
                     </CardContent>
