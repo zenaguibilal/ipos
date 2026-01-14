@@ -143,7 +143,7 @@ export function CompanyProfileForm({ user }: CompanyProfileFormProps) {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="vatNumber">N° TVA</Label>
+                                <Label htmlFor="vatNumber">N° TVA / NIF</Label>
                                 <Input 
                                     id="vatNumber" 
                                     value={formState.vatNumber || ''} 

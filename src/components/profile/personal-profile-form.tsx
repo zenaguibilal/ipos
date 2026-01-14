@@ -96,27 +96,29 @@ export function PersonalProfileForm({ user }: PersonalProfileFormProps) {
                                 <Label htmlFor="email">E-mail</Label>
                                 <Input id="email" type="email" value={user.email || ''} disabled />
                             </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="firstName">Prénom</Label>
-                                <Input 
-                                    id="firstName" 
-                                    value={firstName} 
-                                    onChange={(e) => setFirstName(e.target.value)} 
-                                    disabled={isSaving}
-                                    required
-                                />
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="firstName">Prénom</Label>
+                                    <Input 
+                                        id="firstName" 
+                                        value={firstName} 
+                                        onChange={(e) => setFirstName(e.target.value)} 
+                                        disabled={isSaving}
+                                        required
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="lastName">Nom de famille</Label>
+                                    <Input 
+                                        id="lastName" 
+                                        value={lastName} 
+                                        onChange={(e) => setLastName(e.target.value)} 
+                                        disabled={isSaving}
+                                        required
+                                    />
+                                </div>
                             </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="lastName">Nom de famille</Label>
-                                <Input 
-                                    id="lastName" 
-                                    value={lastName} 
-                                    onChange={(e) => setLastName(e.target.value)} 
-                                    disabled={isSaving}
-                                    required
-                                />
-                            </div>
-                            <div className="space-y-2">
+                             <div className="space-y-2">
                                 <Label htmlFor="phone">Téléphone</Label>
                                 <Input 
                                     id="phone" 
@@ -126,18 +128,20 @@ export function PersonalProfileForm({ user }: PersonalProfileFormProps) {
                                     disabled={isSaving}
                                 />
                             </div>
+                             {isEmailProvider && (
+                                <div className="pt-2">
+                                    <Button type="button" variant="outline" className="w-full" onClick={() => setIsPasswordDialogOpen(true)}>
+                                        Changer le mot de passe
+                                    </Button>
+                                </div>
+                             )}
                         </>
                      )}
                 </CardContent>
-                <CardFooter className="border-t flex-col items-stretch gap-4 pt-6">
+                <CardFooter className="border-t pt-6">
                     <Button type="submit" className="w-full" disabled={isSaving || isLoading}>
                         {isSaving ? 'Enregistrement...' : 'Enregistrer les modifications'}
                     </Button>
-                    {isEmailProvider && (
-                        <Button type="button" variant="outline" className="w-full" onClick={() => setIsPasswordDialogOpen(true)}>
-                            Changer le mot de passe
-                        </Button>
-                    )}
                 </CardFooter>
             </form>
         </>
