@@ -5,7 +5,7 @@ import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebas
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useMemo } from 'react';
 import { collection, Timestamp } from 'firebase/firestore';
-import type { Product, Sale, ChartData, TopProduct, Customer, Payment } from '@/lib/types';
+import type { Product, Sale, ChartData, TopProduct, Customer, Payment, TopCustomer } from '@/lib/types';
 import { VerificationNotice } from '@/components/dashboard/verification-notice';
 import { DateRangePicker } from '@/components/dashboard/date-range-picker';
 import { DateRange } from 'react-day-picker';
@@ -16,6 +16,7 @@ import { SalesChart } from '@/components/dashboard/sales-chart';
 import { TotalDebtChart } from '@/components/dashboard/total-debt-chart';
 import { TopProducts } from '@/components/dashboard/top-products';
 import { LowStockProducts } from '@/components/dashboard/low-stock-products';
+import { TopCustomers } from '@/components/dashboard/top-customers';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 
 export default function DashboardPage() {
@@ -56,9 +57,10 @@ export default function DashboardPage() {
         netProfit, 
         salesCount, 
         chartData,
-        topProducts, 
+        topProducts,
+        topCustomers,
     } = useMemo(() => {
-        if (!allSales || !products) return { revenue: 0, netProfit: 0, salesCount: 0, chartData: [], topProducts: [] };
+        if (!allSales || !products || !customers) return { revenue: 0, netProfit: 0, salesCount: 0, chartData: [], topProducts: [], topCustomers: [] };
         
         const filteredSales = allSales.filter(sale => {
             const saleDate = safeToDate(sale.createdAt);
@@ -68,6 +70,7 @@ export default function DashboardPage() {
         });
 
         const productsMap = new Map(products.map(p => [p.id, p]));
+        const customersMap = new Map(customers.map(c => [c.id, c]));
         let totalRevenue = 0;
         let totalProfit = 0;
         const salesByDay: { [date: string]: { revenue: number, profit: number } } = {};
@@ -105,6 +108,7 @@ export default function DashboardPage() {
             .map(([date, data]) => ({ date, revenue: data.revenue, profit: data.profit }))
             .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
+        // Top Products Calculation
         const productSales = new Map<string, { unitsSold: number, totalRevenue: number, totalProfit: number }>();
         filteredSales.forEach(sale => {
              sale.items.forEach(item => {
@@ -127,12 +131,29 @@ export default function DashboardPage() {
             .sort((a, b) => b.totalProfit - a.totalProfit)
             .slice(0, 5);
 
+        // Top Customers Calculation
+        const customerSpending = new Map<string, number>();
+        filteredSales.forEach(sale => {
+            if (sale.customerId) {
+                const currentSpending = customerSpending.get(sale.customerId) || 0;
+                customerSpending.set(sale.customerId, currentSpending + sale.total);
+            }
+        });
+
+        const sortedTopCustomers: TopCustomer[] = Array.from(customerSpending.entries())
+            .map(([customerId, totalSpent]) => ({
+                ...(customersMap.get(customerId) as Customer),
+                totalSpent,
+            }))
+            .sort((a, b) => b.totalSpent - a.totalSpent)
+            .slice(0, 5);
+
         return { 
             revenue: totalRevenue, netProfit: totalProfit, salesCount: filteredSales.length, 
-            chartData: sortedChartData, topProducts: sortedTopProducts
+            chartData: sortedChartData, topProducts: sortedTopProducts, topCustomers: sortedTopCustomers
         };
 
-    }, [allSales, products, fromDate, toDate]);
+    }, [allSales, products, customers, fromDate, toDate]);
 
     // Second Memo: Calculate total inventory value and low stock products (independent of date range)
     const { inventoryValue, lowStockProducts } = useMemo(() => {
@@ -242,8 +263,9 @@ export default function DashboardPage() {
                     </CardContent>
                 </Card>
             </div>
-            <div className="grid gap-4 md:gap-8 grid-cols-1 md:grid-cols-2">
+            <div className="grid gap-4 md:gap-8 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
                 <TopProducts products={topProducts} />
+                <TopCustomers customers={topCustomers} />
                 <LowStockProducts products={lowStockProducts} />
             </div>
         </div>
