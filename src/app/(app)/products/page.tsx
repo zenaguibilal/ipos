@@ -340,7 +340,7 @@ export default function ProductsPage() {
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
-                                            <TableHead padding="checkbox" className="px-4">
+                                            <TableHead className="px-4">
                                                 <Checkbox
                                                     checked={selectedProductIds.length > 0 && selectedProductIds.length === sortedAndFilteredProducts.length}
                                                     onCheckedChange={(checked) => {
@@ -368,7 +368,7 @@ export default function ProductsPage() {
                                     <TableBody>
                                         {sortedAndFilteredProducts.map(product => (
                                             <TableRow key={product.id} data-state={selectedProducts[product.id] && 'selected'}>
-                                                <TableCell padding="checkbox" className="px-4">
+                                                <TableCell className="px-4">
                                                     <Checkbox
                                                         checked={!!selectedProducts[product.id]}
                                                         onCheckedChange={(checked) => {
@@ -446,4 +446,3 @@ export default function ProductsPage() {
     );
 }
 
-    
