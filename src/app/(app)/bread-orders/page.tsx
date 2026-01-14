@@ -92,8 +92,8 @@ export default function BreadOrdersPage() {
             if (order.isRecurring) {
                 // Reset recurring orders for the next day
                 batch.update(orderRef, { isPaid: false, isDelivered: false });
-            } else {
-                 // Delete non-recurring orders
+            } else if (order.isDelivered) {
+                 // Delete non-recurring orders ONLY if they were delivered
                 batch.delete(orderRef);
             }
         });
