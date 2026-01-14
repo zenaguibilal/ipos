@@ -61,8 +61,8 @@ export default function NotificationsPage() {
                 type: 'stock',
                 message: `Stock faible pour ${p.name}. Restant : ${p.quantity}`,
                 relatedId: p.id,
-                actionText: 'Gérer le stock',
-                actionHref: '/products'
+                actionText: 'Bon de commande',
+                actionHref: '/products/purchase-orders'
             }));
 
         // 2. Late Payment Notifications
