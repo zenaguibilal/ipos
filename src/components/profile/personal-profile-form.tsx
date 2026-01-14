@@ -1,11 +1,10 @@
-
 'use client';
 
 import { useFirestore, updateDocumentNonBlocking, useDoc, useMemoFirebase } from '@/firebase';
 import { useEffect, useState } from 'react';
 import { doc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { CardContent, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
@@ -86,69 +85,61 @@ export function PersonalProfileForm({ user }: PersonalProfileFormProps) {
                     onOpenChange={setIsPasswordDialogOpen}
                 />
             )}
-            <Card>
-                <form onSubmit={handleUpdateProfile}>
-                    <CardHeader>
-                        <CardTitle>Profil Personnel</CardTitle>
-                        <CardDescription>
-                            Gérez les informations de votre compte personnel.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                         {isLoading ? (
-                             <p>Chargement du profil...</p>
-                         ) : (
-                            <>
-                                {error && <p className="text-sm text-red-500 text-center">{error}</p>}
-                                <div className="space-y-2">
-                                    <Label htmlFor="email">E-mail</Label>
-                                    <Input id="email" type="email" value={user.email || ''} disabled />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="firstName">Prénom</Label>
-                                    <Input 
-                                        id="firstName" 
-                                        value={firstName} 
-                                        onChange={(e) => setFirstName(e.target.value)} 
-                                        disabled={isSaving}
-                                        required
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="lastName">Nom de famille</Label>
-                                    <Input 
-                                        id="lastName" 
-                                        value={lastName} 
-                                        onChange={(e) => setLastName(e.target.value)} 
-                                        disabled={isSaving}
-                                        required
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="phone">Téléphone</Label>
-                                    <Input 
-                                        id="phone" 
-                                        type="tel"
-                                        value={phone} 
-                                        onChange={(e) => setPhone(e.target.value)} 
-                                        disabled={isSaving}
-                                    />
-                                </div>
-                            </>
-                         )}
-                    </CardContent>
-                    <CardFooter className="border-t flex-col items-stretch gap-4 pt-6">
-                        <Button type="submit" className="w-full" disabled={isSaving || isLoading}>
-                            {isSaving ? 'Enregistrement...' : 'Enregistrer les modifications'}
+            <form onSubmit={handleUpdateProfile}>
+                <CardContent className="space-y-4">
+                     {isLoading ? (
+                         <p>Chargement du profil...</p>
+                     ) : (
+                        <>
+                            {error && <p className="text-sm text-red-500 text-center">{error}</p>}
+                            <div className="space-y-2">
+                                <Label htmlFor="email">E-mail</Label>
+                                <Input id="email" type="email" value={user.email || ''} disabled />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="firstName">Prénom</Label>
+                                <Input 
+                                    id="firstName" 
+                                    value={firstName} 
+                                    onChange={(e) => setFirstName(e.target.value)} 
+                                    disabled={isSaving}
+                                    required
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="lastName">Nom de famille</Label>
+                                <Input 
+                                    id="lastName" 
+                                    value={lastName} 
+                                    onChange={(e) => setLastName(e.target.value)} 
+                                    disabled={isSaving}
+                                    required
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="phone">Téléphone</Label>
+                                <Input 
+                                    id="phone" 
+                                    type="tel"
+                                    value={phone} 
+                                    onChange={(e) => setPhone(e.target.value)} 
+                                    disabled={isSaving}
+                                />
+                            </div>
+                        </>
+                     )}
+                </CardContent>
+                <CardFooter className="border-t flex-col items-stretch gap-4 pt-6">
+                    <Button type="submit" className="w-full" disabled={isSaving || isLoading}>
+                        {isSaving ? 'Enregistrement...' : 'Enregistrer les modifications'}
+                    </Button>
+                    {isEmailProvider && (
+                        <Button type="button" variant="outline" className="w-full" onClick={() => setIsPasswordDialogOpen(true)}>
+                            Changer le mot de passe
                         </Button>
-                        {isEmailProvider && (
-                            <Button type="button" variant="outline" className="w-full" onClick={() => setIsPasswordDialogOpen(true)}>
-                                Changer le mot de passe
-                            </Button>
-                        )}
-                    </CardFooter>
-                </form>
-            </Card>
+                    )}
+                </CardFooter>
+            </form>
         </>
     );
 }

@@ -1,10 +1,9 @@
-
 'use client';
 
 import { useUser } from '@/firebase';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PersonalProfileForm } from '@/components/profile/personal-profile-form';
 import { CompanyProfileForm } from '@/components/profile/company-profile-form';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function ProfilePage() {
     const { user, isUserLoading } = useUser();
@@ -19,18 +18,26 @@ export default function ProfilePage() {
 
     return (
         <main className="flex-1 overflow-auto p-4 sm:p-6 flex items-start justify-center">
-             <Tabs defaultValue="personal" className="w-full max-w-2xl">
-                <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="personal">Profil Personnel</TabsTrigger>
-                    <TabsTrigger value="company">Profil de l'Entreprise</TabsTrigger>
-                </TabsList>
-                <TabsContent value="personal">
-                   <PersonalProfileForm user={user} />
-                </TabsContent>
-                <TabsContent value="company">
+             <div className="w-full max-w-2xl grid gap-6">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Profil Personnel</CardTitle>
+                        <CardDescription>
+                            Gérez les informations de votre compte personnel.
+                        </CardDescription>
+                    </CardHeader>
+                    <PersonalProfileForm user={user} />
+                </Card>
+                 <Card>
+                    <CardHeader>
+                        <CardTitle>Profil de l'Entreprise</CardTitle>
+                        <CardDescription>
+                            Gérez les informations de votre entreprise pour la facturation et les documents.
+                        </CardDescription>
+                    </CardHeader>
                     <CompanyProfileForm user={user} />
-                </TabsContent>
-            </Tabs>
+                </Card>
+            </div>
         </main>
     );
 }

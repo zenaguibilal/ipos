@@ -1,11 +1,10 @@
-
 'use client';
 
 import { useFirestore, setDocumentNonBlocking, useDoc, useMemoFirebase } from '@/firebase';
 import { useEffect, useState } from 'react';
 import { doc, serverTimestamp } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { CardContent, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
@@ -78,97 +77,89 @@ export function CompanyProfileForm({ user }: CompanyProfileFormProps) {
     const isLoading = isProfileLoading;
 
     return (
-        <Card>
-            <form onSubmit={handleUpdateProfile}>
-                <CardHeader>
-                    <CardTitle>Profil de l'Entreprise</CardTitle>
-                    <CardDescription>
-                        Gérez les informations de votre entreprise pour la facturation et les documents.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                     {isLoading ? (
-                         <p>Chargement des informations...</p>
-                     ) : (
-                        <>
-                            {error && <p className="text-sm text-red-500 text-center">{error}</p>}
-                             <div className="space-y-2">
-                                <Label htmlFor="companyName">Nom de l'entreprise</Label>
+        <form onSubmit={handleUpdateProfile}>
+            <CardContent className="space-y-4">
+                 {isLoading ? (
+                     <p>Chargement des informations...</p>
+                 ) : (
+                    <>
+                        {error && <p className="text-sm text-red-500 text-center">{error}</p>}
+                         <div className="space-y-2">
+                            <Label htmlFor="companyName">Nom de l'entreprise</Label>
+                            <Input 
+                                id="companyName" 
+                                value={formState.companyName || ''} 
+                                onChange={handleInputChange} 
+                                disabled={isSaving}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="address">Adresse</Label>
+                            <Input 
+                                id="address" 
+                                value={formState.address || ''} 
+                                onChange={handleInputChange} 
+                                disabled={isSaving}
+                            />
+                        </div>
+                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="city">Ville</Label>
                                 <Input 
-                                    id="companyName" 
-                                    value={formState.companyName || ''} 
+                                    id="city" 
+                                    value={formState.city || ''} 
                                     onChange={handleInputChange} 
                                     disabled={isSaving}
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="address">Adresse</Label>
+                                <Label htmlFor="zipCode">Code Postal</Label>
                                 <Input 
-                                    id="address" 
-                                    value={formState.address || ''} 
+                                    id="zipCode" 
+                                    value={formState.zipCode || ''} 
                                     onChange={handleInputChange} 
                                     disabled={isSaving}
                                 />
                             </div>
-                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="city">Ville</Label>
-                                    <Input 
-                                        id="city" 
-                                        value={formState.city || ''} 
-                                        onChange={handleInputChange} 
-                                        disabled={isSaving}
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="zipCode">Code Postal</Label>
-                                    <Input 
-                                        id="zipCode" 
-                                        value={formState.zipCode || ''} 
-                                        onChange={handleInputChange} 
-                                        disabled={isSaving}
-                                    />
-                                </div>
-                            </div>
-                             <div className="space-y-2">
-                                <Label htmlFor="country">Pays</Label>
+                        </div>
+                         <div className="space-y-2">
+                            <Label htmlFor="country">Pays</Label>
+                            <Input 
+                                id="country" 
+                                value={formState.country || ''} 
+                                onChange={handleInputChange} 
+                                disabled={isSaving}
+                            />
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="phone">Téléphone (Entreprise)</Label>
                                 <Input 
-                                    id="country" 
-                                    value={formState.country || ''} 
+                                    id="phone" 
+                                    type="tel"
+                                    value={formState.phone || ''} 
                                     onChange={handleInputChange} 
                                     disabled={isSaving}
                                 />
                             </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="phone">Téléphone (Entreprise)</Label>
-                                    <Input 
-                                        id="phone" 
-                                        type="tel"
-                                        value={formState.phone || ''} 
-                                        onChange={handleInputChange} 
-                                        disabled={isSaving}
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="vatNumber">N° TVA</Label>
-                                    <Input 
-                                        id="vatNumber" 
-                                        value={formState.vatNumber || ''} 
-                                        onChange={handleInputChange} 
-                                        disabled={isSaving}
-                                    />
-                                </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="vatNumber">N° TVA</Label>
+                                <Input 
+                                    id="vatNumber" 
+                                    value={formState.vatNumber || ''} 
+                                    onChange={handleInputChange} 
+                                    disabled={isSaving}
+                                />
                             </div>
-                        </>
-                     )}
-                </CardContent>
-                <CardFooter className="border-t pt-6">
-                    <Button type="submit" className="w-full" disabled={isSaving || isLoading}>
-                        {isSaving ? 'Enregistrement...' : 'Enregistrer le profil de l\'entreprise'}
-                    </Button>
-                </CardFooter>
-            </form>
-        </Card>
+                        </div>
+                    </>
+                 )}
+            </CardContent>
+            <CardFooter className="border-t pt-6">
+                <Button type="submit" className="w-full" disabled={isSaving || isLoading}>
+                    {isSaving ? 'Enregistrement...' : 'Enregistrer le profil de l\'entreprise'}
+                </Button>
+            </CardFooter>
+        </form>
     );
 }
