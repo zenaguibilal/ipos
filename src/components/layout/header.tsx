@@ -15,6 +15,7 @@ import {
   Truck,
   Users,
   Cookie,
+  Bell,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -45,6 +46,7 @@ const navLinks = [
   { href: '/customers', label: 'Clients', icon: Users },
   { href: '/sales-history', label: 'Historique', icon: History },
   { href: '/bread-orders', label: 'Commandes de Pain', icon: Cookie },
+  { href: '/notifications', label: 'Alertes', icon: Bell },
 ];
 
 export function AppHeader() {
@@ -78,34 +80,30 @@ export function AppHeader() {
 
         {/* Central Navigation */}
         <div className="flex-1 flex justify-center">
-            <nav className="hidden md:flex">
-                <TooltipProvider>
-                    <ul className="flex items-center gap-2 rounded-full border bg-card p-1">
-                        {navLinks.map(link => (
-                            <li key={link.href}>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button 
-                                            asChild
-                                            variant={pathname.startsWith(link.href) ? "default" : "ghost"} 
-                                            size="icon"
-                                            className="rounded-full"
-                                        >
-                                            <Link href={link.href}>
-                                                <link.icon className="h-5 w-5" />
-                                                <span className="sr-only">{link.label}</span>
-                                            </Link>
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                        <p>{link.label}</p>
-                                    </TooltipContent>
-                                </Tooltip>
-                            </li>
-                        ))}
-                    </ul>
-                </TooltipProvider>
-            </nav>
+            <TooltipProvider>
+                <nav className="hidden md:flex items-center gap-2 rounded-full border bg-card p-1">
+                    {navLinks.map(link => (
+                        <Tooltip key={link.href}>
+                            <TooltipTrigger asChild>
+                                <Button 
+                                    asChild
+                                    variant={pathname.startsWith(link.href) ? "default" : "ghost"} 
+                                    size="icon"
+                                    className="rounded-full"
+                                >
+                                    <Link href={link.href}>
+                                        <link.icon className="h-5 w-5" />
+                                        <span className="sr-only">{link.label}</span>
+                                    </Link>
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                                <p>{link.label}</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    ))}
+                </nav>
+            </TooltipProvider>
         </div>
 
 

@@ -68,6 +68,15 @@ export interface CustomerWithSalesData extends Customer {
     isReminderDue?: boolean;
 }
 
+export interface NotificationItem {
+  id: string;
+  type: 'stock' | 'payment';
+  message: string;
+  relatedId: string; // productId or customerId
+  date: Date;
+  isRead: boolean;
+}
+
 
 export interface ChartData {
   date: string;

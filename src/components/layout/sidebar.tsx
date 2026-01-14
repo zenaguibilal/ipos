@@ -10,6 +10,7 @@ import {
   Package,
   Users,
   History,
+  Bell,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge'; // Assuming you have a Badge component
@@ -20,6 +21,7 @@ const navLinks = [
   { href: '/products', label: 'Produits', icon: Package },
   { href: '/customers', label: 'Clients', icon: Users },
   { href: '/sales-history', label: 'Historique', icon: History },
+  { href: '/notifications', label: 'Alertes', icon: Bell },
 ];
 
 export function AppSidebar() {

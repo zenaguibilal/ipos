@@ -10,23 +10,17 @@ import {
   Users,
   History,
   Cookie,
+  Bell,
 } from 'lucide-react';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
 import { cn } from '@/lib/utils';
-import { Button } from '../ui/button';
 
 const navLinks = [
-  { href: '/dashboard', label: 'Tableau de Bord', icon: LayoutDashboard },
+  { href: '/dashboard', label: 'Tableau', icon: LayoutDashboard },
   { href: '/sell', label: 'Vendre', icon: ShoppingBasket },
   { href: '/products', label: 'Produits', icon: Package },
   { href: '/customers', label: 'Clients', icon: Users },
-  { href: '/sales-history', label: 'Historique', icon: History },
   { href: '/bread-orders', label: 'Pain', icon: Cookie },
+  { href: '/notifications', label: 'Alertes', icon: Bell },
 ];
 
 export function BottomNavBar() {
