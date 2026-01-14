@@ -60,13 +60,25 @@ export default function BreadOrdersPage() {
     const handleUpdateOrder = (id: string, field: keyof Omit<BreadOrder, 'id' | 'name' | 'quantity' | 'createdAt'>, value: boolean) => {
         if (!firestore || !user) return;
         const orderDocRef = doc(firestore, 'users', user.uid, 'breadOrders', id);
-        updateDocumentNonBlocking(orderDocRef, { [field]: value });
+        updateDocumentNonBlocking(orderDocRef, { [field]: value }, {
+            onSuccess: () => toast.info(`Commande marquée comme ${field === 'isPaid' ? (value ? 'payée' : 'non payée') : (value ? 'livrée' : 'non livrée')}.`),
+            onError: (err) => {
+                toast.error("Erreur lors de la mise à jour.");
+                console.error(err);
+            }
+        });
     };
 
     const handleDeleteOrder = (id: string) => {
         if (!firestore || !user) return;
         const orderDocRef = doc(firestore, 'users', user.uid, 'breadOrders', id);
-        deleteDocumentNonBlocking(orderDocRef);
+        deleteDocumentNonBlocking(orderDocRef, {
+            onSuccess: () => toast.success("Commande supprimée."),
+            onError: (err) => {
+                toast.error("Erreur lors de la suppression.");
+                console.error(err);
+            }
+        });
     };
 
     const handleResetOrders = async () => {
