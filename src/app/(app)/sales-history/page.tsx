@@ -151,7 +151,11 @@ export default function SalesHistoryPage() {
                                              return (
                                                 <TableRow 
                                                     key={`${transaction.type}-${data.id}-${index}`}
-                                                    onClick={() => isSale && setSelectedSale(data)} 
+                                                    onClick={() => {
+                                                        if (isSale) {
+                                                            setSelectedSale(data);
+                                                        }
+                                                    }}
                                                     className={cn(
                                                         "border-b transition-colors",
                                                         isSale ? "hover:bg-muted/50 cursor-pointer" : "bg-green-500/10"
