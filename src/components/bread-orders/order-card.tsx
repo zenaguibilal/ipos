@@ -6,22 +6,24 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/componen
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { MoreVertical, Trash2, Repeat } from 'lucide-react';
+import { MoreVertical, Trash2, Repeat, Edit } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 
 interface OrderCardProps {
     order: BreadOrder;
-    onUpdate: (id: string, field: keyof Omit<BreadOrder, 'id' | 'name' | 'quantity' | 'createdAt'>, value: boolean) => void;
+    onUpdateToggles: (id: string, field: 'isPaid' | 'isDelivered', value: boolean) => void;
+    onEdit: () => void;
     onDelete: (id: string) => void;
 }
 
-export function OrderCard({ order, onUpdate, onDelete }: OrderCardProps) {
+export function OrderCard({ order, onUpdateToggles, onEdit, onDelete }: OrderCardProps) {
     return (
         <Card className={cn(
             "flex flex-col justify-between transition-colors",
@@ -42,6 +44,11 @@ export function OrderCard({ order, onUpdate, onDelete }: OrderCardProps) {
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                         <DropdownMenuItem onClick={onEdit}>
+                            <Edit className="mr-2 h-4 w-4" />
+                            Modifier
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={() => onDelete(order.id)} className="text-destructive focus:bg-destructive focus:text-destructive-foreground">
                             <Trash2 className="mr-2 h-4 w-4" />
                             Supprimer
@@ -57,7 +64,7 @@ export function OrderCard({ order, onUpdate, onDelete }: OrderCardProps) {
                     <Switch
                         id={`paid-${order.id}`}
                         checked={order.isPaid}
-                        onCheckedChange={(checked) => onUpdate(order.id, 'isPaid', checked)}
+                        onCheckedChange={(checked) => onUpdateToggles(order.id, 'isPaid', checked)}
                         aria-label="Marquer comme payé"
                     />
                 </div>
@@ -68,7 +75,7 @@ export function OrderCard({ order, onUpdate, onDelete }: OrderCardProps) {
                     <Switch
                         id={`delivered-${order.id}`}
                         checked={order.isDelivered}
-                        onCheckedChange={(checked) => onUpdate(order.id, 'isDelivered', checked)}
+                        onCheckedChange={(checked) => onUpdateToggles(order.id, 'isDelivered', checked)}
                         aria-label="Marquer comme livré"
                     />
                 </div>

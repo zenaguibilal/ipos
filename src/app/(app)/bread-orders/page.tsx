@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { collection, query, orderBy, serverTimestamp, doc, writeBatch } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { AddOrderForm } from '@/components/bread-orders/add-order-form';
+import { EditOrderForm } from '@/components/bread-orders/edit-order-form';
 import { ResetOrdersDialog } from '@/components/bread-orders/reset-orders-dialog';
 import { OrderCard } from '@/components/bread-orders/order-card';
 import type { BreadOrder } from '@/lib/types';
@@ -19,6 +20,7 @@ export default function BreadOrdersPage() {
     const router = useRouter();
 
     const [isAddingOrder, setIsAddingOrder] = useState(false);
+    const [editingOrder, setEditingOrder] = useState<BreadOrder | null>(null);
     const [isResetting, setIsResetting] = useState(false);
     const [isProcessingReset, setIsProcessingReset] = useState(false);
 
@@ -57,11 +59,26 @@ export default function BreadOrdersPage() {
         });
     };
 
-    const handleUpdateOrder = (id: string, field: keyof Omit<BreadOrder, 'id' | 'name' | 'quantity' | 'createdAt'>, value: boolean) => {
+    const handleUpdateOrderToggles = (id: string, field: keyof Omit<BreadOrder, 'id' | 'name' | 'quantity' | 'createdAt' | 'isRecurring'>, value: boolean) => {
         if (!firestore || !user) return;
         const orderDocRef = doc(firestore, 'users', user.uid, 'breadOrders', id);
         updateDocumentNonBlocking(orderDocRef, { [field]: value }, {
             onSuccess: () => toast.info(`Commande marquée comme ${field === 'isPaid' ? (value ? 'payée' : 'non payée') : (value ? 'livrée' : 'non livrée')}.`),
+            onError: (err) => {
+                toast.error("Erreur lors de la mise à jour.");
+                console.error(err);
+            }
+        });
+    };
+    
+    const handleUpdateOrderDetails = (id: string, name: string, quantity: number, isRecurring: boolean) => {
+        if (!firestore || !user) return;
+        const orderDocRef = doc(firestore, 'users', user.uid, 'breadOrders', id);
+         updateDocumentNonBlocking(orderDocRef, { name, quantity, isRecurring }, {
+            onSuccess: () => {
+                setEditingOrder(null);
+                toast.success('Commande mise à jour.');
+            },
             onError: (err) => {
                 toast.error("Erreur lors de la mise à jour.");
                 console.error(err);
@@ -119,6 +136,14 @@ export default function BreadOrdersPage() {
                 onOpenChange={setIsAddingOrder}
                 onConfirm={handleAddOrder}
             />
+            {editingOrder && (
+                 <EditOrderForm
+                    isOpen={!!editingOrder}
+                    onOpenChange={() => setEditingOrder(null)}
+                    onConfirm={handleUpdateOrderDetails}
+                    order={editingOrder}
+                />
+            )}
             <ResetOrdersDialog
                 isOpen={isResetting}
                 onOpenChange={setIsResetting}
@@ -164,7 +189,8 @@ export default function BreadOrdersPage() {
                             <OrderCard 
                                 key={order.id}
                                 order={order}
-                                onUpdate={handleUpdateOrder}
+                                onUpdateToggles={handleUpdateOrderToggles}
+                                onEdit={() => setEditingOrder(order)}
                                 onDelete={handleDeleteOrder}
                             />
                         ))}
