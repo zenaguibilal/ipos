@@ -15,7 +15,7 @@ import { SaleCompleteDialog } from '@/components/sell/sale-complete-dialog';
 import { ShortcutsHelpDialog } from '@/components/sell/shortcuts-help-dialog';
 import { AddCustomerForm } from '@/components/customers/add-customer-form';
 
-import type { Product, Sale, SaleItem, CompanyProfile, Customer } from '@/lib/types';
+import type { Product, Sale, SaleItem, CompanyProfile, Customer, Payment } from '@/lib/types';
 import { ProductGrid } from '@/components/sell/product-grid';
 import { CartPanel } from '@/components/sell/cart-panel';
 
@@ -37,10 +37,14 @@ export default function SellPage() {
     const productsCollectionRef = useMemoFirebase(() => (user && firestore) ? collection(firestore, 'users', user.uid, 'products') : null, [user, firestore]);
     const companyDocRef = useMemoFirebase(() => (user && firestore) ? doc(firestore, 'users', user.uid, 'companyProfile', 'main') : null, [user, firestore]);
     const customersCollectionRef = useMemoFirebase(() => (user && firestore) ? collection(firestore, 'users', user.uid, 'customers') : null, [user, firestore]);
+    const salesCollectionRef = useMemoFirebase(() => (user && firestore) ? collection(firestore, 'users', user.uid, 'sales') : null, [user, firestore]);
+    const paymentsCollectionRef = useMemoFirebase(() => (user && firestore) ? collection(firestore, 'users', user.uid, 'payments') : null, [user, firestore]);
 
     const { data: products, isLoading: isLoadingProducts } = useCollection<ProductWithOptionalBarcode>(productsCollectionRef);
     const { data: companyProfile, isLoading: isLoadingCompany } = useDoc<CompanyProfile>(companyDocRef);
     const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersCollectionRef);
+    const { data: allSales, isLoading: isLoadingSales } = useCollection<Sale>(salesCollectionRef);
+    const { data: allPayments, isLoading: isLoadingPayments } = useCollection<Payment>(paymentsCollectionRef);
 
 
     // Component state for multiple sales sessions
@@ -204,12 +208,19 @@ export default function SellPage() {
     const handleCloseSession = (indexToClose: number) => {
         setSessions(currentSessions => {
             if (currentSessions.length === 1) {
-                return [{ cart: [] }]; // Reset the last session
+                // If it's the last session, just clear it instead of removing it
+                const newSessions = [...currentSessions];
+                newSessions[indexToClose] = { cart: [], customerId: undefined, customerName: undefined };
+                return newSessions;
             }
+            
             const newSessions = currentSessions.filter((_, i) => i !== indexToClose);
             // Adjust active index if necessary
             if (activeSessionIndex >= indexToClose && activeSessionIndex > 0) {
                 setActiveSessionIndex(activeSessionIndex - 1);
+            } else if (activeSessionIndex === indexToClose && indexToClose === newSessions.length) {
+                // If we closed the last tab, move to the new last tab
+                setActiveSessionIndex(newSessions.length - 1);
             }
             return newSessions;
         });
@@ -277,7 +288,7 @@ export default function SellPage() {
     }, [handleKeyDown]);
 
 
-    const isLoading = isUserLoading || isLoadingProducts || isLoadingCompany || isLoadingCustomers;
+    const isLoading = isUserLoading || isLoadingProducts || isLoadingCompany || isLoadingCustomers || isLoadingSales || isLoadingPayments;
     
     if (isLoading || !user) {
         return <div className="flex h-full items-center justify-center"><p>Chargement de l'interface de vente...</p></div>;
@@ -309,7 +320,6 @@ export default function SellPage() {
                     isOpen={isSaleComplete}
                     onOpenChange={handleNewSale}
                     sale={lastSale}
-                    customer={customers?.find(c => c.id === lastSale.customerId) || null}
                     companyProfile={companyProfile}
                 />
             )}
@@ -338,6 +348,8 @@ export default function SellPage() {
                         onSessionAdd={handleAddSession}
                         onSessionClose={handleCloseSession}
                         customers={customers || []}
+                        allSales={allSales || []}
+                        allPayments={allPayments || []}
                         selectedCustomer={activeSession.customerId}
                         onSelectCustomer={handleSelectCustomer}
                         onClearCustomer={handleClearCustomer}

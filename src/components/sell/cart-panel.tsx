@@ -1,15 +1,15 @@
-
 'use client';
 
 import { useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Trash2, XCircle, HardDriveDownload, PlusCircle, UserPlus, UserX } from 'lucide-react';
+import { Trash2, XCircle, HardDriveDownload, PlusCircle, UserPlus, UserX, Wallet } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Combobox, ComboboxOption } from '@/components/ui/combobox';
 import type { CartItem, SalesSession } from '@/app/(app)/sell/page';
-import type { Customer } from '@/lib/types';
+import type { Customer, Sale, Payment } from '@/lib/types';
+import { cn } from '@/lib/utils';
 
 
 interface CartPanelProps {
@@ -23,6 +23,8 @@ interface CartPanelProps {
     onSessionAdd: () => void;
     onSessionClose: (index: number) => void;
     customers: Customer[];
+    allSales: Sale[];
+    allPayments: Payment[];
     selectedCustomer?: string;
     onSelectCustomer: (customerId: string) => void;
     onClearCustomer: () => void;
@@ -40,6 +42,8 @@ export function CartPanel({
     onSessionAdd,
     onSessionClose,
     customers,
+    allSales,
+    allPayments,
     selectedCustomer,
     onSelectCustomer,
     onClearCustomer,
@@ -54,14 +58,34 @@ export function CartPanel({
         return cart.reduce((sum, item) => sum + item.cartQuantity, 0);
     }, [cart]);
 
+    const customerBalances = useMemo(() => {
+        const balances = new Map<string, number>();
+        customers.forEach(c => {
+            const customerSales = allSales.filter(s => s.customerId === c.id);
+            const customerPayments = allPayments.filter(p => p.customerId === c.id);
+            
+            const totalSpent = customerSales.reduce((acc, s) => acc + s.total, 0);
+            const totalPaidFromSales = customerSales.reduce((acc, s) => acc + s.amountPaid, 0);
+            const totalStandalonePayments = customerPayments.reduce((acc, p) => acc + p.amount, 0);
+            
+            const balance = totalSpent - totalPaidFromSales - totalStandalonePayments;
+            balances.set(c.id, balance < 0.01 ? 0 : balance);
+        });
+        return balances;
+    }, [customers, allSales, allPayments]);
+
+
     const customerOptions = useMemo<ComboboxOption[]>(() => {
         return customers.map(c => ({
             value: c.id,
-            label: `${c.firstName} ${c.lastName}`
+            label: `${c.firstName} ${c.lastName}`,
+            subLabel: `Solde: ${(customerBalances.get(c.id) || 0).toFixed(2)} DA`,
         }));
-    }, [customers]);
+    }, [customers, customerBalances]);
 
-    const selectedCustomerLabel = selectedCustomer ? customerOptions.find(c => c.value === selectedCustomer)?.label : 'Vente au comptoir';
+    const selectedCustomerData = selectedCustomer ? customers.find(c => c.id === selectedCustomer) : null;
+    const selectedCustomerBalance = selectedCustomer ? customerBalances.get(selectedCustomer) : 0;
+
 
     return (
         <div className="h-full flex flex-col">
@@ -101,25 +125,33 @@ export function CartPanel({
                 <div className="mb-4 space-y-2">
                     <div className="flex justify-between items-center">
                         <label className="text-sm font-medium">Client</label>
-                        <Button variant="link" className="h-auto p-0" onClick={onAddNewCustomer}>
-                           <UserPlus className="mr-1 h-4 w-4" /> Nouveau client
+                        <Button variant="link" className="h-auto p-0 text-xs" onClick={onAddNewCustomer}>
+                           <UserPlus className="mr-1 h-3 w-3" /> Nouveau client
                         </Button>
                     </div>
-                    <div className="flex gap-2">
-                        <Combobox
-                            options={customerOptions}
-                            onSelect={onSelectCustomer}
-                            value={selectedCustomer}
-                            placeholder={selectedCustomerLabel || "Sélectionner un client"}
-                            searchPlaceholder="Rechercher un client..."
-                            notFoundMessage="Aucun client trouvé."
-                        />
-                         {selectedCustomer && (
-                             <Button variant="ghost" size="icon" onClick={onClearCustomer}>
-                                <UserX className="h-4 w-4 text-destructive" />
-                             </Button>
-                        )}
-                    </div>
+                     <Combobox
+                        options={customerOptions}
+                        onSelect={onSelectCustomer}
+                        value={selectedCustomer}
+                        placeholder={"Vente au comptoir"}
+                        searchPlaceholder="Rechercher un client..."
+                        notFoundMessage="Aucun client trouvé."
+                    />
+                    
+                    {selectedCustomerData && (
+                        <Card className="p-3 bg-muted/50">
+                             <div className="flex justify-between items-center">
+                                 <div className="font-semibold">{selectedCustomerData.firstName} {selectedCustomerData.lastName}</div>
+                                 <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onClearCustomer}>
+                                    <UserX className="h-4 w-4 text-destructive" />
+                                 </Button>
+                             </div>
+                             <div className="flex justify-between items-center text-sm mt-1">
+                                <span className="text-muted-foreground flex items-center gap-1.5"><Wallet className="h-3 w-3"/> Solde Actuel:</span>
+                                <span className={cn("font-bold", (selectedCustomerBalance || 0) > 0 ? "text-destructive" : "text-green-600")}>{(selectedCustomerBalance || 0).toFixed(2)} DA</span>
+                             </div>
+                        </Card>
+                    )}
                 </div>
 
 
