@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { toast } from 'sonner';
 
 interface AddOrderFormProps {
     isOpen: boolean;
@@ -16,30 +17,27 @@ interface AddOrderFormProps {
 
 export function AddOrderForm({ isOpen, onOpenChange, onConfirm }: AddOrderFormProps) {
     const [name, setName] = useState('');
-    const [quantity, setQuantity] = useState('');
+    const [quantity, setQuantity] = useState('1');
     const [isRecurring, setIsRecurring] = useState(false);
-    const [error, setError] = useState<string | null>(null);
 
     const resetForm = () => {
         setName('');
-        setQuantity('');
+        setQuantity('1');
         setIsRecurring(false);
-        setError(null);
     };
 
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        setError(null);
         
         const quantityNumber = parseInt(quantity, 10);
 
         if (!name.trim()) {
-            setError("Veuillez entrer un nom.");
+            toast.error("Veuillez entrer un nom.");
             return;
         }
 
         if (isNaN(quantityNumber) || quantityNumber <= 0) {
-            setError("Veuillez entrer une quantité valide.");
+            toast.error("Veuillez entrer une quantité valide.");
             return;
         }
 
@@ -65,10 +63,9 @@ export function AddOrderForm({ isOpen, onOpenChange, onConfirm }: AddOrderFormPr
                         </DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
-                        {error && <p className="text-sm text-red-500 text-center">{error}</p>}
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="order-name" className="text-right">Nom</Label>
-                            <Input id="order-name" value={name} onChange={(e) => setName(e.target.value)} className="col-span-3" required />
+                            <Input id="order-name" value={name} onChange={(e) => setName(e.target.value)} className="col-span-3" required autoFocus/>
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="order-quantity" className="text-right">Quantité</Label>
@@ -81,6 +78,7 @@ export function AddOrderForm({ isOpen, onOpenChange, onConfirm }: AddOrderFormPr
                                 checked={isRecurring}
                                 onCheckedChange={setIsRecurring}
                             />
+                            <p className='text-xs text-muted-foreground'>(Conserver pour demain)</p>
                         </div>
                     </div>
                     <DialogFooter>
@@ -96,5 +94,3 @@ export function AddOrderForm({ isOpen, onOpenChange, onConfirm }: AddOrderFormPr
         </Dialog>
     );
 }
-
-    

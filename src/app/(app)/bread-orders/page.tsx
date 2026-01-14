@@ -6,10 +6,9 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { collection, query, orderBy, serverTimestamp, doc, writeBatch } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { AddOrderForm } from '@/components/bread-orders/add-order-form';
 import { ResetOrdersDialog } from '@/components/bread-orders/reset-orders-dialog';
-import { OrderList } from '@/components/bread-orders/order-list';
+import { OrderCard } from '@/components/bread-orders/order-card';
 import type { BreadOrder } from '@/lib/types';
 import { PlusCircle, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
@@ -58,7 +57,7 @@ export default function BreadOrdersPage() {
         });
     };
 
-    const handleUpdateOrder = (id: string, field: keyof BreadOrder, value: boolean) => {
+    const handleUpdateOrder = (id: string, field: keyof Omit<BreadOrder, 'id' | 'name' | 'quantity' | 'createdAt'>, value: boolean) => {
         if (!firestore || !user) return;
         const orderDocRef = doc(firestore, 'users', user.uid, 'breadOrders', id);
         updateDocumentNonBlocking(orderDocRef, { [field]: value });
@@ -99,7 +98,6 @@ export default function BreadOrdersPage() {
         }
     };
 
-
     const isLoading = isUserLoading || isLoadingOrders;
 
     return (
@@ -116,38 +114,51 @@ export default function BreadOrdersPage() {
                 isProcessing={isProcessingReset}
             />
             <main className="flex-1 overflow-auto p-4 sm:p-6">
-                <Card>
-                    <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                        <div>
-                            <CardTitle>Commandes de Pain du Jour</CardTitle>
-                            <CardDescription>Gérez les commandes de pain quotidiennes.</CardDescription>
-                        </div>
-                        <div className="flex gap-2">
-                             <Button variant="outline" onClick={() => setIsResetting(true)}>
-                                <RotateCcw className="mr-2 h-4 w-4" />
-                                Réinitialiser pour le lendemain
-                            </Button>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+                     <div>
+                        <h1 className="text-2xl font-bold">Commandes de Pain du Jour</h1>
+                        <p className="text-muted-foreground">Gérez les commandes de pain quotidiennes.</p>
+                    </div>
+                    <div className="flex gap-2 w-full sm:w-auto">
+                        <Button variant="outline" onClick={() => setIsResetting(true)}>
+                            <RotateCcw className="mr-2 h-4 w-4" />
+                            Réinitialiser
+                        </Button>
+                        <Button onClick={() => setIsAddingOrder(true)}>
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            Ajouter
+                        </Button>
+                    </div>
+                </div>
+
+                {isLoading ? (
+                    <div className="text-center p-8">Chargement des commandes...</div>
+                ) : !orders || orders.length === 0 ? (
+                     <div className="flex h-60 items-center justify-center rounded-md border-2 border-dashed border-border bg-card">
+                        <div className="text-center">
+                            <h3 className="text-xl font-bold tracking-tight">Aucune commande aujourd'hui</h3>
+                            <p className="text-sm text-muted-foreground mb-4">
+                                Ajoutez votre première commande de la journée.
+                            </p>
                             <Button onClick={() => setIsAddingOrder(true)}>
                                 <PlusCircle className="mr-2 h-4 w-4" />
                                 Ajouter une commande
                             </Button>
                         </div>
-                    </CardHeader>
-                    <CardContent>
-                        {isLoading ? (
-                            <div className="text-center p-8">Chargement des commandes...</div>
-                        ) : (
-                            <OrderList 
-                                orders={orders || []}
+                    </div>
+                ) : (
+                    <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                        {orders.map(order => (
+                            <OrderCard 
+                                key={order.id}
+                                order={order}
                                 onUpdate={handleUpdateOrder}
                                 onDelete={handleDeleteOrder}
                             />
-                        )}
-                    </CardContent>
-                </Card>
+                        ))}
+                    </div>
+                )}
             </main>
         </>
     )
 }
-
-    
