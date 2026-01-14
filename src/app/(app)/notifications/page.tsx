@@ -8,21 +8,19 @@ import type { Product, Customer, Sale, Payment } from '@/lib/types';
 import { getDate } from 'date-fns';
 import { NotificationFilters, type FilterType } from '@/components/notifications/notification-filters';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Archive, User, ArrowRight, BellOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
+import Link from 'next/link';
 
-// Define the NotificationItem type locally as it might be specific to this page now
+// Define the NotificationItem type locally
 export interface NotificationItem {
   id: string;
   type: 'stock' | 'payment';
   message: string;
   relatedId: string; // productId or customerId
-  date: Date;
-  isRead: boolean;
+  actionText: string;
+  actionHref: string;
 }
 
 export default function NotificationsPage() {
@@ -65,8 +63,8 @@ export default function NotificationsPage() {
                 type: 'stock',
                 message: `Stock faible pour ${p.name}. Restant : ${p.quantity}`,
                 relatedId: p.id,
-                date: new Date(), 
-                isRead: false
+                actionText: 'Gérer le stock',
+                actionHref: '/products'
             }));
 
         // 2. Late Payment Notifications
@@ -96,8 +94,8 @@ export default function NotificationsPage() {
                 type: 'payment',
                 message: `Paiement en retard pour ${c.firstName} ${c.lastName}. Solde: ${c.outstandingBalance.toFixed(2)} DA`,
                 relatedId: c.id,
-                date: new Date(),
-                isRead: false
+                actionText: 'Voir le client',
+                actionHref: `/customers/${c.id}`
             }));
 
         const allNotifications = [...lowStockNotifications, ...latePaymentNotifications];
@@ -113,15 +111,6 @@ export default function NotificationsPage() {
     }, [notifications, filter]);
 
     const isLoading = isUserLoading || isLoadingProducts || isLoadingCustomers || isLoadingSales || isLoadingPayments;
-
-    const handleActionClick = (notification: NotificationItem) => {
-        if (notification.type === 'stock') {
-            router.push('/products');
-        } else if (notification.type === 'payment') {
-            router.push(`/customers/${notification.relatedId}`);
-        }
-    };
-
 
     if (isLoading || !user) {
         return <div className="flex h-full items-center justify-center"><p>Chargement des notifications...</p></div>;
@@ -150,38 +139,35 @@ export default function NotificationsPage() {
                             </div>
                         </div>
                     ) : (
-                         <div className="overflow-x-auto">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead className="w-[120px]">Type</TableHead>
-                                        <TableHead>Message</TableHead>
-                                        <TableHead className="w-[180px] hidden md:table-cell">Date</TableHead>
-                                        <TableHead className="w-[100px] text-right">Action</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {filteredNotifications.map(notification => (
-                                        <TableRow key={notification.id}>
-                                            <TableCell>
-                                                <div className={cn("flex items-center gap-2 font-semibold",
-                                                    notification.type === 'stock' ? 'text-yellow-600' : 'text-destructive'
-                                                )}>
-                                                    {notification.type === 'stock' ? <Archive className="h-4 w-4" /> : <User className="h-4 w-4" />}
-                                                    <span>{notification.type === 'stock' ? 'Stock' : 'Paiement'}</span>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell>{notification.message}</TableCell>
-                                            <TableCell className="hidden md:table-cell">{format(notification.date, 'd MMM yyyy, HH:mm', { locale: fr })}</TableCell>
-                                            <TableCell className="text-right">
-                                                <Button variant="outline" size="sm" onClick={() => handleActionClick(notification)}>
-                                                    Voir <ArrowRight className="ml-2 h-4 w-4" />
-                                                </Button>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
+                         <div className="space-y-4">
+                            {filteredNotifications.map(notification => (
+                                <div 
+                                    key={notification.id}
+                                    className={cn(
+                                        "flex items-center gap-4 rounded-lg border p-4",
+                                        notification.type === 'payment' && "border-destructive/50 bg-destructive/5"
+                                    )}
+                                >
+                                    <div className={cn(
+                                        "rounded-full p-2",
+                                        notification.type === 'stock' ? 'bg-yellow-500/20' : 'bg-destructive/20'
+                                    )}>
+                                        {notification.type === 'stock' 
+                                            ? <Archive className="h-5 w-5 text-yellow-600" /> 
+                                            : <User className="h-5 w-5 text-destructive" />
+                                        }
+                                    </div>
+                                    <div className="flex-1">
+                                        <p className="font-medium">{notification.message}</p>
+                                    </div>
+                                    <Button asChild variant="secondary" size="sm">
+                                        <Link href={notification.actionHref}>
+                                            {notification.actionText}
+                                            <ArrowRight className="ml-2 h-4 w-4" />
+                                        </Link>
+                                    </Button>
+                                </div>
+                            ))}
                         </div>
                     )}
                 </CardContent>
