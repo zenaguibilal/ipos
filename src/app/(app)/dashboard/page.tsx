@@ -53,14 +53,22 @@ export default function DashboardPage() {
         chartData, 
         topProducts, 
     } = useMemo(() => {
-        if (!sales || !products) return { revenue: 0, netProfit: 0, salesCount: 0, chartData: [], topProducts: [] };
+        if (!sales || !products || !payments) return { revenue: 0, netProfit: 0, salesCount: 0, chartData: [], topProducts: [] };
+
+        const from = dateRange?.from ? startOfDay(dateRange.from) : null;
+        const to = dateRange?.to ? endOfDay(dateRange.to) : null;
 
         const filteredSales = sales.filter(sale => {
             const saleDate = safeToDate(sale.createdAt);
-            const from = dateRange?.from ? startOfDay(dateRange.from) : null;
-            const to = dateRange?.to ? endOfDay(dateRange.to) : null;
             if (from && saleDate < from) return false;
             if (to && saleDate > to) return false;
+            return true;
+        });
+
+        const filteredPayments = payments.filter(payment => {
+            const paymentDate = safeToDate(payment.createdAt);
+            if (from && paymentDate < from) return false;
+            if (to && paymentDate > to) return false;
             return true;
         });
 
@@ -68,15 +76,25 @@ export default function DashboardPage() {
         
         let totalRevenue = 0;
         let totalProfit = 0;
-        const salesByDay: { [date: string]: { revenue: number, profit: number, newDebt: number } } = {};
-        const productSales = new Map<string, { unitsSold: number, totalRevenue: number, totalProfit: number }>();
+        const salesByDay: { [date: string]: { revenue: number, profit: number, newDebt: number, payments: number } } = {};
+
+        // Initialize days from the date range to ensure all days are present
+        if (from && to) {
+            let currentDate = new Date(from);
+            while (currentDate <= to) {
+                const dateStr = currentDate.toISOString().split('T')[0];
+                salesByDay[dateStr] = { revenue: 0, profit: 0, newDebt: 0, payments: 0 };
+                currentDate.setDate(currentDate.getDate() + 1);
+            }
+        }
+
 
         filteredSales.forEach(sale => {
             totalRevenue += sale.total;
-
             const dateStr = safeToDate(sale.createdAt).toISOString().split('T')[0];
-            if (!salesByDay[dateStr]) {
-                salesByDay[dateStr] = { revenue: 0, profit: 0, newDebt: 0 };
+            
+            if (!salesByDay[dateStr]) { // Should not happen with pre-initialization, but as a fallback
+                salesByDay[dateStr] = { revenue: 0, profit: 0, newDebt: 0, payments: 0 };
             }
             salesByDay[dateStr].revenue += sale.total;
             salesByDay[dateStr].newDebt += sale.remainingBalance;
@@ -87,7 +105,29 @@ export default function DashboardPage() {
                 if (product) {
                     const itemProfit = (item.price - product.purchasePrice) * item.quantity;
                     saleProfit += itemProfit;
+                }
+            });
+            totalProfit += saleProfit;
+            salesByDay[dateStr].profit += saleProfit;
+        });
 
+        filteredPayments.forEach(payment => {
+            const dateStr = safeToDate(payment.createdAt).toISOString().split('T')[0];
+            if (salesByDay[dateStr]) {
+                salesByDay[dateStr].payments += payment.amount;
+            }
+        });
+        
+        const sortedChartData: ChartData[] = Object.entries(salesByDay)
+            .sort(([dateA], [dateB]) => new Date(dateA).getTime() - new Date(dateB).getTime())
+            .map(([date, data]) => ({ date, revenue: data.revenue, profit: data.profit, newDebt: data.newDebt, payments: data.payments }));
+        
+        const productSales = new Map<string, { unitsSold: number, totalRevenue: number, totalProfit: number }>();
+        filteredSales.forEach(sale => {
+             sale.items.forEach(item => {
+                const product = productsMap.get(item.id);
+                if (product) {
+                    const itemProfit = (item.price - product.purchasePrice) * item.quantity;
                     const currentProductSales = productSales.get(product.id) || { unitsSold: 0, totalRevenue: 0, totalProfit: 0 };
                     currentProductSales.unitsSold += item.quantity;
                     currentProductSales.totalRevenue += item.price * item.quantity;
@@ -95,14 +135,8 @@ export default function DashboardPage() {
                     productSales.set(product.id, currentProductSales);
                 }
             });
-            totalProfit += saleProfit;
-            salesByDay[dateStr].profit += saleProfit;
         });
-        
-        const sortedChartData: ChartData[] = Object.entries(salesByDay)
-            .sort(([dateA], [dateB]) => new Date(dateA).getTime() - new Date(dateB).getTime())
-            .map(([date, data]) => ({ date, revenue: data.revenue, profit: data.profit, newDebt: data.newDebt }));
-        
+
         const sortedTopProducts: TopProduct[] = Array.from(productSales.entries())
             .map(([productId, salesData]) => ({
                 ...(productsMap.get(productId) as Product),
@@ -118,7 +152,7 @@ export default function DashboardPage() {
             chartData: sortedChartData,
             topProducts: sortedTopProducts,
         };
-    }, [sales, products, dateRange]);
+    }, [sales, products, payments, dateRange]);
     
     const { inventoryValue, lowStockProducts, totalOutstandingDebt } = useMemo(() => {
         let totalInventoryValue = 0;
@@ -190,7 +224,7 @@ export default function DashboardPage() {
                 </Card>
                  <Card className="lg:col-span-2">
                     <CardHeader>
-                        <CardTitle>Mouvement des ventes et des dettes</CardTitle>
+                        <CardTitle>Mouvement des Dettes</CardTitle>
                     </CardHeader>
                     <CardContent>
                         {chartData.length > 0 ? (

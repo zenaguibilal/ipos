@@ -35,14 +35,14 @@ export function SalesAndDebtsChart({ data }: SalesAndDebtsChartProps) {
                     labelStyle={{ color: "hsl(var(--foreground))" }}
                     formatter={(value: number, name) => {
                         let label = '';
-                        if (name === 'revenue') label = 'Total Ventes';
                         if (name === 'newDebt') label = 'Nouvelles Dettes';
+                        if (name === 'payments') label = 'Paiements Reçus';
                         return [value.toFixed(2) + ' DA', label];
                     }}
                 />
                  <Legend />
-                 <Line type="monotone" dataKey="revenue" name="Total Ventes" stroke="hsl(var(--chart-primary))" strokeWidth={2} dot={{ r: 4 }} />
                  <Line type="monotone" dataKey="newDebt" name="Nouvelles Dettes" stroke="hsl(var(--destructive))" strokeWidth={2} dot={{ r: 4 }} />
+                 <Line type="monotone" dataKey="payments" name="Paiements Reçus" stroke="hsl(var(--chart-secondary))" strokeWidth={2} dot={{ r: 4 }} />
             </LineChart>
         </ResponsiveContainer>
     );
