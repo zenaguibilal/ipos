@@ -44,16 +44,16 @@ export default function AboutPage() {
                     </DialogHeader>
                     <div className="flex flex-col gap-4 py-4">
                         <Button asChild className="w-full justify-start gap-3 py-6 text-base">
-                            <Link href={`tel:${phoneNumber}`}>
+                            <a href={`tel:${phoneNumber}`}>
                                 <Phone className="h-5 w-5" />
                                 <span>Appeler ({phoneNumber})</span>
-                            </Link>
+                            </a>
                         </Button>
                         <Button asChild variant="secondary" className="w-full justify-start gap-3 py-6 text-base bg-green-100 hover:bg-green-200 dark:bg-green-800/40 dark:hover:bg-green-800/70 text-green-700 dark:text-green-300">
-                            <Link href={`https://wa.me/${whatsappNumber}`} target="_blank">
+                            <a href={`https://wa.me/${whatsappNumber}`} target="_blank">
                                 <MessageCircle className="h-5 w-5" />
                                 <span>Message WhatsApp</span>
-                            </Link>
+                            </a>
                         </Button>
                     </div>
                      <DialogFooter>
@@ -95,10 +95,10 @@ export default function AboutPage() {
                                     <span>{phoneNumber}</span>
                                 </Button>
                                  <Button asChild variant="outline" className="w-full justify-start gap-3 py-6 text-base">
-                                    <Link href="mailto:zenex133@gmail.com">
+                                    <a href="mailto:zenex133@gmail.com">
                                         <Mail className="h-5 w-5" />
                                         <span>zenex133@gmail.com</span>
-                                    </Link>
+                                    </a>
                                 </Button>
                             </div>
                         </CardContent>
