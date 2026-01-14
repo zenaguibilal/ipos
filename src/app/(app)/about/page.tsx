@@ -28,9 +28,49 @@ const TechLogo = ({ src, alt }: { src: string, alt: string }) => (
 export default function AboutPage() {
     return (
         <main className="flex-1 overflow-auto p-4 sm:p-6 flex items-start justify-center">
-            <div className="w-full max-w-6xl grid gap-8 lg:grid-cols-2">
-
-                {/* About the App Card */}
+            <div className="w-full max-w-4xl mx-auto space-y-8">
+                
+                <Card className="flex flex-col">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-2xl">
+                            <User className="h-6 w-6" />
+                            À propos du développeur
+                        </CardTitle>
+                         <CardDescription>
+                            Créateur et mainteneur de l'application iPOS.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="flex flex-col sm:flex-row items-center gap-6">
+                            <div className="w-28 h-28 bg-muted rounded-full flex items-center justify-center flex-shrink-0">
+                                <Code className="w-16 h-16 text-muted-foreground" />
+                            </div>
+                            <div className="text-center sm:text-left">
+                                <h3 className="text-3xl font-bold">zenagui bilal</h3>
+                                <p className="text-xl text-muted-foreground">Développeur Full-Stack</p>
+                                 <p className="text-sm mt-2">
+                                    Développeur passionné avec une expertise dans la création d'applications web modernes, performantes et centrées sur l'utilisateur.
+                                </p>
+                            </div>
+                        </div>
+                       
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-6">
+                             <Button asChild variant="outline" className="w-full justify-start gap-3 py-6 text-base">
+                                <Link href="tel:+213668640999">
+                                    <Phone className="h-5 w-5" />
+                                    <span>+213 6 68 64 09 99</span>
+                                </Link>
+                            </Button>
+                             <Button asChild variant="outline" className="w-full justify-start gap-3 py-6 text-base">
+                                <Link href="mailto:zenex133@gmail.com">
+                                    <Mail className="h-5 w-5" />
+                                    <span>zenex133@gmail.com</span>
+                                </Link>
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
+                
                 <Card className="flex flex-col">
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2 text-2xl">
@@ -48,13 +88,13 @@ export default function AboutPage() {
                         
                         <div>
                             <h4 className="font-semibold text-base mb-3">Fonctionnalités Clés :</h4>
-                            <div className="space-y-3">
+                            <div className="grid sm:grid-cols-2 gap-x-6 gap-y-4">
                             {features.map((feature, index) => (
                                     <div key={index} className="flex items-start gap-3">
                                         <div className="bg-muted p-2 rounded-full flex-shrink-0">
                                             <feature.icon className="h-5 w-5 text-primary" />
                                         </div>
-                                        <span className="flex-1 pt-1.5">{feature.text}</span>
+                                        <span className="flex-1 pt-1">{feature.text}</span>
                                     </div>
                             ))}
                             </div>
@@ -73,47 +113,6 @@ export default function AboutPage() {
                                     <span className="text-xs text-muted-foreground">PWA</span>
                                 </div>
                             </div>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* About the Developer Card */}
-                <Card className="flex flex-col">
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-2xl">
-                            <User className="h-6 w-6" />
-                            À propos du développeur
-                        </CardTitle>
-                         <CardDescription>
-                            Créateur et mainteneur de l'application iPOS.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="flex-grow space-y-4">
-                        <div className="flex items-center gap-4">
-                            <div className="w-24 h-24 bg-muted rounded-full flex items-center justify-center">
-                                <Code className="w-12 h-12 text-muted-foreground" />
-                            </div>
-                            <div>
-                                <h3 className="text-2xl font-bold">zenagui bilal</h3>
-                                <p className="text-lg text-muted-foreground">Développeur Full-Stack</p>
-                            </div>
-                        </div>
-                        <p className="text-sm pt-2">
-                            Développeur passionné avec une expertise dans la création d'applications web modernes, performantes et centrées sur l'utilisateur.
-                        </p>
-                        <div className="space-y-2 pt-4">
-                             <Button asChild variant="outline" className="w-full justify-start gap-3 py-6 text-base">
-                                <Link href="tel:+213668640999">
-                                    <Phone className="h-5 w-5" />
-                                    <span>+213 6 68 64 09 99</span>
-                                </Link>
-                            </Button>
-                             <Button asChild variant="outline" className="w-full justify-start gap-3 py-6 text-base">
-                                <Link href="mailto:zenex133@gmail.com">
-                                    <Mail className="h-5 w-5" />
-                                    <span>zenex133@gmail.com</span>
-                                </Link>
-                            </Button>
                         </div>
                     </CardContent>
                 </Card>
