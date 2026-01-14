@@ -12,6 +12,15 @@ export interface Product {
     imageUrl?: string;
 }
 
+export interface Customer {
+    id: string;
+    firstName: string;
+    lastName: string;
+    phone?: string;
+    settlementDay?: number;
+    createdAt: Timestamp;
+}
+
 export interface SaleItem {
     id: string;
     name: string;
@@ -33,10 +42,12 @@ export interface Sale {
     createdAt: Timestamp | Date;
 }
 
-export interface ChartData {
-  date: string;
-  revenue: number;
-  profit?: number;
+export interface Payment {
+    id: string;
+    customerId: string;
+    customerName?: string;
+    amount: number;
+    createdAt: Timestamp;
 }
 
 export interface BreadOrder {
@@ -46,12 +57,32 @@ export interface BreadOrder {
     isPaid: boolean;
     isDelivered: boolean;
     isRecurring: boolean;
+    createdAt: Timestamp;
+}
+
+export interface CustomerWithSalesData extends Customer {
+    totalSpent: number;
+    outstandingBalance: number;
+    lastActivityDate?: Date | null;
+    daysLate?: number;
+    isReminderDue?: boolean;
+}
+
+
+export interface ChartData {
+  date: string;
+  revenue: number;
+  profit?: number;
 }
 
 export interface TopProduct extends Product {
     totalRevenue: number;
     unitsSold: number;
     totalProfit: number;
+}
+
+export interface TopCustomer extends Customer {
+    totalSpent: number;
 }
 
 export interface CompanyProfile {
@@ -105,3 +136,7 @@ export interface StockIntake {
     totalValue: number;
     createdAt: Timestamp | Date;
 }
+
+    
+
+    
