@@ -34,7 +34,7 @@ export function OrderCard({ order, onUpdateToggles, onEdit, onDelete }: OrderCar
                     <CardTitle className="text-lg font-bold">{order.name}</CardTitle>
                     <div className="flex items-center gap-2 text-muted-foreground">
                        <span className="text-2xl font-black text-primary">{order.quantity}</span>
-                        {order.isRecurring && <Repeat className="h-4 w-4" title="Commande récurrente"/>}
+                        {order.isRecurring && <Repeat className="h-4 w-4"/>}
                     </div>
                 </div>
                  <DropdownMenu>
