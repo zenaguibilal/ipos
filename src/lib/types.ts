@@ -73,8 +73,6 @@ export interface ChartData {
   date: string;
   revenue: number;
   profit?: number;
-  newDebt?: number;
-  payments?: number;
 }
 
 export interface TopProduct extends Product {

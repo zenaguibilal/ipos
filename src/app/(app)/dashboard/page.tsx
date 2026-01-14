@@ -13,10 +13,10 @@ import { endOfDay, startOfDay, subDays } from 'date-fns';
 import { safeToDate } from '@/lib/utils';
 import { StatsCards } from '@/components/dashboard/stats-cards';
 import { SalesChart } from '@/components/dashboard/sales-chart';
-import { SalesAndDebtsChart } from '@/components/dashboard/sales-and-debts-chart';
+import { TotalDebtChart } from '@/components/dashboard/total-debt-chart';
 import { TopProducts } from '@/components/dashboard/top-products';
 import { LowStockProducts } from '@/components/dashboard/low-stock-products';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 
 export default function DashboardPage() {
     const { user, isUserLoading } = useUser();
@@ -29,15 +29,16 @@ export default function DashboardPage() {
     });
     
     // --- Data Fetching ---
+    // Fetch ALL data once, filtering will be done in memoized calculations
     const productsCollectionRef = useMemoFirebase(() => (user && firestore) ? collection(firestore, 'users', user.uid, 'products') : null, [user, firestore]);
     const salesCollectionRef = useMemoFirebase(() => (user && firestore) ? collection(firestore, 'users', user.uid, 'sales') : null, [user, firestore]);
     const customersCollectionRef = useMemoFirebase(() => (user && firestore) ? collection(firestore, 'users', user.uid, 'customers') : null, [user, firestore]);
     const paymentsCollectionRef = useMemoFirebase(() => (user && firestore) ? collection(firestore, 'users', user.uid, 'payments') : null, [user, firestore]);
 
     const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsCollectionRef);
-    const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesCollectionRef);
+    const { data: allSales, isLoading: isLoadingSales } = useCollection<Sale>(salesCollectionRef);
     const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersCollectionRef);
-    const { data: payments, isLoading: isLoadingPayments } = useCollection<Payment>(paymentsCollectionRef);
+    const { data: allPayments, isLoading: isLoadingPayments } = useCollection<Payment>(paymentsCollectionRef);
 
     useEffect(() => {
         if (!isUserLoading && !user) {
@@ -45,83 +46,65 @@ export default function DashboardPage() {
         }
     }, [user, isUserLoading, router]);
 
-    // --- Data Processing & Memoization ---
+    // --- Memoization for calculations ---
+    const fromDate = dateRange?.from ? startOfDay(dateRange.from) : null;
+    const toDate = dateRange?.to ? endOfDay(dateRange.to) : null;
+
+    // First Memo: Calculate stats for the selected date range
     const { 
         revenue, 
         netProfit, 
         salesCount, 
-        chartData, 
+        chartData,
         topProducts, 
     } = useMemo(() => {
-        if (!sales || !products || !payments) return { revenue: 0, netProfit: 0, salesCount: 0, chartData: [], topProducts: [] };
-
-        const from = dateRange?.from ? startOfDay(dateRange.from) : null;
-        const to = dateRange?.to ? endOfDay(dateRange.to) : null;
-
-        const filteredSales = sales.filter(sale => {
+        if (!allSales || !products) return { revenue: 0, netProfit: 0, salesCount: 0, chartData: [], topProducts: [] };
+        
+        const filteredSales = allSales.filter(sale => {
             const saleDate = safeToDate(sale.createdAt);
-            if (from && saleDate < from) return false;
-            if (to && saleDate > to) return false;
-            return true;
-        });
-
-        const filteredPayments = payments.filter(payment => {
-            const paymentDate = safeToDate(payment.createdAt);
-            if (from && paymentDate < from) return false;
-            if (to && paymentDate > to) return false;
+            if (fromDate && saleDate < fromDate) return false;
+            if (toDate && saleDate > toDate) return false;
             return true;
         });
 
         const productsMap = new Map(products.map(p => [p.id, p]));
-        
         let totalRevenue = 0;
         let totalProfit = 0;
-        const salesByDay: { [date: string]: { revenue: number, profit: number, newDebt: number, payments: number } } = {};
+        const salesByDay: { [date: string]: { revenue: number, profit: number } } = {};
 
-        // Initialize days from the date range to ensure all days are present
-        if (from && to) {
-            let currentDate = new Date(from);
-            while (currentDate <= to) {
+        // Initialize days from the date range
+        if (fromDate && toDate) {
+            let currentDate = new Date(fromDate);
+            while (currentDate <= toDate) {
                 const dateStr = currentDate.toISOString().split('T')[0];
-                salesByDay[dateStr] = { revenue: 0, profit: 0, newDebt: 0, payments: 0 };
+                salesByDay[dateStr] = { revenue: 0, profit: 0 };
                 currentDate.setDate(currentDate.getDate() + 1);
             }
         }
-
-
+        
         filteredSales.forEach(sale => {
             totalRevenue += sale.total;
             const dateStr = safeToDate(sale.createdAt).toISOString().split('T')[0];
-            
-            if (!salesByDay[dateStr]) { // Should not happen with pre-initialization, but as a fallback
-                salesByDay[dateStr] = { revenue: 0, profit: 0, newDebt: 0, payments: 0 };
-            }
-            salesByDay[dateStr].revenue += sale.total;
-            salesByDay[dateStr].newDebt += sale.remainingBalance;
-
-            let saleProfit = 0;
-            sale.items.forEach(item => {
-                const product = productsMap.get(item.id);
-                if (product) {
-                    const itemProfit = (item.price - product.purchasePrice) * item.quantity;
-                    saleProfit += itemProfit;
-                }
-            });
-            totalProfit += saleProfit;
-            salesByDay[dateStr].profit += saleProfit;
-        });
-
-        filteredPayments.forEach(payment => {
-            const dateStr = safeToDate(payment.createdAt).toISOString().split('T')[0];
             if (salesByDay[dateStr]) {
-                salesByDay[dateStr].payments += payment.amount;
+                salesByDay[dateStr].revenue += sale.total;
+
+                let saleProfit = 0;
+                sale.items.forEach(item => {
+                    const product = productsMap.get(item.id);
+                    if (product) {
+                        const itemProfit = (item.price - product.purchasePrice) * item.quantity;
+                        saleProfit += itemProfit;
+                    }
+                });
+                totalProfit += saleProfit;
+                salesByDay[dateStr].profit += saleProfit;
             }
         });
-        
+
         const sortedChartData: ChartData[] = Object.entries(salesByDay)
-            .sort(([dateA], [dateB]) => new Date(dateA).getTime() - new Date(dateB).getTime())
-            .map(([date, data]) => ({ date, revenue: data.revenue, profit: data.profit, newDebt: data.newDebt, payments: data.payments }));
-        
+            .map(([date, data]) => ({ date, revenue: data.revenue, profit: data.profit }))
+            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
         const productSales = new Map<string, { unitsSold: number, totalRevenue: number, totalProfit: number }>();
         filteredSales.forEach(sale => {
              sale.items.forEach(item => {
@@ -139,47 +122,69 @@ export default function DashboardPage() {
 
         const sortedTopProducts: TopProduct[] = Array.from(productSales.entries())
             .map(([productId, salesData]) => ({
-                ...(productsMap.get(productId) as Product),
-                ...salesData,
+                ...(productsMap.get(productId) as Product), ...salesData,
             }))
             .sort((a, b) => b.totalProfit - a.totalProfit)
             .slice(0, 5);
 
         return { 
-            revenue: totalRevenue, 
-            netProfit: totalProfit,
-            salesCount: filteredSales.length, 
-            chartData: sortedChartData,
-            topProducts: sortedTopProducts,
+            revenue: totalRevenue, netProfit: totalProfit, salesCount: filteredSales.length, 
+            chartData: sortedChartData, topProducts: sortedTopProducts
         };
-    }, [sales, products, payments, dateRange]);
-    
-    const { inventoryValue, lowStockProducts, totalOutstandingDebt } = useMemo(() => {
-        let totalInventoryValue = 0;
-        let lowStock: Product[] = [];
-        if (products) {
-            totalInventoryValue = products.reduce((sum, p) => sum + (p.purchasePrice * p.quantity), 0);
-            lowStock = products.filter(p => p.quantity <= p.minStockLevel);
+
+    }, [allSales, products, fromDate, toDate]);
+
+    // Second Memo: Calculate total inventory value and low stock products (independent of date range)
+    const { inventoryValue, lowStockProducts } = useMemo(() => {
+        if (!products) return { inventoryValue: 0, lowStockProducts: [] };
+        
+        const totalInventoryValue = products.reduce((sum, p) => sum + (p.purchasePrice * p.quantity), 0);
+        const lowStock = products.filter(p => p.quantity <= p.minStockLevel);
+
+        return { inventoryValue: totalInventoryValue, lowStockProducts: lowStock };
+    }, [products]);
+
+    // Third Memo: Calculate total outstanding debt and the data for the debt history chart
+    const { totalOutstandingDebt, debtHistoryChartData } = useMemo(() => {
+        if (!allSales || !allPayments) return { totalOutstandingDebt: 0, debtHistoryChartData: [] };
+
+        const allTransactions = [
+            ...allSales.map(s => ({ date: safeToDate(s.createdAt), amount: s.total, type: 'sale' as const })),
+            ...allPayments.map(p => ({ date: safeToDate(p.createdAt), amount: -p.amount, type: 'payment' as const }))
+        ];
+
+        // 1. Calculate total debt across all time
+        const totalDebt = allTransactions.reduce((acc, t) => acc + t.amount, 0);
+
+        // 2. Calculate debt history for the chart
+        if (!fromDate || !toDate) return { totalOutstandingDebt: totalDebt > 0 ? totalDebt : 0, debtHistoryChartData: [] };
+
+        // Find initial debt before the start of the date range
+        let runningDebt = allTransactions
+            .filter(t => t.date < fromDate)
+            .reduce((acc, t) => acc + t.amount, 0);
+
+        const dailyChanges = new Map<string, number>();
+        allTransactions
+            .filter(t => t.date >= fromDate && t.date <= toDate)
+            .forEach(t => {
+                const dateStr = t.date.toISOString().split('T')[0];
+                dailyChanges.set(dateStr, (dailyChanges.get(dateStr) || 0) + t.amount);
+            });
+        
+        const chartData: {date: string, totalDebt: number}[] = [];
+        let currentDate = new Date(fromDate);
+        while (currentDate <= toDate) {
+            const dateStr = currentDate.toISOString().split('T')[0];
+            const change = dailyChanges.get(dateStr) || 0;
+            runningDebt += change;
+            chartData.push({ date: dateStr, totalDebt: runningDebt > 0 ? runningDebt : 0 });
+            currentDate.setDate(currentDate.getDate() + 1);
         }
 
-        let totalDebt = 0;
-        if (customers && sales && payments) {
-             totalDebt = customers.reduce((totalAcc, customer) => {
-                const customerSales = sales.filter(s => s.customerId === customer.id);
-                const totalSpent = customerSales.reduce((acc, s) => acc + s.total, 0);
-                const totalPaidFromSales = customerSales.reduce((acc, s) => acc + s.amountPaid, 0);
-                const totalStandalonePayments = payments.filter(p => p.customerId === customer.id).reduce((acc, p) => acc + p.amount, 0);
-                const outstandingBalance = totalSpent - totalPaidFromSales - totalStandalonePayments;
-                return totalAcc + (outstandingBalance > 0 ? outstandingBalance : 0);
-            }, 0);
-        }
+        return { totalOutstandingDebt: totalDebt > 0 ? totalDebt : 0, debtHistoryChartData: chartData };
 
-        return { 
-            inventoryValue: totalInventoryValue, 
-            lowStockProducts: lowStock,
-            totalOutstandingDebt: totalDebt
-        };
-    }, [products, customers, sales, payments]);
+    }, [allSales, allPayments, fromDate, toDate]);
 
 
     const isLoading = isUserLoading || isLoadingProducts || isLoadingSales || isLoadingCustomers || isLoadingPayments;
@@ -206,15 +211,14 @@ export default function DashboardPage() {
             />
 
             <div className="grid gap-4 md:gap-8 lg:grid-cols-2">
-                <Card className="lg:col-span-2">
+                 <Card className="lg:col-span-2">
                     <CardHeader>
                         <CardTitle>Analyse des revenus et bénéfices</CardTitle>
+                         <CardDescription>Performance financière pour la période sélectionnée.</CardDescription>
                     </CardHeader>
                     <CardContent>
                         {chartData.length > 0 ? (
-                            <SalesChart 
-                                data={chartData} 
-                            />
+                            <SalesChart data={chartData} />
                         ) : (
                             <div className="flex h-[350px] items-center justify-center text-muted-foreground">
                                 Aucune donnée de vente pour la période sélectionnée.
@@ -224,13 +228,12 @@ export default function DashboardPage() {
                 </Card>
                  <Card className="lg:col-span-2">
                     <CardHeader>
-                        <CardTitle>Mouvement des Dettes</CardTitle>
+                        <CardTitle>Historique du Total des Dettes</CardTitle>
+                        <CardDescription>Évolution du montant total dû par tous les clients au fil du temps.</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        {chartData.length > 0 ? (
-                            <SalesAndDebtsChart 
-                                data={chartData} 
-                            />
+                        {debtHistoryChartData.length > 0 ? (
+                            <TotalDebtChart data={debtHistoryChartData} />
                         ) : (
                             <div className="flex h-[350px] items-center justify-center text-muted-foreground">
                                 Aucune donnée pour la période sélectionnée.
