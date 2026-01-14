@@ -3,9 +3,9 @@
 
 import { useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { useEffect, Suspense } from 'react';
-import { LoginForm } from '@/components/auth/login-form';
+import { useEffect } from 'react';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
+import { LandingPage } from '@/components/landing/landing-page';
 
 function HomePageContent() {
     const { user, isUserLoading } = useUser();
@@ -26,13 +26,9 @@ function HomePageContent() {
     }
 
     return (
-        <main className="flex min-h-screen flex-col items-center justify-center p-8">
-             <div className="flex min-h-screen items-center justify-center p-4">
-                <Suspense fallback={<div className="text-center">Chargement...</div>}>
-                    <LoginForm />
-                </Suspense>
-            </div>
-        </main>
+      <main className="flex min-h-screen flex-col items-center justify-center">
+        <LandingPage />
+      </main>
     );
 }
 
