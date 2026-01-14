@@ -1,43 +1,39 @@
-/** @type {import('next').NextConfig} */
-import withPWAInit from '@ducanh2912/next-pwa';
 
-const withPWA = withPWAInit({
+import withPWA from '@ducanh2912/next-pwa';
+
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  // Your Next.js config...
+};
+
+const withPWAConfig = withPWA({
   dest: 'public',
-  disable: process.env.NODE_ENV === 'development',
   register: true,
   skipWaiting: true,
+  disable: process.env.NODE_ENV === 'development',
   runtimeCaching: [
-    // Your runtime caching strategies here.
-    // Example: Caching Google Fonts
     {
-      urlPattern: /^https://fonts\.googleapis\.com\/.*/i,
+      urlPattern: new RegExp('^https://fonts.googleapis.com/.*', 'i'),
       handler: 'CacheFirst',
       options: {
         cacheName: 'google-fonts-cache',
         expiration: {
           maxEntries: 10,
-          maxAgeSeconds: 60 * 60 * 24 * 365, // 365 days
-        },
-        cacheableResponse: {
-          statuses: [0, 200],
+          maxAgeSeconds: 60 * 60 * 24 * 365, // 1 year
         },
       },
     },
     {
-      urlPattern: /^https://fonts\.gstatic\.com\/.*/i,
+      urlPattern: new RegExp('^https://fonts.gstatic.com/.*', 'i'),
       handler: 'CacheFirst',
       options: {
-        cacheName: 'gstatic-fonts-cache',
+        cacheName: 'google-fonts-webfonts-cache',
         expiration: {
           maxEntries: 10,
-          maxAgeSeconds: 60 * 60 * 24 * 365, // 365 days
-        },
-        cacheableResponse: {
-          statuses: [0, 200],
+          maxAgeSeconds: 60 * 60 * 24 * 365, // 1 year
         },
       },
     },
-     // Example: Caching images
     {
       urlPattern: /\.(?:png|gif|jpg|jpeg|svg)$/,
       handler: 'CacheFirst',
@@ -49,12 +45,14 @@ const withPWA = withPWAInit({
         },
       },
     },
+    {
+      urlPattern: /\.(?:js|css)$/,
+      handler: 'StaleWhileRevalidate',
+      options: {
+        cacheName: 'static-resources',
+      },
+    },
   ],
 });
 
-const nextConfig = {
-  // Your Next.js config options here
-  reactStrictMode: true,
-};
-
-export default withPWA(nextConfig);
+export default withPWAConfig(nextConfig);
