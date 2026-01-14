@@ -11,11 +11,9 @@ import {
   ShoppingBasket,
   Package,
   History,
-  Bell,
   Settings,
   Truck,
   Users,
-  Cookie
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -45,7 +43,6 @@ const navLinks = [
   { href: '/products', label: 'Produits', icon: Package },
   { href: '/customers', label: 'Clients', icon: Users },
   { href: '/sales-history', label: 'Historique des Ventes', icon: History },
-  { href: '/notifications', label: 'Alertes', icon: Bell },
 ];
 
 export function AppHeader() {

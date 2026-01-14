@@ -10,9 +10,6 @@ import {
   Package,
   Users,
   History,
-  Bell,
-  Truck,
-  Cookie
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge'; // Assuming you have a Badge component
@@ -52,20 +49,6 @@ export function AppSidebar() {
                 {link.label}
               </Link>
             ))}
-             <Link
-                href="/notifications"
-                className={cn(
-                  'flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary',
-                  pathname.startsWith('/notifications') && 'bg-muted text-primary'
-                )}
-              >
-                <Bell className="h-4 w-4" />
-                Alertes
-                {/* Example of a badge. You would get the count from a hook or prop */}
-                {/* <Badge className="ml-auto flex h-6 w-6 shrink-0 items-center justify-center rounded-full">
-                  5
-                </Badge> */}
-              </Link>
           </nav>
         </div>
       </div>
