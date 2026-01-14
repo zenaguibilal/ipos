@@ -1,4 +1,3 @@
-
 import { Timestamp } from "firebase/firestore";
 
 export interface Product {
@@ -68,20 +67,13 @@ export interface CustomerWithSalesData extends Customer {
     isReminderDue?: boolean;
 }
 
-export interface NotificationItem {
-  id: string;
-  type: 'stock' | 'payment';
-  message: string;
-  relatedId: string; // productId or customerId
-  date: Date;
-  isRead: boolean;
-}
-
 
 export interface ChartData {
   date: string;
   revenue: number;
   profit?: number;
+  newDebt?: number;
+  payments?: number;
 }
 
 export interface TopProduct extends Product {

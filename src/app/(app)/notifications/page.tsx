@@ -1,16 +1,29 @@
-
 'use client';
 
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useMemo } from 'react';
 import { collection } from 'firebase/firestore';
-import type { Product, Customer, Sale, Payment, NotificationItem } from '@/lib/types';
+import type { Product, Customer, Sale, Payment } from '@/lib/types';
 import { getDate } from 'date-fns';
-import { NotificationCard } from '@/components/notifications/notification-card';
 import { NotificationFilters, type FilterType } from '@/components/notifications/notification-filters';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Bell, Archive, Users } from 'lucide-react';
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import { Archive, User, ArrowRight, BellOff } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
+
+// Define the NotificationItem type locally as it might be specific to this page now
+export interface NotificationItem {
+  id: string;
+  type: 'stock' | 'payment';
+  message: string;
+  relatedId: string; // productId or customerId
+  date: Date;
+  isRead: boolean;
+}
 
 export default function NotificationsPage() {
     const { user, isUserLoading } = useUser();
@@ -36,9 +49,9 @@ export default function NotificationsPage() {
         }
     }, [user, isUserLoading, router]);
 
-    const { notifications, lowStockCount, latePaymentsCount } = useMemo(() => {
+    const { notifications } = useMemo(() => {
         if (!products || !customers || !sales || !payments) {
-            return { notifications: [], lowStockCount: 0, latePaymentsCount: 0 };
+            return { notifications: [] };
         }
 
         const today = new Date();
@@ -57,7 +70,6 @@ export default function NotificationsPage() {
             }));
 
         // 2. Late Payment Notifications
-        let totalDebt = 0;
         const customerData = customers.map(customer => {
             const customerSales = sales.filter(s => s.customerId === customer.id);
             const totalSpent = customerSales.reduce((acc, s) => acc + s.total, 0);
@@ -92,8 +104,6 @@ export default function NotificationsPage() {
         
         return {
             notifications: allNotifications,
-            lowStockCount: lowStockNotifications.length,
-            latePaymentsCount: latePaymentNotifications.length
         };
     }, [products, customers, sales, payments]);
 
@@ -104,67 +114,78 @@ export default function NotificationsPage() {
 
     const isLoading = isUserLoading || isLoadingProducts || isLoadingCustomers || isLoadingSales || isLoadingPayments;
 
+    const handleActionClick = (notification: NotificationItem) => {
+        if (notification.type === 'stock') {
+            router.push('/products');
+        } else if (notification.type === 'payment') {
+            router.push(`/customers/${notification.relatedId}`);
+        }
+    };
+
+
     if (isLoading || !user) {
         return <div className="flex h-full items-center justify-center"><p>Chargement des notifications...</p></div>;
     }
 
     return (
         <main className="flex-1 overflow-auto p-4 sm:p-6">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
-                <div>
-                    <h1 className="text-2xl font-bold">Centre de Notifications</h1>
-                    <p className="text-muted-foreground">Alertes importantes concernant votre stock et les paiements.</p>
-                </div>
-                <NotificationFilters currentFilter={filter} onFilterChange={setFilter} />
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-6">
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Total des Alertes</CardTitle>
-                        <Bell className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{notifications.length}</div>
-                        <p className="text-xs text-muted-foreground">Toutes les alertes actives</p>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Alertes de Stock</CardTitle>
-                        <Archive className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{lowStockCount}</div>
-                        <p className="text-xs text-muted-foreground">Produits à réapprovisionner</p>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Retards de Paiement</CardTitle>
-                        <Users className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{latePaymentsCount}</div>
-                        <p className="text-xs text-muted-foreground">Clients avec paiements en retard</p>
-                    </CardContent>
-                </Card>
-            </div>
-
-            {filteredNotifications.length === 0 ? (
-                <div className="flex h-60 items-center justify-center rounded-md border-2 border-dashed border-border bg-card">
-                    <div className="text-center">
-                        <h3 className="text-xl font-bold tracking-tight">Tout est en ordre !</h3>
-                        <p className="text-sm text-muted-foreground">Aucune notification pour le moment.</p>
+            <Card>
+                <CardHeader>
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                        <div>
+                            <CardTitle className="text-2xl font-bold">Centre de Notifications</CardTitle>
+                            <CardDescription>Alertes importantes concernant votre stock et les paiements.</CardDescription>
+                        </div>
+                        <NotificationFilters currentFilter={filter} onFilterChange={setFilter} />
                     </div>
-                </div>
-            ) : (
-                <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-                    {filteredNotifications.map(notification => (
-                        <NotificationCard key={notification.id} notification={notification} />
-                    ))}
-                </div>
-            )}
+                </CardHeader>
+
+                <CardContent>
+                    {filteredNotifications.length === 0 ? (
+                        <div className="flex h-60 items-center justify-center rounded-md border-2 border-dashed border-border bg-background">
+                            <div className="text-center">
+                                <BellOff className="mx-auto h-12 w-12 text-muted-foreground" />
+                                <h3 className="mt-4 text-xl font-bold tracking-tight">Tout est en ordre !</h3>
+                                <p className="mt-2 text-sm text-muted-foreground">Aucune notification pour le moment.</p>
+                            </div>
+                        </div>
+                    ) : (
+                         <div className="overflow-x-auto">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead className="w-[120px]">Type</TableHead>
+                                        <TableHead>Message</TableHead>
+                                        <TableHead className="w-[180px] hidden md:table-cell">Date</TableHead>
+                                        <TableHead className="w-[100px] text-right">Action</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {filteredNotifications.map(notification => (
+                                        <TableRow key={notification.id}>
+                                            <TableCell>
+                                                <div className={cn("flex items-center gap-2 font-semibold",
+                                                    notification.type === 'stock' ? 'text-yellow-600' : 'text-destructive'
+                                                )}>
+                                                    {notification.type === 'stock' ? <Archive className="h-4 w-4" /> : <User className="h-4 w-4" />}
+                                                    <span>{notification.type === 'stock' ? 'Stock' : 'Paiement'}</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>{notification.message}</TableCell>
+                                            <TableCell className="hidden md:table-cell">{format(notification.date, 'd MMM yyyy, HH:mm', { locale: fr })}</TableCell>
+                                            <TableCell className="text-right">
+                                                <Button variant="outline" size="sm" onClick={() => handleActionClick(notification)}>
+                                                    Voir <ArrowRight className="ml-2 h-4 w-4" />
+                                                </Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
         </main>
     );
 }
