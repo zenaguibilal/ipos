@@ -30,6 +30,7 @@ export default function BreadOrdersPage() {
 
     const ordersQuery = useMemoFirebase(() => {
         if (!user || !firestore) return null;
+        // We will sort on the client-side to handle the delivered status
         return query(collection(firestore, 'users', user.uid, 'breadOrders'), orderBy('createdAt', 'asc'));
     }, [user, firestore]);
     const { data: orders, isLoading: isLoadingOrders } = useCollection<BreadOrder>(ordersQuery);
@@ -46,14 +47,21 @@ export default function BreadOrdersPage() {
         const totalQty = orders.reduce((sum, order) => sum + order.quantity, 0);
         const deliveredQty = orders.filter(o => o.isDelivered).reduce((sum, order) => sum + order.quantity, 0);
 
-        let filtered = orders;
+        let processedOrders = [...orders].sort((a, b) => {
+            // Sort undelivered orders to the top
+            if (a.isDelivered && !b.isDelivered) return 1;
+            if (!a.isDelivered && b.isDelivered) return -1;
+            // For orders with the same delivery status, sort by creation time (already handled by query)
+            return 0;
+        });
+
         if (searchQuery) {
             const lowercasedQuery = searchQuery.toLowerCase();
-            filtered = orders.filter(order => order.name.toLowerCase().includes(lowercasedQuery));
+            processedOrders = processedOrders.filter(order => order.name.toLowerCase().includes(lowercasedQuery));
         }
 
         return { 
-            filteredOrders: filtered, 
+            filteredOrders: processedOrders, 
             totalQuantity: totalQty, 
             deliveredQuantity: deliveredQty, 
             undeliveredQuantity: totalQty - deliveredQty 
