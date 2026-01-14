@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useUser, useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { collection, query, where, doc, getDocs, serverTimestamp, runTransaction } from 'firebase/firestore';
@@ -14,6 +14,8 @@ import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
+import { AddPaymentForm } from '@/components/customers/add-payment-form';
+
 
 // Define the NotificationItem type locally
 export interface NotificationItem {
@@ -32,19 +34,18 @@ export default function NotificationsPage() {
     const router = useRouter();
 
     const [processingPOId, setProcessingPOId] = useState<string | null>(null);
+    const [payingCustomer, setPayingCustomer] = useState<Customer | null>(null);
 
     // --- Data Fetching ---
     const productsCollectionRef = useMemoFirebase(() => (user && firestore) ? collection(firestore, 'users', user.uid, 'products') : null, [user, firestore]);
     const customersCollectionRef = useMemoFirebase(() => (user && firestore) ? collection(firestore, 'users', user.uid, 'customers') : null, [user, firestore]);
     const salesCollectionRef = useMemoFirebase(() => (user && firestore) ? collection(firestore, 'users', user.uid, 'sales') : null, [user, firestore]);
     const paymentsCollectionRef = useMemoFirebase(() => (user && firestore) ? collection(firestore, 'users', user.uid, 'payments') : null, [user, firestore]);
-    const purchaseOrdersCollectionRef = useMemoFirebase(() => (user && firestore) ? collection(firestore, 'users', user.uid, 'purchaseOrders') : null, [user, firestore]);
-
+    
     const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsCollectionRef);
     const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersCollectionRef);
     const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesCollectionRef);
     const { data: payments, isLoading: isLoadingPayments } = useCollection<Payment>(paymentsCollectionRef);
-    const { data: purchaseOrders, isLoading: isLoadingPOs } = useCollection<PurchaseOrder>(purchaseOrdersCollectionRef);
     
 
     useEffect(() => {
@@ -76,7 +77,6 @@ export default function NotificationsPage() {
                 let targetPORef: any = null;
 
                 if (!pendingPOsSnapshot.empty) {
-                    // Use the first pending PO found
                     const poDoc = pendingPOsSnapshot.docs[0];
                     targetPO = poDoc.data() as PurchaseOrder;
                     targetPO.id = poDoc.id;
@@ -86,18 +86,17 @@ export default function NotificationsPage() {
                 const poItem = {
                     productId: product.id,
                     productName: product.name,
-                    quantity: product.minStockLevel > 0 ? product.minStockLevel : 10, // Suggest a reorder quantity
+                    quantity: product.minStockLevel > 0 ? product.minStockLevel : 10,
                     purchasePrice: product.purchasePrice
                 };
 
                 if (targetPO && targetPORef) {
-                    // Add to existing pending PO
                     const existingItems = targetPO.items || [];
                     const itemExists = existingItems.some(item => item.productId === productId);
                     
                     if (itemExists) {
                         toast.info(`"${product.name}" est déjà dans le bon de commande en attente.`);
-                        return; // Stop transaction
+                        return;
                     }
                     
                     const newItems = [...existingItems, poItem];
@@ -106,7 +105,6 @@ export default function NotificationsPage() {
                     toast.success(`"${product.name}" ajouté au bon de commande ${targetPO.poNumber}.`);
 
                 } else {
-                    // Create a new PO
                     const newPORef = doc(collection(firestore, 'users', user.uid, 'purchaseOrders'));
                     const newPOData = {
                         poNumber: `BC-${Date.now()}`,
@@ -176,8 +174,8 @@ export default function NotificationsPage() {
                 type: 'payment',
                 message: `Paiement en retard pour ${c.firstName} ${c.lastName}. Solde: ${c.outstandingBalance.toFixed(2)} DA`,
                 relatedId: c.id,
-                actionText: 'Voir le client',
-                actionHref: `/customers/${c.id}`
+                actionText: 'Encaisser un paiement',
+                action: () => setPayingCustomer(c as Customer),
             }));
         
         return {
@@ -186,7 +184,7 @@ export default function NotificationsPage() {
         };
     }, [products, customers, sales, payments]);
 
-    const isLoading = isUserLoading || isLoadingProducts || isLoadingCustomers || isLoadingSales || isLoadingPayments || isLoadingPOs;
+    const isLoading = isUserLoading || isLoadingProducts || isLoadingCustomers || isLoadingSales || isLoadingPayments;
 
     if (isLoading || !user) {
         return <div className="flex h-full items-center justify-center"><p>Chargement des notifications...</p></div>;
@@ -245,51 +243,59 @@ export default function NotificationsPage() {
     };
 
     return (
-        <main className="flex-1 overflow-auto p-4 sm:p-6">
-            <div className="mb-6">
-                <h1 className="text-2xl font-bold">Centre de Notifications</h1>
-                <p className="text-muted-foreground">Alertes importantes concernant votre stock et les paiements.</p>
-            </div>
-            
-            {totalNotifications === 0 && !isLoading ? (
-                <div className="flex h-60 items-center justify-center rounded-md border-2 border-dashed border-border bg-card">
-                    <div className="text-center">
-                        <BellOff className="mx-auto h-12 w-12 text-muted-foreground" />
-                        <h3 className="mt-4 text-xl font-bold tracking-tight">Tout est en ordre !</h3>
-                        <p className="mt-2 text-sm text-muted-foreground">Aucune notification pour le moment.</p>
-                    </div>
-                </div>
-            ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Alerte de Stock Faible ({lowStockNotifications.length})</CardTitle>
-                            <CardDescription>Produits qui nécessitent un réapprovisionnement.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                             {lowStockNotifications.length > 0 ? 
-                                renderNotificationList(lowStockNotifications, 'stock') : 
-                                <p className="text-sm text-muted-foreground">Aucun produit en stock faible.</p>
-                            }
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Alerte de Paiement ({latePaymentNotifications.length})</CardTitle>
-                            <CardDescription>Clients qui ont dépassé leur date de règlement.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                             {latePaymentNotifications.length > 0 ? 
-                                renderNotificationList(latePaymentNotifications, 'payment') : 
-                                <p className="text-sm text-muted-foreground">Aucun paiement en retard.</p>
-                            }
-                        </CardContent>
-                    </Card>
-                </div>
+        <>
+            {payingCustomer && user && (
+                <AddPaymentForm
+                    isOpen={!!payingCustomer}
+                    onOpenChange={() => setPayingCustomer(null)}
+                    userId={user.uid}
+                    customer={payingCustomer}
+                />
             )}
-        </main>
+            <main className="flex-1 overflow-auto p-4 sm:p-6">
+                <div className="mb-6">
+                    <h1 className="text-2xl font-bold">Centre de Notifications</h1>
+                    <p className="text-muted-foreground">Alertes importantes concernant votre stock et les paiements.</p>
+                </div>
+                
+                {totalNotifications === 0 && !isLoading ? (
+                    <div className="flex h-60 items-center justify-center rounded-md border-2 border-dashed border-border bg-card">
+                        <div className="text-center">
+                            <BellOff className="mx-auto h-12 w-12 text-muted-foreground" />
+                            <h3 className="mt-4 text-xl font-bold tracking-tight">Tout est en ordre !</h3>
+                            <p className="mt-2 text-sm text-muted-foreground">Aucune notification pour le moment.</p>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Alerte de Stock Faible ({lowStockNotifications.length})</CardTitle>
+                                <CardDescription>Produits qui nécessitent un réapprovisionnement.</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                 {lowStockNotifications.length > 0 ? 
+                                    renderNotificationList(lowStockNotifications, 'stock') : 
+                                    <p className="text-sm text-muted-foreground">Aucun produit en stock faible.</p>
+                                }
+                            </CardContent>
+                        </Card>
+
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Alerte de Paiement ({latePaymentNotifications.length})</CardTitle>
+                                <CardDescription>Clients qui ont dépassé leur date de règlement.</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                 {latePaymentNotifications.length > 0 ? 
+                                    renderNotificationList(latePaymentNotifications, 'payment') : 
+                                    <p className="text-sm text-muted-foreground">Aucun paiement en retard.</p>
+                                }
+                            </CardContent>
+                        </Card>
+                    </div>
+                )}
+            </main>
+        </>
     );
 }
-
-    
