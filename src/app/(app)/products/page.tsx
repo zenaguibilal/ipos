@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { AddProductForm } from './add-product-form';
 import { EditProductForm } from './edit-product-form';
 import { DeleteProductDialog } from './delete-product-dialog';
-import { ProductImportDialog } from './product-import-dialog';
+import { ProductImportDialog } from '@/components/products/product-import-dialog';
 import { MoreHorizontal, Pencil, Trash2, ArrowUp, ArrowDown, Upload, Download, Image as ImageIcon, FilePlus2, ListOrdered, ShoppingCart, Search } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
@@ -280,7 +280,7 @@ export default function ProductsPage() {
                     isOpen={!!editingProduct}
                     onOpenChange={(isOpen) => !isOpen && setEditingProduct(null)}
                     userId={user.uid}
-                    product={editingProduct}
+                    product={editingProduct as ProductWithLegacyBarcode}
                 />
             )}
             {deletingProduct && (
@@ -445,3 +445,5 @@ export default function ProductsPage() {
         </>
     );
 }
+
+    
