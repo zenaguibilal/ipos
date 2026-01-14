@@ -38,29 +38,30 @@ export default function CustomerDetailPage() {
         (user && firestore) ? doc(firestore, 'users', user.uid, 'customers', customerId) : null,
     [user, firestore, customerId]);
     
-    const salesQuery = useMemoFirebase(() => 
-        (user && firestore) ? query(
-            collection(firestore, 'users', user.uid, 'sales'), 
-            where('customerId', '==', customerId),
-            orderBy('createdAt', 'desc')
-        ) : null, 
-    [user, firestore, customerId]);
+    // Fetch all sales and payments, then filter client-side.
+    // This avoids the need for a composite index on (customerId, createdAt).
+    const allSalesCollectionRef = useMemoFirebase(() => 
+        (user && firestore) ? collection(firestore, 'users', user.uid, 'sales') : null, 
+    [user, firestore]);
 
-    const paymentsQuery = useMemoFirebase(() => 
-        (user && firestore) ? query(
-            collection(firestore, 'users', user.uid, 'payments'), 
-            where('customerId', '==', customerId),
-            orderBy('createdAt', 'desc')
-        ) : null, 
-    [user, firestore, customerId]);
+    const allPaymentsCollectionRef = useMemoFirebase(() => 
+        (user && firestore) ? collection(firestore, 'users', user.uid, 'payments') : null, 
+    [user, firestore]);
 
     const companyDocRef = useMemoFirebase(() => user && firestore ? doc(firestore, 'users', user.uid, 'companyProfile', 'main') : null, [user, firestore]);
 
     const { data: customer, isLoading: isLoadingCustomer } = useDoc<Customer>(customerDocRef);
-    const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
-    const { data: payments, isLoading: isLoadingPayments } = useCollection<Payment>(paymentsQuery);
+    const { data: allSales, isLoading: isLoadingSales } = useCollection<Sale>(allSalesCollectionRef);
+    const { data: allPayments, isLoading: isLoadingPayments } = useCollection<Payment>(allPaymentsCollectionRef);
     const { data: companyProfile, isLoading: isLoadingCompany } = useDoc<CompanyProfile>(companyDocRef);
 
+    // Memoized client-side filtering
+    const { customerSales, customerPayments } = useMemo(() => {
+        if (!customerId) return { customerSales: [], customerPayments: [] };
+        const sales = (allSales || []).filter(s => s.customerId === customerId);
+        const payments = (allPayments || []).filter(p => p.customerId === customerId);
+        return { customerSales: sales, customerPayments: payments };
+    }, [allSales, allPayments, customerId]);
 
     useEffect(() => {
         if (!isUserLoading && !user) {
@@ -69,7 +70,8 @@ export default function CustomerDetailPage() {
     }, [user, isUserLoading, router]);
 
     const { totalSpent, totalPaid, outstandingBalance, lastActivityDate } = useMemo(() => {
-        if (!sales || !payments) return { totalSpent: 0, totalPaid: 0, outstandingBalance: 0, lastActivityDate: null };
+        const sales = customerSales;
+        const payments = customerPayments;
         
         const totalSalesAmount = sales.reduce((sum, sale) => sum + sale.total, 0);
         const totalPaidWithinSales = sales.reduce((sum, sale) => sum + sale.amountPaid, 0);
@@ -89,7 +91,7 @@ export default function CustomerDetailPage() {
             outstandingBalance: balance < 0.01 ? 0 : balance,
             lastActivityDate: lastActivity
         };
-    }, [sales, payments]);
+    }, [customerSales, customerPayments]);
 
     const isLoading = isUserLoading || isLoadingCustomer || isLoadingSales || isLoadingPayments || isLoadingCompany;
 
@@ -199,8 +201,8 @@ export default function CustomerDetailPage() {
                         />
 
                         <CustomerHistory 
-                            sales={sales || []}
-                            payments={payments || []}
+                            sales={customerSales || []}
+                            payments={customerPayments || []}
                             isLoading={isLoadingSales || isLoadingPayments}
                             onViewSale={setSelectedSale}
                         />
