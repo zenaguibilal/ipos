@@ -10,8 +10,9 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button";
-import type { Sale, CompanyProfile } from "@/lib/types";
-import { CheckCircle, Printer, Download } from "lucide-react";
+import type { Sale, Customer, CompanyProfile } from "@/lib/types";
+import { CheckCircle, MessageSquare, Printer, Download } from "lucide-react";
+import { toast } from "sonner";
 import { ThermalReceipt } from "../sales/thermal-receipt";
 import { useRef, useState, useEffect } from 'react';
 
@@ -20,10 +21,11 @@ interface SaleCompleteDialogProps {
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
     sale: Sale;
+    customer: Customer | null;
     companyProfile: CompanyProfile | null;
 }
 
-export function SaleCompleteDialog({ isOpen, onOpenChange, sale, companyProfile }: SaleCompleteDialogProps) {
+export function SaleCompleteDialog({ isOpen, onOpenChange, sale, customer, companyProfile }: SaleCompleteDialogProps) {
     const receiptRef = useRef<HTMLDivElement>(null);
     const [html2pdf, setHtml2pdf] = useState<any>(null);
 
@@ -34,6 +36,20 @@ export function SaleCompleteDialog({ isOpen, onOpenChange, sale, companyProfile 
             });
         }
     }, [isOpen]);
+    
+    const handleWhatsAppClick = () => {
+        if (!customer || !customer.phone) {
+            toast.error("Le numéro de téléphone du client n'est pas disponible.");
+            return;
+        }
+
+        const companyName = companyProfile?.companyName || 'notre magasin';
+        const message = `Bonjour ${customer.firstName} ${customer.lastName}, merci pour votre achat chez ${companyName}. Le total de votre facture N°${sale.invoiceNumber} est de ${sale.total.toFixed(2)} DA. Montant payé : ${sale.amountPaid.toFixed(2)} DA. Solde restant : ${sale.remainingBalance.toFixed(2)} DA.`;
+        
+        const whatsappUrl = `https://wa.me/${customer.phone.replace(/\s+/g, '')}?text=${encodeURIComponent(message)}`;
+        window.open(whatsappUrl, '_blank');
+        onOpenChange(false); // Close dialog after opening whatsapp
+    };
     
     const handlePrint = () => {
         const printableContent = document.getElementById('receipt-for-print');
@@ -72,6 +88,8 @@ export function SaleCompleteDialog({ isOpen, onOpenChange, sale, companyProfile 
         html2pdf().from(element).set(opt).save();
     };
 
+    const canSendWhatsApp = customer && customer.phone;
+
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent onInteractOutside={(e) => e.preventDefault()} className="print-hide sm:max-w-md">
@@ -103,6 +121,12 @@ export function SaleCompleteDialog({ isOpen, onOpenChange, sale, companyProfile 
                             PDF
                         </Button>
                     </div>
+                    {canSendWhatsApp && (
+                        <Button onClick={handleWhatsAppClick} className="w-full bg-green-600 hover:bg-green-700">
+                            <MessageSquare className="mr-2 h-4 w-4" />
+                            Envoyer reçu WhatsApp
+                        </Button>
+                    )}
                     <Button variant="secondary" onClick={() => onOpenChange(false)} className="w-full">
                         Nouvelle Vente
                     </Button>

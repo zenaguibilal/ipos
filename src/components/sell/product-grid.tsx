@@ -69,6 +69,7 @@ export function ProductGrid({ products, onAddToCart, onAddNewProduct, onAddCusto
             if (event.key === 'F2') {
                 event.preventDefault();
                 searchInputRef.current?.focus();
+                searchInputRef.current?.select();
             }
         };
         window.addEventListener('keydown', handleKeyDown);
