@@ -16,14 +16,25 @@ interface BeforeInstallPromptEvent extends Event {
 
 export function InstallPWAButton() {
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [isAppInstalled, setIsAppInstalled] = useState(false);
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
-      setInstallPrompt(e as BeforeInstallPromptEvent);
+      // Check if the app is already installed
+      if (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone) {
+          setIsAppInstalled(true);
+      } else {
+          setInstallPrompt(e as BeforeInstallPromptEvent);
+      }
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    // Also check on initial load
+    if (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone) {
+        setIsAppInstalled(true);
+    }
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
@@ -38,13 +49,14 @@ export function InstallPWAButton() {
     const { outcome } = await installPrompt.userChoice;
     if (outcome === 'accepted') {
       console.log('User accepted the install prompt');
+      setIsAppInstalled(true);
     } else {
       console.log('User dismissed the install prompt');
     }
     setInstallPrompt(null);
   };
 
-  if (!installPrompt) {
+  if (!installPrompt || isAppInstalled) {
     return null;
   }
 
