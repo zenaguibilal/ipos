@@ -1,28 +1,15 @@
 /** @type {import('next').NextConfig} */
+import withPWA from '@ducanh2912/next-pwa';
 
-import withPWAInit from "@ducanh2912/next-pwa";
-
-const withPWA = withPWAInit({
-  dest: "public",
-  disable: process.env.NODE_ENV === "development",
-  // add your own strategies
+const pwa = withPWA({
+  dest: 'public',
+  register: true,
+  skipWaiting: true,
+  disable: process.env.NODE_ENV === 'development',
 });
 
 const nextConfig = {
-    images: {
-        remotePatterns: [
-            {
-                protocol: 'https',
-                hostname: 'lh3.googleusercontent.com',
-                port: '',
-                pathname: '/a/**',
-            },
-             {
-                protocol: 'https',
-                hostname: 'picsum.photos',
-            }
-        ],
-    },
+  // any other next.js config you have
 };
 
-export default withPWA(nextConfig);
+export default pwa(nextConfig);
