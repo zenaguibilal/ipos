@@ -7,11 +7,12 @@ import { OrderCard } from './order-card';
 
 interface OrderListProps {
     orders: BreadOrder[];
-    onUpdate: (id: string, field: keyof Omit<BreadOrder, 'id' | 'name' | 'quantity' | 'createdAt'>, value: boolean) => void;
+    onUpdateToggles: (id: string, field: 'isPaid' | 'isDelivered', value: boolean) => void;
+    onEdit: (order: BreadOrder) => void;
     onDelete: (id: string) => void;
 }
 
-export function OrderList({ orders, onUpdate, onDelete }: OrderListProps) {
+export function OrderList({ orders, onUpdateToggles, onEdit, onDelete }: OrderListProps) {
     if (orders.length === 0) {
         return (
             <Card className="flex h-40 items-center justify-center rounded-md border-2 border-dashed border-border bg-transparent shadow-none">
@@ -26,7 +27,8 @@ export function OrderList({ orders, onUpdate, onDelete }: OrderListProps) {
                 <OrderCard 
                     key={order.id}
                     order={order}
-                    onUpdate={onUpdate}
+                    onUpdateToggles={onUpdateToggles}
+                    onEdit={() => onEdit(order)}
                     onDelete={onDelete}
                 />
             ))}
