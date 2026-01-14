@@ -12,8 +12,9 @@ import { EditOrderForm } from '@/components/bread-orders/edit-order-form';
 import { ResetOrdersDialog } from '@/components/bread-orders/reset-orders-dialog';
 import { OrderCard } from '@/components/bread-orders/order-card';
 import type { BreadOrder } from '@/lib/types';
-import { PlusCircle, RotateCcw, Search } from 'lucide-react';
+import { PlusCircle, RotateCcw, Search, Cookie, CheckCheck, Truck } from 'lucide-react';
 import { toast } from 'sonner';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function BreadOrdersPage() {
     const { user, isUserLoading } = useUser();
@@ -39,11 +40,24 @@ export default function BreadOrdersPage() {
         }
     }, [user, isUserLoading, router]);
 
-    const filteredOrders = useMemo(() => {
-        if (!orders) return [];
-        if (!searchQuery) return orders;
-        const lowercasedQuery = searchQuery.toLowerCase();
-        return orders.filter(order => order.name.toLowerCase().includes(lowercasedQuery));
+    const { filteredOrders, totalQuantity, deliveredQuantity, undeliveredQuantity } = useMemo(() => {
+        if (!orders) return { filteredOrders: [], totalQuantity: 0, deliveredQuantity: 0, undeliveredQuantity: 0 };
+        
+        const totalQty = orders.reduce((sum, order) => sum + order.quantity, 0);
+        const deliveredQty = orders.filter(o => o.isDelivered).reduce((sum, order) => sum + order.quantity, 0);
+
+        let filtered = orders;
+        if (searchQuery) {
+            const lowercasedQuery = searchQuery.toLowerCase();
+            filtered = orders.filter(order => order.name.toLowerCase().includes(lowercasedQuery));
+        }
+
+        return { 
+            filteredOrders: filtered, 
+            totalQuantity: totalQty, 
+            deliveredQuantity: deliveredQty, 
+            undeliveredQuantity: totalQty - deliveredQty 
+        };
     }, [orders, searchQuery]);
 
 
@@ -187,6 +201,38 @@ export default function BreadOrdersPage() {
                             Ajouter
                         </Button>
                     </div>
+                </div>
+                 <div className="grid gap-4 md:grid-cols-3 mb-6">
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Total Commandé</CardTitle>
+                            <Cookie className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{totalQuantity}</div>
+                            <p className="text-xs text-muted-foreground">unités de pain au total</p>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Quantité Livrée</CardTitle>
+                            <CheckCheck className="h-4 w-4 text-green-500" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{deliveredQuantity}</div>
+                             <p className="text-xs text-muted-foreground">unités de pain livrées</p>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Quantité Restante</CardTitle>
+                            <Truck className="h-4 w-4 text-yellow-500" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{undeliveredQuantity}</div>
+                             <p className="text-xs text-muted-foreground">unités de pain à livrer</p>
+                        </CardContent>
+                    </Card>
                 </div>
 
                 {isLoading ? (
