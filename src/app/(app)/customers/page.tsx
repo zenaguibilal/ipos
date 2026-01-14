@@ -8,8 +8,8 @@ import { collection, query, orderBy } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { PlusCircle, User, Phone, CircleDollarSign, CalendarDays, AlertTriangle } from 'lucide-react';
-import { AddCustomerForm } from '@/components/customers/add-customer-form';
+import { PlusCircle, User, Phone, CircleDollarSign, CalendarDays, AlertTriangle, Search } from 'lucide-react';
+import { AddCustomerForm } from './add-customer-form';
 import type { Customer, Sale, Payment, CustomerWithSalesData } from '@/lib/types';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
@@ -97,12 +97,15 @@ export default function CustomersPage() {
             />
             <main className="flex-1 overflow-auto p-4 sm:p-6">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
-                    <Input 
-                        placeholder="Rechercher un client par nom ou téléphone..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full max-w-sm"
-                    />
+                    <div className="relative w-full max-w-sm">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input 
+                            placeholder="Rechercher un client..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="pl-9 w-full"
+                        />
+                    </div>
                     <Button onClick={() => setIsAddingCustomer(true)} className="w-full sm:w-auto">
                         <PlusCircle className="mr-2 h-4 w-4" />
                         Ajouter un client
@@ -112,7 +115,7 @@ export default function CustomersPage() {
                 {isLoading ? (
                     <div className="text-center">Chargement des données...</div>
                 ) : filteredCustomers.length > 0 ? (
-                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                    <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
                         {filteredCustomers.map(customer => (
                             <Link href={`/customers/${customer.id}`} key={customer.id} passHref>
                                 <Card className={cn(
@@ -178,5 +181,3 @@ export default function CustomersPage() {
         </>
     );
 }
-
-    

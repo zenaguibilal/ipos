@@ -15,12 +15,8 @@ interface LowStockProductsProps {
 export function LowStockProducts({ products }: LowStockProductsProps) {
     const router = useRouter();
 
-    if (products.length === 0) {
-        return null; // Don't render the card if there are no low stock products
-    }
-
     return (
-        <Card className="bg-card">
+        <Card className="bg-card h-full">
             <CardHeader>
                 <CardTitle>Produits à faible stock</CardTitle>
                 <CardDescription>
@@ -28,28 +24,36 @@ export function LowStockProducts({ products }: LowStockProductsProps) {
                 </CardDescription>
             </CardHeader>
             <CardContent>
-                 <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Produit</TableHead>
-                            <TableHead className="text-right">Quantité restante</TableHead>
-                            <TableHead className="text-right">Stock minimum</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {products.map(product => (
-                            <TableRow key={product.id} className="cursor-pointer hover:bg-muted/50">
-                                <TableCell>
-                                    <div className="font-medium">{product.name}</div>
-                                </TableCell>
-                                <TableCell className={cn("text-right font-bold", product.quantity === 0 ? "text-red-500" : "text-yellow-500")}>
-                                    {product.quantity}
-                                </TableCell>
-                                <TableCell className="text-right">{product.minStockLevel}</TableCell>
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
+                {products.length === 0 ? (
+                    <div className="flex h-24 items-center justify-center text-sm text-muted-foreground">
+                        Aucun produit en stock faible.
+                    </div>
+                 ) : (
+                    <div className="overflow-x-auto">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Produit</TableHead>
+                                    <TableHead className="text-right">Quantité restante</TableHead>
+                                    <TableHead className="text-right hidden sm:table-cell">Stock minimum</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {products.map(product => (
+                                    <TableRow key={product.id} className="cursor-pointer hover:bg-muted/50">
+                                        <TableCell>
+                                            <div className="font-medium">{product.name}</div>
+                                        </TableCell>
+                                        <TableCell className={cn("text-right font-bold", product.quantity === 0 ? "text-red-500" : "text-yellow-500")}>
+                                            {product.quantity}
+                                        </TableCell>
+                                        <TableCell className="text-right hidden sm:table-cell">{product.minStockLevel}</TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
+                )}
             </CardContent>
         </Card>
     );

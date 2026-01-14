@@ -7,11 +7,11 @@ import { useEffect, useState, useMemo } from 'react';
 import { collection, doc, writeBatch, serverTimestamp } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { AddProductForm } from '@/components/products/add-product-form';
-import { EditProductForm } from '@/components/products/edit-product-form';
-import { DeleteProductDialog } from '@/components/products/delete-product-dialog';
-import { ProductImportDialog } from '@/components/products/product-import-dialog';
-import { MoreHorizontal, Pencil, Trash2, ArrowUp, ArrowDown, Upload, Download, Image as ImageIcon, FilePlus2, ListOrdered, ShoppingCart } from 'lucide-react';
+import { AddProductForm } from './add-product-form';
+import { EditProductForm } from './edit-product-form';
+import { DeleteProductDialog } from './delete-product-dialog';
+import { ProductImportDialog } from './product-import-dialog';
+import { MoreHorizontal, Pencil, Trash2, ArrowUp, ArrowDown, Upload, Download, Image as ImageIcon, FilePlus2, ListOrdered, ShoppingCart, Search } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -299,25 +299,27 @@ export default function ProductsPage() {
            
             <main className="flex-1 overflow-auto p-4 sm:p-6">
                 <Card className="w-full bg-card">
-                    <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between pt-4 gap-2">
-                        <Input 
-                            placeholder="Rechercher par nom ou code-barres..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full max-w-sm order-1 sm:order-1"
-                        />
-                         <div className="flex gap-2 w-full sm:w-auto order-2 sm:order-2 flex-wrap justify-end">
-                            {selectedProductIds.length > 0 ? (
+                    <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between pt-4 gap-4">
+                        <div className="relative flex-grow w-full sm:w-auto sm:flex-grow-0 max-w-sm">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input 
+                                placeholder="Rechercher par nom ou code-barres..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="pl-9 w-full"
+                            />
+                        </div>
+                         <div className="flex gap-2 w-full sm:w-auto flex-wrap justify-start sm:justify-end">
+                            {selectedProductIds.length > 0 && (
                                  <Button variant="outline" onClick={handleCreatePurchaseOrder}>
                                     <ShoppingCart className="mr-2 h-4 w-4" /> Créer BC ({selectedProductIds.length})
                                 </Button>
-                            ) : (
-                                <Button asChild variant="outline">
-                                    <Link href="/products/purchase-orders">
-                                        <ListOrdered className="mr-2 h-4 w-4" /> Gérer les BC
-                                    </Link>
-                                </Button>
                             )}
+                            <Button asChild variant="outline">
+                                <Link href="/products/purchase-orders">
+                                    <ListOrdered className="mr-2 h-4 w-4" /> Gérer les BC
+                                </Link>
+                            </Button>
                            
                             <Button variant="outline" onClick={() => setIsImporting(true)}>
                                 <Upload className="mr-2 h-4 w-4" /> Importer
@@ -325,7 +327,7 @@ export default function ProductsPage() {
                             <Button variant="outline" onClick={handleExportToCSV}>
                                 <Download className="mr-2 h-4 w-4" /> Exporter
                             </Button>
-                            <Button onClick={() => setIsAddingProduct(true)} className="flex-grow sm:flex-grow-0">
+                            <Button onClick={() => setIsAddingProduct(true)}>
                                 <FilePlus2 className="mr-2 h-4 w-4" /> Ajouter
                             </Button>
                          </div>
@@ -352,12 +354,12 @@ export default function ProductsPage() {
                                             </TableHead>
                                             <TableHead className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Image</TableHead>
                                             <SortableHeader sortKey="name" className="text-left">Produit</SortableHeader>
-                                            <TableHead className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Codes-barres</TableHead>
-                                            <SortableHeader sortKey="purchasePrice" className="text-right">Prix d'achat</SortableHeader>
+                                            <TableHead className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground hidden md:table-cell">Codes-barres</TableHead>
+                                            <SortableHeader sortKey="purchasePrice" className="text-right hidden sm:table-cell">Prix d'achat</SortableHeader>
                                             <SortableHeader sortKey="price" className="text-right">Prix de vente</SortableHeader>
-                                            <SortableHeader sortKey="profitMargin" className="text-right">Marge Bénéfice</SortableHeader>
+                                            <SortableHeader sortKey="profitMargin" className="text-right hidden lg:table-cell">Marge Bénéfice</SortableHeader>
                                             <SortableHeader sortKey="quantity" className="text-right">Quantité</SortableHeader>
-                                            <TableHead className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Stock Min.</TableHead>
+                                            <TableHead className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground hidden md:table-cell">Stock Min.</TableHead>
                                             <TableHead className="relative px-4 py-3">
                                                 <span className="sr-only">Actions</span>
                                             </TableHead>
@@ -386,10 +388,10 @@ export default function ProductsPage() {
                                                     </div>
                                                 </TableCell>
                                                 <TableCell className="font-medium">{product.name}</TableCell>
-                                                <TableCell className="text-muted-foreground text-xs">{(product.barcodes?.join(', ') || product.barcode) || '-'}</TableCell>
-                                                <TableCell className="text-right">{product.purchasePrice.toFixed(2)} DA</TableCell>
+                                                <TableCell className="text-muted-foreground text-xs hidden md:table-cell">{(product.barcodes?.join(', ') || product.barcode) || '-'}</TableCell>
+                                                <TableCell className="text-right hidden sm:table-cell">{product.purchasePrice.toFixed(2)} DA</TableCell>
                                                 <TableCell className="text-right font-semibold text-primary">{product.price.toFixed(2)} DA</TableCell>
-                                                 <TableCell className={cn("text-right font-bold", getProfitMarginColor(product.profitMargin || 0))}>
+                                                 <TableCell className={cn("text-right font-bold hidden lg:table-cell", getProfitMarginColor(product.profitMargin || 0))}>
                                                     {product.profitMargin !== undefined ? `${product.profitMargin.toFixed(1)}%` : '-'}
                                                 </TableCell>
                                                 <TableCell className={cn(
@@ -399,7 +401,7 @@ export default function ProductsPage() {
                                                 )}>
                                                     {product.quantity}
                                                 </TableCell>
-                                                <TableCell className="text-right text-muted-foreground">{product.minStockLevel}</TableCell>
+                                                <TableCell className="text-right text-muted-foreground hidden md:table-cell">{product.minStockLevel}</TableCell>
                                                 <TableCell className="text-right">
                                                     <DropdownMenu>
                                                         <DropdownMenuTrigger asChild>

@@ -202,7 +202,7 @@ export default function BreadOrdersPage() {
                         </Button>
                     </div>
                 </div>
-                 <div className="grid gap-4 md:grid-cols-3 mb-6">
+                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mb-6">
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">Total Commandé</CardTitle>
@@ -213,20 +213,20 @@ export default function BreadOrdersPage() {
                             <p className="text-xs text-muted-foreground">unités de pain au total</p>
                         </CardContent>
                     </Card>
-                    <Card>
+                    <Card className="bg-green-500/20 border-green-500/50">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">Quantité Livrée</CardTitle>
-                            <CheckCheck className="h-4 w-4 text-green-500" />
+                            <CheckCheck className="h-4 w-4 text-green-700 dark:text-green-400" />
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold">{deliveredQuantity}</div>
                              <p className="text-xs text-muted-foreground">unités de pain livrées</p>
                         </CardContent>
                     </Card>
-                    <Card>
+                    <Card className="bg-yellow-500/20 border-yellow-500/50">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">Quantité Restante</CardTitle>
-                            <Truck className="h-4 w-4 text-yellow-500" />
+                            <Truck className="h-4 w-4 text-yellow-700 dark:text-yellow-400" />
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold">{undeliveredQuantity}</div>
@@ -253,7 +253,7 @@ export default function BreadOrdersPage() {
                         </div>
                     </div>
                 ) : (
-                    <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                    <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
                         {filteredOrders.map(order => (
                             <OrderCard 
                                 key={order.id}

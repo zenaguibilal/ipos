@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { collection, doc, writeBatch, serverTimestamp } from 'firebase/firestore';
 import { toast } from 'sonner';
-import { HelpCircle, UserPlus, UserCheck } from 'lucide-react';
+import { HelpCircle } from 'lucide-react';
 
 import { AddProductForm } from '@/components/sell/add-product-form';
 import { AddCustomProductForm } from '@/components/sell/add-custom-product-form';
@@ -18,7 +18,6 @@ import { AddCustomerForm } from '@/components/customers/add-customer-form';
 import type { Product, Sale, SaleItem, CompanyProfile, Customer } from '@/lib/types';
 import { ProductGrid } from '@/components/sell/product-grid';
 import { CartPanel } from '@/components/sell/cart-panel';
-import { Combobox } from '@/components/ui/combobox';
 
 export type ProductWithOptionalBarcode = Product & { barcode?: string };
 export type CartItem = SaleItem & { cartQuantity: number };
@@ -310,14 +309,14 @@ export default function SellPage() {
                     isOpen={isSaleComplete}
                     onOpenChange={handleNewSale}
                     sale={lastSale}
-                    companyProfile={companyProfile}
                     customer={customers?.find(c => c.id === lastSale.customerId) || null}
+                    companyProfile={companyProfile}
                 />
             )}
             
-            <div className="grid grid-cols-1 lg:grid-cols-3 h-full max-h-full overflow-hidden">
-                {/* Left Panel: Product Selection */}
-                <div className="lg:col-span-2 h-full flex flex-col p-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 h-full max-h-full overflow-hidden">
+                {/* Main Panel: Product Selection */}
+                <div className="md:col-span-2 lg:col-span-3 h-full flex flex-col p-4 gap-4">
                     <ProductGrid 
                         products={products || []} 
                         onAddToCart={addProductToCart} 
@@ -326,8 +325,8 @@ export default function SellPage() {
                     />
                 </div>
 
-                {/* Right Panel: Cart */}
-                <div className="lg:col-span-1 h-full flex flex-col bg-card border-l p-4">
+                {/* Side Panel: Cart */}
+                <div className="md:col-span-1 lg:col-span-1 h-full flex flex-col bg-card border-l p-4">
                    <CartPanel
                         cart={activeSession.cart}
                         onUpdateQuantity={updateCartQuantity}
@@ -335,8 +334,8 @@ export default function SellPage() {
                         onFinalize={() => setIsPaymentDialogOpen(true)}
                         sessions={sessions}
                         activeSessionIndex={activeSessionIndex}
-                        onSessionAdd={handleAddSession}
                         onSessionChange={setActiveSessionIndex}
+                        onSessionAdd={handleAddSession}
                         onSessionClose={handleCloseSession}
                         customers={customers || []}
                         selectedCustomer={activeSession.customerId}
@@ -357,7 +356,3 @@ export default function SellPage() {
         </>
     );
 }
-    
-
-    
-

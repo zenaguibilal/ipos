@@ -77,7 +77,7 @@ export function ProductGrid({ products, onAddToCart, onAddNewProduct, onAddCusto
 
     return (
         <>
-            <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex flex-col sm:flex-row gap-2">
                 <form onSubmit={handleSearchSubmit} className="flex-grow">
                     <div className="relative">
                         <ScanLine className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
@@ -91,18 +91,18 @@ export function ProductGrid({ products, onAddToCart, onAddNewProduct, onAddCusto
                         />
                     </div>
                 </form>
-                <div className="flex gap-2">
-                     <Button variant="outline" onClick={onAddCustomProduct} className="h-12">
+                <div className="flex gap-2 flex-shrink-0">
+                     <Button variant="outline" onClick={onAddCustomProduct} className="h-12 flex-1 sm:flex-auto">
                         Produit Personnalisé (Alt+A)
                     </Button>
-                    <Button variant="outline" onClick={onAddNewProduct} className="h-12">
-                        <PlusCircle className="mr-2 h-4 w-4" /> Nouveau Produit (Alt+N)
+                    <Button variant="outline" onClick={onAddNewProduct} className="h-12 flex-1 sm:flex-auto">
+                        <PlusCircle className="mr-2 h-4 w-4" /> Nouveau (Alt+N)
                     </Button>
                 </div>
             </div>
 
             <div className="flex-1 overflow-y-auto pr-2">
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4">
                     {filteredProducts.map(product => (
                         <Card 
                             key={product.id} 

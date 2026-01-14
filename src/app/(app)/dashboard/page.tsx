@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
@@ -136,7 +137,7 @@ export default function DashboardPage() {
     return (
         <div className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
             <VerificationNotice />
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <h1 className="text-lg font-semibold md:text-2xl">Tableau de Bord</h1>
                  <DateRangePicker onUpdate={setDateRange} />
             </div>
@@ -149,28 +150,28 @@ export default function DashboardPage() {
                 lowStockCount={lowStockProducts.length}
             />
 
-            <Card>
-                <CardHeader>
-                    <CardTitle>Analyse des revenus et bénéfices</CardTitle>
-                </CardHeader>
-                <CardContent>
-                     {chartData.length > 0 ? (
-                        <SalesChart 
-                            data={chartData} 
-                        />
-                    ) : (
-                        <div className="flex h-[350px] items-center justify-center text-muted-foreground">
-                            Aucune donnée de vente pour la période sélectionnée.
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
-
-            <div className="grid gap-4 md:gap-8 lg:grid-cols-1 xl:grid-cols-2">
-                <TopProducts products={topProducts} />
+            <div className="grid gap-4 md:gap-8 lg:grid-cols-2 xl:grid-cols-3">
+                <Card className="lg:col-span-2 xl:col-span-3">
+                    <CardHeader>
+                        <CardTitle>Analyse des revenus et bénéfices</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        {chartData.length > 0 ? (
+                            <SalesChart 
+                                data={chartData} 
+                            />
+                        ) : (
+                            <div className="flex h-[350px] items-center justify-center text-muted-foreground">
+                                Aucune donnée de vente pour la période sélectionnée.
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+                <div className="xl:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
+                    <TopProducts products={topProducts} />
+                    <LowStockProducts products={lowStockProducts} />
+                </div>
             </div>
-            
-            <LowStockProducts products={lowStockProducts} />
         </div>
     );
 }
