@@ -5,7 +5,7 @@ import { useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Trash2, XCircle, HardDriveDownload, PlusCircle, UserPlus, UserX, Wallet } from 'lucide-react';
+import { Trash2, XCircle, HardDriveDownload, PlusCircle, UserPlus, UserX, Wallet, HandCoins } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Combobox, ComboboxOption } from '@/components/ui/combobox';
 import type { CartItem, SalesSession } from '@/app/(app)/sell/page';
@@ -30,6 +30,7 @@ interface CartPanelProps {
     onSelectCustomer: (customerId: string) => void;
     onClearCustomer: () => void;
     onAddNewCustomer: () => void;
+    onPayDebt: () => void;
 }
 
 export function CartPanel({
@@ -49,6 +50,7 @@ export function CartPanel({
     onSelectCustomer,
     onClearCustomer,
     onAddNewCustomer,
+    onPayDebt,
 }: CartPanelProps) {
     
     const total = useMemo(() => {
@@ -151,6 +153,12 @@ export function CartPanel({
                                 <span className="text-muted-foreground flex items-center gap-1.5"><Wallet className="h-3 w-3"/> Solde Actuel:</span>
                                 <span className={cn("font-bold", (selectedCustomerBalance || 0) > 0 ? "text-destructive" : "text-green-600")}>{(selectedCustomerBalance || 0).toFixed(2)} DA</span>
                              </div>
+                             {(selectedCustomerBalance || 0) > 0 && (
+                                <Button size="sm" variant="secondary" className="w-full mt-2" onClick={onPayDebt}>
+                                    <HandCoins className="mr-2 h-4 w-4" />
+                                    Régler une dette
+                                </Button>
+                             )}
                         </Card>
                     )}
                 </div>
@@ -222,3 +230,5 @@ export function CartPanel({
         </div>
     );
 }
+
+    

@@ -14,6 +14,8 @@ import { PaymentDialog } from '@/components/sell/payment-dialog';
 import { SaleCompleteDialog } from '@/components/sell/sale-complete-dialog';
 import { ShortcutsHelpDialog } from '@/components/sell/shortcuts-help-dialog';
 import { AddCustomerForm } from '@/components/customers/add-customer-form';
+import { AddPaymentForm } from '@/components/customers/add-payment-form';
+
 
 import type { Product, Sale, SaleItem, CompanyProfile, Customer, Payment } from '@/lib/types';
 import { ProductGrid } from '@/components/sell/product-grid';
@@ -60,10 +62,15 @@ export default function SellPage() {
     const [isAddingProduct, setIsAddingProduct] = useState(false);
     const [isAddingCustomProduct, setIsAddingCustomProduct] = useState(false);
     const [isAddingCustomer, setIsAddingCustomer] = useState(false);
+    const [isPayingDebt, setIsPayingDebt] = useState(false);
     const [isHelpOpen, setIsHelpOpen] = useState(false);
     
     // Get current active session
     const activeSession = sessions[activeSessionIndex];
+    const activeCustomer = useMemo(() => {
+        if (!activeSession.customerId || !customers) return null;
+        return customers.find(c => c.id === activeSession.customerId) || null;
+    }, [activeSession.customerId, customers]);
 
     useEffect(() => {
         if (!isUserLoading && !user) {
@@ -308,6 +315,14 @@ export default function SellPage() {
                 userId={user.uid}
                 onCustomerAdded={(newId) => handleSelectCustomer(newId)}
             />
+            {isPayingDebt && activeCustomer && (
+                 <AddPaymentForm
+                    isOpen={isPayingDebt}
+                    onOpenChange={setIsPayingDebt}
+                    userId={user.uid}
+                    customer={activeCustomer}
+                />
+            )}
             <PaymentDialog 
                 isOpen={isPaymentDialogOpen}
                 onOpenChange={setIsPaymentDialogOpen}
@@ -355,6 +370,7 @@ export default function SellPage() {
                         onSelectCustomer={handleSelectCustomer}
                         onClearCustomer={handleClearCustomer}
                         onAddNewCustomer={() => setIsAddingCustomer(true)}
+                        onPayDebt={() => setIsPayingDebt(true)}
                    />
                 </div>
             </div>
@@ -369,3 +385,5 @@ export default function SellPage() {
         </>
     );
 }
+
+    
