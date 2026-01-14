@@ -146,14 +146,13 @@ export default function SalesHistoryPage() {
                                     <TableBody>
                                         {filteredTransactions.map((transaction, index) => {
                                              const isSale = transaction.type === 'sale';
-                                             const { data } = transaction;
-
+                                             
                                              return (
                                                 <TableRow 
-                                                    key={`${transaction.type}-${data.id}-${index}`}
+                                                    key={`${transaction.type}-${transaction.data.id}-${index}`}
                                                     onClick={() => {
-                                                        if (isSale) {
-                                                            setSelectedSale(data);
+                                                        if (transaction.type === 'sale') {
+                                                            setSelectedSale(transaction.data);
                                                         }
                                                     }}
                                                     className={cn(
@@ -168,21 +167,21 @@ export default function SalesHistoryPage() {
                                                         </div>
                                                     </TableCell>
                                                     <TableCell className="p-3 font-medium">
-                                                        <div>{data.customerName || (isSale ? 'Vente au comptoir' : 'Paiement inconnu')}</div>
-                                                        {isSale && <div className="font-mono text-xs text-muted-foreground">{data.invoiceNumber}</div>}
+                                                        <div>{transaction.data.customerName || (isSale ? 'Vente au comptoir' : 'Paiement inconnu')}</div>
+                                                        {isSale && <div className="font-mono text-xs text-muted-foreground">{transaction.data.invoiceNumber}</div>}
                                                     </TableCell>
                                                     <TableCell className="p-3 text-muted-foreground">
-                                                        {safeToDate(data.createdAt).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                                        {safeToDate(transaction.data.createdAt).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })}
                                                     </TableCell>
                                                     <TableCell className="p-3 text-center">
                                                         {isSale ? (
                                                             <span className={cn(
                                                                 'rounded-full px-2.5 py-0.5 text-xs font-semibold',
-                                                                data.paymentStatus === 'paid' && 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
-                                                                data.paymentStatus === 'partial' && 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
-                                                                data.paymentStatus === 'unpaid' && 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
+                                                                transaction.data.paymentStatus === 'paid' && 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
+                                                                transaction.data.paymentStatus === 'partial' && 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
+                                                                transaction.data.paymentStatus === 'unpaid' && 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
                                                             )}>
-                                                                {data.paymentStatus === 'paid' ? 'Payé' : data.paymentStatus === 'partial' ? 'Partiel' : 'Impayé'}
+                                                                {transaction.data.paymentStatus === 'paid' ? 'Payé' : transaction.data.paymentStatus === 'partial' ? 'Partiel' : 'Impayé'}
                                                             </span>
                                                         ) : (
                                                             <span className="text-xs text-green-600">Règlement de dette</span>
@@ -192,7 +191,7 @@ export default function SalesHistoryPage() {
                                                         "p-3 text-right font-semibold",
                                                         isSale ? 'text-primary' : 'text-green-600'
                                                     )}>
-                                                        {isSale ? data.total.toFixed(2) : `+${data.amount.toFixed(2)}`} DA
+                                                        {isSale ? transaction.data.total.toFixed(2) : `+${transaction.data.amount.toFixed(2)}`} DA
                                                     </TableCell>
                                                 </TableRow>
                                             );
