@@ -6,7 +6,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import type { TopCustomer } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { Users } from "lucide-react";
-import Link from "next/link";
 
 interface TopCustomersProps {
     customers: TopCustomer[];
