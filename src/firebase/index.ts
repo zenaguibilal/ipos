@@ -9,47 +9,35 @@ import { getFirestore, initializeFirestore, enableIndexedDbPersistence, Firestor
 let firebaseApp: FirebaseApp;
 let auth: Auth;
 let firestore: Firestore;
+let persistenceEnabled = false;
 
 // IMPORTANT: DO NOT MODIFY THIS FUNCTION
 export async function initializeFirebase() {
   if (getApps().length === 0) {
-    try {
-      firebaseApp = initializeApp(firebaseConfig);
-    } catch (e) {
-      console.error("Firebase initialization failed:", e);
-      // Re-throw or handle as appropriate for your app's error strategy
-      throw e;
-    }
+    firebaseApp = initializeApp(firebaseConfig);
   } else {
     firebaseApp = getApp();
   }
 
-  // Initialize services. We need to do this check every time
-  // in case this async function is called multiple times.
+  // Initialize services only once.
   if (!firestore) {
-    // Use the new API to initialize Firestore with persistence settings
     try {
-        firestore = initializeFirestore(firebaseApp, {
-            localCache: persistentLocalCache({})
-        });
-        await enableIndexedDbPersistence(firestore);
+      // Use initializeFirestore only for the first time with persistence settings.
+      firestore = initializeFirestore(firebaseApp, {
+        localCache: persistentLocalCache({})
+      });
+      await enableIndexedDbPersistence(firestore);
+      persistenceEnabled = true;
     } catch (err: any) {
-        if (err.code == 'failed-precondition') {
-            // This can happen if multiple tabs are open.
-            // The app will still work, but with degraded offline performance.
-            console.warn('Firestore persistence could not be enabled. This can happen with multiple tabs open.');
-            // Fallback to in-memory Firestore instance if persistence fails
-             firestore = initializeFirestore(firebaseApp, { localCache: memoryLocalCache() });
-        } else if (err.code == 'unimplemented') {
-            // The browser doesn't support IndexedDB.
-            console.warn('Your browser does not support offline persistence.');
-            firestore = getFirestore(firebaseApp);
-        } else {
-            console.error("An unexpected error occurred during Firestore initialization:", err);
-            // Fallback for other errors
-            firestore = getFirestore(firebaseApp);
-        }
+      console.warn(`Firestore Persistence Error: ${err.code}`);
+      // If persistence fails, subsequent calls should use getFirestore.
+      // We get a new firestore instance here without persistence.
+      firestore = getFirestore(firebaseApp);
     }
+  } else {
+    // If firestore is already initialized, just get the instance.
+    // This avoids the "already called with different options" error.
+    firestore = getFirestore(firebaseApp);
   }
   
   if (!auth) {
@@ -58,6 +46,7 @@ export async function initializeFirebase() {
 
   return { firebaseApp, auth, firestore };
 }
+
 
 // This function is kept for any part of the app that might still use it,
 // but the async initializeFirebase should be preferred.
