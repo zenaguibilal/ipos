@@ -167,3 +167,5 @@ export function CompanyProfileForm({ user }: CompanyProfileFormProps) {
         </form>
     );
 }
+
+    

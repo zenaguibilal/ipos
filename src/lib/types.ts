@@ -138,3 +138,5 @@ export interface StockIntake {
     totalValue: number;
     createdAt: Timestamp | Date;
 }
+
+    
