@@ -8,14 +8,12 @@ import {
   ShoppingBasket,
   Package,
   Users,
-  Home,
   Cookie,
   Bell,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navLinks = [
-  { href: '/', label: 'Accueil', icon: Home },
   { href: '/dashboard', label: 'Tableau', icon: LayoutDashboard },
   { href: '/sell', label: 'Vendre', icon: ShoppingBasket },
   { href: '/products', label: 'Produits', icon: Package },
@@ -29,7 +27,7 @@ export function BottomNavBar() {
 
   return (
     <div className="fixed bottom-0 left-0 z-10 w-full border-t bg-background/95 backdrop-blur-sm md:hidden print-hide">
-      <nav className="grid grid-cols-7 items-center justify-around h-16">
+      <nav className="grid grid-cols-6 items-center justify-around h-16">
         {navLinks.map(link => (
           <Link
             key={link.href}

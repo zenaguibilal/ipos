@@ -17,7 +17,6 @@ import {
   Cookie,
   Bell,
   Info,
-  Home,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -41,7 +40,6 @@ import { AnimatedLogo } from './animated-logo';
 
 
 const navLinks = [
-  { href: '/', label: 'Accueil', icon: Home },
   { href: '/dashboard', label: 'Tableau de Bord', icon: LayoutDashboard },
   { href: '/sell', label: 'Vendre', icon: ShoppingBasket },
   { href: '/stock-intake', label: 'Réception Stock', icon: Truck },
