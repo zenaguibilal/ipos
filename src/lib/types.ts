@@ -65,15 +65,6 @@ export interface ChartData {
   profit?: number;
 }
 
-export interface BreadOrder {
-    id: string;
-    name: string;
-    quantity: number;
-    isPaid: boolean;
-    isDelivered: boolean;
-    isRecurring: boolean;
-}
-
 export interface TopProduct extends Product {
     totalRevenue: number;
     unitsSold: number;

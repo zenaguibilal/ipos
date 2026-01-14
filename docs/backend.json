@@ -263,44 +263,6 @@
         }
       }
     },
-     "BreadOrder": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Bread Order",
-      "type": "object",
-      "description": "Represents a simple bread order.",
-      "properties": {
-        "name": {
-          "type": "string",
-          "description": "Name of the order or customer."
-        },
-        "quantity": {
-          "type": "number",
-          "description": "Number of bread units ordered."
-        },
-        "isPaid": {
-          "type": "boolean",
-          "description": "Indicates if the order has been paid for."
-        },
-        "isDelivered": {
-          "type": "boolean",
-          "description": "Indicates if the order has been delivered/picked up."
-        },
-        "isRecurring": {
-          "type": "boolean",
-          "description": "Indicates if the order is a daily recurring order."
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "Timestamp indicating when the order was created.",
-          "format": "date-time"
-        }
-      },
-      "required": [
-        "name",
-        "quantity",
-        "createdAt"
-      ]
-    },
     "PurchaseOrder": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Purchase Order",
@@ -425,12 +387,6 @@
         "$ref": "#/entities/CompanyProfile"
       },
       "description": "Singleton document for the user's company profile."
-    },
-    "/users/{userId}/breadOrders/{breadOrderId}": {
-      "schema": {
-        "$ref": "#/entities/BreadOrder"
-      },
-      "description": "Bread orders placed by or for the user."
     },
     "/users/{userId}/purchaseOrders/{purchaseOrderId}": {
         "schema": { "$ref": "#/entities/PurchaseOrder" },
