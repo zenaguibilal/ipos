@@ -1,17 +1,19 @@
 
 'use client';
 
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { useEffect, useMemo } from 'react';
-import { collection } from 'firebase/firestore';
-import type { Product, Customer, Sale, Payment } from '@/lib/types';
+import { useEffect, useMemo, useState } from 'react';
+import { collection, query, where, doc, getDocs, serverTimestamp, runTransaction } from 'firebase/firestore';
+import type { Product, Customer, Sale, Payment, PurchaseOrder } from '@/lib/types';
 import { getDate } from 'date-fns';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Archive, User, ArrowRight, BellOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
+import { toast } from 'sonner';
+import { Loader2 } from 'lucide-react';
 
 // Define the NotificationItem type locally
 export interface NotificationItem {
@@ -20,7 +22,8 @@ export interface NotificationItem {
   message: string;
   relatedId: string; // productId or customerId
   actionText: string;
-  actionHref: string;
+  actionHref?: string;
+  action?: () => void;
 }
 
 export default function NotificationsPage() {
@@ -28,22 +31,103 @@ export default function NotificationsPage() {
     const firestore = useFirestore();
     const router = useRouter();
 
+    const [processingPOId, setProcessingPOId] = useState<string | null>(null);
+
     // --- Data Fetching ---
     const productsCollectionRef = useMemoFirebase(() => (user && firestore) ? collection(firestore, 'users', user.uid, 'products') : null, [user, firestore]);
     const customersCollectionRef = useMemoFirebase(() => (user && firestore) ? collection(firestore, 'users', user.uid, 'customers') : null, [user, firestore]);
     const salesCollectionRef = useMemoFirebase(() => (user && firestore) ? collection(firestore, 'users', user.uid, 'sales') : null, [user, firestore]);
     const paymentsCollectionRef = useMemoFirebase(() => (user && firestore) ? collection(firestore, 'users', user.uid, 'payments') : null, [user, firestore]);
+    const purchaseOrdersCollectionRef = useMemoFirebase(() => (user && firestore) ? collection(firestore, 'users', user.uid, 'purchaseOrders') : null, [user, firestore]);
 
     const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsCollectionRef);
     const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersCollectionRef);
     const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesCollectionRef);
     const { data: payments, isLoading: isLoadingPayments } = useCollection<Payment>(paymentsCollectionRef);
+    const { data: purchaseOrders, isLoading: isLoadingPOs } = useCollection<PurchaseOrder>(purchaseOrdersCollectionRef);
+    
 
     useEffect(() => {
         if (!isUserLoading && !user) {
             router.push('/login');
         }
     }, [user, isUserLoading, router]);
+    
+    const handleAddToPO = async (productId: string) => {
+        if (!firestore || !user || !products) return;
+        
+        setProcessingPOId(productId);
+        const product = products.find(p => p.id === productId);
+        if (!product) {
+            toast.error("Produit non trouvé.");
+            setProcessingPOId(null);
+            return;
+        }
+
+        try {
+            await runTransaction(firestore, async (transaction) => {
+                const pendingPOsQuery = query(
+                    collection(firestore, 'users', user.uid, 'purchaseOrders'),
+                    where('status', '==', 'pending')
+                );
+                const pendingPOsSnapshot = await getDocs(pendingPOsQuery);
+
+                let targetPO: PurchaseOrder | null = null;
+                let targetPORef: any = null;
+
+                if (!pendingPOsSnapshot.empty) {
+                    // Use the first pending PO found
+                    const poDoc = pendingPOsSnapshot.docs[0];
+                    targetPO = poDoc.data() as PurchaseOrder;
+                    targetPO.id = poDoc.id;
+                    targetPORef = poDoc.ref;
+                }
+
+                const poItem = {
+                    productId: product.id,
+                    productName: product.name,
+                    quantity: product.minStockLevel > 0 ? product.minStockLevel : 10, // Suggest a reorder quantity
+                    purchasePrice: product.purchasePrice
+                };
+
+                if (targetPO && targetPORef) {
+                    // Add to existing pending PO
+                    const existingItems = targetPO.items || [];
+                    const itemExists = existingItems.some(item => item.productId === productId);
+                    
+                    if (itemExists) {
+                        toast.info(`"${product.name}" est déjà dans le bon de commande en attente.`);
+                        return; // Stop transaction
+                    }
+                    
+                    const newItems = [...existingItems, poItem];
+                    const newTotalValue = newItems.reduce((acc, item) => acc + (item.purchasePrice * item.quantity), 0);
+                    transaction.update(targetPORef, { items: newItems, totalValue: newTotalValue });
+                    toast.success(`"${product.name}" ajouté au bon de commande ${targetPO.poNumber}.`);
+
+                } else {
+                    // Create a new PO
+                    const newPORef = doc(collection(firestore, 'users', user.uid, 'purchaseOrders'));
+                    const newPOData = {
+                        poNumber: `BC-${Date.now()}`,
+                        supplier: 'Fournisseur non spécifié',
+                        items: [poItem],
+                        totalValue: poItem.purchasePrice * poItem.quantity,
+                        status: 'pending',
+                        createdAt: serverTimestamp()
+                    };
+                    transaction.set(newPORef, newPOData);
+                    toast.success(`"${product.name}" ajouté à un nouveau bon de commande.`);
+                }
+            });
+        } catch (error) {
+            console.error("Failed to add to PO:", error);
+            toast.error("Échec de l'ajout au bon de commande.");
+        } finally {
+            setProcessingPOId(null);
+        }
+    };
+
 
     const { lowStockNotifications, latePaymentNotifications } = useMemo(() => {
         if (!products || !customers || !sales || !payments) {
@@ -62,7 +146,7 @@ export default function NotificationsPage() {
                 message: `Stock faible pour ${p.name}. Restant : ${p.quantity}`,
                 relatedId: p.id,
                 actionText: 'Ajouter à un bon de commande',
-                actionHref: '/products/purchase-orders'
+                action: () => handleAddToPO(p.id)
             }));
 
         // 2. Late Payment Notifications
@@ -102,7 +186,7 @@ export default function NotificationsPage() {
         };
     }, [products, customers, sales, payments]);
 
-    const isLoading = isUserLoading || isLoadingProducts || isLoadingCustomers || isLoadingSales || isLoadingPayments;
+    const isLoading = isUserLoading || isLoadingProducts || isLoadingCustomers || isLoadingSales || isLoadingPayments || isLoadingPOs;
 
     if (isLoading || !user) {
         return <div className="flex h-full items-center justify-center"><p>Chargement des notifications...</p></div>;
@@ -116,25 +200,46 @@ export default function NotificationsPage() {
 
         return (
             <div className="space-y-4">
-                {notifications.map(notification => (
-                    <div 
-                        key={notification.id}
-                        className="flex items-center gap-4 rounded-lg border p-4"
-                    >
-                        <div className={cn("rounded-full p-2", iconBg)}>
-                            {icon}
+                {notifications.map(notification => {
+                    const isProcessing = notification.type === 'stock' && processingPOId === notification.relatedId;
+
+                    return (
+                        <div 
+                            key={notification.id}
+                            className="flex items-center gap-4 rounded-lg border p-4"
+                        >
+                            <div className={cn("rounded-full p-2", iconBg)}>
+                                {icon}
+                            </div>
+                            <div className="flex-1">
+                                <p className="font-medium">{notification.message}</p>
+                            </div>
+                            
+                            {notification.action ? (
+                                <Button variant="secondary" size="sm" onClick={notification.action} disabled={isProcessing}>
+                                    {isProcessing ? (
+                                        <>
+                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                            Ajout...
+                                        </>
+                                    ) : (
+                                        <>
+                                            {notification.actionText}
+                                            <ArrowRight className="ml-2 h-4 w-4" />
+                                        </>
+                                    )}
+                                </Button>
+                            ) : (
+                                <Button asChild variant="secondary" size="sm">
+                                    <Link href={notification.actionHref || '#'}>
+                                        {notification.actionText}
+                                        <ArrowRight className="ml-2 h-4 w-4" />
+                                    </Link>
+                                </Button>
+                            )}
                         </div>
-                        <div className="flex-1">
-                            <p className="font-medium">{notification.message}</p>
-                        </div>
-                        <Button asChild variant="secondary" size="sm">
-                            <Link href={notification.actionHref}>
-                                {notification.actionText}
-                                <ArrowRight className="ml-2 h-4 w-4" />
-                            </Link>
-                        </Button>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
         );
     };
@@ -186,3 +291,5 @@ export default function NotificationsPage() {
         </main>
     );
 }
+
+    
