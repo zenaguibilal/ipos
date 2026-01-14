@@ -30,7 +30,7 @@ export default function BreadOrdersPage() {
 
     const ordersQuery = useMemoFirebase(() => {
         if (!user || !firestore) return null;
-        // We will sort on the client-side to handle the delivered status
+        // The main sorting by creation date is done by Firestore
         return query(collection(firestore, 'users', user.uid, 'breadOrders'), orderBy('createdAt', 'asc'));
     }, [user, firestore]);
     const { data: orders, isLoading: isLoadingOrders } = useCollection<BreadOrder>(ordersQuery);
@@ -48,10 +48,17 @@ export default function BreadOrdersPage() {
         const deliveredQty = orders.filter(o => o.isDelivered).reduce((sum, order) => sum + order.quantity, 0);
 
         let processedOrders = [...orders].sort((a, b) => {
-            // Sort undelivered orders to the top
+            // 1. Primary sort: Undelivered orders first
             if (a.isDelivered && !b.isDelivered) return 1;
             if (!a.isDelivered && b.isDelivered) return -1;
-            // For orders with the same delivery status, sort by creation time (already handled by query)
+
+            // 2. Secondary sort (only for delivered orders): Unpaid first
+            if (a.isDelivered && b.isDelivered) {
+                if (a.isPaid && !b.isPaid) return 1;
+                if (!a.isPaid && b.isPaid) return -1;
+            }
+            
+            // 3. Tertiary sort: For orders with same status, use original creation order (already sorted by query)
             return 0;
         });
 
