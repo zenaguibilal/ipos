@@ -61,7 +61,7 @@ export default function NotificationsPage() {
                 type: 'stock',
                 message: `Stock faible pour ${p.name}. Restant : ${p.quantity}`,
                 relatedId: p.id,
-                actionText: 'Bon de commande',
+                actionText: 'Ajouter à un bon de commande',
                 actionHref: '/products/purchase-orders'
             }));
 
