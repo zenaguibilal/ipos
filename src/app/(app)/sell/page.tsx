@@ -321,6 +321,7 @@ export default function SellPage() {
                     onOpenChange={handleNewSale}
                     sale={lastSale}
                     companyProfile={companyProfile}
+                    customer={customers?.find(c => c.id === lastSale.customerId) || null}
                 />
             )}
             
