@@ -149,9 +149,9 @@ export function CartPanel({
                                     <UserX className="h-4 w-4 text-destructive" />
                                  </Button>
                              </div>
-                             <div className="flex justify-between items-center text-sm mt-1">
-                                <span className="text-muted-foreground flex items-center gap-1.5"><Wallet className="h-3 w-3"/> Solde Actuel:</span>
-                                <span className={cn("font-bold", (selectedCustomerBalance || 0) > 0 ? "text-destructive" : "text-green-600")}>{(selectedCustomerBalance || 0).toFixed(2)} DA</span>
+                             <div className="flex justify-between items-center mt-1">
+                                <span className="text-sm text-muted-foreground flex items-center gap-1.5"><Wallet className="h-3 w-3"/> Solde Actuel:</span>
+                                <span className={cn("text-lg font-black", (selectedCustomerBalance || 0) > 0 ? "text-destructive" : "text-green-600")}>{(selectedCustomerBalance || 0).toFixed(2)} DA</span>
                              </div>
                              {(selectedCustomerBalance || 0) > 0 && (
                                 <Button size="sm" variant="secondary" className="w-full mt-2" onClick={onPayDebt}>
