@@ -22,6 +22,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import Papa from 'papaparse';
 import Image from 'next/image';
 import Link from 'next/link';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 
 interface ProductWithLegacyBarcode extends Product {
@@ -44,6 +45,7 @@ export default function ProductsPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [sortConfig, setSortConfig] = useState<{ key: SortableKeys; direction: 'ascending' | 'descending' } | null>({ key: 'name', direction: 'ascending' });
     const [selectedProducts, setSelectedProducts] = useState<Record<string, boolean>>({});
+    const [selectedCategory, setSelectedCategory] = useState<string>('all');
     
     const selectedProductIds = useMemo(() => Object.keys(selectedProducts).filter(id => selectedProducts[id]), [selectedProducts]);
 
@@ -60,22 +62,50 @@ export default function ProductsPage() {
             router.push('/login');
         }
     }, [user, isUserLoading, router]);
+
+     const categories = useMemo(() => {
+        if (!products) return [];
+        const allCategories = products
+            .map(p => p.category)
+            .filter((c): c is string => !!c && c.trim() !== '');
+        const uniqueCategories = [...new Set(allCategories)].sort((a,b) => a.localeCompare(b));
+        return ['all', ...uniqueCategories];
+    }, [products]);
     
     const sortedAndFilteredProducts = useMemo(() => {
         if (!products) return [];
-        let sortableItems: ProductWithLegacyBarcode[] = products.map(p => {
+
+        let processedProducts: ProductWithLegacyBarcode[] = products.map(p => {
              const profit = p.price - p.purchasePrice;
              const margin = p.price > 0 ? (profit / p.price) * 100 : 0;
              return { ...p, profitMargin: margin };
         });
 
+        // 1. Filter by category
+        if (selectedCategory !== 'all') {
+            processedProducts = processedProducts.filter(p => p.category === selectedCategory);
+        }
+
+        // 2. Filter by search query
+        if (searchQuery) {
+            const lowercasedQuery = searchQuery.toLowerCase();
+            processedProducts = processedProducts.filter(product => 
+                product.name.toLowerCase().includes(lowercasedQuery) ||
+                (product.category && product.category.toLowerCase().includes(lowercasedQuery)) ||
+                (product.barcodes && product.barcodes.some(b => b.includes(lowercasedQuery))) ||
+                (product.barcode && product.barcode.includes(lowercasedQuery))
+            );
+        }
+        
+        // 3. Sort
         if (sortConfig !== null) {
-            sortableItems.sort((a, b) => {
+            processedProducts.sort((a, b) => {
                 const aValue = a[sortConfig.key];
                 const bValue = b[sortConfig.key];
 
-                if (aValue === undefined) return 1;
-                if (bValue === undefined) return -1;
+                if (aValue == null && bValue == null) return 0;
+                if (aValue == null) return 1;
+                if (bValue == null) return -1;
                 
                 let comparison = 0;
                 if (typeof aValue === 'string' && typeof bValue === 'string') {
@@ -88,17 +118,9 @@ export default function ProductsPage() {
             });
         }
         
-        if (!searchQuery) return sortableItems;
-        
-        const lowercasedQuery = searchQuery.toLowerCase();
-        
-        return sortableItems.filter(product => 
-            product.name.toLowerCase().includes(lowercasedQuery) ||
-            (product.category && product.category.toLowerCase().includes(lowercasedQuery)) ||
-            (product.barcodes && product.barcodes.some(b => b.includes(lowercasedQuery))) ||
-            (product.barcode && product.barcode.includes(lowercasedQuery))
-        );
-    }, [products, searchQuery, sortConfig]);
+        return processedProducts;
+    }, [products, searchQuery, sortConfig, selectedCategory]);
+
 
      const requestSort = (key: SortableKeys) => {
         let direction: 'ascending' | 'descending' = 'ascending';
@@ -302,40 +324,62 @@ export default function ProductsPage() {
            
             <main className="flex-1 overflow-auto p-4 sm:p-6">
                 <Card className="w-full bg-card">
-                    <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between pt-4 gap-4">
-                        <div className="relative flex-grow w-full sm:w-auto sm:flex-grow-0 max-w-sm">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input 
-                                placeholder="Rechercher par nom, catégorie..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-9 w-full"
-                            />
-                        </div>
-                         <div className="flex gap-2 w-full sm:w-auto flex-wrap justify-start sm:justify-end">
-                            {selectedProductIds.length > 0 && (
-                                 <Button variant="outline" onClick={handleCreatePurchaseOrder}>
-                                    <ShoppingCart className="mr-2 h-4 w-4" /> Créer BC ({selectedProductIds.length})
+                    <CardHeader className="p-6 space-y-4">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                            <div className="relative flex-grow w-full sm:w-auto sm:flex-grow-0 max-w-sm">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input 
+                                    placeholder="Rechercher par nom, catégorie..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="pl-9 w-full"
+                                />
+                            </div>
+                             <div className="flex gap-2 w-full sm:w-auto flex-wrap justify-start sm:justify-end">
+                                {selectedProductIds.length > 0 && (
+                                     <Button variant="outline" onClick={handleCreatePurchaseOrder}>
+                                        <ShoppingCart className="mr-2 h-4 w-4" /> Créer BC ({selectedProductIds.length})
+                                    </Button>
+                                )}
+                                <Button asChild variant="outline">
+                                    <Link href="/products/purchase-orders">
+                                        <ListOrdered className="mr-2 h-4 w-4" /> Gérer les BC
+                                    </Link>
                                 </Button>
-                            )}
-                            <Button asChild variant="outline">
-                                <Link href="/products/purchase-orders">
-                                    <ListOrdered className="mr-2 h-4 w-4" /> Gérer les BC
-                                </Link>
-                            </Button>
-                           
-                            <Button variant="outline" onClick={() => setIsImporting(true)}>
-                                <Upload className="mr-2 h-4 w-4" /> Importer
-                            </Button>
-                            <Button variant="outline" onClick={handleExportToCSV}>
-                                <Download className="mr-2 h-4 w-4" /> Exporter
-                            </Button>
-                            <Button onClick={() => setIsAddingProduct(true)}>
-                                <FilePlus2 className="mr-2 h-4 w-4" /> Ajouter
-                            </Button>
-                         </div>
+                               
+                                <Button variant="outline" onClick={() => setIsImporting(true)}>
+                                    <Upload className="mr-2 h-4 w-4" /> Importer
+                                </Button>
+                                <Button variant="outline" onClick={handleExportToCSV}>
+                                    <Download className="mr-2 h-4 w-4" /> Exporter
+                                </Button>
+                                <Button onClick={() => setIsAddingProduct(true)}>
+                                    <FilePlus2 className="mr-2 h-4 w-4" /> Ajouter
+                                </Button>
+                             </div>
+                        </div>
+                         {categories.length > 1 && (
+                            <div>
+                                <ScrollArea className="w-full whitespace-nowrap">
+                                    <div className="flex items-center gap-2 pb-1">
+                                        <span className="text-sm font-medium text-muted-foreground">Catégories:</span>
+                                        {categories.map(category => (
+                                            <Button
+                                                key={category}
+                                                variant={selectedCategory === category ? 'default' : 'outline'}
+                                                size="sm"
+                                                onClick={() => setSelectedCategory(category)}
+                                                className="capitalize"
+                                            >
+                                                {category === 'all' ? 'Toutes' : category}
+                                            </Button>
+                                        ))}
+                                    </div>
+                                </ScrollArea>
+                            </div>
+                         )}
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="px-6 pb-6 pt-0">
                         {isLoading ? (
                             <div className="text-center">Chargement des données...</div>
                         ) : sortedAndFilteredProducts && sortedAndFilteredProducts.length > 0 ? (
@@ -430,9 +474,9 @@ export default function ProductsPage() {
                                     </TableBody>
                                 </Table>
                             </div>
-                        ) : products && products.length > 0 && searchQuery ? (
+                        ) : products && products.length > 0 && (searchQuery || selectedCategory !== 'all') ? (
                             <div className="flex h-40 items-center justify-center rounded-md border-2 border-dashed border-border">
-                                <p className="text-muted-foreground">Aucun produit ne correspond à votre recherche.</p>
+                                <p className="text-muted-foreground">Aucun produit ne correspond à vos filtres.</p>
                             </div>
                         ) : (
                             <div className="flex h-40 items-center justify-center rounded-md border-2 border-dashed border-border">
@@ -448,3 +492,6 @@ export default function ProductsPage() {
         </>
     );
 }
+
+
+    
