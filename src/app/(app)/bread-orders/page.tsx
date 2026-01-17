@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useUser, useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
+import { useUser, useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking, useDoc } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useMemo } from 'react';
 import { collection, query, orderBy, serverTimestamp, doc, writeBatch } from 'firebase/firestore';
@@ -11,10 +11,11 @@ import { AddOrderForm } from '@/components/bread-orders/add-order-form';
 import { EditOrderForm } from '@/components/bread-orders/edit-order-form';
 import { ResetOrdersDialog } from '@/components/bread-orders/reset-orders-dialog';
 import { OrderCard } from '@/components/bread-orders/order-card';
-import type { BreadOrder } from '@/lib/types';
-import { PlusCircle, RotateCcw, Search, Cookie, CheckCheck, Truck } from 'lucide-react';
+import type { BreadOrder, CompanyProfile } from '@/lib/types';
+import { PlusCircle, RotateCcw, Search, Cookie, CheckCheck, Truck, CircleDollarSign, CreditCard } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import Link from 'next/link';
 
 export default function BreadOrdersPage() {
     const { user, isUserLoading } = useUser();
@@ -26,6 +27,9 @@ export default function BreadOrdersPage() {
     const [isResetting, setIsResetting] = useState(false);
     const [isProcessingReset, setIsProcessingReset] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+
+    const companyDocRef = useMemoFirebase(() => user && firestore ? doc(firestore, 'users', user.uid, 'companyProfile', 'main') : null, [user, firestore]);
+    const { data: companyProfile, isLoading: isLoadingCompany } = useDoc<CompanyProfile>(companyDocRef);
 
 
     const ordersQuery = useMemoFirebase(() => {
@@ -41,11 +45,21 @@ export default function BreadOrdersPage() {
         }
     }, [user, isUserLoading, router]);
 
-    const { filteredOrders, totalQuantity, deliveredQuantity, undeliveredQuantity } = useMemo(() => {
-        if (!orders) return { filteredOrders: [], totalQuantity: 0, deliveredQuantity: 0, undeliveredQuantity: 0 };
+    const { filteredOrders, totalQuantity, deliveredQuantity, undeliveredQuantity, totalPaid, totalOwed } = useMemo(() => {
+        if (!orders) return { filteredOrders: [], totalQuantity: 0, deliveredQuantity: 0, undeliveredQuantity: 0, totalPaid: 0, totalOwed: 0 };
+        
+        const breadPrice = companyProfile?.breadPrice ?? 0;
         
         const totalQty = orders.reduce((sum, order) => sum + order.quantity, 0);
         const deliveredQty = orders.filter(o => o.isDelivered).reduce((sum, order) => sum + order.quantity, 0);
+
+        const paid = orders
+            .filter(o => o.isPaid)
+            .reduce((sum, order) => sum + order.quantity * breadPrice, 0);
+            
+        const owed = orders
+            .filter(o => o.isDelivered && !o.isPaid)
+            .reduce((sum, order) => sum + order.quantity * breadPrice, 0);
 
         let processedOrders = [...orders].sort((a, b) => {
             // 1. Primary sort: Undelivered orders first
@@ -71,9 +85,11 @@ export default function BreadOrdersPage() {
             filteredOrders: processedOrders, 
             totalQuantity: totalQty, 
             deliveredQuantity: deliveredQty, 
-            undeliveredQuantity: totalQty - deliveredQty 
+            undeliveredQuantity: totalQty - deliveredQty,
+            totalPaid: paid,
+            totalOwed: owed,
         };
-    }, [orders, searchQuery]);
+    }, [orders, searchQuery, companyProfile]);
 
 
     const handleAddOrder = (name: string, quantity: number, isRecurring: boolean) => {
@@ -167,7 +183,8 @@ export default function BreadOrdersPage() {
         }
     };
 
-    const isLoading = isUserLoading || isLoadingOrders;
+    const isLoading = isUserLoading || isLoadingOrders || isLoadingCompany;
+    const breadPrice = companyProfile?.breadPrice;
 
     return (
         <>
@@ -217,7 +234,14 @@ export default function BreadOrdersPage() {
                         </Button>
                     </div>
                 </div>
-                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mb-6">
+                
+                {(breadPrice == null || breadPrice === 0) && !isLoadingCompany && (
+                    <div className="mb-6 rounded-md border border-yellow-500 bg-yellow-500/10 p-4 text-sm text-yellow-700 dark:text-yellow-400">
+                        Le prix du pain n'est pas défini. Veuillez le configurer dans votre <Link href="/profile" className="font-bold underline">profil d'entreprise</Link> pour activer les calculs financiers.
+                    </div>
+                )}
+
+                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5 mb-6">
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">Total Commandé</CardTitle>
@@ -228,7 +252,7 @@ export default function BreadOrdersPage() {
                             <p className="text-xs text-muted-foreground">unités de pain au total</p>
                         </CardContent>
                     </Card>
-                    <Card className="bg-green-500/20 border-green-500/50">
+                    <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">Quantité Livrée</CardTitle>
                             <CheckCheck className="h-4 w-4 text-green-700 dark:text-green-400" />
@@ -238,7 +262,7 @@ export default function BreadOrdersPage() {
                              <p className="text-xs text-muted-foreground">unités de pain livrées</p>
                         </CardContent>
                     </Card>
-                    <Card className="bg-yellow-500/20 border-yellow-500/50">
+                    <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">Quantité Restante</CardTitle>
                             <Truck className="h-4 w-4 text-yellow-700 dark:text-yellow-400" />
@@ -246,6 +270,26 @@ export default function BreadOrdersPage() {
                         <CardContent>
                             <div className="text-2xl font-bold">{undeliveredQuantity}</div>
                              <p className="text-xs text-muted-foreground">unités de pain à livrer</p>
+                        </CardContent>
+                    </Card>
+                    <Card className="bg-green-500/20 border-green-500/50">
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Total Encaissé</CardTitle>
+                            <CircleDollarSign className="h-4 w-4 text-green-700 dark:text-green-400" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{totalPaid.toFixed(2)} DA</div>
+                            <p className="text-xs text-muted-foreground">Montant des commandes payées</p>
+                        </CardContent>
+                    </Card>
+                    <Card className="bg-red-500/20 border-red-500/50">
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Total Dû</CardTitle>
+                            <CreditCard className="h-4 w-4 text-red-700 dark:text-red-400" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{totalOwed.toFixed(2)} DA</div>
+                            <p className="text-xs text-muted-foreground">Commandes livrées non payées</p>
                         </CardContent>
                     </Card>
                 </div>

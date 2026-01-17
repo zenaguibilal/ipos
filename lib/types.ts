@@ -101,6 +101,7 @@ export interface CompanyProfile {
     website?: string;
     vatNumber?: string;
     rcNumber?: string;
+    breadPrice?: number;
 }
 
 export interface PurchaseOrderItem {

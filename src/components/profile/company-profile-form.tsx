@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useFirestore, setDocumentNonBlocking, useDoc, useMemoFirebase } from '@/firebase';
@@ -25,7 +26,7 @@ export function CompanyProfileForm({ user }: CompanyProfileFormProps) {
     
     const { data: companyProfile, isLoading: isProfileLoading } = useDoc<CompanyProfile>(companyDocRef);
 
-    const [formState, setFormState] = useState<CompanyProfile>({});
+    const [formState, setFormState] = useState<Partial<CompanyProfile>>({});
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -46,9 +47,19 @@ export function CompanyProfileForm({ user }: CompanyProfileFormProps) {
         
         setIsSaving(true);
         setError(null);
+
+        const breadPriceVal = formState.breadPrice ? parseFloat(String(formState.breadPrice)) : null;
+
+        if (formState.breadPrice && (isNaN(breadPriceVal as number) || (breadPriceVal as number) < 0)) {
+            setError("Le prix du pain est un nombre invalide.");
+            toast.error("Le prix du pain est un nombre invalide.");
+            setIsSaving(false);
+            return;
+        }
         
         setDocumentNonBlocking(companyDocRef, {
             ...formState,
+            breadPrice: breadPriceVal,
             updatedAt: serverTimestamp()
         }, { merge: true }, {
             onSuccess: () => {
@@ -156,6 +167,24 @@ export function CompanyProfileForm({ user }: CompanyProfileFormProps) {
                                 </div>
                             </div>
                         </div>
+
+                         <div className="space-y-4 border-t pt-6">
+                            <h4 className="font-medium text-muted-foreground">Paramètres des Modules</h4>
+                            <div className="space-y-2">
+                                <Label htmlFor="breadPrice">Prix Unitaire du Pain (DA)</Label>
+                                <Input
+                                    id="breadPrice"
+                                    type="number"
+                                    value={formState.breadPrice ?? ''}
+                                    onChange={handleInputChange}
+                                    disabled={isSaving}
+                                    placeholder="Ex: 15"
+                                    step="0.01"
+                                    min="0"
+                                />
+                                <p className="text-xs text-muted-foreground">Utilisé dans le module des commandes de pain.</p>
+                            </div>
+                        </div>
                     </>
                  )}
             </CardContent>
@@ -167,5 +196,3 @@ export function CompanyProfileForm({ user }: CompanyProfileFormProps) {
         </form>
     );
 }
-
-    
