@@ -27,6 +27,7 @@ import Papa from 'papaparse';
 import Image from 'next/image';
 import Link from 'next/link';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { BulkEditCategoryDialog } from './bulk-edit-category-dialog';
 
 
 interface ProductWithLegacyBarcode extends Product {
@@ -56,6 +57,7 @@ export default function ProductsPage() {
     const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
     const [isCreatingPO, setIsCreatingPO] = useState(false);
     const [productsForPO, setProductsForPO] = useState<Product[]>([]);
+    const [isEditingCategory, setIsEditingCategory] = useState(false);
     
     const selectedProductIds = useMemo(() => Object.keys(selectedProducts).filter(id => selectedProducts[id]), [selectedProducts]);
 
@@ -144,7 +146,7 @@ export default function ProductsPage() {
         if (!sortConfig || sortConfig.key !== key) {
             return null;
         }
-        return sortConfig.direction === 'ascending' ? <ArrowUp className="ml-2 h-3 w-3" /> : <ArrowDown className="ml-2 h-3 w-3" />;
+        return sortConfig.direction === 'ascending' ? <ArrowUp className="ml-2 h-3 w-3" /> : <ArrowDown className="ml-2 h-3" />;
     };
     
     const handleDeleteProduct = () => {
@@ -308,6 +310,27 @@ export default function ProductsPage() {
         }
     };
 
+    const handleBulkUpdateCategory = async (newCategory: string) => {
+        if (!firestore || !user || selectedProductIds.length === 0) return;
+
+        const batch = writeBatch(firestore);
+        selectedProductIds.forEach(id => {
+            const productDocRef = doc(firestore, 'users', user.uid, 'products', id);
+            batch.update(productDocRef, { category: newCategory });
+        });
+
+        try {
+            await batch.commit();
+            toast.success(`${selectedProductIds.length} produit(s) ont été mis à jour avec la catégorie "${newCategory}".`);
+            setSelectedProducts({});
+            setIsEditingCategory(false);
+        } catch (err) {
+            console.error("Failed to bulk update categories:", err);
+            toast.error("Échec de la mise à jour des catégories.");
+            setIsEditingCategory(false);
+        }
+    };
+
 
     const isLoading = isUserLoading || isLoadingProducts;
 
@@ -371,6 +394,12 @@ export default function ProductsPage() {
                 onConfirm={handleBulkDelete}
                 productCount={selectedProductIds.length}
             />
+             <BulkEditCategoryDialog
+                isOpen={isEditingCategory}
+                onOpenChange={setIsEditingCategory}
+                onConfirm={handleBulkUpdateCategory}
+                productCount={selectedProductIds.length}
+            />
             {adjustingStockProduct && (
                 <AdjustStockDialog
                     isOpen={!!adjustingStockProduct}
@@ -411,12 +440,15 @@ export default function ProductsPage() {
                             </div>
                              <div className="flex gap-2 w-full sm:w-auto flex-wrap justify-start sm:justify-end">
                                 {selectedProductIds.length > 0 && (
-                                     <div className="flex gap-2 border-r pr-2 mr-2">
+                                     <div className="flex gap-2 border-r pr-2 mr-2 flex-wrap">
                                          <Button variant="outline" onClick={handleOpenPOCreation}>
                                             <ShoppingCart className="mr-2 h-4 w-4" /> Créer BC ({selectedProductIds.length})
                                         </Button>
+                                        <Button variant="outline" onClick={() => setIsEditingCategory(true)}>
+                                            <Pencil className="mr-2 h-4 w-4" /> Changer catégorie
+                                        </Button>
                                         <Button variant="destructive" onClick={() => setIsBulkDeleting(true)}>
-                                            <Trash2 className="mr-2 h-4 w-4" /> Supprimer ({selectedProductIds.length})
+                                            <Trash2 className="mr-2 h-4 w-4" /> Supprimer
                                         </Button>
                                      </div>
                                 )}
@@ -678,5 +710,3 @@ export default function ProductsPage() {
         </>
     );
 }
-
-    
