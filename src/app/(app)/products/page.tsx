@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useUser, useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
@@ -14,7 +15,7 @@ import { BulkDeleteDialog } from './bulk-delete-dialog';
 import { BarcodeLabelDialog } from '@/components/products/barcode-label-dialog';
 import { AdjustStockDialog } from '@/components/products/adjust-stock-dialog';
 import { CreatePoDialog } from '@/components/products/create-po-dialog';
-import { MoreHorizontal, Pencil, Trash2, ArrowUp, ArrowDown, Upload, Download, Image as ImageIcon, FilePlus2, ListOrdered, ShoppingCart, Search, LayoutGrid, List, Barcode, Boxes } from 'lucide-react';
+import { MoreHorizontal, Pencil, Trash2, ArrowUp, ArrowDown, Upload, Download, Image as ImageIcon, FilePlus2, ListOrdered, ShoppingCart, Search, LayoutGrid, List, Barcode, Boxes, ChevronDown } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -174,7 +175,7 @@ export default function ProductsPage() {
             "price": p.price,
             "quantity": p.quantity,
             "minStockLevel": p.minStockLevel,
-            "barcodes": p.barcodes?.join(',') || p.barcode || '', // Handle both cases
+            "barcodes": [...(p.barcodes || []), ...(p.barcode ? [p.barcode] : [])].join(','),
             "imageUrl": p.imageUrl || ''
         }));
 
@@ -425,12 +426,22 @@ export default function ProductsPage() {
                                     </Link>
                                 </Button>
                                
-                                <Button variant="outline" onClick={() => setIsImporting(true)}>
-                                    <Upload className="mr-2 h-4 w-4" /> Importer
-                                </Button>
-                                <Button variant="outline" onClick={handleExportToCSV}>
-                                    <Download className="mr-2 h-4 w-4" /> Exporter
-                                </Button>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="outline">
+                                            Actions <ChevronDown className="ml-2 h-4 w-4" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuItem onClick={() => setIsImporting(true)}>
+                                            <Upload className="mr-2 h-4 w-4" /> Importer
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={handleExportToCSV}>
+                                            <Download className="mr-2 h-4 w-4" /> Exporter
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+
                                 <Button onClick={() => setIsAddingProduct(true)}>
                                     <FilePlus2 className="mr-2 h-4 w-4" /> Ajouter
                                 </Button>
