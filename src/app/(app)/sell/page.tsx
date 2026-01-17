@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase } from '@/firebase';
@@ -152,6 +151,17 @@ export default function SellPage() {
             };
         });
     }, [products, activeSessionIndex]);
+
+    const updateCartPrice = useCallback((productId: string, newPrice: number) => {
+        updateCurrentSession(session => {
+            return {
+                ...session,
+                cart: session.cart.map(item =>
+                    item.id === productId && newPrice >= 0 ? { ...item, price: newPrice } : item
+                )
+            };
+        });
+    }, [activeSessionIndex]);
 
     const clearCart = useCallback(() => {
         updateCurrentSession((session) => ({ ...session, cart: [] }));
@@ -356,6 +366,7 @@ export default function SellPage() {
                    <CartPanel
                         cart={activeSession.cart}
                         onUpdateQuantity={updateCartQuantity}
+                        onUpdatePrice={updateCartPrice}
                         onClearCart={clearCart}
                         onFinalize={() => setIsPaymentDialogOpen(true)}
                         sessions={sessions}
@@ -385,5 +396,3 @@ export default function SellPage() {
         </>
     );
 }
-
-    

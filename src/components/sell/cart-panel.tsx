@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -16,6 +15,7 @@ import { cn } from '@/lib/utils';
 interface CartPanelProps {
     cart: CartItem[];
     onUpdateQuantity: (productId: string, quantity: number) => void;
+    onUpdatePrice: (productId: string, newPrice: number) => void;
     onClearCart: () => void;
     onFinalize: () => void;
     sessions: SalesSession[];
@@ -36,6 +36,7 @@ interface CartPanelProps {
 export function CartPanel({
     cart,
     onUpdateQuantity,
+    onUpdatePrice,
     onClearCart,
     onFinalize,
     sessions,
@@ -53,6 +54,9 @@ export function CartPanel({
     onPayDebt,
 }: CartPanelProps) {
     
+    const [editingPriceId, setEditingPriceId] = useState<string | null>(null);
+    const [editingPriceValue, setEditingPriceValue] = useState('');
+
     const total = useMemo(() => {
         return cart.reduce((sum, item) => sum + (item.price * item.cartQuantity), 0);
     }, [cart]);
@@ -88,6 +92,29 @@ export function CartPanel({
 
     const selectedCustomerData = selectedCustomer ? customers.find(c => c.id === selectedCustomer) : null;
     const selectedCustomerBalance = selectedCustomer ? customerBalances.get(selectedCustomer) : 0;
+
+    const handlePriceClick = (item: CartItem) => {
+        setEditingPriceId(item.id);
+        setEditingPriceValue(item.price.toString());
+    };
+
+    const handlePriceChangeCommit = () => {
+        if (editingPriceId) {
+            const newPrice = parseFloat(editingPriceValue);
+            if (!isNaN(newPrice) && newPrice >= 0) {
+                onUpdatePrice(editingPriceId, newPrice);
+            }
+            setEditingPriceId(null);
+        }
+    };
+
+    const handlePriceInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') {
+            handlePriceChangeCommit();
+        } else if (e.key === 'Escape') {
+            setEditingPriceId(null);
+        }
+    };
 
 
     return (
@@ -191,7 +218,26 @@ export function CartPanel({
                                 <Card key={item.id} className="p-3 flex items-center gap-3">
                                     <div className="flex-1">
                                         <p className="font-medium line-clamp-1">{item.name}</p>
-                                        <p className="text-sm text-muted-foreground">{item.price.toFixed(2)} DA</p>
+                                        {editingPriceId === item.id ? (
+                                            <Input
+                                                type="number"
+                                                value={editingPriceValue}
+                                                onChange={(e) => setEditingPriceValue(e.target.value)}
+                                                onBlur={handlePriceChangeCommit}
+                                                onKeyDown={handlePriceInputKeyDown}
+                                                autoFocus
+                                                className="h-7 text-sm w-24"
+                                                step="0.01"
+                                            />
+                                        ) : (
+                                            <p
+                                                className="text-sm text-muted-foreground cursor-pointer hover:text-primary hover:underline"
+                                                onClick={() => handlePriceClick(item)}
+                                                title="Cliquer pour modifier le prix"
+                                            >
+                                                {item.price.toFixed(2)} DA
+                                            </p>
+                                        )}
                                     </div>
                                     <div className="flex items-center gap-1">
                                         <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => onUpdateQuantity(item.id, item.cartQuantity - 1)}>-</Button>
@@ -230,5 +276,3 @@ export function CartPanel({
         </div>
     );
 }
-
-    
