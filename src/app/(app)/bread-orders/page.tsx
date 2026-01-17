@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useUser, useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking, useDoc } from '@/firebase';
@@ -342,7 +341,7 @@ export default function BreadOrdersPage() {
                                 order={order}
                                 onUpdateToggles={handleUpdateOrderToggles}
                                 onEdit={() => setEditingOrder(order)}
-                                onDelete={handleDeleteOrder}
+                                onDelete={() => handleDeleteOrder(order.id)}
                             />
                         ))}
                     </div>

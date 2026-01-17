@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { BreadOrder } from '@/lib/types';
@@ -20,7 +19,7 @@ interface OrderCardProps {
     order: BreadOrder;
     onUpdateToggles: (id: string, field: 'isPaid' | 'isDelivered', value: boolean) => void;
     onEdit: () => void;
-    onDelete: (id: string) => void;
+    onDelete: () => void;
 }
 
 export function OrderCard({ order, onUpdateToggles, onEdit, onDelete }: OrderCardProps) {
@@ -50,7 +49,7 @@ export function OrderCard({ order, onUpdateToggles, onEdit, onDelete }: OrderCar
                             Modifier
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => onDelete(order.id)} className="text-destructive focus:bg-destructive focus:text-destructive-foreground">
+                        <DropdownMenuItem onClick={onDelete} className="text-destructive focus:bg-destructive focus:text-destructive-foreground">
                             <Trash2 className="mr-2 h-4 w-4" />
                             Supprimer
                         </DropdownMenuItem>
