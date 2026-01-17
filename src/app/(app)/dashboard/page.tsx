@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
@@ -59,8 +58,10 @@ export default function DashboardPage() {
         chartData,
         topProducts,
         topCustomers,
+        averageSaleValue,
+        averageItemsPerSale,
     } = useMemo(() => {
-        if (!allSales || !products || !customers) return { revenue: 0, netProfit: 0, salesCount: 0, chartData: [], topProducts: [], topCustomers: [] };
+        if (!allSales || !products || !customers) return { revenue: 0, netProfit: 0, salesCount: 0, chartData: [], topProducts: [], topCustomers: [], averageSaleValue: 0, averageItemsPerSale: 0 };
         
         const filteredSales = allSales.filter(sale => {
             const saleDate = safeToDate(sale.createdAt);
@@ -71,8 +72,10 @@ export default function DashboardPage() {
 
         const productsMap = new Map(products.map(p => [p.id, p]));
         const customersMap = new Map(customers.map(c => [c.id, c]));
+        
         let totalRevenue = 0;
         let totalProfit = 0;
+        let totalItemsSold = 0;
         const salesByDay: { [date: string]: { revenue: number, profit: number } } = {};
 
         // Initialize days from the date range
@@ -87,19 +90,23 @@ export default function DashboardPage() {
         
         filteredSales.forEach(sale => {
             totalRevenue += sale.total;
+            totalItemsSold += sale.items.reduce((sum, item) => sum + item.quantity, 0);
+
             const dateStr = safeToDate(sale.createdAt).toISOString().split('T')[0];
             if (salesByDay[dateStr]) {
                 salesByDay[dateStr].revenue += sale.total;
+            }
 
-                let saleProfit = 0;
-                sale.items.forEach(item => {
-                    const product = productsMap.get(item.id);
-                    if (product) {
-                        const itemProfit = (item.price - product.purchasePrice) * item.quantity;
-                        saleProfit += itemProfit;
-                    }
-                });
-                totalProfit += saleProfit;
+            let saleProfit = 0;
+            sale.items.forEach(item => {
+                const product = productsMap.get(item.id);
+                if (product) {
+                    const itemProfit = (item.price - product.purchasePrice) * item.quantity;
+                    saleProfit += itemProfit;
+                }
+            });
+            totalProfit += saleProfit;
+            if (salesByDay[dateStr]) {
                 salesByDay[dateStr].profit += saleProfit;
             }
         });
@@ -147,10 +154,19 @@ export default function DashboardPage() {
             }))
             .sort((a, b) => b.totalSpent - a.totalSpent)
             .slice(0, 5);
+        
+        const averageSaleValue = filteredSales.length > 0 ? totalRevenue / filteredSales.length : 0;
+        const averageItemsPerSale = filteredSales.length > 0 ? totalItemsSold / filteredSales.length : 0;
 
         return { 
-            revenue: totalRevenue, netProfit: totalProfit, salesCount: filteredSales.length, 
-            chartData: sortedChartData, topProducts: sortedTopProducts, topCustomers: sortedTopCustomers
+            revenue: totalRevenue, 
+            netProfit: totalProfit, 
+            salesCount: filteredSales.length, 
+            chartData: sortedChartData, 
+            topProducts: sortedTopProducts, 
+            topCustomers: sortedTopCustomers,
+            averageSaleValue,
+            averageItemsPerSale
         };
 
     }, [allSales, products, customers, fromDate, toDate]);
@@ -229,6 +245,8 @@ export default function DashboardPage() {
                 inventoryValue={inventoryValue}
                 lowStockCount={lowStockProducts.length}
                 totalOutstandingDebt={totalOutstandingDebt}
+                averageSaleValue={averageSaleValue}
+                averageItemsPerSale={averageItemsPerSale}
             />
 
             <div className="grid gap-4 md:gap-8 lg:grid-cols-2">
