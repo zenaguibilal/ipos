@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase } from '@/firebase';
@@ -178,6 +177,7 @@ export default function SellPage() {
     };
 
     const { subtotal, discount, total } = useMemo(() => {
+        if (!activeSession) return { subtotal: 0, discount: 0, total: 0 };
         const currentSubtotal = activeSession.cart.reduce((sum, item) => sum + (item.price * item.cartQuantity), 0);
         let currentDiscount = 0;
         const discountValue = parseFloat(activeSession.discountValue) || 0;
@@ -258,15 +258,18 @@ export default function SellPage() {
     const handleCloseSession = (indexToClose: number) => {
         setSessions(currentSessions => {
             if (currentSessions.length === 1) {
+                // If it's the last session, just clear it, don't remove it.
                 const newSessions = [...currentSessions];
                 newSessions[indexToClose] = { cart: [], customerId: undefined, customerName: undefined, discountValue: '0', discountType: 'fixed' };
                 return newSessions;
             }
             
             const newSessions = currentSessions.filter((_, i) => i !== indexToClose);
+            // Adjust active index if needed
             if (activeSessionIndex >= indexToClose && activeSessionIndex > 0) {
                 setActiveSessionIndex(activeSessionIndex - 1);
             } else if (activeSessionIndex === indexToClose && indexToClose === newSessions.length) {
+                // If closing the last session in the list, move to the new last one
                 setActiveSessionIndex(newSessions.length - 1);
             }
             return newSessions;
@@ -298,8 +301,10 @@ export default function SellPage() {
     // Keyboard shortcuts
      const handleKeyDown = useCallback((event: KeyboardEvent) => {
         const target = event.target as HTMLElement;
+        // Don't trigger shortcuts if user is typing in an input, unless it's a specific function key
         if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
              if (['F1', 'F2', 'F4'].includes(event.key) || (event.altKey && ['a', 'n'].includes(event.key.toLowerCase()))){
+                // Allow these specific shortcuts even in inputs
              } else {
                 return;
              }
@@ -323,7 +328,7 @@ export default function SellPage() {
             setIsAddingProduct(true);
         }
 
-    }, [activeSession.cart.length]);
+    }, [activeSession]);
 
     useEffect(() => {
         window.addEventListener('keydown', handleKeyDown);
@@ -335,7 +340,7 @@ export default function SellPage() {
 
     const isLoading = isUserLoading || isLoadingProducts || isLoadingCompany || isLoadingCustomers || isLoadingSales || isLoadingPayments;
     
-    if (isLoading || !user) {
+    if (isLoading || !user || !activeSession) {
         return <div className="flex h-full items-center justify-center"><p>Chargement de l'interface de vente...</p></div>;
     }
 
