@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo } from 'react';
@@ -27,8 +26,13 @@ type HistoryItem =
 export function CustomerHistory({ sales, payments, isLoading, onViewSale }: CustomerHistoryProps) {
     
     const combinedHistory = useMemo(() => {
-        const saleItems: HistoryItem[] = (sales || []).map(s => ({ type: 'sale', data: s, date: safeToDate(s.createdAt) }));
-        const paymentItems: HistoryItem[] = (payments || []).map(p => ({ type: 'payment', data: p, date: safeToDate(p.createdAt) }));
+        const saleItems: HistoryItem[] = (sales || [])
+            .filter(s => s.createdAt)
+            .map(s => ({ type: 'sale', data: s, date: safeToDate(s.createdAt) }));
+            
+        const paymentItems: HistoryItem[] = (payments || [])
+            .filter(p => p.createdAt)
+            .map(p => ({ type: 'payment', data: p, date: safeToDate(p.createdAt) }));
 
         return [...saleItems, ...paymentItems].sort((a, b) => b.date.getTime() - a.date.getTime());
     }, [sales, payments]);
