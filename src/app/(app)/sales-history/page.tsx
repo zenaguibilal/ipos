@@ -1,8 +1,8 @@
 'use client';
 
+import React, { useEffect, useState, useMemo } from 'react';
 import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState, useMemo } from 'react';
 import { collection, query, orderBy, doc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -15,6 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { DateRangePicker } from '@/components/dashboard/date-range-picker';
 import { DateRange } from 'react-day-picker';
 import { subDays, startOfDay, endOfDay, format } from 'date-fns';
+import { fr } from 'date-fns/locale';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import Papa from 'papaparse';
 import { toast } from 'sonner';
@@ -288,62 +289,73 @@ export default function SalesHistoryPage() {
                                         <TableRow>
                                             <TableHead className="hidden sm:table-cell">Type</TableHead>
                                             <TableHead>Client / N° Facture</TableHead>
-                                            <TableHead>Date</TableHead>
+                                            <TableHead>Heure</TableHead>
                                             <TableHead>Statut / Détails</TableHead>
                                             <TableHead className="text-right">Montant</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {filteredTransactions.map((transaction, index) => {
+                                             const currentDate = safeToDate(transaction.data.createdAt);
+                                             const prevDate = index > 0 ? safeToDate(filteredTransactions[index - 1].data.createdAt) : null;
+                                             const showDateHeader = !prevDate || format(currentDate, 'yyyy-MM-dd') !== format(prevDate, 'yyyy-MM-dd');
                                              const isSale = transaction.type === 'sale';
                                              
                                              return (
-                                                <TableRow 
-                                                    key={`${transaction.type}-${transaction.data.id}-${index}`}
-                                                    onClick={() => {
-                                                        if (transaction.type === 'sale') {
-                                                            setSelectedSale(transaction.data);
-                                                        }
-                                                    }}
-                                                    className={cn(
-                                                        "border-b transition-colors",
-                                                        isSale ? "hover:bg-muted/50 cursor-pointer" : "bg-green-500/10"
-                                                     )}
-                                                >
-                                                    <TableCell className="hidden sm:table-cell">
-                                                        <div className="flex items-center gap-2">
-                                                          {isSale ? <ShoppingCart className="h-4 w-4 text-muted-foreground"/> : <HandCoins className="h-4 w-4 text-green-500"/>}
-                                                          <span>{isSale ? 'Vente' : 'Paiement'}</span>
-                                                        </div>
-                                                    </TableCell>
-                                                    <TableCell className="p-3 font-medium">
-                                                        <div>{transaction.data.customerName || (isSale ? 'Vente au comptoir' : 'Paiement inconnu')}</div>
-                                                        {isSale && <div className="font-mono text-xs text-muted-foreground">{transaction.data.invoiceNumber}</div>}
-                                                    </TableCell>
-                                                    <TableCell className="p-3 text-muted-foreground">
-                                                        {safeToDate(transaction.data.createdAt).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })}
-                                                    </TableCell>
-                                                    <TableCell className="p-3 text-center">
-                                                        {isSale ? (
-                                                            <span className={cn(
-                                                                'rounded-full px-2.5 py-0.5 text-xs font-semibold',
-                                                                transaction.data.paymentStatus === 'paid' && 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
-                                                                transaction.data.paymentStatus === 'partial' && 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
-                                                                transaction.data.paymentStatus === 'unpaid' && 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
-                                                            )}>
-                                                                {transaction.data.paymentStatus === 'paid' ? 'Payé' : transaction.data.paymentStatus === 'partial' ? 'Partiel' : 'Impayé'}
-                                                            </span>
-                                                        ) : (
-                                                            <span className="text-xs text-green-600">Règlement de dette</span>
+                                                <React.Fragment key={`${transaction.type}-${transaction.data.id}-${index}`}>
+                                                    {showDateHeader && (
+                                                        <TableRow className="bg-muted hover:bg-muted">
+                                                            <TableCell colSpan={5} className="py-3 px-4 font-semibold text-foreground">
+                                                                {format(currentDate, 'eeee d MMMM yyyy', { locale: fr })}
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    )}
+                                                    <TableRow 
+                                                        onClick={() => {
+                                                            if (transaction.type === 'sale') {
+                                                                setSelectedSale(transaction.data);
+                                                            }
+                                                        }}
+                                                        className={cn(
+                                                            "border-b transition-colors",
+                                                            isSale ? "hover:bg-muted/50 cursor-pointer" : "bg-green-500/10"
                                                         )}
-                                                    </TableCell>
-                                                    <TableCell className={cn(
-                                                        "p-3 text-right font-semibold",
-                                                        isSale ? 'text-primary' : 'text-green-600'
-                                                    )}>
-                                                        {isSale ? transaction.data.total.toFixed(2) : `+${transaction.data.amount.toFixed(2)}`} DA
-                                                    </TableCell>
-                                                </TableRow>
+                                                    >
+                                                        <TableCell className="hidden sm:table-cell">
+                                                            <div className="flex items-center gap-2">
+                                                            {isSale ? <ShoppingCart className="h-4 w-4 text-muted-foreground"/> : <HandCoins className="h-4 w-4 text-green-500"/>}
+                                                            <span>{isSale ? 'Vente' : 'Paiement'}</span>
+                                                            </div>
+                                                        </TableCell>
+                                                        <TableCell className="p-3 font-medium">
+                                                            <div>{transaction.data.customerName || (isSale ? 'Vente au comptoir' : 'Paiement inconnu')}</div>
+                                                            {isSale && <div className="font-mono text-xs text-muted-foreground">{transaction.data.invoiceNumber}</div>}
+                                                        </TableCell>
+                                                        <TableCell className="p-3 text-muted-foreground">
+                                                            {currentDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                                                        </TableCell>
+                                                        <TableCell className="p-3 text-center">
+                                                            {isSale ? (
+                                                                <span className={cn(
+                                                                    'rounded-full px-2.5 py-0.5 text-xs font-semibold',
+                                                                    transaction.data.paymentStatus === 'paid' && 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
+                                                                    transaction.data.paymentStatus === 'partial' && 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
+                                                                    transaction.data.paymentStatus === 'unpaid' && 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
+                                                                )}>
+                                                                    {transaction.data.paymentStatus === 'paid' ? 'Payé' : transaction.data.paymentStatus === 'partial' ? 'Partiel' : 'Impayé'}
+                                                                </span>
+                                                            ) : (
+                                                                <span className="text-xs text-green-600">Règlement de dette</span>
+                                                            )}
+                                                        </TableCell>
+                                                        <TableCell className={cn(
+                                                            "p-3 text-right font-semibold",
+                                                            isSale ? 'text-primary' : 'text-green-600'
+                                                        )}>
+                                                            {isSale ? transaction.data.total.toFixed(2) : `+${transaction.data.amount.toFixed(2)}`} DA
+                                                        </TableCell>
+                                                    </TableRow>
+                                                </React.Fragment>
                                             );
                                         })}
                                     </TableBody>
