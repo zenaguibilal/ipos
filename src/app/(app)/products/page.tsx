@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useUser, useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
@@ -530,6 +529,7 @@ export default function ProductsPage() {
                                                 <SortableHeader sortKey="profitMargin" className="text-right hidden lg:table-cell">Marge Bénéfice</SortableHeader>
                                                 <SortableHeader sortKey="quantity" className="text-right">Quantité</SortableHeader>
                                                 <TableHead className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground hidden md:table-cell">Stock Min.</TableHead>
+                                                <TableHead className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-muted-foreground">Étiquette</TableHead>
                                                 <TableHead className="relative px-4 py-3">
                                                     <span className="sr-only">Actions</span>
                                                 </TableHead>
@@ -575,6 +575,11 @@ export default function ProductsPage() {
                                                         {product.quantity}
                                                     </TableCell>
                                                     <TableCell className="text-right text-muted-foreground hidden md:table-cell">{product.minStockLevel}</TableCell>
+                                                    <TableCell className="text-center">
+                                                        <Button variant="ghost" size="icon" onClick={() => setLabelProduct(product)} title="Générer Étiquette">
+                                                            <Barcode className="h-5 w-5" />
+                                                        </Button>
+                                                    </TableCell>
                                                     <TableCell className="text-right">
                                                         <DropdownMenu>
                                                             <DropdownMenuTrigger asChild>
@@ -591,10 +596,6 @@ export default function ProductsPage() {
                                                                 <DropdownMenuItem onClick={() => setAdjustingStockProduct(product)}>
                                                                     <Boxes className="mr-2 h-4 w-4" />
                                                                     <span>Ajuster le stock</span>
-                                                                </DropdownMenuItem>
-                                                                <DropdownMenuItem onClick={() => setLabelProduct(product)}>
-                                                                    <Barcode className="mr-2 h-4 w-4" />
-                                                                    <span>Générer Étiquette</span>
                                                                 </DropdownMenuItem>
                                                                 <DropdownMenuItem onClick={() => setDeletingProduct(product)} className="text-destructive focus:text-destructive-foreground focus:bg-destructive">
                                                                     <Trash2 className="mr-2 h-4 w-4" />
