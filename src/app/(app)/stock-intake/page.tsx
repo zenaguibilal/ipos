@@ -19,6 +19,7 @@ import { History, Save } from 'lucide-react';
 import Link from 'next/link';
 import type { Product, PurchaseOrder, StockIntakeItem } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ProductSearchCombobox } from '@/components/stock-intake/product-search-combobox';
 
 export default function StockIntakePage() {
     const { user, isUserLoading } = useUser();
@@ -51,45 +52,6 @@ export default function StockIntakePage() {
         }
     }, [user, isUserLoading, router]);
 
-    const handleScannedItem = (scannedValue: string) => {
-        if (!products) return;
-
-        const lowercasedValue = scannedValue.toLowerCase();
-        const existingProduct = products.find(p => 
-            (p.barcodes && p.barcodes.includes(scannedValue)) || 
-            p.name.toLowerCase() === lowercasedValue
-        );
-
-        if (existingProduct) {
-            const itemInList = intakeItems.find(item => item.productId === existingProduct.id);
-            if (itemInList) {
-                updateItem(itemInList.id, 'quantity', itemInList.quantity + 1);
-                toast.info(`Quantité pour "${existingProduct.name}" augmentée.`);
-            } else {
-                setIntakeItems(prev => [...prev, {
-                    id: `item-${Date.now()}`,
-                    productId: existingProduct.id,
-                    barcodes: existingProduct.barcodes || [],
-                    name: existingProduct.name,
-                    category: existingProduct.category || '',
-                    quantity: 1,
-                    purchasePrice: existingProduct.purchasePrice,
-                    price: existingProduct.price,
-                    isNew: false,
-                }]);
-                toast.info(`"${existingProduct.name}" ajouté à la liste.`);
-            }
-        } else {
-            setNewProductInfo({ scannedCode: scannedValue });
-        }
-    };
-    
-    const handleConfirmNewProduct = (newItem: StockIntakeItem) => {
-        setIntakeItems(prev => [newItem, ...prev]);
-        setNewProductInfo(null);
-        toast.success(`Nouveau produit "${newItem.name}" ajouté à la liste.`);
-    };
-
     const updateItem = useCallback((itemId: string, field: keyof StockIntakeItem, value: any) => {
         setIntakeItems(prev => prev.map(item => {
             if (item.id === itemId) {
@@ -102,6 +64,57 @@ export default function StockIntakePage() {
             return item;
         }));
     }, []);
+
+    const addOrIncrementProduct = useCallback((product: Product) => {
+        const itemInList = intakeItems.find(item => item.productId === product.id);
+        if (itemInList) {
+            updateItem(itemInList.id, 'quantity', itemInList.quantity + 1);
+            toast.info(`Quantité pour "${product.name}" augmentée.`);
+        } else {
+            setIntakeItems(prev => [...prev, {
+                id: `item-${Date.now()}`,
+                productId: product.id,
+                barcodes: product.barcodes || [],
+                name: product.name,
+                category: product.category || '',
+                quantity: 1,
+                purchasePrice: product.purchasePrice,
+                price: product.price,
+                isNew: false,
+            }]);
+            toast.info(`"${product.name}" ajouté à la liste.`);
+        }
+    }, [intakeItems, updateItem]);
+
+    const handleScannedItem = (scannedValue: string) => {
+        if (!products) return;
+
+        const lowercasedValue = scannedValue.toLowerCase();
+        const existingProduct = products.find(p => 
+            (p.barcodes && p.barcodes.includes(scannedValue)) || 
+            p.name.toLowerCase() === lowercasedValue
+        );
+
+        if (existingProduct) {
+            addOrIncrementProduct(existingProduct);
+        } else {
+            setNewProductInfo({ scannedCode: scannedValue });
+        }
+    };
+    
+     const handleAddProductFromSearch = (productId: string) => {
+        if (!products) return;
+        const productToAdd = products.find(p => p.id === productId);
+        if (productToAdd) {
+            addOrIncrementProduct(productToAdd);
+        }
+    };
+    
+    const handleConfirmNewProduct = (newItem: StockIntakeItem) => {
+        setIntakeItems(prev => [newItem, ...prev]);
+        setNewProductInfo(null);
+        toast.success(`Nouveau produit "${newItem.name}" ajouté à la liste.`);
+    };
 
     const removeItem = useCallback((itemId: string) => {
         setIntakeItems(prev => prev.filter(item => item.id !== itemId));
@@ -317,8 +330,16 @@ export default function StockIntakePage() {
                         </div>
                     </CardHeader>
                     <CardContent>
-                        <div className="mb-6">
-                            <ScannerInput onScan={handleScannedItem} />
+                        <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+                           <ScannerInput onScan={handleScannedItem} />
+                           <div>
+                                <Label>Ou rechercher un produit existant</Label>
+                                <ProductSearchCombobox 
+                                    products={products || []}
+                                    onProductSelect={handleAddProductFromSearch}
+                                    disabled={!products}
+                                />
+                           </div>
                         </div>
 
                         <IntakeItemsTable
