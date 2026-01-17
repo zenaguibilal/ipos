@@ -1,3 +1,4 @@
+
 import { Timestamp } from "firebase/firestore";
 
 export interface Product {
@@ -137,6 +138,11 @@ export interface StockIntake {
     }[];
     totalValue: number;
     createdAt: Timestamp | Date;
+}
+
+export interface InventoryValueData {
+    name: string;
+    value: number;
 }
 
     

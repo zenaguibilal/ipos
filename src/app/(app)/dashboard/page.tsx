@@ -1,10 +1,11 @@
+
 'use client';
 
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useMemo } from 'react';
 import { collection, Timestamp } from 'firebase/firestore';
-import type { Product, Sale, ChartData, TopProduct, Customer, Payment, TopCustomer } from '@/lib/types';
+import type { Product, Sale, ChartData, TopProduct, Customer, Payment, TopCustomer, InventoryValueData } from '@/lib/types';
 import { VerificationNotice } from '@/components/dashboard/verification-notice';
 import { DateRangePicker } from '@/components/dashboard/date-range-picker';
 import { DateRange } from 'react-day-picker';
@@ -16,6 +17,7 @@ import { TotalDebtChart } from '@/components/dashboard/total-debt-chart';
 import { TopProducts } from '@/components/dashboard/top-products';
 import { LowStockProducts } from '@/components/dashboard/low-stock-products';
 import { TopCustomers } from '@/components/dashboard/top-customers';
+import { InventoryValueChart } from '@/components/dashboard/inventory-value-chart';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 
 export default function DashboardPage() {
@@ -171,14 +173,34 @@ export default function DashboardPage() {
 
     }, [allSales, products, customers, fromDate, toDate]);
 
-    // Second Memo: Calculate total inventory value and low stock products (independent of date range)
-    const { inventoryValue, lowStockProducts } = useMemo(() => {
-        if (!products) return { inventoryValue: 0, lowStockProducts: [] };
+    // Second Memo: Calculate total inventory value, low stock products, and inventory distribution
+    const { inventoryValue, lowStockProducts, inventoryValueDistribution } = useMemo(() => {
+        if (!products) return { inventoryValue: 0, lowStockProducts: [], inventoryValueDistribution: [] };
         
         const totalInventoryValue = products.reduce((sum, p) => sum + (p.purchasePrice * p.quantity), 0);
         const lowStock = products.filter(p => p.quantity <= p.minStockLevel);
 
-        return { inventoryValue: totalInventoryValue, lowStockProducts: lowStock };
+        const productValues = products
+            .map(p => ({
+                name: p.name,
+                value: p.quantity * p.purchasePrice,
+            }))
+            .filter(p => p.value > 0)
+            .sort((a, b) => b.value - a.value);
+
+        const top5Products = productValues.slice(0, 5);
+        const otherProductsValue = productValues.slice(5).reduce((acc, p) => acc + p.value, 0);
+
+        const inventoryValueDistributionData: InventoryValueData[] = [...top5Products];
+        if (otherProductsValue > 0) {
+            inventoryValueDistributionData.push({ name: 'Autres', value: otherProductsValue });
+        }
+        
+        return { 
+            inventoryValue: totalInventoryValue, 
+            lowStockProducts: lowStock,
+            inventoryValueDistribution: inventoryValueDistributionData,
+        };
     }, [products]);
 
     // Third Memo: Calculate total outstanding debt and the data for the debt history chart
@@ -281,9 +303,10 @@ export default function DashboardPage() {
                     </CardContent>
                 </Card>
             </div>
-            <div className="grid gap-4 md:gap-8 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 md:gap-8 grid-cols-1 md:grid-cols-2">
                 <TopProducts products={topProducts} />
                 <TopCustomers customers={topCustomers} />
+                <InventoryValueChart data={inventoryValueDistribution} />
                 <LowStockProducts products={lowStockProducts} />
             </div>
         </div>
