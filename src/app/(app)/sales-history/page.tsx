@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase } from '@/firebase';
@@ -9,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Search, ShoppingCart, HandCoins } from 'lucide-react';
-import type { Sale, Payment, CompanyProfile } from '@/lib/types';
+import type { Sale, Payment, CompanyProfile, Customer } from '@/lib/types'; // Import Customer
 import { SaleDetailsDialog } from '@/components/sales/sale-details-dialog';
 import { cn, safeToDate } from '@/lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -35,9 +34,12 @@ export default function SalesHistoryPage() {
     const paymentsQuery = useMemoFirebase(() =>
         (user && firestore) ? query(collection(firestore, 'users', user.uid, 'payments'), orderBy('createdAt', 'desc')) : null,
     [user, firestore]);
+    
+    const customersCollectionRef = useMemoFirebase(() => (user && firestore) ? collection(firestore, 'users', user.uid, 'customers') : null, [user, firestore]);
 
     const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
     const { data: payments, isLoading: isLoadingPayments } = useCollection<Payment>(paymentsQuery);
+    const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersCollectionRef);
     
     const companyDocRef = useMemoFirebase(() => user && firestore ? doc(firestore, 'users', user.uid, 'companyProfile', 'main') : null, [user, firestore]);
     const { data: companyProfile, isLoading: isLoadingCompany } = useDoc<CompanyProfile>(companyDocRef);
@@ -83,7 +85,13 @@ export default function SalesHistoryPage() {
         });
     }, [combinedTransactions, searchQuery, statusFilter]);
 
-    const isLoading = isUserLoading || isLoadingSales || isLoadingPayments || isLoadingCompany;
+    const selectedCustomer = useMemo(() => {
+        if (!selectedSale || !customers) return null;
+        return customers.find(c => c.id === selectedSale.customerId) || null;
+    }, [selectedSale, customers]);
+
+
+    const isLoading = isUserLoading || isLoadingSales || isLoadingPayments || isLoadingCompany || isLoadingCustomers;
 
     if (isLoading || !user) {
         return <div className="flex h-full items-center justify-center"><p>Chargement de l'historique...</p></div>;
@@ -97,6 +105,7 @@ export default function SalesHistoryPage() {
                     onOpenChange={(isOpen) => !isOpen && setSelectedSale(null)}
                     sale={selectedSale}
                     companyProfile={companyProfile}
+                    customer={selectedCustomer}
                 />
             )}
              <main className="flex-1 overflow-auto p-4 sm:p-6">

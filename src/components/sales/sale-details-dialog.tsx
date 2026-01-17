@@ -1,10 +1,11 @@
 'use client';
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import type { Sale, CompanyProfile } from '@/lib/types';
+import type { Sale, CompanyProfile, Customer } from '@/lib/types';
 import { Button } from '../ui/button';
 import { Printer, Download } from 'lucide-react';
 import { ThermalReceipt } from './thermal-receipt';
+import { A4Receipt } from './a4-receipt'; // Import A4 receipt
 import { useRef, useEffect, useState } from 'react';
 
 interface SaleDetailsDialogProps {
@@ -12,10 +13,12 @@ interface SaleDetailsDialogProps {
     onOpenChange: (isOpen: boolean) => void;
     sale: Sale;
     companyProfile?: CompanyProfile | null;
+    customer?: Customer | null; // Add customer prop
 }
 
-export function SaleDetailsDialog({ isOpen, onOpenChange, sale, companyProfile }: SaleDetailsDialogProps) {
-    const receiptRef = useRef<HTMLDivElement>(null);
+export function SaleDetailsDialog({ isOpen, onOpenChange, sale, companyProfile, customer }: SaleDetailsDialogProps) {
+    const thermalReceiptRef = useRef<HTMLDivElement>(null);
+    const a4ReceiptRef = useRef<HTMLDivElement>(null); // Ref for A4 receipt
     const [html2pdf, setHtml2pdf] = useState<any>(null);
 
     useEffect(() => {
@@ -26,38 +29,47 @@ export function SaleDetailsDialog({ isOpen, onOpenChange, sale, companyProfile }
         }
     }, [isOpen]);
 
-    const handlePrint = () => {
+    const handlePrint = (format: 'thermal' | 'a4') => {
         const printableContent = document.getElementById('receipt-for-print');
-        if (!printableContent || !receiptRef.current) return;
+        const receiptElement = format === 'thermal' ? thermalReceiptRef.current : a4ReceiptRef.current;
+        if (!printableContent || !receiptElement) return;
 
-        // Add class to html/body to trigger correct @page rule
-        document.documentElement.classList.add('thermal');
-
-        // Clone the receipt content to the dedicated print container
-        const receiptClone = receiptRef.current.cloneNode(true) as HTMLElement;
-        receiptClone.classList.add('thermal-receipt');
+        // Apply correct classes for printing
+        if (format === 'thermal') {
+            document.documentElement.classList.add('thermal');
+        } else {
+            document.documentElement.classList.remove('thermal');
+        }
         
-        printableContent.innerHTML = ''; // Clear previous content
+        const receiptClone = receiptElement.cloneNode(true) as HTMLElement;
+        if (format === 'thermal') {
+            receiptClone.classList.add('thermal-receipt');
+        } else {
+            receiptClone.classList.add('a4-receipt');
+        }
+        
+        printableContent.innerHTML = '';
         printableContent.appendChild(receiptClone);
         
-        // Allow images to load before printing
         setTimeout(() => {
             window.print();
-            // Clean up class after printing
-            document.documentElement.classList.remove('thermal');
+            // Clean up class after printing if it was thermal
+            if (format === 'thermal') {
+                document.documentElement.classList.remove('thermal');
+            }
         }, 300);
     };
 
     const handleDownloadPdf = () => {
-        const element = receiptRef.current;
+        const element = a4ReceiptRef.current; // Download A4 version
         if (!element || !html2pdf) return;
 
         const opt = {
-          margin:       [5, 0, 5, 0], // top, left, bottom, right in mm
+          margin:       0,
           filename:     `facture-${sale.invoiceNumber}.pdf`,
           image:        { type: 'jpeg', quality: 0.98 },
-          html2canvas:  { scale: 3, useCORS: true, logging: false },
-          jsPDF:        { unit: 'mm', format: [80, 297], orientation: 'portrait' }
+          html2canvas:  { scale: 2, useCORS: true, logging: false },
+          jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
         };
 
         html2pdf().from(element).set(opt).save();
@@ -75,22 +87,34 @@ export function SaleDetailsDialog({ isOpen, onOpenChange, sale, companyProfile }
                 </DialogHeader>
                 
                 <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded-md max-h-[60vh] overflow-y-auto">
-                   <div ref={receiptRef}>
+                   <div ref={thermalReceiptRef}>
                      <ThermalReceipt sale={sale} companyProfile={companyProfile} />
                    </div>
                 </div>
 
+                {/* Hidden container for A4 receipt */}
+                <div className="hidden">
+                    <div ref={a4ReceiptRef}>
+                        <A4Receipt sale={sale} companyProfile={companyProfile} customer={customer} />
+                    </div>
+                </div>
 
-                <DialogFooter className="print-hide">
-                    <Button type="button" variant="outline" onClick={handlePrint}>
-                        <Printer className="mr-2 h-4 w-4" />
-                        Imprimer
-                    </Button>
-                     <Button type="button" variant="outline" onClick={handleDownloadPdf} disabled={!html2pdf}>
+                <DialogFooter className="print-hide sm:flex-col sm:space-x-0 gap-2">
+                     <div className="flex gap-2 w-full">
+                        <Button type="button" variant="outline" className="flex-1" onClick={() => handlePrint('thermal')}>
+                            <Printer className="mr-2 h-4 w-4" />
+                            Ticket 80mm
+                        </Button>
+                        <Button type="button" variant="outline" className="flex-1" onClick={() => handlePrint('a4')}>
+                            <Printer className="mr-2 h-4 w-4" />
+                            Facture A4
+                        </Button>
+                     </div>
+                     <Button type="button" variant="outline" onClick={handleDownloadPdf} disabled={!html2pdf} className="w-full">
                         <Download className="mr-2 h-4 w-4" />
-                        Télécharger PDF
+                        Télécharger PDF (A4)
                     </Button>
-                    <Button type="button" onClick={() => onOpenChange(false)}>
+                    <Button type="button" onClick={() => onOpenChange(false)} className="w-full">
                         Fermer
                     </Button>
                 </DialogFooter>

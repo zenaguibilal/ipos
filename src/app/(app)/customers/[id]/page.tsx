@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase } from '@/firebase';
@@ -148,6 +147,7 @@ export default function CustomerDetailPage() {
                     onOpenChange={(isOpen) => !isOpen && setSelectedSale(null)}
                     sale={selectedSale}
                     companyProfile={companyProfile}
+                    customer={customer}
                 />
             )}
 
