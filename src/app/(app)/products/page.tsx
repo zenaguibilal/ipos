@@ -3,7 +3,7 @@
 import { useUser, useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useMemo } from 'react';
-import { collection, doc, writeBatch, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, writeBatch, serverTimestamp, addDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { AddProductForm } from './add-product-form';
@@ -13,12 +13,13 @@ import { ProductImportDialog } from '@/components/products/product-import-dialog
 import { BulkDeleteDialog } from './bulk-delete-dialog';
 import { BarcodeLabelDialog } from '@/components/products/barcode-label-dialog';
 import { AdjustStockDialog } from '@/components/products/adjust-stock-dialog';
+import { CreatePoDialog } from '@/components/products/create-po-dialog';
 import { MoreHorizontal, Pencil, Trash2, ArrowUp, ArrowDown, Upload, Download, Image as ImageIcon, FilePlus2, ListOrdered, ShoppingCart, Search, LayoutGrid, List, Barcode, Boxes } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
-import type { Product } from '@/lib/types';
+import type { Product, PurchaseOrderItem } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import Papa from 'papaparse';
@@ -52,6 +53,8 @@ export default function ProductsPage() {
     const [selectedProducts, setSelectedProducts] = useState<Record<string, boolean>>({});
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
     const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
+    const [isCreatingPO, setIsCreatingPO] = useState(false);
+    const [productsForPO, setProductsForPO] = useState<Product[]>([]);
     
     const selectedProductIds = useMemo(() => Object.keys(selectedProducts).filter(id => selectedProducts[id]), [selectedProducts]);
 
@@ -240,41 +243,46 @@ export default function ProductsPage() {
         });
     };
     
-    const handleCreatePurchaseOrder = () => {
-        if (!firestore || !user || !products) return;
-        if (selectedProductIds.length === 0) {
-            toast.info("Veuillez sélectionner au moins un produit pour créer un bon de commande.");
+    const handleOpenPOCreation = () => {
+        if (!products || selectedProductIds.length === 0) {
+            toast.info("Veuillez sélectionner des produits à commander.");
             return;
         }
+        const selected = products.filter(p => selectedProductIds.includes(p.id));
+        setProductsForPO(selected);
+        setIsCreatingPO(true);
+    };
 
-        const poItems = selectedProductIds.map(id => {
-            const product = products.find(p => p.id === id);
-            return {
-                productId: id,
-                productName: product?.name || '',
-                quantity: 1, // Default quantity
-                purchasePrice: product?.purchasePrice || 0
-            }
-        });
-        
+    const handleCreatePurchaseOrder = async (supplier: string, items: PurchaseOrderItem[]) => {
+        if (!firestore || !user) {
+            toast.error("Services non disponibles.");
+            return Promise.reject(new Error("Firebase services not available"));
+        }
+
+        const totalValue = items.reduce((acc, item) => acc + (item.purchasePrice * item.quantity), 0);
         const poRef = collection(firestore, 'users', user.uid, 'purchaseOrders');
         
-        addDocumentNonBlocking(poRef, {
-            poNumber: `BC-${Date.now()}`,
-            supplier: 'Fournisseur non spécifié',
-            items: poItems,
-            totalValue: poItems.reduce((acc, item) => acc + (item.purchasePrice * item.quantity), 0),
-            status: 'pending',
-            createdAt: serverTimestamp()
-        }, {
-            onSuccess: () => {
-                toast.success("Bon de commande créé avec succès. Vous pouvez le gérer dans la page des BCs.");
-                setSelectedProducts({});
-            },
-            onError: (err) => {
-                console.error("Failed to create PO:", err);
-                toast.error("Échec de la création du bon de commande.");
-            }
+        return new Promise<void>((resolve, reject) => {
+            addDocumentNonBlocking(poRef, {
+                poNumber: `BC-${Date.now()}`,
+                supplier: supplier,
+                items: items,
+                totalValue: totalValue,
+                status: 'pending',
+                createdAt: serverTimestamp()
+            }, {
+                onSuccess: () => {
+                    toast.success("Bon de commande créé avec succès.");
+                    setSelectedProducts({});
+                    setIsCreatingPO(false);
+                    resolve();
+                },
+                onError: (err) => {
+                    console.error("Failed to create PO:", err);
+                    toast.error("Échec de la création du bon de commande.");
+                    reject(err);
+                }
+            });
         });
     };
     
@@ -370,6 +378,12 @@ export default function ProductsPage() {
                     product={adjustingStockProduct as ProductWithLegacyBarcode}
                 />
             )}
+            <CreatePoDialog
+                isOpen={isCreatingPO}
+                onOpenChange={setIsCreatingPO}
+                products={productsForPO}
+                onCreate={handleCreatePurchaseOrder}
+            />
            
             <main className="flex-1 overflow-auto p-4 sm:p-6">
                 <Card className="w-full bg-card">
@@ -397,7 +411,7 @@ export default function ProductsPage() {
                              <div className="flex gap-2 w-full sm:w-auto flex-wrap justify-start sm:justify-end">
                                 {selectedProductIds.length > 0 && (
                                      <div className="flex gap-2 border-r pr-2 mr-2">
-                                         <Button variant="outline" onClick={handleCreatePurchaseOrder}>
+                                         <Button variant="outline" onClick={handleOpenPOCreation}>
                                             <ShoppingCart className="mr-2 h-4 w-4" /> Créer BC ({selectedProductIds.length})
                                         </Button>
                                         <Button variant="destructive" onClick={() => setIsBulkDeleting(true)}>
@@ -653,3 +667,5 @@ export default function ProductsPage() {
         </>
     );
 }
+
+    
