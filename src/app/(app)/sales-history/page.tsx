@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useState, useMemo } from 'react';
@@ -7,8 +8,8 @@ import { collection, query, orderBy, doc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Search, ShoppingCart, HandCoins, CircleDollarSign, Download, ChevronDown } from 'lucide-react';
-import type { Sale, Payment, CompanyProfile, Customer } from '@/lib/types';
+import { Search, ShoppingCart, HandCoins, CircleDollarSign, Download, ChevronDown, TrendingUp } from 'lucide-react';
+import type { Sale, Payment, CompanyProfile, Customer, SaleItem } from '@/lib/types';
 import { SaleDetailsDialog } from '@/components/sales/sale-details-dialog';
 import { cn, safeToDate } from '@/lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -72,9 +73,9 @@ export default function SalesHistoryPage() {
             .sort((a, b) => safeToDate(b.data.createdAt).getTime() - safeToDate(a.data.createdAt).getTime());
     }, [sales, payments]);
 
-    const { groupedTransactions, totalRevenue, totalCollected, salesCount } = useMemo(() => {
+    const { groupedTransactions, totalRevenue, totalCollected, salesCount, totalProfit } = useMemo(() => {
         if (!combinedTransactions) {
-            return { groupedTransactions: {}, totalRevenue: 0, totalCollected: 0, salesCount: 0 };
+            return { groupedTransactions: {}, totalRevenue: 0, totalCollected: 0, salesCount: 0, totalProfit: 0 };
         }
 
         const fromDate = dateRange?.from;
@@ -82,6 +83,7 @@ export default function SalesHistoryPage() {
         let runningRevenue = 0;
         let runningCollected = 0;
         let runningSalesCount = 0;
+        let runningProfit = 0;
 
         const filtered = combinedTransactions.filter(transaction => {
             const transactionDate = safeToDate(transaction.data.createdAt);
@@ -116,6 +118,7 @@ export default function SalesHistoryPage() {
                     transactions: [],
                     dailyRevenue: 0,
                     dailyCollected: 0,
+                    dailyProfit: 0,
                 };
             }
             acc[dateStr].transactions.push(transaction);
@@ -123,22 +126,33 @@ export default function SalesHistoryPage() {
             if (transaction.type === 'sale') {
                 acc[dateStr].dailyRevenue += transaction.data.total;
                 acc[dateStr].dailyCollected += transaction.data.amountPaid;
+
+                let saleProfit = 0;
+                transaction.data.items.forEach((item: SaleItem) => {
+                    const purchasePrice = typeof item.purchasePrice === 'number' ? item.purchasePrice : 0;
+                    const quantity = typeof item.quantity === 'number' ? item.quantity : (item.cartQuantity || 0);
+                    saleProfit += (item.price - purchasePrice) * quantity;
+                });
+                acc[dateStr].dailyProfit += saleProfit;
+
                 runningRevenue += transaction.data.total;
                 runningCollected += transaction.data.amountPaid;
                 runningSalesCount++;
+                runningProfit += saleProfit;
             } else { // payment
                 acc[dateStr].dailyCollected += transaction.data.amount;
                 runningCollected += transaction.data.amount;
             }
 
             return acc;
-        }, {} as Record<string, { transactions: Transaction[], dailyRevenue: number, dailyCollected: number }>);
+        }, {} as Record<string, { transactions: Transaction[], dailyRevenue: number, dailyCollected: number, dailyProfit: number }>);
         
         return { 
             groupedTransactions: groups, 
             totalRevenue: runningRevenue, 
             totalCollected: runningCollected, 
-            salesCount: runningSalesCount 
+            salesCount: runningSalesCount,
+            totalProfit: runningProfit,
         };
 
     }, [combinedTransactions, searchQuery, statusFilter, dateRange]);
@@ -265,7 +279,7 @@ export default function SalesHistoryPage() {
                         </div>
                     </CardHeader>
                     <CardContent>
-                         <div className="grid gap-4 md:grid-cols-3 mb-6">
+                         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
                             <Card>
                                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                     <CardTitle className="text-sm font-medium">Chiffre d'affaires (filtré)</CardTitle>
@@ -273,6 +287,15 @@ export default function SalesHistoryPage() {
                                 </CardHeader>
                                 <CardContent>
                                     <div className="text-2xl font-bold">{totalRevenue.toFixed(2)} DA</div>
+                                </CardContent>
+                            </Card>
+                             <Card>
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardTitle className="text-sm font-medium">Bénéfice net (filtré)</CardTitle>
+                                    <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="text-2xl font-bold text-green-600">{totalProfit.toFixed(2)} DA</div>
                                 </CardContent>
                             </Card>
                             <Card>
@@ -320,6 +343,7 @@ export default function SalesHistoryPage() {
                                                         <div className="flex justify-between items-center">
                                                             <span className="font-semibold text-base">{format(new Date(dateStr + 'T12:00:00'), 'eeee d MMMM yyyy', { locale: fr })}</span>
                                                             <div className="text-right text-xs space-x-4 hidden sm:block">
+                                                                <span>Bénéfice: <span className="font-bold text-green-600">{group.dailyProfit.toFixed(2)} DA</span></span>
                                                                 <span>Chiffre d'affaires: <span className="font-bold">{group.dailyRevenue.toFixed(2)} DA</span></span>
                                                                 <span>Encaissé: <span className="font-bold text-green-600">{group.dailyCollected.toFixed(2)} DA</span></span>
                                                             </div>

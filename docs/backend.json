@@ -151,12 +151,29 @@
           "items": {
             "type": "object",
             "properties": {
-              "id": { "type": "string" },
-              "name": { "type": "string" },
-              "price": { "type": "number" },
-              "quantity": { "type": "number" }
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "price": {
+                "type": "number"
+              },
+              "purchasePrice": {
+                "type": "number",
+                "description": "Purchase price of the item."
+              },
+              "quantity": {
+                "type": "number"
+              }
             },
-            "required": ["id", "name", "price", "quantity"]
+            "required": [
+              "id",
+              "name",
+              "price",
+              "quantity"
+            ]
           }
         },
         "subtotal": {
