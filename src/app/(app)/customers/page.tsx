@@ -6,14 +6,14 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState, useMemo } from 'react';
 import { collection, query, orderBy } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { PlusCircle, User, Phone, WalletCards, CalendarDays, AlertTriangle, Search } from 'lucide-react';
-import { AddCustomerForm } from './add-customer-form';
+import { PlusCircle, User, Phone, WalletCards, CalendarDays, AlertTriangle, Search, Users as UsersIcon } from 'lucide-react';
+import { AddCustomerForm } from '@/components/customers/add-customer-form';
 import type { Customer, Sale, Payment, CustomerWithSalesData } from '@/lib/types';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
-import { isAfter, getDate } from 'date-fns';
+import { getDate } from 'date-fns';
 
 export default function CustomersPage() {
     const { user, isUserLoading } = useUser();
@@ -40,13 +40,14 @@ export default function CustomersPage() {
         }
     }, [user, isUserLoading, router]);
 
-    const { customersWithData, totalOutstandingDebt } = useMemo(() => {
-        if (!customers || !sales || !payments) return { customersWithData: [], totalOutstandingDebt: 0 };
+    const { customersWithData, totalOutstandingDebt, customersWithDebtCount } = useMemo(() => {
+        if (!customers || !sales || !payments) return { customersWithData: [], totalOutstandingDebt: 0, customersWithDebtCount: 0 };
 
         const today = new Date();
         const currentDayOfMonth = getDate(today);
 
         let totalDebt = 0;
+        let debtCount = 0;
 
         const customerData = customers.map(customer => {
             const customerSales = sales.filter(s => s.customerId === customer.id);
@@ -58,7 +59,10 @@ export default function CustomersPage() {
             const outstandingBalance = totalSpent - totalPaidFromSales - totalStandalonePayments;
             const finalBalance = outstandingBalance < 0.01 ? 0 : outstandingBalance;
             
-            totalDebt += finalBalance;
+            if (finalBalance > 0) {
+                totalDebt += finalBalance;
+                debtCount++;
+            }
 
             let isReminderDue = false;
             if (customer.settlementDay && finalBalance > 0) {
@@ -76,7 +80,7 @@ export default function CustomersPage() {
             };
         });
 
-        return { customersWithData: customerData, totalOutstandingDebt: totalDebt };
+        return { customersWithData: customerData, totalOutstandingDebt: totalDebt, customersWithDebtCount: debtCount };
 
     }, [customers, sales, payments]);
     
@@ -88,6 +92,8 @@ export default function CustomersPage() {
             c.phone?.includes(lowercasedQuery)
         );
     }, [customersWithData, searchQuery]);
+    
+    const percentageOfDebtors = customersWithData.length > 0 ? ((customersWithDebtCount / customersWithData.length) * 100).toFixed(0) : 0;
 
     const isLoading = isUserLoading || isLoadingCustomers || isLoadingSales || isLoadingPayments;
 
@@ -104,35 +110,58 @@ export default function CustomersPage() {
             />
             <main className="flex-1 overflow-auto p-4 sm:p-6">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
-                    <div className="relative w-full max-w-sm">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input 
-                            placeholder="Rechercher un client..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="pl-9 w-full"
-                        />
+                    <h1 className="text-2xl font-bold">Clients</h1>
+                    <div className="flex gap-2 w-full sm:w-auto flex-wrap">
+                        <div className="relative flex-grow sm:flex-grow-0">
+                           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                           <Input 
+                                placeholder="Rechercher un client..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="pl-9"
+                            />
+                        </div>
+                        <Button onClick={() => setIsAddingCustomer(true)}>
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            Ajouter un client
+                        </Button>
                     </div>
-                    <Button onClick={() => setIsAddingCustomer(true)} className="w-full sm:w-auto">
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        Ajouter un client
-                    </Button>
                 </div>
                 
-                 <Card className="mb-6 bg-destructive/10 border-destructive/50">
-                    <div className="p-4 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                             <WalletCards className="h-6 w-6 text-destructive" />
-                            <div>
-                                <h3 className="font-bold text-base">Total des Dettes Clients</h3>
-                                <p className="text-xs text-muted-foreground">Montant total que vos clients vous doivent.</p>
-                            </div>
-                        </div>
-                         <div className="text-2xl font-black text-destructive">
-                            {totalOutstandingDebt.toFixed(2)} DA
-                        </div>
-                    </div>
-                 </Card>
+                 <div className="grid gap-4 md:grid-cols-3 mb-6">
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Nombre de clients</CardTitle>
+                            <UsersIcon className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{customersWithData.length}</div>
+                            <p className="text-xs text-muted-foreground">Total des clients enregistrés</p>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Clients avec dette</CardTitle>
+                            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{customersWithDebtCount}</div>
+                            <p className="text-xs text-muted-foreground">
+                                {customersWithData.length > 0 ? `${percentageOfDebtors}% des clients` : '0% des clients'}
+                            </p>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Total des Dettes</CardTitle>
+                            <WalletCards className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold text-destructive">{totalOutstandingDebt.toFixed(2)} DA</div>
+                            <p className="text-xs text-muted-foreground">Montant total dû par les clients</p>
+                        </CardContent>
+                    </Card>
+                </div>
 
 
                 {isLoading ? (
