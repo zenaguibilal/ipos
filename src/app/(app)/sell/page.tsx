@@ -391,7 +391,7 @@ export default function SellPage() {
                 />
             )}
             
-            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 h-full max-h-full md:overflow-hidden">
+            <div className="md:grid md:grid-cols-3 lg:grid-cols-4 md:h-full md:max-h-full md:overflow-hidden">
                 {/* Main Panel: Product Selection */}
                 <div className="md:col-span-2 lg:col-span-3 h-full flex flex-col p-4 gap-4">
                     <ProductGrid 

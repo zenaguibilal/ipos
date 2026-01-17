@@ -231,10 +231,10 @@ export function CartPanel({
             </div>
 
             {/* Middle scrolling section: Cart items */}
-            <div className="flex-1 min-h-0 border-t pt-4">
-                <ScrollArea className="h-full">
+            <ScrollArea className="flex-1 min-h-0 border-t pt-4">
+                <div className="h-full">
                     {cart.length === 0 ? (
-                         <div className="flex-1 flex flex-col items-center justify-center text-center p-4 h-full">
+                         <div className="flex flex-col items-center justify-center text-center p-4 h-full">
                             <HardDriveDownload className="h-16 w-16 text-muted-foreground/50 mb-4" />
                             <h3 className="text-xl font-semibold">Le panier est vide</h3>
                             <p className="text-muted-foreground">Ajoutez des produits pour commencer.</p>
@@ -284,8 +284,8 @@ export function CartPanel({
                             ))}
                         </div>
                     )}
-                </ScrollArea>
-            </div>
+                </div>
+            </ScrollArea>
             
             {/* Bottom non-scrolling section */}
             <div className="flex-shrink-0 mt-4">
