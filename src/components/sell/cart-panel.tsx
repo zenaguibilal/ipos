@@ -169,21 +169,29 @@ export function CartPanel({
                     />
                     
                     {selectedCustomerData && (
-                        <Card className="p-3 bg-muted/50">
-                             <div className="flex justify-between items-center">
+                        <Card className="p-3 bg-muted/50 space-y-2">
+                             <div className="flex justify-between items-start">
                                  <div className="font-semibold">{selectedCustomerData.firstName} {selectedCustomerData.lastName}</div>
-                                 <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onClearCustomer}>
+                                 <Button variant="ghost" size="icon" className="h-6 w-6 flex-shrink-0" onClick={onClearCustomer}>
                                     <UserX className="h-4 w-4 text-destructive" />
                                  </Button>
                              </div>
-                             <div className="flex justify-between items-center mt-1">
-                                <span className="text-sm text-muted-foreground flex items-center gap-1.5"><Wallet className="h-3 w-3"/> Solde Actuel:</span>
-                                <span className={cn("text-lg font-black", (selectedCustomerBalance || 0) > 0 ? "text-destructive" : "text-green-600")}>{(selectedCustomerBalance || 0).toFixed(2)} DA</span>
+                             <div className="space-y-2">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-sm text-muted-foreground flex items-center gap-1.5"><Wallet className="h-3 w-3"/> Solde Actuel:</span>
+                                    <span className={cn("text-lg font-black", (selectedCustomerBalance || 0) > 0 ? "text-destructive" : "text-green-600")}>{(selectedCustomerBalance || 0).toFixed(2)} DA</span>
+                                </div>
+                                {cart.length > 0 && (
+                                     <div className="flex justify-between items-center border-t border-dashed pt-2">
+                                        <span className="text-sm text-muted-foreground">Nouveau Solde (si à crédit):</span>
+                                        <span className="text-lg font-black text-primary">{((selectedCustomerBalance || 0) + total).toFixed(2)} DA</span>
+                                    </div>
+                                )}
                              </div>
                              {(selectedCustomerBalance || 0) > 0 && (
-                                <Button size="sm" variant="secondary" className="w-full mt-2" onClick={onPayDebt}>
+                                <Button size="sm" variant="secondary" className="w-full mt-1" onClick={onPayDebt}>
                                     <HandCoins className="mr-2 h-4 w-4" />
-                                    Régler une dette
+                                    Régler la dette
                                 </Button>
                              )}
                         </Card>
