@@ -12,7 +12,8 @@ import { DeleteProductDialog } from './delete-product-dialog';
 import { ProductImportDialog } from '@/components/products/product-import-dialog';
 import { BulkDeleteDialog } from './bulk-delete-dialog';
 import { BarcodeLabelDialog } from '@/components/products/barcode-label-dialog';
-import { MoreHorizontal, Pencil, Trash2, ArrowUp, ArrowDown, Upload, Download, Image as ImageIcon, FilePlus2, ListOrdered, ShoppingCart, Search, LayoutGrid, List, Barcode } from 'lucide-react';
+import { AdjustStockDialog } from '@/components/products/adjust-stock-dialog';
+import { MoreHorizontal, Pencil, Trash2, ArrowUp, ArrowDown, Upload, Download, Image as ImageIcon, FilePlus2, ListOrdered, ShoppingCart, Search, LayoutGrid, List, Barcode, Boxes } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -43,6 +44,7 @@ export default function ProductsPage() {
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
     const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
     const [labelProduct, setLabelProduct] = useState<Product | null>(null);
+    const [adjustingStockProduct, setAdjustingStockProduct] = useState<Product | null>(null);
     const [isBulkDeleting, setIsBulkDeleting] = useState(false);
     const [isImporting, setIsImporting] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
@@ -360,6 +362,14 @@ export default function ProductsPage() {
                 onConfirm={handleBulkDelete}
                 productCount={selectedProductIds.length}
             />
+            {adjustingStockProduct && (
+                <AdjustStockDialog
+                    isOpen={!!adjustingStockProduct}
+                    onOpenChange={() => setAdjustingStockProduct(null)}
+                    userId={user.uid}
+                    product={adjustingStockProduct as ProductWithLegacyBarcode}
+                />
+            )}
            
             <main className="flex-1 overflow-auto p-4 sm:p-6">
                 <Card className="w-full bg-card">
@@ -517,6 +527,10 @@ export default function ProductsPage() {
                                                                     <Pencil className="mr-2 h-4 w-4" />
                                                                     <span>Modifier</span>
                                                                 </DropdownMenuItem>
+                                                                <DropdownMenuItem onClick={() => setAdjustingStockProduct(product)}>
+                                                                    <Boxes className="mr-2 h-4 w-4" />
+                                                                    <span>Ajuster le stock</span>
+                                                                </DropdownMenuItem>
                                                                 <DropdownMenuItem onClick={() => setLabelProduct(product)}>
                                                                     <Barcode className="mr-2 h-4 w-4" />
                                                                     <span>Générer Étiquette</span>
@@ -559,6 +573,10 @@ export default function ProductsPage() {
                                                             <DropdownMenuItem onClick={() => setEditingProduct(product)}>
                                                                 <Pencil className="mr-2 h-4 w-4" />
                                                                 <span>Modifier</span>
+                                                            </DropdownMenuItem>
+                                                             <DropdownMenuItem onClick={() => setAdjustingStockProduct(product)}>
+                                                                <Boxes className="mr-2 h-4 w-4" />
+                                                                <span>Ajuster le stock</span>
                                                             </DropdownMenuItem>
                                                             <DropdownMenuItem onClick={() => setLabelProduct(product)}>
                                                                 <Barcode className="mr-2 h-4 w-4" />
