@@ -15,7 +15,7 @@ import { ScannerInput } from '@/components/stock-intake/scanner-input';
 import { IntakeItemsTable } from '@/components/stock-intake/items-table';
 import { SaveIntakeDialog } from '@/components/stock-intake/save-intake-dialog';
 import { AddNewProductDialog } from '@/components/stock-intake/add-new-product-dialog';
-import { History, Save } from 'lucide-react';
+import { History, Save, PlusCircle } from 'lucide-react';
 import Link from 'next/link';
 import type { Product, PurchaseOrder, StockIntakeItem } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -332,13 +332,25 @@ export default function StockIntakePage() {
                     <CardContent>
                         <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
                            <ScannerInput onScan={handleScannedItem} />
-                           <div>
-                                <Label>Ou rechercher un produit existant</Label>
-                                <ProductSearchCombobox 
-                                    products={products || []}
-                                    onProductSelect={handleAddProductFromSearch}
-                                    disabled={!products}
-                                />
+                            <div className="space-y-1">
+                                <Label>Ou rechercher / ajouter un produit</Label>
+                                <div className="flex gap-2">
+                                    <ProductSearchCombobox 
+                                        products={products || []}
+                                        onProductSelect={handleAddProductFromSearch}
+                                        disabled={!products}
+                                        className="w-full"
+                                    />
+                                    <Button 
+                                        variant="outline" 
+                                        size="icon" 
+                                        className="h-12 w-12 flex-shrink-0" 
+                                        onClick={() => setNewProductInfo({ scannedCode: '' })} 
+                                        title="Ajouter un nouveau produit manuellement"
+                                    >
+                                        <PlusCircle className="h-5 w-5" />
+                                    </Button>
+                                </div>
                            </div>
                         </div>
 

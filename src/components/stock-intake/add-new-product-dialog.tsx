@@ -31,7 +31,7 @@ export function AddNewProductDialog({ isOpen, onOpenChange, scannedCode, onConfi
             setPrice('');
             setPurchasePrice('');
             setQuantity('1');
-            setBarcodes(scannedCode.includes('...') ? '' : scannedCode);
+            setBarcodes(scannedCode && !scannedCode.includes('...') ? scannedCode : '');
         }
     }, [isOpen, scannedCode]);
 
@@ -78,7 +78,10 @@ export function AddNewProductDialog({ isOpen, onOpenChange, scannedCode, onConfi
                     <DialogHeader>
                         <DialogTitle>Ajouter un nouveau produit</DialogTitle>
                         <DialogDescription>
-                            Le code "{scannedCode}" n'a été trouvé dans aucun produit. Ajoutez-le maintenant.
+                            {scannedCode
+                                ? `Le code "${scannedCode}" n'a été trouvé dans aucun produit. Ajoutez-le maintenant.`
+                                : "Ajoutez un nouveau produit qui n'est pas encore dans votre inventaire."
+                            }
                         </DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-3 py-4 max-h-[70vh] overflow-y-auto px-2">

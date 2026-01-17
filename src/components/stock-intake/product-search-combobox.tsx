@@ -24,9 +24,10 @@ interface ProductSearchComboboxProps {
     products: Product[];
     onProductSelect: (productId: string) => void;
     disabled?: boolean;
+    className?: string;
 }
 
-export function ProductSearchCombobox({ products, onProductSelect, disabled }: ProductSearchComboboxProps) {
+export function ProductSearchCombobox({ products, onProductSelect, disabled, className }: ProductSearchComboboxProps) {
   const [open, setOpen] = React.useState(false)
 
   return (
@@ -36,7 +37,7 @@ export function ProductSearchCombobox({ products, onProductSelect, disabled }: P
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="w-full justify-between h-12"
+          className={cn("justify-between h-12", className)}
           disabled={disabled}
         >
           <span className="text-muted-foreground line-clamp-1 text-left font-normal">Rechercher un produit...</span>
