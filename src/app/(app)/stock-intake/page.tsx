@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
@@ -13,6 +14,7 @@ import { DatePicker } from '@/components/stock-intake/date-picker';
 import { ScannerInput } from '@/components/stock-intake/scanner-input';
 import { IntakeItemsTable } from '@/components/stock-intake/items-table';
 import { SaveIntakeDialog } from '@/components/stock-intake/save-intake-dialog';
+import { AddNewProductDialog } from '@/components/stock-intake/add-new-product-dialog';
 import { History, Save } from 'lucide-react';
 import Link from 'next/link';
 import type { Product, PurchaseOrder, StockIntakeItem } from '@/lib/types';
@@ -40,6 +42,8 @@ export default function StockIntakePage() {
     const [isSaving, setIsSaving] = useState(false);
     const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
     const [selectedPOId, setSelectedPOId] = useState<string | 'none'>('none');
+    const [newProductInfo, setNewProductInfo] = useState<{ scannedCode: string } | null>(null);
+
 
     useEffect(() => {
         if (!isUserLoading && !user) {
@@ -60,6 +64,7 @@ export default function StockIntakePage() {
             const itemInList = intakeItems.find(item => item.productId === existingProduct.id);
             if (itemInList) {
                 updateItem(itemInList.id, 'quantity', itemInList.quantity + 1);
+                toast.info(`Quantité pour "${existingProduct.name}" augmentée.`);
             } else {
                 setIntakeItems(prev => [...prev, {
                     id: `item-${Date.now()}`,
@@ -72,20 +77,17 @@ export default function StockIntakePage() {
                     price: existingProduct.price,
                     isNew: false,
                 }]);
+                toast.info(`"${existingProduct.name}" ajouté à la liste.`);
             }
         } else {
-             setIntakeItems(prev => [...prev, {
-                id: `item-${Date.now()}`,
-                productId: undefined,
-                barcodes: [scannedValue.includes(',') ? '' : scannedValue],
-                name: scannedValue.includes(',') ? '' : scannedValue,
-                category: '',
-                quantity: 1,
-                purchasePrice: 0,
-                price: 0,
-                isNew: true,
-             }]);
+            setNewProductInfo({ scannedCode: scannedValue });
         }
+    };
+    
+    const handleConfirmNewProduct = (newItem: StockIntakeItem) => {
+        setIntakeItems(prev => [newItem, ...prev]);
+        setNewProductInfo(null);
+        toast.success(`Nouveau produit "${newItem.name}" ajouté à la liste.`);
     };
 
     const updateItem = useCallback((itemId: string, field: keyof StockIntakeItem, value: any) => {
@@ -251,6 +253,14 @@ export default function StockIntakePage() {
                 totalItems={intakeItems.length}
                 totalValue={totalValue}
             />
+            {newProductInfo && (
+                <AddNewProductDialog
+                    isOpen={!!newProductInfo}
+                    onOpenChange={() => setNewProductInfo(null)}
+                    scannedCode={newProductInfo.scannedCode}
+                    onConfirm={handleConfirmNewProduct}
+                />
+            )}
             <main className="flex-1 overflow-auto p-4 sm:p-6">
                 <Card className="w-full bg-card">
                     <CardHeader>
