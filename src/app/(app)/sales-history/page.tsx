@@ -7,14 +7,17 @@ import { collection, query, orderBy, doc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Search, ShoppingCart, HandCoins, CircleDollarSign } from 'lucide-react';
+import { Search, ShoppingCart, HandCoins, CircleDollarSign, Download, ChevronDown } from 'lucide-react';
 import type { Sale, Payment, CompanyProfile, Customer } from '@/lib/types';
 import { SaleDetailsDialog } from '@/components/sales/sale-details-dialog';
 import { cn, safeToDate } from '@/lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DateRangePicker } from '@/components/dashboard/date-range-picker';
 import { DateRange } from 'react-day-picker';
-import { subDays, startOfDay, endOfDay } from 'date-fns';
+import { subDays, startOfDay, endOfDay, format } from 'date-fns';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import Papa from 'papaparse';
+import { toast } from 'sonner';
 
 
 type StatusFilter = 'all' | 'paid' | 'unpaid' | 'payments';
@@ -128,6 +131,58 @@ export default function SalesHistoryPage() {
         return customers.find(c => c.id === selectedSale.customerId) || null;
     }, [selectedSale, customers]);
 
+    const handleExportToCSV = () => {
+        if (filteredTransactions.length === 0) {
+            toast.info("Aucune transaction à exporter.");
+            return;
+        }
+
+        const csvData = filteredTransactions.map(transaction => {
+            const date = safeToDate(transaction.data.createdAt).toISOString();
+            const customerName = transaction.data.customerName || 'N/A';
+
+            if (transaction.type === 'sale') {
+                const sale = transaction.data;
+                return {
+                    "Date": date,
+                    "Type": "Vente",
+                    "Référence": sale.invoiceNumber,
+                    "Client": customerName,
+                    "Statut Paiement": sale.paymentStatus,
+                    "Total Vente": sale.total,
+                    "Montant Payé": sale.amountPaid,
+                    "Solde Restant": sale.remainingBalance,
+                    "Nombre d'articles": sale.items.length
+                };
+            } else { // payment
+                const payment = transaction.data;
+                return {
+                    "Date": date,
+                    "Type": "Paiement",
+                    "Référence": `P-${payment.id.substring(0, 7)}`,
+                    "Client": customerName,
+                    "Statut Paiement": "N/A",
+                    "Total Vente": 0,
+                    "Montant Payé": payment.amount,
+                    "Solde Restant": 0,
+                    "Nombre d'articles": 0
+                };
+            }
+        });
+
+        const csv = Papa.unparse(csvData);
+        const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        const fromDateStr = dateRange?.from ? format(dateRange.from, 'yyyy-MM-dd') : 'start';
+        const toDateStr = dateRange?.to ? format(dateRange.to, 'yyyy-MM-dd') : 'end';
+        link.setAttribute('download', `historique_transactions_${fromDateStr}_a_${toDateStr}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast.success("Historique des transactions exporté avec succès.");
+    };
+
 
     const isLoading = isUserLoading || isLoadingSales || isLoadingPayments || isLoadingCompany || isLoadingCustomers;
 
@@ -149,24 +204,40 @@ export default function SalesHistoryPage() {
              <main className="flex-1 overflow-auto p-4 sm:p-6">
                 <Card className="w-full bg-card">
                     <CardHeader>
-                        <CardTitle>Historique des Transactions</CardTitle>
-                        <CardDescription>
-                            Consultez, recherchez et filtrez toutes vos transactions commerciales (ventes et paiements).
-                        </CardDescription>
-                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-4">
-                           <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
-                                <div className="relative w-full sm:w-64">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                    <Input 
-                                        placeholder="Rechercher par N° facture ou client..."
-                                        value={searchQuery}
-                                        onChange={(e) => setSearchQuery(e.target.value)}
-                                        className="pl-9 w-full"
-                                    />
-                                </div>
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                            <div>
+                                <CardTitle>Historique des Transactions</CardTitle>
+                                <CardDescription>
+                                    Consultez et exportez toutes vos transactions commerciales.
+                                </CardDescription>
+                            </div>
+                            <div className="flex gap-2 items-center">
                                 <DateRangePicker onUpdate={setDateRange} />
-                           </div>
-                             <div className="flex gap-2 rounded-lg bg-muted p-1 self-start sm:self-center">
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="outline">
+                                            Actions <ChevronDown className="ml-2 h-4 w-4" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuItem onClick={handleExportToCSV}>
+                                            <Download className="mr-2 h-4 w-4" /> Exporter la vue en CSV
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            </div>
+                        </div>
+                        <div className="flex flex-col sm:flex-row items-center gap-4 pt-4 border-t mt-4">
+                            <div className="relative w-full sm:w-64">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input 
+                                    placeholder="Rechercher par N° facture ou client..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="pl-9 w-full"
+                                />
+                            </div>
+                            <div className="flex gap-2 rounded-lg bg-muted p-1">
                                 <Button variant={statusFilter === 'all' ? 'default' : 'ghost'} size="sm" onClick={() => setStatusFilter('all')}>Tout</Button>
                                 <Button variant={statusFilter === 'paid' ? 'default' : 'ghost'} size="sm" onClick={() => setStatusFilter('paid')}>Payé</Button>
                                 <Button variant={statusFilter === 'unpaid' ? 'default' : 'ghost'} size="sm" onClick={() => setStatusFilter('unpaid')}>Impayé/Partiel</Button>
@@ -285,5 +356,3 @@ export default function SalesHistoryPage() {
         </>
     );
 }
-
-    
