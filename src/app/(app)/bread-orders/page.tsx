@@ -27,6 +27,7 @@ export default function BreadOrdersPage() {
     const [isResetting, setIsResetting] = useState(false);
     const [isProcessingReset, setIsProcessingReset] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    const [viewFilter, setViewFilter] = useState<'all' | 'undelivered' | 'unpaid'>('all');
 
     const companyDocRef = useMemoFirebase(() => user && firestore ? doc(firestore, 'users', user.uid, 'companyProfile', 'main') : null, [user, firestore]);
     const { data: companyProfile, isLoading: isLoadingCompany } = useDoc<CompanyProfile>(companyDocRef);
@@ -55,11 +56,11 @@ export default function BreadOrdersPage() {
 
         const paid = orders
             .filter(o => o.isPaid)
-            .reduce((sum, order) => sum + order.quantity * breadPrice, 0);
+            .reduce((sum, order) => sum + (order.quantity * breadPrice), 0);
             
         const owed = orders
             .filter(o => o.isDelivered && !o.isPaid)
-            .reduce((sum, order) => sum + order.quantity * breadPrice, 0);
+            .reduce((sum, order) => sum + (order.quantity * breadPrice), 0);
 
         let processedOrders = [...orders].sort((a, b) => {
             // 1. Primary sort: Undelivered orders first
@@ -76,6 +77,14 @@ export default function BreadOrdersPage() {
             return 0;
         });
 
+        // 1. Filter by view
+        if (viewFilter === 'undelivered') {
+            processedOrders = processedOrders.filter(o => !o.isDelivered);
+        } else if (viewFilter === 'unpaid') {
+            processedOrders = processedOrders.filter(o => o.isDelivered && !o.isPaid);
+        }
+
+        // 2. Filter by search
         if (searchQuery) {
             const lowercasedQuery = searchQuery.toLowerCase();
             processedOrders = processedOrders.filter(order => order.name.toLowerCase().includes(lowercasedQuery));
@@ -89,7 +98,7 @@ export default function BreadOrdersPage() {
             totalPaid: paid,
             totalOwed: owed,
         };
-    }, [orders, searchQuery, companyProfile]);
+    }, [orders, searchQuery, companyProfile, viewFilter]);
 
 
     const handleAddOrder = (name: string, quantity: number, isRecurring: boolean) => {
@@ -208,7 +217,7 @@ export default function BreadOrdersPage() {
                 isProcessing={isProcessingReset}
             />
             <main className="flex-1 overflow-auto p-4 sm:p-6">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
                      <div>
                         <h1 className="text-2xl font-bold">Commandes de Pain du Jour</h1>
                         <p className="text-muted-foreground">Gérez les commandes de pain quotidiennes.</p>
@@ -231,6 +240,20 @@ export default function BreadOrdersPage() {
                         <Button onClick={() => setIsAddingOrder(true)}>
                             <PlusCircle className="mr-2 h-4 w-4" />
                             Ajouter
+                        </Button>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-2 mb-6">
+                    <div className="flex gap-2 rounded-lg bg-muted p-1">
+                        <Button variant={viewFilter === 'all' ? 'default' : 'ghost'} size="sm" onClick={() => setViewFilter('all')}>Tout</Button>
+                        <Button variant={viewFilter === 'undelivered' ? 'default' : 'ghost'} size="sm" onClick={() => setViewFilter('undelivered')}>
+                            <Truck className="mr-2 h-4 w-4"/>
+                            Non Livré
+                        </Button>
+                        <Button variant={viewFilter === 'unpaid' ? 'default' : 'ghost'} size="sm" onClick={() => setViewFilter('unpaid')}>
+                            <CreditCard className="mr-2 h-4 w-4"/>
+                            Non Payé
                         </Button>
                     </div>
                 </div>
@@ -299,11 +322,11 @@ export default function BreadOrdersPage() {
                 ) : filteredOrders.length === 0 ? (
                      <div className="flex h-60 items-center justify-center rounded-md border-2 border-dashed border-border bg-card">
                         <div className="text-center">
-                            <h3 className="text-xl font-bold tracking-tight">{searchQuery ? "Aucun résultat" : "Aucune commande aujourd'hui"}</h3>
+                            <h3 className="text-xl font-bold tracking-tight">{searchQuery ? "Aucun résultat" : "Aucune commande"}</h3>
                             <p className="text-sm text-muted-foreground mb-4">
-                                {searchQuery ? "Aucune commande ne correspond à votre recherche." : "Ajoutez votre première commande de la journée."}
+                                {searchQuery ? "Aucune commande ne correspond à votre recherche." : `Aucune commande ne correspond au filtre "${viewFilter}".`}
                             </p>
-                             {!searchQuery && (
+                             {!searchQuery && viewFilter === 'all' && (
                                 <Button onClick={() => setIsAddingOrder(true)}>
                                     <PlusCircle className="mr-2 h-4 w-4" />
                                     Ajouter une commande
