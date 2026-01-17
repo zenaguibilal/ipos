@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useUser, useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
@@ -11,6 +10,7 @@ import { AddProductForm } from './add-product-form';
 import { EditProductForm } from './edit-product-form';
 import { DeleteProductDialog } from './delete-product-dialog';
 import { ProductImportDialog } from '@/components/products/product-import-dialog';
+import { BulkDeleteDialog } from './bulk-delete-dialog';
 import { MoreHorizontal, Pencil, Trash2, ArrowUp, ArrowDown, Upload, Download, Image as ImageIcon, FilePlus2, ListOrdered, ShoppingCart, Search } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
@@ -41,6 +41,7 @@ export default function ProductsPage() {
     const [isAddingProduct, setIsAddingProduct] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
     const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
+    const [isBulkDeleting, setIsBulkDeleting] = useState(false);
     const [isImporting, setIsImporting] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [sortConfig, setSortConfig] = useState<{ key: SortableKeys; direction: 'ascending' | 'descending' } | null>({ key: 'name', direction: 'ascending' });
@@ -271,6 +272,28 @@ export default function ProductsPage() {
             }
         });
     };
+    
+    const handleBulkDelete = async () => {
+        if (!firestore || !user || selectedProductIds.length === 0) return;
+
+        const batch = writeBatch(firestore);
+        selectedProductIds.forEach(id => {
+            const productDocRef = doc(firestore, 'users', user.uid, 'products', id);
+            batch.delete(productDocRef);
+        });
+
+        try {
+            await batch.commit();
+            toast.success(`${selectedProductIds.length} produit(s) ont été supprimés.`);
+            setSelectedProducts({});
+            setIsBulkDeleting(false);
+        } catch (err) {
+            console.error("Failed to bulk delete products:", err);
+            toast.error("Échec de la suppression des produits.");
+            setIsBulkDeleting(false);
+        }
+    };
+
 
     const isLoading = isUserLoading || isLoadingProducts;
 
@@ -321,6 +344,12 @@ export default function ProductsPage() {
                 onOpenChange={setIsImporting}
                 onConfirm={handleImportCSV}
             />
+             <BulkDeleteDialog
+                isOpen={isBulkDeleting}
+                onOpenChange={setIsBulkDeleting}
+                onConfirm={handleBulkDelete}
+                productCount={selectedProductIds.length}
+            />
            
             <main className="flex-1 overflow-auto p-4 sm:p-6">
                 <Card className="w-full bg-card">
@@ -337,9 +366,14 @@ export default function ProductsPage() {
                             </div>
                              <div className="flex gap-2 w-full sm:w-auto flex-wrap justify-start sm:justify-end">
                                 {selectedProductIds.length > 0 && (
-                                     <Button variant="outline" onClick={handleCreatePurchaseOrder}>
-                                        <ShoppingCart className="mr-2 h-4 w-4" /> Créer BC ({selectedProductIds.length})
-                                    </Button>
+                                     <div className="flex gap-2 border-r pr-2 mr-2">
+                                         <Button variant="outline" onClick={handleCreatePurchaseOrder}>
+                                            <ShoppingCart className="mr-2 h-4 w-4" /> Créer BC ({selectedProductIds.length})
+                                        </Button>
+                                        <Button variant="destructive" onClick={() => setIsBulkDeleting(true)}>
+                                            <Trash2 className="mr-2 h-4 w-4" /> Supprimer ({selectedProductIds.length})
+                                        </Button>
+                                     </div>
                                 )}
                                 <Button asChild variant="outline">
                                     <Link href="/products/purchase-orders">
@@ -492,6 +526,3 @@ export default function ProductsPage() {
         </>
     );
 }
-
-
-    
