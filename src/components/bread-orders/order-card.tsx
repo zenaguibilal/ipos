@@ -27,7 +27,8 @@ export function OrderCard({ order, onUpdateToggles, onEdit, onDelete }: OrderCar
     return (
         <Card className={cn(
             "flex flex-col justify-between transition-colors",
-            order.isDelivered && "bg-green-500/10 border-green-500/30"
+            order.isDelivered && !order.isPaid && "bg-red-500/10 border-red-500/30",
+            order.isDelivered && order.isPaid && "bg-green-500/10 border-green-500/30"
         )}>
             <CardHeader className="flex-row items-start justify-between pb-2">
                 <div className="space-y-1">
