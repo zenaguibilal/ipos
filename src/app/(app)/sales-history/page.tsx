@@ -72,14 +72,18 @@ export default function SalesHistoryPage() {
             .sort((a, b) => safeToDate(b.data.createdAt).getTime() - safeToDate(a.data.createdAt).getTime());
     }, [sales, payments]);
 
-    const filteredTransactions = useMemo(() => {
-        if (!combinedTransactions) return [];
+    const { groupedTransactions, totalRevenue, totalCollected, salesCount } = useMemo(() => {
+        if (!combinedTransactions) {
+            return { groupedTransactions: {}, totalRevenue: 0, totalCollected: 0, salesCount: 0 };
+        }
 
         const fromDate = dateRange?.from;
         const toDate = dateRange?.to;
+        let runningRevenue = 0;
+        let runningCollected = 0;
+        let runningSalesCount = 0;
 
-        return combinedTransactions.filter(transaction => {
-            // Date filter first
+        const filtered = combinedTransactions.filter(transaction => {
             const transactionDate = safeToDate(transaction.data.createdAt);
             if (fromDate && transactionDate < fromDate) return false;
             if (toDate && transactionDate > toDate) return false;
@@ -104,27 +108,40 @@ export default function SalesHistoryPage() {
                     return true;
             }
         });
-    }, [combinedTransactions, searchQuery, statusFilter, dateRange]);
-
-    const { totalRevenue, totalCollected, salesCount } = useMemo(() => {
-        if (!filteredTransactions) return { totalRevenue: 0, totalCollected: 0, salesCount: 0 };
-
-        let revenue = 0;
-        let collected = 0;
-        let sCount = 0;
-
-        filteredTransactions.forEach(transaction => {
-            if (transaction.type === 'sale') {
-                revenue += transaction.data.total;
-                collected += transaction.data.amountPaid;
-                sCount++;
-            } else { // payment
-                collected += transaction.data.amount;
+        
+        const groups = filtered.reduce((acc, transaction) => {
+            const dateStr = format(safeToDate(transaction.data.createdAt), 'yyyy-MM-dd');
+            if (!acc[dateStr]) {
+                acc[dateStr] = {
+                    transactions: [],
+                    dailyRevenue: 0,
+                    dailyCollected: 0,
+                };
             }
-        });
+            acc[dateStr].transactions.push(transaction);
 
-        return { totalRevenue: revenue, totalCollected: collected, salesCount: sCount };
-    }, [filteredTransactions]);
+            if (transaction.type === 'sale') {
+                acc[dateStr].dailyRevenue += transaction.data.total;
+                acc[dateStr].dailyCollected += transaction.data.amountPaid;
+                runningRevenue += transaction.data.total;
+                runningCollected += transaction.data.amountPaid;
+                runningSalesCount++;
+            } else { // payment
+                acc[dateStr].dailyCollected += transaction.data.amount;
+                runningCollected += transaction.data.amount;
+            }
+
+            return acc;
+        }, {} as Record<string, { transactions: Transaction[], dailyRevenue: number, dailyCollected: number }>);
+        
+        return { 
+            groupedTransactions: groups, 
+            totalRevenue: runningRevenue, 
+            totalCollected: runningCollected, 
+            salesCount: runningSalesCount 
+        };
+
+    }, [combinedTransactions, searchQuery, statusFilter, dateRange]);
 
 
     const selectedCustomer = useMemo(() => {
@@ -133,12 +150,13 @@ export default function SalesHistoryPage() {
     }, [selectedSale, customers]);
 
     const handleExportToCSV = () => {
-        if (filteredTransactions.length === 0) {
+        const transactionsToExport = Object.values(groupedTransactions).flatMap(g => g.transactions);
+        if (transactionsToExport.length === 0) {
             toast.info("Aucune transaction à exporter.");
             return;
         }
 
-        const csvData = filteredTransactions.map(transaction => {
+        const csvData = transactionsToExport.map(transaction => {
             const date = safeToDate(transaction.data.createdAt).toISOString();
             const customerName = transaction.data.customerName || 'N/A';
 
@@ -276,7 +294,7 @@ export default function SalesHistoryPage() {
                                 </CardContent>
                             </Card>
                         </div>
-                        {filteredTransactions.length === 0 ? (
+                        {Object.keys(groupedTransactions).length === 0 ? (
                              <div className="flex h-40 items-center justify-center rounded-md border-2 border-dashed border-border bg-card">
                                 <p className="text-muted-foreground">
                                     {combinedTransactions.length > 0 ? "Aucune transaction ne correspond à votre recherche." : "Aucune transaction enregistrée pour le moment."}
@@ -295,69 +313,74 @@ export default function SalesHistoryPage() {
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {filteredTransactions.map((transaction, index) => {
-                                             const currentDate = safeToDate(transaction.data.createdAt);
-                                             const prevDate = index > 0 ? safeToDate(filteredTransactions[index - 1].data.createdAt) : null;
-                                             const showDateHeader = !prevDate || format(currentDate, 'yyyy-MM-dd') !== format(prevDate, 'yyyy-MM-dd');
-                                             const isSale = transaction.type === 'sale';
-                                             
-                                             return (
-                                                <React.Fragment key={`${transaction.type}-${transaction.data.id}-${index}`}>
-                                                    {showDateHeader && (
-                                                        <TableRow className="bg-muted hover:bg-muted">
-                                                            <TableCell colSpan={5} className="py-3 px-4 font-semibold text-foreground">
-                                                                {format(currentDate, 'eeee d MMMM yyyy', { locale: fr })}
+                                        {Object.entries(groupedTransactions).map(([dateStr, group]) => (
+                                            <React.Fragment key={dateStr}>
+                                                <TableRow className="bg-muted hover:bg-muted">
+                                                    <TableCell colSpan={5} className="py-2 px-4 font-medium text-foreground">
+                                                        <div className="flex justify-between items-center">
+                                                            <span className="font-semibold text-base">{format(new Date(dateStr + 'T12:00:00'), 'eeee d MMMM yyyy', { locale: fr })}</span>
+                                                            <div className="text-right text-xs space-x-4 hidden sm:block">
+                                                                <span>Chiffre d'affaires: <span className="font-bold">{group.dailyRevenue.toFixed(2)} DA</span></span>
+                                                                <span>Encaissé: <span className="font-bold text-green-600">{group.dailyCollected.toFixed(2)} DA</span></span>
+                                                            </div>
+                                                        </div>
+                                                    </TableCell>
+                                                </TableRow>
+                                                {group.transactions.map((transaction, index) => {
+                                                     const currentDate = safeToDate(transaction.data.createdAt);
+                                                     const isSale = transaction.type === 'sale';
+                                                     
+                                                     return (
+                                                        <TableRow 
+                                                            key={`${transaction.type}-${transaction.data.id}-${index}`}
+                                                            onClick={() => {
+                                                                if (transaction.type === 'sale') {
+                                                                    setSelectedSale(transaction.data);
+                                                                }
+                                                            }}
+                                                            className={cn(
+                                                                "border-b transition-colors",
+                                                                isSale ? "hover:bg-muted/50 cursor-pointer" : "bg-green-500/10"
+                                                            )}
+                                                        >
+                                                            <TableCell className="hidden sm:table-cell">
+                                                                <div className="flex items-center gap-2">
+                                                                {isSale ? <ShoppingCart className="h-4 w-4 text-muted-foreground"/> : <HandCoins className="h-4 w-4 text-green-500"/>}
+                                                                <span>{isSale ? 'Vente' : 'Paiement'}</span>
+                                                                </div>
+                                                            </TableCell>
+                                                            <TableCell className="p-3 font-medium">
+                                                                <div>{transaction.data.customerName || (isSale ? 'Vente au comptoir' : 'Paiement inconnu')}</div>
+                                                                {isSale && <div className="font-mono text-xs text-muted-foreground">{transaction.data.invoiceNumber}</div>}
+                                                            </TableCell>
+                                                            <TableCell className="p-3 text-muted-foreground">
+                                                                {currentDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                                                            </TableCell>
+                                                            <TableCell className="p-3 text-center">
+                                                                {isSale ? (
+                                                                    <span className={cn(
+                                                                        'rounded-full px-2.5 py-0.5 text-xs font-semibold',
+                                                                        transaction.data.paymentStatus === 'paid' && 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
+                                                                        transaction.data.paymentStatus === 'partial' && 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
+                                                                        transaction.data.paymentStatus === 'unpaid' && 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
+                                                                    )}>
+                                                                        {transaction.data.paymentStatus === 'paid' ? 'Payé' : transaction.data.paymentStatus === 'partial' ? 'Partiel' : 'Impayé'}
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className="text-xs text-green-600">Règlement de dette</span>
+                                                                )}
+                                                            </TableCell>
+                                                            <TableCell className={cn(
+                                                                "p-3 text-right font-semibold",
+                                                                isSale ? 'text-primary' : 'text-green-600'
+                                                            )}>
+                                                                {isSale ? transaction.data.total.toFixed(2) : `+${transaction.data.amount.toFixed(2)}`} DA
                                                             </TableCell>
                                                         </TableRow>
-                                                    )}
-                                                    <TableRow 
-                                                        onClick={() => {
-                                                            if (transaction.type === 'sale') {
-                                                                setSelectedSale(transaction.data);
-                                                            }
-                                                        }}
-                                                        className={cn(
-                                                            "border-b transition-colors",
-                                                            isSale ? "hover:bg-muted/50 cursor-pointer" : "bg-green-500/10"
-                                                        )}
-                                                    >
-                                                        <TableCell className="hidden sm:table-cell">
-                                                            <div className="flex items-center gap-2">
-                                                            {isSale ? <ShoppingCart className="h-4 w-4 text-muted-foreground"/> : <HandCoins className="h-4 w-4 text-green-500"/>}
-                                                            <span>{isSale ? 'Vente' : 'Paiement'}</span>
-                                                            </div>
-                                                        </TableCell>
-                                                        <TableCell className="p-3 font-medium">
-                                                            <div>{transaction.data.customerName || (isSale ? 'Vente au comptoir' : 'Paiement inconnu')}</div>
-                                                            {isSale && <div className="font-mono text-xs text-muted-foreground">{transaction.data.invoiceNumber}</div>}
-                                                        </TableCell>
-                                                        <TableCell className="p-3 text-muted-foreground">
-                                                            {currentDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
-                                                        </TableCell>
-                                                        <TableCell className="p-3 text-center">
-                                                            {isSale ? (
-                                                                <span className={cn(
-                                                                    'rounded-full px-2.5 py-0.5 text-xs font-semibold',
-                                                                    transaction.data.paymentStatus === 'paid' && 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
-                                                                    transaction.data.paymentStatus === 'partial' && 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
-                                                                    transaction.data.paymentStatus === 'unpaid' && 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
-                                                                )}>
-                                                                    {transaction.data.paymentStatus === 'paid' ? 'Payé' : transaction.data.paymentStatus === 'partial' ? 'Partiel' : 'Impayé'}
-                                                                </span>
-                                                            ) : (
-                                                                <span className="text-xs text-green-600">Règlement de dette</span>
-                                                            )}
-                                                        </TableCell>
-                                                        <TableCell className={cn(
-                                                            "p-3 text-right font-semibold",
-                                                            isSale ? 'text-primary' : 'text-green-600'
-                                                        )}>
-                                                            {isSale ? transaction.data.total.toFixed(2) : `+${transaction.data.amount.toFixed(2)}`} DA
-                                                        </TableCell>
-                                                    </TableRow>
-                                                </React.Fragment>
-                                            );
-                                        })}
+                                                     );
+                                                })}
+                                            </React.Fragment>
+                                        ))}
                                     </TableBody>
                                 </Table>
                             </div>
