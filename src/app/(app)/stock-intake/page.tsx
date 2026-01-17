@@ -44,6 +44,7 @@ export default function StockIntakePage() {
     const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
     const [selectedPOId, setSelectedPOId] = useState<string | 'none'>('none');
     const [newProductInfo, setNewProductInfo] = useState<{ scannedCode: string } | null>(null);
+    const [errors, setErrors] = useState<Record<string, Partial<Record<keyof StockIntakeItem, string>>>>({});
 
 
     useEffect(() => {
@@ -82,7 +83,7 @@ export default function StockIntakePage() {
                 price: product.price,
                 isNew: false,
             }]);
-            toast.info(`"${product.name}" ajouté à la liste.`);
+            toast.success(`"${product.name}" ajouté à la liste.`);
         }
     }, [intakeItems, updateItem]);
 
@@ -152,14 +153,50 @@ export default function StockIntakePage() {
     };
     
     const handleSaveIntake = async () => {
-        if (!firestore || !user) return toast.error("Le service de base de données n'est pas disponible.");
-        if (intakeItems.length === 0) return toast.error("La liste de réception est vide.");
-        
-        for(const item of intakeItems) {
-            if (!item.name || item.quantity <= 0 || item.purchasePrice < 0 || item.price < 0) {
-                 return toast.error(`Veuillez remplir toutes les informations pour le produit "${item.name || 'Inconnu'}"`);
-            }
+        const newErrors: Record<string, Partial<Record<keyof StockIntakeItem, string>>> = {};
+        let hasError = false;
+
+        if (intakeItems.length === 0) {
+            toast.error("La liste de réception est vide.");
+            setIsSaveDialogOpen(false);
+            return;
         }
+
+        intakeItems.forEach(item => {
+            const currentItemErrors: Partial<Record<keyof StockIntakeItem, string>> = {};
+            if (!item.name.trim()) {
+                currentItemErrors.name = "Le nom ne peut pas être vide.";
+                hasError = true;
+            }
+            if (item.quantity <= 0) {
+                currentItemErrors.quantity = "La quantité doit être supérieure à 0.";
+                hasError = true;
+            }
+            if (item.purchasePrice < 0) {
+                currentItemErrors.purchasePrice = "Le prix d'achat ne peut pas être négatif.";
+                hasError = true;
+            }
+            if (item.price <= 0) {
+                currentItemErrors.price = "Le prix de vente doit être supérieur à 0.";
+                hasError = true;
+            }
+
+            if (Object.keys(currentItemErrors).length > 0) {
+                newErrors[item.id] = currentItemErrors;
+            }
+        });
+
+        setErrors(newErrors);
+
+        if (hasError) {
+            toast.error("Veuillez corriger les erreurs dans la liste.", {
+                description: "Les champs en rouge contiennent des erreurs.",
+            });
+            setIsSaveDialogOpen(false);
+            return;
+        }
+        
+        if (!firestore || !user) return toast.error("Le service de base de données n'est pas disponible.");
         
         setIsSaving(true);
         try {
@@ -196,7 +233,6 @@ export default function StockIntakePage() {
                                 category: item.category,
                             });
                         } else {
-                             // If product somehow doesn't exist, create it.
                              transaction.set(productRef, {
                                 name: item.name,
                                 quantity: item.quantity,
@@ -236,6 +272,7 @@ export default function StockIntakePage() {
             setInvoiceNumber('');
             setInvoiceDate(new Date());
             setSelectedPOId('none');
+            setErrors({});
 
         } catch (error) {
             console.error("Erreur lors de l'enregistrement de la réception :", error);
@@ -358,6 +395,7 @@ export default function StockIntakePage() {
                             items={intakeItems}
                             onUpdateItem={updateItem}
                             onRemoveItem={removeItem}
+                            errors={errors}
                         />
 
                          {intakeItems.length > 0 && (
@@ -380,3 +418,4 @@ export default function StockIntakePage() {
         </>
     );
 }
+    
