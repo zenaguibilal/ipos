@@ -1,16 +1,16 @@
 
 'use client';
 
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useMemo } from 'react';
-import { collection, query, orderBy } from 'firebase/firestore';
+import { collection, query, orderBy, doc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { PlusCircle, User, Phone, WalletCards, CalendarDays, AlertTriangle, Search, Users as UsersIcon, CalendarClock, ListFilter } from 'lucide-react';
+import { PlusCircle, User, Phone, WalletCards, CalendarDays, AlertTriangle, Search, Users as UsersIcon, CalendarClock, ListFilter, MessageSquare } from 'lucide-react';
 import { AddCustomerForm } from '@/components/customers/add-customer-form';
-import type { Customer, Sale, Payment, CustomerWithSalesData } from '@/lib/types';
+import type { Customer, Sale, Payment, CustomerWithSalesData, CompanyProfile } from '@/lib/types';
 import Link from 'next/link';
 import { cn, safeToDate } from '@/lib/utils';
 import { getDate, formatDistanceToNow } from 'date-fns';
@@ -22,6 +22,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { toast } from 'sonner';
 
 export default function CustomersPage() {
     const { user, isUserLoading } = useUser();
@@ -38,10 +40,14 @@ export default function CustomersPage() {
     [user, firestore]);
     const salesCollectionRef = useMemoFirebase(() => (user && firestore) ? collection(firestore, 'users', user.uid, 'sales') : null, [user, firestore]);
     const paymentsCollectionRef = useMemoFirebase(() => (user && firestore) ? collection(firestore, 'users', user.uid, 'payments') : null, [user, firestore]);
+    const companyDocRef = useMemoFirebase(() => (user && firestore) ? doc(firestore, 'users', user.uid, 'companyProfile', 'main') : null, [user, firestore]);
+
 
     const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersQuery);
     const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesCollectionRef);
     const { data: payments, isLoading: isLoadingPayments } = useCollection<Payment>(paymentsCollectionRef);
+    const { data: companyProfile, isLoading: isLoadingCompany } = useDoc<CompanyProfile>(companyDocRef);
+
 
     useEffect(() => {
         if (!isUserLoading && !user) {
@@ -133,7 +139,20 @@ export default function CustomersPage() {
     
     const percentageOfDebtors = customersWithData.length > 0 ? ((customersWithDebtCount / customersWithData.length) * 100).toFixed(0) : 0;
 
-    const isLoading = isUserLoading || isLoadingCustomers || isLoadingSales || isLoadingPayments;
+    const isLoading = isUserLoading || isLoadingCustomers || isLoadingSales || isLoadingPayments || isLoadingCompany;
+
+    const handleWhatsAppReminder = (customer: CustomerWithSalesData) => {
+        if (!customer.phone) {
+            toast.error("Le numéro de téléphone de ce client n'est pas disponible.");
+            return;
+        }
+
+        const companyName = companyProfile?.companyName || 'votre magasin';
+        const message = `Bonjour ${customer.firstName} ${customer.lastName}, ceci est un rappel amical concernant votre solde impayé de ${customer.outstandingBalance.toFixed(2)} DA chez ${companyName}. Merci de régler votre dette dès que possible.`;
+        
+        const whatsappUrl = `https://wa.me/${customer.phone.replace(/\s+/g, '')}?text=${encodeURIComponent(message)}`;
+        window.open(whatsappUrl, '_blank');
+    };
 
     if (isLoading || !user) {
         return <div className="flex h-full items-center justify-center"><p>Chargement des clients...</p></div>;
@@ -217,62 +236,94 @@ export default function CustomersPage() {
                 {isLoading ? (
                     <div className="text-center">Chargement des données...</div>
                 ) : sortedAndFilteredCustomers.length > 0 ? (
-                    <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-                        {sortedAndFilteredCustomers.map(customer => (
-                            <Link href={`/customers/${customer.id}`} key={customer.id} passHref>
-                                <Card className={cn(
-                                    "cursor-pointer hover:shadow-md hover:border-primary transition-all group p-4 flex flex-col justify-between h-full",
-                                    customer.isReminderDue && "bg-destructive/10 border-destructive/50 hover:border-destructive"
-                                    )}>
-                                    <div>
-                                        <div className="flex items-start justify-between mb-4">
-                                            <div className="flex items-center gap-3">
-                                                 <div className="bg-muted rounded-full h-12 w-12 flex items-center justify-center">
-                                                    <User className="h-6 w-6 text-muted-foreground" />
+                    <TooltipProvider>
+                        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+                            {sortedAndFilteredCustomers.map(customer => (
+                                <Link href={`/customers/${customer.id}`} key={customer.id} passHref>
+                                    <Card className={cn(
+                                        "cursor-pointer hover:shadow-md hover:border-primary transition-all group p-4 flex flex-col justify-between h-full",
+                                        customer.isReminderDue && "bg-destructive/10 border-destructive/50 hover:border-destructive"
+                                        )}>
+                                        <div>
+                                            <div className="flex items-start justify-between mb-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="bg-muted rounded-full h-12 w-12 flex items-center justify-center">
+                                                        <User className="h-6 w-6 text-muted-foreground" />
+                                                    </div>
+                                                    <div>
+                                                        <h3 className="font-bold text-lg leading-tight">{customer.firstName} {customer.lastName}</h3>
+                                                        {customer.phone && (
+                                                            <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                                                                <Phone className="h-3 w-3"/>
+                                                                <span>{customer.phone}</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                                <div>
-                                                    <h3 className="font-bold text-lg leading-tight">{customer.firstName} {customer.lastName}</h3>
-                                                    {customer.phone && (
-                                                        <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                                                            <Phone className="h-3 w-3"/>
-                                                            <span>{customer.phone}</span>
-                                                        </div>
+                                                <div className="flex items-center gap-1">
+                                                    {customer.isReminderDue && (
+                                                        <>
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <div className="text-destructive p-2" onClick={(e) => e.preventDefault()}>
+                                                                        <AlertTriangle className="h-5 w-5" />
+                                                                    </div>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent>
+                                                                    <p>Paiement en retard</p>
+                                                                </TooltipContent>
+                                                            </Tooltip>
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="icon"
+                                                                        className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-100 dark:hover:bg-green-800/40"
+                                                                        onClick={(e) => {
+                                                                            e.preventDefault();
+                                                                            e.stopPropagation();
+                                                                            handleWhatsAppReminder(customer);
+                                                                        }}
+                                                                    >
+                                                                        <MessageSquare className="h-5 w-5" />
+                                                                    </Button>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent>
+                                                                    <p>Envoyer un rappel WhatsApp</p>
+                                                                </TooltipContent>
+                                                            </Tooltip>
+                                                        </>
                                                     )}
                                                 </div>
                                             </div>
-                                            {customer.isReminderDue && (
-                                                <div className="text-destructive" title="Paiement en retard">
-                                                    <AlertTriangle className="h-5 w-5" />
+                                            {customer.settlementDay && (
+                                                <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-2">
+                                                    <CalendarDays className="h-3 w-3" />
+                                                    <span>Jour de règlement : le {customer.settlementDay} de chaque mois</span>
+                                                </div>
+                                            )}
+                                            {customer.lastActivityDate && (
+                                                <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-2">
+                                                    <CalendarClock className="h-3 w-3" />
+                                                    <span>Dernière activité: {formatDistanceToNow(customer.lastActivityDate, { addSuffix: true, locale: fr })}</span>
                                                 </div>
                                             )}
                                         </div>
-                                         {customer.settlementDay && (
-                                             <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-2">
-                                                <CalendarDays className="h-3 w-3" />
-                                                <span>Jour de règlement : le {customer.settlementDay} de chaque mois</span>
+                                        <div className="border-t pt-3 mt-3 space-y-2">
+                                            <div className="flex justify-between items-center text-sm">
+                                                <span className="text-muted-foreground">Total Dépensé</span>
+                                                <span className="font-semibold">{customer.totalSpent.toFixed(2)} DA</span>
                                             </div>
-                                        )}
-                                        {customer.lastActivityDate && (
-                                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-2">
-                                                <CalendarClock className="h-3 w-3" />
-                                                <span>Dernière activité: {formatDistanceToNow(customer.lastActivityDate, { addSuffix: true, locale: fr })}</span>
+                                            <div className="flex justify-between items-center text-sm">
+                                                <span className="text-muted-foreground">Solde Actuel</span>
+                                                <span className={`font-bold ${customer.outstandingBalance > 0 ? 'text-destructive' : 'text-green-600'}`}>{customer.outstandingBalance.toFixed(2)} DA</span>
                                             </div>
-                                        )}
-                                    </div>
-                                    <div className="border-t pt-3 mt-3 space-y-2">
-                                        <div className="flex justify-between items-center text-sm">
-                                            <span className="text-muted-foreground">Total Dépensé</span>
-                                            <span className="font-semibold">{customer.totalSpent.toFixed(2)} DA</span>
                                         </div>
-                                         <div className="flex justify-between items-center text-sm">
-                                            <span className="text-muted-foreground">Solde Actuel</span>
-                                            <span className={`font-bold ${customer.outstandingBalance > 0 ? 'text-destructive' : 'text-green-600'}`}>{customer.outstandingBalance.toFixed(2)} DA</span>
-                                        </div>
-                                    </div>
-                                </Card>
-                            </Link>
-                        ))}
-                    </div>
+                                    </Card>
+                                </Link>
+                            ))}
+                        </div>
+                    </TooltipProvider>
                 ) : (
                      <div className="flex h-60 items-center justify-center rounded-md border-2 border-dashed border-border bg-card">
                         <div className="text-center">
@@ -289,5 +340,3 @@ export default function CustomersPage() {
         </>
     );
 }
-
-    
