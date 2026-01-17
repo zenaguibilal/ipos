@@ -1,11 +1,11 @@
-
 'use client';
 
+import { useMemo } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { TopCustomer } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { Users } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface TopCustomersProps {
     customers: TopCustomer[];
@@ -13,6 +13,17 @@ interface TopCustomersProps {
 
 export function TopCustomers({ customers }: TopCustomersProps) {
     const router = useRouter();
+
+    const chartData = useMemo(() => {
+        return customers
+            .map(c => ({
+                name: `${c.firstName} ${c.lastName.charAt(0)}.`, // Abbreviate last name
+                totalSpent: c.totalSpent,
+                id: c.id
+            }))
+            .sort((a, b) => a.totalSpent - b.totalSpent); // Sort ascending for horizontal bar chart display
+    }, [customers]);
+
 
     return (
         <Card className="bg-card h-full">
@@ -29,32 +40,47 @@ export function TopCustomers({ customers }: TopCustomersProps) {
             </CardHeader>
             <CardContent>
                  {customers.length === 0 ? (
-                    <div className="flex h-24 items-center justify-center text-sm text-muted-foreground">
+                    <div className="flex h-[250px] items-center justify-center text-sm text-muted-foreground">
                         Aucune donnée client à afficher.
                     </div>
                 ) : (
-                    <div className="overflow-x-auto">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Client</TableHead>
-                                    <TableHead className="text-right">Total Dépensé</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {customers.map(customer => (
-                                     <TableRow key={customer.id} onClick={() => router.push(`/customers/${customer.id}`)} className="cursor-pointer hover:bg-muted/50">
-                                        <TableCell>
-                                            <div className="font-medium">{customer.firstName} {customer.lastName}</div>
-                                        </TableCell>
-                                        <TableCell className="text-right font-bold text-primary">
-                                            {customer.totalSpent.toFixed(2)} DA
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </div>
+                    <ResponsiveContainer width="100%" height={250}>
+                        <BarChart
+                            data={chartData}
+                            layout="vertical"
+                            margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
+                        >
+                            <XAxis type="number" hide />
+                            <YAxis 
+                                dataKey="name" 
+                                type="category" 
+                                axisLine={false} 
+                                tickLine={false} 
+                                width={100}
+                                stroke="hsl(var(--muted-foreground))"
+                                fontSize={12}
+                            />
+                            <Tooltip
+                                cursor={{ fill: 'hsl(var(--accent))' }}
+                                contentStyle={{
+                                    backgroundColor: "hsl(var(--background))",
+                                    border: "1px solid hsl(var(--border))"
+                                }}
+                                labelStyle={{ color: "hsl(var(--foreground))" }}
+                                formatter={(value: number) => [
+                                    `${(value as number).toFixed(2)} DA`,
+                                    `Total Dépensé`
+                                ]}
+                            />
+                            <Bar 
+                                dataKey="totalSpent" 
+                                fill="hsl(var(--chart-secondary))" 
+                                radius={[0, 4, 4, 0]}
+                                onClick={(data: any) => router.push(`/customers/${data.id}`)}
+                                className="cursor-pointer"
+                            />
+                        </BarChart>
+                    </ResponsiveContainer>
                 )}
             </CardContent>
         </Card>
