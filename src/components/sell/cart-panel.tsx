@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -39,6 +40,8 @@ interface CartPanelProps {
     discountType: 'percentage' | 'fixed';
     discountValue: string;
     onUpdateDiscount: (field: 'discountType' | 'discountValue', value: any) => void;
+    purchaseValue: number;
+    profit: number;
 }
 
 export function CartPanel({
@@ -65,7 +68,9 @@ export function CartPanel({
     total,
     discountType,
     discountValue,
-    onUpdateDiscount
+    onUpdateDiscount,
+    purchaseValue,
+    profit,
 }: CartPanelProps) {
     
     const [editingPriceId, setEditingPriceId] = useState<string | null>(null);
@@ -129,7 +134,7 @@ export function CartPanel({
 
     return (
         <div className="h-full flex flex-col">
-            {/* Top section: Sessions and Customer */}
+            {/* Top non-scrolling section */}
             <div className="flex-shrink-0">
                 {/* Sessions Bar */}
                 <div className="flex items-center gap-2 mb-2 border-b pb-3">
@@ -208,7 +213,6 @@ export function CartPanel({
                     )}
                 </div>
 
-
                  {/* Action buttons */}
                  <div className="flex gap-2 mb-2">
                      <Button variant="destructive" onClick={onClearCart} disabled={cart.length === 0} className="w-1/3">
@@ -226,7 +230,7 @@ export function CartPanel({
                  </div>
             </div>
 
-            {/* Middle section: Cart items (scrollable) */}
+            {/* Middle scrolling section: Cart items */}
             <div className="flex-1 min-h-0 border-t pt-4">
                 <ScrollArea className="h-full">
                     {cart.length === 0 ? (
@@ -283,29 +287,30 @@ export function CartPanel({
                 </ScrollArea>
             </div>
             
-            {/* Discount section */}
-            <div className="flex-shrink-0 mt-4 border-y py-4">
-                <Label>Remise sur le panier</Label>
-                <div className="flex gap-2 mt-2">
-                    <Input 
-                        type="number"
-                        placeholder="0"
-                        value={discountValue}
-                        onChange={(e) => onUpdateDiscount('discountValue', e.target.value)}
-                        className="h-10"
-                    />
-                    <Tabs value={discountType} onValueChange={(v) => onUpdateDiscount('discountType', v as any)} className="w-[100px]">
-                        <TabsList className="grid w-full grid-cols-2 h-10">
-                            <TabsTrigger value="fixed">DA</TabsTrigger>
-                            <TabsTrigger value="percentage">%</TabsTrigger>
-                        </TabsList>
-                    </Tabs>
-                </div>
-            </div>
-
-            {/* Bottom section: Summary */}
+            {/* Bottom non-scrolling section */}
             <div className="flex-shrink-0 mt-4">
-                 <div className="space-y-2">
+                 {/* Discount section */}
+                <div className="border-y py-4">
+                    <Label>Remise sur le panier</Label>
+                    <div className="flex gap-2 mt-2">
+                        <Input 
+                            type="number"
+                            placeholder="0"
+                            value={discountValue}
+                            onChange={(e) => onUpdateDiscount('discountValue', e.target.value)}
+                            className="h-10"
+                        />
+                        <Tabs value={discountType} onValueChange={(v) => onUpdateDiscount('discountType', v as any)} className="w-[100px]">
+                            <TabsList className="grid w-full grid-cols-2 h-10">
+                                <TabsTrigger value="fixed">DA</TabsTrigger>
+                                <TabsTrigger value="percentage">%</TabsTrigger>
+                            </TabsList>
+                        </Tabs>
+                    </div>
+                </div>
+
+                 {/* Summary section */}
+                 <div className="mt-4 space-y-2">
                     <div className="flex justify-between text-sm text-muted-foreground">
                         <span>Articles</span>
                         <span>{totalItems}</span>
@@ -320,6 +325,15 @@ export function CartPanel({
                             <span>- {discount.toFixed(2)} DA</span>
                         </div>
                     )}
+                    <div className="border-t my-2"></div>
+                    <div className="flex justify-between text-sm font-semibold">
+                        <span>Valeur d'achat</span>
+                        <span>{purchaseValue.toFixed(2)} DA</span>
+                    </div>
+                     <div className="flex justify-between text-sm font-semibold text-green-600">
+                        <span>Bénéfice</span>
+                        <span>{profit.toFixed(2)} DA</span>
+                    </div>
                  </div>
             </div>
         </div>
