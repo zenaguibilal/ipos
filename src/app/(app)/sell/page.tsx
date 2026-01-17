@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase } from '@/firebase';
@@ -107,9 +108,13 @@ export default function SellPage() {
                 }
             } else {
                 if (1 <= stockQuantity) {
+                    const productWithPurchasePrice: SaleItem = {
+                        ...product,
+                        purchasePrice: productInStock?.purchasePrice ?? 0
+                    };
                     return {
                         ...session,
-                        cart: [...session.cart, { ...product, cartQuantity: 1 }]
+                        cart: [...session.cart, { ...productWithPurchasePrice, cartQuantity: 1 }]
                     };
                 } else {
                     toast.warning(`Stock insuffisant pour ${product.name}.`);
@@ -124,6 +129,7 @@ export default function SellPage() {
             id: `custom-${Date.now()}`,
             name,
             price,
+            purchasePrice: 0, // Custom products have no purchase price
             quantity: 0, // Not from inventory
         };
         addProductToCart(customProduct);
@@ -176,26 +182,30 @@ export default function SellPage() {
         }));
     };
 
-    const { subtotal, discount, total } = useMemo(() => {
-        if (!activeSession) return { subtotal: 0, discount: 0, total: 0 };
+    const { subtotal, discount, total, purchaseValue, profit } = useMemo(() => {
+        if (!activeSession) return { subtotal: 0, discount: 0, total: 0, purchaseValue: 0, profit: 0 };
+        
         const currentSubtotal = activeSession.cart.reduce((sum, item) => sum + (item.price * item.cartQuantity), 0);
         let currentDiscount = 0;
-        const discountValue = parseFloat(activeSession.discountValue) || 0;
+        const discountValueNumber = parseFloat(activeSession.discountValue) || 0;
 
-        if (discountValue > 0) {
+        if (discountValueNumber > 0) {
             if (activeSession.discountType === 'percentage') {
-                if (discountValue <= 100) {
-                    currentDiscount = (currentSubtotal * discountValue) / 100;
+                if (discountValueNumber <= 100) {
+                    currentDiscount = (currentSubtotal * discountValueNumber) / 100;
                 }
             } else { // fixed
-                currentDiscount = discountValue;
+                currentDiscount = discountValueNumber;
             }
         }
         
         currentDiscount = Math.min(currentSubtotal, currentDiscount);
         const currentTotal = currentSubtotal - currentDiscount;
+        
+        const currentPurchaseValue = activeSession.cart.reduce((sum, item) => sum + ((item.purchasePrice || 0) * item.cartQuantity), 0);
+        const currentProfit = currentTotal - currentPurchaseValue;
 
-        return { subtotal: currentSubtotal, discount: currentDiscount, total: currentTotal };
+        return { subtotal: currentSubtotal, discount: currentDiscount, total: currentTotal, purchaseValue: currentPurchaseValue, profit: currentProfit };
     }, [activeSession]);
 
 
@@ -208,7 +218,7 @@ export default function SellPage() {
 
         const newSale: Omit<Sale, 'id' | 'createdAt'> = {
             invoiceNumber: `INV-${Date.now()}`,
-            items: cart.map(({ cartQuantity, ...item }) => ({...item, quantity: cartQuantity})),
+            items: cart.map(({ cartQuantity, ...item }) => ({...item, quantity: cartQuantity || 0})),
             subtotal: subtotal,
             discountType: parseFloat(activeSession.discountValue) > 0 ? activeSession.discountType : undefined,
             discountAmount: parseFloat(activeSession.discountValue) > 0 ? parseFloat(activeSession.discountValue) : undefined,
@@ -230,7 +240,7 @@ export default function SellPage() {
                 const productRef = doc(firestore, 'users', user.uid, 'products', item.id);
                 const productInStock = products?.find(p => p.id === item.id);
                 if (productInStock) {
-                    const newQuantity = productInStock.quantity - item.cartQuantity;
+                    const newQuantity = productInStock.quantity - (item.cartQuantity || 0);
                     batch.update(productRef, { quantity: newQuantity });
                 }
             }
@@ -381,7 +391,7 @@ export default function SellPage() {
                 />
             )}
             
-            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 h-full max-h-full overflow-hidden">
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 h-full max-h-full md:overflow-hidden">
                 {/* Main Panel: Product Selection */}
                 <div className="md:col-span-2 lg:col-span-3 h-full flex flex-col p-4 gap-4">
                     <ProductGrid 
@@ -419,6 +429,8 @@ export default function SellPage() {
                         discountType={activeSession.discountType}
                         discountValue={activeSession.discountValue}
                         onUpdateDiscount={handleUpdateDiscount}
+                        purchaseValue={purchaseValue}
+                        profit={profit}
                    />
                 </div>
             </div>
