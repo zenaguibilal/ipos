@@ -11,7 +11,7 @@ import { EditProductForm } from './edit-product-form';
 import { DeleteProductDialog } from './delete-product-dialog';
 import { ProductImportDialog } from '@/components/products/product-import-dialog';
 import { BulkDeleteDialog } from './bulk-delete-dialog';
-import { MoreHorizontal, Pencil, Trash2, ArrowUp, ArrowDown, Upload, Download, Image as ImageIcon, FilePlus2, ListOrdered, ShoppingCart, Search } from 'lucide-react';
+import { MoreHorizontal, Pencil, Trash2, ArrowUp, ArrowDown, Upload, Download, Image as ImageIcon, FilePlus2, ListOrdered, ShoppingCart, Search, LayoutGrid, List } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -47,6 +47,7 @@ export default function ProductsPage() {
     const [sortConfig, setSortConfig] = useState<{ key: SortableKeys; direction: 'ascending' | 'descending' } | null>({ key: 'name', direction: 'ascending' });
     const [selectedProducts, setSelectedProducts] = useState<Record<string, boolean>>({});
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
+    const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
     
     const selectedProductIds = useMemo(() => Object.keys(selectedProducts).filter(id => selectedProducts[id]), [selectedProducts]);
 
@@ -355,14 +356,24 @@ export default function ProductsPage() {
                 <Card className="w-full bg-card">
                     <CardHeader className="p-6 space-y-4">
                         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                            <div className="relative flex-grow w-full sm:w-auto sm:flex-grow-0 max-w-sm">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                <Input 
-                                    placeholder="Rechercher par nom, catégorie..."
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="pl-9 w-full"
-                                />
+                            <div className="flex items-center gap-2 flex-grow sm:flex-grow-0">
+                                <div className="relative w-full max-w-sm">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                    <Input 
+                                        placeholder="Rechercher par nom, catégorie..."
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        className="pl-9 w-full"
+                                    />
+                                </div>
+                                <div className="hidden sm:flex gap-1 rounded-md bg-muted p-1">
+                                    <Button variant={viewMode === 'table' ? 'default' : 'ghost'} size="icon" className="h-8 w-8" onClick={() => setViewMode('table')}>
+                                        <List className="h-4 w-4" />
+                                    </Button>
+                                    <Button variant={viewMode === 'grid' ? 'default' : 'ghost'} size="icon" className="h-8 w-8" onClick={() => setViewMode('grid')}>
+                                        <LayoutGrid className="h-4 w-4" />
+                                    </Button>
+                                </div>
                             </div>
                              <div className="flex gap-2 w-full sm:w-auto flex-wrap justify-start sm:justify-end">
                                 {selectedProductIds.length > 0 && (
@@ -417,76 +428,116 @@ export default function ProductsPage() {
                         {isLoading ? (
                             <div className="text-center">Chargement des données...</div>
                         ) : sortedAndFilteredProducts && sortedAndFilteredProducts.length > 0 ? (
-                            <div className="overflow-x-auto">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead className="px-4">
-                                                <Checkbox
-                                                    checked={selectedProductIds.length > 0 && selectedProductIds.length === sortedAndFilteredProducts.length}
-                                                    onCheckedChange={(checked) => {
-                                                        const newSelected: Record<string, boolean> = {};
-                                                        if (checked) {
-                                                            sortedAndFilteredProducts.forEach(p => newSelected[p.id] = true);
-                                                        }
-                                                        setSelectedProducts(newSelected);
-                                                    }}
-                                                />
-                                            </TableHead>
-                                            <TableHead className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Image</TableHead>
-                                            <SortableHeader sortKey="name" className="text-left">Produit</SortableHeader>
-                                            <SortableHeader sortKey="category" className="text-left hidden md:table-cell">Catégorie</SortableHeader>
-                                            <SortableHeader sortKey="purchasePrice" className="text-right hidden sm:table-cell">Prix d'achat</SortableHeader>
-                                            <SortableHeader sortKey="price" className="text-right">Prix de vente</SortableHeader>
-                                            <SortableHeader sortKey="profitMargin" className="text-right hidden lg:table-cell">Marge Bénéfice</SortableHeader>
-                                            <SortableHeader sortKey="quantity" className="text-right">Quantité</SortableHeader>
-                                            <TableHead className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground hidden md:table-cell">Stock Min.</TableHead>
-                                            <TableHead className="relative px-4 py-3">
-                                                <span className="sr-only">Actions</span>
-                                            </TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {sortedAndFilteredProducts.map(product => (
-                                            <TableRow key={product.id} data-state={selectedProducts[product.id] && 'selected'}>
-                                                <TableCell className="px-4">
+                            viewMode === 'table' ? (
+                                <div className="overflow-x-auto">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead className="px-4">
+                                                    <Checkbox
+                                                        checked={selectedProductIds.length > 0 && selectedProductIds.length === sortedAndFilteredProducts.length}
+                                                        onCheckedChange={(checked) => {
+                                                            const newSelected: Record<string, boolean> = {};
+                                                            if (checked) {
+                                                                sortedAndFilteredProducts.forEach(p => newSelected[p.id] = true);
+                                                            }
+                                                            setSelectedProducts(newSelected);
+                                                        }}
+                                                    />
+                                                </TableHead>
+                                                <TableHead className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Image</TableHead>
+                                                <SortableHeader sortKey="name" className="text-left">Produit</SortableHeader>
+                                                <SortableHeader sortKey="category" className="text-left hidden md:table-cell">Catégorie</SortableHeader>
+                                                <SortableHeader sortKey="purchasePrice" className="text-right hidden sm:table-cell">Prix d'achat</SortableHeader>
+                                                <SortableHeader sortKey="price" className="text-right">Prix de vente</SortableHeader>
+                                                <SortableHeader sortKey="profitMargin" className="text-right hidden lg:table-cell">Marge Bénéfice</SortableHeader>
+                                                <SortableHeader sortKey="quantity" className="text-right">Quantité</SortableHeader>
+                                                <TableHead className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground hidden md:table-cell">Stock Min.</TableHead>
+                                                <TableHead className="relative px-4 py-3">
+                                                    <span className="sr-only">Actions</span>
+                                                </TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {sortedAndFilteredProducts.map(product => (
+                                                <TableRow key={product.id} data-state={selectedProducts[product.id] && 'selected'}>
+                                                    <TableCell className="px-4">
+                                                        <Checkbox
+                                                            checked={!!selectedProducts[product.id]}
+                                                            onCheckedChange={(checked) => {
+                                                                setSelectedProducts(prev => ({...prev, [product.id]: !!checked}));
+                                                            }}
+                                                        />
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <div className="h-10 w-10 relative rounded-md overflow-hidden bg-muted">
+                                                            {product.imageUrl ? (
+                                                                <Image src={product.imageUrl} alt={product.name} fill style={{objectFit: 'cover'}} />
+                                                            ) : (
+                                                                <div className="flex items-center justify-center h-full w-full">
+                                                                    <ImageIcon className="h-5 w-5 text-muted-foreground" />
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell className="font-medium">{product.name}</TableCell>
+                                                    <TableCell className="text-muted-foreground text-xs hidden md:table-cell">{product.category || '-'}</TableCell>
+                                                    <TableCell className="text-right hidden sm:table-cell">{product.purchasePrice.toFixed(2)} DA</TableCell>
+                                                    <TableCell className="text-right font-semibold text-primary">{product.price.toFixed(2)} DA</TableCell>
+                                                    <TableCell className={cn("text-right font-bold hidden lg:table-cell", getProfitMarginColor(product.profitMargin || 0))}>
+                                                        {product.profitMargin !== undefined ? `${product.profitMargin.toFixed(1)}%` : '-'}
+                                                    </TableCell>
+                                                    <TableCell className={cn(
+                                                        "text-right font-bold",
+                                                        product.quantity <= product.minStockLevel && product.quantity > 0 && "text-yellow-500",
+                                                        product.quantity === 0 && "text-destructive"
+                                                    )}>
+                                                        {product.quantity}
+                                                    </TableCell>
+                                                    <TableCell className="text-right text-muted-foreground hidden md:table-cell">{product.minStockLevel}</TableCell>
+                                                    <TableCell className="text-right">
+                                                        <DropdownMenu>
+                                                            <DropdownMenuTrigger asChild>
+                                                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                                                    <span className="sr-only">Ouvrir le menu</span>
+                                                                    <MoreHorizontal className="h-4 w-4" />
+                                                                </Button>
+                                                            </DropdownMenuTrigger>
+                                                            <DropdownMenuContent align="end">
+                                                                <DropdownMenuItem onClick={() => setEditingProduct(product)}>
+                                                                    <Pencil className="mr-2 h-4 w-4" />
+                                                                    <span>Modifier</span>
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuItem onClick={() => setDeletingProduct(product)} className="text-destructive focus:text-destructive-foreground focus:bg-destructive">
+                                                                    <Trash2 className="mr-2 h-4 w-4" />
+                                                                    <span>Supprimer</span>
+                                                                </DropdownMenuItem>
+                                                            </DropdownMenuContent>
+                                                        </DropdownMenu>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 pt-4">
+                                    {sortedAndFilteredProducts.map(product => (
+                                        <Card key={product.id} className="flex flex-col overflow-hidden">
+                                            <div className="relative">
+                                                <div className="absolute top-2 left-2 z-10">
                                                     <Checkbox
                                                         checked={!!selectedProducts[product.id]}
                                                         onCheckedChange={(checked) => {
                                                             setSelectedProducts(prev => ({...prev, [product.id]: !!checked}));
                                                         }}
+                                                        className="h-5 w-5 bg-background border-border"
                                                     />
-                                                </TableCell>
-                                                <TableCell>
-                                                    <div className="h-10 w-10 relative rounded-md overflow-hidden bg-muted">
-                                                        {product.imageUrl ? (
-                                                            <Image src={product.imageUrl} alt={product.name} fill style={{objectFit: 'cover'}} />
-                                                        ) : (
-                                                            <div className="flex items-center justify-center h-full w-full">
-                                                                <ImageIcon className="h-5 w-5 text-muted-foreground" />
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell className="font-medium">{product.name}</TableCell>
-                                                <TableCell className="text-muted-foreground text-xs hidden md:table-cell">{product.category || '-'}</TableCell>
-                                                <TableCell className="text-right hidden sm:table-cell">{product.purchasePrice.toFixed(2)} DA</TableCell>
-                                                <TableCell className="text-right font-semibold text-primary">{product.price.toFixed(2)} DA</TableCell>
-                                                 <TableCell className={cn("text-right font-bold hidden lg:table-cell", getProfitMarginColor(product.profitMargin || 0))}>
-                                                    {product.profitMargin !== undefined ? `${product.profitMargin.toFixed(1)}%` : '-'}
-                                                </TableCell>
-                                                <TableCell className={cn(
-                                                    "text-right font-bold",
-                                                    product.quantity <= product.minStockLevel && product.quantity > 0 && "text-yellow-500",
-                                                    product.quantity === 0 && "text-destructive"
-                                                )}>
-                                                    {product.quantity}
-                                                </TableCell>
-                                                <TableCell className="text-right text-muted-foreground hidden md:table-cell">{product.minStockLevel}</TableCell>
-                                                <TableCell className="text-right">
+                                                </div>
+                                                <div className="absolute top-2 right-2 z-10">
                                                     <DropdownMenu>
                                                         <DropdownMenuTrigger asChild>
-                                                            <Button variant="ghost" className="h-8 w-8 p-0">
+                                                            <Button variant="secondary" className="h-8 w-8 p-0">
                                                                 <span className="sr-only">Ouvrir le menu</span>
                                                                 <MoreHorizontal className="h-4 w-4" />
                                                             </Button>
@@ -502,12 +553,49 @@ export default function ProductsPage() {
                                                             </DropdownMenuItem>
                                                         </DropdownMenuContent>
                                                     </DropdownMenu>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            </div>
+                                                </div>
+                                                <div className="relative w-full h-32 bg-muted">
+                                                    {product.imageUrl ? (
+                                                        <Image src={product.imageUrl} alt={product.name} fill style={{objectFit: 'cover'}} />
+                                                    ) : (
+                                                        <div className="flex items-center justify-center h-full w-full">
+                                                            <ImageIcon className="h-10 w-10 text-muted-foreground" />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <CardContent className="p-3 flex-grow flex flex-col justify-between">
+                                                <div>
+                                                    <h3 className="font-semibold line-clamp-2">{product.name}</h3>
+                                                    <p className="text-xs text-muted-foreground">{product.category || 'Sans catégorie'}</p>
+                                                </div>
+                                                <div className="mt-2 space-y-2 text-sm">
+                                                    <div className="flex justify-between">
+                                                        <span>Prix de vente:</span>
+                                                        <span className="font-bold text-primary">{product.price.toFixed(2)} DA</span>
+                                                    </div>
+                                                    <div className="flex justify-between text-xs">
+                                                        <span>Prix d'achat:</span>
+                                                        <span>{product.purchasePrice.toFixed(2)} DA</span>
+                                                    </div>
+                                                    <div className="flex justify-between">
+                                                        <span>Quantité:</span>
+                                                        <span className={cn("font-bold", product.quantity <= product.minStockLevel && product.quantity > 0 && 'text-yellow-500', product.quantity === 0 && 'text-destructive')}>
+                                                            {product.quantity}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex justify-between text-xs">
+                                                        <span>Marge:</span>
+                                                        <span className={cn("font-bold", getProfitMarginColor(product.profitMargin || 0))}>
+                                                            {product.profitMargin !== undefined ? `${product.profitMargin.toFixed(1)}%` : '-'}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+                                    ))}
+                                </div>
+                            )
                         ) : products && products.length > 0 && (searchQuery || selectedCategory !== 'all') ? (
                             <div className="flex h-40 items-center justify-center rounded-md border-2 border-dashed border-border">
                                 <p className="text-muted-foreground">Aucun produit ne correspond à vos filtres.</p>
