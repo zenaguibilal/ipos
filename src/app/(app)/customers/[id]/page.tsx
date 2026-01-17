@@ -17,6 +17,7 @@ import { CustomerStats } from '@/components/customers/customer-stats';
 import { SaleDetailsDialog } from '@/components/sales/sale-details-dialog';
 
 import type { Customer, Sale, Payment, CompanyProfile } from '@/lib/types';
+import { safeToDate } from '@/lib/utils';
 
 
 export default function CustomerDetailPage() {
@@ -80,8 +81,13 @@ export default function CustomerDetailPage() {
         const balance = totalSalesAmount - totalPaidAmount;
 
         const allTransactions = [...(sales || []), ...(payments || [])];
-        const lastActivity = allTransactions.length > 0 
-            ? new Date(Math.max(...allTransactions.map(t => (t.createdAt as any).toDate().getTime()))) 
+        const validTimestamps = allTransactions
+            .map(t => t.createdAt)
+            .filter(Boolean) // Filter out null/undefined timestamps
+            .map(ts => safeToDate(ts).getTime());
+
+        const lastActivity = validTimestamps.length > 0 
+            ? new Date(Math.max(...validTimestamps)) 
             : null;
 
         return { 

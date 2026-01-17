@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
@@ -90,8 +89,13 @@ export default function CustomersPage() {
             }
             
             const allTransactions = [...customerSales, ...customerPayments];
-            const lastActivityDate = allTransactions.length > 0
-                ? new Date(Math.max(...allTransactions.map(t => safeToDate(t.createdAt).getTime())))
+            const validTimestamps = allTransactions
+                .map(t => t.createdAt)
+                .filter(Boolean)
+                .map(ts => safeToDate(ts).getTime());
+            
+            const lastActivityDate = validTimestamps.length > 0
+                ? new Date(Math.max(...validTimestamps))
                 : null;
 
             return {
