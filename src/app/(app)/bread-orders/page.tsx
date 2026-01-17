@@ -11,12 +11,14 @@ import { EditOrderForm } from '@/components/bread-orders/edit-order-form';
 import { ResetOrdersDialog } from '@/components/bread-orders/reset-orders-dialog';
 import { OrderCard } from '@/components/bread-orders/order-card';
 import type { BreadOrder, CompanyProfile } from '@/lib/types';
-import { PlusCircle, RotateCcw, Search, Cookie, CheckCheck, Truck, CircleDollarSign, CreditCard, ListFilter } from 'lucide-react';
+import { PlusCircle, RotateCcw, Search, Cookie, CheckCheck, Truck, CircleDollarSign, CreditCard, ListFilter, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
 import { safeToDate } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import { BulkDeleteOrdersDialog } from '@/components/bread-orders/bulk-delete-orders-dialog';
 
 export default function BreadOrdersPage() {
     const { user, isUserLoading } = useUser();
@@ -30,6 +32,9 @@ export default function BreadOrdersPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [viewFilter, setViewFilter] = useState<'all' | 'undelivered' | 'unpaid'>('all');
     const [sortOption, setSortOption] = useState('status');
+    const [selectedOrders, setSelectedOrders] = useState<Record<string, boolean>>({});
+    const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+
 
     const companyDocRef = useMemoFirebase(() => user && firestore ? doc(firestore, 'users', user.uid, 'companyProfile', 'main') : null, [user, firestore]);
     const { data: companyProfile, isLoading: isLoadingCompany } = useDoc<CompanyProfile>(companyDocRef);
@@ -37,7 +42,6 @@ export default function BreadOrdersPage() {
 
     const ordersQuery = useMemoFirebase(() => {
         if (!user || !firestore) return null;
-        // The main sorting by creation date is done by Firestore
         return query(collection(firestore, 'users', user.uid, 'breadOrders'), orderBy('createdAt', 'asc'));
     }, [user, firestore]);
     const { data: orders, isLoading: isLoadingOrders } = useCollection<BreadOrder>(ordersQuery);
@@ -110,6 +114,8 @@ export default function BreadOrdersPage() {
             totalOwed: owed,
         };
     }, [orders, searchQuery, companyProfile, viewFilter, sortOption]);
+
+    const selectedOrderIds = useMemo(() => Object.keys(selectedOrders).filter(id => selectedOrders[id]), [selectedOrders]);
 
 
     const handleAddOrder = (name: string, quantity: number, isRecurring: boolean) => {
@@ -202,6 +208,47 @@ export default function BreadOrdersPage() {
             setIsResetting(false);
         }
     };
+    
+    const handleBulkUpdate = async (field: 'isPaid' | 'isDelivered', value: boolean) => {
+        if (!firestore || !user || selectedOrderIds.length === 0) return;
+
+        const batch = writeBatch(firestore);
+        selectedOrderIds.forEach(id => {
+            const orderRef = doc(firestore, 'users', user.uid, 'breadOrders', id);
+            batch.update(orderRef, { [field]: value });
+        });
+
+        try {
+            await batch.commit();
+            toast.success(`${selectedOrderIds.length} commande(s) mise(s) à jour.`);
+            setSelectedOrders({});
+        } catch (error) {
+            toast.error("Erreur lors de la mise à jour en masse.");
+            console.error(error);
+        }
+    };
+
+    const handleBulkDelete = async () => {
+        if (!firestore || !user || selectedOrderIds.length === 0) return;
+
+        const batch = writeBatch(firestore);
+        selectedOrderIds.forEach(id => {
+            const orderRef = doc(firestore, 'users', user.uid, 'breadOrders', id);
+            batch.delete(orderRef);
+        });
+
+        try {
+            await batch.commit();
+            toast.success(`${selectedOrderIds.length} commande(s) supprimée(s).`);
+            setSelectedOrders({});
+        } catch (error) {
+            toast.error("Erreur lors de la suppression en masse.");
+            console.error(error);
+        } finally {
+            setIsBulkDeleting(false);
+        }
+    };
+
 
     const isLoading = isUserLoading || isLoadingOrders || isLoadingCompany;
     const breadPrice = companyProfile?.breadPrice;
@@ -226,6 +273,12 @@ export default function BreadOrdersPage() {
                 onOpenChange={setIsResetting}
                 onConfirm={handleResetOrders}
                 isProcessing={isProcessingReset}
+            />
+            <BulkDeleteOrdersDialog
+                isOpen={isBulkDeleting}
+                onOpenChange={setIsBulkDeleting}
+                onConfirm={handleBulkDelete}
+                orderCount={selectedOrderIds.length}
             />
             <main className="flex-1 overflow-auto p-4 sm:p-6">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
@@ -270,20 +323,57 @@ export default function BreadOrdersPage() {
                         </div>
                     </div>
                 </div>
-
-                <div className="flex items-center gap-2 mb-6">
-                    <div className="flex gap-2 rounded-lg bg-muted p-1">
-                        <Button variant={viewFilter === 'all' ? 'default' : 'ghost'} size="sm" onClick={() => setViewFilter('all')}>Tout</Button>
-                        <Button variant={viewFilter === 'undelivered' ? 'default' : 'ghost'} size="sm" onClick={() => setViewFilter('undelivered')}>
-                            <Truck className="mr-2 h-4 w-4"/>
-                            Non Livré
-                        </Button>
-                        <Button variant={viewFilter === 'unpaid' ? 'default' : 'ghost'} size="sm" onClick={() => setViewFilter('unpaid')}>
-                            <CreditCard className="mr-2 h-4 w-4"/>
-                            Non Payé
-                        </Button>
+                
+                 {filteredOrders && filteredOrders.length > 0 && (
+                    <div className="border rounded-lg p-2 mb-6 flex flex-col sm:flex-row items-center gap-4 bg-card">
+                        <div className="flex items-center space-x-2 flex-shrink-0">
+                            <Checkbox
+                                id="select-all"
+                                checked={filteredOrders.length > 0 && selectedOrderIds.length === filteredOrders.length}
+                                onCheckedChange={(checked) => {
+                                    const newSelected: Record<string, boolean> = {};
+                                    if (checked) {
+                                        filteredOrders.forEach(o => newSelected[o.id] = true);
+                                    }
+                                    setSelectedOrders(newSelected);
+                                }}
+                            />
+                            <label htmlFor="select-all" className="text-sm font-medium">
+                                {selectedOrderIds.length} / {filteredOrders.length} sélectionné(s)
+                            </label>
+                        </div>
+                        
+                        {selectedOrderIds.length > 0 && (
+                            <div className="flex items-center gap-2 border-l pl-4 flex-wrap">
+                                <Button size="sm" variant="outline" onClick={() => handleBulkUpdate('isDelivered', true)}>
+                                    <CheckCheck className="mr-2 h-4 w-4" />
+                                    Marquer comme livré
+                                </Button>
+                                <Button size="sm" variant="outline" onClick={() => handleBulkUpdate('isPaid', true)}>
+                                    <CircleDollarSign className="mr-2 h-4 w-4" />
+                                    Marquer comme payé
+                                </Button>
+                                <Button size="sm" variant="destructive" onClick={() => setIsBulkDeleting(true)}>
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Supprimer
+                                </Button>
+                            </div>
+                        )}
+                        
+                        <div className="sm:ml-auto flex gap-2 rounded-lg bg-muted p-1">
+                            <Button variant={viewFilter === 'all' ? 'default' : 'ghost'} size="sm" onClick={() => setViewFilter('all')}>Tout</Button>
+                            <Button variant={viewFilter === 'undelivered' ? 'default' : 'ghost'} size="sm" onClick={() => setViewFilter('undelivered')}>
+                                <Truck className="mr-2 h-4 w-4"/>
+                                Non Livré
+                            </Button>
+                            <Button variant={viewFilter === 'unpaid' ? 'default' : 'ghost'} size="sm" onClick={() => setViewFilter('unpaid')}>
+                                <CreditCard className="mr-2 h-4 w-4"/>
+                                Non Payé
+                            </Button>
+                        </div>
                     </div>
-                </div>
+                )}
+
                 
                 {(breadPrice == null || breadPrice === 0) && !isLoadingCompany && (
                     <div className="mb-6 rounded-md border border-yellow-500 bg-yellow-500/10 p-4 text-sm text-yellow-700 dark:text-yellow-400">
@@ -370,6 +460,10 @@ export default function BreadOrdersPage() {
                                 onUpdateToggles={handleUpdateOrderToggles}
                                 onEdit={() => setEditingOrder(order)}
                                 onDelete={() => handleDeleteOrder(order.id)}
+                                isSelected={!!selectedOrders[order.id]}
+                                onSelectChange={(checked) => {
+                                    setSelectedOrders(prev => ({ ...prev, [order.id]: checked }));
+                                }}
                             />
                         ))}
                     </div>

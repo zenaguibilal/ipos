@@ -14,22 +14,34 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
+import { Checkbox } from '@/components/ui/checkbox';
 
 interface OrderCardProps {
     order: BreadOrder;
     onUpdateToggles: (id: string, field: 'isPaid' | 'isDelivered', value: boolean) => void;
     onEdit: () => void;
     onDelete: () => void;
+    isSelected: boolean;
+    onSelectChange: (checked: boolean) => void;
 }
 
-export function OrderCard({ order, onUpdateToggles, onEdit, onDelete }: OrderCardProps) {
+export function OrderCard({ order, onUpdateToggles, onEdit, onDelete, isSelected, onSelectChange }: OrderCardProps) {
     return (
         <Card className={cn(
-            "flex flex-col justify-between transition-colors",
+            "flex flex-col justify-between transition-all relative",
             order.isDelivered && !order.isPaid && "bg-red-500/10 border-red-500/30",
-            order.isDelivered && order.isPaid && "bg-green-500/10 border-green-500/30"
+            order.isDelivered && order.isPaid && "bg-green-500/10 border-green-500/30",
+            isSelected && "border-primary ring-2 ring-primary"
         )}>
-            <CardHeader className="flex-row items-start justify-between pb-2">
+             <div className="absolute top-2 left-2 z-10">
+                <Checkbox
+                    checked={isSelected}
+                    onCheckedChange={onSelectChange}
+                    aria-label={`Sélectionner la commande de ${order.name}`}
+                    className="h-5 w-5 bg-background border-border"
+                />
+            </div>
+            <CardHeader className="flex-row items-start justify-between pb-2 pt-3 pl-10">
                 <div className="space-y-1">
                     <CardTitle className="text-lg font-bold">{order.name}</CardTitle>
                     <div className="flex items-center gap-2 text-muted-foreground">
