@@ -467,6 +467,7 @@ export default function ProductsPage() {
                                                 <TableHead className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Image</TableHead>
                                                 <SortableHeader sortKey="name" className="text-left">Produit</SortableHeader>
                                                 <SortableHeader sortKey="category" className="text-left hidden md:table-cell">Catégorie</SortableHeader>
+                                                <TableHead className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground hidden lg:table-cell">Codes-barres</TableHead>
                                                 <SortableHeader sortKey="purchasePrice" className="text-right hidden sm:table-cell">Prix d'achat</SortableHeader>
                                                 <SortableHeader sortKey="price" className="text-right">Prix de vente</SortableHeader>
                                                 <SortableHeader sortKey="profitMargin" className="text-right hidden lg:table-cell">Marge Bénéfice</SortableHeader>
@@ -501,6 +502,9 @@ export default function ProductsPage() {
                                                     </TableCell>
                                                     <TableCell className="font-medium">{product.name}</TableCell>
                                                     <TableCell className="text-muted-foreground text-xs hidden md:table-cell">{product.category || '-'}</TableCell>
+                                                    <TableCell className="text-muted-foreground text-xs hidden lg:table-cell font-mono">
+                                                        {[...(product.barcodes || []), ...(product.barcode ? [product.barcode] : [])].join(', ')}
+                                                    </TableCell>
                                                     <TableCell className="text-right hidden sm:table-cell">{product.purchasePrice.toFixed(2)} DA</TableCell>
                                                     <TableCell className="text-right font-semibold text-primary">{product.price.toFixed(2)} DA</TableCell>
                                                     <TableCell className={cn("text-right font-bold hidden lg:table-cell", getProfitMarginColor(product.profitMargin || 0))}>
