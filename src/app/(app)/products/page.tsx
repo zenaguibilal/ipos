@@ -11,7 +11,8 @@ import { EditProductForm } from './edit-product-form';
 import { DeleteProductDialog } from './delete-product-dialog';
 import { ProductImportDialog } from '@/components/products/product-import-dialog';
 import { BulkDeleteDialog } from './bulk-delete-dialog';
-import { MoreHorizontal, Pencil, Trash2, ArrowUp, ArrowDown, Upload, Download, Image as ImageIcon, FilePlus2, ListOrdered, ShoppingCart, Search, LayoutGrid, List } from 'lucide-react';
+import { BarcodeLabelDialog } from '@/components/products/barcode-label-dialog';
+import { MoreHorizontal, Pencil, Trash2, ArrowUp, ArrowDown, Upload, Download, Image as ImageIcon, FilePlus2, ListOrdered, ShoppingCart, Search, LayoutGrid, List, Barcode } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -41,6 +42,7 @@ export default function ProductsPage() {
     const [isAddingProduct, setIsAddingProduct] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
     const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
+    const [labelProduct, setLabelProduct] = useState<Product | null>(null);
     const [isBulkDeleting, setIsBulkDeleting] = useState(false);
     const [isImporting, setIsImporting] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
@@ -340,6 +342,13 @@ export default function ProductsPage() {
                     productName={deletingProduct.name}
                 />
             )}
+            {labelProduct && (
+                <BarcodeLabelDialog
+                    isOpen={!!labelProduct}
+                    onOpenChange={() => setLabelProduct(null)}
+                    product={labelProduct as ProductWithLegacyBarcode}
+                />
+            )}
              <ProductImportDialog
                 isOpen={isImporting}
                 onOpenChange={setIsImporting}
@@ -508,6 +517,10 @@ export default function ProductsPage() {
                                                                     <Pencil className="mr-2 h-4 w-4" />
                                                                     <span>Modifier</span>
                                                                 </DropdownMenuItem>
+                                                                <DropdownMenuItem onClick={() => setLabelProduct(product)}>
+                                                                    <Barcode className="mr-2 h-4 w-4" />
+                                                                    <span>Générer Étiquette</span>
+                                                                </DropdownMenuItem>
                                                                 <DropdownMenuItem onClick={() => setDeletingProduct(product)} className="text-destructive focus:text-destructive-foreground focus:bg-destructive">
                                                                     <Trash2 className="mr-2 h-4 w-4" />
                                                                     <span>Supprimer</span>
@@ -546,6 +559,10 @@ export default function ProductsPage() {
                                                             <DropdownMenuItem onClick={() => setEditingProduct(product)}>
                                                                 <Pencil className="mr-2 h-4 w-4" />
                                                                 <span>Modifier</span>
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem onClick={() => setLabelProduct(product)}>
+                                                                <Barcode className="mr-2 h-4 w-4" />
+                                                                <span>Générer Étiquette</span>
                                                             </DropdownMenuItem>
                                                             <DropdownMenuItem onClick={() => setDeletingProduct(product)} className="text-destructive focus:text-destructive-foreground focus:bg-destructive">
                                                                 <Trash2 className="mr-2 h-4 w-4" />
