@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState, useMemo } from 'react';
 import { collection, doc, writeBatch, serverTimestamp, addDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AddProductForm } from './add-product-form';
 import { EditProductForm } from './edit-product-form';
 import { DeleteProductDialog } from './delete-product-dialog';
@@ -14,7 +14,7 @@ import { BulkDeleteDialog } from './bulk-delete-dialog';
 import { BarcodeLabelDialog } from '@/components/products/barcode-label-dialog';
 import { AdjustStockDialog } from '@/components/products/adjust-stock-dialog';
 import { CreatePoDialog } from '@/components/products/create-po-dialog';
-import { MoreHorizontal, Pencil, Trash2, ArrowUp, ArrowDown, Upload, Download, Image as ImageIcon, FilePlus2, ListOrdered, ShoppingCart, Search, LayoutGrid, List, Barcode, Boxes, ChevronDown } from 'lucide-react';
+import { MoreHorizontal, Pencil, Trash2, ArrowUp, ArrowDown, Upload, Download, Image as ImageIcon, PlusCircle, ListOrdered, ShoppingCart, Search, LayoutGrid, List, Barcode, Boxes, ChevronDown, Archive, CircleDollarSign } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -131,6 +131,24 @@ export default function ProductsPage() {
         
         return processedProducts;
     }, [products, searchQuery, sortConfig, selectedCategory]);
+
+    const {
+        totalProducts,
+        totalQuantity,
+        totalValue
+    } = useMemo(() => {
+        if (!sortedAndFilteredProducts) return { totalProducts: 0, totalQuantity: 0, totalValue: 0 };
+        
+        const quantity = sortedAndFilteredProducts.reduce((sum, p) => sum + p.quantity, 0);
+        const value = sortedAndFilteredProducts.reduce((sum, p) => sum + (p.purchasePrice * p.quantity), 0);
+
+        return {
+            totalProducts: sortedAndFilteredProducts.length,
+            totalQuantity: quantity,
+            totalValue: value
+        };
+
+    }, [sortedAndFilteredProducts]);
 
 
      const requestSort = (key: SortableKeys) => {
@@ -415,6 +433,38 @@ export default function ProductsPage() {
             />
            
             <main className="flex-1 overflow-auto p-4 sm:p-6">
+                <div className="grid gap-4 md:grid-cols-3 mb-6">
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Produits (filtrés)</CardTitle>
+                            <Boxes className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{totalProducts}</div>
+                            <p className="text-xs text-muted-foreground">Nombre d'articles uniques</p>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Quantité totale en stock</CardTitle>
+                            <Archive className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{totalQuantity}</div>
+                            <p className="text-xs text-muted-foreground">Somme des quantités en stock</p>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Valeur totale du stock</CardTitle>
+                            <CircleDollarSign className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{totalValue.toFixed(2)} DA</div>
+                            <p className="text-xs text-muted-foreground">Valeur d'achat des produits affichés</p>
+                        </CardContent>
+                    </Card>
+                </div>
                 <Card className="w-full bg-card">
                     <CardHeader className="p-6 space-y-4">
                         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -474,7 +524,7 @@ export default function ProductsPage() {
                                 </DropdownMenu>
 
                                 <Button onClick={() => setIsAddingProduct(true)}>
-                                    <FilePlus2 className="mr-2 h-4 w-4" /> Ajouter
+                                    <PlusCircle className="mr-2 h-4 w-4" /> Ajouter
                                 </Button>
                              </div>
                         </div>
