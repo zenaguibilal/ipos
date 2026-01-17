@@ -104,16 +104,31 @@ export function ThermalReceipt({ sale, companyProfile }: ThermalReceiptProps) {
 
             <div className="text-xs space-y-1 mt-2">
                 <div className="flex justify-between">
+                    <span>Sous-total:</span>
+                    <span>{sale.subtotal.toFixed(2)} DA</span>
+                </div>
+                {sale.discountAmount && sale.discountAmount > 0 && (
+                    <div className="flex justify-between">
+                        <span>
+                            Remise {sale.discountType === 'percentage' ? `(${sale.discountAmount}%)` : ''}:
+                        </span>
+                        <span>-{(sale.subtotal - sale.total).toFixed(2)} DA</span>
+                    </div>
+                )}
+                <div className="flex justify-between font-bold text-base border-t-2 border-black pt-1 mt-1">
+                    <span>TOTAL:</span>
+                    <span>{sale.total.toFixed(2)} DA</span>
+                </div>
+
+                <div className="border-t border-dashed border-black my-2"></div>
+                
+                <div className="flex justify-between">
                     <span>Montant Payé:</span>
                     <span>{sale.amountPaid.toFixed(2)} DA</span>
                 </div>
                 <div className="flex justify-between">
                     <span>Solde Restant:</span>
                     <span>{sale.remainingBalance.toFixed(2)} DA</span>
-                </div>
-                 <div className="flex justify-between font-bold text-base border-t-2 border-black pt-1 mt-1">
-                    <span>TOTAL:</span>
-                    <span>{sale.total.toFixed(2)} DA</span>
                 </div>
             </div>
 

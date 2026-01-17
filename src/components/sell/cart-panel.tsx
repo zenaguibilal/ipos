@@ -1,9 +1,12 @@
+
 'use client';
 
 import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Trash2, XCircle, HardDriveDownload, PlusCircle, UserPlus, UserX, Wallet, HandCoins } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Combobox, ComboboxOption } from '@/components/ui/combobox';
@@ -31,6 +34,12 @@ interface CartPanelProps {
     onClearCustomer: () => void;
     onAddNewCustomer: () => void;
     onPayDebt: () => void;
+    subtotal: number;
+    discount: number;
+    total: number;
+    discountType: 'percentage' | 'fixed';
+    discountValue: string;
+    onUpdateDiscount: (field: 'discountType' | 'discountValue', value: any) => void;
 }
 
 export function CartPanel({
@@ -52,14 +61,16 @@ export function CartPanel({
     onClearCustomer,
     onAddNewCustomer,
     onPayDebt,
+    subtotal,
+    discount,
+    total,
+    discountType,
+    discountValue,
+    onUpdateDiscount
 }: CartPanelProps) {
     
     const [editingPriceId, setEditingPriceId] = useState<string | null>(null);
     const [editingPriceValue, setEditingPriceValue] = useState('');
-
-    const total = useMemo(() => {
-        return cart.reduce((sum, item) => sum + (item.price * item.cartQuantity), 0);
-    }, [cart]);
 
     const totalItems = useMemo(() => {
         return cart.reduce((sum, item) => sum + item.cartQuantity, 0);
@@ -268,14 +279,44 @@ export function CartPanel({
                 </ScrollArea>
             </div>
             
+            {/* Discount section */}
+            <div className="flex-shrink-0 mt-4 border-y py-4">
+                <Label>Remise sur le panier</Label>
+                <div className="flex gap-2 mt-2">
+                    <Input 
+                        type="number"
+                        placeholder="0"
+                        value={discountValue}
+                        onChange={(e) => onUpdateDiscount('discountValue', e.target.value)}
+                        className="h-10"
+                    />
+                    <Tabs value={discountType} onValueChange={(v) => onUpdateDiscount('discountType', v as any)} className="w-[100px]">
+                        <TabsList className="grid w-full grid-cols-2 h-10">
+                            <TabsTrigger value="fixed">DA</TabsTrigger>
+                            <TabsTrigger value="percentage">%</TabsTrigger>
+                        </TabsList>
+                    </Tabs>
+                </div>
+            </div>
+
             {/* Bottom section: Totals */}
-            <div className="flex-shrink-0 mt-4 border-t pt-4">
+            <div className="flex-shrink-0 mt-4">
                  <div className="space-y-2">
                     <div className="flex justify-between text-sm text-muted-foreground">
                         <span>Articles</span>
                         <span>{totalItems}</span>
                     </div>
-                     <div className="flex justify-between font-semibold text-xl">
+                    <div className="flex justify-between text-sm text-muted-foreground">
+                        <span>Sous-total</span>
+                        <span>{subtotal.toFixed(2)} DA</span>
+                    </div>
+                    {discount > 0 && (
+                        <div className="flex justify-between text-sm text-destructive">
+                            <span>Remise</span>
+                            <span>- {discount.toFixed(2)} DA</span>
+                        </div>
+                    )}
+                    <div className="flex justify-between font-semibold text-xl border-t pt-2 mt-2">
                         <span>Total</span>
                         <span>{total.toFixed(2)} DA</span>
                     </div>

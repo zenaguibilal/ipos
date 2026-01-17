@@ -155,9 +155,22 @@
             "required": ["id", "name", "price", "quantity"]
           }
         },
+        "subtotal": {
+            "type": "number",
+            "description": "The total amount of the sale before discounts."
+        },
+        "discountType": {
+            "type": "string",
+            "description": "The type of discount applied.",
+            "enum": ["percentage", "fixed"]
+        },
+        "discountAmount": {
+            "type": "number",
+            "description": "The value of the discount (either a percentage or a fixed amount)."
+        },
         "total": {
           "type": "number",
-          "description": "Total amount of the sale."
+          "description": "The final total amount of the sale after discounts."
         },
         "amountPaid": {
           "type": "number",
@@ -189,6 +202,7 @@
       "required": [
         "invoiceNumber",
         "items",
+        "subtotal",
         "total",
         "amountPaid",
         "remainingBalance",
@@ -452,5 +466,3 @@
     }
   }
 }
-
-    

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase } from '@/firebase';
@@ -27,6 +28,8 @@ export interface SalesSession {
     cart: CartItem[];
     customerId?: string;
     customerName?: string;
+    discountValue: string;
+    discountType: 'percentage' | 'fixed';
 }
 
 export default function SellPage() {
@@ -49,7 +52,7 @@ export default function SellPage() {
 
 
     // Component state for multiple sales sessions
-    const [sessions, setSessions] = useState<SalesSession[]>([{ cart: [] }]);
+    const [sessions, setSessions] = useState<SalesSession[]>([{ cart: [], discountValue: '0', discountType: 'fixed' }]);
     const [activeSessionIndex, setActiveSessionIndex] = useState(0);
 
     const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
@@ -164,8 +167,37 @@ export default function SellPage() {
     }, [activeSessionIndex]);
 
     const clearCart = useCallback(() => {
-        updateCurrentSession((session) => ({ ...session, cart: [] }));
+        updateCurrentSession((session) => ({ ...session, cart: [], discountValue: '0' }));
     }, [activeSessionIndex]);
+
+    const handleUpdateDiscount = (field: 'discountType' | 'discountValue', value: any) => {
+        updateCurrentSession(session => ({
+            ...session,
+            [field]: value
+        }));
+    };
+
+    const { subtotal, discount, total } = useMemo(() => {
+        const currentSubtotal = activeSession.cart.reduce((sum, item) => sum + (item.price * item.cartQuantity), 0);
+        let currentDiscount = 0;
+        const discountValue = parseFloat(activeSession.discountValue) || 0;
+
+        if (discountValue > 0) {
+            if (activeSession.discountType === 'percentage') {
+                if (discountValue <= 100) {
+                    currentDiscount = (currentSubtotal * discountValue) / 100;
+                }
+            } else { // fixed
+                currentDiscount = discountValue;
+            }
+        }
+        
+        currentDiscount = Math.min(currentSubtotal, currentDiscount);
+        const currentTotal = currentSubtotal - currentDiscount;
+
+        return { subtotal: currentSubtotal, discount: currentDiscount, total: currentTotal };
+    }, [activeSession]);
+
 
     // Sale processing
     const handleFinalizeSale = (amountPaid: number) => {
@@ -173,11 +205,13 @@ export default function SellPage() {
         setIsProcessingSale(true);
 
         const cart = activeSession.cart;
-        const total = cart.reduce((sum, item) => sum + (item.price * item.cartQuantity), 0);
 
         const newSale: Omit<Sale, 'id' | 'createdAt'> = {
             invoiceNumber: `INV-${Date.now()}`,
-            items: cart.map(({ cartQuantity, ...item }) => ({...item, quantity: cartQuantity})), // save final quantity
+            items: cart.map(({ cartQuantity, ...item }) => ({...item, quantity: cartQuantity})),
+            subtotal: subtotal,
+            discountType: parseFloat(activeSession.discountValue) > 0 ? activeSession.discountType : undefined,
+            discountAmount: parseFloat(activeSession.discountValue) > 0 ? parseFloat(activeSession.discountValue) : undefined,
             total: total,
             amountPaid: amountPaid,
             remainingBalance: total - amountPaid,
@@ -206,7 +240,6 @@ export default function SellPage() {
             setLastSale({ ...newSale, id: newSaleRef.id, createdAt: new Date() });
             setIsPaymentDialogOpen(false);
             setIsSaleComplete(true);
-             // Instead of clearCart, we remove the completed session
             handleCloseSession(activeSessionIndex);
         }).catch((err) => {
             console.error("Error finalizing sale:", err);
@@ -218,25 +251,22 @@ export default function SellPage() {
     
     // Session management
     const handleAddSession = () => {
-        setSessions(s => [...s, { cart: [] }]);
-        setActiveSessionIndex(sessions.length); // Switch to the new session
+        setSessions(s => [...s, { cart: [], discountValue: '0', discountType: 'fixed' }]);
+        setActiveSessionIndex(sessions.length);
     };
     
     const handleCloseSession = (indexToClose: number) => {
         setSessions(currentSessions => {
             if (currentSessions.length === 1) {
-                // If it's the last session, just clear it instead of removing it
                 const newSessions = [...currentSessions];
-                newSessions[indexToClose] = { cart: [], customerId: undefined, customerName: undefined };
+                newSessions[indexToClose] = { cart: [], customerId: undefined, customerName: undefined, discountValue: '0', discountType: 'fixed' };
                 return newSessions;
             }
             
             const newSessions = currentSessions.filter((_, i) => i !== indexToClose);
-            // Adjust active index if necessary
             if (activeSessionIndex >= indexToClose && activeSessionIndex > 0) {
                 setActiveSessionIndex(activeSessionIndex - 1);
             } else if (activeSessionIndex === indexToClose && indexToClose === newSessions.length) {
-                // If we closed the last tab, move to the new last tab
                 setActiveSessionIndex(newSessions.length - 1);
             }
             return newSessions;
@@ -246,7 +276,6 @@ export default function SellPage() {
     const handleNewSale = () => {
         setIsSaleComplete(false);
         setLastSale(null);
-        // The session is already cleared/closed by handleFinalizeSale
     };
 
      const handleSelectCustomer = (customerId: string) => {
@@ -271,7 +300,6 @@ export default function SellPage() {
         const target = event.target as HTMLElement;
         if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
              if (['F1', 'F2', 'F4'].includes(event.key) || (event.altKey && ['a', 'n'].includes(event.key.toLowerCase()))){
-                 // allow shortcuts even if in input
              } else {
                 return;
              }
@@ -310,8 +338,6 @@ export default function SellPage() {
     if (isLoading || !user) {
         return <div className="flex h-full items-center justify-center"><p>Chargement de l'interface de vente...</p></div>;
     }
-
-    const total = activeSession.cart.reduce((sum, item) => sum + (item.price * item.cartQuantity), 0);
 
     return (
         <>
@@ -382,6 +408,12 @@ export default function SellPage() {
                         onClearCustomer={handleClearCustomer}
                         onAddNewCustomer={() => setIsAddingCustomer(true)}
                         onPayDebt={() => setIsPayingDebt(true)}
+                        subtotal={subtotal}
+                        discount={discount}
+                        total={total}
+                        discountType={activeSession.discountType}
+                        discountValue={activeSession.discountValue}
+                        onUpdateDiscount={handleUpdateDiscount}
                    />
                 </div>
             </div>

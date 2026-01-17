@@ -33,6 +33,9 @@ export interface Sale {
     id: string;
     invoiceNumber: string;
     items: SaleItem[];
+    subtotal: number;
+    discountType?: 'percentage' | 'fixed';
+    discountAmount?: number;
     total: number;
     amountPaid: number;
     remainingBalance: number;
@@ -144,6 +147,3 @@ export interface InventoryValueData {
     name: string;
     value: number;
 }
-
-    
-
