@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -40,8 +39,6 @@ interface CartPanelProps {
     discountType: 'percentage' | 'fixed';
     discountValue: string;
     onUpdateDiscount: (field: 'discountType' | 'discountValue', value: any) => void;
-    purchaseValue: number;
-    profit: number;
 }
 
 export function CartPanel({
@@ -69,8 +66,6 @@ export function CartPanel({
     discountType,
     discountValue,
     onUpdateDiscount,
-    purchaseValue,
-    profit,
 }: CartPanelProps) {
     
     const [editingPriceId, setEditingPriceId] = useState<string | null>(null);
@@ -133,7 +128,7 @@ export function CartPanel({
 
 
     return (
-        <div className="h-full flex flex-col">
+        <div className="h-full flex flex-col p-4">
             {/* Top non-scrolling section */}
             <div className="flex-shrink-0">
                 {/* Sessions Bar */}
@@ -325,15 +320,6 @@ export function CartPanel({
                             <span>- {discount.toFixed(2)} DA</span>
                         </div>
                     )}
-                    <div className="border-t my-2"></div>
-                    <div className="flex justify-between text-sm font-semibold">
-                        <span>Valeur d'achat</span>
-                        <span>{purchaseValue.toFixed(2)} DA</span>
-                    </div>
-                     <div className="flex justify-between text-sm font-semibold text-green-600">
-                        <span>Bénéfice</span>
-                        <span>{profit.toFixed(2)} DA</span>
-                    </div>
                  </div>
             </div>
         </div>

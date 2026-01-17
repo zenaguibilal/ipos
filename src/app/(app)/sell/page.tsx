@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase } from '@/firebase';
@@ -182,8 +181,8 @@ export default function SellPage() {
         }));
     };
 
-    const { subtotal, discount, total, purchaseValue, profit } = useMemo(() => {
-        if (!activeSession) return { subtotal: 0, discount: 0, total: 0, purchaseValue: 0, profit: 0 };
+    const { subtotal, discount, total } = useMemo(() => {
+        if (!activeSession) return { subtotal: 0, discount: 0, total: 0 };
         
         const currentSubtotal = activeSession.cart.reduce((sum, item) => sum + (item.price * item.cartQuantity), 0);
         let currentDiscount = 0;
@@ -201,11 +200,8 @@ export default function SellPage() {
         
         currentDiscount = Math.min(currentSubtotal, currentDiscount);
         const currentTotal = currentSubtotal - currentDiscount;
-        
-        const currentPurchaseValue = activeSession.cart.reduce((sum, item) => sum + ((item.purchasePrice || 0) * item.cartQuantity), 0);
-        const currentProfit = currentTotal - currentPurchaseValue;
 
-        return { subtotal: currentSubtotal, discount: currentDiscount, total: currentTotal, purchaseValue: currentPurchaseValue, profit: currentProfit };
+        return { subtotal: currentSubtotal, discount: currentDiscount, total: currentTotal };
     }, [activeSession]);
 
 
@@ -391,7 +387,7 @@ export default function SellPage() {
                 />
             )}
             
-            <div className="md:grid md:grid-cols-3 lg:grid-cols-4 md:h-full md:max-h-full md:overflow-hidden">
+            <div className="md:grid md:grid-cols-3 lg:grid-cols-4 md:overflow-auto md:h-full">
                 {/* Main Panel: Product Selection */}
                 <div className="md:col-span-2 lg:col-span-3 h-full flex flex-col p-4 gap-4">
                     <ProductGrid 
@@ -403,7 +399,7 @@ export default function SellPage() {
                 </div>
 
                 {/* Side Panel: Cart */}
-                <div className="md:col-span-1 lg:col-span-1 h-full flex flex-col bg-card border-l p-4">
+                <div className="md:col-span-1 lg:col-span-1 h-full flex flex-col bg-card border-l">
                    <CartPanel
                         cart={activeSession.cart}
                         onUpdateQuantity={updateCartQuantity}
@@ -429,8 +425,6 @@ export default function SellPage() {
                         discountType={activeSession.discountType}
                         discountValue={activeSession.discountValue}
                         onUpdateDiscount={handleUpdateDiscount}
-                        purchaseValue={purchaseValue}
-                        profit={profit}
                    />
                 </div>
             </div>
