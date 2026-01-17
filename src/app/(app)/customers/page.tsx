@@ -8,12 +8,13 @@ import { collection, query, orderBy } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { PlusCircle, User, Phone, WalletCards, CalendarDays, AlertTriangle, Search, Users as UsersIcon } from 'lucide-react';
+import { PlusCircle, User, Phone, WalletCards, CalendarDays, AlertTriangle, Search, Users as UsersIcon, CalendarClock } from 'lucide-react';
 import { AddCustomerForm } from '@/components/customers/add-customer-form';
 import type { Customer, Sale, Payment, CustomerWithSalesData } from '@/lib/types';
 import Link from 'next/link';
-import { cn } from '@/lib/utils';
-import { getDate } from 'date-fns';
+import { cn, safeToDate } from '@/lib/utils';
+import { getDate, formatDistanceToNow } from 'date-fns';
+import { fr } from 'date-fns/locale';
 
 export default function CustomersPage() {
     const { user, isUserLoading } = useUser();
@@ -49,12 +50,14 @@ export default function CustomersPage() {
         let totalDebt = 0;
         let debtCount = 0;
 
-        const customerData = customers.map(customer => {
+        const customerData: CustomerWithSalesData[] = customers.map(customer => {
             const customerSales = sales.filter(s => s.customerId === customer.id);
+            const customerPayments = payments.filter(p => p.customerId === customer.id);
+
             const totalSpent = customerSales.reduce((acc, s) => acc + s.total, 0);
             
             const totalPaidFromSales = customerSales.reduce((acc, s) => acc + s.amountPaid, 0);
-            const totalStandalonePayments = payments.filter(p => p.customerId === customer.id).reduce((acc, p) => acc + p.amount, 0);
+            const totalStandalonePayments = customerPayments.reduce((acc, p) => acc + p.amount, 0);
             
             const outstandingBalance = totalSpent - totalPaidFromSales - totalStandalonePayments;
             const finalBalance = outstandingBalance < 0.01 ? 0 : outstandingBalance;
@@ -71,12 +74,18 @@ export default function CustomersPage() {
                     isReminderDue = true;
                 }
             }
+            
+            const allTransactions = [...customerSales, ...customerPayments];
+            const lastActivityDate = allTransactions.length > 0
+                ? new Date(Math.max(...allTransactions.map(t => safeToDate(t.createdAt).getTime())))
+                : null;
 
             return {
                 ...customer,
                 totalSpent,
                 outstandingBalance: finalBalance,
                 isReminderDue,
+                lastActivityDate
             };
         });
 
@@ -200,6 +209,12 @@ export default function CustomersPage() {
                                              <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-2">
                                                 <CalendarDays className="h-3 w-3" />
                                                 <span>Jour de règlement : le {customer.settlementDay} de chaque mois</span>
+                                            </div>
+                                        )}
+                                        {customer.lastActivityDate && (
+                                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-2">
+                                                <CalendarClock className="h-3 w-3" />
+                                                <span>Dernière activité: {formatDistanceToNow(customer.lastActivityDate, { addSuffix: true, locale: fr })}</span>
                                             </div>
                                         )}
                                     </div>
