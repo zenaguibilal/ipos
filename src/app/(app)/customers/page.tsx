@@ -8,13 +8,20 @@ import { collection, query, orderBy } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { PlusCircle, User, Phone, WalletCards, CalendarDays, AlertTriangle, Search, Users as UsersIcon, CalendarClock } from 'lucide-react';
+import { PlusCircle, User, Phone, WalletCards, CalendarDays, AlertTriangle, Search, Users as UsersIcon, CalendarClock, ListFilter } from 'lucide-react';
 import { AddCustomerForm } from '@/components/customers/add-customer-form';
 import type { Customer, Sale, Payment, CustomerWithSalesData } from '@/lib/types';
 import Link from 'next/link';
 import { cn, safeToDate } from '@/lib/utils';
 import { getDate, formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export default function CustomersPage() {
     const { user, isUserLoading } = useUser();
@@ -23,6 +30,7 @@ export default function CustomersPage() {
 
     const [isAddingCustomer, setIsAddingCustomer] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    const [sortOption, setSortOption] = useState('lastName_asc');
 
     // --- Data Fetching ---
     const customersQuery = useMemoFirebase(() => 
@@ -93,14 +101,35 @@ export default function CustomersPage() {
 
     }, [customers, sales, payments]);
     
-    const filteredCustomers = useMemo(() => {
-        if (!searchQuery) return customersWithData;
-        const lowercasedQuery = searchQuery.toLowerCase();
-        return customersWithData.filter(c => 
-            `${c.firstName} ${c.lastName}`.toLowerCase().includes(lowercasedQuery) ||
-            c.phone?.includes(lowercasedQuery)
-        );
-    }, [customersWithData, searchQuery]);
+    const sortedAndFilteredCustomers = useMemo(() => {
+        let customersToProcess = [...customersWithData];
+
+        // 1. Filtering
+        if (searchQuery) {
+            const lowercasedQuery = searchQuery.toLowerCase();
+            customersToProcess = customersToProcess.filter(c =>
+                `${c.firstName} ${c.lastName}`.toLowerCase().includes(lowercasedQuery) ||
+                c.phone?.includes(lowercasedQuery)
+            );
+        }
+
+        // 2. Sorting
+        customersToProcess.sort((a, b) => {
+            switch(sortOption) {
+                case 'outstandingBalance_desc':
+                    return b.outstandingBalance - a.outstandingBalance;
+                case 'lastActivityDate_desc':
+                    return (b.lastActivityDate?.getTime() || 0) - (a.lastActivityDate?.getTime() || 0);
+                case 'totalSpent_desc':
+                    return b.totalSpent - a.totalSpent;
+                case 'lastName_asc':
+                default:
+                    return a.lastName.localeCompare(b.lastName);
+            }
+        });
+
+        return customersToProcess;
+    }, [customersWithData, searchQuery, sortOption]);
     
     const percentageOfDebtors = customersWithData.length > 0 ? ((customersWithDebtCount / customersWithData.length) * 100).toFixed(0) : 0;
 
@@ -120,7 +149,7 @@ export default function CustomersPage() {
             <main className="flex-1 overflow-auto p-4 sm:p-6">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
                     <h1 className="text-2xl font-bold">Clients</h1>
-                    <div className="flex gap-2 w-full sm:w-auto flex-wrap">
+                     <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                         <div className="relative flex-grow sm:flex-grow-0">
                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                            <Input 
@@ -130,7 +159,19 @@ export default function CustomersPage() {
                                 className="pl-9"
                             />
                         </div>
-                        <Button onClick={() => setIsAddingCustomer(true)}>
+                         <Select value={sortOption} onValueChange={(value) => setSortOption(value as any)}>
+                            <SelectTrigger className="w-full sm:w-[240px]">
+                                <ListFilter className="mr-2 h-4 w-4" />
+                                <SelectValue placeholder="Trier par..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="lastName_asc">Nom de famille (A-Z)</SelectItem>
+                                <SelectItem value="outstandingBalance_desc">Solde (du plus élevé au plus bas)</SelectItem>
+                                <SelectItem value="lastActivityDate_desc">Dernière activité (plus récente)</SelectItem>
+                                <SelectItem value="totalSpent_desc">Total dépensé (du plus élevé au plus bas)</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <Button onClick={() => setIsAddingCustomer(true)} className="w-full sm:w-auto">
                             <PlusCircle className="mr-2 h-4 w-4" />
                             Ajouter un client
                         </Button>
@@ -175,9 +216,9 @@ export default function CustomersPage() {
 
                 {isLoading ? (
                     <div className="text-center">Chargement des données...</div>
-                ) : filteredCustomers.length > 0 ? (
+                ) : sortedAndFilteredCustomers.length > 0 ? (
                     <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-                        {filteredCustomers.map(customer => (
+                        {sortedAndFilteredCustomers.map(customer => (
                             <Link href={`/customers/${customer.id}`} key={customer.id} passHref>
                                 <Card className={cn(
                                     "cursor-pointer hover:shadow-md hover:border-primary transition-all group p-4 flex flex-col justify-between h-full",
@@ -248,3 +289,5 @@ export default function CustomersPage() {
         </>
     );
 }
+
+    
