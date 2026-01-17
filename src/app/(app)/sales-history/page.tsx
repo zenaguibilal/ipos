@@ -7,11 +7,15 @@ import { collection, query, orderBy, doc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Search, ShoppingCart, HandCoins } from 'lucide-react';
-import type { Sale, Payment, CompanyProfile, Customer } from '@/lib/types'; // Import Customer
+import { Search, ShoppingCart, HandCoins, CircleDollarSign } from 'lucide-react';
+import type { Sale, Payment, CompanyProfile, Customer } from '@/lib/types';
 import { SaleDetailsDialog } from '@/components/sales/sale-details-dialog';
 import { cn, safeToDate } from '@/lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { DateRangePicker } from '@/components/dashboard/date-range-picker';
+import { DateRange } from 'react-day-picker';
+import { subDays, startOfDay, endOfDay } from 'date-fns';
+
 
 type StatusFilter = 'all' | 'paid' | 'unpaid' | 'payments';
 type Transaction = { type: 'sale', data: Sale } | { type: 'payment', data: Payment };
@@ -25,6 +29,10 @@ export default function SalesHistoryPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
     const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
+    const [dateRange, setDateRange] = useState<DateRange | undefined>({
+        from: startOfDay(subDays(new Date(), 29)),
+        to: endOfDay(new Date()),
+    });
 
     // --- Data Fetching ---
     const salesQuery = useMemoFirebase(() => 
@@ -62,7 +70,16 @@ export default function SalesHistoryPage() {
 
     const filteredTransactions = useMemo(() => {
         if (!combinedTransactions) return [];
+
+        const fromDate = dateRange?.from;
+        const toDate = dateRange?.to;
+
         return combinedTransactions.filter(transaction => {
+            // Date filter first
+            const transactionDate = safeToDate(transaction.data.createdAt);
+            if (fromDate && transactionDate < fromDate) return false;
+            if (toDate && transactionDate > toDate) return false;
+
             const matchesSearch = searchQuery 
                 ? (transaction.data.customerName?.toLowerCase().includes(searchQuery.toLowerCase()) || 
                   ('invoiceNumber' in transaction.data && transaction.data.invoiceNumber.toLowerCase().includes(searchQuery.toLowerCase())))
@@ -83,7 +100,28 @@ export default function SalesHistoryPage() {
                     return true;
             }
         });
-    }, [combinedTransactions, searchQuery, statusFilter]);
+    }, [combinedTransactions, searchQuery, statusFilter, dateRange]);
+
+    const { totalRevenue, totalCollected, salesCount } = useMemo(() => {
+        if (!filteredTransactions) return { totalRevenue: 0, totalCollected: 0, salesCount: 0 };
+
+        let revenue = 0;
+        let collected = 0;
+        let sCount = 0;
+
+        filteredTransactions.forEach(transaction => {
+            if (transaction.type === 'sale') {
+                revenue += transaction.data.total;
+                collected += transaction.data.amountPaid;
+                sCount++;
+            } else { // payment
+                collected += transaction.data.amount;
+            }
+        });
+
+        return { totalRevenue: revenue, totalCollected: collected, salesCount: sCount };
+    }, [filteredTransactions]);
+
 
     const selectedCustomer = useMemo(() => {
         if (!selectedSale || !customers) return null;
@@ -116,16 +154,19 @@ export default function SalesHistoryPage() {
                             Consultez, recherchez et filtrez toutes vos transactions commerciales (ventes et paiements).
                         </CardDescription>
                         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-4">
-                            <div className="relative w-full max-w-sm">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                <Input 
-                                    placeholder="Rechercher par N° facture ou client..."
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="pl-9 w-full"
-                                />
-                            </div>
-                             <div className="flex gap-2 rounded-lg bg-muted p-1">
+                           <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+                                <div className="relative w-full sm:w-64">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                    <Input 
+                                        placeholder="Rechercher par N° facture ou client..."
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        className="pl-9 w-full"
+                                    />
+                                </div>
+                                <DateRangePicker onUpdate={setDateRange} />
+                           </div>
+                             <div className="flex gap-2 rounded-lg bg-muted p-1 self-start sm:self-center">
                                 <Button variant={statusFilter === 'all' ? 'default' : 'ghost'} size="sm" onClick={() => setStatusFilter('all')}>Tout</Button>
                                 <Button variant={statusFilter === 'paid' ? 'default' : 'ghost'} size="sm" onClick={() => setStatusFilter('paid')}>Payé</Button>
                                 <Button variant={statusFilter === 'unpaid' ? 'default' : 'ghost'} size="sm" onClick={() => setStatusFilter('unpaid')}>Impayé/Partiel</Button>
@@ -134,6 +175,35 @@ export default function SalesHistoryPage() {
                         </div>
                     </CardHeader>
                     <CardContent>
+                         <div className="grid gap-4 md:grid-cols-3 mb-6">
+                            <Card>
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardTitle className="text-sm font-medium">Chiffre d'affaires (filtré)</CardTitle>
+                                    <CircleDollarSign className="h-4 w-4 text-muted-foreground" />
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="text-2xl font-bold">{totalRevenue.toFixed(2)} DA</div>
+                                </CardContent>
+                            </Card>
+                            <Card>
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardTitle className="text-sm font-medium">Total Encaissé (filtré)</CardTitle>
+                                    <HandCoins className="h-4 w-4 text-muted-foreground" />
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="text-2xl font-bold text-green-600">{totalCollected.toFixed(2)} DA</div>
+                                </CardContent>
+                            </Card>
+                            <Card>
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardTitle className="text-sm font-medium">Nombre de Ventes (filtré)</CardTitle>
+                                    <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="text-2xl font-bold">{salesCount}</div>
+                                </CardContent>
+                            </Card>
+                        </div>
                         {filteredTransactions.length === 0 ? (
                              <div className="flex h-40 items-center justify-center rounded-md border-2 border-dashed border-border bg-card">
                                 <p className="text-muted-foreground">
@@ -215,3 +285,5 @@ export default function SalesHistoryPage() {
         </>
     );
 }
+
+    
