@@ -11,10 +11,12 @@ import { EditOrderForm } from '@/components/bread-orders/edit-order-form';
 import { ResetOrdersDialog } from '@/components/bread-orders/reset-orders-dialog';
 import { OrderCard } from '@/components/bread-orders/order-card';
 import type { BreadOrder, CompanyProfile } from '@/lib/types';
-import { PlusCircle, RotateCcw, Search, Cookie, CheckCheck, Truck, CircleDollarSign, CreditCard } from 'lucide-react';
+import { PlusCircle, RotateCcw, Search, Cookie, CheckCheck, Truck, CircleDollarSign, CreditCard, ListFilter } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
+import { safeToDate } from '@/lib/utils';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export default function BreadOrdersPage() {
     const { user, isUserLoading } = useUser();
@@ -27,6 +29,7 @@ export default function BreadOrdersPage() {
     const [isProcessingReset, setIsProcessingReset] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [viewFilter, setViewFilter] = useState<'all' | 'undelivered' | 'unpaid'>('all');
+    const [sortOption, setSortOption] = useState('status');
 
     const companyDocRef = useMemoFirebase(() => user && firestore ? doc(firestore, 'users', user.uid, 'companyProfile', 'main') : null, [user, firestore]);
     const { data: companyProfile, isLoading: isLoadingCompany } = useDoc<CompanyProfile>(companyDocRef);
@@ -61,20 +64,7 @@ export default function BreadOrdersPage() {
             .filter(o => o.isDelivered && !o.isPaid)
             .reduce((sum, order) => sum + (order.quantity * breadPrice), 0);
 
-        let processedOrders = [...orders].sort((a, b) => {
-            // 1. Primary sort: Undelivered orders first
-            if (a.isDelivered && !b.isDelivered) return 1;
-            if (!a.isDelivered && b.isDelivered) return -1;
-
-            // 2. Secondary sort (only for delivered orders): Unpaid first
-            if (a.isDelivered && b.isDelivered) {
-                if (a.isPaid && !b.isPaid) return 1;
-                if (!a.isPaid && b.isPaid) return -1;
-            }
-            
-            // 3. Tertiary sort: For orders with same status, use original creation order (already sorted by query)
-            return 0;
-        });
+        let processedOrders = [...orders];
 
         // 1. Filter by view
         if (viewFilter === 'undelivered') {
@@ -89,6 +79,28 @@ export default function BreadOrdersPage() {
             processedOrders = processedOrders.filter(order => order.name.toLowerCase().includes(lowercasedQuery));
         }
 
+        // 3. Sort
+        processedOrders.sort((a, b) => {
+            switch (sortOption) {
+                case 'name_asc':
+                    return a.name.localeCompare(b.name);
+                case 'quantity_desc':
+                    return b.quantity - a.quantity;
+                case 'createdAt_desc':
+                    return safeToDate(b.createdAt).getTime() - safeToDate(a.createdAt).getTime();
+                case 'status':
+                default:
+                    if (a.isDelivered && !b.isDelivered) return 1;
+                    if (!a.isDelivered && b.isDelivered) return -1;
+
+                    if (a.isDelivered && b.isDelivered) {
+                        if (a.isPaid && !b.isPaid) return 1;
+                        if (!a.isPaid && b.isPaid) return -1;
+                    }
+                    return safeToDate(a.createdAt).getTime() - safeToDate(b.createdAt).getTime();
+            }
+        });
+
         return { 
             filteredOrders: processedOrders, 
             totalQuantity: totalQty, 
@@ -97,7 +109,7 @@ export default function BreadOrdersPage() {
             totalPaid: paid,
             totalOwed: owed,
         };
-    }, [orders, searchQuery, companyProfile, viewFilter]);
+    }, [orders, searchQuery, companyProfile, viewFilter, sortOption]);
 
 
     const handleAddOrder = (name: string, quantity: number, isRecurring: boolean) => {
@@ -221,25 +233,41 @@ export default function BreadOrdersPage() {
                         <h1 className="text-2xl font-bold">Commandes de Pain du Jour</h1>
                         <p className="text-muted-foreground">Gérez les commandes de pain quotidiennes.</p>
                     </div>
-                     <div className="flex gap-2 w-full sm:w-auto flex-wrap">
-                        <div className="relative flex-grow sm:flex-grow-0">
-                           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                           <Input
-                                type="search"
-                                placeholder="Rechercher par nom..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-9"
-                            />
+                     <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto flex-wrap">
+                        <div className="flex gap-2 flex-grow">
+                            <div className="relative flex-grow sm:flex-grow-0">
+                               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                               <Input
+                                    type="search"
+                                    placeholder="Rechercher par nom..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="pl-9"
+                                />
+                            </div>
+                            <Select value={sortOption} onValueChange={setSortOption}>
+                                <SelectTrigger className="w-full sm:w-[180px]">
+                                    <ListFilter className="mr-2 h-4 w-4" />
+                                    <SelectValue placeholder="Trier par..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="status">Par Statut</SelectItem>
+                                    <SelectItem value="name_asc">Par Nom</SelectItem>
+                                    <SelectItem value="quantity_desc">Par Quantité</SelectItem>
+                                    <SelectItem value="createdAt_desc">Plus Récent</SelectItem>
+                                </SelectContent>
+                            </Select>
                         </div>
-                        <Button variant="outline" onClick={() => setIsResetting(true)}>
-                            <RotateCcw className="mr-2 h-4 w-4" />
-                            Réinitialiser
-                        </Button>
-                        <Button onClick={() => setIsAddingOrder(true)}>
-                            <PlusCircle className="mr-2 h-4 w-4" />
-                            Ajouter
-                        </Button>
+                        <div className="flex gap-2">
+                            <Button variant="outline" onClick={() => setIsResetting(true)}>
+                                <RotateCcw className="mr-2 h-4 w-4" />
+                                Réinitialiser
+                            </Button>
+                            <Button onClick={() => setIsAddingOrder(true)}>
+                                <PlusCircle className="mr-2 h-4 w-4" />
+                                Ajouter
+                            </Button>
+                        </div>
                     </div>
                 </div>
 
