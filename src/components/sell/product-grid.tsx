@@ -58,13 +58,17 @@ export function ProductGrid({ products, onAddToCart, onAddNewProduct, onAddCusto
 
         // 2. Filter by search query
         const lowercasedQuery = searchQuery.toLowerCase();
-        if (!lowercasedQuery) return categoryFiltered;
         
-        return categoryFiltered.filter(product => 
-            product.name.toLowerCase().includes(lowercasedQuery) ||
-            (product.barcodes && product.barcodes.some(b => b.toLowerCase().includes(lowercasedQuery))) ||
-            (product.barcode && product.barcode.toLowerCase().includes(lowercasedQuery))
-        );
+        if (lowercasedQuery) {
+            return categoryFiltered.filter(product => 
+                product.name.toLowerCase().includes(lowercasedQuery) ||
+                (product.barcodes && product.barcodes.some(b => b.toLowerCase().includes(lowercasedQuery))) ||
+                (product.barcode && product.barcode.toLowerCase().includes(lowercasedQuery))
+            );
+        }
+
+        return categoryFiltered.slice(0, 10);
+
     }, [products, searchQuery, selectedCategory]);
 
     const handleSearchSubmit = (e: React.FormEvent) => {
