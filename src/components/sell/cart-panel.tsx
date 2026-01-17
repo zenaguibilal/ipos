@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -211,7 +210,7 @@ export function CartPanel({
 
 
                  {/* Action buttons */}
-                 <div className="flex gap-2 mb-4">
+                 <div className="flex gap-2 mb-2">
                      <Button variant="destructive" onClick={onClearCart} disabled={cart.length === 0} className="w-1/3">
                         <Trash2 className="h-4 w-4" />
                     </Button>
@@ -219,6 +218,11 @@ export function CartPanel({
                         <HardDriveDownload className="mr-2 h-5 w-5" />
                         VENTE (F4)
                     </Button>
+                 </div>
+                 {/* Total Display */}
+                 <div className="text-center p-3 rounded-lg bg-muted/50 mb-4 border">
+                     <p className="text-sm font-medium text-muted-foreground">TOTAL</p>
+                     <p className="text-4xl font-black text-primary tracking-tight">{total.toFixed(2)} DA</p>
                  </div>
             </div>
 
@@ -299,7 +303,7 @@ export function CartPanel({
                 </div>
             </div>
 
-            {/* Bottom section: Totals */}
+            {/* Bottom section: Summary */}
             <div className="flex-shrink-0 mt-4">
                  <div className="space-y-2">
                     <div className="flex justify-between text-sm text-muted-foreground">
@@ -316,10 +320,6 @@ export function CartPanel({
                             <span>- {discount.toFixed(2)} DA</span>
                         </div>
                     )}
-                    <div className="flex justify-between font-semibold text-xl border-t pt-2 mt-2">
-                        <span>Total</span>
-                        <span>{total.toFixed(2)} DA</span>
-                    </div>
                  </div>
             </div>
         </div>
