@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useRef, useEffect } from 'react';
@@ -6,8 +5,10 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import type { Product } from '@/lib/types';
-import { PlusCircle, ScanLine } from 'lucide-react';
+import { PlusCircle, ScanLine, Package } from 'lucide-react';
 import Image from 'next/image';
+import { cn } from '@/lib/utils';
+
 
 interface ProductWithOptionalBarcode extends Product {
     barcode?: string;
@@ -54,11 +55,14 @@ export function ProductGrid({ products, onAddToCart, onAddNewProduct, onAddCusto
         e.preventDefault();
         const productFromBarcode = productsByBarcode[searchQuery];
         if (productFromBarcode) {
-            onAddToCart(productFromBarcode);
+            if (productFromBarcode.quantity > 0) {
+                onAddToCart(productFromBarcode);
+            }
             setSearchQuery('');
         } else if (filteredProducts.length === 1) {
-            // If only one product matches the text search, add it
-            onAddToCart(filteredProducts[0]);
+            if (filteredProducts[0].quantity > 0) {
+                onAddToCart(filteredProducts[0]);
+            }
             setSearchQuery('');
         }
     };
@@ -104,35 +108,54 @@ export function ProductGrid({ products, onAddToCart, onAddNewProduct, onAddCusto
 
             <div className="flex-1 overflow-y-auto pr-2">
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4">
-                    {filteredProducts.map(product => (
-                        <Card 
-                            key={product.id} 
-                            onClick={() => onAddToCart(product)}
-                            className="cursor-pointer hover:shadow-lg hover:border-primary transition-all group"
-                        >
-                            <CardContent className="p-0 flex flex-col items-center text-center">
-                                <div className="relative w-full h-24 bg-muted overflow-hidden rounded-t-lg">
-                                     <Image
-                                        src={product.imageUrl || `https://picsum.photos/seed/${product.id}/200/200`}
-                                        alt={product.name}
-                                        fill
-                                        style={{ objectFit: 'cover' }}
-                                        className="group-hover:scale-105 transition-transform"
-                                        data-ai-hint="product image"
-                                    />
-                                     {product.quantity <= product.minStockLevel && (
-                                        <div className="absolute top-1 right-1 bg-destructive text-destructive-foreground text-xs font-bold px-2 py-0.5 rounded-full">
-                                            Stock Faible
+                    {filteredProducts.map(product => {
+                        const isOutOfStock = product.quantity === 0;
+                        const isLowStock = !isOutOfStock && product.quantity <= product.minStockLevel;
+
+                        return (
+                            <Card 
+                                key={product.id} 
+                                onClick={() => !isOutOfStock && onAddToCart(product)}
+                                className={cn(
+                                    "cursor-pointer hover:shadow-lg hover:border-primary transition-all group",
+                                    isOutOfStock && "opacity-60 cursor-not-allowed bg-muted/30 hover:shadow-none hover:border-border"
+                                )}
+                            >
+                                <CardContent className="p-0 flex flex-col items-center text-center">
+                                    <div className="relative w-full h-24 bg-muted overflow-hidden rounded-t-lg">
+                                         <Image
+                                            src={product.imageUrl || `https://picsum.photos/seed/${product.id}/200/200`}
+                                            alt={product.name}
+                                            fill
+                                            style={{ objectFit: 'cover' }}
+                                            className={cn("group-hover:scale-105 transition-transform", isOutOfStock && "grayscale")}
+                                            data-ai-hint="product image"
+                                        />
+                                        {isOutOfStock && (
+                                            <div className="absolute top-1 right-1 bg-destructive text-destructive-foreground text-xs font-bold px-2 py-0.5 rounded-full z-10">
+                                                Épuisé
+                                            </div>
+                                        )}
+                                        {isLowStock && (
+                                            <div className="absolute top-1 right-1 bg-yellow-500 text-black text-xs font-bold px-2 py-0.5 rounded-full z-10">
+                                                Stock Faible
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="p-2 flex flex-col flex-grow w-full justify-between">
+                                        <p className="font-semibold text-sm flex-grow line-clamp-2">{product.name}</p>
+                                        <div className="flex justify-between items-end mt-1 w-full">
+                                            <div className="flex items-center gap-1 text-xs text-muted-foreground" title={`Quantité en stock: ${product.quantity}`}>
+                                                <Package className="h-3 w-3" />
+                                                <span>{product.quantity}</span>
+                                            </div>
+                                            <p className="font-bold text-primary">{product.price.toFixed(2)} DA</p>
                                         </div>
-                                    )}
-                                </div>
-                                <div className="p-2 flex flex-col flex-grow w-full">
-                                    <p className="font-semibold text-sm flex-grow line-clamp-2">{product.name}</p>
-                                    <p className="font-bold text-primary mt-1">{product.price.toFixed(2)} DA</p>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    ))}
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        );
+                    })}
                      {filteredProducts.length === 0 && searchQuery && (
                          <div className="col-span-full text-center py-10">
                             <p className="text-muted-foreground">Aucun produit ne correspond à votre recherche.</p>
