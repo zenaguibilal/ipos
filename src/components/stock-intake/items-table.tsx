@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -6,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";
 import type { StockIntakeItem } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 interface IntakeItemsTableProps {
     items: StockIntakeItem[];
@@ -49,7 +49,10 @@ export function IntakeItemsTable({ items, onUpdateItem, onRemoveItem }: IntakeIt
                                     value={item.name}
                                     onChange={(e) => onUpdateItem(item.id, 'name', e.target.value)}
                                     placeholder="Nom du produit"
-                                    className={item.isNew ? "border-green-500" : ""}
+                                    disabled={!item.isNew}
+                                    className={cn(
+                                        item.isNew ? "border-green-500" : "bg-muted/50"
+                                    )}
                                 />
                             </TableCell>
                             <TableCell>
@@ -57,6 +60,8 @@ export function IntakeItemsTable({ items, onUpdateItem, onRemoveItem }: IntakeIt
                                     value={item.category || ''}
                                     onChange={(e) => onUpdateItem(item.id, 'category', e.target.value)}
                                     placeholder="Catégorie"
+                                    disabled={!item.isNew}
+                                    className={cn(!item.isNew && "bg-muted/50")}
                                 />
                             </TableCell>
                             <TableCell>
