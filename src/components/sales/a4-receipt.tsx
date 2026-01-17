@@ -13,7 +13,17 @@ interface A4ReceiptProps {
 }
 
 export function A4Receipt({ sale, companyProfile, customer }: A4ReceiptProps) {
+    if (!sale) return null;
+
     const saleDate = safeToDate(sale.createdAt);
+
+    // Provide fallbacks for potentially missing numeric fields in old sale documents
+    const calculatedSubtotal = sale.items.reduce((sum, item) => sum + ((item.price || 0) * (item.cartQuantity || item.quantity)), 0);
+    const subtotal = sale.subtotal ?? calculatedSubtotal;
+    const total = sale.total ?? subtotal; // Simplified fallback
+    const amountPaid = sale.amountPaid ?? 0;
+    const remainingBalance = sale.remainingBalance ?? (total - amountPaid);
+    const discountDisplay = subtotal - total;
 
     return (
         <div className="a4-receipt bg-white text-black p-8 font-sans text-sm">
@@ -67,8 +77,8 @@ export function A4Receipt({ sale, companyProfile, customer }: A4ReceiptProps) {
                             <tr key={index} className="border-b">
                                 <td className="p-3">{item.name}</td>
                                 <td className="p-3 text-center">{item.cartQuantity || item.quantity}</td>
-                                <td className="p-3 text-right">{item.price.toFixed(2)} DA</td>
-                                <td className="p-3 text-right font-semibold">{(item.price * (item.cartQuantity || item.quantity)).toFixed(2)} DA</td>
+                                <td className="p-3 text-right">{(item.price || 0).toFixed(2)} DA</td>
+                                <td className="p-3 text-right font-semibold">{((item.price || 0) * (item.cartQuantity || item.quantity)).toFixed(2)} DA</td>
                             </tr>
                         ))}
                     </tbody>
@@ -80,27 +90,27 @@ export function A4Receipt({ sale, companyProfile, customer }: A4ReceiptProps) {
                 <div className="w-full max-w-sm space-y-2 text-right">
                     <div className="flex justify-between">
                         <span className="text-gray-600">Sous-total:</span>
-                        <span className="font-semibold">{sale.subtotal.toFixed(2)} DA</span>
+                        <span className="font-semibold">{subtotal.toFixed(2)} DA</span>
                     </div>
                     {sale.discountAmount && sale.discountAmount > 0 && (
                         <div className="flex justify-between">
                             <span className="text-gray-600">Remise:</span>
-                            <span className="font-semibold">-{(sale.subtotal - sale.total).toFixed(2)} DA</span>
+                            <span className="font-semibold">-{discountDisplay.toFixed(2)} DA</span>
                         </div>
                     )}
                     <div className="border-t my-2"></div>
                     <div className="flex justify-between text-xl font-bold">
                         <span>TOTAL:</span>
-                        <span>{sale.total.toFixed(2)} DA</span>
+                        <span>{total.toFixed(2)} DA</span>
                     </div>
                      <div className="border-t my-2"></div>
                      <div className="flex justify-between">
                         <span className="text-gray-600">Montant Payé:</span>
-                        <span className="font-semibold">{sale.amountPaid.toFixed(2)} DA</span>
+                        <span className="font-semibold">{amountPaid.toFixed(2)} DA</span>
                     </div>
                      <div className="flex justify-between">
                         <span className="text-gray-600">Solde Restant:</span>
-                        <span className="font-semibold">{sale.remainingBalance.toFixed(2)} DA</span>
+                        <span className="font-semibold">{remainingBalance.toFixed(2)} DA</span>
                     </div>
                 </div>
             </section>
