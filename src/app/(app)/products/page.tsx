@@ -30,7 +30,7 @@ interface ProductWithLegacyBarcode extends Product {
 }
 
 
-type SortableKeys = keyof Pick<ProductWithLegacyBarcode, 'name' | 'price' | 'purchasePrice' | 'quantity' | 'profitMargin'>;
+type SortableKeys = keyof Pick<ProductWithLegacyBarcode, 'name' | 'category' | 'price' | 'purchasePrice' | 'quantity' | 'profitMargin'>;
 
 export default function ProductsPage() {
     const { user, isUserLoading } = useUser();
@@ -94,6 +94,7 @@ export default function ProductsPage() {
         
         return sortableItems.filter(product => 
             product.name.toLowerCase().includes(lowercasedQuery) ||
+            (product.category && product.category.toLowerCase().includes(lowercasedQuery)) ||
             (product.barcodes && product.barcodes.some(b => b.includes(lowercasedQuery))) ||
             (product.barcode && product.barcode.includes(lowercasedQuery))
         );
@@ -137,6 +138,7 @@ export default function ProductsPage() {
         const csvData = products.map(p => ({
             "id": p.id,
             "name": p.name,
+            "category": p.category || '',
             "purchasePrice": p.purchasePrice,
             "price": p.price,
             "quantity": p.quantity,
@@ -175,6 +177,7 @@ export default function ProductsPage() {
 
                      const productData = {
                         name: imported.name,
+                        category: imported.category || '',
                         purchasePrice: parseFloat(imported.purchasePrice) || 0,
                         price: parseFloat(imported.price) || 0,
                         quantity: parseInt(imported.quantity, 10) || 0,
@@ -303,7 +306,7 @@ export default function ProductsPage() {
                         <div className="relative flex-grow w-full sm:w-auto sm:flex-grow-0 max-w-sm">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input 
-                                placeholder="Rechercher par nom ou code-barres..."
+                                placeholder="Rechercher par nom, catégorie..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 className="pl-9 w-full"
@@ -354,7 +357,7 @@ export default function ProductsPage() {
                                             </TableHead>
                                             <TableHead className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Image</TableHead>
                                             <SortableHeader sortKey="name" className="text-left">Produit</SortableHeader>
-                                            <TableHead className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground hidden md:table-cell">Codes-barres</TableHead>
+                                            <SortableHeader sortKey="category" className="text-left hidden md:table-cell">Catégorie</SortableHeader>
                                             <SortableHeader sortKey="purchasePrice" className="text-right hidden sm:table-cell">Prix d'achat</SortableHeader>
                                             <SortableHeader sortKey="price" className="text-right">Prix de vente</SortableHeader>
                                             <SortableHeader sortKey="profitMargin" className="text-right hidden lg:table-cell">Marge Bénéfice</SortableHeader>
@@ -388,7 +391,7 @@ export default function ProductsPage() {
                                                     </div>
                                                 </TableCell>
                                                 <TableCell className="font-medium">{product.name}</TableCell>
-                                                <TableCell className="text-muted-foreground text-xs hidden md:table-cell">{(product.barcodes?.join(', ') || product.barcode) || '-'}</TableCell>
+                                                <TableCell className="text-muted-foreground text-xs hidden md:table-cell">{product.category || '-'}</TableCell>
                                                 <TableCell className="text-right hidden sm:table-cell">{product.purchasePrice.toFixed(2)} DA</TableCell>
                                                 <TableCell className="text-right font-semibold text-primary">{product.price.toFixed(2)} DA</TableCell>
                                                  <TableCell className={cn("text-right font-bold hidden lg:table-cell", getProfitMarginColor(product.profitMargin || 0))}>
@@ -445,4 +448,3 @@ export default function ProductsPage() {
         </>
     );
 }
-

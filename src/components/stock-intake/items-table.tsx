@@ -33,6 +33,7 @@ export function IntakeItemsTable({ items, onUpdateItem, onRemoveItem }: IntakeIt
                 <TableHeader>
                     <TableRow>
                         <TableHead className="w-[250px]">Nom du produit</TableHead>
+                        <TableHead className="w-[150px]">Catégorie</TableHead>
                         <TableHead className="w-[200px]">Codes-barres</TableHead>
                         <TableHead className="w-[100px]">Quantité</TableHead>
                         <TableHead className="w-[120px]">Prix d'achat (DA)</TableHead>
@@ -49,6 +50,13 @@ export function IntakeItemsTable({ items, onUpdateItem, onRemoveItem }: IntakeIt
                                     onChange={(e) => onUpdateItem(item.id, 'name', e.target.value)}
                                     placeholder="Nom du produit"
                                     className={item.isNew ? "border-green-500" : ""}
+                                />
+                            </TableCell>
+                            <TableCell>
+                                <Input
+                                    value={item.category || ''}
+                                    onChange={(e) => onUpdateItem(item.id, 'category', e.target.value)}
+                                    placeholder="Catégorie"
                                 />
                             </TableCell>
                             <TableCell>

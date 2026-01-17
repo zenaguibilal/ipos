@@ -19,6 +19,7 @@ interface AddProductFormProps {
 export function AddProductForm({ isOpen, onOpenChange, userId }: AddProductFormProps) {
     const firestore = useFirestore();
     const [name, setName] = useState('');
+    const [category, setCategory] = useState('');
     const [price, setPrice] = useState('');
     const [purchasePrice, setPurchasePrice] = useState('');
     const [quantity, setQuantity] = useState('');
@@ -30,6 +31,7 @@ export function AddProductForm({ isOpen, onOpenChange, userId }: AddProductFormP
 
     const resetForm = () => {
         setName('');
+        setCategory('');
         setPrice('');
         setPurchasePrice('');
         setQuantity('');
@@ -77,6 +79,7 @@ export function AddProductForm({ isOpen, onOpenChange, userId }: AddProductFormP
 
         addDocumentNonBlocking(productsCollectionRef, {
             name: name,
+            category: category,
             price: priceNumber,
             purchasePrice: purchasePriceNumber,
             quantity: quantityNumber,
@@ -122,6 +125,10 @@ export function AddProductForm({ isOpen, onOpenChange, userId }: AddProductFormP
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="add-name" className="text-right">Nom</Label>
                             <Input id="add-name" value={name} onChange={(e) => setName(e.target.value)} className="col-span-3" required />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="add-category" className="text-right">Catégorie</Label>
+                            <Input id="add-category" value={category} onChange={(e) => setCategory(e.target.value)} className="col-span-3" placeholder="Ex: Boissons" />
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="add-purchasePrice" className="text-right">Prix Achat</Label>

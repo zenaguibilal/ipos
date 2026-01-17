@@ -21,6 +21,7 @@ interface EditProductFormProps {
 export function EditProductForm({ isOpen, onOpenChange, userId, product }: EditProductFormProps) {
     const firestore = useFirestore();
     const [name, setName] = useState('');
+    const [category, setCategory] = useState('');
     const [price, setPrice] = useState('');
     const [purchasePrice, setPurchasePrice] = useState('');
     const [quantity, setQuantity] = useState('');
@@ -33,6 +34,7 @@ export function EditProductForm({ isOpen, onOpenChange, userId, product }: EditP
     useEffect(() => {
         if (product) {
             setName(product.name);
+            setCategory(product.category || '');
             setPrice(String(product.price));
             setPurchasePrice(String(product.purchasePrice));
             setQuantity(String(product.quantity));
@@ -80,6 +82,7 @@ export function EditProductForm({ isOpen, onOpenChange, userId, product }: EditP
         
         updateDocumentNonBlocking(productDocRef, {
             name: name,
+            category: category,
             price: priceNumber,
             purchasePrice: purchasePriceNumber,
             quantity: quantityNumber,
@@ -114,6 +117,10 @@ export function EditProductForm({ isOpen, onOpenChange, userId, product }: EditP
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="edit-name" className="text-right">Nom</Label>
                             <Input id="edit-name" value={name} onChange={(e) => setName(e.target.value)} className="col-span-3" required />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="edit-category" className="text-right">Catégorie</Label>
+                            <Input id="edit-category" value={category} onChange={(e) => setCategory(e.target.value)} className="col-span-3" placeholder="Ex: Boissons" />
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="edit-purchasePrice" className="text-right">Prix Achat</Label>

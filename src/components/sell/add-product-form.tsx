@@ -18,6 +18,7 @@ interface AddProductFormProps {
 export function AddProductForm({ isOpen, onOpenChange, userId }: AddProductFormProps) {
     const firestore = useFirestore();
     const [name, setName] = useState('');
+    const [category, setCategory] = useState('');
     const [price, setPrice] = useState(''); // selling price
     const [purchasePrice, setPurchasePrice] = useState('');
     const [quantity, setQuantity] = useState('');
@@ -28,6 +29,7 @@ export function AddProductForm({ isOpen, onOpenChange, userId }: AddProductFormP
 
     const resetForm = () => {
         setName('');
+        setCategory('');
         setPrice('');
         setPurchasePrice('');
         setQuantity('');
@@ -75,6 +77,7 @@ export function AddProductForm({ isOpen, onOpenChange, userId }: AddProductFormP
 
         addDocumentNonBlocking(productsCollectionRef, {
             name: name,
+            category: category,
             price: priceNumber, // selling price
             purchasePrice: purchasePriceNumber,
             quantity: quantityNumber,
@@ -124,6 +127,18 @@ export function AddProductForm({ isOpen, onOpenChange, userId }: AddProductFormP
                                 onChange={(e) => setName(e.target.value)}
                                 className="col-span-3"
                                 required
+                            />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="sell-add-category" className="text-right">
+                                Catégorie
+                            </Label>
+                            <Input
+                                id="sell-add-category"
+                                value={category}
+                                onChange={(e) => setCategory(e.target.value)}
+                                className="col-span-3"
+                                placeholder="Ex: Boissons"
                             />
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">

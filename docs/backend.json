@@ -58,6 +58,10 @@
           "type": "string",
           "description": "Name of the product."
         },
+        "category": {
+            "type": "string",
+            "description": "Category of the product."
+        },
         "price": {
           "type": "number",
           "description": "Selling price of the product."

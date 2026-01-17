@@ -16,20 +16,8 @@ import { IntakeItemsTable } from '@/components/stock-intake/items-table';
 import { SaveIntakeDialog } from '@/components/stock-intake/save-intake-dialog';
 import { History, Save } from 'lucide-react';
 import Link from 'next/link';
-import type { Product, PurchaseOrder } from '@/lib/types';
+import type { Product, PurchaseOrder, StockIntakeItem } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-
-// The type for an item being processed in the intake list
-export interface StockIntakeItem {
-    id: string; // Unique ID for the item row in the UI
-    productId?: string; // ID of the product if it exists in the database
-    barcodes: string[];
-    name: string;
-    quantity: number;
-    purchasePrice: number;
-    price: number; // Selling price
-    isNew: boolean;
-}
 
 export default function StockIntakePage() {
     const { user, isUserLoading } = useUser();
@@ -79,6 +67,7 @@ export default function StockIntakePage() {
                     productId: existingProduct.id,
                     barcodes: existingProduct.barcodes || [],
                     name: existingProduct.name,
+                    category: existingProduct.category || '',
                     quantity: 1,
                     purchasePrice: existingProduct.purchasePrice,
                     price: existingProduct.price,
@@ -91,6 +80,7 @@ export default function StockIntakePage() {
                 productId: undefined,
                 barcodes: [scannedValue.includes(',') ? '' : scannedValue],
                 name: scannedValue.includes(',') ? '' : scannedValue,
+                category: '',
                 quantity: 1,
                 purchasePrice: 0,
                 price: 0,
@@ -137,6 +127,7 @@ export default function StockIntakePage() {
                 productId: poItem.productId,
                 barcodes: productDetails?.barcodes || [],
                 name: poItem.productName,
+                category: productDetails?.category || '',
                 quantity: poItem.quantity,
                 purchasePrice: poItem.purchasePrice,
                 price: productDetails?.price || 0,
@@ -174,6 +165,7 @@ export default function StockIntakePage() {
                             purchasePrice: item.purchasePrice,
                             price: item.price,
                             barcodes: item.barcodes,
+                            category: item.category,
                             minStockLevel: 0,
                             createdAt: serverTimestamp()
                         });
@@ -187,6 +179,7 @@ export default function StockIntakePage() {
                                 purchasePrice: item.purchasePrice,
                                 price: item.price,
                                 barcodes: item.barcodes,
+                                category: item.category,
                             });
                         } else {
                              // If product somehow doesn't exist, create it.
@@ -196,6 +189,7 @@ export default function StockIntakePage() {
                                 purchasePrice: item.purchasePrice,
                                 price: item.price,
                                 barcodes: item.barcodes,
+                                category: item.category,
                                 minStockLevel: 0,
                                 createdAt: serverTimestamp()
                             });

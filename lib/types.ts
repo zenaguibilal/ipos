@@ -4,6 +4,7 @@ import { Timestamp } from "firebase/firestore";
 export interface Product {
     id: string;
     name: string;
+    category?: string;
     price: number;
     purchasePrice: number;
     quantity: number; 
@@ -25,6 +26,7 @@ export interface SaleItem {
     id: string;
     name: string;
     price: number;
+    purchasePrice: number;
     quantity: number;
     cartQuantity?: number;
 }
@@ -33,6 +35,9 @@ export interface Sale {
     id: string;
     invoiceNumber: string;
     items: SaleItem[];
+    subtotal: number;
+    discountType?: 'percentage' | 'fixed';
+    discountAmount?: number;
     total: number;
     amountPaid: number;
     remainingBalance: number;
@@ -92,7 +97,10 @@ export interface CompanyProfile {
     zipCode?: string;
     country?: string;
     phone?: string;
+    email?: string;
+    website?: string;
     vatNumber?: string;
+    rcNumber?: string;
 }
 
 export interface PurchaseOrderItem {
@@ -117,6 +125,7 @@ export interface StockIntakeItem {
     productId?: string; // ID of the product if it exists
     barcodes: string[];
     name: string;
+    category?: string;
     quantity: number;
     purchasePrice: number;
     price: number;
@@ -137,6 +146,7 @@ export interface StockIntake {
     createdAt: Timestamp | Date;
 }
 
-    
-
-    
+export interface InventoryValueData {
+    name: string;
+    value: number;
+}

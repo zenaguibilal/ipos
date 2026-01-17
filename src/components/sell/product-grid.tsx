@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useRef, useEffect } from 'react';
@@ -8,6 +9,7 @@ import type { Product } from '@/lib/types';
 import { PlusCircle, ScanLine, Package } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
+import { ScrollArea } from '../ui/scroll-area';
 
 
 interface ProductWithOptionalBarcode extends Product {
@@ -23,6 +25,7 @@ interface ProductGridProps {
 
 export function ProductGrid({ products, onAddToCart, onAddNewProduct, onAddCustomProduct }: ProductGridProps) {
     const [searchQuery, setSearchQuery] = useState('');
+    const [selectedCategory, setSelectedCategory] = useState<string>('all');
     const searchInputRef = useRef<HTMLInputElement>(null);
 
     const productsByBarcode = useMemo(() => {
@@ -40,16 +43,29 @@ export function ProductGrid({ products, onAddToCart, onAddNewProduct, onAddCusto
         }, {} as Record<string, ProductWithOptionalBarcode>);
     }, [products]);
 
+    const categories = useMemo(() => {
+        if (!products) return [];
+        const allCategories = products.map(p => p.category).filter(Boolean) as string[];
+        const uniqueCategories = [...new Set(allCategories)].sort((a, b) => a.localeCompare(b));
+        return ['all', ...uniqueCategories];
+    }, [products]);
+
     const filteredProducts = useMemo(() => {
+        // 1. Filter by category
+        const categoryFiltered = selectedCategory === 'all'
+            ? products
+            : products.filter(p => p.category === selectedCategory);
+
+        // 2. Filter by search query
         const lowercasedQuery = searchQuery.toLowerCase();
-        if (!lowercasedQuery) return products;
+        if (!lowercasedQuery) return categoryFiltered;
         
-        return products.filter(product => 
+        return categoryFiltered.filter(product => 
             product.name.toLowerCase().includes(lowercasedQuery) ||
             (product.barcodes && product.barcodes.some(b => b.toLowerCase().includes(lowercasedQuery))) ||
             (product.barcode && product.barcode.toLowerCase().includes(lowercasedQuery))
         );
-    }, [products, searchQuery]);
+    }, [products, searchQuery, selectedCategory]);
 
     const handleSearchSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -105,8 +121,27 @@ export function ProductGrid({ products, onAddToCart, onAddNewProduct, onAddCusto
                     </Button>
                 </div>
             </div>
+            
+             {/* Category filters */}
+             <div className="flex-shrink-0 pb-2">
+                <ScrollArea className="w-full whitespace-nowrap">
+                    <div className="flex gap-2 py-2">
+                        {categories.map(category => (
+                            <Button
+                                key={category}
+                                variant={selectedCategory === category ? 'default' : 'outline'}
+                                size="sm"
+                                onClick={() => setSelectedCategory(category)}
+                                className="capitalize"
+                            >
+                                {category === 'all' ? 'Tous' : category}
+                            </Button>
+                        ))}
+                    </div>
+                </ScrollArea>
+            </div>
 
-            <div className="flex-1 overflow-y-auto pr-2">
+            <div className="flex-1 overflow-y-auto pr-2 border-t pt-4">
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4">
                     {filteredProducts.map(product => {
                         const isOutOfStock = product.quantity === 0;
@@ -156,9 +191,9 @@ export function ProductGrid({ products, onAddToCart, onAddNewProduct, onAddCusto
                             </Card>
                         );
                     })}
-                     {filteredProducts.length === 0 && searchQuery && (
+                     {filteredProducts.length === 0 && (
                          <div className="col-span-full text-center py-10">
-                            <p className="text-muted-foreground">Aucun produit ne correspond à votre recherche.</p>
+                            <p className="text-muted-foreground">Aucun produit ne correspond à votre recherche ou catégorie.</p>
                         </div>
                      )}
                 </div>
