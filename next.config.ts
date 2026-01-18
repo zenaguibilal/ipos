@@ -13,6 +13,9 @@ const withPWA = withPWAInit({
 });
 
 const nextConfig: NextConfig = {
+    devIndicators: {
+        allowedDevOrigins: ["https://*.cloudworkstations.dev"],
+    },
 };
 
 export default withPWA(nextConfig);
