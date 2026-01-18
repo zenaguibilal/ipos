@@ -3,14 +3,14 @@
 import { useUser, useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking, useDoc } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useMemo } from 'react';
-import { collection, query, orderBy, serverTimestamp, doc, writeBatch } from 'firebase/firestore';
+import { collection, query, orderBy, serverTimestamp, doc, writeBatch, updateDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { AddOrderForm } from '@/components/bread-orders/add-order-form';
 import { EditOrderForm } from '@/components/bread-orders/edit-order-form';
 import { ResetOrdersDialog } from '@/components/bread-orders/reset-orders-dialog';
 import { OrderCard } from '@/components/bread-orders/order-card';
-import type { BreadOrder, CompanyProfile } from '@/lib/types';
+import type { BreadOrder, CompanyProfile, UnpaidBreadOrder } from '@/lib/types';
 import { PlusCircle, RotateCcw, Search, Cookie, CheckCheck, Truck, CircleDollarSign, CreditCard, ListFilter, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,6 +20,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { BulkDeleteOrdersDialog } from '@/components/bread-orders/bulk-delete-orders-dialog';
 import { isSameDay } from 'date-fns';
+import { UnpaidOrdersLog } from '@/components/bread-orders/unpaid-orders-log';
+import { ClearLogDialog } from '@/components/bread-orders/clear-log-dialog';
 
 export default function BreadOrdersPage() {
     const { user, isUserLoading } = useUser();
@@ -35,6 +37,8 @@ export default function BreadOrdersPage() {
     const [sortOption, setSortOption] = useState('status');
     const [selectedOrders, setSelectedOrders] = useState<Record<string, boolean>>({});
     const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+    const [isClearingLog, setIsClearingLog] = useState(false);
+    const [isClearLogDialogOpen, setIsClearLogDialogOpen] = useState(false);
 
 
     const companyDocRef = useMemoFirebase(() => user && firestore ? doc(firestore, 'users', user.uid, 'companyProfile', 'main') : null, [user, firestore]);
@@ -46,6 +50,13 @@ export default function BreadOrdersPage() {
         return query(collection(firestore, 'users', user.uid, 'breadOrders'), orderBy('createdAt', 'asc'));
     }, [user, firestore]);
     const { data: orders, isLoading: isLoadingOrders } = useCollection<BreadOrder>(ordersQuery);
+
+    const unpaidOrdersQuery = useMemoFirebase(() => {
+        if (!user || !firestore) return null;
+        return query(collection(firestore, 'users', user.uid, 'unpaidBreadOrders'), orderBy('archivedAt', 'desc'));
+    }, [user, firestore]);
+    const { data: unpaidOrders, isLoading: isLoadingUnpaid } = useCollection<UnpaidBreadOrder>(unpaidOrdersQuery);
+
 
     useEffect(() => {
         if (!isUserLoading && !user) {
@@ -66,7 +77,30 @@ export default function BreadOrdersPage() {
             console.log("Automatic daily reset for bread orders triggered.");
             
             const autoReset = async () => {
+                const breadPrice = companyProfile?.breadPrice ?? 0;
+                if (breadPrice === 0) {
+                    toast.info("Réinitialisation auto. ignorée: prix du pain non défini pour archiver les dettes.");
+                    // Still update the reset date to avoid constant checks
+                    const companyRef = doc(firestore, 'users', user.uid, 'companyProfile', 'main');
+                    await updateDoc(companyRef, { lastBreadOrderReset: serverTimestamp() });
+                    return;
+                }
+
                 const batch = writeBatch(firestore);
+                
+                const unpaidOnes = orders.filter(o => o.isDelivered && !o.isPaid);
+                unpaidOnes.forEach(order => {
+                    const unpaidOrderRef = doc(collection(firestore, 'users', user.uid, 'unpaidBreadOrders'));
+                    batch.set(unpaidOrderRef, {
+                        name: order.name,
+                        quantity: order.quantity,
+                        pricePerUnit: breadPrice,
+                        totalOwed: order.quantity * breadPrice,
+                        originalOrderDate: order.createdAt,
+                        archivedAt: serverTimestamp()
+                    });
+                });
+
                 orders.forEach(order => {
                     const orderRef = doc(firestore, 'users', user.uid, 'breadOrders', order.id);
                     if (order.isRecurring) {
@@ -80,6 +114,9 @@ export default function BreadOrdersPage() {
 
                 try {
                     await batch.commit();
+                     if (unpaidOnes.length > 0) {
+                        toast.info(`${unpaidOnes.length} dette(s) de pain ont été archivées.`);
+                    }
                     toast.info("La liste des commandes de pain a été automatiquement réinitialisée.");
                 } catch (error) {
                     console.error("Automatic bread order reset failed:", error);
@@ -229,15 +266,37 @@ export default function BreadOrdersPage() {
         if (!firestore || !user || !orders) return;
         
         setIsProcessingReset(true);
+
+        const breadPrice = companyProfile?.breadPrice ?? 0;
+        if (breadPrice === 0) {
+            toast.error("Le prix du pain n'est pas défini. Impossible d'archiver les dettes.", {
+                description: "Veuillez le configurer dans votre profil d'entreprise avant de réinitialiser."
+            });
+            setIsProcessingReset(false);
+            setIsResetting(false);
+            return;
+        }
+
         const batch = writeBatch(firestore);
+        
+        const unpaidOnes = orders.filter(o => o.isDelivered && !o.isPaid);
+        unpaidOnes.forEach(order => {
+            const unpaidOrderRef = doc(collection(firestore, 'users', user.uid, 'unpaidBreadOrders'));
+            batch.set(unpaidOrderRef, {
+                name: order.name,
+                quantity: order.quantity,
+                pricePerUnit: breadPrice,
+                totalOwed: order.quantity * breadPrice,
+                originalOrderDate: order.createdAt,
+                archivedAt: serverTimestamp()
+            });
+        });
 
         orders.forEach(order => {
             const orderRef = doc(firestore, 'users', user.uid, 'breadOrders', order.id);
             if (order.isRecurring) {
-                // Reset recurring orders for the next day
                 batch.update(orderRef, { isPaid: false, isDelivered: false, createdAt: serverTimestamp() });
             } else {
-                // Delete non-recurring orders
                 batch.delete(orderRef);
             }
         });
@@ -247,6 +306,9 @@ export default function BreadOrdersPage() {
 
         try {
             await batch.commit();
+            if (unpaidOnes.length > 0) {
+                 toast.success(`${unpaidOnes.length} dette(s) de pain ont été archivées dans le journal.`);
+            }
             toast.success("Liste réinitialisée pour la nouvelle journée !");
         } catch (error) {
             toast.error("Erreur lors de la réinitialisation de la liste.");
@@ -296,9 +358,32 @@ export default function BreadOrdersPage() {
             setIsBulkDeleting(false);
         }
     };
+    
+    const handleClearLog = async () => {
+        if (!firestore || !user || !unpaidOrders || unpaidOrders.length === 0) return;
+        
+        setIsClearingLog(true);
+        const batch = writeBatch(firestore);
+        
+        unpaidOrders.forEach(order => {
+            const docRef = doc(firestore, 'users', user.uid, 'unpaidBreadOrders', order.id);
+            batch.delete(docRef);
+        });
+
+        try {
+            await batch.commit();
+            toast.success("Le journal des dettes de pain a été vidé.");
+        } catch (error) {
+            toast.error("Erreur lors du vidage du journal.");
+            console.error(error);
+        } finally {
+            setIsClearingLog(false);
+            setIsClearLogDialogOpen(false);
+        }
+    };
 
 
-    const isLoading = isUserLoading || isLoadingOrders || isLoadingCompany;
+    const isLoading = isUserLoading || isLoadingOrders || isLoadingCompany || isLoadingUnpaid;
     const breadPrice = companyProfile?.breadPrice;
 
     return (
@@ -327,6 +412,12 @@ export default function BreadOrdersPage() {
                 onOpenChange={setIsBulkDeleting}
                 onConfirm={handleBulkDelete}
                 orderCount={selectedOrderIds.length}
+            />
+             <ClearLogDialog
+                isOpen={isClearLogDialogOpen}
+                onOpenChange={setIsClearLogDialogOpen}
+                onConfirm={handleClearLog}
+                isProcessing={isClearingLog}
             />
             <main className="flex-1 overflow-auto p-4 sm:p-6">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
@@ -372,151 +463,156 @@ export default function BreadOrdersPage() {
                     </div>
                 </div>
                 
-                 {filteredOrders && filteredOrders.length > 0 && (
-                    <div className="border rounded-lg p-2 mb-6 flex flex-col sm:flex-row items-center gap-4 bg-card">
-                        <div className="flex items-center space-x-2 flex-shrink-0">
-                            <Checkbox
-                                id="select-all"
-                                checked={filteredOrders.length > 0 && selectedOrderIds.length === filteredOrders.length}
-                                onCheckedChange={(checked) => {
-                                    const newSelected: Record<string, boolean> = {};
-                                    if (checked) {
-                                        filteredOrders.forEach(o => newSelected[o.id] = true);
-                                    }
-                                    setSelectedOrders(newSelected);
-                                }}
-                            />
-                            <label htmlFor="select-all" className="text-sm font-medium">
-                                {selectedOrderIds.length} / {filteredOrders.length} sélectionné(s)
-                            </label>
-                        </div>
-                        
-                        {selectedOrderIds.length > 0 && (
-                            <div className="flex items-center gap-2 border-l pl-4 flex-wrap">
-                                <Button size="sm" variant="outline" onClick={() => handleBulkUpdate('isDelivered', true)}>
-                                    <CheckCheck className="mr-2 h-4 w-4" />
-                                    Marquer comme livré
-                                </Button>
-                                <Button size="sm" variant="outline" onClick={() => handleBulkUpdate('isPaid', true)}>
-                                    <CircleDollarSign className="mr-2 h-4 w-4" />
-                                    Marquer comme payé
-                                </Button>
-                                <Button size="sm" variant="destructive" onClick={() => setIsBulkDeleting(true)}>
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    Supprimer
-                                </Button>
+                 <div className="grid gap-6 lg:grid-cols-3">
+                    <div className="lg:col-span-2 space-y-6">
+                        {filteredOrders && filteredOrders.length > 0 && (
+                            <div className="border rounded-lg p-2 flex flex-col sm:flex-row items-center gap-4 bg-card">
+                                <div className="flex items-center space-x-2 flex-shrink-0">
+                                    <Checkbox
+                                        id="select-all"
+                                        checked={filteredOrders.length > 0 && selectedOrderIds.length === filteredOrders.length}
+                                        onCheckedChange={(checked) => {
+                                            const newSelected: Record<string, boolean> = {};
+                                            if (checked) {
+                                                filteredOrders.forEach(o => newSelected[o.id] = true);
+                                            }
+                                            setSelectedOrders(newSelected);
+                                        }}
+                                    />
+                                    <label htmlFor="select-all" className="text-sm font-medium">
+                                        {selectedOrderIds.length} / {filteredOrders.length} sélectionné(s)
+                                    </label>
+                                </div>
+                                
+                                {selectedOrderIds.length > 0 && (
+                                    <div className="flex items-center gap-2 border-l pl-4 flex-wrap">
+                                        <Button size="sm" variant="outline" onClick={() => handleBulkUpdate('isDelivered', true)}>
+                                            <CheckCheck className="mr-2 h-4 w-4" />
+                                            Marquer comme livré
+                                        </Button>
+                                        <Button size="sm" variant="outline" onClick={() => handleBulkUpdate('isPaid', true)}>
+                                            <CircleDollarSign className="mr-2 h-4 w-4" />
+                                            Marquer comme payé
+                                        </Button>
+                                        <Button size="sm" variant="destructive" onClick={() => setIsBulkDeleting(true)}>
+                                            <Trash2 className="mr-2 h-4 w-4" />
+                                            Supprimer
+                                        </Button>
+                                    </div>
+                                )}
+                                
+                                <div className="sm:ml-auto flex gap-2 rounded-lg bg-muted p-1">
+                                    <Button variant={viewFilter === 'all' ? 'default' : 'ghost'} size="sm" onClick={() => setViewFilter('all')}>Tout</Button>
+                                    <Button variant={viewFilter === 'undelivered' ? 'default' : 'ghost'} size="sm" onClick={() => setViewFilter('undelivered')}>
+                                        <Truck className="mr-2 h-4 w-4"/>
+                                        Non Livré
+                                    </Button>
+                                    <Button variant={viewFilter === 'unpaid' ? 'default' : 'ghost'} size="sm" onClick={() => setViewFilter('unpaid')}>
+                                        <CreditCard className="mr-2 h-4 w-4"/>
+                                        Non Payé
+                                    </Button>
+                                </div>
                             </div>
                         )}
+
                         
-                        <div className="sm:ml-auto flex gap-2 rounded-lg bg-muted p-1">
-                            <Button variant={viewFilter === 'all' ? 'default' : 'ghost'} size="sm" onClick={() => setViewFilter('all')}>Tout</Button>
-                            <Button variant={viewFilter === 'undelivered' ? 'default' : 'ghost'} size="sm" onClick={() => setViewFilter('undelivered')}>
-                                <Truck className="mr-2 h-4 w-4"/>
-                                Non Livré
-                            </Button>
-                            <Button variant={viewFilter === 'unpaid' ? 'default' : 'ghost'} size="sm" onClick={() => setViewFilter('unpaid')}>
-                                <CreditCard className="mr-2 h-4 w-4"/>
-                                Non Payé
-                            </Button>
+                        {(breadPrice == null || breadPrice === 0) && !isLoadingCompany && (
+                            <div className="rounded-md border border-yellow-500 bg-yellow-500/10 p-4 text-sm text-yellow-700 dark:text-yellow-400">
+                                Le prix du pain n'est pas défini. Veuillez le configurer dans votre <Link href="/profile" className="font-bold underline">profil d'entreprise</Link> pour activer les calculs financiers et l'archivage des dettes.
+                            </div>
+                        )}
+
+                         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                            <Card>
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardTitle className="text-sm font-medium">Total Commandé</CardTitle>
+                                    <Cookie className="h-4 w-4 text-primary" />
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="text-2xl font-bold">{totalQuantity}</div>
+                                </CardContent>
+                            </Card>
+                            <Card>
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardTitle className="text-sm font-medium">Quantité Livrée</CardTitle>
+                                    <CheckCheck className="h-4 w-4 text-green-700 dark:text-green-400" />
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="text-2xl font-bold">{deliveredQuantity}</div>
+                                </CardContent>
+                            </Card>
+                            <Card>
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardTitle className="text-sm font-medium">Quantité Restante</CardTitle>
+                                    <Truck className="h-4 w-4 text-yellow-700 dark:text-yellow-400" />
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="text-2xl font-bold">{undeliveredQuantity}</div>
+                                </CardContent>
+                            </Card>
+                            <Card className="bg-green-500/20 border-green-500/50 sm:col-span-2 lg:col-span-3">
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardTitle className="text-sm font-medium">Analyse Financière</CardTitle>
+                                </CardHeader>
+                                <CardContent className="flex justify-around items-center">
+                                    <div className="text-center">
+                                        <p className="text-xs text-muted-foreground">Total Encaissé</p>
+                                        <p className="text-2xl font-bold">{totalPaid.toFixed(2)} DA</p>
+                                    </div>
+                                    <div className="text-center">
+                                        <p className="text-xs text-muted-foreground">Total Dû</p>
+                                        <p className="text-2xl font-bold text-destructive">{totalOwed.toFixed(2)} DA</p>
+                                    </div>
+                                </CardContent>
+                            </Card>
                         </div>
-                    </div>
-                )}
 
-                
-                {(breadPrice == null || breadPrice === 0) && !isLoadingCompany && (
-                    <div className="mb-6 rounded-md border border-yellow-500 bg-yellow-500/10 p-4 text-sm text-yellow-700 dark:text-yellow-400">
-                        Le prix du pain n'est pas défini. Veuillez le configurer dans votre <Link href="/profile" className="font-bold underline">profil d'entreprise</Link> pour activer les calculs financiers.
+                        {isLoading ? (
+                            <div className="text-center p-8">Chargement des commandes...</div>
+                        ) : filteredOrders.length === 0 ? (
+                             <div className="flex h-60 items-center justify-center rounded-md border-2 border-dashed border-border bg-card">
+                                <div className="text-center">
+                                    <h3 className="text-xl font-bold tracking-tight">{searchQuery ? "Aucun résultat" : "Aucune commande"}</h3>
+                                    <p className="text-sm text-muted-foreground mb-4">
+                                        {searchQuery ? "Aucune commande ne correspond à votre recherche." : `Aucune commande ne correspond au filtre "${viewFilter}".`}
+                                    </p>
+                                     {!searchQuery && viewFilter === 'all' && (
+                                        <Button onClick={() => setIsAddingOrder(true)}>
+                                            <PlusCircle className="mr-2 h-4 w-4" />
+                                            Ajouter une commande
+                                        </Button>
+                                     )}
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                                {filteredOrders.map(order => (
+                                    <OrderCard 
+                                        key={order.id}
+                                        order={order}
+                                        onUpdateToggles={handleUpdateOrderToggles}
+                                        onEdit={() => setEditingOrder(order)}
+                                        onDelete={() => handleDeleteOrder(order.id)}
+                                        isSelected={!!selectedOrders[order.id]}
+                                        onSelectChange={(checked) => {
+                                            setSelectedOrders(prev => ({ ...prev, [order.id]: checked }));
+                                        }}
+                                    />
+                                ))}
+                            </div>
+                        )}
                     </div>
-                )}
-
-                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5 mb-6">
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Total Commandé</CardTitle>
-                            <Cookie className="h-4 w-4 text-primary" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{totalQuantity}</div>
-                            <p className="text-xs text-muted-foreground">unités de pain au total</p>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Quantité Livrée</CardTitle>
-                            <CheckCheck className="h-4 w-4 text-green-700 dark:text-green-400" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{deliveredQuantity}</div>
-                             <p className="text-xs text-muted-foreground">unités de pain livrées</p>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Quantité Restante</CardTitle>
-                            <Truck className="h-4 w-4 text-yellow-700 dark:text-yellow-400" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{undeliveredQuantity}</div>
-                             <p className="text-xs text-muted-foreground">unités de pain à livrer</p>
-                        </CardContent>
-                    </Card>
-                    <Card className="bg-green-500/20 border-green-500/50">
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Total Encaissé</CardTitle>
-                            <CircleDollarSign className="h-4 w-4 text-green-700 dark:text-green-400" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{totalPaid.toFixed(2)} DA</div>
-                            <p className="text-xs text-muted-foreground">Montant des commandes payées</p>
-                        </CardContent>
-                    </Card>
-                    <Card className="bg-red-500/20 border-red-500/50">
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Total Dû</CardTitle>
-                            <CreditCard className="h-4 w-4 text-red-700 dark:text-red-400" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{totalOwed.toFixed(2)} DA</div>
-                            <p className="text-xs text-muted-foreground">Commandes livrées non payées</p>
-                        </CardContent>
-                    </Card>
+                     <div className="lg:col-span-1">
+                        <UnpaidOrdersLog
+                            unpaidOrders={unpaidOrders || []}
+                            isLoading={isLoadingUnpaid}
+                            onClearLog={() => setIsClearLogDialogOpen(true)}
+                        />
+                    </div>
                 </div>
-
-                {isLoading ? (
-                    <div className="text-center p-8">Chargement des commandes...</div>
-                ) : filteredOrders.length === 0 ? (
-                     <div className="flex h-60 items-center justify-center rounded-md border-2 border-dashed border-border bg-card">
-                        <div className="text-center">
-                            <h3 className="text-xl font-bold tracking-tight">{searchQuery ? "Aucun résultat" : "Aucune commande"}</h3>
-                            <p className="text-sm text-muted-foreground mb-4">
-                                {searchQuery ? "Aucune commande ne correspond à votre recherche." : `Aucune commande ne correspond au filtre "${viewFilter}".`}
-                            </p>
-                             {!searchQuery && viewFilter === 'all' && (
-                                <Button onClick={() => setIsAddingOrder(true)}>
-                                    <PlusCircle className="mr-2 h-4 w-4" />
-                                    Ajouter une commande
-                                </Button>
-                             )}
-                        </div>
-                    </div>
-                ) : (
-                    <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
-                        {filteredOrders.map(order => (
-                            <OrderCard 
-                                key={order.id}
-                                order={order}
-                                onUpdateToggles={handleUpdateOrderToggles}
-                                onEdit={() => setEditingOrder(order)}
-                                onDelete={() => handleDeleteOrder(order.id)}
-                                isSelected={!!selectedOrders[order.id]}
-                                onSelectChange={(checked) => {
-                                    setSelectedOrders(prev => ({ ...prev, [order.id]: checked }));
-                                }}
-                            />
-                        ))}
-                    </div>
-                )}
             </main>
         </>
     )
 }
+
+    

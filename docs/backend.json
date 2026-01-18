@@ -291,6 +291,41 @@
       },
       "required": ["name", "quantity", "isPaid", "isDelivered", "isRecurring", "createdAt"]
     },
+    "UnpaidBreadOrder": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Unpaid Bread Order",
+        "description": "Represents an archived unpaid bread order from the daily list.",
+        "type": "object",
+        "properties": {
+            "name": {
+                "type": "string",
+                "description": "Name of the person who placed the order."
+            },
+            "quantity": {
+                "type": "integer",
+                "description": "Number of bread units ordered."
+            },
+            "pricePerUnit": {
+                "type": "number",
+                "description": "The price per unit of bread at the time of archiving."
+            },
+            "totalOwed": {
+                "type": "number",
+                "description": "The total amount owed for this order."
+            },
+            "originalOrderDate": {
+                "type": "string",
+                "format": "date-time",
+                "description": "The original date the order was placed/active."
+            },
+            "archivedAt": {
+                "type": "string",
+                "format": "date-time",
+                "description": "Timestamp of when this unpaid order was archived."
+            }
+        },
+        "required": ["name", "quantity", "pricePerUnit", "totalOwed", "originalOrderDate", "archivedAt"]
+    },
     "CompanyProfile": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Company Profile",
@@ -534,6 +569,10 @@
       "schema": { "$ref": "#/entities/BreadOrder"},
       "description": "Daily bread orders for the user."
     },
+    "/users/{userId}/unpaidBreadOrders/{unpaidOrderId}": {
+      "schema": { "$ref": "#/entities/UnpaidBreadOrder" },
+      "description": "Archived unpaid bread orders."
+    },
     "/users/{userId}/companyProfile/main": {
       "schema": {
         "$ref": "#/entities/CompanyProfile"
@@ -558,3 +597,5 @@
     }
   }
 }
+
+    
