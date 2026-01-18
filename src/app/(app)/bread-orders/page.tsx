@@ -2,7 +2,7 @@
 
 import { useUser, useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking, useDoc } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { collection, query, orderBy, serverTimestamp, doc, writeBatch, updateDoc } from 'firebase/firestore';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,7 +11,7 @@ import { EditOrderForm } from '@/components/bread-orders/edit-order-form';
 import { ResetOrdersDialog } from '@/components/bread-orders/reset-orders-dialog';
 import { OrderCard } from '@/components/bread-orders/order-card';
 import type { BreadOrder, CompanyProfile, UnpaidBreadOrder } from '@/lib/types';
-import { PlusCircle, RotateCcw, Search, Cookie, CheckCheck, Truck, CircleDollarSign, CreditCard, ListFilter, Trash2 } from 'lucide-react';
+import { PlusCircle, RotateCcw, Search, Cookie, CheckCheck, Truck, CircleDollarSign, CreditCard, ListFilter, Trash2, Printer } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
@@ -23,6 +23,7 @@ import { isSameDay } from 'date-fns';
 import { UnpaidOrdersLog } from '@/components/bread-orders/unpaid-orders-log';
 import { ClearLogDialog } from '@/components/bread-orders/clear-log-dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { PrintableBreadList } from '@/components/bread-orders/printable-bread-list';
 
 
 export default function BreadOrdersPage() {
@@ -42,6 +43,7 @@ export default function BreadOrdersPage() {
     const [isClearingLog, setIsClearingLog] = useState(false);
     const [isClearLogDialogOpen, setIsClearLogDialogOpen] = useState(false);
     const [deletingUnpaidOrder, setDeletingUnpaidOrder] = useState<UnpaidBreadOrder | null>(null);
+    const printRef = useRef<HTMLDivElement>(null);
 
 
     const companyDocRef = useMemoFirebase(() => user && firestore ? doc(firestore, 'users', user.uid, 'companyProfile', 'main') : null, [user, firestore]);
@@ -401,6 +403,21 @@ export default function BreadOrdersPage() {
         });
     };
 
+    const handlePrint = () => {
+        const printContainer = document.getElementById('receipt-for-print');
+        const listElement = printRef.current;
+        if (!printContainer || !listElement) return;
+
+        document.documentElement.classList.remove('thermal');
+
+        const contentToPrint = listElement.cloneNode(true);
+
+        printContainer.innerHTML = '';
+        printContainer.appendChild(contentToPrint);
+        
+        window.print();
+    };
+
 
     const isLoading = isUserLoading || isLoadingOrders || isLoadingCompany || isLoadingUnpaid;
     const breadPrice = companyProfile?.breadPrice;
@@ -454,6 +471,12 @@ export default function BreadOrdersPage() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+            <div className="hidden">
+                <div ref={printRef}>
+                    <PrintableBreadList orders={filteredOrders} totalQuantity={totalQuantity} />
+                </div>
+            </div>
+
             <main className="flex-1 overflow-auto p-4 sm:p-6">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
                      <div>
@@ -486,6 +509,10 @@ export default function BreadOrdersPage() {
                             </Select>
                         </div>
                         <div className="flex gap-2">
+                            <Button variant="outline" onClick={handlePrint} disabled={filteredOrders.length === 0}>
+                                <Printer className="mr-2 h-4 w-4" />
+                                Imprimer
+                            </Button>
                             <Button variant="outline" onClick={() => setIsResetting(true)}>
                                 <RotateCcw className="mr-2 h-4 w-4" />
                                 Réinitialiser
