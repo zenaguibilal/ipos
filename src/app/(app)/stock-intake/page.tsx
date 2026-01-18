@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
@@ -13,13 +12,16 @@ import { Label } from '@/components/ui/label';
 import { DatePicker } from '@/components/stock-intake/date-picker';
 import { ScannerInput } from '@/components/stock-intake/scanner-input';
 import { IntakeItemsTable } from '@/components/stock-intake/items-table';
-import { SaveIntakeDialog } from '@/components/stock-intake/save-intake-dialog';
-import { AddNewProductDialog } from '@/components/stock-intake/add-new-product-dialog';
 import { History, Save, PlusCircle } from 'lucide-react';
 import Link from 'next/link';
 import type { Product, PurchaseOrder, StockIntakeItem } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ProductSearchCombobox } from '@/components/stock-intake/product-search-combobox';
+import dynamic from 'next/dynamic';
+
+const SaveIntakeDialog = dynamic(() => import('@/components/stock-intake/save-intake-dialog').then(mod => mod.SaveIntakeDialog));
+const AddNewProductDialog = dynamic(() => import('@/components/stock-intake/add-new-product-dialog').then(mod => mod.AddNewProductDialog));
+
 
 export default function StockIntakePage() {
     const { user, isUserLoading } = useUser();
@@ -418,4 +420,3 @@ export default function StockIntakePage() {
         </>
     );
 }
-    

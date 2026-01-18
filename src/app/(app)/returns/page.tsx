@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect, useState, useMemo } from 'react';
@@ -13,14 +12,17 @@ import type { ProductReturn } from '@/lib/types';
 import { safeToDate } from '@/lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import Link from 'next/link';
-import { ReturnDetailsDialog } from '@/components/returns/return-details-dialog';
-import { DeleteReturnDialog } from '@/components/returns/delete-return-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { DateRangePicker } from '@/components/dashboard/date-range-picker';
 import { DateRange } from 'react-day-picker';
 import { subDays, startOfDay, endOfDay, format } from 'date-fns';
 import { toast } from 'sonner';
 import Papa from 'papaparse';
+import dynamic from 'next/dynamic';
+
+const ReturnDetailsDialog = dynamic(() => import('@/components/returns/return-details-dialog').then(mod => mod.ReturnDetailsDialog));
+const DeleteReturnDialog = dynamic(() => import('@/components/returns/delete-return-dialog').then(mod => mod.DeleteReturnDialog));
+
 
 export default function ReturnsPage() {
     const { user, isUserLoading } = useUser();

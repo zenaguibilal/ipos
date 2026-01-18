@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useUser, useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking } from '@/firebase';
@@ -14,9 +13,12 @@ import { toast } from 'sonner';
 import type { PurchaseOrder } from '@/lib/types';
 import { cn, safeToDate } from '@/lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { PurchaseOrderDetailsDialog } from '@/components/products/purchase-order-details-dialog';
-import { DeletePurchaseOrderDialog } from '@/components/products/delete-po-dialog';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
+
+const PurchaseOrderDetailsDialog = dynamic(() => import('@/components/products/purchase-order-details-dialog').then(mod => mod.PurchaseOrderDetailsDialog));
+const DeletePurchaseOrderDialog = dynamic(() => import('@/components/products/delete-po-dialog').then(mod => mod.DeletePurchaseOrderDialog));
+
 
 export default function PurchaseOrdersPage() {
     const { user, isUserLoading } = useUser();
