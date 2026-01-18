@@ -1,15 +1,14 @@
-
 'use client';
 
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { collection, query, where, doc, getDocs, serverTimestamp, runTransaction } from 'firebase/firestore';
-import type { Product, Customer, Sale, Payment, PurchaseOrder } from '@/lib/types';
+import type { Product, Customer, Sale, Payment, PurchaseOrder, CompanyProfile, CustomerWithSalesData } from '@/lib/types';
 import { getDate } from 'date-fns';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Archive, User, ArrowRight, BellOff } from 'lucide-react';
+import { Archive, HandCoins, ArrowRight, BellOff, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -26,6 +25,7 @@ export interface NotificationItem {
   actionText: string;
   actionHref?: string;
   action?: () => void;
+  customerData?: CustomerWithSalesData;
 }
 
 export default function NotificationsPage() {
@@ -41,11 +41,13 @@ export default function NotificationsPage() {
     const customersCollectionRef = useMemoFirebase(() => (user && firestore) ? collection(firestore, 'users', user.uid, 'customers') : null, [user, firestore]);
     const salesCollectionRef = useMemoFirebase(() => (user && firestore) ? collection(firestore, 'users', user.uid, 'sales') : null, [user, firestore]);
     const paymentsCollectionRef = useMemoFirebase(() => (user && firestore) ? collection(firestore, 'users', user.uid, 'payments') : null, [user, firestore]);
+    const companyDocRef = useMemoFirebase(() => (user && firestore) ? doc(firestore, 'users', user.uid, 'companyProfile', 'main') : null, [user, firestore]);
     
     const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsCollectionRef);
     const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersCollectionRef);
     const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesCollectionRef);
     const { data: payments, isLoading: isLoadingPayments } = useCollection<Payment>(paymentsCollectionRef);
+    const { data: companyProfile, isLoading: isLoadingCompany } = useDoc<CompanyProfile>(companyDocRef);
     
 
     useEffect(() => {
@@ -125,6 +127,19 @@ export default function NotificationsPage() {
             setProcessingPOId(null);
         }
     };
+    
+    const handleWhatsAppReminder = (customer: CustomerWithSalesData) => {
+        if (!customer.phone) {
+            toast.error("Le numéro de téléphone de ce client n'est pas disponible.");
+            return;
+        }
+
+        const companyName = companyProfile?.companyName || 'votre magasin';
+        const message = `Bonjour ${customer.firstName} ${customer.lastName}, ceci est un rappel amical concernant votre solde impayé de ${customer.outstandingBalance.toFixed(2)} DA chez ${companyName}. Merci de régler votre dette dès que possible.`;
+        
+        const whatsappUrl = `https://wa.me/${customer.phone.replace(/\s+/g, '')}?text=${encodeURIComponent(message)}`;
+        window.open(whatsappUrl, '_blank');
+    };
 
 
     const { lowStockNotifications, latePaymentNotifications } = useMemo(() => {
@@ -143,12 +158,12 @@ export default function NotificationsPage() {
                 type: 'stock',
                 message: `Stock faible pour ${p.name}. Restant : ${p.quantity}`,
                 relatedId: p.id,
-                actionText: 'Ajouter à un bon de commande',
+                actionText: 'Ajouter au BC',
                 action: () => handleAddToPO(p.id)
             }));
 
         // 2. Late Payment Notifications
-        const customerData = customers.map(customer => {
+        const customerData: CustomerWithSalesData[] = customers.map(customer => {
             const customerSales = sales.filter(s => s.customerId === customer.id);
             const totalSpent = customerSales.reduce((acc, s) => acc + s.total, 0);
             
@@ -164,7 +179,7 @@ export default function NotificationsPage() {
                     isReminderDue = true;
                 }
             }
-            return { ...customer, outstandingBalance: finalBalance, isReminderDue };
+            return { ...customer, totalSpent, outstandingBalance: finalBalance, isReminderDue, lastActivityDate: null };
         });
 
         const paymentNotifications: NotificationItem[] = customerData
@@ -174,8 +189,9 @@ export default function NotificationsPage() {
                 type: 'payment',
                 message: `Paiement en retard pour ${c.firstName} ${c.lastName}. Solde: ${c.outstandingBalance.toFixed(2)} DA`,
                 relatedId: c.id,
-                actionText: 'Encaisser un paiement',
+                actionText: 'Encaisser',
                 action: () => setPayingCustomer(c as Customer),
+                customerData: c,
             }));
         
         return {
@@ -184,7 +200,7 @@ export default function NotificationsPage() {
         };
     }, [products, customers, sales, payments]);
 
-    const isLoading = isUserLoading || isLoadingProducts || isLoadingCustomers || isLoadingSales || isLoadingPayments;
+    const isLoading = isUserLoading || isLoadingProducts || isLoadingCustomers || isLoadingSales || isLoadingPayments || isLoadingCompany;
 
     if (isLoading || !user) {
         return <div className="flex h-full items-center justify-center"><p>Chargement des notifications...</p></div>;
@@ -194,7 +210,7 @@ export default function NotificationsPage() {
 
     const renderNotificationList = (notifications: NotificationItem[], type: 'stock' | 'payment') => {
         const iconBg = type === 'stock' ? 'bg-yellow-500/20' : 'bg-destructive/20';
-        const icon = type === 'stock' ? <Archive className="h-5 w-5 text-yellow-600" /> : <User className="h-5 w-5 text-destructive" />;
+        const icon = type === 'stock' ? <Archive className="h-5 w-5 text-yellow-600" /> : <HandCoins className="h-5 w-5 text-destructive" />;
 
         return (
             <div className="space-y-4">
@@ -213,28 +229,39 @@ export default function NotificationsPage() {
                                 <p className="font-medium">{notification.message}</p>
                             </div>
                             
-                            {notification.action ? (
-                                <Button variant="secondary" size="sm" onClick={notification.action} disabled={isProcessing}>
-                                    {isProcessing ? (
-                                        <>
-                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                            Ajout...
-                                        </>
-                                    ) : (
-                                        <>
-                                            {notification.actionText}
-                                            <ArrowRight className="ml-2 h-4 w-4" />
-                                        </>
-                                    )}
-                                </Button>
-                            ) : (
-                                <Button asChild variant="secondary" size="sm">
-                                    <Link href={notification.actionHref || '#'}>
-                                        {notification.actionText}
-                                        <ArrowRight className="ml-2 h-4 w-4" />
-                                    </Link>
-                                </Button>
-                            )}
+                            <div className="flex items-center gap-2">
+                                {notification.type === 'payment' && notification.customerData?.phone && (
+                                    <Button variant="outline" size="sm" onClick={() => handleWhatsAppReminder(notification.customerData as CustomerWithSalesData)}>
+                                        <MessageSquare className="mr-2 h-4 w-4" />
+                                        Rappel
+                                    </Button>
+                                )}
+
+                                {notification.action ? (
+                                    <Button variant="secondary" size="sm" onClick={notification.action} disabled={isProcessing}>
+                                        {isProcessing ? (
+                                            <>
+                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                Ajout...
+                                            </>
+                                        ) : (
+                                            <>
+                                                {notification.actionText}
+                                                <ArrowRight className="ml-2 h-4 w-4" />
+                                            </>
+                                        )}
+                                    </Button>
+                                ) : (
+                                    notification.actionHref && (
+                                        <Button asChild variant="secondary" size="sm">
+                                            <Link href={notification.actionHref}>
+                                                {notification.actionText}
+                                                <ArrowRight className="ml-2 h-4 w-4" />
+                                            </Link>
+                                        </Button>
+                                    )
+                                )}
+                            </div>
                         </div>
                     );
                 })}
