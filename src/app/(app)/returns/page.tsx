@@ -15,6 +15,9 @@ import Link from 'next/link';
 import { ReturnDetailsDialog } from '@/components/returns/return-details-dialog';
 import { DeleteReturnDialog } from '@/components/returns/delete-return-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DateRangePicker } from '@/components/dashboard/date-range-picker';
+import { DateRange } from 'react-day-picker';
+import { subDays, startOfDay, endOfDay } from 'date-fns';
 
 export default function ReturnsPage() {
     const { user, isUserLoading } = useUser();
@@ -24,6 +27,10 @@ export default function ReturnsPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedReturn, setSelectedReturn] = useState<ProductReturn | null>(null);
     const [deletingReturn, setDeletingReturn] = useState<ProductReturn | null>(null);
+    const [dateRange, setDateRange] = useState<DateRange | undefined>({
+        from: startOfDay(subDays(new Date(), 29)),
+        to: endOfDay(new Date()),
+    });
 
     // --- Data Fetching ---
     const returnsQuery = useMemoFirebase(() => 
@@ -38,26 +45,35 @@ export default function ReturnsPage() {
         }
     }, [user, isUserLoading, router]);
 
-    const { filteredReturns, totalReturnedValue, returnsCount } = useMemo(() => {
+    const { filteredReturns, totalReturnedValue, returnsCount, totalItemsReturned } = useMemo(() => {
         if (!returns) {
-            return { filteredReturns: [], totalReturnedValue: 0, returnsCount: 0 };
+            return { filteredReturns: [], totalReturnedValue: 0, returnsCount: 0, totalItemsReturned: 0 };
         }
 
-        const filtered = returns.filter(r => 
-            searchQuery ? (
+        const fromDate = dateRange?.from;
+        const toDate = dateRange?.to;
+
+        const filtered = returns.filter(r => {
+            const returnDate = safeToDate(r.createdAt);
+            if (fromDate && returnDate < fromDate) return false;
+            if (toDate && returnDate > toDate) return false;
+            
+            return searchQuery ? (
                 r.originalInvoiceNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 r.customerName?.toLowerCase().includes(searchQuery.toLowerCase())
-            ) : true
-        );
+            ) : true;
+        });
 
         const totalValue = filtered.reduce((sum, r) => sum + r.totalReturnValue, 0);
+        const totalItems = filtered.reduce((acc, r) => acc + r.items.reduce((itemAcc, item) => itemAcc + item.quantity, 0), 0);
 
         return { 
             filteredReturns: filtered, 
             totalReturnedValue: totalValue,
-            returnsCount: filtered.length
+            returnsCount: filtered.length,
+            totalItemsReturned: totalItems
         };
-    }, [returns, searchQuery]);
+    }, [returns, searchQuery, dateRange]);
 
     const isLoading = isUserLoading || isLoadingReturns;
 
@@ -91,28 +107,31 @@ export default function ReturnsPage() {
                             Consultez et gérez les retours de produits.
                         </p>
                     </div>
-                     <Button asChild>
-                        <Link href="/returns/new">
-                            <PlusCircle className="mr-2 h-4 w-4" />
-                            Enregistrer un retour
-                        </Link>
-                    </Button>
+                     <div className="flex items-center gap-2">
+                        <DateRangePicker onUpdate={setDateRange} />
+                        <Button asChild>
+                            <Link href="/returns/new">
+                                <PlusCircle className="mr-2 h-4 w-4" />
+                                Enregistrer un retour
+                            </Link>
+                        </Button>
+                    </div>
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-3 mb-6">
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Nombre de retours</CardTitle>
+                            <CardTitle className="text-sm font-medium">Retours (filtrés)</CardTitle>
                             <Undo2 className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold">{returnsCount}</div>
-                            <p className="text-xs text-muted-foreground">Total des transactions de retour</p>
+                            <p className="text-xs text-muted-foreground">Transactions de retour sur la période</p>
                         </CardContent>
                     </Card>
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Valeur totale retournée</CardTitle>
+                            <CardTitle className="text-sm font-medium">Valeur retournée (filtrée)</CardTitle>
                             <CircleDollarSign className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
@@ -122,14 +141,14 @@ export default function ReturnsPage() {
                     </Card>
                      <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Articles retournés</CardTitle>
+                            <CardTitle className="text-sm font-medium">Articles retournés (filtrés)</CardTitle>
                             <Hash className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold">
-                                {filteredReturns.reduce((acc, r) => acc + r.items.reduce((itemAcc, item) => itemAcc + item.quantity, 0), 0)}
+                                {totalItemsReturned}
                             </div>
-                            <p className="text-xs text-muted-foreground">Nombre total d'articles retournés</p>
+                            <p className="text-xs text-muted-foreground">Nombre d'articles retournés</p>
                         </CardContent>
                     </Card>
                 </div>
@@ -150,7 +169,7 @@ export default function ReturnsPage() {
                         {filteredReturns.length === 0 ? (
                              <div className="flex h-40 items-center justify-center rounded-md border-2 border-dashed border-border bg-card">
                                 <p className="text-muted-foreground">
-                                    {returns && returns.length > 0 ? "Aucun retour ne correspond à votre recherche." : "Aucun retour enregistré pour le moment."}
+                                    {returns && returns.length > 0 ? "Aucun retour ne correspond à vos filtres." : "Aucun retour enregistré pour le moment."}
                                 </p>
                             </div>
                         ) : (
