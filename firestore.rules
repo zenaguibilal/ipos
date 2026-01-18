@@ -13,6 +13,7 @@
  * /users/{userId}/companyProfile/main - Singleton for company information.
  * /users/{userId}/stockIntakes/{stockIntakeId} - Records of stock received.
  * /users/{userId}/purchaseOrders/{purchaseOrderId} - Purchase orders created by the user.
+ * /users/{userId}/returns/{returnId} - Product returns processed by the user.
  *
  */
 rules_version = '2';
@@ -88,3 +89,5 @@ service cloud.firestore {
     }
   }
 }
+
+    
