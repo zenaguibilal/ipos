@@ -65,6 +65,16 @@ export interface BreadOrder {
     createdAt: Timestamp;
 }
 
+export interface UnpaidBreadOrder {
+    id: string;
+    name: string;
+    quantity: number;
+    pricePerUnit: number;
+    totalOwed: number;
+    originalOrderDate: Timestamp | Date;
+    archivedAt: Timestamp | Date;
+}
+
 export interface CustomerWithSalesData extends Customer {
     totalSpent: number;
     outstandingBalance: number;
@@ -102,6 +112,7 @@ export interface CompanyProfile {
     vatNumber?: string;
     rcNumber?: string;
     breadPrice?: number;
+    lastBreadOrderReset?: Timestamp | Date;
 }
 
 export interface PurchaseOrderItem {
