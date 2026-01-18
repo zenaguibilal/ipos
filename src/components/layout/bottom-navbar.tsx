@@ -9,7 +9,7 @@ import {
   Package,
   Users,
   Cookie,
-  Bell,
+  Undo2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -19,7 +19,7 @@ const navLinks = [
   { href: '/products', label: 'Produits', icon: Package },
   { href: '/customers', label: 'Clients', icon: Users },
   { href: '/bread-orders', label: 'Pain', icon: Cookie },
-  { href: '/notifications', label: 'Alertes', icon: Bell },
+  { href: '/returns', label: 'Retours', icon: Undo2 },
 ];
 
 export function BottomNavBar() {

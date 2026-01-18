@@ -435,6 +435,62 @@
         }
       },
       "required": ["invoiceNumber", "invoiceDate", "items", "totalValue", "createdAt"]
+    },
+    "ProductReturn": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Product Return",
+      "description": "Represents a customer product return transaction.",
+      "type": "object",
+      "properties": {
+        "originalSaleId": {
+          "type": "string",
+          "description": "The ID of the original sale this return is associated with."
+        },
+        "originalInvoiceNumber": {
+          "type": "string",
+          "description": "The invoice number of the original sale for easy reference."
+        },
+        "items": {
+          "type": "array",
+          "description": "List of items being returned.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "productId": { "type": "string" },
+              "productName": { "type": "string" },
+              "quantity": { "type": "number" },
+              "price": { "type": "number", "description": "The price at which the item was sold." }
+            },
+            "required": ["productId", "productName", "quantity", "price"]
+          }
+        },
+        "totalReturnValue": {
+            "type": "number",
+            "description": "The total value of the returned items."
+        },
+        "amountRefunded": {
+            "type": "number",
+            "description": "The actual amount refunded to the customer."
+        },
+        "customerId": {
+          "type": "string",
+          "description": "ID of the customer who returned the items."
+        },
+        "customerName": {
+            "type": "string",
+            "description": "Name of the customer for quick reference."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp indicating when the return was processed."
+        },
+        "notes": {
+            "type": "string",
+            "description": "Additional notes about the return."
+        }
+      },
+      "required": ["originalInvoiceNumber", "items", "totalReturnValue", "amountRefunded", "createdAt"]
     }
   },
   "auth": {
@@ -488,6 +544,12 @@
         "$ref": "#/entities/StockIntake"
       },
       "description": "Records of stock received by the user."
+    },
+    "/users/{userId}/returns/{returnId}": {
+      "schema": {
+        "$ref": "#/entities/ProductReturn"
+      },
+      "description": "Product returns processed by the user."
     }
   }
 }

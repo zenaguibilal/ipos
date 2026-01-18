@@ -17,6 +17,7 @@ import {
   Cookie,
   Bell,
   Info,
+  Undo2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -46,6 +47,7 @@ const navLinks = [
   { href: '/products', label: 'Produits', icon: Package },
   { href: '/customers', label: 'Clients', icon: Users },
   { href: '/sales-history', label: 'Historique', icon: History },
+  { href: '/returns', label: 'Retours', icon: Undo2 },
   { href: '/bread-orders', label: 'Commandes de Pain', icon: Cookie },
   { href: '/notifications', label: 'Alertes', icon: Bell },
 ];

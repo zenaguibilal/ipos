@@ -151,3 +151,23 @@ export interface InventoryValueData {
     name: string;
     value: number;
 }
+
+export interface ReturnItem {
+    productId: string;
+    productName: string;
+    quantity: number;
+    price: number; // The price at which it was sold
+}
+
+export interface ProductReturn {
+    id: string;
+    originalSaleId?: string;
+    originalInvoiceNumber: string;
+    items: ReturnItem[];
+    totalReturnValue: number;
+    amountRefunded: number;
+    customerId?: string;
+    customerName?: string;
+    createdAt: Timestamp | Date;
+    notes?: string;
+}
