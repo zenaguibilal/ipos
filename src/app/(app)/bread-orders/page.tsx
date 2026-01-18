@@ -4,7 +4,7 @@ import { useUser, useFirestore, useCollection, useMemoFirebase, addDocumentNonBl
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useMemo } from 'react';
 import { collection, query, orderBy, serverTimestamp, doc, writeBatch, updateDoc } from 'firebase/firestore';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { AddOrderForm } from '@/components/bread-orders/add-order-form';
 import { EditOrderForm } from '@/components/bread-orders/edit-order-form';
@@ -15,13 +15,15 @@ import { PlusCircle, RotateCcw, Search, Cookie, CheckCheck, Truck, CircleDollarS
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
-import { safeToDate } from '@/lib/utils';
+import { cn, safeToDate } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { BulkDeleteOrdersDialog } from '@/components/bread-orders/bulk-delete-orders-dialog';
 import { isSameDay } from 'date-fns';
 import { UnpaidOrdersLog } from '@/components/bread-orders/unpaid-orders-log';
 import { ClearLogDialog } from '@/components/bread-orders/clear-log-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+
 
 export default function BreadOrdersPage() {
     const { user, isUserLoading } = useUser();
@@ -39,6 +41,7 @@ export default function BreadOrdersPage() {
     const [isBulkDeleting, setIsBulkDeleting] = useState(false);
     const [isClearingLog, setIsClearingLog] = useState(false);
     const [isClearLogDialogOpen, setIsClearLogDialogOpen] = useState(false);
+    const [deletingUnpaidOrder, setDeletingUnpaidOrder] = useState<UnpaidBreadOrder | null>(null);
 
 
     const companyDocRef = useMemoFirebase(() => user && firestore ? doc(firestore, 'users', user.uid, 'companyProfile', 'main') : null, [user, firestore]);
@@ -382,6 +385,22 @@ export default function BreadOrdersPage() {
         }
     };
 
+    const confirmDeleteUnpaidOrder = () => {
+        if (!firestore || !user || !deletingUnpaidOrder) return;
+        const docRef = doc(firestore, 'users', user.uid, 'unpaidBreadOrders', deletingUnpaidOrder.id);
+        deleteDocumentNonBlocking(docRef, {
+            onSuccess: () => {
+                toast.success(`La dette de ${deletingUnpaidOrder.name} a été supprimée.`);
+                setDeletingUnpaidOrder(null);
+            },
+            onError: (err) => {
+                toast.error("Erreur lors de la suppression de la dette.");
+                console.error(err);
+                setDeletingUnpaidOrder(null);
+            }
+        });
+    };
+
 
     const isLoading = isUserLoading || isLoadingOrders || isLoadingCompany || isLoadingUnpaid;
     const breadPrice = companyProfile?.breadPrice;
@@ -419,6 +438,22 @@ export default function BreadOrdersPage() {
                 onConfirm={handleClearLog}
                 isProcessing={isClearingLog}
             />
+            <AlertDialog open={!!deletingUnpaidOrder} onOpenChange={(isOpen) => !isOpen && setDeletingUnpaidOrder(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Confirmer la suppression?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Êtes-vous sûr de vouloir supprimer la dette de <span className="font-bold">{deletingUnpaidOrder?.name}</span> d'un montant de <span className="font-bold">{deletingUnpaidOrder?.totalOwed.toFixed(2)} DA</span>? Cette action est irréversible.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Annuler</AlertDialogCancel>
+                        <AlertDialogAction onClick={confirmDeleteUnpaidOrder} className={cn(buttonVariants({ variant: "destructive" }))}>
+                            Supprimer
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
             <main className="flex-1 overflow-auto p-4 sm:p-6">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
                      <div>
@@ -607,6 +642,7 @@ export default function BreadOrdersPage() {
                             unpaidOrders={unpaidOrders || []}
                             isLoading={isLoadingUnpaid}
                             onClearLog={() => setIsClearLogDialogOpen(true)}
+                            onDeleteOrder={(order) => setDeletingUnpaidOrder(order)}
                         />
                     </div>
                 </div>
@@ -614,5 +650,3 @@ export default function BreadOrdersPage() {
         </>
     )
 }
-
-    

@@ -13,10 +13,11 @@ import { fr } from 'date-fns/locale';
 interface UnpaidOrdersLogProps {
     unpaidOrders: UnpaidBreadOrder[];
     onClearLog: () => void;
+    onDeleteOrder: (order: UnpaidBreadOrder) => void;
     isLoading: boolean;
 }
 
-export function UnpaidOrdersLog({ unpaidOrders, onClearLog, isLoading }: UnpaidOrdersLogProps) {
+export function UnpaidOrdersLog({ unpaidOrders, onClearLog, onDeleteOrder, isLoading }: UnpaidOrdersLogProps) {
     const totalDebt = unpaidOrders.reduce((sum, order) => sum + order.totalOwed, 0);
 
     return (
@@ -51,6 +52,7 @@ export function UnpaidOrdersLog({ unpaidOrders, onClearLog, isLoading }: UnpaidO
                                     <TableHead>Nom</TableHead>
                                     <TableHead>Montant</TableHead>
                                     <TableHead className="text-right">Date</TableHead>
+                                    <TableHead><span className="sr-only">Actions</span></TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -60,6 +62,11 @@ export function UnpaidOrdersLog({ unpaidOrders, onClearLog, isLoading }: UnpaidO
                                         <TableCell>{order.totalOwed.toFixed(2)} DA</TableCell>
                                         <TableCell className="text-right text-xs text-muted-foreground">
                                             {format(safeToDate(order.archivedAt), 'd MMM', { locale: fr })}
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onDeleteOrder(order)}>
+                                                <Trash2 className="h-4 w-4 text-destructive" />
+                                            </Button>
                                         </TableCell>
                                     </TableRow>
                                 ))}
@@ -77,5 +84,3 @@ export function UnpaidOrdersLog({ unpaidOrders, onClearLog, isLoading }: UnpaidO
         </Card>
     );
 }
-
-    
