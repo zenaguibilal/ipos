@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { BreadOrder } from '@/lib/types';
@@ -29,7 +28,9 @@ export function OrderList({ orders, onUpdateToggles, onEdit, onDelete }: OrderLi
                     order={order}
                     onUpdateToggles={onUpdateToggles}
                     onEdit={() => onEdit(order)}
-                    onDelete={onDelete}
+                    onDelete={() => onDelete(order.id)}
+                    isSelected={false}
+                    onSelectChange={() => {}}
                 />
             ))}
         </div>
