@@ -42,6 +42,9 @@ export const metadata: Metadata = {
     },
     description: APP_DESCRIPTION,
   },
+  icons: {
+    apple: "https://picsum.photos/seed/ipos-apple/180/180",
+  }
 };
 
 export const viewport: Viewport = {
