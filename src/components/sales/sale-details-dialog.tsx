@@ -95,7 +95,7 @@ export function SaleDetailsDialog({ isOpen, onOpenChange, sale, companyProfile, 
                 {/* Hidden container for A4 receipt */}
                 <div className="hidden">
                     <div ref={a4ReceiptRef}>
-                        <A4Receipt sale={sale} companyProfile={companyProfile} customer={customer} />
+                        <A4Receipt sale={sale} companyProfile={companyProfile || null} customer={customer || null} />
                     </div>
                 </div>
 
