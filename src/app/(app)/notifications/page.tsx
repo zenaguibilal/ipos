@@ -20,10 +20,12 @@ import { AddPaymentForm } from '@/components/customers/add-payment-form';
 export interface NotificationItem {
   id: string;
   type: 'stock' | 'payment';
-  message: string;
+  messagePrefix: string;
+  messageLinkText: string;
+  messageSuffix: string;
+  linkHref: string;
   relatedId: string; // productId or customerId
   actionText: string;
-  actionHref?: string;
   action?: () => void;
   customerData?: CustomerWithSalesData;
 }
@@ -156,7 +158,10 @@ export default function NotificationsPage() {
             .map(p => ({
                 id: `stock-${p.id}`,
                 type: 'stock',
-                message: `Stock faible pour ${p.name}. Restant : ${p.quantity}`,
+                messagePrefix: 'Stock faible pour ',
+                messageLinkText: p.name,
+                messageSuffix: `. Restant : ${p.quantity}`,
+                linkHref: '/products',
                 relatedId: p.id,
                 actionText: 'Ajouter au BC',
                 action: () => handleAddToPO(p.id)
@@ -187,7 +192,10 @@ export default function NotificationsPage() {
             .map(c => ({
                 id: `payment-${c.id}`,
                 type: 'payment',
-                message: `Paiement en retard pour ${c.firstName} ${c.lastName}. Solde: ${c.outstandingBalance.toFixed(2)} DA`,
+                messagePrefix: 'Paiement en retard pour ',
+                messageLinkText: `${c.firstName} ${c.lastName}`,
+                messageSuffix: `. Solde: ${c.outstandingBalance.toFixed(2)} DA`,
+                linkHref: `/customers/${c.id}`,
                 relatedId: c.id,
                 actionText: 'Encaisser',
                 action: () => setPayingCustomer(c as Customer),
@@ -226,7 +234,13 @@ export default function NotificationsPage() {
                                 {icon}
                             </div>
                             <div className="flex-1">
-                                <p className="font-medium">{notification.message}</p>
+                                <p className="font-medium">
+                                    {notification.messagePrefix}
+                                    <Link href={notification.linkHref} className="font-bold underline hover:text-primary">
+                                        {notification.messageLinkText}
+                                    </Link>
+                                    {notification.messageSuffix}
+                                </p>
                             </div>
                             
                             <div className="flex items-center gap-2">
@@ -237,7 +251,7 @@ export default function NotificationsPage() {
                                     </Button>
                                 )}
 
-                                {notification.action ? (
+                                {notification.action && (
                                     <Button variant="secondary" size="sm" onClick={notification.action} disabled={isProcessing}>
                                         {isProcessing ? (
                                             <>
@@ -251,15 +265,6 @@ export default function NotificationsPage() {
                                             </>
                                         )}
                                     </Button>
-                                ) : (
-                                    notification.actionHref && (
-                                        <Button asChild variant="secondary" size="sm">
-                                            <Link href={notification.actionHref}>
-                                                {notification.actionText}
-                                                <ArrowRight className="ml-2 h-4 w-4" />
-                                            </Link>
-                                        </Button>
-                                    )
                                 )}
                             </div>
                         </div>
