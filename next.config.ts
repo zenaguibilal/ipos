@@ -14,7 +14,7 @@ const withPWA = withPWAInit({
 
 const nextConfig: NextConfig = {
     devIndicators: {
-        allowedDevOrigins: ["https://*.cloudworkstations.dev"],
+        // allowedDevOrigins: ["https://*.cloudworkstations.dev"], // This was causing a build error
     },
 };
 
