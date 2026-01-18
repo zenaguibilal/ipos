@@ -9,7 +9,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { PlusCircle, User, Phone, WalletCards, CalendarDays, AlertTriangle, Search, Users as UsersIcon, CalendarClock, ListFilter, MessageSquare } from 'lucide-react';
-import { AddCustomerForm } from '@/components/customers/add-customer-form';
 import type { Customer, Sale, Payment, CustomerWithSalesData, CompanyProfile, ProductReturn } from '@/lib/types';
 import Link from 'next/link';
 import { cn, safeToDate } from '@/lib/utils';
@@ -24,6 +23,9 @@ import {
 } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from 'sonner';
+import dynamic from 'next/dynamic';
+
+const AddCustomerForm = dynamic(() => import('@/components/customers/add-customer-form').then(mod => mod.AddCustomerForm));
 
 export default function CustomersPage() {
     const { user, isUserLoading } = useUser();

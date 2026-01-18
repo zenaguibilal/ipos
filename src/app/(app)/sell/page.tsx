@@ -7,19 +7,18 @@ import { useEffect, useState, useMemo, useCallback } from 'react';
 import { collection, doc, writeBatch, serverTimestamp } from 'firebase/firestore';
 import { toast } from 'sonner';
 import { HelpCircle } from 'lucide-react';
-
-import { AddProductForm } from '@/components/sell/add-product-form';
-import { AddCustomProductForm } from '@/components/sell/add-custom-product-form';
-import { PaymentDialog } from '@/components/sell/payment-dialog';
-import { SaleCompleteDialog } from '@/components/sell/sale-complete-dialog';
-import { ShortcutsHelpDialog } from '@/components/sell/shortcuts-help-dialog';
-import { AddCustomerForm } from '@/components/customers/add-customer-form';
-import { AddPaymentForm } from '@/components/customers/add-payment-form';
-
-
 import type { Product, Sale, SaleItem, CompanyProfile, Customer, Payment, ProductReturn } from '@/lib/types';
 import { ProductGrid } from '@/components/sell/product-grid';
 import { CartPanel } from '@/components/sell/cart-panel';
+import dynamic from 'next/dynamic';
+
+const AddProductForm = dynamic(() => import('@/components/sell/add-product-form').then(mod => mod.AddProductForm));
+const AddCustomProductForm = dynamic(() => import('@/components/sell/add-custom-product-form').then(mod => mod.AddCustomProductForm));
+const PaymentDialog = dynamic(() => import('@/components/sell/payment-dialog').then(mod => mod.PaymentDialog));
+const SaleCompleteDialog = dynamic(() => import('@/components/sell/sale-complete-dialog').then(mod => mod.SaleCompleteDialog));
+const ShortcutsHelpDialog = dynamic(() => import('@/components/sell/shortcuts-help-dialog').then(mod => mod.ShortcutsHelpDialog));
+const AddCustomerForm = dynamic(() => import('@/components/customers/add-customer-form').then(mod => mod.AddCustomerForm));
+const AddPaymentForm = dynamic(() => import('@/components/customers/add-payment-form').then(mod => mod.AddPaymentForm));
 
 export type ProductWithOptionalBarcode = Product & { barcode?: string };
 export type CartItem = SaleItem & { cartQuantity: number };

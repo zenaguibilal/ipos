@@ -7,9 +7,6 @@ import { useEffect, useState, useMemo, useRef } from 'react';
 import { collection, query, orderBy, serverTimestamp, doc, writeBatch, updateDoc } from 'firebase/firestore';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { AddOrderForm } from '@/components/bread-orders/add-order-form';
-import { EditOrderForm } from '@/components/bread-orders/edit-order-form';
-import { ResetOrdersDialog } from '@/components/bread-orders/reset-orders-dialog';
 import { OrderCard } from '@/components/bread-orders/order-card';
 import type { BreadOrder, CompanyProfile, UnpaidBreadOrder } from '@/lib/types';
 import { PlusCircle, RotateCcw, Search, Cookie, CheckCheck, Truck, CircleDollarSign, CreditCard, ListFilter, Trash2, Printer } from 'lucide-react';
@@ -19,12 +16,17 @@ import Link from 'next/link';
 import { cn, safeToDate } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { BulkDeleteOrdersDialog } from '@/components/bread-orders/bulk-delete-orders-dialog';
 import { isSameDay } from 'date-fns';
 import { UnpaidOrdersLog } from '@/components/bread-orders/unpaid-orders-log';
-import { ClearLogDialog } from '@/components/bread-orders/clear-log-dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { PrintableBreadList } from '@/components/bread-orders/printable-bread-list';
+import dynamic from 'next/dynamic';
+
+const AddOrderForm = dynamic(() => import('@/components/bread-orders/add-order-form').then(mod => mod.AddOrderForm));
+const EditOrderForm = dynamic(() => import('@/components/bread-orders/edit-order-form').then(mod => mod.EditOrderForm));
+const ResetOrdersDialog = dynamic(() => import('@/components/bread-orders/reset-orders-dialog').then(mod => mod.ResetOrdersDialog));
+const BulkDeleteOrdersDialog = dynamic(() => import('@/components/bread-orders/bulk-delete-orders-dialog').then(mod => mod.BulkDeleteOrdersDialog));
+const ClearLogDialog = dynamic(() => import('@/components/bread-orders/clear-log-dialog').then(mod => mod.ClearLogDialog));
 
 
 export default function BreadOrdersPage() {

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase } from '@/firebase';
@@ -9,15 +10,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { ArrowLeft, User, Phone, Trash2, Edit, FileText, HandCoins } from 'lucide-react';
 import Link from 'next/link';
 
-import { AddPaymentForm } from '@/components/customers/add-payment-form';
-import { EditCustomerForm } from '@/components/customers/edit-customer-form';
-import { DeleteCustomerDialog } from '@/components/customers/delete-customer-dialog';
 import { CustomerHistory } from '@/components/customers/customer-history';
 import { CustomerStats } from '@/components/customers/customer-stats';
-import { SaleDetailsDialog } from '@/components/sales/sale-details-dialog';
 
 import type { Customer, Sale, Payment, CompanyProfile, ProductReturn } from '@/lib/types';
 import { safeToDate } from '@/lib/utils';
+import dynamic from 'next/dynamic';
+
+const AddPaymentForm = dynamic(() => import('@/components/customers/add-payment-form').then(mod => mod.AddPaymentForm));
+const EditCustomerForm = dynamic(() => import('@/components/customers/edit-customer-form').then(mod => mod.EditCustomerForm));
+const DeleteCustomerDialog = dynamic(() => import('@/components/customers/delete-customer-dialog').then(mod => mod.DeleteCustomerDialog));
+const SaleDetailsDialog = dynamic(() => import('@/components/sales/sale-details-dialog').then(mod => mod.SaleDetailsDialog));
 
 
 export default function CustomerDetailPage() {

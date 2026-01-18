@@ -7,14 +7,6 @@ import { useEffect, useState, useMemo } from 'react';
 import { collection, doc, writeBatch, serverTimestamp, addDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { AddProductForm } from './add-product-form';
-import { EditProductForm } from './edit-product-form';
-import { DeleteProductDialog } from './delete-product-dialog';
-import { ProductImportDialog } from '@/components/products/product-import-dialog';
-import { BulkDeleteDialog } from './bulk-delete-dialog';
-import { BarcodeLabelDialog } from '@/components/products/barcode-label-dialog';
-import { AdjustStockDialog } from '@/components/products/adjust-stock-dialog';
-import { CreatePoDialog } from '@/components/products/create-po-dialog';
 import { MoreHorizontal, Pencil, Trash2, ArrowUp, ArrowDown, Upload, Download, Image as ImageIcon, PlusCircle, ListOrdered, ShoppingCart, Search, LayoutGrid, List, Barcode, Boxes, ChevronDown, Archive, CircleDollarSign } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
@@ -27,7 +19,17 @@ import Papa from 'papaparse';
 import Image from 'next/image';
 import Link from 'next/link';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { BulkEditCategoryDialog } from './bulk-edit-category-dialog';
+import dynamic from 'next/dynamic';
+
+const AddProductForm = dynamic(() => import('./add-product-form').then(mod => mod.AddProductForm));
+const EditProductForm = dynamic(() => import('./edit-product-form').then(mod => mod.EditProductForm));
+const DeleteProductDialog = dynamic(() => import('./delete-product-dialog').then(mod => mod.DeleteProductDialog));
+const ProductImportDialog = dynamic(() => import('@/components/products/product-import-dialog').then(mod => mod.ProductImportDialog));
+const BulkDeleteDialog = dynamic(() => import('./bulk-delete-dialog').then(mod => mod.BulkDeleteDialog));
+const BarcodeLabelDialog = dynamic(() => import('@/components/products/barcode-label-dialog').then(mod => mod.BarcodeLabelDialog));
+const AdjustStockDialog = dynamic(() => import('@/components/products/adjust-stock-dialog').then(mod => mod.AdjustStockDialog));
+const CreatePoDialog = dynamic(() => import('@/components/products/create-po-dialog').then(mod => mod.CreatePoDialog));
+const BulkEditCategoryDialog = dynamic(() => import('./bulk-edit-category-dialog').then(mod => mod.BulkEditCategoryDialog));
 
 
 interface ProductWithLegacyBarcode extends Product {
