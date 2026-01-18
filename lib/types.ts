@@ -57,7 +57,8 @@ export interface Payment {
 
 export interface BreadOrder {
     id: string;
-    name: string;
+    customerId: string;
+    customerName: string;
     quantity: number;
     isPaid: boolean;
     isDelivered: boolean;
@@ -171,5 +172,3 @@ export interface ProductReturn {
     createdAt: Timestamp | Date;
     notes?: string;
 }
-
-    

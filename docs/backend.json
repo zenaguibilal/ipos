@@ -263,9 +263,13 @@
       "description": "Represents a single daily bread order for a customer.",
       "type": "object",
       "properties": {
-        "name": {
+        "customerId": {
           "type": "string",
-          "description": "Name of the person who ordered."
+          "description": "The ID of the customer this order belongs to."
+        },
+        "customerName": {
+          "type": "string",
+          "description": "The name of the customer for quick reference."
         },
         "quantity": {
           "type": "integer",
@@ -289,7 +293,7 @@
           "description": "Timestamp of when the order was placed or last updated."
         }
       },
-      "required": ["name", "quantity", "isPaid", "isDelivered", "isRecurring", "createdAt"]
+      "required": ["customerId", "customerName", "quantity", "isPaid", "isDelivered", "isRecurring", "createdAt"]
     },
     "CompanyProfile": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -553,5 +557,3 @@
     }
   }
 }
-
-    

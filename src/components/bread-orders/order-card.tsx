@@ -1,7 +1,7 @@
 'use client';
 
 import type { BreadOrder } from '@/lib/types';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
+import Link from 'next/link';
 
 interface OrderCardProps {
     order: BreadOrder;
@@ -37,18 +38,18 @@ export function OrderCard({ order, onUpdateToggles, onEdit, onDelete, isSelected
                 <Checkbox
                     checked={isSelected}
                     onCheckedChange={onSelectChange}
-                    aria-label={`Sélectionner la commande de ${order.name}`}
+                    aria-label={`Sélectionner la commande de ${order.customerName}`}
                     className="h-5 w-5 bg-background border-border"
                 />
             </div>
             <CardHeader className="flex-row items-start justify-between pb-2 pt-3 pl-10">
-                <div className="space-y-1">
-                    <CardTitle className="text-lg font-bold">{order.name}</CardTitle>
+                <Link href={`/customers/${order.customerId}`} className="space-y-1 group">
+                    <CardTitle className="text-lg font-bold group-hover:underline">{order.customerName}</CardTitle>
                     <div className="flex items-center gap-2 text-muted-foreground">
                        <span className="text-2xl font-black text-primary">{order.quantity}</span>
                         {order.isRecurring && <Repeat className="h-4 w-4"/>}
                     </div>
-                </div>
+                </Link>
                  <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" className="h-8 w-8">
