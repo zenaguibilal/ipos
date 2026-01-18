@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase } from '@/firebase';
@@ -215,19 +216,25 @@ export default function SellPage() {
 
         const cart = activeSession.cart;
 
-        const newSale: Omit<Sale, 'id' | 'createdAt'> = {
+        let newSale: Omit<Sale, 'id' | 'createdAt'> = {
             invoiceNumber: `INV-${Date.now()}`,
             items: cart.map(({ cartQuantity, ...item }) => ({...item, quantity: cartQuantity || 0})),
             subtotal: subtotal,
-            discountType: parseFloat(activeSession.discountValue) > 0 ? activeSession.discountType : undefined,
-            discountAmount: parseFloat(activeSession.discountValue) > 0 ? parseFloat(activeSession.discountValue) : undefined,
             total: total,
             amountPaid: amountPaid,
             remainingBalance: total - amountPaid,
             paymentStatus: amountPaid >= total ? 'paid' : (amountPaid > 0 ? 'partial' : 'unpaid'),
-            customerId: activeSession.customerId || undefined,
             customerName: activeSession.customerName || 'Vente au comptoir',
         };
+
+        if (parseFloat(activeSession.discountValue) > 0) {
+            newSale.discountType = activeSession.discountType;
+            newSale.discountAmount = parseFloat(activeSession.discountValue);
+        }
+
+        if (activeSession.customerId) {
+            newSale.customerId = activeSession.customerId;
+        }
 
         const batch = writeBatch(firestore);
         const salesRef = collection(firestore, 'users', user.uid, 'sales');
@@ -246,7 +253,7 @@ export default function SellPage() {
         });
         
         batch.commit().then(() => {
-            setLastSale({ ...newSale, id: newSaleRef.id, createdAt: new Date() });
+            setLastSale({ ...(newSale as Sale), id: newSaleRef.id, createdAt: new Date() });
             setIsPaymentDialogOpen(false);
             setIsSaleComplete(true);
             handleCloseSession(activeSessionIndex);
