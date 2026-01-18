@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase } from '@/firebase';
@@ -41,36 +40,26 @@ export default function CustomerDetailPage() {
         (user && firestore) ? doc(firestore, 'users', user.uid, 'customers', customerId) : null,
     [user, firestore, customerId]);
     
-    // Fetch all sales and payments, then filter client-side.
-    // This avoids the need for a composite index on (customerId, createdAt).
-    const allSalesCollectionRef = useMemoFirebase(() => 
-        (user && firestore) ? collection(firestore, 'users', user.uid, 'sales') : null, 
-    [user, firestore]);
+    const customerSalesQuery = useMemoFirebase(() => 
+        (user && firestore && customerId) ? query(collection(firestore, 'users', user.uid, 'sales'), where('customerId', '==', customerId)) : null,
+    [user, firestore, customerId]);
 
-    const allPaymentsCollectionRef = useMemoFirebase(() => 
-        (user && firestore) ? collection(firestore, 'users', user.uid, 'payments') : null, 
-    [user, firestore]);
+    const customerPaymentsQuery = useMemoFirebase(() => 
+        (user && firestore && customerId) ? query(collection(firestore, 'users', user.uid, 'payments'), where('customerId', '==', customerId)) : null, 
+    [user, firestore, customerId]);
     
-    const allReturnsCollectionRef = useMemoFirebase(() => 
-        (user && firestore) ? collection(firestore, 'users', user.uid, 'returns') : null, 
-    [user, firestore]);
+    const customerReturnsQuery = useMemoFirebase(() => 
+        (user && firestore && customerId) ? query(collection(firestore, 'users', user.uid, 'returns'), where('customerId', '==', customerId)) : null, 
+    [user, firestore, customerId]);
 
     const companyDocRef = useMemoFirebase(() => user && firestore ? doc(firestore, 'users', user.uid, 'companyProfile', 'main') : null, [user, firestore]);
 
     const { data: customer, isLoading: isLoadingCustomer } = useDoc<Customer>(customerDocRef);
-    const { data: allSales, isLoading: isLoadingSales } = useCollection<Sale>(allSalesCollectionRef);
-    const { data: allPayments, isLoading: isLoadingPayments } = useCollection<Payment>(allPaymentsCollectionRef);
-    const { data: allReturns, isLoading: isLoadingReturns } = useCollection<ProductReturn>(allReturnsCollectionRef);
+    const { data: customerSales, isLoading: isLoadingSales } = useCollection<Sale>(customerSalesQuery);
+    const { data: customerPayments, isLoading: isLoadingPayments } = useCollection<Payment>(customerPaymentsQuery);
+    const { data: customerReturns, isLoading: isLoadingReturns } = useCollection<ProductReturn>(customerReturnsQuery);
     const { data: companyProfile, isLoading: isLoadingCompany } = useDoc<CompanyProfile>(companyDocRef);
 
-    // Memoized client-side filtering
-    const { customerSales, customerPayments, customerReturns } = useMemo(() => {
-        if (!customerId) return { customerSales: [], customerPayments: [], customerReturns: [] };
-        const sales = (allSales || []).filter(s => s.customerId === customerId);
-        const payments = (allPayments || []).filter(p => p.customerId === customerId);
-        const returns = (allReturns || []).filter(r => r.customerId === customerId);
-        return { customerSales: sales, customerPayments: payments, customerReturns: returns };
-    }, [allSales, allPayments, allReturns, customerId]);
 
     useEffect(() => {
         if (!isUserLoading && !user) {
@@ -79,9 +68,9 @@ export default function CustomerDetailPage() {
     }, [user, isUserLoading, router]);
 
     const { totalSpent, totalPaid, outstandingBalance, lastActivityDate, totalReturnedValue } = useMemo(() => {
-        const sales = customerSales;
-        const payments = customerPayments;
-        const returns = customerReturns;
+        const sales = customerSales || [];
+        const payments = customerPayments || [];
+        const returns = customerReturns || [];
         
         const totalSalesAmount = sales.reduce((sum, sale) => sum + sale.total, 0);
         const totalPaidWithinSales = sales.reduce((sum, sale) => sum + sale.amountPaid, 0);
