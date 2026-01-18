@@ -19,6 +19,7 @@ import { safeToDate } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { BulkDeleteOrdersDialog } from '@/components/bread-orders/bulk-delete-orders-dialog';
+import { isSameDay } from 'date-fns';
 
 export default function BreadOrdersPage() {
     const { user, isUserLoading } = useUser();
@@ -51,6 +52,46 @@ export default function BreadOrdersPage() {
             router.push('/login');
         }
     }, [user, isUserLoading, router]);
+
+    // Automatic daily reset effect
+    useEffect(() => {
+        if (isUserLoading || isLoadingOrders || isLoadingCompany || !companyProfile || !orders || !user || !firestore) {
+            return;
+        }
+
+        const today = new Date();
+        const lastReset = companyProfile.lastBreadOrderReset ? safeToDate(companyProfile.lastBreadOrderReset) : null;
+
+        if ((!lastReset || !isSameDay(today, lastReset)) && orders.length > 0) {
+            console.log("Automatic daily reset for bread orders triggered.");
+            
+            const autoReset = async () => {
+                const batch = writeBatch(firestore);
+                orders.forEach(order => {
+                    const orderRef = doc(firestore, 'users', user.uid, 'breadOrders', order.id);
+                    if (order.isRecurring) {
+                        batch.update(orderRef, { isPaid: false, isDelivered: false, createdAt: serverTimestamp() });
+                    } else {
+                        batch.delete(orderRef);
+                    }
+                });
+                const companyRef = doc(firestore, 'users', user.uid, 'companyProfile', 'main');
+                batch.update(companyRef, { lastBreadOrderReset: serverTimestamp() });
+
+                try {
+                    await batch.commit();
+                    toast.info("La liste des commandes de pain a été automatiquement réinitialisée.");
+                } catch (error) {
+                    console.error("Automatic bread order reset failed:", error);
+                    toast.error("La réinitialisation automatique des commandes de pain a échoué.");
+                }
+            };
+
+            autoReset();
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [companyProfile, orders, isUserLoading, isLoadingOrders, isLoadingCompany, user, firestore]);
+
 
     const { filteredOrders, totalQuantity, deliveredQuantity, undeliveredQuantity, totalPaid, totalOwed } = useMemo(() => {
         if (!orders) return { filteredOrders: [], totalQuantity: 0, deliveredQuantity: 0, undeliveredQuantity: 0, totalPaid: 0, totalOwed: 0 };
@@ -201,9 +242,12 @@ export default function BreadOrdersPage() {
             }
         });
 
+        const companyRef = doc(firestore, 'users', user.uid, 'companyProfile', 'main');
+        batch.update(companyRef, { lastBreadOrderReset: serverTimestamp() });
+
         try {
             await batch.commit();
-            toast.success("Liste réinitialisée pour le lendemain !");
+            toast.success("Liste réinitialisée pour la nouvelle journée !");
         } catch (error) {
             toast.error("Erreur lors de la réinitialisation de la liste.");
             console.error(error);

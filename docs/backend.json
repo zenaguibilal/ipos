@@ -343,6 +343,11 @@
             "type": "number",
             "description": "The unit price for a single bread item, used in the bread orders module."
         },
+        "lastBreadOrderReset": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp of the last time the daily bread orders were reset."
+        },
         "updatedAt": {
           "type": "string",
           "description": "Timestamp indicating when the profile was last updated.",

@@ -102,6 +102,7 @@ export interface CompanyProfile {
     vatNumber?: string;
     rcNumber?: string;
     breadPrice?: number;
+    lastBreadOrderReset?: Timestamp | Date;
 }
 
 export interface PurchaseOrderItem {
