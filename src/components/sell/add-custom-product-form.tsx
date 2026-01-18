@@ -86,7 +86,7 @@ export function AddCustomProductForm({ isOpen, onOpenChange, onConfirm }: AddCus
                                 onChange={(e) => setPrice(e.target.value)}
                                 className="col-span-3"
                                 required
-                                step="0.01"
+                                step="0.1"
                             />
                         </div>
                     </div>

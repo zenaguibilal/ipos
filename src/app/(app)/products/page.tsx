@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useUser, useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
@@ -460,7 +461,7 @@ export default function ProductsPage() {
                             <CircleDollarSign className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold">{totalValue.toFixed(2)} DA</div>
+                            <div className="text-2xl font-bold">{totalValue.toFixed(1)} DA</div>
                             <p className="text-xs text-muted-foreground">Valeur d'achat des produits affichés</p>
                         </CardContent>
                     </Card>
@@ -612,8 +613,8 @@ export default function ProductsPage() {
                                                     <TableCell className="text-muted-foreground text-xs hidden lg:table-cell font-mono">
                                                         {[...(product.barcodes || []), ...(product.barcode ? [product.barcode] : [])].join(', ')}
                                                     </TableCell>
-                                                    <TableCell className="text-right hidden sm:table-cell">{product.purchasePrice.toFixed(2)} DA</TableCell>
-                                                    <TableCell className="text-right font-semibold text-primary">{product.price.toFixed(2)} DA</TableCell>
+                                                    <TableCell className="text-right hidden sm:table-cell">{product.purchasePrice.toFixed(1)} DA</TableCell>
+                                                    <TableCell className="text-right font-semibold text-primary">{product.price.toFixed(1)} DA</TableCell>
                                                     <TableCell className={cn("text-right font-bold hidden lg:table-cell", getProfitMarginColor(product.profitMargin || 0))}>
                                                         {product.profitMargin !== undefined ? `${product.profitMargin.toFixed(1)}%` : '-'}
                                                     </TableCell>
@@ -719,11 +720,11 @@ export default function ProductsPage() {
                                                 <div className="mt-2 space-y-2 text-sm">
                                                     <div className="flex justify-between">
                                                         <span>Prix de vente:</span>
-                                                        <span className="font-bold text-primary">{product.price.toFixed(2)} DA</span>
+                                                        <span className="font-bold text-primary">{product.price.toFixed(1)} DA</span>
                                                     </div>
                                                     <div className="flex justify-between text-xs">
                                                         <span>Prix d'achat:</span>
-                                                        <span>{product.purchasePrice.toFixed(2)} DA</span>
+                                                        <span>{product.purchasePrice.toFixed(1)} DA</span>
                                                     </div>
                                                     <div className="flex justify-between">
                                                         <span>Quantité:</span>

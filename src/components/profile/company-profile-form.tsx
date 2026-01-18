@@ -179,7 +179,7 @@ export function CompanyProfileForm({ user }: CompanyProfileFormProps) {
                                     onChange={handleInputChange}
                                     disabled={isSaving}
                                     placeholder="Ex: 15"
-                                    step="0.01"
+                                    step="0.1"
                                     min="0"
                                 />
                                 <p className="text-xs text-muted-foreground">Utilisé dans le module des commandes de pain.</p>

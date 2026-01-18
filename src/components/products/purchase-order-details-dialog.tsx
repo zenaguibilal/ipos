@@ -52,8 +52,8 @@ export function PurchaseOrderDetailsDialog({ isOpen, onOpenChange, purchaseOrder
                                 <TableRow key={index}>
                                     <TableCell className="font-medium">{item.productName}</TableCell>
                                     <TableCell className="text-center">{item.quantity}</TableCell>
-                                    <TableCell className="text-right">{item.purchasePrice.toFixed(2)} DA</TableCell>
-                                    <TableCell className="text-right">{(item.quantity * item.purchasePrice).toFixed(2)} DA</TableCell>
+                                    <TableCell className="text-right">{item.purchasePrice.toFixed(1)} DA</TableCell>
+                                    <TableCell className="text-right">{(item.quantity * item.purchasePrice).toFixed(1)} DA</TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>
@@ -61,7 +61,7 @@ export function PurchaseOrderDetailsDialog({ isOpen, onOpenChange, purchaseOrder
                 </div>
                 
                  <div className="flex justify-end pt-4 font-bold text-lg">
-                    <span>Total: {purchaseOrder.totalValue.toFixed(2)} DA</span>
+                    <span>Total: {purchaseOrder.totalValue.toFixed(1)} DA</span>
                  </div>
 
                 <DialogFooter>

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,7 +22,7 @@ export function CustomerStats({ totalSpent, outstandingBalance, lastActivityDate
                     <TrendingUp className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold">{totalSpent.toFixed(2)} DA</div>
+                    <div className="text-2xl font-bold">{totalSpent.toFixed(1)} DA</div>
                     <p className="text-xs text-muted-foreground">
                         Montant total de tous les achats
                     </p>
@@ -33,7 +34,7 @@ export function CustomerStats({ totalSpent, outstandingBalance, lastActivityDate
                     <Undo2 className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold">{totalReturned.toFixed(2)} DA</div>
+                    <div className="text-2xl font-bold">{totalReturned.toFixed(1)} DA</div>
                      <p className="text-xs text-muted-foreground">
                         Valeur totale des articles retournés
                     </p>
@@ -45,7 +46,7 @@ export function CustomerStats({ totalSpent, outstandingBalance, lastActivityDate
                     <CircleDollarSign className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    <div className={`text-2xl font-bold ${outstandingBalance > 0 ? 'text-destructive' : 'text-green-600'}`}>{outstandingBalance.toFixed(2)} DA</div>
+                    <div className={`text-2xl font-bold ${outstandingBalance > 0 ? 'text-destructive' : 'text-green-600'}`}>{outstandingBalance.toFixed(1)} DA</div>
                      <p className="text-xs text-muted-foreground">
                         Montant restant à payer
                     </p>

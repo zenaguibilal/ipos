@@ -132,11 +132,11 @@ export function AddProductForm({ isOpen, onOpenChange, userId }: AddProductFormP
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="add-purchasePrice" className="text-right">Prix Achat</Label>
-                            <Input id="add-purchasePrice" type="number" value={purchasePrice} onChange={(e) => setPurchasePrice(e.target.value)} className="col-span-3" required step="0.01" />
+                            <Input id="add-purchasePrice" type="number" value={purchasePrice} onChange={(e) => setPurchasePrice(e.target.value)} className="col-span-3" required step="0.1" />
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="add-price" className="text-right">Prix Vente</Label>
-                            <Input id="add-price" type="number" value={price} onChange={(e) => setPrice(e.target.value)} className="col-span-3" required step="0.01" />
+                            <Input id="add-price" type="number" value={price} onChange={(e) => setPrice(e.target.value)} className="col-span-3" required step="0.1" />
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="add-quantity" className="text-right">Quantité</Label>

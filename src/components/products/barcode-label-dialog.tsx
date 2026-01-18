@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useRef, useEffect, useState } from 'react';
@@ -95,7 +96,7 @@ export function BarcodeLabelDialog({ isOpen, onOpenChange, product }: BarcodeLab
                         <Label>Aperçu de l'étiquette</Label>
                         <div ref={labelRef} className="mt-2 py-2 flex flex-col items-center gap-1 bg-white text-black rounded-md">
                             <p className="font-bold text-base text-center break-words max-w-[150px]">{product.name}</p>
-                            <p className="font-black text-xl">{product.price.toFixed(2)} DA</p>
+                            <p className="font-black text-xl">{product.price.toFixed(1)} DA</p>
                             <canvas ref={barcodeCanvasRef} />
                         </div>
                     </div>

@@ -97,11 +97,11 @@ export function AddNewProductDialog({ isOpen, onOpenChange, scannedCode, onConfi
                         <div className="grid grid-cols-2 gap-3">
                              <div className="space-y-1">
                                 <Label htmlFor="new-product-purchasePrice">Prix Achat</Label>
-                                <Input id="new-product-purchasePrice" type="number" value={purchasePrice} onChange={(e) => setPurchasePrice(e.target.value)} required step="0.01" />
+                                <Input id="new-product-purchasePrice" type="number" value={purchasePrice} onChange={(e) => setPurchasePrice(e.target.value)} required step="0.1" />
                             </div>
                             <div className="space-y-1">
                                 <Label htmlFor="new-product-price">Prix Vente</Label>
-                                <Input id="new-product-price" type="number" value={price} onChange={(e) => setPrice(e.target.value)} required step="0.01" />
+                                <Input id="new-product-price" type="number" value={price} onChange={(e) => setPrice(e.target.value)} required step="0.1" />
                             </div>
                         </div>
                          <div className="grid grid-cols-2 gap-3">

@@ -49,7 +49,7 @@ export function TotalDebtChart({ data }: TotalDebtChartProps) {
                     labelStyle={{ color: "hsl(var(--foreground))" }}
                     formatter={(value: number, name) => {
                         const label = name === 'totalDebt' ? 'Dette Totale' : 'Inconnu';
-                        return [value.toFixed(2) + ' DA', label];
+                        return [value.toFixed(1) + ' DA', label];
                     }}
                 />
                  <Area 

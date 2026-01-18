@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useRef } from 'react';
@@ -104,8 +105,8 @@ export function ThermalReceipt({ sale, companyProfile }: ThermalReceiptProps) {
                         <tr key={index} >
                             <td className="py-1 w-1/2 align-top break-words">{item.name}</td>
                             <td className="text-center align-top">{item.cartQuantity || item.quantity}</td>
-                            <td className="text-right align-top">{(item.price || 0).toFixed(2)}</td>
-                            <td className="text-right font-bold align-top">{((item.price || 0) * (item.cartQuantity || item.quantity)).toFixed(2)}</td>
+                            <td className="text-right align-top">{(item.price || 0).toFixed(1)}</td>
+                            <td className="text-right font-bold align-top">{((item.price || 0) * (item.cartQuantity || item.quantity)).toFixed(1)}</td>
                         </tr>
                     ))}
                 </tbody>
@@ -116,30 +117,30 @@ export function ThermalReceipt({ sale, companyProfile }: ThermalReceiptProps) {
             <div className="text-xs space-y-1 mt-2">
                 <div className="flex justify-between">
                     <span>Sous-total:</span>
-                    <span>{subtotal.toFixed(2)} DA</span>
+                    <span>{subtotal.toFixed(1)} DA</span>
                 </div>
                 {sale.discountAmount && sale.discountAmount > 0 && (
                     <div className="flex justify-between">
                         <span>
                             Remise {sale.discountType === 'percentage' ? `(${sale.discountAmount}%)` : ''}:
                         </span>
-                        <span>-{discountDisplay.toFixed(2)} DA</span>
+                        <span>-{discountDisplay.toFixed(1)} DA</span>
                     </div>
                 )}
                 <div className="flex justify-between font-bold text-base border-t-2 border-black pt-1 mt-1">
                     <span>TOTAL:</span>
-                    <span>{total.toFixed(2)} DA</span>
+                    <span>{total.toFixed(1)} DA</span>
                 </div>
 
                 <div className="border-t border-dashed border-black my-2"></div>
                 
                 <div className="flex justify-between">
                     <span>Montant Payé:</span>
-                    <span>{amountPaid.toFixed(2)} DA</span>
+                    <span>{amountPaid.toFixed(1)} DA</span>
                 </div>
                 <div className="flex justify-between">
                     <span>Solde Restant:</span>
-                    <span>{remainingBalance.toFixed(2)} DA</span>
+                    <span>{remainingBalance.toFixed(1)} DA</span>
                 </div>
             </div>
 

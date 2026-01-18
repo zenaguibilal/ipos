@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { Sale, CompanyProfile, Customer } from '@/lib/types';
@@ -77,8 +78,8 @@ export function A4Receipt({ sale, companyProfile, customer }: A4ReceiptProps) {
                             <tr key={index} className="border-b">
                                 <td className="p-3">{item.name}</td>
                                 <td className="p-3 text-center">{item.cartQuantity || item.quantity}</td>
-                                <td className="p-3 text-right">{(item.price || 0).toFixed(2)} DA</td>
-                                <td className="p-3 text-right font-semibold">{((item.price || 0) * (item.cartQuantity || item.quantity)).toFixed(2)} DA</td>
+                                <td className="p-3 text-right">{(item.price || 0).toFixed(1)} DA</td>
+                                <td className="p-3 text-right font-semibold">{((item.price || 0) * (item.cartQuantity || item.quantity)).toFixed(1)} DA</td>
                             </tr>
                         ))}
                     </tbody>
@@ -90,27 +91,27 @@ export function A4Receipt({ sale, companyProfile, customer }: A4ReceiptProps) {
                 <div className="w-full max-w-sm space-y-2 text-right">
                     <div className="flex justify-between">
                         <span className="text-gray-600">Sous-total:</span>
-                        <span className="font-semibold">{subtotal.toFixed(2)} DA</span>
+                        <span className="font-semibold">{subtotal.toFixed(1)} DA</span>
                     </div>
                     {sale.discountAmount && sale.discountAmount > 0 && (
                         <div className="flex justify-between">
                             <span className="text-gray-600">Remise:</span>
-                            <span className="font-semibold">-{discountDisplay.toFixed(2)} DA</span>
+                            <span className="font-semibold">-{discountDisplay.toFixed(1)} DA</span>
                         </div>
                     )}
                     <div className="border-t my-2"></div>
                     <div className="flex justify-between text-xl font-bold">
                         <span>TOTAL:</span>
-                        <span>{total.toFixed(2)} DA</span>
+                        <span>{total.toFixed(1)} DA</span>
                     </div>
                      <div className="border-t my-2"></div>
                      <div className="flex justify-between">
                         <span className="text-gray-600">Montant Payé:</span>
-                        <span className="font-semibold">{amountPaid.toFixed(2)} DA</span>
+                        <span className="font-semibold">{amountPaid.toFixed(1)} DA</span>
                     </div>
                      <div className="flex justify-between">
                         <span className="text-gray-600">Solde Restant:</span>
-                        <span className="font-semibold">{remainingBalance.toFixed(2)} DA</span>
+                        <span className="font-semibold">{remainingBalance.toFixed(1)} DA</span>
                     </div>
                 </div>
             </section>

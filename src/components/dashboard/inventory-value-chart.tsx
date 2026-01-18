@@ -47,7 +47,7 @@ export function InventoryValueChart({ data }: InventoryValueChartProps) {
                                 ))}
                             </Pie>
                             <Tooltip
-                                formatter={(value: number) => `${value.toFixed(2)} DA`}
+                                formatter={(value: number) => `${value.toFixed(1)} DA`}
                                  contentStyle={{
                                     backgroundColor: "hsl(var(--background))",
                                     border: "1px solid hsl(var(--border))"

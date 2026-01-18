@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo } from 'react';
@@ -79,7 +80,7 @@ export function CustomerHistory({ sales, payments, returns, isLoading, onViewSal
                                      {item.type === 'sale' ? (
                                         <div className="p-3 rounded-md bg-muted/50 flex flex-col sm:flex-row justify-between items-start gap-2">
                                             <div className="space-y-1">
-                                                <p className="font-semibold">{item.data.total.toFixed(2)} DA</p>
+                                                <p className="font-semibold">{item.data.total.toFixed(1)} DA</p>
                                                 <p className={cn("text-xs font-semibold", 
                                                     item.data.paymentStatus === 'paid' && 'text-green-600', 
                                                     item.data.paymentStatus === 'partial' && 'text-yellow-600', 
@@ -96,13 +97,13 @@ export function CustomerHistory({ sales, payments, returns, isLoading, onViewSal
                                     ) : item.type === 'payment' ? (
                                         <div className="p-3 rounded-md bg-green-500/10">
                                             <p className="font-semibold text-green-600">
-                                                + {item.data.amount.toFixed(2)} DA
+                                                + {item.data.amount.toFixed(1)} DA
                                             </p>
                                         </div>
                                     ) : (
                                         <div className="p-3 rounded-md bg-yellow-500/10">
                                             <p className="font-semibold text-yellow-600">
-                                                - {item.data.totalReturnValue.toFixed(2)} DA
+                                                - {item.data.totalReturnValue.toFixed(1)} DA
                                             </p>
                                             <p className="text-xs text-muted-foreground">
                                                 Crédit sur facture {item.data.originalInvoiceNumber}

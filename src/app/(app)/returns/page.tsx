@@ -184,7 +184,7 @@ export default function ReturnsPage() {
                             <CircleDollarSign className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold text-destructive">{totalReturnedValue.toFixed(2)} DA</div>
+                            <div className="text-2xl font-bold text-destructive">{totalReturnedValue.toFixed(1)} DA</div>
                             <p className="text-xs text-muted-foreground">Valeur des produits retournés</p>
                         </CardContent>
                     </Card>
@@ -242,8 +242,8 @@ export default function ReturnsPage() {
                                                 <TableCell className="font-mono text-xs">{r.originalInvoiceNumber}</TableCell>
                                                 <TableCell>{r.customerName || 'N/A'}</TableCell>
                                                 <TableCell className="text-center">{r.items.reduce((acc, item) => acc + item.quantity, 0)}</TableCell>
-                                                <TableCell className="text-right font-semibold">{r.totalReturnValue.toFixed(2)} DA</TableCell>
-                                                <TableCell className="text-right text-destructive font-semibold">-{r.amountRefunded.toFixed(2)} DA</TableCell>
+                                                <TableCell className="text-right font-semibold">{r.totalReturnValue.toFixed(1)} DA</TableCell>
+                                                <TableCell className="text-right text-destructive font-semibold">-{r.amountRefunded.toFixed(1)} DA</TableCell>
                                                 <TableCell className="text-right">
                                                     <DropdownMenu>
                                                         <DropdownMenuTrigger asChild>
@@ -276,5 +276,3 @@ export default function ReturnsPage() {
         </>
     );
 }
-
-    

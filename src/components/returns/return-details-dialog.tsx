@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -55,8 +56,8 @@ export function ReturnDetailsDialog({ isOpen, onOpenChange, productReturn }: Ret
                                 <TableRow key={index}>
                                     <TableCell className="font-medium">{item.productName}</TableCell>
                                     <TableCell className="text-center">{item.quantity}</TableCell>
-                                    <TableCell className="text-right">{item.price.toFixed(2)} DA</TableCell>
-                                    <TableCell className="text-right">{(item.quantity * item.price).toFixed(2)} DA</TableCell>
+                                    <TableCell className="text-right">{item.price.toFixed(1)} DA</TableCell>
+                                    <TableCell className="text-right">{(item.quantity * item.price).toFixed(1)} DA</TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>
@@ -66,11 +67,11 @@ export function ReturnDetailsDialog({ isOpen, onOpenChange, productReturn }: Ret
                  <div className="flex flex-col items-end gap-2 pt-4">
                     <div className="flex justify-between w-full max-w-xs text-sm">
                         <span className="text-muted-foreground">Valeur Totale du Retour:</span>
-                        <span className="font-semibold">{productReturn.totalReturnValue.toFixed(2)} DA</span>
+                        <span className="font-semibold">{productReturn.totalReturnValue.toFixed(1)} DA</span>
                     </div>
                      <div className="flex justify-between w-full max-w-xs text-sm text-destructive">
                         <span className="font-semibold">Montant Remboursé:</span>
-                        <span className="font-bold">-{productReturn.amountRefunded.toFixed(2)} DA</span>
+                        <span className="font-bold">-{productReturn.amountRefunded.toFixed(1)} DA</span>
                     </div>
                  </div>
 

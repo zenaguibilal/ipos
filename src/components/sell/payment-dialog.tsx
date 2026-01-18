@@ -20,7 +20,7 @@ export function PaymentDialog({ isOpen, onOpenChange, total, isProcessing, onCon
 
     useEffect(() => {
         if (isOpen) {
-            setAmount(total.toFixed(2));
+            setAmount(total.toFixed(1));
         }
     }, [isOpen, total]);
 
@@ -54,7 +54,7 @@ export function PaymentDialog({ isOpen, onOpenChange, total, isProcessing, onCon
                     <div className="grid gap-4 py-4">
                         <div className="flex justify-between items-center text-lg font-bold">
                             <span>Total à payer :</span>
-                            <span>{total.toFixed(2)} DA</span>
+                            <span>{total.toFixed(1)} DA</span>
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="amount-paid" className="text-right col-span-1">
@@ -66,7 +66,7 @@ export function PaymentDialog({ isOpen, onOpenChange, total, isProcessing, onCon
                                 value={amount}
                                 onChange={(e) => setAmount(e.target.value)}
                                 className="col-span-3"
-                                step="0.01"
+                                step="0.1"
                                 autoFocus
                                 onFocus={(e) => e.target.select()}
                             />

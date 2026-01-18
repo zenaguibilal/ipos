@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -100,7 +101,7 @@ export function CartPanel({
         return customers.map(c => ({
             value: c.id,
             label: `${c.firstName} ${c.lastName}`,
-            subLabel: `Solde: ${(customerBalances.get(c.id) || 0).toFixed(2)} DA`,
+            subLabel: `Solde: ${(customerBalances.get(c.id) || 0).toFixed(1)} DA`,
         }));
     }, [customers, customerBalances]);
 
@@ -193,12 +194,12 @@ export function CartPanel({
                              <div className="space-y-2">
                                 <div className="flex justify-between items-center">
                                     <span className="text-sm text-muted-foreground flex items-center gap-1.5"><Wallet className="h-3 w-3"/> Solde Actuel:</span>
-                                    <span className={cn("text-lg font-black", (selectedCustomerBalance || 0) > 0 ? "text-destructive" : "text-green-600")}>{(selectedCustomerBalance || 0).toFixed(2)} DA</span>
+                                    <span className={cn("text-lg font-black", (selectedCustomerBalance || 0) > 0 ? "text-destructive" : "text-green-600")}>{(selectedCustomerBalance || 0).toFixed(1)} DA</span>
                                 </div>
                                 {cart.length > 0 && (
                                      <div className="flex justify-between items-center border-t border-dashed pt-2">
                                         <span className="text-sm text-muted-foreground">Nouveau Solde (si à crédit):</span>
-                                        <span className="text-lg font-black text-primary">{((selectedCustomerBalance || 0) + total).toFixed(2)} DA</span>
+                                        <span className="text-lg font-black text-primary">{((selectedCustomerBalance || 0) + total).toFixed(1)} DA</span>
                                     </div>
                                 )}
                              </div>
@@ -225,7 +226,7 @@ export function CartPanel({
                  {/* Total Display */}
                  <div className="text-center p-3 rounded-lg bg-muted/50 mb-4 border">
                      <p className="text-sm font-medium text-muted-foreground">TOTAL</p>
-                     <p className="text-4xl font-black text-primary tracking-tight">{total.toFixed(2)} DA</p>
+                     <p className="text-4xl font-black text-primary tracking-tight">{total.toFixed(1)} DA</p>
                  </div>
             </div>
 
@@ -253,7 +254,7 @@ export function CartPanel({
                                                 onKeyDown={handlePriceInputKeyDown}
                                                 autoFocus
                                                 className="h-7 text-sm w-24"
-                                                step="0.01"
+                                                step="0.1"
                                             />
                                         ) : (
                                             <p
@@ -261,7 +262,7 @@ export function CartPanel({
                                                 onClick={() => handlePriceClick(item)}
                                                 title="Cliquer pour modifier le prix"
                                             >
-                                                {item.price.toFixed(2)} DA
+                                                {item.price.toFixed(1)} DA
                                             </p>
                                         )}
                                     </div>
@@ -275,7 +276,7 @@ export function CartPanel({
                                         />
                                         <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => onUpdateQuantity(item.id, item.cartQuantity + 1)}>+</Button>
                                     </div>
-                                    <p className="font-semibold w-20 text-right">{(item.price * item.cartQuantity).toFixed(2)} DA</p>
+                                    <p className="font-semibold w-20 text-right">{(item.price * item.cartQuantity).toFixed(1)} DA</p>
                                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onUpdateQuantity(item.id, 0)}>
                                         <XCircle className="h-5 w-5 text-destructive" />
                                     </Button>
@@ -316,12 +317,12 @@ export function CartPanel({
                     </div>
                     <div className="flex justify-between text-sm text-muted-foreground">
                         <span>Sous-total</span>
-                        <span>{subtotal.toFixed(2)} DA</span>
+                        <span>{subtotal.toFixed(1)} DA</span>
                     </div>
                     {discount > 0 && (
                         <div className="flex justify-between text-sm text-destructive">
                             <span>Remise</span>
-                            <span>- {discount.toFixed(2)} DA</span>
+                            <span>- {discount.toFixed(1)} DA</span>
                         </div>
                     )}
                  </div>

@@ -110,7 +110,7 @@ export function IntakeItemsTable({ items, onUpdateItem, onRemoveItem, errors }: 
                                                     value={item.purchasePrice}
                                                     onChange={(e) => onUpdateItem(item.id, 'purchasePrice', parseFloat(e.target.value) || 0)}
                                                     className={cn("text-right", itemErrors.purchasePrice && "border-destructive focus-visible:ring-destructive")}
-                                                    step="0.01"
+                                                    step="0.1"
                                                 />
                                             </TooltipTrigger>
                                             {itemErrors.purchasePrice && <TooltipContent><p>{itemErrors.purchasePrice}</p></TooltipContent>}
@@ -124,7 +124,7 @@ export function IntakeItemsTable({ items, onUpdateItem, onRemoveItem, errors }: 
                                                     value={item.price}
                                                     onChange={(e) => onUpdateItem(item.id, 'price', parseFloat(e.target.value) || 0)}
                                                     className={cn("text-right", itemErrors.price && "border-destructive focus-visible:ring-destructive")}
-                                                    step="0.01"
+                                                    step="0.1"
                                                 />
                                             </TooltipTrigger>
                                             {itemErrors.price && <TooltipContent><p>{itemErrors.price}</p></TooltipContent>}
@@ -144,5 +144,3 @@ export function IntakeItemsTable({ items, onUpdateItem, onRemoveItem, errors }: 
         </TooltipProvider>
     );
 }
-
-    

@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { UnpaidBreadOrder } from '@/lib/types';
@@ -35,7 +36,7 @@ export function UnpaidOrdersLog({ unpaidOrders, onClearLog, onDeleteOrder, isLoa
                 {unpaidOrders.length > 0 && (
                     <div className="flex justify-between items-center bg-muted p-3 rounded-lg">
                         <span className="font-semibold">Total des dettes archivées:</span>
-                        <span className="font-bold text-lg text-destructive">{totalDebt.toFixed(2)} DA</span>
+                        <span className="font-bold text-lg text-destructive">{totalDebt.toFixed(1)} DA</span>
                     </div>
                 )}
                 <ScrollArea className="flex-grow h-64">
@@ -59,7 +60,7 @@ export function UnpaidOrdersLog({ unpaidOrders, onClearLog, onDeleteOrder, isLoa
                                 {unpaidOrders.map(order => (
                                     <TableRow key={order.id}>
                                         <TableCell className="font-medium">{order.name}</TableCell>
-                                        <TableCell>{order.totalOwed.toFixed(2)} DA</TableCell>
+                                        <TableCell>{order.totalOwed.toFixed(1)} DA</TableCell>
                                         <TableCell className="text-right text-xs text-muted-foreground">
                                             {format(safeToDate(order.archivedAt), 'd MMM', { locale: fr })}
                                         </TableCell>

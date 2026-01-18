@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -25,7 +26,7 @@ export function StatsCards({ revenue, netProfit, salesCount, lowStockCount, inve
                     <CircleDollarSign className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold">{revenue.toFixed(2)} DA</div>
+                    <div className="text-2xl font-bold">{revenue.toFixed(1)} DA</div>
                     <p className="text-xs text-muted-foreground">
                         Revenu total sur la période sélectionnée
                     </p>
@@ -39,7 +40,7 @@ export function StatsCards({ revenue, netProfit, salesCount, lowStockCount, inve
                     <TrendingUp className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold">{netProfit.toFixed(2)} DA</div>
+                    <div className="text-2xl font-bold">{netProfit.toFixed(1)} DA</div>
                      <p className="text-xs text-muted-foreground">
                         Marge bénéficiaire sur la période
                     </p>
@@ -67,7 +68,7 @@ export function StatsCards({ revenue, netProfit, salesCount, lowStockCount, inve
                     <Calculator className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold">{averageSaleValue.toFixed(2)} DA</div>
+                    <div className="text-2xl font-bold">{averageSaleValue.toFixed(1)} DA</div>
                      <p className="text-xs text-muted-foreground">
                         Valeur moyenne de chaque vente
                     </p>
@@ -93,7 +94,7 @@ export function StatsCards({ revenue, netProfit, salesCount, lowStockCount, inve
                     <Warehouse className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold">{inventoryValue.toFixed(2)} DA</div>
+                    <div className="text-2xl font-bold">{inventoryValue.toFixed(1)} DA</div>
                     <p className="text-xs text-muted-foreground">
                         Valeur d'achat de l'inventaire
                     </p>
@@ -117,7 +118,7 @@ export function StatsCards({ revenue, netProfit, salesCount, lowStockCount, inve
                     <WalletCards className="h-4 w-4 text-destructive" />
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold text-destructive">{totalOutstandingDebt.toFixed(2)} DA</div>
+                    <div className="text-2xl font-bold text-destructive">{totalOutstandingDebt.toFixed(1)} DA</div>
                     <p className="text-xs text-muted-foreground">
                         Montant total dû par les clients
                     </p>

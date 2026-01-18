@@ -57,7 +57,7 @@ export default function NewReturnPage() {
                 const saleData = { ...saleDoc.data(), id: saleDoc.id } as Sale;
                 setFoundSale(saleData);
                 setItemsToReturn(saleData.items.map(item => ({ ...item, returnQuantity: 0 })));
-                setAmountRefunded('0.00');
+                setAmountRefunded('0.0');
                 toast.success(`Vente ${saleData.invoiceNumber} trouvée.`);
             }
         } catch (error) {
@@ -223,7 +223,7 @@ export default function NewReturnPage() {
                                                 <TableRow key={item.id}>
                                                     <TableCell>{item.name}</TableCell>
                                                     <TableCell className="text-center">{item.quantity}</TableCell>
-                                                    <TableCell className="text-right">{item.price.toFixed(2)} DA</TableCell>
+                                                    <TableCell className="text-right">{item.price.toFixed(1)} DA</TableCell>
                                                     <TableCell>
                                                         <Input
                                                             type="number"
@@ -249,14 +249,14 @@ export default function NewReturnPage() {
                                         type="number"
                                         value={amountRefunded}
                                         onChange={(e) => setAmountRefunded(e.target.value)}
-                                        step="0.01"
+                                        step="0.1"
                                         min="0"
                                     />
                                 </div>
                                 <Card className="p-4 bg-muted">
                                     <div className="flex justify-between items-center">
                                         <span className="text-lg font-bold">Valeur totale du retour</span>
-                                        <span className="text-2xl font-black text-primary">{totalReturnValue.toFixed(2)} DA</span>
+                                        <span className="text-2xl font-black text-primary">{totalReturnValue.toFixed(1)} DA</span>
                                     </div>
                                 </Card>
                             </div>
@@ -285,5 +285,3 @@ export default function NewReturnPage() {
         </main>
     );
 }
-
-    

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo } from 'react';
@@ -68,7 +69,7 @@ export function TopCustomers({ customers }: TopCustomersProps) {
                                 }}
                                 labelStyle={{ color: "hsl(var(--foreground))" }}
                                 formatter={(value: number) => [
-                                    `${(value as number).toFixed(2)} DA`,
+                                    `${(value as number).toFixed(1)} DA`,
                                     `Total Dépensé`
                                 ]}
                             />

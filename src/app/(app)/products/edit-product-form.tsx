@@ -124,11 +124,11 @@ export function EditProductForm({ isOpen, onOpenChange, userId, product }: EditP
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="edit-purchasePrice" className="text-right">Prix Achat</Label>
-                            <Input id="edit-purchasePrice" type="number" value={purchasePrice} onChange={(e) => setPurchasePrice(e.target.value)} className="col-span-3" required step="0.01" />
+                            <Input id="edit-purchasePrice" type="number" value={purchasePrice} onChange={(e) => setPurchasePrice(e.target.value)} className="col-span-3" required step="0.1" />
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="edit-price" className="text-right">Prix Vente</Label>
-                            <Input id="edit-price" type="number" value={price} onChange={(e) => setPrice(e.target.value)} className="col-span-3" required step="0.01" />
+                            <Input id="edit-price" type="number" value={price} onChange={(e) => setPrice(e.target.value)} className="col-span-3" required step="0.1" />
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="edit-quantity" className="text-right">Quantité</Label>

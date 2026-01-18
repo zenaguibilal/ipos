@@ -152,7 +152,7 @@ export function AddProductForm({ isOpen, onOpenChange, userId }: AddProductFormP
                                 onChange={(e) => setPrice(e.target.value)}
                                 className="col-span-3"
                                 required
-                                step="0.01"
+                                step="0.1"
                             />
                         </div>
                          <div className="grid grid-cols-4 items-center gap-4">
@@ -166,7 +166,7 @@ export function AddProductForm({ isOpen, onOpenChange, userId }: AddProductFormP
                                 onChange={(e) => setPurchasePrice(e.target.value)}
                                 className="col-span-3"
                                 required
-                                step="0.01"
+                                step="0.1"
                             />
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">

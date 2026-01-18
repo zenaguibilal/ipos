@@ -286,7 +286,7 @@ export default function SalesHistoryPage() {
                                     <CircleDollarSign className="h-4 w-4 text-muted-foreground" />
                                 </CardHeader>
                                 <CardContent>
-                                    <div className="text-2xl font-bold">{totalRevenue.toFixed(2)} DA</div>
+                                    <div className="text-2xl font-bold">{totalRevenue.toFixed(1)} DA</div>
                                 </CardContent>
                             </Card>
                              <Card>
@@ -295,7 +295,7 @@ export default function SalesHistoryPage() {
                                     <TrendingUp className="h-4 w-4 text-muted-foreground" />
                                 </CardHeader>
                                 <CardContent>
-                                    <div className="text-2xl font-bold text-green-600">{totalProfit.toFixed(2)} DA</div>
+                                    <div className="text-2xl font-bold text-green-600">{totalProfit.toFixed(1)} DA</div>
                                 </CardContent>
                             </Card>
                             <Card>
@@ -304,7 +304,7 @@ export default function SalesHistoryPage() {
                                     <HandCoins className="h-4 w-4 text-muted-foreground" />
                                 </CardHeader>
                                 <CardContent>
-                                    <div className="text-2xl font-bold text-green-600">{totalCollected.toFixed(2)} DA</div>
+                                    <div className="text-2xl font-bold text-green-600">{totalCollected.toFixed(1)} DA</div>
                                 </CardContent>
                             </Card>
                             <Card>
@@ -343,9 +343,9 @@ export default function SalesHistoryPage() {
                                                         <div className="flex justify-between items-center">
                                                             <span className="font-semibold text-base">{format(new Date(dateStr + 'T12:00:00'), 'eeee d MMMM yyyy', { locale: fr })}</span>
                                                             <div className="text-right text-xs space-x-4 hidden sm:block">
-                                                                <span>Bénéfice: <span className="font-bold text-green-600">{group.dailyProfit.toFixed(2)} DA</span></span>
-                                                                <span>Chiffre d'affaires: <span className="font-bold">{group.dailyRevenue.toFixed(2)} DA</span></span>
-                                                                <span>Encaissé: <span className="font-bold text-green-600">{group.dailyCollected.toFixed(2)} DA</span></span>
+                                                                <span>Bénéfice: <span className="font-bold text-green-600">{group.dailyProfit.toFixed(1)} DA</span></span>
+                                                                <span>Chiffre d'affaires: <span className="font-bold">{group.dailyRevenue.toFixed(1)} DA</span></span>
+                                                                <span>Encaissé: <span className="font-bold text-green-600">{group.dailyCollected.toFixed(1)} DA</span></span>
                                                             </div>
                                                         </div>
                                                     </TableCell>
@@ -398,7 +398,7 @@ export default function SalesHistoryPage() {
                                                                 "p-3 text-right font-semibold",
                                                                 isSale ? 'text-primary' : 'text-green-600'
                                                             )}>
-                                                                {isSale ? transaction.data.total.toFixed(2) : `+${transaction.data.amount.toFixed(2)}`} DA
+                                                                {isSale ? transaction.data.total.toFixed(1) : `+${transaction.data.amount.toFixed(1)}`} DA
                                                             </TableCell>
                                                         </TableRow>
                                                      );

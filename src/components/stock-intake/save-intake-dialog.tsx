@@ -41,7 +41,7 @@ export function SaveIntakeDialog({ isOpen, onOpenChange, onConfirm, isSaving, to
                 </div>
                 <div className="flex justify-between">
                     <span className="text-muted-foreground">Valeur totale de la réception:</span>
-                    <span className="font-semibold">{totalValue.toFixed(2)} DA</span>
+                    <span className="font-semibold">{totalValue.toFixed(1)} DA</span>
                 </div>
             </div>
             <p className="mt-2 text-destructive">

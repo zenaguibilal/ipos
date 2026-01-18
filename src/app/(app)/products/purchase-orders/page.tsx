@@ -149,7 +149,7 @@ export default function PurchaseOrdersPage() {
                                                         {po.status === 'pending' ? 'En attente' : 'Réceptionné'}
                                                     </span>
                                                 </TableCell>
-                                                <TableCell className="text-right font-medium">{po.totalValue.toFixed(2)} DA</TableCell>
+                                                <TableCell className="text-right font-medium">{po.totalValue.toFixed(1)} DA</TableCell>
                                                 <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium" onClick={(e) => e.stopPropagation()}>
                                                     <DropdownMenu>
                                                         <DropdownMenuTrigger asChild>

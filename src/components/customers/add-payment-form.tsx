@@ -96,7 +96,7 @@ export function AddPaymentForm({ isOpen, onOpenChange, userId, customer }: AddPa
                                 onChange={(e) => setAmount(e.target.value)} 
                                 className="col-span-3"
                                 required 
-                                step="0.01"
+                                step="0.1"
                                 autoFocus
                             />
                         </div>

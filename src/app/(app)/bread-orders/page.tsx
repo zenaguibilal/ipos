@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useUser, useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking, useDoc } from '@/firebase';
@@ -460,7 +461,7 @@ export default function BreadOrdersPage() {
                     <AlertDialogHeader>
                         <AlertDialogTitle>Confirmer la suppression?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Êtes-vous sûr de vouloir supprimer la dette de <span className="font-bold">{deletingUnpaidOrder?.name}</span> d'un montant de <span className="font-bold">{deletingUnpaidOrder?.totalOwed.toFixed(2)} DA</span>? Cette action est irréversible.
+                            Êtes-vous sûr de vouloir supprimer la dette de <span className="font-bold">{deletingUnpaidOrder?.name}</span> d'un montant de <span className="font-bold">{deletingUnpaidOrder?.totalOwed.toFixed(1)} DA</span>? Cette action est irréversible.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -619,11 +620,11 @@ export default function BreadOrdersPage() {
                                 <CardContent className="flex justify-around items-center">
                                     <div className="text-center">
                                         <p className="text-xs text-muted-foreground">Total Encaissé</p>
-                                        <p className="text-2xl font-bold">{totalPaid.toFixed(2)} DA</p>
+                                        <p className="text-2xl font-bold">{totalPaid.toFixed(1)} DA</p>
                                     </div>
                                     <div className="text-center">
                                         <p className="text-xs text-muted-foreground">Total Dû</p>
-                                        <p className="text-2xl font-bold text-destructive">{totalOwed.toFixed(2)} DA</p>
+                                        <p className="text-2xl font-bold text-destructive">{totalOwed.toFixed(1)} DA</p>
                                     </div>
                                 </CardContent>
                             </Card>

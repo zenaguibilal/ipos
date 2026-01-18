@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from 'recharts';
@@ -34,7 +35,7 @@ export function SalesChart({ data }: SalesChartProps) {
                     labelStyle={{ color: "hsl(var(--foreground))" }}
                     formatter={(value: number, name) => {
                         const label = name === 'revenue' ? 'Chiffre d\'affaires' : 'Bénéfice net';
-                        return [value.toFixed(2) + ' DA', label];
+                        return [value.toFixed(1) + ' DA', label];
                     }}
                 />
                  <Legend />

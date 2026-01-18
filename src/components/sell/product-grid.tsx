@@ -188,7 +188,7 @@ export function ProductGrid({ products, onAddToCart, onAddNewProduct, onAddCusto
                                                 <Package className="h-3 w-3" />
                                                 <span>{product.quantity}</span>
                                             </div>
-                                            <p className="font-bold text-primary">{product.price.toFixed(2)} DA</p>
+                                            <p className="font-bold text-primary">{product.price.toFixed(1)} DA</p>
                                         </div>
                                     </div>
                                 </CardContent>

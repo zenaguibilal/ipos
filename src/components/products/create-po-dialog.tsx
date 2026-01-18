@@ -112,7 +112,7 @@ export function CreatePoDialog({ isOpen, onOpenChange, products, onCreate }: Cre
                                     {items.map(item => (
                                         <TableRow key={item.productId}>
                                             <TableCell className="font-medium">{item.productName}</TableCell>
-                                            <TableCell className="text-right">{item.purchasePrice.toFixed(2)} DA</TableCell>
+                                            <TableCell className="text-right">{item.purchasePrice.toFixed(1)} DA</TableCell>
                                             <TableCell className="text-right">
                                                 <Input
                                                     type="number"
@@ -128,7 +128,7 @@ export function CreatePoDialog({ isOpen, onOpenChange, products, onCreate }: Cre
                             </Table>
                         </ScrollArea>
                         <div className="flex justify-end font-bold text-lg">
-                            <span>Valeur Totale: {totalValue.toFixed(2)} DA</span>
+                            <span>Valeur Totale: {totalValue.toFixed(1)} DA</span>
                         </div>
                     </div>
                     <DialogFooter>
@@ -147,5 +147,3 @@ export function CreatePoDialog({ isOpen, onOpenChange, products, onCreate }: Cre
         </Dialog>
     );
 }
-
-    

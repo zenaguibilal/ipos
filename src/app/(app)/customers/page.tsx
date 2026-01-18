@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
@@ -156,7 +157,7 @@ export default function CustomersPage() {
         }
 
         const companyName = companyProfile?.companyName || 'votre magasin';
-        const message = `Bonjour ${customer.firstName} ${customer.lastName}, ceci est un rappel amical concernant votre solde impayé de ${customer.outstandingBalance.toFixed(2)} DA chez ${companyName}. Merci de régler votre dette dès que possible.`;
+        const message = `Bonjour ${customer.firstName} ${customer.lastName}, ceci est un rappel amical concernant votre solde impayé de ${customer.outstandingBalance.toFixed(1)} DA chez ${companyName}. Merci de régler votre dette dès que possible.`;
         
         const whatsappUrl = `https://wa.me/${customer.phone.replace(/\s+/g, '')}?text=${encodeURIComponent(message)}`;
         window.open(whatsappUrl, '_blank');
@@ -234,7 +235,7 @@ export default function CustomersPage() {
                             <WalletCards className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold text-destructive">{totalOutstandingDebt.toFixed(2)} DA</div>
+                            <div className="text-2xl font-bold text-destructive">{totalOutstandingDebt.toFixed(1)} DA</div>
                             <p className="text-xs text-muted-foreground">Montant total dû par les clients</p>
                         </CardContent>
                     </Card>
@@ -320,11 +321,11 @@ export default function CustomersPage() {
                                         <div className="border-t pt-3 mt-3 space-y-2">
                                             <div className="flex justify-between items-center text-sm">
                                                 <span className="text-muted-foreground">Total Dépensé</span>
-                                                <span className="font-semibold">{customer.totalSpent.toFixed(2)} DA</span>
+                                                <span className="font-semibold">{customer.totalSpent.toFixed(1)} DA</span>
                                             </div>
                                             <div className="flex justify-between items-center text-sm">
                                                 <span className="text-muted-foreground">Solde Actuel</span>
-                                                <span className={`font-bold ${customer.outstandingBalance > 0 ? 'text-destructive' : 'text-green-600'}`}>{customer.outstandingBalance.toFixed(2)} DA</span>
+                                                <span className={`font-bold ${customer.outstandingBalance > 0 ? 'text-destructive' : 'text-green-600'}`}>{customer.outstandingBalance.toFixed(1)} DA</span>
                                             </div>
                                         </div>
                                     </Card>

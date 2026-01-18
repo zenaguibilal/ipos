@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
@@ -55,7 +56,7 @@ export function TopProducts({ products }: TopProductsProps) {
                                     ))}
                                 </Pie>
                                 <Tooltip
-                                    formatter={(value: number) => `${value.toFixed(2)} DA`}
+                                    formatter={(value: number) => `${value.toFixed(1)} DA`}
                                      contentStyle={{
                                         backgroundColor: "hsl(var(--background))",
                                         border: "1px solid hsl(var(--border))"
@@ -83,7 +84,7 @@ export function TopProducts({ products }: TopProductsProps) {
                                                 {product.unitsSold}
                                             </TableCell>
                                             <TableCell className="text-right font-bold text-primary">
-                                                {product.totalProfit.toFixed(2)} DA
+                                                {product.totalProfit.toFixed(1)} DA
                                             </TableCell>
                                         </TableRow>
                                     ))}

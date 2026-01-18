@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -45,7 +46,7 @@ export function SaleCompleteDialog({ isOpen, onOpenChange, sale, customer, compa
         }
 
         const companyName = companyProfile?.companyName || 'notre magasin';
-        const message = `Bonjour ${customer.firstName} ${customer.lastName}, merci pour votre achat chez ${companyName}. Le total de votre facture N°${sale.invoiceNumber} est de ${sale.total.toFixed(2)} DA. Montant payé : ${sale.amountPaid.toFixed(2)} DA. Solde restant : ${sale.remainingBalance.toFixed(2)} DA.`;
+        const message = `Bonjour ${customer.firstName} ${customer.lastName}, merci pour votre achat chez ${companyName}. Le total de votre facture N°${sale.invoiceNumber} est de ${sale.total.toFixed(1)} DA. Montant payé : ${sale.amountPaid.toFixed(1)} DA. Solde restant : ${sale.remainingBalance.toFixed(1)} DA.`;
         
         const whatsappUrl = `https://wa.me/${customer.phone.replace(/\s+/g, '')}?text=${encodeURIComponent(message)}`;
         window.open(whatsappUrl, '_blank');
