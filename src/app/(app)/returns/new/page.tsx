@@ -1,9 +1,9 @@
 
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { collection, doc, query, where, getDocs, runTransaction, serverTimestamp } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -25,6 +25,7 @@ export default function NewReturnPage() {
     const { user, isUserLoading } = useUser();
     const firestore = useFirestore();
     const router = useRouter();
+    const searchParams = useSearchParams();
 
     const [invoiceSearch, setInvoiceSearch] = useState('');
     const [isSearching, setIsSearching] = useState(false);
@@ -38,26 +39,26 @@ export default function NewReturnPage() {
         (user && firestore) ? collection(firestore, 'users', user.uid, 'sales') : null,
     [user, firestore]);
 
-    const handleSearchSale = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!invoiceSearch.trim() || !salesCollectionRef) return;
+    const searchForSale = useCallback(async (invoiceToSearch: string) => {
+        if (!invoiceToSearch.trim() || !salesCollectionRef) return;
         
         setIsSearching(true);
         setFoundSale(null);
         setItemsToReturn([]);
 
-        const q = query(salesCollectionRef, where('invoiceNumber', '==', invoiceSearch.trim()));
+        const q = query(salesCollectionRef, where('invoiceNumber', '==', invoiceToSearch.trim()));
         
         try {
             const querySnapshot = await getDocs(q);
             if (querySnapshot.empty) {
-                toast.error(`Aucune vente trouvée avec le N° de facture: ${invoiceSearch}`);
+                toast.error(`Aucune vente trouvée avec le N° de facture: ${invoiceToSearch}`);
             } else {
                 const saleDoc = querySnapshot.docs[0];
                 const saleData = { ...saleDoc.data(), id: saleDoc.id } as Sale;
                 setFoundSale(saleData);
                 setItemsToReturn(saleData.items.map(item => ({ ...item, returnQuantity: 0 })));
                 setAmountRefunded('0.00');
+                toast.success(`Vente ${saleData.invoiceNumber} trouvée.`);
             }
         } catch (error) {
             console.error("Error searching for sale:", error);
@@ -65,7 +66,20 @@ export default function NewReturnPage() {
         } finally {
             setIsSearching(false);
         }
+    }, [salesCollectionRef]);
+
+    const handleSearchSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        searchForSale(invoiceSearch);
     };
+
+    useEffect(() => {
+        const invoiceFromQuery = searchParams.get('invoiceNumber');
+        if (invoiceFromQuery && salesCollectionRef) {
+            setInvoiceSearch(invoiceFromQuery);
+            searchForSale(invoiceFromQuery);
+        }
+    }, [searchParams, searchForSale, salesCollectionRef]);
     
     const handleQuantityChange = (itemId: string, quantity: string) => {
         const numQuantity = parseInt(quantity) || 0;
@@ -103,7 +117,6 @@ export default function NewReturnPage() {
         setIsSaving(true);
         try {
             await runTransaction(firestore, async (transaction) => {
-                // 1. Create the new return document
                 const newReturnRef = doc(collection(firestore, 'users', user.uid, 'returns'));
                 const returnData: Omit<any, 'id' | 'createdAt'> = {
                     originalSaleId: foundSale.id,
@@ -123,7 +136,6 @@ export default function NewReturnPage() {
                 };
                 transaction.set(newReturnRef, returnData);
 
-                // 2. Update stock for each returned product
                 for (const item of returnedItems) {
                     if (!item.id.startsWith('custom-')) {
                         const productRef = doc(firestore, 'users', user.uid, 'products', item.id);
@@ -170,7 +182,7 @@ export default function NewReturnPage() {
                         <CardDescription>Entrez le numéro de la facture pour trouver la vente à retourner.</CardDescription>
                     </CardHeader>
                     <CardContent>
-                         <form onSubmit={handleSearchSale} className="flex gap-2">
+                         <form onSubmit={handleSearchSubmit} className="flex gap-2">
                             <Input
                                 placeholder="Entrez le N° de facture (ex: INV-162...)"
                                 value={invoiceSearch}
@@ -273,4 +285,3 @@ export default function NewReturnPage() {
         </main>
     );
 }
-

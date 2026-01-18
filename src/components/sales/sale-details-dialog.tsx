@@ -1,24 +1,26 @@
+
 'use client';
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import type { Sale, CompanyProfile, Customer } from '@/lib/types';
 import { Button } from '../ui/button';
-import { Printer, Download } from 'lucide-react';
+import { Printer, Download, Undo2 } from 'lucide-react';
 import { ThermalReceipt } from './thermal-receipt';
-import { A4Receipt } from './a4-receipt'; // Import A4 receipt
+import { A4Receipt } from './a4-receipt';
 import { useRef, useEffect, useState } from 'react';
+import Link from 'next/link';
 
 interface SaleDetailsDialogProps {
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
     sale: Sale;
     companyProfile?: CompanyProfile | null;
-    customer?: Customer | null; // Add customer prop
+    customer?: Customer | null;
 }
 
 export function SaleDetailsDialog({ isOpen, onOpenChange, sale, companyProfile, customer }: SaleDetailsDialogProps) {
     const thermalReceiptRef = useRef<HTMLDivElement>(null);
-    const a4ReceiptRef = useRef<HTMLDivElement>(null); // Ref for A4 receipt
+    const a4ReceiptRef = useRef<HTMLDivElement>(null);
     const [html2pdf, setHtml2pdf] = useState<any>(null);
 
     useEffect(() => {
@@ -34,7 +36,6 @@ export function SaleDetailsDialog({ isOpen, onOpenChange, sale, companyProfile, 
         const receiptElement = format === 'thermal' ? thermalReceiptRef.current : a4ReceiptRef.current;
         if (!printableContent || !receiptElement) return;
 
-        // Apply correct classes for printing
         if (format === 'thermal') {
             document.documentElement.classList.add('thermal');
         } else {
@@ -53,7 +54,6 @@ export function SaleDetailsDialog({ isOpen, onOpenChange, sale, companyProfile, 
         
         setTimeout(() => {
             window.print();
-            // Clean up class after printing if it was thermal
             if (format === 'thermal') {
                 document.documentElement.classList.remove('thermal');
             }
@@ -61,7 +61,7 @@ export function SaleDetailsDialog({ isOpen, onOpenChange, sale, companyProfile, 
     };
 
     const handleDownloadPdf = () => {
-        const element = a4ReceiptRef.current; // Download A4 version
+        const element = a4ReceiptRef.current;
         if (!element || !html2pdf) return;
 
         const opt = {
@@ -113,6 +113,12 @@ export function SaleDetailsDialog({ isOpen, onOpenChange, sale, companyProfile, 
                      <Button type="button" variant="outline" onClick={handleDownloadPdf} disabled={!html2pdf} className="w-full">
                         <Download className="mr-2 h-4 w-4" />
                         Télécharger PDF (A4)
+                    </Button>
+                    <Button asChild variant="secondary" className="w-full">
+                        <Link href={`/returns/new?invoiceNumber=${sale.invoiceNumber}`}>
+                            <Undo2 className="mr-2 h-4 w-4" />
+                            Créer un retour pour cette vente
+                        </Link>
                     </Button>
                     <Button type="button" onClick={() => onOpenChange(false)} className="w-full">
                         Fermer
