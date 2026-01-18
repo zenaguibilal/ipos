@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -6,7 +5,6 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
   LogOut,
   User as UserIcon,
-  Store,
   LayoutDashboard,
   ShoppingBasket,
   Package,
@@ -73,7 +71,7 @@ export function AppHeader() {
                   href="/dashboard"
                   className="flex items-center gap-2 font-semibold"
               >
-                  <Store className="h-6 w-6" />
+                  <span className="text-2xl">🏪</span>
                   <AnimatedLogo />
               </Link>
               <span className="text-xs text-muted-foreground hidden lg:inline">Développé par zenagui bilal</span>

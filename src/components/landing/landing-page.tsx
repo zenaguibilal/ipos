@@ -1,10 +1,9 @@
-
 'use client';
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { InstallPWAButton } from "@/components/layout/install-pwa-button";
-import { ShoppingCart, Archive, Users, FileText, BarChart3, Bell, Store, Rocket } from 'lucide-react';
+import { ShoppingCart, Archive, Users, FileText, BarChart3, Bell, Rocket } from 'lucide-react';
 import Link from "next/link";
 
 const features = [
@@ -33,7 +32,7 @@ export function LandingPage() {
             <section className="w-full py-20 md:py-32 bg-muted/40 text-center">
                 <div className="container px-4 md:px-6">
                     <div className="flex flex-col items-center space-y-6">
-                        <Store className="h-20 w-20 text-primary"/>
+                        <span className="text-7xl">🏪</span>
                         <h1 className="text-4xl md:text-6xl font-bold tracking-tighter">
                             Bienvenue sur iPOS
                         </h1>

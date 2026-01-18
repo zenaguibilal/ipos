@@ -43,7 +43,9 @@ export const metadata: Metadata = {
     description: APP_DESCRIPTION,
   },
   icons: {
-    apple: "https://picsum.photos/seed/ipos-apple/180/180",
+    icon: "/icon.svg",
+    shortcut: "/icon.svg",
+    apple: "/icon.svg",
   }
 };
 
@@ -59,12 +61,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr" suppressHydrationWarning>
-      <head>
-        <link
-          rel="icon"
-          href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏪</text></svg>"
-        />
-      </head>
+      <head />
       <body>
         <ThemeProvider
             attribute="class"
