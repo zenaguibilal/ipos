@@ -16,7 +16,7 @@ import { AddCustomerForm } from '@/components/customers/add-customer-form';
 import { AddPaymentForm } from '@/components/customers/add-payment-form';
 
 
-import type { Product, Sale, SaleItem, CompanyProfile, Customer, Payment } from '@/lib/types';
+import type { Product, Sale, SaleItem, CompanyProfile, Customer, Payment, ProductReturn } from '@/lib/types';
 import { ProductGrid } from '@/components/sell/product-grid';
 import { CartPanel } from '@/components/sell/cart-panel';
 
@@ -42,12 +42,15 @@ export default function SellPage() {
     const customersCollectionRef = useMemoFirebase(() => (user && firestore) ? collection(firestore, 'users', user.uid, 'customers') : null, [user, firestore]);
     const salesCollectionRef = useMemoFirebase(() => (user && firestore) ? collection(firestore, 'users', user.uid, 'sales') : null, [user, firestore]);
     const paymentsCollectionRef = useMemoFirebase(() => (user && firestore) ? collection(firestore, 'users', user.uid, 'payments') : null, [user, firestore]);
+    const returnsCollectionRef = useMemoFirebase(() => (user && firestore) ? collection(firestore, 'users', user.uid, 'returns') : null, [user, firestore]);
+
 
     const { data: products, isLoading: isLoadingProducts } = useCollection<ProductWithOptionalBarcode>(productsCollectionRef);
     const { data: companyProfile, isLoading: isLoadingCompany } = useDoc<CompanyProfile>(companyDocRef);
     const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersCollectionRef);
     const { data: allSales, isLoading: isLoadingSales } = useCollection<Sale>(salesCollectionRef);
     const { data: allPayments, isLoading: isLoadingPayments } = useCollection<Payment>(paymentsCollectionRef);
+    const { data: allReturns, isLoading: isLoadingReturns } = useCollection<ProductReturn>(returnsCollectionRef);
 
 
     // Component state for multiple sales sessions
@@ -344,7 +347,7 @@ export default function SellPage() {
     }, [handleKeyDown]);
 
 
-    const isLoading = isUserLoading || isLoadingProducts || isLoadingCompany || isLoadingCustomers || isLoadingSales || isLoadingPayments;
+    const isLoading = isUserLoading || isLoadingProducts || isLoadingCompany || isLoadingCustomers || isLoadingSales || isLoadingPayments || isLoadingReturns;
     
     if (isLoading || !user || !activeSession) {
         return <div className="flex h-full items-center justify-center"><p>Chargement de l'interface de vente...</p></div>;
@@ -414,6 +417,7 @@ export default function SellPage() {
                         customers={customers || []}
                         allSales={allSales || []}
                         allPayments={allPayments || []}
+                        allReturns={allReturns || []}
                         selectedCustomer={activeSession.customerId}
                         onSelectCustomer={handleSelectCustomer}
                         onClearCustomer={handleClearCustomer}

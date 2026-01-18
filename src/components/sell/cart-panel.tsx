@@ -10,7 +10,7 @@ import { Trash2, XCircle, HardDriveDownload, PlusCircle, UserPlus, UserX, Wallet
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Combobox, ComboboxOption } from '@/components/ui/combobox';
 import type { CartItem, SalesSession } from '@/app/(app)/sell/page';
-import type { Customer, Sale, Payment } from '@/lib/types';
+import type { Customer, Sale, Payment, ProductReturn } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 
@@ -28,6 +28,7 @@ interface CartPanelProps {
     customers: Customer[];
     allSales: Sale[];
     allPayments: Payment[];
+    allReturns: ProductReturn[];
     selectedCustomer?: string;
     onSelectCustomer: (customerId: string) => void;
     onClearCustomer: () => void;
@@ -55,6 +56,7 @@ export function CartPanel({
     customers,
     allSales,
     allPayments,
+    allReturns,
     selectedCustomer,
     onSelectCustomer,
     onClearCustomer,
@@ -80,16 +82,18 @@ export function CartPanel({
         customers.forEach(c => {
             const customerSales = allSales.filter(s => s.customerId === c.id);
             const customerPayments = allPayments.filter(p => p.customerId === c.id);
+            const customerReturns = allReturns.filter(r => r.customerId === c.id);
             
             const totalSpent = customerSales.reduce((acc, s) => acc + s.total, 0);
             const totalPaidFromSales = customerSales.reduce((acc, s) => acc + s.amountPaid, 0);
             const totalStandalonePayments = customerPayments.reduce((acc, p) => acc + p.amount, 0);
+            const totalReturnedValue = customerReturns.reduce((acc, r) => acc + r.totalReturnValue, 0);
             
-            const balance = totalSpent - totalPaidFromSales - totalStandalonePayments;
+            const balance = (totalSpent - totalReturnedValue) - (totalPaidFromSales + totalStandalonePayments);
             balances.set(c.id, balance < 0.01 ? 0 : balance);
         });
         return balances;
-    }, [customers, allSales, allPayments]);
+    }, [customers, allSales, allPayments, allReturns]);
 
 
     const customerOptions = useMemo<ComboboxOption[]>(() => {

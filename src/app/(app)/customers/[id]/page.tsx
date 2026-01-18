@@ -16,7 +16,7 @@ import { CustomerHistory } from '@/components/customers/customer-history';
 import { CustomerStats } from '@/components/customers/customer-stats';
 import { SaleDetailsDialog } from '@/components/sales/sale-details-dialog';
 
-import type { Customer, Sale, Payment, CompanyProfile } from '@/lib/types';
+import type { Customer, Sale, Payment, CompanyProfile, ProductReturn } from '@/lib/types';
 import { safeToDate } from '@/lib/utils';
 
 
@@ -47,21 +47,27 @@ export default function CustomerDetailPage() {
     const allPaymentsCollectionRef = useMemoFirebase(() => 
         (user && firestore) ? collection(firestore, 'users', user.uid, 'payments') : null, 
     [user, firestore]);
+    
+    const allReturnsCollectionRef = useMemoFirebase(() => 
+        (user && firestore) ? collection(firestore, 'users', user.uid, 'returns') : null, 
+    [user, firestore]);
 
     const companyDocRef = useMemoFirebase(() => user && firestore ? doc(firestore, 'users', user.uid, 'companyProfile', 'main') : null, [user, firestore]);
 
     const { data: customer, isLoading: isLoadingCustomer } = useDoc<Customer>(customerDocRef);
     const { data: allSales, isLoading: isLoadingSales } = useCollection<Sale>(allSalesCollectionRef);
     const { data: allPayments, isLoading: isLoadingPayments } = useCollection<Payment>(allPaymentsCollectionRef);
+    const { data: allReturns, isLoading: isLoadingReturns } = useCollection<ProductReturn>(allReturnsCollectionRef);
     const { data: companyProfile, isLoading: isLoadingCompany } = useDoc<CompanyProfile>(companyDocRef);
 
     // Memoized client-side filtering
-    const { customerSales, customerPayments } = useMemo(() => {
-        if (!customerId) return { customerSales: [], customerPayments: [] };
+    const { customerSales, customerPayments, customerReturns } = useMemo(() => {
+        if (!customerId) return { customerSales: [], customerPayments: [], customerReturns: [] };
         const sales = (allSales || []).filter(s => s.customerId === customerId);
         const payments = (allPayments || []).filter(p => p.customerId === customerId);
-        return { customerSales: sales, customerPayments: payments };
-    }, [allSales, allPayments, customerId]);
+        const returns = (allReturns || []).filter(r => r.customerId === customerId);
+        return { customerSales: sales, customerPayments: payments, customerReturns: returns };
+    }, [allSales, allPayments, allReturns, customerId]);
 
     useEffect(() => {
         if (!isUserLoading && !user) {
@@ -69,18 +75,21 @@ export default function CustomerDetailPage() {
         }
     }, [user, isUserLoading, router]);
 
-    const { totalSpent, totalPaid, outstandingBalance, lastActivityDate } = useMemo(() => {
+    const { totalSpent, totalPaid, outstandingBalance, lastActivityDate, totalReturnedValue } = useMemo(() => {
         const sales = customerSales;
         const payments = customerPayments;
+        const returns = customerReturns;
         
         const totalSalesAmount = sales.reduce((sum, sale) => sum + sale.total, 0);
         const totalPaidWithinSales = sales.reduce((sum, sale) => sum + sale.amountPaid, 0);
         const totalStandalonePayments = payments.reduce((sum, payment) => sum + payment.amount, 0);
+        const totalReturned = returns.reduce((sum, r) => sum + r.totalReturnValue, 0);
         
         const totalPaidAmount = totalPaidWithinSales + totalStandalonePayments;
-        const balance = totalSalesAmount - totalPaidAmount;
+        
+        const balance = (totalSalesAmount - totalReturned) - totalPaidAmount;
 
-        const allTransactions = [...(sales || []), ...(payments || [])];
+        const allTransactions = [...(sales || []), ...(payments || []), ...(returns || [])];
         const validTimestamps = allTransactions
             .map(t => t.createdAt)
             .filter(Boolean) // Filter out null/undefined timestamps
@@ -94,11 +103,12 @@ export default function CustomerDetailPage() {
             totalSpent: totalSalesAmount, 
             totalPaid: totalPaidAmount,
             outstandingBalance: balance < 0.01 ? 0 : balance,
-            lastActivityDate: lastActivity
+            lastActivityDate: lastActivity,
+            totalReturnedValue: totalReturned
         };
-    }, [customerSales, customerPayments]);
+    }, [customerSales, customerPayments, customerReturns]);
 
-    const isLoading = isUserLoading || isLoadingCustomer || isLoadingSales || isLoadingPayments || isLoadingCompany;
+    const isLoading = isUserLoading || isLoadingCustomer || isLoadingSales || isLoadingPayments || isLoadingCompany || isLoadingReturns;
 
     if (isLoading || !user) {
         return <div className="flex h-full items-center justify-center"><p>Chargement du profil client...</p></div>;
@@ -204,12 +214,14 @@ export default function CustomerDetailPage() {
                             totalSpent={totalSpent}
                             outstandingBalance={outstandingBalance}
                             lastActivityDate={lastActivityDate}
+                            totalReturned={totalReturnedValue}
                         />
 
                         <CustomerHistory 
                             sales={customerSales || []}
                             payments={customerPayments || []}
-                            isLoading={isLoadingSales || isLoadingPayments}
+                            returns={customerReturns || []}
+                            isLoading={isLoadingSales || isLoadingPayments || isLoadingReturns}
                             onViewSale={setSelectedSale}
                         />
                     </div>

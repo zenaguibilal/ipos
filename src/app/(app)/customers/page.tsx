@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { PlusCircle, User, Phone, WalletCards, CalendarDays, AlertTriangle, Search, Users as UsersIcon, CalendarClock, ListFilter, MessageSquare } from 'lucide-react';
 import { AddCustomerForm } from '@/components/customers/add-customer-form';
-import type { Customer, Sale, Payment, CustomerWithSalesData, CompanyProfile } from '@/lib/types';
+import type { Customer, Sale, Payment, CustomerWithSalesData, CompanyProfile, ProductReturn } from '@/lib/types';
 import Link from 'next/link';
 import { cn, safeToDate } from '@/lib/utils';
 import { getDate, formatDistanceToNow } from 'date-fns';
@@ -39,12 +39,14 @@ export default function CustomersPage() {
     [user, firestore]);
     const salesCollectionRef = useMemoFirebase(() => (user && firestore) ? collection(firestore, 'users', user.uid, 'sales') : null, [user, firestore]);
     const paymentsCollectionRef = useMemoFirebase(() => (user && firestore) ? collection(firestore, 'users', user.uid, 'payments') : null, [user, firestore]);
+    const returnsCollectionRef = useMemoFirebase(() => (user && firestore) ? collection(firestore, 'users', user.uid, 'returns') : null, [user, firestore]);
     const companyDocRef = useMemoFirebase(() => (user && firestore) ? doc(firestore, 'users', user.uid, 'companyProfile', 'main') : null, [user, firestore]);
 
 
     const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersQuery);
     const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesCollectionRef);
     const { data: payments, isLoading: isLoadingPayments } = useCollection<Payment>(paymentsCollectionRef);
+    const { data: returns, isLoading: isLoadingReturns } = useCollection<ProductReturn>(returnsCollectionRef);
     const { data: companyProfile, isLoading: isLoadingCompany } = useDoc<CompanyProfile>(companyDocRef);
 
 
@@ -55,7 +57,7 @@ export default function CustomersPage() {
     }, [user, isUserLoading, router]);
 
     const { customersWithData, totalOutstandingDebt, customersWithDebtCount } = useMemo(() => {
-        if (!customers || !sales || !payments) return { customersWithData: [], totalOutstandingDebt: 0, customersWithDebtCount: 0 };
+        if (!customers || !sales || !payments || !returns) return { customersWithData: [], totalOutstandingDebt: 0, customersWithDebtCount: 0 };
 
         const today = new Date();
         const currentDayOfMonth = getDate(today);
@@ -66,13 +68,15 @@ export default function CustomersPage() {
         const customerData: CustomerWithSalesData[] = customers.map(customer => {
             const customerSales = sales.filter(s => s.customerId === customer.id);
             const customerPayments = payments.filter(p => p.customerId === customer.id);
+            const customerReturns = returns.filter(r => r.customerId === customer.id);
 
             const totalSpent = customerSales.reduce((acc, s) => acc + s.total, 0);
+            const totalReturnedValue = customerReturns.reduce((acc, r) => acc + r.totalReturnValue, 0);
             
             const totalPaidFromSales = customerSales.reduce((acc, s) => acc + s.amountPaid, 0);
             const totalStandalonePayments = customerPayments.reduce((acc, p) => acc + p.amount, 0);
             
-            const outstandingBalance = totalSpent - totalPaidFromSales - totalStandalonePayments;
+            const outstandingBalance = (totalSpent - totalReturnedValue) - (totalPaidFromSales + totalStandalonePayments);
             const finalBalance = outstandingBalance < 0.01 ? 0 : outstandingBalance;
             
             if (finalBalance > 0) {
@@ -109,7 +113,7 @@ export default function CustomersPage() {
 
         return { customersWithData: customerData, totalOutstandingDebt: totalDebt, customersWithDebtCount: debtCount };
 
-    }, [customers, sales, payments]);
+    }, [customers, sales, payments, returns]);
     
     const sortedAndFilteredCustomers = useMemo(() => {
         let customersToProcess = [...customersWithData];
@@ -143,7 +147,7 @@ export default function CustomersPage() {
     
     const percentageOfDebtors = customersWithData.length > 0 ? ((customersWithDebtCount / customersWithData.length) * 100).toFixed(0) : 0;
 
-    const isLoading = isUserLoading || isLoadingCustomers || isLoadingSales || isLoadingPayments || isLoadingCompany;
+    const isLoading = isUserLoading || isLoadingCustomers || isLoadingSales || isLoadingPayments || isLoadingCompany || isLoadingReturns;
 
     const handleWhatsAppReminder = (customer: CustomerWithSalesData) => {
         if (!customer.phone) {
