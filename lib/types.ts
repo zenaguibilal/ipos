@@ -57,8 +57,7 @@ export interface Payment {
 
 export interface BreadOrder {
     id: string;
-    customerId: string;
-    customerName: string;
+    name: string;
     quantity: number;
     isPaid: boolean;
     isDelivered: boolean;

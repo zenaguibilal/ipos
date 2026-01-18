@@ -10,7 +10,7 @@ import { AddOrderForm } from '@/components/bread-orders/add-order-form';
 import { EditOrderForm } from '@/components/bread-orders/edit-order-form';
 import { ResetOrdersDialog } from '@/components/bread-orders/reset-orders-dialog';
 import { OrderCard } from '@/components/bread-orders/order-card';
-import type { BreadOrder, CompanyProfile, Customer } from '@/lib/types';
+import type { BreadOrder, CompanyProfile } from '@/lib/types';
 import { PlusCircle, RotateCcw, Search, Cookie, CheckCheck, Truck, CircleDollarSign, CreditCard, ListFilter, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -46,11 +46,6 @@ export default function BreadOrdersPage() {
     }, [user, firestore]);
     const { data: orders, isLoading: isLoadingOrders } = useCollection<BreadOrder>(ordersQuery);
 
-    const customersQuery = useMemoFirebase(() => 
-        (user && firestore) ? query(collection(firestore, 'users', user.uid, 'customers'), orderBy('lastName', 'asc')) : null, 
-    [user, firestore]);
-    const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersQuery);
-
     useEffect(() => {
         if (!isUserLoading && !user) {
             router.push('/login');
@@ -85,14 +80,14 @@ export default function BreadOrdersPage() {
         // 2. Filter by search
         if (searchQuery) {
             const lowercasedQuery = searchQuery.toLowerCase();
-            processedOrders = processedOrders.filter(order => order.customerName.toLowerCase().includes(lowercasedQuery));
+            processedOrders = processedOrders.filter(order => order.name.toLowerCase().includes(lowercasedQuery));
         }
 
         // 3. Sort
         processedOrders.sort((a, b) => {
             switch (sortOption) {
                 case 'name_asc':
-                    return a.customerName.localeCompare(b.customerName);
+                    return a.name.localeCompare(b.name);
                 case 'quantity_desc':
                     return b.quantity - a.quantity;
                 case 'createdAt_desc':
@@ -123,13 +118,12 @@ export default function BreadOrdersPage() {
     const selectedOrderIds = useMemo(() => Object.keys(selectedOrders).filter(id => selectedOrders[id]), [selectedOrders]);
 
 
-    const handleAddOrder = (customer: {id: string, name: string}, quantity: number, isRecurring: boolean) => {
+    const handleAddOrder = (name: string, quantity: number, isRecurring: boolean) => {
         if (!firestore || !user) return;
         const ordersCollectionRef = collection(firestore, 'users', user.uid, 'breadOrders');
         
         addDocumentNonBlocking(ordersCollectionRef, {
-            customerId: customer.id,
-            customerName: customer.name,
+            name,
             quantity,
             isPaid: false,
             isDelivered: false,
@@ -159,12 +153,11 @@ export default function BreadOrdersPage() {
         });
     };
     
-    const handleUpdateOrderDetails = (id: string, customer: {id: string, name: string}, quantity: number, isRecurring: boolean) => {
+    const handleUpdateOrderDetails = (id: string, name: string, quantity: number, isRecurring: boolean) => {
         if (!firestore || !user) return;
         const orderDocRef = doc(firestore, 'users', user.uid, 'breadOrders', id);
          updateDocumentNonBlocking(orderDocRef, { 
-             customerId: customer.id,
-             customerName: customer.name,
+             name,
              quantity, 
              isRecurring 
             }, {
@@ -192,76 +185,25 @@ export default function BreadOrdersPage() {
     };
 
     const handleResetOrders = async () => {
-        if (!firestore || !user || !orders || !companyProfile) return;
+        if (!firestore || !user || !orders) return;
         
-        const breadPrice = companyProfile.breadPrice;
-        if (!breadPrice || breadPrice <= 0) {
-            toast.error("Le prix du pain n'est pas défini dans le profil de l'entreprise. Impossible de convertir les dettes.", {
-                description: "Veuillez définir un prix pour le pain dans la page de votre profil."
-            });
-            setIsResetting(false);
-            return;
-        }
-
         setIsProcessingReset(true);
         const batch = writeBatch(firestore);
-        const salesCollectionRef = collection(firestore, 'users', user.uid, 'sales');
 
-        const unpaidDeliveredOrders = orders.filter(o => o.isDelivered && !o.isPaid);
-        const otherOrders = orders.filter(o => !(o.isDelivered && !o.isPaid));
-        let debtCreatedCount = 0;
-
-        // Process unpaid orders by converting them to sales
-        unpaidDeliveredOrders.forEach(order => {
-            const debtAmount = order.quantity * breadPrice;
-            const newSaleRef = doc(salesCollectionRef);
-            const saleData = {
-                invoiceNumber: `PAIN-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-                items: [{
-                    id: 'pain-item-id',
-                    name: 'Pain',
-                    price: breadPrice,
-                    purchasePrice: 0,
-                    quantity: order.quantity
-                }],
-                subtotal: debtAmount,
-                total: debtAmount,
-                amountPaid: 0,
-                remainingBalance: debtAmount,
-                paymentStatus: 'unpaid' as const,
-                customerId: order.customerId,
-                customerName: order.customerName,
-                createdAt: serverTimestamp(),
-            };
-            batch.set(newSaleRef, saleData);
-            
-            // Delete the bread order after converting it to debt
-            const orderRef = doc(firestore, 'users', user.uid, 'breadOrders', order.id);
-            batch.delete(orderRef);
-            debtCreatedCount++;
-        });
-
-        // Process the rest of the orders
-        otherOrders.forEach(order => {
+        orders.forEach(order => {
             const orderRef = doc(firestore, 'users', user.uid, 'breadOrders', order.id);
             if (order.isRecurring) {
                 // Reset recurring orders for the next day
                 batch.update(orderRef, { isPaid: false, isDelivered: false, createdAt: serverTimestamp() });
             } else {
-                // Delete delivered+paid non-recurring orders, or undelivered non-recurring orders
+                // Delete non-recurring orders
                 batch.delete(orderRef);
             }
         });
 
         try {
             await batch.commit();
-            if (debtCreatedCount > 0) {
-                toast.success(`${debtCreatedCount} commande(s) impayée(s) convertie(s) en dette.`, {
-                    description: "La liste est maintenant réinitialisée pour le lendemain !",
-                });
-            } else {
-                toast.success("Liste réinitialisée pour le lendemain !");
-            }
+            toast.success("Liste réinitialisée pour le lendemain !");
         } catch (error) {
             toast.error("Erreur lors de la réinitialisation de la liste.");
             console.error(error);
@@ -312,7 +254,7 @@ export default function BreadOrdersPage() {
     };
 
 
-    const isLoading = isUserLoading || isLoadingOrders || isLoadingCompany || isLoadingCustomers;
+    const isLoading = isUserLoading || isLoadingOrders || isLoadingCompany;
     const breadPrice = companyProfile?.breadPrice;
 
     return (
@@ -321,7 +263,6 @@ export default function BreadOrdersPage() {
                 isOpen={isAddingOrder}
                 onOpenChange={setIsAddingOrder}
                 onConfirm={handleAddOrder}
-                customers={customers || []}
             />
             {editingOrder && (
                  <EditOrderForm
@@ -329,7 +270,6 @@ export default function BreadOrdersPage() {
                     onOpenChange={() => setEditingOrder(null)}
                     onConfirm={handleUpdateOrderDetails}
                     order={editingOrder}
-                    customers={customers || []}
                 />
             )}
             <ResetOrdersDialog
