@@ -9,9 +9,6 @@ const withPWA = withPWAInit({
 });
 
 const nextConfig: NextConfig = {
-  experimental: {
-    allowedDevOrigins: ["https://*.cloudworkstations.dev"],
-  },
 };
 
 export default withPWA(nextConfig);
