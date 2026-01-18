@@ -7,7 +7,7 @@ import { collection, query, orderBy } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Search, PlusCircle, Undo2, CircleDollarSign, Hash, MoreHorizontal, FileText, Trash2 } from 'lucide-react';
+import { Search, PlusCircle, Undo2, CircleDollarSign, Hash, MoreHorizontal, FileText, Trash2, Download, ChevronDown } from 'lucide-react';
 import type { ProductReturn } from '@/lib/types';
 import { safeToDate } from '@/lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -17,7 +17,9 @@ import { DeleteReturnDialog } from '@/components/returns/delete-return-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { DateRangePicker } from '@/components/dashboard/date-range-picker';
 import { DateRange } from 'react-day-picker';
-import { subDays, startOfDay, endOfDay } from 'date-fns';
+import { subDays, startOfDay, endOfDay, format } from 'date-fns';
+import { toast } from 'sonner';
+import Papa from 'papaparse';
 
 export default function ReturnsPage() {
     const { user, isUserLoading } = useUser();
@@ -75,6 +77,40 @@ export default function ReturnsPage() {
         };
     }, [returns, searchQuery, dateRange]);
 
+    const handleExportToCSV = () => {
+        if (filteredReturns.length === 0) {
+            toast.info("Aucun retour à exporter.");
+            return;
+        }
+
+        const csvData = filteredReturns.map(r => {
+            const returnDate = safeToDate(r.createdAt);
+            const itemsSummary = r.items.map(item => `${item.quantity} x ${item.productName}`).join('; ');
+
+            return {
+                "Date": format(returnDate, 'yyyy-MM-dd HH:mm:ss'),
+                "Facture Originale": r.originalInvoiceNumber,
+                "Client": r.customerName || 'N/A',
+                "Valeur Retour": r.totalReturnValue,
+                "Montant Remboursé": r.amountRefunded,
+                "Articles": itemsSummary,
+                "Notes": r.notes || '',
+            };
+        });
+
+        const csv = Papa.unparse(csvData);
+        const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        const fromDateStr = dateRange?.from ? format(dateRange.from, 'yyyy-MM-dd') : 'start';
+        const toDateStr = dateRange?.to ? format(dateRange.to, 'yyyy-MM-dd') : 'end';
+        link.setAttribute('download', `retours_${fromDateStr}_a_${toDateStr}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast.success("Historique des retours exporté avec succès.");
+    };
+
     const isLoading = isUserLoading || isLoadingReturns;
 
     if (isLoading || !user) {
@@ -109,6 +145,18 @@ export default function ReturnsPage() {
                     </div>
                      <div className="flex items-center gap-2">
                         <DateRangePicker onUpdate={setDateRange} />
+                         <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="outline">
+                                    Actions <ChevronDown className="ml-2 h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={handleExportToCSV}>
+                                    <Download className="mr-2 h-4 w-4" /> Exporter en CSV
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                         <Button asChild>
                             <Link href="/returns/new">
                                 <PlusCircle className="mr-2 h-4 w-4" />
