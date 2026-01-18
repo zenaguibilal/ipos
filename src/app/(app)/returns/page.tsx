@@ -7,12 +7,14 @@ import { collection, query, orderBy } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Search, PlusCircle, Undo2, CircleDollarSign, Hash } from 'lucide-react';
+import { Search, PlusCircle, Undo2, CircleDollarSign, Hash, MoreHorizontal, FileText, Trash2 } from 'lucide-react';
 import type { ProductReturn } from '@/lib/types';
 import { safeToDate } from '@/lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import Link from 'next/link';
 import { ReturnDetailsDialog } from '@/components/returns/return-details-dialog';
+import { DeleteReturnDialog } from '@/components/returns/delete-return-dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 export default function ReturnsPage() {
     const { user, isUserLoading } = useUser();
@@ -21,6 +23,7 @@ export default function ReturnsPage() {
 
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedReturn, setSelectedReturn] = useState<ProductReturn | null>(null);
+    const [deletingReturn, setDeletingReturn] = useState<ProductReturn | null>(null);
 
     // --- Data Fetching ---
     const returnsQuery = useMemoFirebase(() => 
@@ -69,6 +72,14 @@ export default function ReturnsPage() {
                     isOpen={!!selectedReturn}
                     onOpenChange={(isOpen) => !isOpen && setSelectedReturn(null)}
                     productReturn={selectedReturn}
+                />
+            )}
+             {deletingReturn && user && (
+                <DeleteReturnDialog
+                    isOpen={!!deletingReturn}
+                    onOpenChange={(isOpen) => !isOpen && setDeletingReturn(null)}
+                    productReturn={deletingReturn}
+                    userId={user.uid}
                 />
             )}
 
@@ -153,17 +164,38 @@ export default function ReturnsPage() {
                                             <TableHead className="text-center">Articles</TableHead>
                                             <TableHead className="text-right">Valeur du Retour</TableHead>
                                             <TableHead className="text-right">Montant Remboursé</TableHead>
+                                            <TableHead><span className="sr-only">Actions</span></TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {filteredReturns.map((r) => (
-                                            <TableRow key={r.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setSelectedReturn(r)}>
+                                            <TableRow key={r.id}>
                                                 <TableCell>{safeToDate(r.createdAt).toLocaleDateString('fr-FR')}</TableCell>
                                                 <TableCell className="font-mono text-xs">{r.originalInvoiceNumber}</TableCell>
                                                 <TableCell>{r.customerName || 'N/A'}</TableCell>
                                                 <TableCell className="text-center">{r.items.reduce((acc, item) => acc + item.quantity, 0)}</TableCell>
                                                 <TableCell className="text-right font-semibold">{r.totalReturnValue.toFixed(2)} DA</TableCell>
                                                 <TableCell className="text-right text-destructive font-semibold">-{r.amountRefunded.toFixed(2)} DA</TableCell>
+                                                <TableCell className="text-right">
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" className="h-8 w-8 p-0">
+                                                                <span className="sr-only">Ouvrir le menu</span>
+                                                                <MoreHorizontal className="h-4 w-4" />
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end">
+                                                             <DropdownMenuItem onClick={() => setSelectedReturn(r)}>
+                                                                <FileText className="mr-2 h-4 w-4" />
+                                                                <span>Voir les détails</span>
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem onClick={() => setDeletingReturn(r)} className="text-destructive focus:text-destructive-foreground focus:bg-destructive">
+                                                                <Trash2 className="mr-2 h-4 w-4" />
+                                                                <span>Annuler & Supprimer</span>
+                                                            </DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                </TableCell>
                                             </TableRow>
                                         ))}
                                     </TableBody>
