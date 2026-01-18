@@ -12,6 +12,7 @@ import { Search, PlusCircle, Undo2, CircleDollarSign, Hash } from 'lucide-react'
 import type { ProductReturn } from '@/lib/types';
 import { safeToDate } from '@/lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import Link from 'next/link';
 
 export default function ReturnsPage() {
     const { user, isUserLoading } = useUser();
@@ -69,9 +70,11 @@ export default function ReturnsPage() {
                         Consultez et gérez les retours de produits.
                     </p>
                 </div>
-                <Button onClick={() => {}} disabled>
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Enregistrer un retour
+                 <Button asChild>
+                    <Link href="/returns/new">
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Enregistrer un retour
+                    </Link>
                 </Button>
             </div>
 
