@@ -19,6 +19,7 @@ function SignupFormComponent() {
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const auth = useAuth();
@@ -34,6 +35,12 @@ function SignupFormComponent() {
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
+
+    if (password !== confirmPassword) {
+        setError('Les mots de passe ne correspondent pas.');
+        return;
+    }
+
     if (!auth) {
       setError("Le service d'authentification n'est pas disponible.");
       return;
@@ -129,6 +136,17 @@ function SignupFormComponent() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                disabled={isLoading}
+                />
+            </div>
+             <div className="grid gap-2">
+                <Label htmlFor="confirm-password">Confirmer le mot de passe</Label>
+                <Input 
+                id="confirm-password"
+                type="password"
+                required
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
                 disabled={isLoading}
                 />
             </div>
