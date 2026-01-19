@@ -11,6 +11,7 @@ import { sendEmailVerification, GoogleAuthProvider, signInWithPopup, getAddition
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -27,6 +28,7 @@ function SignupFormComponent() {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [agreeToTerms, setAgreeToTerms] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [passwordChecks, setPasswordChecks] = useState({
@@ -263,7 +265,26 @@ function SignupFormComponent() {
                 disabled={isLoading}
                 />
             </div>
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <div className="flex items-start space-x-2">
+                <Checkbox 
+                    id="terms" 
+                    checked={agreeToTerms}
+                    onCheckedChange={(checked) => setAgreeToTerms(checked as boolean)}
+                    disabled={isLoading}
+                />
+                <div className="grid gap-1.5 leading-none">
+                    <label
+                    htmlFor="terms"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                    >
+                    Accepter les <Link href="/terms" className="underline">termes et conditions</Link>
+                    </label>
+                    <p className="text-sm text-muted-foreground">
+                    Vous acceptez nos conditions d'utilisation et notre politique de confidentialité.
+                    </p>
+                </div>
+            </div>
+            <Button type="submit" className="w-full" disabled={isLoading || !agreeToTerms}>
                 {isLoading ? (
                     <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
