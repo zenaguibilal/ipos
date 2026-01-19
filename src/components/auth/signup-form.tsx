@@ -1,3 +1,4 @@
+
 'use client';
 
 import { initiateEmailSignUp } from '@/firebase/non-blocking-login';
@@ -277,11 +278,16 @@ function SignupFormComponent() {
                     htmlFor="terms"
                     className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                     >
-                    Accepter les <Link href="/terms" className="underline">termes et conditions</Link>
+                    J'ai lu et j'accepte les{" "}
+                    <Link href="/terms" className="underline" target="_blank" rel="noopener noreferrer">
+                        Conditions d'Utilisation
+                    </Link>{" "}
+                    et la{" "}
+                    <Link href="/privacy" className="underline" target="_blank" rel="noopener noreferrer">
+                        Politique de Confidentialité
+                    </Link>
+                    .
                     </label>
-                    <p className="text-sm text-muted-foreground">
-                    Vous acceptez nos conditions d'utilisation et notre politique de confidentialité.
-                    </p>
                 </div>
             </div>
             <Button type="submit" className="w-full" disabled={isLoading || !agreeToTerms}>
