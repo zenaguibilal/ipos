@@ -19,6 +19,7 @@ function SignupFormComponent() {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -86,6 +87,7 @@ function SignupFormComponent() {
                     firstName: firstName,
                     lastName: lastName,
                     email: userCredential.user.email,
+                    phone: phone,
                     createdAt: serverTimestamp(),
                     updatedAt: serverTimestamp(),
                 }, { merge: true });
@@ -163,6 +165,17 @@ function SignupFormComponent() {
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={isLoading}
                 />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="phone">Téléphone (Optionnel)</Label>
+              <Input
+                id="phone"
+                type="tel"
+                placeholder="0XXXXXXXXX"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                disabled={isLoading}
+              />
             </div>
             <div className="grid gap-2">
                 <Label htmlFor="password">Mot de passe</Label>
