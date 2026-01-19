@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { UnpaidBreadOrder } from '@/lib/types';
@@ -62,7 +61,7 @@ export function UnpaidOrdersLog({ unpaidOrders, onClearLog, onDeleteOrder, isLoa
                                         <TableCell className="font-medium">{order.name}</TableCell>
                                         <TableCell>{order.totalOwed.toFixed(1)} DA</TableCell>
                                         <TableCell className="text-right text-xs text-muted-foreground">
-                                            {format(safeToDate(order.archivedAt), 'd MMM', { locale: fr })}
+                                            {order.archivedAt ? format(safeToDate(order.archivedAt), 'd MMM', { locale: fr }) : '...'}
                                         </TableCell>
                                         <TableCell className="text-right">
                                             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onDeleteOrder(order)}>
