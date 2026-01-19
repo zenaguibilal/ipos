@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 
 function SignupFormComponent() {
@@ -22,6 +23,7 @@ function SignupFormComponent() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [passwordStrength, setPasswordStrength] = useState(0);
   const auth = useAuth();
   const { user, isUserLoading } = useUser();
   const router = useRouter();
@@ -32,6 +34,35 @@ function SignupFormComponent() {
     }
   }, [user, router]);
 
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newPassword = e.target.value;
+    setPassword(newPassword);
+
+    const calculatePasswordStrength = (password: string): number => {
+        let score = 0;
+        if (!password) return 0;
+
+        const hasNumbers = /\d/.test(password);
+        const hasUpperCase = /[A-Z]/.test(password);
+        const hasLowerCase = /[a-z]/.test(password);
+        const hasSymbols = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+
+        if (password.length >= 6) score = 1;
+        if (password.length >= 8) {
+            score = 2;
+            if ((hasUpperCase || hasLowerCase) && (hasNumbers || hasSymbols)) {
+                score = 3;
+            }
+             if (hasUpperCase && hasLowerCase && hasNumbers && hasSymbols) {
+                score = 4;
+            }
+        }
+        
+        return score;
+    };
+    setPasswordStrength(calculatePasswordStrength(newPassword));
+  };
+
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
@@ -40,6 +71,12 @@ function SignupFormComponent() {
         setError('Les mots de passe ne correspondent pas.');
         return;
     }
+    
+    if (passwordStrength < 2) {
+        setError("Le mot de passe est trop faible. Veuillez en choisir un plus fort.");
+        return;
+    }
+
 
     if (!auth) {
       setError("Le service d'authentification n'est pas disponible.");
@@ -82,6 +119,15 @@ function SignupFormComponent() {
     return <div className="text-center">Chargement...</div>;
   }
   
+  const strengthLevels = {
+      0: { label: "", color: "bg-muted", textColor: "text-muted-foreground" },
+      1: { label: "Faible", color: "bg-destructive", textColor: "text-destructive" },
+      2: { label: "Moyen", color: "bg-yellow-500", textColor: "text-yellow-500" },
+      3: { label: "Fort", color: "bg-green-500", textColor: "text-green-500" },
+      4: { label: "Très fort", color: "bg-green-500", textColor: "text-green-500" }
+  };
+  const currentStrength = strengthLevels[passwordStrength];
+
   return (
       <div className="grid gap-6">
         <div className="grid gap-2 text-center">
@@ -131,13 +177,24 @@ function SignupFormComponent() {
             <div className="grid gap-2">
                 <Label htmlFor="password">Mot de passe</Label>
                 <Input 
-                id="password"
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                disabled={isLoading}
+                    id="password"
+                    type="password"
+                    required
+                    value={password}
+                    onChange={handlePasswordChange}
+                    disabled={isLoading}
                 />
+                 {password.length > 0 && (
+                    <div className="space-y-1">
+                        <div className="grid grid-cols-4 gap-1 w-full">
+                            <div className={cn("h-1.5 rounded-full", passwordStrength > 0 ? currentStrength.color : 'bg-muted')}></div>
+                            <div className={cn("h-1.5 rounded-full", passwordStrength > 1 ? currentStrength.color : 'bg-muted')}></div>
+                            <div className={cn("h-1.5 rounded-full", passwordStrength > 2 ? currentStrength.color : 'bg-muted')}></div>
+                            <div className={cn("h-1.5 rounded-full", passwordStrength > 3 ? currentStrength.color : 'bg-muted')}></div>
+                        </div>
+                        <p className={cn("text-xs font-medium", currentStrength.textColor)}>{currentStrength.label}</p>
+                    </div>
+                )}
             </div>
              <div className="grid gap-2">
                 <Label htmlFor="confirm-password">Confirmer le mot de passe</Label>
