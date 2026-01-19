@@ -79,6 +79,8 @@ function LoginFormComponent() {
         const errorCode = error.code;
         if (errorCode === 'auth/popup-closed-by-user') {
             // User closed the popup, do nothing.
+        } else if (errorCode === 'auth/account-exists-with-different-credential') {
+            setError('Un compte existe déjà avec cet e-mail mais avec une méthode de connexion différente.');
         } else {
              setError("Une erreur est survenue lors de la connexion avec Google.");
             console.error(error);
@@ -123,6 +125,12 @@ function LoginFormComponent() {
   return (
     <div className="grid gap-6">
         <div className="grid gap-2 text-center">
+            <div className="lg:hidden flex justify-center items-center">
+                <Link href="/" className="flex items-center gap-2 font-bold text-2xl">
+                    <span className="text-3xl">🏪</span>
+                    <span>iPOS</span>
+                </Link>
+            </div>
             <h1 className="text-3xl font-bold">Connexion</h1>
             <p className="text-balance text-muted-foreground">
                 Entrez vos identifiants pour accéder à votre tableau de bord.

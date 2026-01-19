@@ -1,4 +1,3 @@
-
 'use client';
 
 import { initiateEmailSignUp } from '@/firebase/non-blocking-login';
@@ -45,6 +44,8 @@ function SignupFormComponent() {
 
   useEffect(() => {
     if (user) {
+      // User is already logged in, redirect to dashboard
+      // This can happen if they sign up, then navigate back to signup page
       router.push('/dashboard');
     }
   }, [user, router]);
@@ -99,6 +100,7 @@ function SignupFormComponent() {
                     updatedAt: serverTimestamp(),
                 }, { merge: true });
             }
+            // onAuthStateChanged will handle the redirect
         })
         .catch((error) => {
             const errorCode = error.code;
@@ -152,6 +154,8 @@ function SignupFormComponent() {
                 }, { merge: true });
 
                 sendEmailVerification(userCredential.user);
+                 // The onAuthStateChanged listener in FirebaseProvider will catch the new user
+                 // and redirect them to the dashboard.
             }
         })
         .catch((err: any) => {
@@ -181,6 +185,12 @@ function SignupFormComponent() {
   return (
       <div className="grid gap-4">
         <div className="grid gap-2 text-center">
+            <div className="lg:hidden flex justify-center items-center">
+                <Link href="/" className="flex items-center gap-2 font-bold text-2xl">
+                    <span className="text-3xl">🏪</span>
+                    <span>iPOS</span>
+                </Link>
+            </div>
             <h1 className="text-3xl font-bold">Créer un compte</h1>
             <p className="text-balance text-muted-foreground">
                 Entrez vos informations pour créer votre compte iPOS

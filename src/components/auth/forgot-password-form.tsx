@@ -48,6 +48,12 @@ export function ForgotPasswordForm() {
   return (
     <div className="grid gap-6">
         <div className="grid gap-2 text-center">
+            <div className="lg:hidden flex justify-center items-center">
+                <Link href="/" className="flex items-center gap-2 font-bold text-2xl">
+                    <span className="text-3xl">🏪</span>
+                    <span>iPOS</span>
+                </Link>
+            </div>
             <h1 className="text-3xl font-bold">Mot de passe oublié ?</h1>
             <p className="text-balance text-muted-foreground">
                 Entrez votre e-mail pour recevoir un lien de réinitialisation.

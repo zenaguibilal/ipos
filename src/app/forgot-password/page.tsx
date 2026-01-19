@@ -14,7 +14,7 @@ export default function ForgotPasswordPage() {
                 <div className="absolute -bottom-20 -left-20 w-72 h-72 bg-secondary/20 rounded-full filter blur-3xl opacity-50 animate-blob" style={{ animationDelay: '2s' }}></div>
                 
                 <div className="relative z-10">
-                    <Link href="/" className="flex items-center gap-4 font-bold text-5xl mb-4">
+                    <Link href="/" className="flex items-center justify-center gap-4 font-bold text-5xl mb-4">
                         <span className="text-6xl">🏪</span>
                         <span>iPOS</span>
                     </Link>
