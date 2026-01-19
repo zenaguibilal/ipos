@@ -23,7 +23,13 @@ function SignupFormComponent() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [passwordStrength, setPasswordStrength] = useState(0);
+  const [passwordChecks, setPasswordChecks] = useState({
+    length: false,
+    upper: false,
+    lower: false,
+    number: false,
+    symbol: false,
+  });
   const auth = useAuth();
   const { user, isUserLoading } = useUser();
   const router = useRouter();
@@ -38,29 +44,14 @@ function SignupFormComponent() {
     const newPassword = e.target.value;
     setPassword(newPassword);
 
-    const calculatePasswordStrength = (password: string): number => {
-        let score = 0;
-        if (!password) return 0;
-
-        const hasNumbers = /\d/.test(password);
-        const hasUpperCase = /[A-Z]/.test(password);
-        const hasLowerCase = /[a-z]/.test(password);
-        const hasSymbols = /[!@#$%^&*(),.?":{}|<>]/.test(password);
-
-        if (password.length >= 6) score = 1;
-        if (password.length >= 8) {
-            score = 2;
-            if ((hasUpperCase || hasLowerCase) && (hasNumbers || hasSymbols)) {
-                score = 3;
-            }
-             if (hasUpperCase && hasLowerCase && hasNumbers && hasSymbols) {
-                score = 4;
-            }
-        }
-        
-        return score;
+    const checks = {
+        length: newPassword.length >= 8,
+        upper: /[A-Z]/.test(newPassword),
+        lower: /[a-z]/.test(newPassword),
+        number: /\d/.test(newPassword),
+        symbol: /[!@#$%^&*(),.?":{}|<>]/.test(newPassword),
     };
-    setPasswordStrength(calculatePasswordStrength(newPassword));
+    setPasswordChecks(checks);
   };
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -72,8 +63,10 @@ function SignupFormComponent() {
         return;
     }
     
-    if (passwordStrength < 2) {
-        setError("Le mot de passe est trop faible. Veuillez en choisir un plus fort.");
+    const { length, upper, lower, number, symbol } = passwordChecks;
+    const strength = [upper, lower, number, symbol].filter(Boolean).length;
+    if (!length || strength < 2) {
+        setError('Le mot de passe ne respecte pas les critères de sécurité requis.');
         return;
     }
 
@@ -119,14 +112,12 @@ function SignupFormComponent() {
     return <div className="text-center">Chargement...</div>;
   }
   
-  const strengthLevels = {
-      0: { label: "", color: "bg-muted", textColor: "text-muted-foreground" },
-      1: { label: "Faible", color: "bg-destructive", textColor: "text-destructive" },
-      2: { label: "Moyen", color: "bg-yellow-500", textColor: "text-yellow-500" },
-      3: { label: "Fort", color: "bg-green-500", textColor: "text-green-500" },
-      4: { label: "Très fort", color: "bg-green-500", textColor: "text-green-500" }
-  };
-  const currentStrength = strengthLevels[passwordStrength];
+  const PasswordRequirement = ({ met, text }: { met: boolean, text: string }) => (
+    <div className={cn("flex items-center text-xs", met ? "text-green-600" : "text-muted-foreground")}>
+        <span className={cn("mr-2 font-bold text-lg leading-none", met ? "text-green-600" : "text-muted-foreground")}>{met ? '✓' : '•'}</span>
+        {text}
+    </div>
+  );
 
   return (
       <div className="grid gap-6">
@@ -185,14 +176,12 @@ function SignupFormComponent() {
                     disabled={isLoading}
                 />
                  {password.length > 0 && (
-                    <div className="space-y-1">
-                        <div className="grid grid-cols-4 gap-1 w-full">
-                            <div className={cn("h-1.5 rounded-full", passwordStrength > 0 ? currentStrength.color : 'bg-muted')}></div>
-                            <div className={cn("h-1.5 rounded-full", passwordStrength > 1 ? currentStrength.color : 'bg-muted')}></div>
-                            <div className={cn("h-1.5 rounded-full", passwordStrength > 2 ? currentStrength.color : 'bg-muted')}></div>
-                            <div className={cn("h-1.5 rounded-full", passwordStrength > 3 ? currentStrength.color : 'bg-muted')}></div>
-                        </div>
-                        <p className={cn("text-xs font-medium", currentStrength.textColor)}>{currentStrength.label}</p>
+                    <div className="space-y-1 text-left mt-2">
+                        <PasswordRequirement met={passwordChecks.length} text="Au moins 8 caractères" />
+                        <PasswordRequirement met={passwordChecks.lower} text="Contient une lettre minuscule" />
+                        <PasswordRequirement met={passwordChecks.upper} text="Contient une lettre majuscule" />
+                        <PasswordRequirement met={passwordChecks.number} text="Contient un chiffre" />
+                        <PasswordRequirement met={passwordChecks.symbol} text="Contient un symbole (ex: @, #, $)" />
                     </div>
                 )}
             </div>
