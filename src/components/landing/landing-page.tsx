@@ -174,8 +174,35 @@ export function LandingPage() {
                 </div>
             </section>
             
+            {/* Tech Section */}
+            <section className="w-full py-20 md:py-24">
+                <div className="container px-4 md:px-6">
+                    <div className="flex flex-col items-center text-center space-y-4 mb-12">
+                        <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl">
+                            Conçu avec des technologies de pointe
+                        </h2>
+                        <p className="max-w-[700px] text-muted-foreground md:text-lg">
+                            iPOS s'appuie sur une pile technologique moderne pour garantir performance, sécurité et une expérience utilisateur exceptionnelle.
+                        </p>
+                    </div>
+                    <div className="max-w-3xl mx-auto">
+                        <div className="flex justify-around items-center p-8 bg-muted/50 rounded-lg">
+                            <TechLogo src="https://www.vectorlogo.zone/logos/nextjs/nextjs-icon.svg" alt="Next.js" />
+                            <TechLogo src="https://www.vectorlogo.zone/logos/firebase/firebase-icon.svg" alt="Firebase" />
+                            <TechLogo src="https://www.vectorlogo.zone/logos/tailwindcss/tailwindcss-icon.svg" alt="Tailwind CSS" />
+                            <div className="flex flex-col items-center gap-2">
+                                <div className="h-12 w-12 flex items-center justify-center bg-primary text-primary-foreground rounded-md">
+                                    <Rocket className="h-7 w-7"/>
+                                </div>
+                                <span className="text-xs text-muted-foreground">PWA</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             {/* Testimonials Section */}
-            <section id="testimonials" className="w-full py-20 md:py-24">
+            <section id="testimonials" className="w-full py-20 md:py-24 bg-muted/20">
                 <div className="container px-4 md:px-6">
                     <div className="flex flex-col items-center text-center space-y-4 mb-12">
                         <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl">
@@ -208,7 +235,7 @@ export function LandingPage() {
             </section>
 
              {/* FAQ Section */}
-            <section id="faq" className="w-full py-20 md:py-24 bg-muted/20">
+            <section id="faq" className="w-full py-20 md:py-24">
                 <div className="container px-4 md:px-6">
                      <div className="flex flex-col items-center text-center space-y-4 mb-12">
                         <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl">
