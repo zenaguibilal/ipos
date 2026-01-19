@@ -7,13 +7,18 @@ import { useEffect, useState, Suspense } from 'react';
 import Link from 'next/link';
 import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { doc, getFirestore, serverTimestamp } from 'firebase/firestore';
-import { sendEmailVerification } from 'firebase/auth';
+import { sendEmailVerification, GoogleAuthProvider, signInWithPopup, getAdditionalUserInfo } from 'firebase/auth';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+const GoogleIcon = () => (
+    <svg role="img" viewBox="0 0 24 24" className="mr-2 h-4 w-4">
+        <path fill="currentColor" d="M12.48 10.92v3.28h7.84c-.24 1.84-.85 3.18-1.73 4.1-1.02 1.02-2.62 2.04-5.07 2.04-4.35 0-7.92-3.58-7.92-8s3.57-8 7.92-8c2.38 0 4.04.98 5.2 2.1l3.06-3.05C18.44 1.54 15.65 0 12.48 0 5.88 0 0 5.88 0 12.48s5.88 12.48 12.48 12.48c7.02 0 12.04-4.92 12.04-12.24 0-1.04-.08-1.54-.12-2.04h-12z"></path>
+    </svg>
+);
 
 function SignupFormComponent() {
   const [firstName, setFirstName] = useState('');
@@ -54,6 +59,52 @@ function SignupFormComponent() {
     };
     setPasswordChecks(checks);
   };
+  
+  const handleGoogleSignUp = () => {
+    if (!auth) {
+        setError("Le service d'authentification n'est pas disponible.");
+        return;
+    }
+    setIsLoading(true);
+    const provider = new GoogleAuthProvider();
+
+    signInWithPopup(auth, provider)
+        .then((result) => {
+            const user = result.user;
+            const additionalInfo = getAdditionalUserInfo(result);
+            
+            if (additionalInfo?.isNewUser) {
+                const firestore = getFirestore();
+                const userDocRef = doc(firestore, "users", user.uid);
+                const [firstName, ...lastNameParts] = user.displayName?.split(' ') || ["", ""];
+                const lastName = lastNameParts.join(' ');
+                
+                setDocumentNonBlocking(userDocRef, {
+                    id: user.uid,
+                    firstName: firstName,
+                    lastName: lastName || firstName,
+                    email: user.email,
+                    phone: user.phoneNumber || '',
+                    createdAt: serverTimestamp(),
+                    updatedAt: serverTimestamp(),
+                }, { merge: true });
+            }
+        })
+        .catch((error) => {
+            const errorCode = error.code;
+            if (errorCode === 'auth/popup-closed-by-user') {
+                // Do nothing, user intentionally closed the window.
+            } else if (errorCode === 'auth/account-exists-with-different-credential') {
+                setError('Un compte existe déjà avec cet e-mail mais avec une méthode de connexion différente.');
+            } else {
+                setError("Une erreur est survenue lors de la connexion avec Google.");
+                console.error(error.message);
+            }
+        })
+        .finally(() => {
+            setIsLoading(false);
+        });
+  };
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -93,7 +144,6 @@ function SignupFormComponent() {
                 }, { merge: true });
 
                 sendEmailVerification(userCredential.user);
-                // User will be redirected to dashboard by the useEffect hook
             }
         })
         .catch((err: any) => {
@@ -121,15 +171,15 @@ function SignupFormComponent() {
   );
 
   return (
-      <div className="grid gap-6">
+      <div className="grid gap-4">
         <div className="grid gap-2 text-center">
             <h1 className="text-3xl font-bold">Créer un compte</h1>
             <p className="text-balance text-muted-foreground">
                 Entrez vos informations pour créer votre compte iPOS
             </p>
         </div>
+        {error && <p className="text-sm text-red-500 text-center bg-destructive/10 p-3 rounded-md">{error}</p>}
         <form onSubmit={handleSubmit} className="grid gap-4">
-            {error && <p className="text-sm text-red-500 text-center bg-destructive/10 p-3 rounded-md">{error}</p>}
             <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
                 <Label htmlFor="first-name">Prénom</Label>
@@ -217,6 +267,20 @@ function SignupFormComponent() {
                 ) : 'Créer un compte'}
             </Button>
         </form>
+         <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">
+                OU CONTINUER AVEC
+                </span>
+            </div>
+        </div>
+        <Button variant="outline" className="w-full" onClick={handleGoogleSignUp} disabled={isLoading}>
+            <GoogleIcon />
+            Google
+        </Button>
          <div className="mt-4 text-center text-sm">
             Vous avez déjà un compte ?{" "}
             <Link href="/login" className="underline">
