@@ -64,9 +64,8 @@ function SignupFormComponent() {
     }
     
     const { length, upper, lower, number, symbol } = passwordChecks;
-    const strength = [upper, lower, number, symbol].filter(Boolean).length;
-    if (!length || strength < 2) {
-        setError('Le mot de passe ne respecte pas les critères de sécurité requis.');
+    if (!length || !upper || !lower || !number || !symbol) {
+        setError('Le mot de passe doit respecter tous les critères de sécurité.');
         return;
     }
 
