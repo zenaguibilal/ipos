@@ -3,7 +3,7 @@
 import { usePathname } from 'next/navigation';
 import { AppHeader } from '@/components/layout/header';
 import { BottomNavBar } from '@/components/layout/bottom-navbar';
-import { FirebaseClientProvider, useUser } from '@/firebase/client-provider';
+import { FirebaseClientProvider, useUser } from '@/firebase';
 
 function AppLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
