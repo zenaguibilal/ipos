@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useUser } from '@/firebase';
@@ -9,8 +8,15 @@ import { LandingPage } from '@/components/landing/landing-page';
 
 function HomePageContent() {
     const { user, isUserLoading } = useUser();
+    const router = useRouter();
 
-    if (isUserLoading) {
+    useEffect(() => {
+        if (!isUserLoading && user) {
+            router.push('/dashboard');
+        }
+    }, [user, isUserLoading, router]);
+
+    if (isUserLoading || user) {
         return (
              <div className="flex h-screen w-full items-center justify-center">
                 <p>Chargement...</p>
@@ -33,4 +39,3 @@ export default function HomePage() {
         </FirebaseClientProvider>
     )
 }
-
