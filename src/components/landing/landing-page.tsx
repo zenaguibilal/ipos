@@ -91,9 +91,10 @@ export function LandingPage() {
                     </div>
                      <div className="hidden lg:flex items-center justify-center">
                         <div className="relative w-full max-w-2xl">
-                           <div className="absolute -top-10 -left-10 w-32 h-32 bg-primary/10 rounded-full filter blur-3xl opacity-70 animate-blob"></div>
-                           <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-secondary/20 rounded-full filter blur-3xl opacity-70 animate-blob animation-delay-2000"></div>
-                           <Card className="transform transition-transform duration-500 hover:scale-105 shadow-2xl">
+                           <div className="absolute -top-10 -left-10 w-48 h-48 bg-primary/10 rounded-full filter blur-3xl opacity-70 animate-blob"></div>
+                           <div className="absolute -bottom-10 -right-10 w-48 h-48 bg-secondary/20 rounded-full filter blur-3xl opacity-70 animate-blob" style={{ animationDelay: '2s' }}></div>
+                           <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-primary/5 rounded-full filter blur-3xl opacity-50 animate-blob" style={{ animationDelay: '4s' }}></div>
+                           <Card className="transform transition-transform duration-500 hover:scale-105 shadow-2xl relative z-10 bg-card/60 backdrop-blur-sm">
                                 <CardHeader>
                                     <CardTitle className="flex items-center justify-between">
                                         <span>Tableau de bord</span>
