@@ -25,7 +25,7 @@ function HomePageContent() {
     }
 
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center">
+      <main className="min-h-screen bg-background">
         <LandingPage />
       </main>
     );

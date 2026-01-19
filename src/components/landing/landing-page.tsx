@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { InstallPWAButton } from "@/components/layout/install-pwa-button";
 import { ShoppingCart, Archive, Users, FileText, BarChart3, Bell, Rocket, Star, Quote, ShieldCheck, Zap, CloudOff } from 'lucide-react';
 import Link from "next/link";
+import { LandingHeader } from "./landing-header";
 
 const features = [
     { icon: ShoppingCart, title: "Gestion des Ventes", description: "Interface de caisse rapide, support multi-paniers et suivi des paiements." },
@@ -64,7 +65,8 @@ const TechLogo = ({ src, alt }: { src: string, alt: string }) => (
 
 export function LandingPage() {
     return (
-        <div className="flex flex-col items-center w-full bg-background text-foreground">
+        <>
+            <LandingHeader />
             {/* Hero Section */}
             <section className="w-full py-20 md:py-32 bg-muted/20">
                 <div className="container px-4 md:px-6 grid lg:grid-cols-2 gap-10 items-center">
@@ -270,6 +272,6 @@ export function LandingPage() {
                     </div>
                 </div>
             </footer>
-        </div>
+        </>
     );
 }
