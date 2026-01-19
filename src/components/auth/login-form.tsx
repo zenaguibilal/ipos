@@ -51,7 +51,14 @@ function LoginFormComponent() {
       .then((result) => {
         const user = result.user;
         const additionalInfo = getAdditionalUserInfo(result);
+
         if (additionalInfo?.isNewUser) {
+           if (!user.email) {
+                auth.signOut();
+                setError("Votre compte Google n'a pas fourni d'adresse e-mail. Veuillez utiliser une autre méthode.");
+                setIsLoading(false);
+                return;
+            }
           const firestore = getFirestore();
           const userDocRef = doc(firestore, 'users', user.uid);
           const [firstName, ...lastNameParts] = user.displayName?.split(' ') || ['', ''];
@@ -69,10 +76,13 @@ function LoginFormComponent() {
         }
       })
       .catch((error) => {
-        setError("Une erreur est survenue lors de la connexion avec Google.");
-        console.error(error);
-      })
-      .finally(() => {
+        const errorCode = error.code;
+        if (errorCode === 'auth/popup-closed-by-user') {
+            // User closed the popup, do nothing.
+        } else {
+             setError("Une erreur est survenue lors de la connexion avec Google.");
+            console.error(error);
+        }
         setIsLoading(false);
       });
   };
@@ -90,6 +100,10 @@ function LoginFormComponent() {
     setPersistence(auth, persistence)
       .then(() => {
         return initiateEmailSignIn(auth, email, password);
+      })
+      .then(() => {
+          // On success, onAuthStateChanged listener will redirect.
+          // No need to set isLoading to false here, component will unmount.
       })
       .catch((err: any) => {
           if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {

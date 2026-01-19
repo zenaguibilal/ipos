@@ -71,6 +71,13 @@ function SignupFormComponent() {
     signInWithPopup(auth, provider)
         .then((result) => {
             const user = result.user;
+            if (!user.email) {
+                auth.signOut();
+                setError("Votre compte Google n'a pas fourni d'adresse e-mail. Veuillez utiliser une autre méthode ou un autre compte Google.");
+                setIsLoading(false);
+                return;
+            }
+
             const additionalInfo = getAdditionalUserInfo(result);
             
             if (additionalInfo?.isNewUser) {
@@ -93,15 +100,13 @@ function SignupFormComponent() {
         .catch((error) => {
             const errorCode = error.code;
             if (errorCode === 'auth/popup-closed-by-user') {
-                // Do nothing, user intentionally closed the window.
+                 // User closed the popup, do nothing.
             } else if (errorCode === 'auth/account-exists-with-different-credential') {
                 setError('Un compte existe déjà avec cet e-mail mais avec une méthode de connexion différente.');
             } else {
                 setError("Une erreur est survenue lors de la connexion avec Google.");
                 console.error(error.message);
             }
-        })
-        .finally(() => {
             setIsLoading(false);
         });
   };
