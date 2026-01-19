@@ -177,7 +177,9 @@ export default function BreadOrdersPage() {
                 case 'quantity_desc':
                     return b.quantity - a.quantity;
                 case 'createdAt_desc':
-                    return safeToDate(b.createdAt).getTime() - safeToDate(a.createdAt).getTime();
+                    const timeB_desc = b.createdAt ? safeToDate(b.createdAt).getTime() : Number.MAX_SAFE_INTEGER;
+                    const timeA_desc = a.createdAt ? safeToDate(a.createdAt).getTime() : Number.MAX_SAFE_INTEGER;
+                    return timeB_desc - timeA_desc;
                 case 'status':
                 default:
                     if (a.isDelivered && !b.isDelivered) return 1;
@@ -187,7 +189,9 @@ export default function BreadOrdersPage() {
                         if (a.isPaid && !b.isPaid) return 1;
                         if (!a.isPaid && b.isPaid) return -1;
                     }
-                    return safeToDate(a.createdAt).getTime() - safeToDate(b.createdAt).getTime();
+                    const timeA = a.createdAt ? safeToDate(a.createdAt).getTime() : Number.MAX_SAFE_INTEGER;
+                    const timeB = b.createdAt ? safeToDate(b.createdAt).getTime() : Number.MAX_SAFE_INTEGER;
+                    return timeA - timeB;
             }
         });
 
