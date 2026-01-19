@@ -20,7 +20,6 @@ function SignupFormComponent() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const auth = useAuth();
   const { user, isUserLoading } = useUser();
@@ -35,7 +34,6 @@ function SignupFormComponent() {
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
-    setMessage(null);
     if (!auth) {
       setError("Le service d'authentification n'est pas disponible.");
       return;
@@ -57,8 +55,7 @@ function SignupFormComponent() {
                 }, { merge: true });
 
                 sendEmailVerification(userCredential.user);
-                setMessage("Votre compte a été créé avec succès ! Nous avons envoyé un lien de vérification à votre adresse e-mail.");
-                setIsLoading(false);
+                // User will be redirected to dashboard by the useEffect hook
             }
         })
         .catch((err: any) => {
@@ -78,19 +75,6 @@ function SignupFormComponent() {
     return <div className="text-center">Chargement...</div>;
   }
   
-  if (message) {
-      return (
-          <div className="text-center space-y-4">
-              <h1 className="text-2xl font-bold">Vérifiez votre boîte mail</h1>
-              <p className="text-muted-foreground">{message}</p>
-              <Button asChild className="mt-4 w-full">
-                <Link href="/login">Retour à la connexion</Link>
-              </Button>
-          </div>
-      )
-  }
-
-
   return (
       <div className="grid gap-6">
         <div className="grid gap-2 text-center">
