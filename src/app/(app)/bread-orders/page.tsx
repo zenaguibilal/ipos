@@ -3,7 +3,7 @@
 
 import { useUser, useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking, useDoc } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState, useMemo, useRef } from 'react';
+import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { collection, query, orderBy, serverTimestamp, doc, writeBatch, updateDoc } from 'firebase/firestore';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -72,70 +72,74 @@ export default function BreadOrdersPage() {
         }
     }, [user, isUserLoading, router]);
 
+    const autoReset = useCallback(async () => {
+        if (!firestore || !user || !orders || !companyProfile) return;
+
+        console.log("Automatic daily reset for bread orders triggered.");
+
+        const breadPrice = companyProfile?.breadPrice ?? 0;
+        if (breadPrice === 0 && orders.some(o => o.isDelivered && !o.isPaid)) {
+            toast.info("Réinitialisation auto. ignorée: prix du pain non défini pour archiver les dettes.");
+            // Still update the reset date to avoid constant checks
+            const companyRef = doc(firestore, 'users', user.uid, 'companyProfile', 'main');
+            await updateDoc(companyRef, { lastBreadOrderReset: serverTimestamp() });
+            return;
+        }
+
+        const batch = writeBatch(firestore);
+        
+        const unpaidOnes = orders.filter(o => o.isDelivered && !o.isPaid);
+        if (breadPrice > 0) {
+            unpaidOnes.forEach(order => {
+                const unpaidOrderRef = doc(collection(firestore, 'users', user.uid, 'unpaidBreadOrders'));
+                batch.set(unpaidOrderRef, {
+                    name: order.name,
+                    quantity: order.quantity,
+                    pricePerUnit: breadPrice,
+                    totalOwed: order.quantity * breadPrice,
+                    originalOrderDate: order.createdAt,
+                    archivedAt: serverTimestamp()
+                });
+            });
+        }
+
+        orders.forEach(order => {
+            const orderRef = doc(firestore, 'users', user.uid, 'breadOrders', order.id);
+            if (order.isRecurring) {
+                batch.update(orderRef, { isPaid: false, isDelivered: false, createdAt: serverTimestamp() });
+            } else {
+                batch.delete(orderRef);
+            }
+        });
+
+        const companyRef = doc(firestore, 'users', user.uid, 'companyProfile', 'main');
+        batch.update(companyRef, { lastBreadOrderReset: serverTimestamp() });
+
+        try {
+            await batch.commit();
+             if (unpaidOnes.length > 0 && breadPrice > 0) {
+                toast.info(`${unpaidOnes.length} dette(s) de pain ont été archivées.`);
+            }
+            toast.info("La liste des commandes de pain a été automatiquement réinitialisée.");
+        } catch (error) {
+            console.error("Automatic bread order reset failed:", error);
+            toast.error("La réinitialisation automatique des commandes de pain a échoué.");
+        }
+    }, [firestore, user, orders, companyProfile]);
+
     // Automatic daily reset effect
     useEffect(() => {
-        if (isUserLoading || isLoadingOrders || isLoadingCompany || !companyProfile || !orders || !user || !firestore) {
+        if (isUserLoading || isLoadingOrders || isLoadingCompany || !companyProfile || !orders) {
             return;
         }
 
         const today = new Date();
         const lastReset = companyProfile.lastBreadOrderReset ? safeToDate(companyProfile.lastBreadOrderReset) : null;
 
-        if ((!lastReset || !isSameDay(today, lastReset)) && orders.length > 0) {
-            console.log("Automatic daily reset for bread orders triggered.");
-            
-            const autoReset = async () => {
-                const breadPrice = companyProfile?.breadPrice ?? 0;
-                if (breadPrice === 0) {
-                    toast.info("Réinitialisation auto. ignorée: prix du pain non défini pour archiver les dettes.");
-                    // Still update the reset date to avoid constant checks
-                    const companyRef = doc(firestore, 'users', user.uid, 'companyProfile', 'main');
-                    await updateDoc(companyRef, { lastBreadOrderReset: serverTimestamp() });
-                    return;
-                }
-
-                const batch = writeBatch(firestore);
-                
-                const unpaidOnes = orders.filter(o => o.isDelivered && !o.isPaid);
-                unpaidOnes.forEach(order => {
-                    const unpaidOrderRef = doc(collection(firestore, 'users', user.uid, 'unpaidBreadOrders'));
-                    batch.set(unpaidOrderRef, {
-                        name: order.name,
-                        quantity: order.quantity,
-                        pricePerUnit: breadPrice,
-                        totalOwed: order.quantity * breadPrice,
-                        originalOrderDate: order.createdAt,
-                        archivedAt: serverTimestamp()
-                    });
-                });
-
-                orders.forEach(order => {
-                    const orderRef = doc(firestore, 'users', user.uid, 'breadOrders', order.id);
-                    if (order.isRecurring) {
-                        batch.update(orderRef, { isPaid: false, isDelivered: false, createdAt: serverTimestamp() });
-                    } else {
-                        batch.delete(orderRef);
-                    }
-                });
-                const companyRef = doc(firestore, 'users', user.uid, 'companyProfile', 'main');
-                batch.update(companyRef, { lastBreadOrderReset: serverTimestamp() });
-
-                try {
-                    await batch.commit();
-                     if (unpaidOnes.length > 0) {
-                        toast.info(`${unpaidOnes.length} dette(s) de pain ont été archivées.`);
-                    }
-                    toast.info("La liste des commandes de pain a été automatiquement réinitialisée.");
-                } catch (error) {
-                    console.error("Automatic bread order reset failed:", error);
-                    toast.error("La réinitialisation automatique des commandes de pain a échoué.");
-                }
-            };
-
+        if (!lastReset || !isSameDay(today, lastReset)) {
             autoReset();
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [companyProfile, orders, isUserLoading, isLoadingOrders, isLoadingCompany, user, firestore]);
+    }, [companyProfile, orders, isUserLoading, isLoadingOrders, isLoadingCompany, autoReset]);
 
 
     const { filteredOrders, totalQuantity, deliveredQuantity, undeliveredQuantity, totalPaid, totalOwed } = useMemo(() => {
