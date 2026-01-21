@@ -48,6 +48,8 @@ export default function BreadOrdersPage() {
     const [deletingUnpaidOrder, setDeletingUnpaidOrder] = useState<UnpaidBreadOrder | null>(null);
     const printRef = useRef<HTMLDivElement>(null);
 
+    const isAutoResettingRef = useRef(false);
+
 
     const companyDocRef = useMemoFirebase(() => user && firestore ? doc(firestore, 'users', user.uid, 'companyProfile', 'main') : null, [user, firestore]);
     const { data: companyProfile, isLoading: isLoadingCompany } = useDoc<CompanyProfile>(companyDocRef);
@@ -136,8 +138,11 @@ export default function BreadOrdersPage() {
         const today = new Date();
         const lastReset = companyProfile.lastBreadOrderReset ? safeToDate(companyProfile.lastBreadOrderReset) : null;
 
-        if (!lastReset || !isSameDay(today, lastReset)) {
-            autoReset();
+        if ((!lastReset || !isSameDay(today, lastReset)) && !isAutoResettingRef.current) {
+            isAutoResettingRef.current = true;
+            autoReset().finally(() => {
+                isAutoResettingRef.current = false;
+            });
         }
     }, [companyProfile, orders, isUserLoading, isLoadingOrders, isLoadingCompany, autoReset]);
 
