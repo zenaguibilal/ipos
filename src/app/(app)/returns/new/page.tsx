@@ -4,7 +4,7 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { collection, doc, query, where, getDocs, runTransaction, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, query, where, getDocs, runTransaction, serverTimestamp, setDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -116,39 +116,27 @@ export default function NewReturnPage() {
 
         setIsSaving(true);
         try {
-            await runTransaction(firestore, async (transaction) => {
-                const newReturnRef = doc(collection(firestore, 'users', user.uid, 'returns'));
-                const returnData: Omit<any, 'id' | 'createdAt'> = {
-                    originalSaleId: foundSale.id,
-                    originalInvoiceNumber: foundSale.invoiceNumber,
-                    items: returnedItems.map(item => ({
-                        productId: item.id.startsWith('custom-') ? null : item.id,
-                        productName: item.name,
-                        quantity: item.returnQuantity,
-                        price: item.price
-                    })),
-                    totalReturnValue: totalReturnValue,
-                    amountRefunded: refundAmount,
-                    customerId: foundSale.customerId,
-                    customerName: foundSale.customerName,
-                    createdAt: serverTimestamp(),
-                    notes: notes,
-                };
-                transaction.set(newReturnRef, returnData);
-
-                for (const item of returnedItems) {
-                    if (!item.id.startsWith('custom-')) {
-                        const productRef = doc(firestore, 'users', user.uid, 'products', item.id);
-                        const productDoc = await transaction.get(productRef);
-                        if (productDoc.exists()) {
-                            const currentQuantity = productDoc.data().quantity || 0;
-                            transaction.update(productRef, { quantity: currentQuantity + item.returnQuantity });
-                        }
-                    }
-                }
-            });
+            const newReturnRef = doc(collection(firestore, 'users', user.uid, 'returns'));
+            const returnData: Omit<any, 'id' | 'createdAt'> = {
+                originalSaleId: foundSale.id,
+                originalInvoiceNumber: foundSale.invoiceNumber,
+                items: returnedItems.map(item => ({
+                    productId: item.id.startsWith('custom-') ? null : item.id,
+                    productName: item.name,
+                    quantity: item.returnQuantity,
+                    price: item.price
+                })),
+                totalReturnValue: totalReturnValue,
+                amountRefunded: refundAmount,
+                customerId: foundSale.customerId,
+                customerName: foundSale.customerName,
+                createdAt: serverTimestamp(),
+                notes: notes,
+            };
             
-            toast.success("Le retour a été enregistré avec succès et le stock mis à jour.");
+            await setDoc(newReturnRef, returnData);
+            
+            toast.success("Le retour a été enregistré avec succès.");
             router.push('/returns');
 
         } catch (error) {

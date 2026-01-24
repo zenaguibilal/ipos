@@ -1,30 +1,29 @@
+
 'use client';
 
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
-import { collection, query, where, doc, getDocs, serverTimestamp, runTransaction } from 'firebase/firestore';
-import type { Product, Customer, Sale, Payment, PurchaseOrder, CompanyProfile, CustomerWithSalesData } from '@/lib/types';
+import { collection, query, where, doc } from 'firebase/firestore';
+import type { Customer, Sale, Payment, CompanyProfile, CustomerWithSalesData } from '@/lib/types';
 import { getDate } from 'date-fns';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Archive, HandCoins, ArrowRight, BellOff, MessageSquare } from 'lucide-react';
+import { HandCoins, ArrowRight, BellOff, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import Link from 'next/link';
 import { toast } from 'sonner';
-import { Loader2 } from 'lucide-react';
 import { AddPaymentForm } from '@/components/customers/add-payment-form';
 
 
 // Define the NotificationItem type locally
 export interface NotificationItem {
   id: string;
-  type: 'stock' | 'payment';
+  type: 'payment';
   messagePrefix: string;
   messageLinkText: string;
   messageSuffix: string;
   linkHref: string;
-  relatedId: string; // productId or customerId
+  relatedId: string; // customerId
   actionText: string;
   action?: () => void;
   customerData?: CustomerWithSalesData;
@@ -35,17 +34,14 @@ export default function NotificationsPage() {
     const firestore = useFirestore();
     const router = useRouter();
 
-    const [processingPOId, setProcessingPOId] = useState<string | null>(null);
     const [payingCustomer, setPayingCustomer] = useState<Customer | null>(null);
 
     // --- Data Fetching ---
-    const productsCollectionRef = useMemoFirebase(() => (user && firestore) ? collection(firestore, 'users', user.uid, 'products') : null, [user, firestore]);
     const customersCollectionRef = useMemoFirebase(() => (user && firestore) ? collection(firestore, 'users', user.uid, 'customers') : null, [user, firestore]);
     const salesCollectionRef = useMemoFirebase(() => (user && firestore) ? collection(firestore, 'users', user.uid, 'sales') : null, [user, firestore]);
     const paymentsCollectionRef = useMemoFirebase(() => (user && firestore) ? collection(firestore, 'users', user.uid, 'payments') : null, [user, firestore]);
     const companyDocRef = useMemoFirebase(() => (user && firestore) ? doc(firestore, 'users', user.uid, 'companyProfile', 'main') : null, [user, firestore]);
     
-    const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsCollectionRef);
     const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersCollectionRef);
     const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesCollectionRef);
     const { data: payments, isLoading: isLoadingPayments } = useCollection<Payment>(paymentsCollectionRef);
@@ -57,78 +53,6 @@ export default function NotificationsPage() {
             router.push('/login');
         }
     }, [user, isUserLoading, router]);
-    
-    const handleAddToPO = async (productId: string) => {
-        if (!firestore || !user || !products) return;
-        
-        setProcessingPOId(productId);
-        const product = products.find(p => p.id === productId);
-        if (!product) {
-            toast.error("Produit non trouvé.");
-            setProcessingPOId(null);
-            return;
-        }
-
-        try {
-            await runTransaction(firestore, async (transaction) => {
-                const pendingPOsQuery = query(
-                    collection(firestore, 'users', user.uid, 'purchaseOrders'),
-                    where('status', '==', 'pending')
-                );
-                const pendingPOsSnapshot = await getDocs(pendingPOsQuery);
-
-                let targetPO: PurchaseOrder | null = null;
-                let targetPORef: any = null;
-
-                if (!pendingPOsSnapshot.empty) {
-                    const poDoc = pendingPOsSnapshot.docs[0];
-                    targetPO = poDoc.data() as PurchaseOrder;
-                    targetPO.id = poDoc.id;
-                    targetPORef = poDoc.ref;
-                }
-
-                const poItem = {
-                    productId: product.id,
-                    productName: product.name,
-                    quantity: product.minStockLevel > 0 ? product.minStockLevel : 10,
-                    purchasePrice: product.purchasePrice
-                };
-
-                if (targetPO && targetPORef) {
-                    const existingItems = targetPO.items || [];
-                    const itemExists = existingItems.some(item => item.productId === productId);
-                    
-                    if (itemExists) {
-                        toast.info(`"${product.name}" est déjà dans le bon de commande en attente.`);
-                        return;
-                    }
-                    
-                    const newItems = [...existingItems, poItem];
-                    const newTotalValue = newItems.reduce((acc, item) => acc + (item.purchasePrice * item.quantity), 0);
-                    transaction.update(targetPORef, { items: newItems, totalValue: newTotalValue });
-                    toast.success(`"${product.name}" ajouté au bon de commande ${targetPO.poNumber}.`);
-
-                } else {
-                    const newPORef = doc(collection(firestore, 'users', user.uid, 'purchaseOrders'));
-                    const newPOData = {
-                        poNumber: `BC-${Date.now()}`,
-                        supplier: 'Fournisseur non spécifié',
-                        items: [poItem],
-                        totalValue: poItem.purchasePrice * poItem.quantity,
-                        status: 'pending',
-                        createdAt: serverTimestamp()
-                    };
-                    transaction.set(newPORef, newPOData);
-                    toast.success(`"${product.name}" ajouté à un nouveau bon de commande.`);
-                }
-            });
-        } catch (error) {
-            console.error("Failed to add to PO:", error);
-            toast.error("Échec de l'ajout au bon de commande.");
-        } finally {
-            setProcessingPOId(null);
-        }
-    };
     
     const handleWhatsAppReminder = (customer: CustomerWithSalesData) => {
         if (!customer.phone) {
@@ -144,30 +68,15 @@ export default function NotificationsPage() {
     };
 
 
-    const { lowStockNotifications, latePaymentNotifications } = useMemo(() => {
-        if (!products || !customers || !sales || !payments) {
-            return { lowStockNotifications: [], latePaymentNotifications: [] };
+    const { latePaymentNotifications } = useMemo(() => {
+        if (!customers || !sales || !payments) {
+            return { latePaymentNotifications: [] };
         }
 
         const today = new Date();
         const currentDayOfMonth = getDate(today);
 
-        // 1. Low Stock Notifications
-        const stockNotifications: NotificationItem[] = products
-            .filter(p => p.quantity <= p.minStockLevel)
-            .map(p => ({
-                id: `stock-${p.id}`,
-                type: 'stock',
-                messagePrefix: 'Stock faible pour ',
-                messageLinkText: p.name,
-                messageSuffix: `. Restant : ${p.quantity}`,
-                linkHref: '/products',
-                relatedId: p.id,
-                actionText: 'Ajouter au BC',
-                action: () => handleAddToPO(p.id)
-            }));
-
-        // 2. Late Payment Notifications
+        // Late Payment Notifications
         const customerData: CustomerWithSalesData[] = customers.map(customer => {
             const customerSales = sales.filter(s => s.customerId === customer.id);
             const totalSpent = customerSales.reduce((acc, s) => acc + s.total, 0);
@@ -195,7 +104,7 @@ export default function NotificationsPage() {
                 messagePrefix: 'Paiement en retard pour ',
                 messageLinkText: `${c.firstName} ${c.lastName}`,
                 messageSuffix: `. Solde: ${c.outstandingBalance.toFixed(2)} DA`,
-                linkHref: `/customers/${c.id}`,
+                linkHref: `/sales-history`,
                 relatedId: c.id,
                 actionText: 'Encaisser',
                 action: () => setPayingCustomer(c as Customer),
@@ -203,27 +112,25 @@ export default function NotificationsPage() {
             }));
         
         return {
-            lowStockNotifications: stockNotifications,
             latePaymentNotifications: paymentNotifications
         };
-    }, [products, customers, sales, payments]);
+    }, [customers, sales, payments]);
 
-    const isLoading = isUserLoading || isLoadingProducts || isLoadingCustomers || isLoadingSales || isLoadingPayments || isLoadingCompany;
+    const isLoading = isUserLoading || isLoadingCustomers || isLoadingSales || isLoadingPayments || isLoadingCompany;
 
     if (isLoading || !user) {
         return <div className="flex h-full items-center justify-center"><p>Chargement des notifications...</p></div>;
     }
 
-    const totalNotifications = lowStockNotifications.length + latePaymentNotifications.length;
+    const totalNotifications = latePaymentNotifications.length;
 
-    const renderNotificationList = (notifications: NotificationItem[], type: 'stock' | 'payment') => {
-        const iconBg = type === 'stock' ? 'bg-yellow-500/20' : 'bg-destructive/20';
-        const icon = type === 'stock' ? <Archive className="h-5 w-5 text-yellow-600" /> : <HandCoins className="h-5 w-5 text-destructive" />;
+    const renderNotificationList = (notifications: NotificationItem[], type: 'payment') => {
+        const iconBg = 'bg-destructive/20';
+        const icon = <HandCoins className="h-5 w-5 text-destructive" />;
 
         return (
             <div className="space-y-4">
                 {notifications.map(notification => {
-                    const isProcessing = notification.type === 'stock' && processingPOId === notification.relatedId;
 
                     return (
                         <div 
@@ -236,9 +143,7 @@ export default function NotificationsPage() {
                             <div className="flex-1">
                                 <p className="font-medium">
                                     {notification.messagePrefix}
-                                    <Link href={notification.linkHref} className="font-bold underline hover:text-primary">
-                                        {notification.messageLinkText}
-                                    </Link>
+                                    <span className="font-bold">{notification.messageLinkText}</span>
                                     {notification.messageSuffix}
                                 </p>
                             </div>
@@ -252,18 +157,9 @@ export default function NotificationsPage() {
                                 )}
 
                                 {notification.action && (
-                                    <Button variant="secondary" size="sm" onClick={notification.action} disabled={isProcessing}>
-                                        {isProcessing ? (
-                                            <>
-                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                                Ajout...
-                                            </>
-                                        ) : (
-                                            <>
-                                                {notification.actionText}
-                                                <ArrowRight className="ml-2 h-4 w-4" />
-                                            </>
-                                        )}
+                                    <Button variant="secondary" size="sm" onClick={notification.action}>
+                                        {notification.actionText}
+                                        <ArrowRight className="ml-2 h-4 w-4" />
                                     </Button>
                                 )}
                             </div>
@@ -287,7 +183,7 @@ export default function NotificationsPage() {
             <main className="flex-1 overflow-auto p-4 sm:p-6">
                 <div className="mb-6">
                     <h1 className="text-2xl font-bold">Centre de Notifications</h1>
-                    <p className="text-muted-foreground">Alertes importantes concernant votre stock et les paiements.</p>
+                    <p className="text-muted-foreground">Alertes importantes concernant les paiements.</p>
                 </div>
                 
                 {totalNotifications === 0 && !isLoading ? (
@@ -299,20 +195,7 @@ export default function NotificationsPage() {
                         </div>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Alerte de Stock Faible ({lowStockNotifications.length})</CardTitle>
-                                <CardDescription>Produits qui nécessitent un réapprovisionnement.</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                 {lowStockNotifications.length > 0 ? 
-                                    renderNotificationList(lowStockNotifications, 'stock') : 
-                                    <p className="text-sm text-muted-foreground">Aucun produit en stock faible.</p>
-                                }
-                            </CardContent>
-                        </Card>
-
+                    <div className="grid grid-cols-1">
                         <Card>
                             <CardHeader>
                                 <CardTitle>Alerte de Paiement ({latePaymentNotifications.length})</CardTitle>

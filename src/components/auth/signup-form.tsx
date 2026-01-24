@@ -1,3 +1,4 @@
+
 'use client';
 
 import { initiateEmailSignUp } from '@/firebase/non-blocking-login';
@@ -44,7 +45,7 @@ function SignupFormComponent() {
 
   useEffect(() => {
     if (user) {
-      router.push('/products');
+      router.push('/bread-orders');
     }
   }, [user, router]);
 

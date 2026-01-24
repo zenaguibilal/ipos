@@ -1,20 +1,21 @@
+
 'use client';
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  Package,
-  Users,
+  History,
   Cookie,
   Undo2,
+  Bell,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navLinks = [
-  { href: '/products', label: 'Produits', icon: Package },
-  { href: '/customers', label: 'Clients', icon: Users },
+  { href: '/sales-history', label: 'Historique', icon: History },
   { href: '/bread-orders', label: 'Pain', icon: Cookie },
   { href: '/returns', label: 'Retours', icon: Undo2 },
+  { href: '/notifications', label: 'Alertes', icon: Bell },
 ];
 
 export function BottomNavBar() {

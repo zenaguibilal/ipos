@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -5,11 +6,8 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
   LogOut,
   User as UserIcon,
-  Package,
   History,
   Settings,
-  Truck,
-  Users,
   Cookie,
   Bell,
   Info,
@@ -37,9 +35,6 @@ import { AnimatedLogo } from './animated-logo';
 
 
 const navLinks = [
-  { href: '/stock-intake', label: 'Réception Stock', icon: Truck },
-  { href: '/products', label: 'Produits', icon: Package },
-  { href: '/customers', label: 'Clients', icon: Users },
   { href: '/sales-history', label: 'Historique', icon: History },
   { href: '/returns', label: 'Retours', icon: Undo2 },
   { href: '/bread-orders', label: 'Commandes de Pain', icon: Cookie },
@@ -64,7 +59,7 @@ export function AppHeader() {
       <div className="flex-1 flex justify-start">
          <div className="flex items-baseline gap-2">
               <Link
-                  href="/products"
+                  href="/bread-orders"
                   className="flex items-center gap-2 font-semibold"
               >
                   <span className="text-2xl">🏪</span>

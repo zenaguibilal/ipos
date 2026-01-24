@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useUser } from '@/firebase';
@@ -12,7 +13,7 @@ function HomePageContent() {
 
     useEffect(() => {
         if (!isUserLoading && user) {
-            router.push('/products');
+            router.push('/bread-orders');
         }
     }, [user, isUserLoading, router]);
 
