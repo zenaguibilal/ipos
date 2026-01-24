@@ -293,8 +293,8 @@ export default function SalesHistoryPage() {
                 const file = new File([blob], fileName, { type: 'image/png' });
     
                 const shareText = isReminder
-                    ? `Bonjour ${customer.firstName || ''}, un petit rappel concernant le solde de votre facture N°${sale.invoiceNumber}.`
-                    : `Bonjour ${customer.firstName || ''}, voici votre facture N°${sale.invoiceNumber}.`;
+                    ? `Bonjour ${customer.firstName || ''}. Un petit rappel concernant votre facture N°${sale.invoiceNumber}. Le solde restant est de ${sale.remainingBalance.toFixed(1)} DA. Merci de votre attention.`
+                    : `Bonjour ${customer.firstName || ''}. Ci-joint votre facture N°${sale.invoiceNumber}. Total: ${sale.total.toFixed(1)} DA, Payé: ${sale.amountPaid.toFixed(1)} DA, Solde: ${sale.remainingBalance.toFixed(1)} DA.`;
     
                 if (navigator.share && navigator.canShare({ files: [file] })) {
                     try {
