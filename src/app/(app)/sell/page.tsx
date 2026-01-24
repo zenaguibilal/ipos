@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/componen
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Search, PlusCircle, X, Trash2, Minus, Plus, User, FilePlus2, CheckCircle, Barcode } from 'lucide-react';
+import { Search, PlusCircle, X, Trash2, Minus, Plus, User, FilePlus2, CheckCircle, Barcode, UserX } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import type { Product, Customer, SaleItem, CompanyProfile, Sale, Payment } from '@/lib/types';
@@ -20,7 +20,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogD
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Combobox, ComboboxOption } from '@/components/ui/combobox';
 import { v4 as uuidv4 } from 'uuid';
-import { AddCustomerDialog } from '@/components/customers/add-customer-dialog';
+import { CustomerDialog } from '@/components/customers/customer-dialog';
 import { SaleCompleteDialog } from '@/components/sales/sale-complete-dialog';
 import { AddCustomProductDialog } from '@/components/sales/add-custom-product-dialog';
 import Image from 'next/image';
@@ -164,17 +164,22 @@ export default function SellPage() {
 
     const filteredProducts = useMemo(() => {
         if (!products) return [];
-        
+
+        let baseProducts = [...products];
+
+        // 1. Filter by category
         let categoryFiltered = selectedCategory === 'all'
-            ? products
-            : products.filter(p => p.category === selectedCategory);
-    
+            ? baseProducts
+            : baseProducts.filter(p => p.category === selectedCategory);
+
+        // 2. If there is a search query, filter within the category
         if (searchQuery) {
             return categoryFiltered.filter(p =>
                 p.name.toLowerCase().includes(searchQuery.toLowerCase())
             );
         }
-    
+        
+        // 3. If no search query, sort by popularity within the category
         if (sales && sales.length > 0) {
             const productSales: { [productId: string]: number } = {};
             sales.forEach(sale => {
@@ -184,10 +189,11 @@ export default function SellPage() {
                     }
                 });
             });
-    
-            return [...categoryFiltered].sort((a, b) => (productSales[b.id] || 0) - (productSales[a.id] || 0));
+
+            return categoryFiltered
+                .sort((a, b) => (productSales[b.id] || 0) - (productSales[a.id] || 0));
         }
-    
+
         return categoryFiltered;
     }, [products, sales, selectedCategory, searchQuery]);
 
@@ -519,9 +525,10 @@ export default function SellPage() {
     return (
         <>
             {user && (
-                <AddCustomerDialog
+                <CustomerDialog
                     isOpen={isAddCustomerOpen}
                     onOpenChange={setIsAddCustomerOpen}
+                    customer={null}
                     userId={user.uid}
                     onCustomerAdded={(newCustomer) => {
                         if (activeCart) {
@@ -688,40 +695,38 @@ export default function SellPage() {
                 {/* Right Side: Carts */}
                 <div className="bg-card p-4 flex flex-col h-full border-l">
                     <Tabs value={activeCartId} onValueChange={handleTabChange} className="flex-grow flex flex-col">
-                         <TabsList className="h-auto self-start">
+                         <TabsList className="grid w-full grid-cols-6 h-auto">
                             {carts.map(cart => (
-                                <TabsTrigger key={cart.id} value={cart.id} className="relative pr-8">
+                                <TabsTrigger key={cart.id} value={cart.id} className="relative pr-8 data-[state=active]:z-10">
                                     {cart.name}
                                     <button onClick={(e) => handleRemoveTab(e, cart.id)} className="absolute top-1/2 right-1.5 -translate-y-1/2 rounded-full p-0.5 hover:bg-muted-foreground/20">
                                         <X className="h-3 w-3" />
                                     </button>
                                 </TabsTrigger>
                             ))}
-                            <Button variant="ghost" size="icon" onClick={handleAddTab}><PlusCircle className="h-5 w-5" /></Button>
+                             {carts.length < 5 && <Button variant="ghost" size="icon" onClick={handleAddTab} className="col-start-6"><PlusCircle className="h-5 w-5" /></Button>}
                         </TabsList>
 
                         {carts.map(cart => (
                             <TabsContent key={cart.id} value={cart.id} className="flex-grow flex flex-col gap-4 m-0 mt-4 data-[state=inactive]:hidden">
-                                 <Card>
+                                <Card>
                                     <CardHeader className="p-4">
-                                        <CardTitle className="text-lg">Client</CardTitle>
-                                    </CardHeader>
-                                    <CardContent className="p-4 pt-0">
-                                        <div className="flex items-center gap-2">
-                                            <div className="flex-grow">
-                                                <Combobox
-                                                    options={customerOptions}
-                                                    onSelect={(customerId) => handleCustomerSelect(cart, customerId)}
-                                                    value={cart.customerId || 'walk-in'}
-                                                    placeholder="Vente au comptoir"
-                                                    searchPlaceholder="Rechercher un client..."
-                                                    notFoundMessage="Aucun client trouvé."
-                                                />
-                                            </div>
-                                            <Button variant="outline" onClick={() => setIsAddCustomerOpen(true)}>
+                                        <CardTitle className="text-lg flex justify-between items-center">
+                                            Client
+                                            <Button variant="outline" size="sm" onClick={() => setIsAddCustomerOpen(true)}>
                                                 <PlusCircle className="mr-2 h-4 w-4" />Nouveau
                                             </Button>
-                                        </div>
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="p-4 pt-0">
+                                        <Combobox
+                                            options={customerOptions}
+                                            onSelect={(customerId) => handleCustomerSelect(cart, customerId)}
+                                            value={cart.customerId || 'walk-in'}
+                                            placeholder="Vente au comptoir"
+                                            searchPlaceholder="Rechercher un client..."
+                                            notFoundMessage="Aucun client trouvé."
+                                        />
                                          {(() => {
                                             const debt = cart.customerId ? customerDebts.get(cart.customerId) : 0;
                                             if (debt && debt > 0) {
@@ -747,10 +752,10 @@ export default function SellPage() {
                                         )}
                                     </CardHeader>
                                     <CardContent className="p-0 flex-1 flex flex-col">
-                                        {cart.items.length === 0 ? (
-                                            <div className="flex-grow flex items-center justify-center text-muted-foreground">Le panier est vide</div>
-                                        ) : (
-                                            <ScrollArea className="flex-grow">
+                                        <ScrollArea className="flex-grow">
+                                            {cart.items.length === 0 ? (
+                                                <div className="flex-grow flex items-center justify-center text-muted-foreground h-full min-h-24">Le panier est vide</div>
+                                            ) : (
                                                 <Table>
                                                     <TableHeader>
                                                         <TableRow>
@@ -778,8 +783,8 @@ export default function SellPage() {
                                                         ))}
                                                     </TableBody>
                                                 </Table>
-                                            </ScrollArea>
-                                        )}
+                                            )}
+                                        </ScrollArea>
                                     </CardContent>
                                     {cart.items.length > 0 && (
                                         <CardFooter className="p-4 flex-col items-stretch space-y-2 border-t">

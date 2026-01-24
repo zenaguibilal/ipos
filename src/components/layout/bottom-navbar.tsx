@@ -5,20 +5,19 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   History,
-  Cookie,
-  Undo2,
-  Bell,
-  BarChart3,
   Store,
+  Package,
+  Users,
+  Archive,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navLinks = [
   { href: '/sell', label: 'Vente', icon: Store },
+  { href: '/products', label: 'Produits', icon: Package },
+  { href: '/customers', label: 'Clients', icon: Users },
+  { href: '/stock', label: 'Stock', icon: Archive },
   { href: '/sales-history', label: 'Historique', icon: History },
-  { href: '/bread-orders', label: 'Pain', icon: Cookie },
-  { href: '/returns', label: 'Retours', icon: Undo2 },
-  { href: '/notifications', label: 'Alertes', icon: Bell },
 ];
 
 export function BottomNavBar() {
@@ -33,7 +32,7 @@ export function BottomNavBar() {
             href={link.href}
             className={cn(
               'flex flex-col items-center justify-center gap-1 text-muted-foreground transition-colors hover:text-primary h-full',
-              (pathname === link.href || (link.href !== '/' && pathname.startsWith(link.href))) && 'text-primary'
+              (pathname === link.href || (link.href !== '/sell' && pathname.startsWith(link.href))) && 'text-primary'
             )}
           >
             <link.icon className="h-5 w-5" />

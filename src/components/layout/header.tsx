@@ -14,6 +14,9 @@ import {
   Undo2,
   BarChart3,
   Store,
+  Package,
+  Users,
+  Archive
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -39,6 +42,9 @@ import { AnimatedLogo } from './animated-logo';
 const navLinks = [
   { href: '/sell', label: 'Vente', icon: Store },
   { href: '/dashboard', label: 'Tableau de bord', icon: BarChart3 },
+  { href: '/products', label: 'Produits', icon: Package },
+  { href: '/customers', label: 'Clients', icon: Users },
+  { href: '/stock', label: 'Stock', icon: Archive },
   { href: '/sales-history', label: 'Historique', icon: History },
   { href: '/returns', label: 'Retours', icon: Undo2 },
   { href: '/bread-orders', label: 'Commandes de Pain', icon: Cookie },
@@ -77,13 +83,13 @@ export function AppHeader() {
         {/* Central Navigation */}
         <div className="flex-1 flex justify-center">
             <TooltipProvider>
-                <nav className="hidden md:flex items-center gap-2 rounded-full border bg-card p-1">
+                <nav className="hidden md:flex items-center gap-1 rounded-full border bg-card p-1">
                     {navLinks.map(link => (
                         <Tooltip key={link.href}>
                             <TooltipTrigger asChild>
                                 <Button 
                                     asChild
-                                    variant={(pathname === link.href || (link.href !== '/' && pathname.startsWith(link.href))) ? "default" : "ghost"}
+                                    variant={(pathname === link.href || (link.href !== '/sell' && pathname.startsWith(link.href))) ? "default" : "ghost"}
                                     size="icon"
                                     className="rounded-full"
                                 >
