@@ -1,12 +1,9 @@
-
 'use client';
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   Store,
-  LayoutDashboard,
-  ShoppingBasket,
   Package,
   Users,
   History,
@@ -16,8 +13,6 @@ import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge'; // Assuming you have a Badge component
 
 const navLinks = [
-  { href: '/dashboard', label: 'Tableau de Bord', icon: LayoutDashboard },
-  { href: '/sell', label: 'Vendre', icon: ShoppingBasket },
   { href: '/products', label: 'Produits', icon: Package },
   { href: '/customers', label: 'Clients', icon: Users },
   { href: '/sales-history', label: 'Historique', icon: History },
@@ -31,7 +26,7 @@ export function AppSidebar() {
     <div className="hidden border-r bg-background md:block print-hide">
       <div className="flex h-full max-h-screen flex-col gap-2">
         <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
-          <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
+          <Link href="/products" className="flex items-center gap-2 font-semibold">
             <Store className="h-6 w-6" />
             <span className="">iPOS</span>
           </Link>

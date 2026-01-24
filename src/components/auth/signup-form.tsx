@@ -44,9 +44,7 @@ function SignupFormComponent() {
 
   useEffect(() => {
     if (user) {
-      // User is already logged in, redirect to dashboard
-      // This can happen if they sign up, then navigate back to signup page
-      router.push('/dashboard');
+      router.push('/products');
     }
   }, [user, router]);
 
@@ -155,7 +153,7 @@ function SignupFormComponent() {
 
                 sendEmailVerification(userCredential.user);
                  // The onAuthStateChanged listener in FirebaseProvider will catch the new user
-                 // and redirect them to the dashboard.
+                 // and redirect them to the products page.
             }
         })
         .catch((err: any) => {
