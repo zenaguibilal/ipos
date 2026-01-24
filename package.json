@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "predev": "rm -f next.config.mjs",
     "dev": "next dev",
     "build": "NODE_ENV=production next build",
     "start": "next start",
@@ -44,7 +45,6 @@
     "tailwindcss-animate": "^1.0.0"
   },
   "devDependencies": {
-    "@types/jsbarcode": "^3.11.4",
     "@types/node": "^20.14.12",
     "@types/papaparse": "^5.3.14",
     "@types/qrcode": "^1.5.5",
