@@ -7,7 +7,7 @@ import { collection, query, orderBy, doc } from 'firebase/firestore';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Search, CreditCard, HandCoins, CircleDollarSign, Download, ChevronDown, TrendingUp, MoreHorizontal, Trash2, FileText, MessageSquare } from 'lucide-react';
+import { Search, CreditCard, HandCoins, CircleDollarSign, Download, ChevronDown, TrendingUp, MoreHorizontal, Trash2, FileText, MessageSquare, BellRing } from 'lucide-react';
 import type { Sale, Payment, CompanyProfile, Customer, SaleItem } from '@/lib/types';
 import { cn, safeToDate } from '@/lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -15,7 +15,7 @@ import { DateRangePicker } from '@/components/dashboard/date-range-picker';
 import { DateRange } from 'react-day-picker';
 import { subDays, startOfDay, endOfDay, format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import Papa from 'papaparse';
 import { toast } from 'sonner';
 import dynamic from 'next/dynamic';
@@ -266,6 +266,25 @@ export default function SalesHistoryPage() {
         window.open(whatsappUrl, '_blank');
     };
 
+    const handleSendReminder = (sale: Sale) => {
+        if (!customers || !sale.customerId) {
+            toast.error("Informations client non disponibles pour cette vente.");
+            return;
+        }
+
+        const customer = customers.find(c => c.id === sale.customerId);
+        if (!customer || !customer.phone) {
+            toast.error("Le numéro de téléphone de ce client n'est pas disponible pour un rappel.");
+            return;
+        }
+
+        const companyName = companyProfile?.companyName || 'votre magasin';
+        const message = `Bonjour ${customer.firstName} ${customer.lastName}, ceci est un rappel amical concernant votre facture N°${sale.invoiceNumber} chez ${companyName}. Le solde restant est de ${sale.remainingBalance.toFixed(1)} DA. Merci de régler votre dette dès que possible.`;
+        
+        const whatsappUrl = `https://wa.me/${customer.phone.replace(/\s+/g, '')}?text=${encodeURIComponent(message)}`;
+        window.open(whatsappUrl, '_blank');
+    };
+
 
     const isLoading = isUserLoading || isLoadingSales || isLoadingPayments || isLoadingCompany || isLoadingCustomers;
 
@@ -449,24 +468,24 @@ export default function SalesHistoryPage() {
                                                                 {currentDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
                                                             </TableCell>
                                                             <TableCell className="p-3 text-center">
-                                                                {isSale ? (
+                                                                {isSale && saleData ? (
                                                                     <span className={cn(
                                                                         'rounded-full px-2.5 py-0.5 text-xs font-semibold',
-                                                                        transaction.data.paymentStatus === 'paid' && 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
-                                                                        transaction.data.paymentStatus === 'partial' && 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
-                                                                        transaction.data.paymentStatus === 'unpaid' && 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
+                                                                        saleData.paymentStatus === 'paid' && 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
+                                                                        saleData.paymentStatus === 'partial' && 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
+                                                                        saleData.paymentStatus === 'unpaid' && 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
                                                                     )}>
-                                                                        {transaction.data.paymentStatus === 'paid' ? 'Payé' : transaction.data.paymentStatus === 'partial' ? 'Partiel' : 'Impayé'}
+                                                                        {saleData.paymentStatus === 'paid' ? 'Payé' : saleData.paymentStatus === 'partial' ? 'Partiel' : 'Impayé'}
                                                                     </span>
-                                                                ) : (
+                                                                ) : !isSale ? (
                                                                     <span className="text-xs text-green-600">Règlement de dette</span>
-                                                                )}
+                                                                ) : null}
                                                             </TableCell>
                                                             <TableCell className={cn(
                                                                 "p-3 text-right font-semibold",
                                                                 isSale ? 'text-primary' : 'text-green-600'
                                                             )}>
-                                                                {isSale ? transaction.data.total.toFixed(1) : `+${transaction.data.amount.toFixed(1)}`} DA
+                                                                {isSale && saleData ? saleData.total.toFixed(1) : `+${transaction.data.amount.toFixed(1)}`} DA
                                                             </TableCell>
                                                              <TableCell className="p-3 text-right">
                                                                 <DropdownMenu>
@@ -477,16 +496,23 @@ export default function SalesHistoryPage() {
                                                                         </Button>
                                                                     </DropdownMenuTrigger>
                                                                     <DropdownMenuContent align="end">
-                                                                        {isSale && (
+                                                                        {isSale && saleData && (
                                                                             <>
-                                                                                <DropdownMenuItem onClick={() => setSelectedSale(transaction.data)} className="cursor-pointer">
+                                                                                <DropdownMenuItem onClick={() => setSelectedSale(saleData)} className="cursor-pointer">
                                                                                     <FileText className="mr-2 h-4 w-4" />
                                                                                     <span>Voir les détails</span>
                                                                                 </DropdownMenuItem>
-                                                                                <DropdownMenuItem onClick={() => handleSendReceipt(transaction.data)} disabled={!canSendWhatsApp} className="cursor-pointer">
+                                                                                <DropdownMenuItem onClick={() => handleSendReceipt(saleData)} disabled={!canSendWhatsApp} className="cursor-pointer">
                                                                                     <MessageSquare className="mr-2 h-4 w-4" />
                                                                                     <span>Envoyer Reçu</span>
                                                                                 </DropdownMenuItem>
+                                                                                {(saleData.paymentStatus === 'unpaid' || saleData.paymentStatus === 'partial') && (
+                                                                                    <DropdownMenuItem onClick={() => handleSendReminder(saleData)} disabled={!canSendWhatsApp} className="cursor-pointer">
+                                                                                        <BellRing className="mr-2 h-4 w-4" />
+                                                                                        <span>Envoyer Rappel</span>
+                                                                                    </DropdownMenuItem>
+                                                                                )}
+                                                                                <DropdownMenuSeparator />
                                                                             </>
                                                                         )}
                                                                         <DropdownMenuItem onClick={() => setTransactionToDelete(transaction)} className="text-destructive focus:text-destructive-foreground focus:bg-destructive cursor-pointer">
