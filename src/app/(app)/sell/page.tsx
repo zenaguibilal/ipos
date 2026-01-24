@@ -68,6 +68,12 @@ export default function SellPage() {
     const barcodeInputRef = useRef<HTMLInputElement>(null);
 
 
+    useEffect(() => {
+        if (!isUserLoading && !user) {
+            router.push('/login');
+        }
+    }, [user, isUserLoading, router]);
+
     // Initialize carts on component mount
     useEffect(() => {
         setIsClient(true);
@@ -367,8 +373,9 @@ export default function SellPage() {
         setIsClearCartDialogOpen(false);
     };
 
+    const isLoading = isUserLoading || isLoadingProducts || isLoadingCustomers || isLoadingCompany;
 
-    if (!isClient || isLoadingProducts || isLoadingCustomers || isLoadingCompany || !activeCart) {
+    if (isLoading || !isClient || !user || !activeCart) {
         return <div className="flex h-full items-center justify-center"><p>Chargement de l'interface de vente...</p></div>;
     }
 
@@ -645,3 +652,5 @@ export default function SellPage() {
         </>
     );
 }
+
+    
