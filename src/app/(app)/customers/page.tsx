@@ -7,7 +7,7 @@ import { collection, query, orderBy } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Search, PlusCircle, Users, HandCoins, UserCheck, AlertCircle, MoreHorizontal, Download, ChevronDown } from 'lucide-react';
+import { Search, PlusCircle, Users, HandCoins, UserCheck, AlertCircle, MoreHorizontal, Download, ChevronDown, ListFilter } from 'lucide-react';
 import type { Customer, Sale, Payment, CustomerWithSalesData } from '@/lib/types';
 import { CustomerDialog } from '@/components/customers/customer-dialog';
 import { DeleteCustomerDialog } from '@/components/customers/delete-customer-dialog';
@@ -20,6 +20,7 @@ import { fr } from 'date-fns/locale';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import Papa from 'papaparse';
 import { toast } from 'sonner';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export default function CustomersPage() {
     const { user, isUserLoading } = useUser();
@@ -31,9 +32,10 @@ export default function CustomersPage() {
     const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null);
     const [customerForPayment, setCustomerForPayment] = useState<Customer | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
+    const [sortOption, setSortOption] = useState('debt_desc');
 
     // Data fetching
-    const customersQuery = useMemoFirebase(() => (user && firestore) ? query(collection(firestore, 'users', user.uid, 'customers'), orderBy('createdAt', 'desc')) : null, [user, firestore]);
+    const customersQuery = useMemoFirebase(() => (user && firestore) ? query(collection(firestore, 'users', user.uid, 'customers'), orderBy('lastName', 'asc')) : null, [user, firestore]);
     const salesQuery = useMemoFirebase(() => (user && firestore) ? collection(firestore, 'users', user.uid, 'sales') : null, [user, firestore]);
     const paymentsQuery = useMemoFirebase(() => (user && firestore) ? query(collection(firestore, 'users', user.uid, 'payments')) : null, [user, firestore]);
 
@@ -92,12 +94,32 @@ export default function CustomersPage() {
 
     const filteredCustomers = useMemo(() => {
         if (!customersWithSalesData) return [];
-        return customersWithSalesData.filter(c =>
+        
+        let tempCustomers = customersWithSalesData.filter(c =>
             c.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
             c.lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
             (c.phone && c.phone.includes(searchQuery))
         );
-    }, [customersWithSalesData, searchQuery]);
+
+        tempCustomers.sort((a, b) => {
+            switch (sortOption) {
+                case 'debt_desc':
+                    return b.outstandingBalance - a.outstandingBalance;
+                case 'spent_desc':
+                    return b.totalSpent - a.totalSpent;
+                case 'activity_desc':
+                    const timeB = b.lastActivityDate?.getTime() || 0;
+                    const timeA = a.lastActivityDate?.getTime() || 0;
+                    return timeB - timeA;
+                case 'name_asc':
+                    return a.lastName.localeCompare(b.lastName);
+                default:
+                    return 0;
+            }
+        });
+
+        return tempCustomers;
+    }, [customersWithSalesData, searchQuery, sortOption]);
 
     const { totalCustomers, totalDebt, customersWithDebt } = useMemo(() => {
         return {
@@ -229,14 +251,28 @@ export default function CustomersPage() {
 
                 <Card>
                     <CardHeader>
-                         <div className="relative w-full max-w-sm">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input
-                                placeholder="Rechercher par nom ou téléphone..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-9 w-full"
-                            />
+                        <div className="flex flex-col sm:flex-row gap-4">
+                            <div className="relative flex-grow">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                    placeholder="Rechercher par nom ou téléphone..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="pl-9 w-full"
+                                />
+                            </div>
+                            <Select value={sortOption} onValueChange={setSortOption}>
+                                <SelectTrigger className="w-full sm:w-[220px]">
+                                    <ListFilter className="mr-2 h-4 w-4" />
+                                    <SelectValue placeholder="Trier par..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="debt_desc">Dette la plus élevée</SelectItem>
+                                    <SelectItem value="spent_desc">Total dépensé</SelectItem>
+                                    <SelectItem value="activity_desc">Activité la plus récente</SelectItem>
+                                    <SelectItem value="name_asc">Nom (A-Z)</SelectItem>
+                                </SelectContent>
+                            </Select>
                         </div>
                     </CardHeader>
                     <CardContent>

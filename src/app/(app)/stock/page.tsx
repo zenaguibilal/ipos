@@ -12,12 +12,14 @@ import { Search, PlusCircle, Archive, FileText, MoreHorizontal, Download, Chevro
 import type { StockIntake } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { safeToDate } from '@/lib/utils';
-import { format } from 'date-fns';
+import { format, subDays, startOfDay, endOfDay } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import Papa from 'papaparse';
 import { toast } from 'sonner';
+import { DateRangePicker } from '@/components/dashboard/date-range-picker';
+import { DateRange } from 'react-day-picker';
 
 // Details Dialog Component defined inside the page
 function StockIntakeDetailsDialog({ isOpen, onOpenChange, intake }: { isOpen: boolean, onOpenChange: (open: boolean) => void, intake: StockIntake | null }) {
@@ -67,6 +69,10 @@ export default function StockPage() {
 
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedIntake, setSelectedIntake] = useState<StockIntake | null>(null);
+    const [dateRange, setDateRange] = useState<DateRange | undefined>({
+        from: startOfDay(subDays(new Date(), 29)),
+        to: endOfDay(new Date()),
+    });
 
     const stockIntakesQuery = useMemoFirebase(() =>
         (user && firestore) ? query(collection(firestore, 'users', user.uid, 'stockIntakes'), orderBy('createdAt', 'desc')) : null,
@@ -82,11 +88,22 @@ export default function StockPage() {
 
     const filteredIntakes = useMemo(() => {
         if (!stockIntakes) return [];
-        return stockIntakes.filter(i => 
-            i.invoiceNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            i.supplier.toLowerCase().includes(searchQuery.toLowerCase())
-        );
-    }, [stockIntakes, searchQuery]);
+        
+        const fromDate = dateRange?.from;
+        const toDate = dateRange?.to;
+
+        return stockIntakes.filter(i => {
+            const intakeDate = safeToDate(i.createdAt);
+            if (fromDate && intakeDate < fromDate) return false;
+            if (toDate && intakeDate > toDate) return false;
+
+            if (searchQuery) {
+                return i.invoiceNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                       i.supplier.toLowerCase().includes(searchQuery.toLowerCase());
+            }
+            return true;
+        });
+    }, [stockIntakes, searchQuery, dateRange]);
 
     const totalIntakeValue = useMemo(() => {
         return filteredIntakes.reduce((sum, intake) => sum + intake.totalValue, 0);
@@ -140,7 +157,8 @@ export default function StockPage() {
                         <h1 className="text-2xl font-bold">Réception de Stock</h1>
                         <p className="text-muted-foreground">Consultez l'historique des réceptions de marchandises.</p>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                         <DateRangePicker onUpdate={setDateRange} />
                          <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button variant="outline">
@@ -165,7 +183,7 @@ export default function StockPage() {
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Nombre de Réceptions</CardTitle>
+                            <CardTitle className="text-sm font-medium">Réceptions (filtrées)</CardTitle>
                             <Archive className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
@@ -174,7 +192,7 @@ export default function StockPage() {
                     </Card>
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Valeur Totale Reçue</CardTitle>
+                            <CardTitle className="text-sm font-medium">Valeur Reçue (filtrée)</CardTitle>
                             <CircleDollarSign className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
@@ -200,13 +218,17 @@ export default function StockPage() {
                             <div className="flex h-40 items-center justify-center rounded-md border-2 border-dashed border-border bg-card">
                                 <div className="text-center">
                                     <FileText className="mx-auto h-12 w-12 text-muted-foreground"/>
-                                    <h3 className="mt-4 text-lg font-medium">Aucune réception de stock trouvée</h3>
-                                    <p className="mt-2 text-sm text-muted-foreground">Commencez par enregistrer votre première réception de marchandises.</p>
-                                    <Button asChild className="mt-4">
-                                         <Link href="/stock/intake">
-                                            Enregistrer une réception
-                                        </Link>
-                                    </Button>
+                                    <h3 className="mt-4 text-lg font-medium">Aucune réception trouvée</h3>
+                                    <p className="mt-2 text-sm text-muted-foreground">
+                                        {stockIntakes && stockIntakes.length > 0 ? "Aucune réception ne correspond à vos filtres." : "Commencez par enregistrer votre première réception."}
+                                    </p>
+                                     {(!stockIntakes || stockIntakes.length === 0) && (
+                                        <Button asChild className="mt-4">
+                                            <Link href="/stock/intake">
+                                                Enregistrer une réception
+                                            </Link>
+                                        </Button>
+                                     )}
                                 </div>
                             </div>
                         ) : (

@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils';
 import Image from 'next/image';
 import Papa from 'papaparse';
 import { toast } from 'sonner';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export default function ProductsPage() {
     const { user, isUserLoading } = useUser();
@@ -28,6 +29,7 @@ export default function ProductsPage() {
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
     const [productToDelete, setProductToDelete] = useState<Product | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
+    const [selectedCategory, setSelectedCategory] = useState('all');
 
     const productsQuery = useMemoFirebase(() =>
         (user && firestore) ? query(collection(firestore, 'users', user.uid, 'products'), orderBy('createdAt', 'desc')) : null,
@@ -50,13 +52,31 @@ export default function ProductsPage() {
         setIsDialogOpen(true);
     };
 
+    const categories = useMemo(() => {
+        if (!products) return [];
+        const allCategories = products.map(p => p.category).filter(Boolean);
+        return ['all', ...Array.from(new Set(allCategories as string[]))];
+    }, [products]);
+
     const filteredProducts = useMemo(() => {
         if (!products) return [];
-        return products.filter(p => 
-            p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            p.barcodes?.some(b => b.includes(searchQuery))
-        );
-    }, [products, searchQuery]);
+        
+        let tempProducts = [...products];
+
+        if (selectedCategory !== 'all') {
+            tempProducts = tempProducts.filter(p => p.category === selectedCategory);
+        }
+
+        if (searchQuery) {
+            const lowercasedQuery = searchQuery.toLowerCase();
+            tempProducts = tempProducts.filter(p => 
+                p.name.toLowerCase().includes(lowercasedQuery) ||
+                p.barcodes?.some(b => b.includes(lowercasedQuery))
+            );
+        }
+        
+        return tempProducts;
+    }, [products, searchQuery, selectedCategory]);
 
     const { totalInventoryValue, lowStockCount, totalProducts, totalCategories } = useMemo(() => {
         if (!products) return { totalInventoryValue: 0, lowStockCount: 0, totalProducts: 0, totalCategories: 0 };
@@ -64,9 +84,9 @@ export default function ProductsPage() {
             totalInventoryValue: products.reduce((sum, p) => sum + (p.purchasePrice || 0) * p.quantity, 0),
             lowStockCount: products.filter(p => p.quantity <= p.minStockLevel).length,
             totalProducts: products.length,
-            totalCategories: [...new Set(products.map(p => p.category).filter(Boolean))].length,
+            totalCategories: categories.length - 1, // Exclude 'all'
         }
-    }, [products]);
+    }, [products, categories]);
     
      const handleExport = () => {
         if (filteredProducts.length === 0) {
@@ -182,21 +202,35 @@ export default function ProductsPage() {
 
                 <Card>
                     <CardHeader>
-                        <div className="relative w-full max-w-sm">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input
-                                placeholder="Rechercher par nom ou code-barres..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-9 w-full"
-                            />
+                        <div className="flex flex-col sm:flex-row gap-4">
+                            <div className="relative flex-grow">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                    placeholder="Rechercher par nom ou code-barres..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="pl-9 w-full"
+                                />
+                            </div>
+                            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                                <SelectTrigger className="w-full sm:w-[200px]">
+                                    <SelectValue placeholder="Filtrer par catégorie" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {categories.map(cat => (
+                                        <SelectItem key={cat} value={cat} className="capitalize">
+                                            {cat === 'all' ? 'Toutes les catégories' : cat}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
                     </CardHeader>
                     <CardContent>
                         {filteredProducts.length === 0 ? (
                             <div className="flex h-40 items-center justify-center rounded-md border-2 border-dashed border-border bg-card">
                                 <p className="text-muted-foreground">
-                                    {products && products.length > 0 ? "Aucun produit ne correspond à votre recherche." : "Aucun produit trouvé. Commencez par en ajouter un."}
+                                    {products && products.length > 0 ? "Aucun produit ne correspond à vos filtres." : "Aucun produit trouvé. Commencez par en ajouter un."}
                                 </p>
                             </div>
                         ) : (
