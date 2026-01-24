@@ -16,7 +16,7 @@ interface StockIntakeCardProps {
 export function StockIntakeCard({ intake, onViewDetails }: StockIntakeCardProps) {
 
     return (
-        <Card>
+        <Card className="transition-shadow duration-300 hover:shadow-xl">
             <CardHeader>
                 <div className="flex justify-between items-start">
                     <div>

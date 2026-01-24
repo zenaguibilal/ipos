@@ -18,7 +18,7 @@ export function ProductCard({ product, onEdit, onDelete }: ProductCardProps) {
     const isLowStock = product.quantity <= product.minStockLevel;
 
     return (
-        <Card className="flex flex-col">
+        <Card className="flex flex-col transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
             <CardHeader className="p-0 relative">
                 <Image
                     src={product.imageUrl || `https://picsum.photos/seed/${product.id}/400`}

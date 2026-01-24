@@ -29,7 +29,7 @@ interface OrderCardProps {
 export function OrderCard({ order, onUpdateToggles, onEdit, onDelete, isSelected, onSelectChange }: OrderCardProps) {
     return (
         <Card className={cn(
-            "flex flex-col justify-between transition-all relative",
+            "flex flex-col justify-between transition-all relative hover:shadow-xl hover:-translate-y-1",
             order.isDelivered && !order.isPaid && "bg-red-500/10 border-red-500/30",
             order.isDelivered && order.isPaid && "bg-green-500/10 border-green-500/30",
             isSelected && "border-primary ring-2 ring-primary"

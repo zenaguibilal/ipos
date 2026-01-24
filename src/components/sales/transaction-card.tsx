@@ -27,7 +27,7 @@ export function TransactionCard({ transaction, customerForSale, onViewDetails, o
     const canSendWhatsApp = !!(saleData && customerForSale && customerForSale.phone);
 
     return (
-        <Card className={cn("flex flex-col", !isSale && "bg-green-500/10 border-green-500/20")}>
+        <Card className={cn("flex flex-col transition-shadow duration-300 hover:shadow-xl", !isSale && "bg-green-500/10 border-green-500/20")}>
             <CardHeader className="p-4 flex-row justify-between items-start">
                 <div>
                     <p className="font-semibold">{transaction.data.customerName || (isSale ? 'Vente au comptoir' : 'Paiement inconnu')}</p>
