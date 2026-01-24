@@ -59,8 +59,12 @@ export default function CustomersPage() {
             const outstandingBalance = totalSpent - totalPaidFromSales - totalStandalonePayments;
             const finalBalance = outstandingBalance < 0.01 ? 0 : outstandingBalance;
             
-            const lastSaleDate = customerSales.length > 0 ? Math.max(...customerSales.map(s => safeToDate(s.createdAt).getTime())) : 0;
-            const lastPaymentDate = customerPayments.length > 0 ? Math.max(...customerPayments.map(p => safeToDate(p.createdAt).getTime())) : 0;
+            const validSales = customerSales.filter(s => s.createdAt);
+            const lastSaleDate = validSales.length > 0 ? Math.max(...validSales.map(s => safeToDate(s.createdAt).getTime())) : 0;
+            
+            const validPayments = customerPayments.filter(p => p.createdAt);
+            const lastPaymentDate = validPayments.length > 0 ? Math.max(...validPayments.map(p => safeToDate(p.createdAt).getTime())) : 0;
+
             const lastActivityTimestamp = Math.max(lastSaleDate, lastPaymentDate);
             const lastActivityDate = lastActivityTimestamp > 0 ? new Date(lastActivityTimestamp) : null;
 
@@ -78,7 +82,7 @@ export default function CustomersPage() {
         return customersWithSalesData.filter(c =>
             c.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
             c.lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            c.phone?.includes(searchQuery)
+            (c.phone && c.phone.includes(searchQuery))
         );
     }, [customersWithSalesData, searchQuery]);
 
@@ -242,5 +246,3 @@ export default function CustomersPage() {
         </>
     )
 }
-
-    
