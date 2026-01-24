@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -20,6 +21,7 @@ import { DateRangePicker } from '@/components/dashboard/date-range-picker';
 import { DateRange } from 'react-day-picker';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { StockIntakeCard } from '@/components/stock/stock-intake-card';
+import { StockIntakeCardSkeleton } from '@/components/stock/stock-intake-card-skeleton';
 
 // Details Dialog Component defined inside the page
 function StockIntakeDetailsDialog({ isOpen, onOpenChange, intake }: { isOpen: boolean, onOpenChange: (open: boolean) => void, intake: StockIntake | null }) {
@@ -148,8 +150,8 @@ export default function StockPage() {
 
     const isLoading = isUserLoading || isLoadingIntakes;
 
-     if (isLoading || !user) {
-        return <div className="flex h-full items-center justify-center"><p>Chargement de l'historique des stocks...</p></div>;
+     if (!user && !isLoading) {
+        return null;
     }
 
     return (
@@ -236,7 +238,11 @@ export default function StockPage() {
                         </div>
                     </CardHeader>
                     <CardContent>
-                         {filteredIntakes.length === 0 ? (
+                         {isLoading ? (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                                {Array.from({ length: 8 }).map((_, i) => <StockIntakeCardSkeleton key={i} />)}
+                            </div>
+                         ) : filteredIntakes.length === 0 ? (
                             <div className="flex h-40 items-center justify-center rounded-md border-2 border-dashed border-border bg-card">
                                 <div className="text-center">
                                     <FileText className="mx-auto h-12 w-12 text-muted-foreground"/>

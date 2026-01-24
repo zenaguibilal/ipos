@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -21,6 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import Link from 'next/link';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { CustomerCard } from '@/components/customers/customer-card';
+import { CustomerCardSkeleton } from '@/components/customers/customer-card-skeleton';
 
 export default function CustomersPage() {
     const { user, isUserLoading } = useUser();
@@ -171,25 +173,26 @@ export default function CustomersPage() {
 
     const isLoading = isUserLoading || isLoadingCustomers || isLoadingSales || isLoadingPayments;
 
-    if (isLoading || !user) {
-        return <div className="flex h-full items-center justify-center"><p>Chargement des clients...</p></div>;
+    if (!user && !isLoading) {
+        // This case should be handled by the useEffect redirect, but it's a good failsafe.
+        return <div className="flex h-full items-center justify-center"><p>Redirection...</p></div>;
     }
 
     return (
         <>
-            <CustomerDialog
+            {user && <CustomerDialog
                 isOpen={isDialogOpen}
                 onOpenChange={setIsDialogOpen}
                 customer={selectedCustomer}
                 userId={user.uid}
-            />
-             <DeleteCustomerDialog
+            />}
+             {user && <DeleteCustomerDialog
                 isOpen={!!customerToDelete}
                 onOpenChange={(isOpen) => !isOpen && setCustomerToDelete(null)}
                 customer={customerToDelete}
                 userId={user.uid}
-            />
-            {customerForPayment && (
+            />}
+            {customerForPayment && user && (
                 <AddPaymentForm
                     isOpen={!!customerForPayment}
                     onOpenChange={(isOpen) => !isOpen && setCustomerForPayment(null)}
@@ -280,7 +283,9 @@ export default function CustomersPage() {
                     </CardHeader>
                     <CardContent>
                          {isLoading ? (
-                            <div className="text-center p-8">Chargement des clients...</div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                                {Array.from({ length: 8 }).map((_, i) => <CustomerCardSkeleton key={i} />)}
+                            </div>
                          ) : filteredCustomers.length === 0 ? (
                             <div className="flex h-40 items-center justify-center rounded-md border-2 border-dashed border-border bg-card">
                                 <p className="text-muted-foreground">

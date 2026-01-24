@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useState, useMemo } from 'react';
@@ -19,6 +20,7 @@ import { toast } from 'sonner';
 import Papa from 'papaparse';
 import dynamic from 'next/dynamic';
 import { ReturnCard } from '@/components/returns/return-card';
+import { ReturnCardSkeleton } from '@/components/returns/return-card-skeleton';
 
 const ReturnDetailsDialog = dynamic(() => import('@/components/returns/return-details-dialog').then(mod => mod.ReturnDetailsDialog));
 const DeleteReturnDialog = dynamic(() => import('@/components/returns/delete-return-dialog').then(mod => mod.DeleteReturnDialog));
@@ -116,8 +118,8 @@ export default function ReturnsPage() {
 
     const isLoading = isUserLoading || isLoadingReturns;
 
-    if (isLoading || !user) {
-        return <div className="flex h-full items-center justify-center"><p>Chargement de l'historique des retours...</p></div>;
+    if (!user && !isLoading) {
+        return null;
     }
 
     return (
@@ -217,7 +219,11 @@ export default function ReturnsPage() {
                         </div>
                     </CardHeader>
                     <CardContent>
-                        {filteredReturns.length === 0 ? (
+                        {isLoading ? (
+                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                                {Array.from({ length: 8 }).map((_, i) => <ReturnCardSkeleton key={i} />)}
+                            </div>
+                        ) : filteredReturns.length === 0 ? (
                              <div className="flex h-40 items-center justify-center rounded-md border-2 border-dashed border-border bg-card">
                                 <p className="text-muted-foreground">
                                     {returns && returns.length > 0 ? "Aucun retour ne correspond à vos filtres." : "Aucun retour enregistré pour le moment."}

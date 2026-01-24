@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useState, useMemo, useRef } from 'react';
@@ -22,6 +23,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { A4Receipt } from '@/components/sales/a4-receipt';
 import html2canvas from 'html2canvas';
 import { TransactionCard } from '@/components/sales/transaction-card';
+import { TransactionCardSkeleton } from '@/components/sales/transaction-card-skeleton';
+import { Skeleton } from '@/components/ui/skeleton';
 
 
 const SaleDetailsDialog = dynamic(() => import('@/components/sales/sale-details-dialog').then(mod => mod.SaleDetailsDialog));
@@ -355,8 +358,8 @@ export default function SalesHistoryPage() {
 
     const isLoading = isUserLoading || isLoadingSales || isLoadingPayments || isLoadingCompany || isLoadingCustomers;
 
-    if (isLoading || !user) {
-        return <div className="flex h-full items-center justify-center"><p>Chargement de l'historique...</p></div>;
+    if (!user && !isLoading) {
+        return null;
     }
 
     return (
@@ -478,7 +481,22 @@ export default function SalesHistoryPage() {
                                 </CardContent>
                             </Card>
                         </div>
-                        {Object.keys(groupedTransactions).length === 0 ? (
+                        {isLoading ? (
+                             <div className="space-y-8">
+                                <div className="space-y-4">
+                                    <Skeleton className="h-7 w-48" />
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                                        {Array.from({ length: 4 }).map((_, i) => <TransactionCardSkeleton key={i} />)}
+                                    </div>
+                                </div>
+                                <div className="space-y-4">
+                                    <Skeleton className="h-7 w-48" />
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                                        {Array.from({ length: 3 }).map((_, i) => <TransactionCardSkeleton key={i} />)}
+                                    </div>
+                                </div>
+                            </div>
+                        ) : Object.keys(groupedTransactions).length === 0 ? (
                              <div className="flex h-40 items-center justify-center rounded-md border-2 border-dashed border-border bg-card">
                                 <p className="text-muted-foreground">
                                     {combinedTransactions.length > 0 ? "Aucune transaction ne correspond à votre recherche." : "Aucune transaction enregistrée pour le moment."}

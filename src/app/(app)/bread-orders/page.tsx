@@ -21,6 +21,7 @@ import { UnpaidOrdersLog } from '@/components/bread-orders/unpaid-orders-log';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { PrintableBreadList } from '@/components/bread-orders/printable-bread-list';
 import dynamic from 'next/dynamic';
+import { OrderCardSkeleton } from '@/components/bread-orders/order-card-skeleton';
 
 const AddOrderForm = dynamic(() => import('@/components/bread-orders/add-order-form').then(mod => mod.AddOrderForm));
 const EditOrderForm = dynamic(() => import('@/components/bread-orders/edit-order-form').then(mod => mod.EditOrderForm));
@@ -646,7 +647,9 @@ export default function BreadOrdersPage() {
                         </div>
 
                         {isLoading ? (
-                            <div className="text-center p-8">Chargement des commandes...</div>
+                            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                                {Array.from({ length: 8 }).map((_, i) => <OrderCardSkeleton key={i} />)}
+                            </div>
                         ) : filteredOrders.length === 0 ? (
                              <div className="flex h-60 items-center justify-center rounded-md border-2 border-dashed border-border bg-card">
                                 <div className="text-center">
