@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
@@ -207,7 +208,7 @@ export default function DashboardPage() {
             if (dailyData[dateKey]) {
                 dailyData[dateKey].revenue -= ret.totalReturnValue;
                 const returnProfitLoss = ret.items.reduce((itemSum, item) => {
-                    const purchasePrice = (item as any).purchasePrice || 0;
+                    const purchasePrice = item.purchasePrice || 0;
                     const profitLoss = (item.price - purchasePrice) * item.quantity;
                     return itemSum + profitLoss;
                 }, 0);
@@ -472,7 +473,7 @@ export default function DashboardPage() {
                         <CardTitle className="flex items-center gap-2"><Award className="h-5 w-5 text-muted-foreground" /> Meilleurs clients</CardTitle>
                         <CardDescription>Top 5 des clients par total d'achats net sur la période.</CardDescription>
                     </CardHeader>
-                    <CardContent className="h-[300px] pt-4">
+                    <CardContent className="h-[300px]">
                         {topCustomers.length === 0 ? (
                             <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
                                 <p>Aucune donnée de vente pour afficher les meilleurs clients.</p>
