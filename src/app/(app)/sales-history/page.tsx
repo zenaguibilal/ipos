@@ -7,7 +7,7 @@ import { collection, query, orderBy, doc } from 'firebase/firestore';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Search, CreditCard, HandCoins, CircleDollarSign, Download, ChevronDown, TrendingUp, MoreHorizontal, Trash2 } from 'lucide-react';
+import { Search, CreditCard, HandCoins, CircleDollarSign, Download, ChevronDown, TrendingUp, MoreHorizontal, Trash2, FileText, MessageSquare } from 'lucide-react';
 import type { Sale, Payment, CompanyProfile, Customer, SaleItem } from '@/lib/types';
 import { cn, safeToDate } from '@/lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -247,6 +247,25 @@ export default function SalesHistoryPage() {
         });
     };
 
+    const handleSendReceipt = (sale: Sale) => {
+        if (!customers || !sale.customerId) {
+            toast.error("Informations client non disponibles pour cette vente.");
+            return;
+        }
+
+        const customer = customers.find(c => c.id === sale.customerId);
+        if (!customer || !customer.phone) {
+            toast.error("Le numéro de téléphone de ce client n'est pas disponible.");
+            return;
+        }
+
+        const companyName = companyProfile?.companyName || 'votre magasin';
+        const message = `Bonjour ${customer.firstName} ${customer.lastName}, voici un récapitulatif de votre facture N°${sale.invoiceNumber}. Total: ${sale.total.toFixed(1)} DA, Montant Payé: ${sale.amountPaid.toFixed(1)} DA, Solde Restant: ${sale.remainingBalance.toFixed(1)} DA. Merci de votre confiance !`;
+        
+        const whatsappUrl = `https://wa.me/${customer.phone.replace(/\s+/g, '')}?text=${encodeURIComponent(message)}`;
+        window.open(whatsappUrl, '_blank');
+    };
+
 
     const isLoading = isUserLoading || isLoadingSales || isLoadingPayments || isLoadingCompany || isLoadingCustomers;
 
@@ -404,7 +423,10 @@ export default function SalesHistoryPage() {
                                                      if (!transaction.data.createdAt) return null;
                                                      const currentDate = safeToDate(transaction.data.createdAt);
                                                      const isSale = transaction.type === 'sale';
-                                                     
+                                                     const saleData = isSale ? transaction.data as Sale : null;
+                                                     const customerForSale = saleData?.customerId && customers ? customers.find(c => c.id === saleData.customerId) : null;
+                                                     const canSendWhatsApp = !!(customerForSale && customerForSale.phone);
+
                                                      return (
                                                         <TableRow 
                                                             key={`${transaction.type}-${transaction.data.id}-${index}`}
@@ -456,9 +478,16 @@ export default function SalesHistoryPage() {
                                                                     </DropdownMenuTrigger>
                                                                     <DropdownMenuContent align="end">
                                                                         {isSale && (
-                                                                            <DropdownMenuItem onClick={() => setSelectedSale(transaction.data)} className="cursor-pointer">
-                                                                                Voir les détails
-                                                                            </DropdownMenuItem>
+                                                                            <>
+                                                                                <DropdownMenuItem onClick={() => setSelectedSale(transaction.data)} className="cursor-pointer">
+                                                                                    <FileText className="mr-2 h-4 w-4" />
+                                                                                    <span>Voir les détails</span>
+                                                                                </DropdownMenuItem>
+                                                                                <DropdownMenuItem onClick={() => handleSendReceipt(transaction.data)} disabled={!canSendWhatsApp} className="cursor-pointer">
+                                                                                    <MessageSquare className="mr-2 h-4 w-4" />
+                                                                                    <span>Envoyer Reçu</span>
+                                                                                </DropdownMenuItem>
+                                                                            </>
                                                                         )}
                                                                         <DropdownMenuItem onClick={() => setTransactionToDelete(transaction)} className="text-destructive focus:text-destructive-foreground focus:bg-destructive cursor-pointer">
                                                                             <Trash2 className="mr-2 h-4 w-4" />
