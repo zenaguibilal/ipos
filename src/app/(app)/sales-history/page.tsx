@@ -1,13 +1,13 @@
 'use client';
 
 import React, { useEffect, useState, useMemo } from 'react';
-import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase, deleteDocumentNonBlocking } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { collection, query, orderBy, doc } from 'firebase/firestore';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Search, CreditCard, HandCoins, CircleDollarSign, Download, ChevronDown, TrendingUp } from 'lucide-react';
+import { Search, CreditCard, HandCoins, CircleDollarSign, Download, ChevronDown, TrendingUp, MoreHorizontal, Trash2 } from 'lucide-react';
 import type { Sale, Payment, CompanyProfile, Customer, SaleItem } from '@/lib/types';
 import { cn, safeToDate } from '@/lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -19,6 +19,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import Papa from 'papaparse';
 import { toast } from 'sonner';
 import dynamic from 'next/dynamic';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+
 
 const SaleDetailsDialog = dynamic(() => import('@/components/sales/sale-details-dialog').then(mod => mod.SaleDetailsDialog));
 
@@ -39,6 +41,8 @@ export default function SalesHistoryPage() {
         from: startOfDay(subDays(new Date(), 29)),
         to: endOfDay(new Date()),
     });
+    const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null);
+
 
     // --- Data Fetching ---
     const salesQuery = useMemoFirebase(() => 
@@ -223,6 +227,26 @@ export default function SalesHistoryPage() {
         toast.success("Historique des transactions exporté avec succès.");
     };
 
+    const handleDeleteTransaction = () => {
+        if (!transactionToDelete || !firestore || !user) return;
+    
+        const { type, data } = transactionToDelete;
+        const collectionName = type === 'sale' ? 'sales' : 'payments';
+        const docRef = doc(firestore, 'users', user.uid, collectionName, data.id);
+    
+        deleteDocumentNonBlocking(docRef, {
+            onSuccess: () => {
+                toast.success(`La transaction a été supprimée.`);
+                setTransactionToDelete(null);
+            },
+            onError: (err) => {
+                toast.error("Erreur lors de la suppression de la transaction.");
+                console.error(err);
+                setTransactionToDelete(null);
+            }
+        });
+    };
+
 
     const isLoading = isUserLoading || isLoadingSales || isLoadingPayments || isLoadingCompany || isLoadingCustomers;
 
@@ -240,6 +264,24 @@ export default function SalesHistoryPage() {
                     companyProfile={companyProfile}
                     customer={selectedCustomer}
                 />
+            )}
+             {transactionToDelete && (
+                <AlertDialog open={!!transactionToDelete} onOpenChange={(isOpen) => !isOpen && setTransactionToDelete(null)}>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Confirmer la suppression?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                Êtes-vous sûr de vouloir supprimer cette transaction ? Cette action est irréversible et affectera les soldes des clients et les rapports.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Annuler</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleDeleteTransaction} className={cn(buttonVariants({ variant: "destructive" }))}>
+                                Supprimer
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
             )}
              <main className="flex-1 overflow-auto p-4 sm:p-6">
                 <Card className="w-full bg-card">
@@ -340,13 +382,14 @@ export default function SalesHistoryPage() {
                                             <TableHead>Heure</TableHead>
                                             <TableHead>Statut / Détails</TableHead>
                                             <TableHead className="text-right">Montant</TableHead>
+                                            <TableHead className="text-right">Actions</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {Object.entries(groupedTransactions).map(([dateStr, group]) => (
                                             <React.Fragment key={dateStr}>
                                                 <TableRow className="bg-muted hover:bg-muted">
-                                                    <TableCell colSpan={5} className="py-2 px-4 font-medium text-foreground">
+                                                    <TableCell colSpan={6} className="py-2 px-4 font-medium text-foreground">
                                                         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1">
                                                             <span className="font-semibold text-base">{format(new Date(dateStr + 'T12:00:00'), 'eeee d MMMM yyyy', { locale: fr })}</span>
                                                             <div className="sm:text-right text-xs flex flex-wrap gap-x-4 gap-y-1 justify-start sm:justify-end">
@@ -365,14 +408,9 @@ export default function SalesHistoryPage() {
                                                      return (
                                                         <TableRow 
                                                             key={`${transaction.type}-${transaction.data.id}-${index}`}
-                                                            onClick={() => {
-                                                                if (transaction.type === 'sale') {
-                                                                    setSelectedSale(transaction.data);
-                                                                }
-                                                            }}
                                                             className={cn(
                                                                 "border-b transition-colors",
-                                                                isSale ? "hover:bg-muted/50 cursor-pointer" : "bg-green-500/10"
+                                                                !isSale && "bg-green-500/10"
                                                             )}
                                                         >
                                                             <TableCell className="hidden sm:table-cell">
@@ -407,6 +445,27 @@ export default function SalesHistoryPage() {
                                                                 isSale ? 'text-primary' : 'text-green-600'
                                                             )}>
                                                                 {isSale ? transaction.data.total.toFixed(1) : `+${transaction.data.amount.toFixed(1)}`} DA
+                                                            </TableCell>
+                                                             <TableCell className="p-3 text-right">
+                                                                <DropdownMenu>
+                                                                    <DropdownMenuTrigger asChild>
+                                                                        <Button variant="ghost" className="h-8 w-8 p-0">
+                                                                            <span className="sr-only">Ouvrir le menu</span>
+                                                                            <MoreHorizontal className="h-4 w-4" />
+                                                                        </Button>
+                                                                    </DropdownMenuTrigger>
+                                                                    <DropdownMenuContent align="end">
+                                                                        {isSale && (
+                                                                            <DropdownMenuItem onClick={() => setSelectedSale(transaction.data)} className="cursor-pointer">
+                                                                                Voir les détails
+                                                                            </DropdownMenuItem>
+                                                                        )}
+                                                                        <DropdownMenuItem onClick={() => setTransactionToDelete(transaction)} className="text-destructive focus:text-destructive-foreground focus:bg-destructive cursor-pointer">
+                                                                            <Trash2 className="mr-2 h-4 w-4" />
+                                                                            Supprimer
+                                                                        </DropdownMenuItem>
+                                                                    </DropdownMenuContent>
+                                                                </DropdownMenu>
                                                             </TableCell>
                                                         </TableRow>
                                                      );
