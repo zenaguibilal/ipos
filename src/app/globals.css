@@ -19,6 +19,9 @@
 
     --chart-primary: 216 91% 47%;
     --chart-secondary: 48 96% 51%;
+    --chart-tertiary: 10 80% 55%;
+    --chart-quaternary: 150 70% 45%;
+    --chart-quinary: 280 82% 52%;
  
     --secondary: 215 28% 90%;
     --secondary-foreground: 224 71.4% 4.1%;
@@ -51,6 +54,9 @@
 
     --chart-primary: 216 91% 57%;
     --chart-secondary: 48 96% 51%;
+    --chart-tertiary: 10 70% 65%;
+    --chart-quaternary: 150 60% 55%;
+    --chart-quinary: 280 92% 62%;
 
     --secondary: 240 3.7% 15.9%;
     --secondary-foreground: 0 0% 98%;

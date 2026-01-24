@@ -3,17 +3,43 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { collection, query, orderBy, where, Timestamp } from 'firebase/firestore';
+import { collection, query, orderBy } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { DateRangePicker } from '@/components/dashboard/date-range-picker';
 import { DateRange } from 'react-day-picker';
 import { subDays, startOfDay, endOfDay, format, eachDayOfInterval, parse } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import type { Sale, ProductReturn, SaleItem, ChartData } from '@/lib/types';
+import type { Sale, ProductReturn, SaleItem } from '@/lib/types';
 import { safeToDate } from '@/lib/utils';
 import { CircleDollarSign, TrendingUp, Undo2, ShoppingCart, Activity, Users, Package } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+
+
+// Colors for the Pie Chart
+const PIE_COLORS = [
+    'hsl(var(--chart-primary))',
+    'hsl(var(--chart-secondary))',
+    'hsl(var(--chart-tertiary))',
+    'hsl(var(--chart-quaternary))',
+    'hsl(var(--chart-quinary))',
+];
+
+const RADIAN = Math.PI / 180;
+const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }: any) => {
+  const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+  const x = cx + radius * Math.cos(-midAngle * RADIAN);
+  const y = cy + radius * Math.sin(-midAngle * RADIAN);
+
+  if (percent < 0.05) return null; // Don't render label for small slices
+
+  return (
+    <text x={x} y={y} fill="white" textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central" className="text-xs font-bold">
+      {`${(percent * 100).toFixed(0)}%`}
+    </text>
+  );
+};
+
 
 export default function DashboardPage() {
     const { user, isUserLoading } = useUser();
@@ -317,37 +343,38 @@ export default function DashboardPage() {
                 </Card>
             </div>
             <div className="grid gap-6 mt-6 md:grid-cols-2">
-                <Card>
+                 <Card>
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2"><Package className="h-5 w-5 text-muted-foreground" /> Produits les plus vendus</CardTitle>
+                        <CardTitle className="flex items-center gap-2"><Package className="h-5 w-5 text-muted-foreground" /> Produits les plus rentables</CardTitle>
                         <CardDescription>Top 5 des produits par bénéfice sur la période.</CardDescription>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="h-[300px]">
                         {topProducts.length === 0 ? (
-                            <div className="flex h-24 items-center justify-center text-sm text-muted-foreground">
+                            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
                                 <p>Aucune donnée de vente pour afficher les meilleurs produits.</p>
                             </div>
                         ) : (
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Produit</TableHead>
-                                        <TableHead className="text-center">Unités</TableHead>
-                                        <TableHead className="text-right">Bénéfice</TableHead>
-                                        <TableHead className="text-right">C.A.</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {topProducts.map((product) => (
-                                        <TableRow key={product.name}>
-                                            <TableCell className="font-medium">{product.name}</TableCell>
-                                            <TableCell className="text-center">{product.unitsSold}</TableCell>
-                                            <TableCell className="text-right font-semibold text-green-600">{formatCurrency(product.totalProfit)}</TableCell>
-                                            <TableCell className="text-right font-semibold">{formatCurrency(product.totalRevenue)}</TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
+                             <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie
+                                        data={topProducts}
+                                        cx="50%"
+                                        cy="50%"
+                                        labelLine={false}
+                                        label={renderCustomizedLabel}
+                                        outerRadius={80}
+                                        fill="#8884d8"
+                                        dataKey="totalProfit"
+                                        nameKey="name"
+                                    >
+                                        {topProducts.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip formatter={(value: number) => [formatCurrency(value), 'Bénéfice']} />
+                                    <Legend />
+                                </PieChart>
+                            </ResponsiveContainer>
                         )}
                     </CardContent>
                 </Card>
