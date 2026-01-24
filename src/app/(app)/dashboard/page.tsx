@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
@@ -348,33 +349,46 @@ export default function DashboardPage() {
                         <CardTitle className="flex items-center gap-2"><Package className="h-5 w-5 text-muted-foreground" /> Produits les plus rentables</CardTitle>
                         <CardDescription>Top 5 des produits par bénéfice sur la période.</CardDescription>
                     </CardHeader>
-                    <CardContent className="h-[300px]">
+                     <CardContent className="h-[300px]">
                         {topProducts.length === 0 ? (
                             <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
                                 <p>Aucune donnée de vente pour afficher les meilleurs produits.</p>
                             </div>
                         ) : (
-                             <ResponsiveContainer width="100%" height="100%">
-                                <PieChart>
-                                    <Pie
-                                        data={topProducts}
-                                        cx="50%"
-                                        cy="50%"
-                                        labelLine={false}
-                                        label={renderCustomizedLabel}
-                                        outerRadius={80}
-                                        fill="#8884d8"
-                                        dataKey="totalProfit"
-                                        nameKey="name"
-                                    >
-                                        {topProducts.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                                        ))}
-                                    </Pie>
-                                    <Tooltip formatter={(value: number) => [formatCurrency(value), 'Bénéfice']} />
-                                    <Legend />
-                                </PieChart>
-                            </ResponsiveContainer>
+                            <div className="grid grid-cols-2 gap-4 h-full items-center">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Pie
+                                            data={topProducts}
+                                            cx="50%"
+                                            cy="50%"
+                                            labelLine={false}
+                                            label={renderCustomizedLabel}
+                                            outerRadius={100}
+                                            innerRadius={60}
+                                            paddingAngle={2}
+                                            dataKey="totalProfit"
+                                            nameKey="name"
+                                        >
+                                            {topProducts.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} stroke={'hsl(var(--background))'} />
+                                            ))}
+                                        </Pie>
+                                        <Tooltip formatter={(value: number) => [formatCurrency(value), 'Bénéfice']} />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                                <div className="flex flex-col justify-center space-y-3">
+                                    {topProducts.map((product, index) => (
+                                        <div key={product.name} className="flex items-center">
+                                            <div className="h-3 w-3 rounded-full mr-3 flex-shrink-0" style={{ backgroundColor: PIE_COLORS[index % PIE_COLORS.length] }} />
+                                            <div className="flex-1 text-sm">
+                                                <div className="font-medium truncate" title={product.name}>{product.name}</div>
+                                                <div className="text-xs text-muted-foreground font-semibold">{formatCurrency(product.totalProfit)}</div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
                         )}
                     </CardContent>
                 </Card>
@@ -383,28 +397,30 @@ export default function DashboardPage() {
                         <CardTitle className="flex items-center gap-2"><Users className="h-5 w-5 text-muted-foreground" /> Meilleurs clients</CardTitle>
                         <CardDescription>Top 5 des clients par total d'achats sur la période.</CardDescription>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="h-[300px]">
                         {topCustomers.length === 0 ? (
-                            <div className="flex h-24 items-center justify-center text-sm text-muted-foreground">
+                            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
                                 <p>Aucune donnée de vente pour afficher les meilleurs clients.</p>
                             </div>
                         ) : (
-                             <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Client</TableHead>
-                                        <TableHead className="text-right">Total Dépensé</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {topCustomers.map((customer) => (
-                                        <TableRow key={customer.name}>
-                                            <TableCell className="font-medium">{customer.name}</TableCell>
-                                            <TableCell className="text-right font-semibold">{formatCurrency(customer.totalSpent)}</TableCell>
+                             <div className="h-full overflow-y-auto">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Client</TableHead>
+                                            <TableHead className="text-right">Total Dépensé</TableHead>
                                         </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {topCustomers.map((customer) => (
+                                            <TableRow key={customer.name}>
+                                                <TableCell className="font-medium">{customer.name}</TableCell>
+                                                <TableCell className="text-right font-semibold">{formatCurrency(customer.totalSpent)}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
                         )}
                     </CardContent>
                 </Card>
