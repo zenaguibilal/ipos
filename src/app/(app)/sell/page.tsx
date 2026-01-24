@@ -162,43 +162,57 @@ export default function SellPage() {
     const filteredProducts = useMemo(() => {
         if (!products) return [];
 
-        let baseProductList: Product[];
+        let productListToShow: Product[];
 
-        // If sales data is available and there are sales, calculate top 15 by sales
-        if (sales && sales.length > 0) {
-            const productSales: { [productId: string]: number } = {};
-            sales.forEach(sale => {
-                if (sale.items) {
-                    sale.items.forEach(item => {
-                        if (item.id && !item.id.startsWith('custom-')) {
-                            productSales[item.id] = (productSales[item.id] || 0) + (item.cartQuantity || item.quantity);
-                        }
-                    });
-                }
-            });
-
-            const top15ProductIds = new Set(
-                Object.entries(productSales)
-                    .sort(([, a], [, b]) => b - a)
-                    .slice(0, 15)
-                    .map(([productId]) => productId)
+        // If a search query is active, filter all products.
+        if (searchQuery) {
+            productListToShow = products.filter(p => 
+                p.name.toLowerCase().includes(searchQuery.toLowerCase())
             );
-            
-            baseProductList = products
-                .filter(p => top15ProductIds.has(p.id))
-                .sort((a, b) => (productSales[b.id] || 0) - (productSales[a.id] || 0));
-        } else {
-            // Fallback: if no sales, show the 15 most recently added products.
-            // This requires `productsQuery` to be sorted by `createdAt` descending.
-            baseProductList = products.slice(0, 15);
+        } 
+        // If no search query, show top popular/recent products.
+        else {
+            if (sales && sales.length > 0) {
+                const productSales: { [productId: string]: number } = {};
+                sales.forEach(sale => {
+                    if (sale.items) {
+                        sale.items.forEach(item => {
+                            if (item.id && !item.id.startsWith('custom-')) {
+                                productSales[item.id] = (productSales[item.id] || 0) + (item.cartQuantity || item.quantity);
+                            }
+                        });
+                    }
+                });
+
+                const popularProducts = products
+                    .filter(p => productSales[p.id] > 0)
+                    .sort((a, b) => (productSales[b.id] || 0) - (productSales[a.id] || 0));
+
+                const recentProducts = products.slice(0, 15);
+                const combined = new Map<string, Product>();
+
+                popularProducts.forEach(p => combined.set(p.id, p));
+                recentProducts.forEach(p => {
+                    if (!combined.has(p.id)) {
+                        combined.set(p.id, p);
+                    }
+                });
+
+                productListToShow = Array.from(combined.values()).slice(0, 15);
+                
+            } else {
+                // Fallback: if no sales, show the 15 most recently added products.
+                productListToShow = products.slice(0, 15);
+            }
         }
         
-        // Now apply filters on the base list
-        return baseProductList.filter(p => {
-            const matchesCategory = selectedCategory === 'all' || p.category === selectedCategory;
-            const matchesSearch = searchQuery === '' || p.name.toLowerCase().includes(searchQuery.toLowerCase());
-            return matchesCategory && matchesSearch;
-        });
+        // Apply category filter on the resulting list.
+        if (selectedCategory !== 'all') {
+            return productListToShow.filter(p => p.category === selectedCategory);
+        }
+        
+        return productListToShow;
+
     }, [products, sales, selectedCategory, searchQuery]);
 
     const addNewCart = () => {
@@ -293,7 +307,7 @@ export default function SellPage() {
             purchasePrice: 0,
             quantity: Infinity, // Not a stock-managed item
             cartQuantity: 1,
-            minStockLevel: 0, // Added to satisfy SaleItem/Product interface
+            minStockLevel: 0,
             createdAt: new Date(),
         };
 
@@ -403,7 +417,7 @@ export default function SellPage() {
                 if (amountPaidNum >= total) finalPaymentStatus = 'paid';
                 else if (amountPaidNum > 0) finalPaymentStatus = 'partial';
 
-                const saleItemsForDb: Omit<SaleItem, 'cartQuantity'>[] = activeCart.items.map(item => ({
+                const saleItemsForDb: Omit<SaleItem, 'cartQuantity' | 'createdAt'>[] = activeCart.items.map(item => ({
                     id: item.id,
                     name: item.name,
                     price: item.price,
@@ -665,6 +679,10 @@ export default function SellPage() {
                                             ))}
                                         </div>
                                     </ScrollArea>
+                                    
+                                    <h2 className="text-lg font-semibold tracking-tight -mb-2">
+                                        {searchQuery ? `Résultats de la recherche` : "Accès Rapide / Populaires"}
+                                    </h2>
 
                                     <ScrollArea className="flex-grow">
                                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4 pr-4">
