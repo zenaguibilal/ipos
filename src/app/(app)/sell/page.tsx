@@ -164,8 +164,8 @@ export default function SellPage() {
 
     const filteredProducts = useMemo(() => {
         if (!products) return [];
-    
-        const categoryFiltered = selectedCategory === 'all'
+        
+        let categoryFiltered = selectedCategory === 'all'
             ? products
             : products.filter(p => p.category === selectedCategory);
     
@@ -185,8 +185,7 @@ export default function SellPage() {
                 });
             });
     
-            return [...categoryFiltered]
-                .sort((a, b) => (productSales[b.id] || 0) - (productSales[a.id] || 0));
+            return [...categoryFiltered].sort((a, b) => (productSales[b.id] || 0) - (productSales[a.id] || 0));
         }
     
         return categoryFiltered;
@@ -723,6 +722,17 @@ export default function SellPage() {
                                                 <PlusCircle className="mr-2 h-4 w-4" />Nouveau
                                             </Button>
                                         </div>
+                                         {(() => {
+                                            const debt = cart.customerId ? customerDebts.get(cart.customerId) : 0;
+                                            if (debt && debt > 0) {
+                                                return (
+                                                    <div className="mt-3 text-center text-sm font-semibold text-destructive bg-destructive/10 p-2 rounded-md">
+                                                        Dette actuelle : <span className="font-bold">{debt.toFixed(1)} DA</span>
+                                                    </div>
+                                                );
+                                            }
+                                            return null;
+                                        })()}
                                     </CardContent>
                                 </Card>
 
