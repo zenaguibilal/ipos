@@ -6,7 +6,7 @@ import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc, addDocum
 import { useRouter } from 'next/navigation';
 import { collection, doc, writeBatch, serverTimestamp, getDocs, query, where } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -15,16 +15,16 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import type { Product, Customer, SaleItem, CompanyProfile, Sale } from '@/lib/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Combobox, ComboboxOption } from '@/components/ui/combobox';
 import { v4 as uuidv4 } from 'uuid';
 import { AddCustomerDialog } from '@/components/customers/add-customer-dialog';
 import { SaleCompleteDialog } from '@/components/sales/sale-complete-dialog';
 import { AddCustomProductDialog } from '@/components/sales/add-custom-product-dialog';
+import Image from 'next/image';
+import { Badge } from '@/components/ui/badge';
 
 
 // Define Cart types locally
@@ -38,6 +38,40 @@ interface Cart {
   discountType: 'percentage' | 'fixed';
   discountValue: number;
 }
+
+// Helper component for Product Card
+const ProductCard = ({ product, onAddToCart }: { product: Product; onAddToCart: (product: Product) => void; }) => {
+    const isOutOfStock = product.quantity <= 0;
+    const isLowStock = !isOutOfStock && product.quantity > 0 && product.quantity <= product.minStockLevel;
+    
+    return (
+        <Card 
+            className={cn(
+                "overflow-hidden cursor-pointer transition-all hover:shadow-lg hover:-translate-y-1",
+                isOutOfStock && "opacity-50 cursor-not-allowed"
+            )}
+            onClick={() => !isOutOfStock && onAddToCart(product)}
+        >
+            <div className="aspect-square relative bg-muted">
+                <Image
+                    src={product.imageUrl || `https://picsum.photos/seed/${product.id}/200`}
+                    alt={product.name}
+                    fill
+                    sizes="(max-width: 768px) 50vw, (max-width: 1200px) 20vw, 15vw"
+                    className="object-cover"
+                    data-ai-hint={product.name.split(' ').slice(0, 2).join(' ')}
+                />
+                {isLowStock && <Badge variant="destructive" className="absolute top-2 right-2">Stock Faible</Badge>}
+                {isOutOfStock && <Badge variant="destructive" className="absolute top-2 right-2">Épuisé</Badge>}
+            </div>
+            <div className="p-2 text-sm">
+                <h3 className="font-semibold truncate h-5">{product.name}</h3>
+                <p className="text-primary font-bold">{product.price.toFixed(1)} DA</p>
+            </div>
+        </Card>
+    );
+};
+
 
 export default function SellPage() {
     const { user, isUserLoading } = useUser();
@@ -66,6 +100,8 @@ export default function SellPage() {
     const [isSavingSale, setIsSavingSale] = useState(false);
     const [isClearCartDialogOpen, setIsClearCartDialogOpen] = useState(false);
     const barcodeInputRef = useRef<HTMLInputElement>(null);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [selectedCategory, setSelectedCategory] = useState('all');
 
 
     useEffect(() => {
@@ -95,6 +131,21 @@ export default function SellPage() {
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, []);
+
+    const categories = useMemo(() => {
+        if (!products) return [];
+        const allCategories = products.map(p => p.category).filter(Boolean);
+        return ['all', ...Array.from(new Set(allCategories as string[]))];
+    }, [products]);
+
+    const filteredProducts = useMemo(() => {
+        if (!products) return [];
+        return products.filter(p => {
+            const matchesCategory = selectedCategory === 'all' || p.category === selectedCategory;
+            const matchesSearch = searchQuery === '' || p.name.toLowerCase().includes(searchQuery.toLowerCase());
+            return matchesCategory && matchesSearch;
+        });
+    }, [products, selectedCategory, searchQuery]);
 
     const addNewCart = () => {
         const newCartId = uuidv4();
@@ -287,7 +338,6 @@ export default function SellPage() {
         else if (amountPaidNum > 0) finalPaymentStatus = 'partial';
 
         try {
-            // Map cart items to sale items for DB, separating real product IDs
             const saleItemsForDb: SaleItem[] = [];
             const productIdsToUpdate: string[] = [];
             for (const item of activeCart.items) {
@@ -296,14 +346,13 @@ export default function SellPage() {
                     name: item.name,
                     price: item.price,
                     purchasePrice: item.purchasePrice,
-                    quantity: item.cartQuantity, // Use cartQuantity as the final quantity
+                    quantity: item.cartQuantity,
                 });
                 if (!item.id.startsWith('custom-')) {
                     productIdsToUpdate.push(item.id);
                 }
             }
 
-            // Fetch product quantities to ensure stock
             if(productIdsToUpdate.length > 0) {
                 const productsRef = collection(firestore, 'users', user.uid, 'products');
                 const q = query(productsRef, where('__name__', 'in', productIdsToUpdate));
@@ -313,7 +362,6 @@ export default function SellPage() {
                     stockLevels[doc.id] = doc.data().quantity;
                 });
                 
-                // Only iterate over items that are actual products
                 for(const item of activeCart.items.filter(i => !i.id.startsWith('custom-'))) {
                     if (stockLevels[item.id] < item.cartQuantity) {
                        throw new Error(`Stock insuffisant pour ${item.name}. Disponible : ${stockLevels[item.id]}`);
@@ -348,7 +396,6 @@ export default function SellPage() {
             setCompletedSaleCustomer(customers?.find(c => c.id === activeCart.customerId) || null);
             setIsPaymentDialogOpen(false);
             
-            // Reset cart
             const newCarts = carts.filter(c => c.id !== activeCartId);
             if (newCarts.length === 0) {
                  const newId = addNewCart();
@@ -368,7 +415,7 @@ export default function SellPage() {
     
     const handleClearCart = () => {
         if (!activeCart) return;
-        updateCart({ ...activeCart, items: [] });
+        updateCart({ ...activeCart, items: [], discountType: 'fixed', discountValue: 0 });
         toast.info("Le panier a été vidé.");
         setIsClearCartDialogOpen(false);
     };
@@ -482,9 +529,60 @@ export default function SellPage() {
 
                     {carts.map(cart => (
                         <TabsContent key={cart.id} value={cart.id} className="flex-grow m-0 data-[state=inactive]:hidden">
-                            <div className="grid lg:grid-cols-2 h-full max-h-[calc(100vh-theme(space.14)-theme(space.16))]">
-                                <div className="lg:border-r flex flex-col p-4 gap-4">
-                                     <Card>
+                            <div className="grid lg:grid-cols-3 xl:grid-cols-4 h-full max-h-[calc(100vh-theme(space.14)-theme(space.16))]">
+
+                                <div className="lg:col-span-2 xl:col-span-3 flex flex-col p-4 gap-4">
+                                    <div className="flex gap-2 flex-col sm:flex-row">
+                                        <div className="relative flex-grow">
+                                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                            <Input 
+                                                placeholder="Rechercher un produit par nom..." 
+                                                className="pl-9"
+                                                value={searchQuery}
+                                                onChange={(e) => setSearchQuery(e.target.value)}
+                                            />
+                                        </div>
+                                        <div className="relative">
+                                            <Barcode className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                            <Input ref={barcodeInputRef} placeholder="Scanner un code-barres (Ctrl+I)" onKeyDown={handleBarcodeScan} className="pl-9" />
+                                        </div>
+                                        <Button variant="outline" onClick={() => setIsCustomProductDialogOpen(true)}>
+                                            <FilePlus2 className="mr-2 h-4 w-4" />
+                                            Article
+                                        </Button>
+                                    </div>
+
+                                    <ScrollArea className="w-full whitespace-nowrap">
+                                        <div className="flex gap-2 pb-2">
+                                            {categories.map(category => (
+                                                <Button
+                                                    key={category}
+                                                    variant={selectedCategory === category ? 'default' : 'outline'}
+                                                    onClick={() => setSelectedCategory(category)}
+                                                    className="capitalize"
+                                                >
+                                                    {category === 'all' ? 'Tous' : category}
+                                                </Button>
+                                            ))}
+                                        </div>
+                                    </ScrollArea>
+
+                                    <ScrollArea className="flex-grow">
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4 pr-4">
+                                            {filteredProducts.map(product => (
+                                                <ProductCard key={product.id} product={product} onAddToCart={addProductToCart} />
+                                            ))}
+                                            {filteredProducts.length === 0 && (
+                                                <div className="col-span-full h-full flex items-center justify-center text-muted-foreground">
+                                                    Aucun produit trouvé.
+                                                </div>
+                                            )}
+                                        </div>
+                                    </ScrollArea>
+                                </div>
+                                
+                                <div className="lg:col-span-1 xl:col-span-1 bg-muted/40 p-4 flex flex-col gap-4">
+                                    <Card>
                                         <CardHeader className="p-4">
                                             <div className="flex items-center gap-2">
                                                 <User className="h-5 w-5 text-primary"/>
@@ -507,46 +605,7 @@ export default function SellPage() {
                                             </Button>
                                         </CardContent>
                                     </Card>
-                                     <div className="grid grid-cols-1 gap-2">
-                                        <Popover>
-                                            <PopoverTrigger asChild>
-                                                <div className="relative">
-                                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                                    <Input placeholder="Rechercher un produit par nom..." className="pl-9" />
-                                                </div>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-                                                <Command>
-                                                    <CommandInput placeholder="Tapez le nom d'un produit..." />
-                                                    <CommandList>
-                                                        <CommandEmpty>Aucun produit trouvé.</CommandEmpty>
-                                                        <CommandGroup>
-                                                            {products?.map(p => (
-                                                                <CommandItem key={p.id} onSelect={() => addProductToCart(p)} disabled={p.quantity <= 0}>
-                                                                    <div className="flex justify-between w-full">
-                                                                        <span>{p.name}</span>
-                                                                        <span className={cn("text-xs", p.quantity <= p.minStockLevel ? "text-destructive" : "text-muted-foreground")}>
-                                                                            Stock: {p.quantity}
-                                                                        </span>
-                                                                    </div>
-                                                                </CommandItem>
-                                                            ))}
-                                                        </CommandGroup>
-                                                    </CommandList>
-                                                </Command>
-                                            </PopoverContent>
-                                        </Popover>
-                                        <div className="flex gap-2">
-                                            <div className="relative flex-grow">
-                                                <Barcode className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                                <Input ref={barcodeInputRef} placeholder="Scanner un code-barres (Ctrl+I)" onKeyDown={handleBarcodeScan} className="pl-9" />
-                                            </div>
-                                            <Button variant="outline" onClick={() => setIsCustomProductDialogOpen(true)}>
-                                                <FilePlus2 className="mr-2 h-4 w-4" />
-                                                Article
-                                            </Button>
-                                        </div>
-                                    </div>
+
                                     <Card className="flex-grow flex flex-col">
                                         <CardHeader className="p-4 flex flex-row items-center justify-between">
                                             <CardTitle className="text-lg">Panier ({cart.items.length})</CardTitle>
@@ -558,7 +617,7 @@ export default function SellPage() {
                                             )}
                                         </CardHeader>
                                         <CardContent className="p-0 flex-grow">
-                                            <ScrollArea className="h-[calc(100vh-28rem)]">
+                                            <ScrollArea className="h-[calc(100vh-39rem)]">
                                                 {cart.items.length === 0 ? (
                                                     <div className="h-full flex items-center justify-center text-muted-foreground">Le panier est vide</div>
                                                 ) : (
@@ -568,7 +627,6 @@ export default function SellPage() {
                                                                 <TableHead>Produit</TableHead>
                                                                 <TableHead className="w-[120px]">Quantité</TableHead>
                                                                 <TableHead className="text-right">Total</TableHead>
-                                                                <TableHead className="w-[50px]"><span className="sr-only">Supprimer</span></TableHead>
                                                             </TableRow>
                                                         </TableHeader>
                                                         <TableBody>
@@ -586,9 +644,6 @@ export default function SellPage() {
                                                                         </div>
                                                                     </TableCell>
                                                                     <TableCell className="text-right font-semibold">{(item.price * item.cartQuantity).toFixed(1)} DA</TableCell>
-                                                                    <TableCell>
-                                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => updateItemQuantity(item.id, 0)}><Trash2 className="h-4 w-4" /></Button>
-                                                                    </TableCell>
                                                                 </TableRow>
                                                             ))}
                                                         </TableBody>
@@ -596,40 +651,34 @@ export default function SellPage() {
                                                 )}
                                             </ScrollArea>
                                         </CardContent>
-                                    </Card>
-                                </div>
-                                <div className="bg-muted/40 p-4 flex flex-col gap-4">
-                                     <Card>
-                                        <CardHeader>
-                                            <CardTitle>Résumé</CardTitle>
-                                        </CardHeader>
-                                        <CardContent className="space-y-4">
-                                            <div className="space-y-2">
-                                                 <div className="flex justify-between text-lg">
+                                        {cart.items.length > 0 && (
+                                            <CardFooter className="p-4 flex-col items-stretch space-y-2 border-t">
+                                                <div className="flex justify-between text-md">
                                                     <span>Sous-total</span>
                                                     <span>{subtotal.toFixed(1)} DA</span>
                                                 </div>
-                                                <div className="flex justify-between items-center">
+                                                <div className="flex justify-between items-center text-sm">
                                                     <div className="flex items-center gap-1">
-                                                        <Button size="sm" variant={cart.discountType === 'fixed' ? 'default' : 'ghost'} onClick={() => handleDiscountTypeChange('fixed')}>Remise (DA)</Button>
-                                                        <Button size="sm" variant={cart.discountType === 'percentage' ? 'default' : 'ghost'} onClick={() => handleDiscountTypeChange('percentage')}>Remise (%)</Button>
+                                                        <Button size="sm" variant={cart.discountType === 'fixed' ? 'secondary' : 'ghost'} onClick={() => handleDiscountTypeChange('fixed')}>Remise (DA)</Button>
+                                                        <Button size="sm" variant={cart.discountType === 'percentage' ? 'secondary' : 'ghost'} onClick={() => handleDiscountTypeChange('percentage')}>Remise (%)</Button>
                                                     </div>
-                                                    <Input type="number" value={cart.discountValue} onChange={handleDiscountValueChange} className="w-24 h-9" />
+                                                    <Input type="number" value={cart.discountValue} onChange={handleDiscountValueChange} className="w-24 h-8" />
                                                 </div>
-                                                <div className="flex justify-between text-muted-foreground">
+                                                <div className="flex justify-between text-sm text-muted-foreground">
                                                     <span>Total Remise</span>
                                                     <span>- {discount.toFixed(1)} DA</span>
                                                 </div>
-                                            </div>
-                                            <div className="border-t pt-4 mt-4">
-                                                 <div className="flex justify-between text-3xl font-bold text-primary">
-                                                    <span>TOTAL</span>
-                                                    <span>{total.toFixed(1)} DA</span>
+                                                <div className="border-t pt-2 mt-2">
+                                                     <div className="flex justify-between text-2xl font-bold text-primary">
+                                                        <span>TOTAL</span>
+                                                        <span>{total.toFixed(1)} DA</span>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        </CardContent>
+                                            </CardFooter>
+                                        )}
                                     </Card>
-                                     <div className="mt-auto">
+
+                                    <div className="mt-auto">
                                         <Button 
                                             className="w-full text-lg py-7" 
                                             disabled={cart.items.length === 0}
@@ -642,6 +691,7 @@ export default function SellPage() {
                                         </Button>
                                     </div>
                                 </div>
+
                             </div>
                         </TabsContent>
                     ))}
@@ -650,5 +700,3 @@ export default function SellPage() {
         </>
     );
 }
-
-    
