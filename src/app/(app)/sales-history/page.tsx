@@ -71,7 +71,11 @@ export default function SalesHistoryPage() {
         const paymentTransactions: Transaction[] = (payments || []).map(p => ({ type: 'payment', data: p }));
 
         return [...saleTransactions, ...paymentTransactions]
-            .sort((a, b) => safeToDate(b.data.createdAt).getTime() - safeToDate(a.data.createdAt).getTime());
+            .sort((a, b) => {
+                const timeB = b.data.createdAt ? safeToDate(b.data.createdAt).getTime() : 0;
+                const timeA = a.data.createdAt ? safeToDate(a.data.createdAt).getTime() : 0;
+                return timeB - timeA;
+            });
     }, [sales, payments]);
 
     const { groupedTransactions, totalRevenue, totalCollected, salesCount, totalProfit } = useMemo(() => {
@@ -87,6 +91,7 @@ export default function SalesHistoryPage() {
         let runningProfit = 0;
 
         const filtered = combinedTransactions.filter(transaction => {
+            if (!transaction.data.createdAt) return false;
             const transactionDate = safeToDate(transaction.data.createdAt);
             if (fromDate && transactionDate < fromDate) return false;
             if (toDate && transactionDate > toDate) return false;
@@ -113,6 +118,7 @@ export default function SalesHistoryPage() {
         });
         
         const groups = filtered.reduce((acc, transaction) => {
+            if (!transaction.data.createdAt) return acc;
             const dateStr = format(safeToDate(transaction.data.createdAt), 'yyyy-MM-dd');
             if (!acc[dateStr]) {
                 acc[dateStr] = {
@@ -172,7 +178,7 @@ export default function SalesHistoryPage() {
         }
 
         const csvData = transactionsToExport.map(transaction => {
-            const date = safeToDate(transaction.data.createdAt).toISOString();
+            const date = transaction.data.createdAt ? safeToDate(transaction.data.createdAt).toISOString() : '';
             const customerName = transaction.data.customerName || 'N/A';
 
             if (transaction.type === 'sale') {
@@ -352,6 +358,7 @@ export default function SalesHistoryPage() {
                                                     </TableCell>
                                                 </TableRow>
                                                 {group.transactions.map((transaction, index) => {
+                                                     if (!transaction.data.createdAt) return null;
                                                      const currentDate = safeToDate(transaction.data.createdAt);
                                                      const isSale = transaction.type === 'sale';
                                                      
