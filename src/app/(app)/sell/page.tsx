@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
@@ -40,31 +39,37 @@ interface Cart {
 }
 
 // Helper component for Product Card
-const ProductCard = ({ product, onAddToCart }: { product: Product; onAddToCart: (product: Product) => void; }) => {
+const ProductCard = ({ product, onAddToCart, isInCart }: { product: Product; onAddToCart: (product: Product) => void; isInCart: boolean; }) => {
     const isOutOfStock = product.quantity <= 0;
     const isLowStock = !isOutOfStock && product.quantity > 0 && product.quantity <= product.minStockLevel;
     
     return (
         <Card 
             className={cn(
-                "overflow-hidden cursor-pointer transition-all hover:shadow-lg hover:-translate-y-1 flex flex-col",
-                isOutOfStock && "opacity-50 cursor-not-allowed"
+                "overflow-hidden cursor-pointer transition-all hover:shadow-lg hover:-translate-y-1 flex flex-col relative",
+                isOutOfStock && "opacity-50 cursor-not-allowed",
+                isInCart && "ring-2 ring-primary"
             )}
             onClick={() => !isOutOfStock && onAddToCart(product)}
         >
+             {isInCart && (
+                <div className="absolute top-2 right-2 z-10 bg-primary rounded-full p-1 text-primary-foreground">
+                    <CheckCircle className="h-4 w-4" />
+                </div>
+            )}
             <div className="aspect-square relative bg-muted">
                 <Image
                     src={product.imageUrl || `https://picsum.photos/seed/${product.id}/200`}
                     alt={product.name}
                     fill
                     sizes="(max-width: 768px) 50vw, (max-width: 1200px) 20vw, 15vw"
-                    className="object-cover"
+                    className={cn("object-cover transition-transform", isInCart && "scale-105")}
                     data-ai-hint={product.name.split(' ').slice(0, 2).join(' ')}
                 />
                 {isOutOfStock ? (
-                    <Badge variant="destructive" className="absolute top-2 right-2">Épuisé</Badge>
+                    <Badge variant="destructive" className="absolute top-2 left-2">Épuisé</Badge>
                 ) : isLowStock && (
-                     <Badge variant="secondary" className="absolute top-2 right-2">Stock Faible</Badge>
+                     <Badge variant="secondary" className="absolute top-2 left-2">Stock Faible</Badge>
                 )}
             </div>
             <div className="p-2 text-sm flex-grow flex flex-col">
@@ -199,6 +204,12 @@ export default function SellPage() {
     };
     
     const activeCart = useMemo(() => carts.find(c => c.id === activeCartId), [carts, activeCartId]);
+    
+    const activeCartItemIds = useMemo(() => {
+        if (!activeCart) return new Set();
+        return new Set(activeCart.items.map(item => item.id));
+    }, [activeCart]);
+
 
     const updateCart = (updatedCart: Cart) => {
         setCarts(prev => prev.map(c => c.id === updatedCart.id ? updatedCart : c));
@@ -437,20 +448,22 @@ export default function SellPage() {
 
     return (
         <>
-            <AddCustomerDialog
-                isOpen={isAddCustomerOpen}
-                onOpenChange={setIsAddCustomerOpen}
-                userId={user.uid}
-                onCustomerAdded={(newCustomer) => {
-                    if (activeCart) {
-                        updateCart({
-                            ...activeCart,
-                            customerId: newCustomer.id,
-                            customerName: `${newCustomer.firstName} ${newCustomer.lastName}`
-                        });
-                    }
-                }}
-            />
+            {user && (
+                <AddCustomerDialog
+                    isOpen={isAddCustomerOpen}
+                    onOpenChange={setIsAddCustomerOpen}
+                    userId={user.uid}
+                    onCustomerAdded={(newCustomer) => {
+                        if (activeCart) {
+                            updateCart({
+                                ...activeCart,
+                                customerId: newCustomer.id,
+                                customerName: `${newCustomer.firstName} ${newCustomer.lastName}`
+                            });
+                        }
+                    }}
+                />
+            )}
              <AddCustomProductDialog 
                 isOpen={isCustomProductDialogOpen}
                 onOpenChange={setIsCustomProductDialogOpen}
@@ -578,7 +591,12 @@ export default function SellPage() {
                                     <ScrollArea className="flex-grow">
                                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4 pr-4">
                                             {filteredProducts.map(product => (
-                                                <ProductCard key={product.id} product={product} onAddToCart={addProductToCart} />
+                                                <ProductCard 
+                                                    key={product.id} 
+                                                    product={product} 
+                                                    onAddToCart={addProductToCart} 
+                                                    isInCart={activeCartItemIds.has(product.id)}
+                                                />
                                             ))}
                                             {filteredProducts.length === 0 && (
                                                 <div className="col-span-full h-full flex items-center justify-center text-muted-foreground">
@@ -687,20 +705,16 @@ export default function SellPage() {
                                     </Card>
 
                                     <div className="mt-auto">
-                                        <Dialog>
-                                            <DialogTrigger asChild>
-                                                <Button 
-                                                    className="w-full text-lg py-7" 
-                                                    disabled={cart.items.length === 0}
-                                                    onClick={() => {
-                                                        setAmountPaid(total.toFixed(1));
-                                                        setIsPaymentDialogOpen(true);
-                                                    }}
-                                                >
-                                                    <CheckCircle className="mr-2 h-5 w-5" /> Finaliser la vente
-                                                </Button>
-                                            </DialogTrigger>
-                                        </Dialog>
+                                        <Button 
+                                            className="w-full text-lg py-7" 
+                                            disabled={cart.items.length === 0}
+                                            onClick={() => {
+                                                setAmountPaid(total.toFixed(1));
+                                                setIsPaymentDialogOpen(true);
+                                            }}
+                                        >
+                                            <CheckCircle className="mr-2 h-5 w-5" /> Finaliser la vente
+                                        </Button>
                                     </div>
                                 </div>
 
