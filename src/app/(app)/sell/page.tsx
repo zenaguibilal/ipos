@@ -252,6 +252,7 @@ export default function SellPage() {
             purchasePrice: 0,
             quantity: Infinity, // Not a stock-managed item
             cartQuantity: 1,
+            minStockLevel: 0, // Added to satisfy SaleItem/Product interface
         };
 
         const newItems = [...activeCart.items, newItem];
@@ -648,8 +649,8 @@ export default function SellPage() {
                                                 </Button>
                                             )}
                                         </CardHeader>
-                                        <CardContent className="p-0 flex-grow">
-                                            <ScrollArea className="h-[calc(100vh-39rem)]">
+                                        <CardContent className="p-0 flex-1 overflow-hidden">
+                                            <ScrollArea className="h-full">
                                                 {cart.items.length === 0 ? (
                                                     <div className="h-full flex items-center justify-center text-muted-foreground">Le panier est vide</div>
                                                 ) : (
@@ -736,3 +737,5 @@ export default function SellPage() {
         </>
     );
 }
+
+    
