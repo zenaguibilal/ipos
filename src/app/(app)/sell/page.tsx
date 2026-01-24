@@ -92,12 +92,6 @@ export default function SellPage() {
     const firestore = useFirestore();
     const router = useRouter();
 
-    useEffect(() => {
-        if (!isUserLoading && !user) {
-            router.push('/login');
-        }
-    }, [user, isUserLoading, router]);
-
     // Data Fetching
     const productsQuery = useMemoFirebase(() => user && firestore ? query(collection(firestore, 'users', user.uid, 'products')) : null, [user, firestore]);
     const customersQuery = useMemoFirebase(() => user && firestore ? query(collection(firestore, 'users', user.uid, 'customers')) : null, [user, firestore]);
@@ -122,7 +116,14 @@ export default function SellPage() {
     const barcodeInputRef = useRef<HTMLInputElement>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('all');
+    const [lastTouchedItemId, setLastTouchedItemId] = useState<string | null>(null);
 
+
+    useEffect(() => {
+        if (!isUserLoading && !user) {
+            router.push('/login');
+        }
+    }, [user, isUserLoading, router]);
 
     // Initialize carts on component mount
     useEffect(() => {
@@ -145,6 +146,15 @@ export default function SellPage() {
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, []);
+    
+    useEffect(() => {
+        if (lastTouchedItemId) {
+          const timer = setTimeout(() => {
+            setLastTouchedItemId(null);
+          }, 1500); // Must match animation duration
+          return () => clearTimeout(timer);
+        }
+    }, [lastTouchedItemId]);
 
     const categories = useMemo(() => {
         if (!products) return [];
@@ -240,6 +250,7 @@ export default function SellPage() {
         }
         updateCart({ ...activeCart, items: newItems });
         toast.success(`${product.name} ajouté au panier.`);
+        setLastTouchedItemId(product.id);
     };
 
     const addCustomProductToCart = (name: string, price: number) => {
@@ -258,6 +269,7 @@ export default function SellPage() {
         const newItems = [...activeCart.items, newItem];
         updateCart({ ...activeCart, items: newItems });
         toast.success(`${name} ajouté au panier.`);
+        setLastTouchedItemId(newItem.id);
     };
 
     const handleBarcodeScan = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -295,6 +307,7 @@ export default function SellPage() {
             item.id === productId ? { ...item, cartQuantity: newQuantity } : item
         );
         updateCart({ ...activeCart, items: newItems });
+        setLastTouchedItemId(productId);
     };
 
     const customerOptions: ComboboxOption[] = useMemo(() => {
@@ -649,11 +662,11 @@ export default function SellPage() {
                                                 </Button>
                                             )}
                                         </CardHeader>
-                                        <CardContent className="p-0 flex-1 overflow-hidden">
-                                            <ScrollArea className="h-full">
-                                                {cart.items.length === 0 ? (
-                                                    <div className="h-full flex items-center justify-center text-muted-foreground">Le panier est vide</div>
-                                                ) : (
+                                        <CardContent className="p-0 flex-1 flex flex-col">
+                                            {cart.items.length === 0 ? (
+                                                <div className="flex-grow flex items-center justify-center text-muted-foreground">Le panier est vide</div>
+                                            ) : (
+                                                <ScrollArea className="flex-grow">
                                                     <Table>
                                                         <TableHeader>
                                                             <TableRow>
@@ -664,7 +677,7 @@ export default function SellPage() {
                                                         </TableHeader>
                                                         <TableBody>
                                                             {cart.items.map(item => (
-                                                                <TableRow key={item.id}>
+                                                                <TableRow key={item.id} className={cn(lastTouchedItemId === item.id && 'animate-flash rounded-lg')}>
                                                                     <TableCell>
                                                                         <div className="font-medium">{item.name}</div>
                                                                         <div className="text-xs text-muted-foreground">{item.price.toFixed(1)} DA</div>
@@ -681,8 +694,8 @@ export default function SellPage() {
                                                             ))}
                                                         </TableBody>
                                                     </Table>
-                                                )}
-                                            </ScrollArea>
+                                                </ScrollArea>
+                                            )}
                                         </CardContent>
                                         {cart.items.length > 0 && (
                                             <CardFooter className="p-4 flex-col items-stretch space-y-2 border-t">
