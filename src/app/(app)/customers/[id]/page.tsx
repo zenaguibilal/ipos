@@ -1,22 +1,22 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { useRouter, useParams } from 'next/navigation';
 import { doc, collection, query, where, orderBy } from 'firebase/firestore';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Timeline, TimelineItem, TimelineConnector, TimelineHeader, TimelineIcon, TimelineTitle, TimelineBody } from "@/components/ui/timeline";
-import { ArrowLeft, Edit, HandCoins, Mail, Phone, CreditCard, ShoppingCart, FileText } from 'lucide-react';
+import { ArrowLeft, Edit, HandCoins, Phone, CreditCard, ShoppingCart, MessageSquare } from 'lucide-react';
 import Link from 'next/link';
 import { safeToDate } from '@/lib/utils';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import type { Customer, Sale, Payment } from '@/lib/types';
+import type { Customer, Sale, Payment, CompanyProfile } from '@/lib/types';
 import { CustomerDialog } from '@/components/customers/customer-dialog';
 import { AddPaymentForm } from '@/components/customers/add-payment-form';
 import { Badge } from '@/components/ui/badge';
+import { toast } from 'sonner';
 
 type Transaction = { type: 'sale', data: Sale } | { type: 'payment', data: Payment };
 
@@ -35,16 +35,31 @@ export default function CustomerDetailPage() {
     const customerRef = useMemoFirebase(() => (user && firestore && customerId) ? doc(firestore, 'users', user.uid, 'customers', customerId) : null, [user, firestore, customerId]);
     const salesQuery = useMemoFirebase(() => (user && firestore && customerId) ? query(collection(firestore, 'users', user.uid, 'sales'), where('customerId', '==', customerId)) : null, [user, firestore, customerId]);
     const paymentsQuery = useMemoFirebase(() => (user && firestore && customerId) ? query(collection(firestore, 'users', user.uid, 'payments'), where('customerId', '==', customerId)) : null, [user, firestore, customerId]);
-
+    const companyDocRef = useMemoFirebase(() => user && firestore ? doc(firestore, 'users', user.uid, 'companyProfile', 'main') : null, [user, firestore]);
+    
     const { data: customer, isLoading: isLoadingCustomer } = useDoc<Customer>(customerRef);
     const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
     const { data: payments, isLoading: isLoadingPayments } = useCollection<Payment>(paymentsQuery);
+    const { data: companyProfile, isLoading: isLoadingCompany } = useDoc<CompanyProfile>(companyDocRef);
 
     useEffect(() => {
         if (!isUserLoading && !user) {
             router.push('/login');
         }
     }, [user, isUserLoading, router]);
+
+    const handleWhatsAppReminder = () => {
+        if (!customer || !customer.phone) {
+            toast.error("Le numéro de téléphone de ce client n'est pas disponible.");
+            return;
+        }
+
+        const companyName = companyProfile?.companyName || 'votre magasin';
+        const message = `Bonjour ${customer.firstName} ${customer.lastName}, ceci est un rappel amical concernant votre solde impayé de ${outstandingBalance.toFixed(2)} DA chez ${companyName}. Merci de régler votre dette dès que possible.`;
+        
+        const whatsappUrl = `https://wa.me/${customer.phone.replace(/\s+/g, '')}?text=${encodeURIComponent(message)}`;
+        window.open(whatsappUrl, '_blank');
+    };
 
     const { totalSpent, outstandingBalance, combinedTransactions } = useMemo(() => {
         if (!sales || !payments) return { totalSpent: 0, outstandingBalance: 0, combinedTransactions: [] };
@@ -75,7 +90,7 @@ export default function CustomerDetailPage() {
         };
     }, [sales, payments]);
 
-    const isLoading = isUserLoading || isLoadingCustomer || isLoadingSales || isLoadingPayments;
+    const isLoading = isUserLoading || isLoadingCustomer || isLoadingSales || isLoadingPayments || isLoadingCompany;
 
     if (isLoading || !user) {
         return <div className="flex h-full items-center justify-center"><p>Chargement du profil client...</p></div>;
@@ -162,6 +177,14 @@ export default function CustomerDetailPage() {
                                     <span className="font-semibold">{format(safeToDate(customer.createdAt), 'd MMM yyyy', { locale: fr })}</span>
                                 </div>
                             </CardContent>
+                             {outstandingBalance > 0 && customer.phone && (
+                                <CardFooter>
+                                    <Button variant="outline" className="w-full" onClick={handleWhatsAppReminder}>
+                                        <MessageSquare className="mr-2 h-4 w-4" />
+                                        Envoyer un rappel WhatsApp
+                                    </Button>
+                                </CardFooter>
+                            )}
                         </Card>
                     </div>
 
@@ -193,16 +216,19 @@ export default function CustomerDetailPage() {
                                                 <TimelineBody>
                                                      <div className="bg-muted/50 p-4 rounded-md border">
                                                         {tx.type === 'sale' ? (
-                                                            <div className="flex justify-between items-center">
+                                                            <div className="flex justify-between items-start">
                                                                 <div>
                                                                     <p>Facture <Link href={`/sales-history?search=${tx.data.invoiceNumber}`} className="font-mono underline hover:text-primary">{tx.data.invoiceNumber}</Link></p>
                                                                     <p className="text-xs text-muted-foreground">{tx.data.items.length} article(s)</p>
                                                                 </div>
                                                                 <div className="text-right">
                                                                     <p className="font-bold text-lg">{tx.data.total.toFixed(1)} DA</p>
-                                                                    {tx.data.paymentStatus === 'unpaid' && <Badge variant="destructive">Impayé</Badge>}
-                                                                    {tx.data.paymentStatus === 'partial' && <Badge variant="secondary">Partiel</Badge>}
-                                                                    {tx.data.paymentStatus === 'paid' && <Badge>Payé</Badge>}
+                                                                    <p className="text-xs text-green-600 font-medium">Payé sur facture: {tx.data.amountPaid.toFixed(1)} DA</p>
+                                                                    <div className="mt-1">
+                                                                        {tx.data.paymentStatus === 'unpaid' && <Badge variant="destructive">Impayé</Badge>}
+                                                                        {tx.data.paymentStatus === 'partial' && <Badge variant="secondary">Partiel</Badge>}
+                                                                        {tx.data.paymentStatus === 'paid' && <Badge>Payé</Badge>}
+                                                                    </div>
                                                                 </div>
                                                             </div>
                                                         ) : (
