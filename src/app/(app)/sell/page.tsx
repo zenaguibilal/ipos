@@ -16,7 +16,7 @@ import { cn } from '@/lib/utils';
 import type { Product, Customer, SaleItem, CompanyProfile, Sale } from '@/lib/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Combobox, ComboboxOption } from '@/components/ui/combobox';
 import { v4 as uuidv4 } from 'uuid';
@@ -520,6 +520,12 @@ export default function SellPage() {
                                 onKeyDown={(e) => e.key === 'Enter' && handleFinalizeSale()}
                             />
                         </div>
+                        <div className="grid grid-cols-4 gap-2 text-sm">
+                           <Button type="button" variant="outline" onClick={() => setAmountPaid(total.toFixed(1))}>Exact</Button>
+                           <Button type="button" variant="outline" onClick={() => setAmountPaid('500')}>500</Button>
+                           <Button type="button" variant="outline" onClick={() => setAmountPaid('1000')}>1000</Button>
+                           <Button type="button" variant="outline" onClick={() => setAmountPaid('2000')}>2000</Button>
+                        </div>
                         <div className="text-sm text-center">
                             {parseFloat(amountPaid) >= total ? (
                                 <p>Reste à rendre: <span className="font-bold text-green-500">{(parseFloat(amountPaid) - total).toFixed(1)} DA</span></p>
@@ -725,20 +731,16 @@ export default function SellPage() {
                                     </Card>
 
                                     <div className="mt-auto">
-                                        <Dialog>
-                                            <DialogTrigger asChild>
-                                                <Button 
-                                                    className="w-full text-lg py-7" 
-                                                    disabled={cart.items.length === 0}
-                                                    onClick={() => {
-                                                        setAmountPaid(total.toFixed(1));
-                                                        setIsPaymentDialogOpen(true);
-                                                    }}
-                                                >
-                                                    <CheckCircle className="mr-2 h-5 w-5" /> Finaliser la vente
-                                                </Button>
-                                            </DialogTrigger>
-                                        </Dialog>
+                                        <Button 
+                                            className="w-full text-lg py-7" 
+                                            disabled={cart.items.length === 0}
+                                            onClick={() => {
+                                                setAmountPaid(total.toFixed(1));
+                                                setIsPaymentDialogOpen(true);
+                                            }}
+                                        >
+                                            <CheckCircle className="mr-2 h-5 w-5" /> Finaliser la vente
+                                        </Button>
                                     </div>
                                 </div>
 
@@ -750,5 +752,3 @@ export default function SellPage() {
         </>
     );
 }
-
-    
