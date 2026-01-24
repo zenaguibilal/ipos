@@ -9,11 +9,12 @@ import {
   Undo2,
   Bell,
   BarChart3,
+  Store,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navLinks = [
-  { href: '/dashboard', label: 'Board', icon: BarChart3 },
+  { href: '/sell', label: 'Vente', icon: Store },
   { href: '/sales-history', label: 'Historique', icon: History },
   { href: '/bread-orders', label: 'Pain', icon: Cookie },
   { href: '/returns', label: 'Retours', icon: Undo2 },
@@ -43,3 +44,5 @@ export function BottomNavBar() {
     </div>
   );
 }
+
+    

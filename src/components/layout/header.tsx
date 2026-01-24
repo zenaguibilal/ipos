@@ -13,6 +13,7 @@ import {
   Info,
   Undo2,
   BarChart3,
+  Store,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -36,6 +37,7 @@ import { AnimatedLogo } from './animated-logo';
 
 
 const navLinks = [
+  { href: '/sell', label: 'Vente', icon: Store },
   { href: '/dashboard', label: 'Tableau de bord', icon: BarChart3 },
   { href: '/sales-history', label: 'Historique', icon: History },
   { href: '/returns', label: 'Retours', icon: Undo2 },
@@ -144,3 +146,5 @@ export function AppHeader() {
     </header>
   );
 }
+
+    
