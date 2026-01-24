@@ -18,6 +18,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Combobox, ComboboxOption } from '@/components/ui/combobox';
 import { v4 as uuidv4 } from 'uuid';
 import { AddCustomerDialog } from '@/components/customers/add-customer-dialog';
@@ -62,6 +63,7 @@ export default function SellPage() {
     const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
     const [amountPaid, setAmountPaid] = useState('');
     const [isSavingSale, setIsSavingSale] = useState(false);
+    const [isClearCartDialogOpen, setIsClearCartDialogOpen] = useState(false);
     const barcodeInputRef = useRef<HTMLInputElement>(null);
 
 
@@ -356,6 +358,13 @@ export default function SellPage() {
             setIsSavingSale(false);
         }
     };
+    
+    const handleClearCart = () => {
+        if (!activeCart) return;
+        updateCart({ ...activeCart, items: [] });
+        toast.info("Le panier a été vidé.");
+        setIsClearCartDialogOpen(false);
+    };
 
 
     if (!isClient || isLoadingProducts || isLoadingCustomers || isLoadingCompany || !activeCart) {
@@ -431,6 +440,21 @@ export default function SellPage() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+             <AlertDialog open={isClearCartDialogOpen} onOpenChange={setIsClearCartDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Vider le panier ?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Cette action est irréversible. Tous les articles du panier actuel ({activeCart.items.length} articles) seront supprimés.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Annuler</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleClearCart} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Vider</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
 
             <main className="flex flex-col h-full max-h-[calc(100vh-theme(space.14))]">
                 <Tabs value={activeCartId} onValueChange={handleTabChange} className="flex flex-col h-full">
@@ -516,8 +540,14 @@ export default function SellPage() {
                                         </div>
                                     </div>
                                     <Card className="flex-grow flex flex-col">
-                                        <CardHeader className="p-4">
+                                        <CardHeader className="p-4 flex flex-row items-center justify-between">
                                             <CardTitle className="text-lg">Panier ({cart.items.length})</CardTitle>
+                                            {cart.items.length > 0 && (
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => setIsClearCartDialogOpen(true)}>
+                                                    <Trash2 className="h-4 w-4" />
+                                                    <span className="sr-only">Vider le panier</span>
+                                                </Button>
+                                            )}
                                         </CardHeader>
                                         <CardContent className="p-0 flex-grow">
                                             <ScrollArea className="h-[calc(100vh-28rem)]">
