@@ -1,7 +1,8 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { useUser, useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, useDoc } from '@/firebase';
+import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc, addDocumentNonBlocking } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { collection, doc, writeBatch, serverTimestamp, getDocs, query, where } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
@@ -384,7 +385,7 @@ export default function SellPage() {
             <AddCustomerDialog
                 isOpen={isAddCustomerOpen}
                 onOpenChange={setIsAddCustomerOpen}
-                userId={user!.uid}
+                userId={user.uid}
                 onCustomerAdded={(newCustomer) => {
                     if (activeCart) {
                         updateCart({
@@ -629,18 +630,16 @@ export default function SellPage() {
                                         </CardContent>
                                     </Card>
                                      <div className="mt-auto">
-                                        <DialogTrigger asChild>
-                                            <Button 
-                                                className="w-full text-lg py-7" 
-                                                disabled={cart.items.length === 0}
-                                                onClick={() => {
-                                                    setAmountPaid(total.toFixed(1));
-                                                    setIsPaymentDialogOpen(true);
-                                                }}
-                                            >
-                                                <CheckCircle className="mr-2 h-5 w-5" /> Finaliser la vente
-                                            </Button>
-                                        </DialogTrigger>
+                                        <Button 
+                                            className="w-full text-lg py-7" 
+                                            disabled={cart.items.length === 0}
+                                            onClick={() => {
+                                                setAmountPaid(total.toFixed(1));
+                                                setIsPaymentDialogOpen(true);
+                                            }}
+                                        >
+                                            <CheckCircle className="mr-2 h-5 w-5" /> Finaliser la vente
+                                        </Button>
                                     </div>
                                 </div>
                             </div>
@@ -651,3 +650,5 @@ export default function SellPage() {
         </>
     );
 }
+
+    
