@@ -167,17 +167,17 @@ export default function SellPage() {
 
         let availableProducts = products;
         
-        // 1. Filter by search query if it exists - this searches all products
-        if (searchQuery) {
-            return availableProducts.filter(p =>
-                p.name.toLowerCase().includes(searchQuery.toLowerCase())
-            );
-        }
-
-        // 2. Filter by category
+        // 1. Filter by category first
         const categoryFiltered = selectedCategory === 'all'
             ? availableProducts
             : availableProducts.filter(p => p.category === selectedCategory);
+
+        // 2. Then, filter by search query if it exists - this searches all products regardless of category
+        if (searchQuery) {
+            return products.filter(p =>
+                p.name.toLowerCase().includes(searchQuery.toLowerCase())
+            );
+        }
         
         // 3. If no search, show popular items from the filtered category
         if (sales && sales.length > 0) {
@@ -190,7 +190,7 @@ export default function SellPage() {
                 });
             });
 
-            // Sort a copy of the category-filtered products by popularity
+            // Sort the category-filtered products by popularity
             return [...categoryFiltered]
                 .sort((a, b) => (productSales[b.id] || 0) - (productSales[a.id] || 0));
         }
@@ -734,11 +734,28 @@ export default function SellPage() {
                                                 <PlusCircle className="mr-2 h-4 w-4" />Nouveau
                                             </Button>
                                         </div>
-                                        {cart.customerId && (customerDebts.get(cart.customerId) ?? 0) > 0 && (
-                                            <div className="text-center text-sm font-semibold text-destructive p-2 bg-destructive/10 rounded-md">
-                                                Dette actuelle: {customerDebts.get(cart.customerId)?.toFixed(1)} DA
-                                            </div>
-                                        )}
+                                        {cart.customerId && (() => {
+                                            const customer = customers?.find(c => c.id === cart.customerId);
+                                            const hasDebt = (customerDebts.get(cart.customerId) ?? 0) > 0;
+                                            const hasPhone = !!customer?.phone;
+                                            
+                                            if (!hasDebt && !hasPhone) return null;
+
+                                            return (
+                                                <div className="text-center text-sm space-y-1 pt-2">
+                                                    {hasDebt && (
+                                                        <div className="font-semibold text-destructive p-2 bg-destructive/10 rounded-md">
+                                                            Dette actuelle: {customerDebts.get(cart.customerId)?.toFixed(1)} DA
+                                                        </div>
+                                                    )}
+                                                    {hasPhone && (
+                                                        <p className="text-xs text-muted-foreground">
+                                                            Tél: {customer?.phone}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            );
+                                        })()}
                                     </CardContent>
                                 </Card>
 

@@ -52,7 +52,11 @@ export const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(({ op
           className="w-full justify-between"
         >
             <div className="flex items-center gap-2">
-                <User className="h-4 w-4 text-muted-foreground" />
+                {value === 'walk-in' ? (
+                    <UserX className="h-4 w-4 text-muted-foreground" />
+                ) : (
+                    <User className="h-4 w-4 text-muted-foreground" />
+                )}
                 <span className="line-clamp-1">{placeholder}</span>
             </div>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
