@@ -472,30 +472,40 @@ export default function DashboardPage() {
                         <CardTitle className="flex items-center gap-2"><Award className="h-5 w-5 text-muted-foreground" /> Meilleurs clients</CardTitle>
                         <CardDescription>Top 5 des clients par total d'achats net sur la période.</CardDescription>
                     </CardHeader>
-                    <CardContent className="h-[300px]">
+                    <CardContent className="h-[300px] pt-4">
                         {topCustomers.length === 0 ? (
                             <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
                                 <p>Aucune donnée de vente pour afficher les meilleurs clients.</p>
                             </div>
                         ) : (
-                             <div className="h-full overflow-y-auto">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Client</TableHead>
-                                            <TableHead className="text-right">Total Dépensé (Net)</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {topCustomers.map((customer) => (
-                                            <TableRow key={customer.name}>
-                                                <TableCell className="font-medium">{customer.name}</TableCell>
-                                                <TableCell className="text-right font-semibold">{formatCurrency(customer.totalSpent)}</TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            </div>
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={topCustomers} layout="vertical" margin={{ top: 0, right: 40, left: 0, bottom: 0 }}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
+                                    <XAxis type="number" hide />
+                                    <YAxis 
+                                        dataKey="name" 
+                                        type="category" 
+                                        width={120}
+                                        tickLine={false} 
+                                        axisLine={false} 
+                                        stroke="hsl(var(--muted-foreground))"
+                                        fontSize={12}
+                                        tick={{ transform: 'translate(-10, 0)' }}
+                                        style={{ textAnchor: 'start' }}
+                                    />
+                                    <Tooltip
+                                        contentStyle={{
+                                            backgroundColor: "hsl(var(--background))",
+                                            borderColor: "hsl(var(--border))",
+                                        }}
+                                        formatter={(value: number) => [formatCurrency(value), 'Total Dépensé']}
+                                        cursor={{ fill: 'hsl(var(--muted))' }}
+                                    />
+                                    <Bar dataKey="totalSpent" name="Total Dépensé" fill="hsl(var(--chart-tertiary))" radius={[0, 4, 4, 0]} barSize={20}>
+                                        {/* You can add labels inside the bars if you want */}
+                                    </Bar>
+                                </BarChart>
+                            </ResponsiveContainer>
                         )}
                     </CardContent>
                 </Card>
