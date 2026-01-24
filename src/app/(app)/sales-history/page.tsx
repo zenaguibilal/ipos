@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase, deleteDocumentNonBlocking } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { collection, query, orderBy, doc } from 'firebase/firestore';
@@ -20,6 +20,8 @@ import Papa from 'papaparse';
 import { toast } from 'sonner';
 import dynamic from 'next/dynamic';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { A4Receipt } from '@/components/sales/a4-receipt';
+import html2canvas from 'html2canvas';
 
 
 const SaleDetailsDialog = dynamic(() => import('@/components/sales/sale-details-dialog').then(mod => mod.SaleDetailsDialog));
@@ -42,6 +44,8 @@ export default function SalesHistoryPage() {
         to: endOfDay(new Date()),
     });
     const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null);
+    const [saleForShare, setSaleForShare] = useState<Sale | null>(null);
+    const a4ReceiptRef = useRef<HTMLDivElement>(null);
 
 
     // --- Data Fetching ---
@@ -174,6 +178,12 @@ export default function SalesHistoryPage() {
         return customers.find(c => c.id === selectedSale.customerId) || null;
     }, [selectedSale, customers]);
 
+    const customerForShare = useMemo(() => {
+        if (!saleForShare || !customers) return null;
+        return customers.find(c => c.id === saleForShare.customerId) || null;
+    }, [saleForShare, customers]);
+
+
     const handleExportToCSV = () => {
         const transactionsToExport = Object.values(groupedTransactions).flatMap(g => g.transactions);
         if (transactionsToExport.length === 0) {
@@ -247,42 +257,98 @@ export default function SalesHistoryPage() {
         });
     };
 
-    const handleSendReceipt = (sale: Sale) => {
-        if (!customers || !sale.customerId) {
-            toast.error("Informations client non disponibles pour cette vente.");
+    const handleShareReceiptAsImage = async (sale: Sale, isReminder: boolean) => {
+        setSaleForShare(sale);
+    
+        // Wait for state to update and component to render
+        await new Promise(resolve => setTimeout(resolve, 100));
+    
+        const element = a4ReceiptRef.current;
+        const customer = customers?.find(c => c.id === sale.customerId);
+    
+        if (!element || !customer) {
+            toast.error("Erreur: Impossible de générer l'image de la facture.");
+            setSaleForShare(null);
             return;
         }
+    
+        toast.info("Génération de l'image de la facture en cours...");
+    
+        try {
+            const canvas = await html2canvas(element, {
+                scale: 1.5,
+                useCORS: true,
+                logging: false,
+                backgroundColor: '#ffffff',
+            });
+            
+            canvas.toBlob(async (blob) => {
+                if (!blob) {
+                    toast.error("Erreur lors de la création de l'image.");
+                    setSaleForShare(null);
+                    return;
+                }
+    
+                const fileName = `facture-${sale.invoiceNumber}.png`;
+                const file = new File([blob], fileName, { type: 'image/png' });
+    
+                const shareText = isReminder
+                    ? `Bonjour ${customer.firstName || ''}, un petit rappel concernant le solde de votre facture N°${sale.invoiceNumber}.`
+                    : `Bonjour ${customer.firstName || ''}, voici votre facture N°${sale.invoiceNumber}.`;
+    
+                if (navigator.share && navigator.canShare({ files: [file] })) {
+                    try {
+                        await navigator.share({
+                            title: `Facture ${sale.invoiceNumber}`,
+                            text: shareText,
+                            files: [file],
+                        });
+                        toast.success("Facture partagée !");
+                    } catch (error: any) {
+                        if (error.name !== 'AbortError') {
+                            console.error('Share failed:', error);
+                            toast.error("Le partage a échoué.");
+                        }
+                    }
+                } else {
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    link.download = fileName;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    toast.success("L'image de la facture a été téléchargée. Vous pouvez maintenant la partager manuellement.", {
+                        description: "La plupart des navigateurs mobiles prennent en charge le partage direct."
+                    });
+                }
+    
+                setSaleForShare(null);
+    
+            }, 'image/png');
+    
+        } catch (error) {
+            console.error("html2canvas error:", error);
+            toast.error("Une erreur est survenue lors de la génération de l'image.");
+            setSaleForShare(null);
+        }
+    };
 
-        const customer = customers.find(c => c.id === sale.customerId);
+    const handleSendReceipt = (sale: Sale) => {
+        const customer = customers?.find(c => c.id === sale.customerId);
         if (!customer || !customer.phone) {
             toast.error("Le numéro de téléphone de ce client n'est pas disponible.");
             return;
         }
-
-        const companyName = companyProfile?.companyName || 'votre magasin';
-        const message = `Bonjour ${customer.firstName} ${customer.lastName}, voici un récapitulatif de votre facture N°${sale.invoiceNumber}. Total: ${sale.total.toFixed(1)} DA, Montant Payé: ${sale.amountPaid.toFixed(1)} DA, Solde Restant: ${sale.remainingBalance.toFixed(1)} DA. Merci de votre confiance !`;
-        
-        const whatsappUrl = `https://wa.me/${customer.phone.replace(/\s+/g, '')}?text=${encodeURIComponent(message)}`;
-        window.open(whatsappUrl, '_blank');
+        handleShareReceiptAsImage(sale, false);
     };
 
     const handleSendReminder = (sale: Sale) => {
-        if (!customers || !sale.customerId) {
-            toast.error("Informations client non disponibles pour cette vente.");
-            return;
-        }
-
-        const customer = customers.find(c => c.id === sale.customerId);
+        const customer = customers?.find(c => c.id === sale.customerId);
         if (!customer || !customer.phone) {
             toast.error("Le numéro de téléphone de ce client n'est pas disponible pour un rappel.");
             return;
         }
-
-        const companyName = companyProfile?.companyName || 'votre magasin';
-        const message = `Bonjour ${customer.firstName} ${customer.lastName}, ceci est un rappel amical concernant votre facture N°${sale.invoiceNumber} chez ${companyName}. Le solde restant est de ${sale.remainingBalance.toFixed(1)} DA. Merci de régler votre dette dès que possible.`;
-        
-        const whatsappUrl = `https://wa.me/${customer.phone.replace(/\s+/g, '')}?text=${encodeURIComponent(message)}`;
-        window.open(whatsappUrl, '_blank');
+        handleShareReceiptAsImage(sale, true);
     };
 
 
@@ -320,6 +386,13 @@ export default function SalesHistoryPage() {
                         </AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>
+            )}
+             {saleForShare && (
+                <div className="hidden print-hide">
+                    <div ref={a4ReceiptRef}>
+                        <A4Receipt sale={saleForShare} companyProfile={companyProfile} customer={customerForShare} />
+                    </div>
+                </div>
             )}
              <main className="flex-1 overflow-auto p-4 sm:p-6">
                 <Card className="w-full bg-card">

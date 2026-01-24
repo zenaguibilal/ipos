@@ -28,6 +28,7 @@
     "cmdk": "^1.0.0",
     "date-fns": "^3.6.0",
     "firebase": "^10.12.3",
+    "html2canvas": "^1.4.1",
     "html2pdf.js": "^0.10.1",
     "jsbarcode": "^3.11.6",
     "lucide-react": "^0.417.0",
@@ -45,6 +46,7 @@
     "tailwindcss-animate": "^1.0.0"
   },
   "devDependencies": {
+    "@types/html2canvas": "^1.0.0",
     "@types/node": "^20.14.12",
     "@types/papaparse": "^5.3.14",
     "@types/qrcode": "^1.5.5",
