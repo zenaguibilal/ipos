@@ -164,22 +164,17 @@ export default function SellPage() {
 
     const filteredProducts = useMemo(() => {
         if (!products) return [];
-
-        let availableProducts = products;
-
+    
+        const categoryFiltered = selectedCategory === 'all'
+            ? products
+            : products.filter(p => p.category === selectedCategory);
+    
         if (searchQuery) {
-            return products.filter(p =>
+            return categoryFiltered.filter(p =>
                 p.name.toLowerCase().includes(searchQuery.toLowerCase())
             );
         }
-        
-        // 1. Filter by category first
-        const categoryFiltered = selectedCategory === 'all'
-            ? availableProducts
-            : availableProducts.filter(p => p.category === selectedCategory);
-
-        
-        // 2. If no search, show popular items from the filtered category
+    
         if (sales && sales.length > 0) {
             const productSales: { [productId: string]: number } = {};
             sales.forEach(sale => {
@@ -189,15 +184,12 @@ export default function SellPage() {
                     }
                 });
             });
-
-            // Sort the category-filtered products by popularity
+    
             return [...categoryFiltered]
                 .sort((a, b) => (productSales[b.id] || 0) - (productSales[a.id] || 0));
         }
-
-        // 3. Fallback for new stores with no sales: show most recent from the category
-        return categoryFiltered.slice(0, 15);
-
+    
+        return categoryFiltered;
     }, [products, sales, selectedCategory, searchQuery]);
 
 
@@ -672,7 +664,7 @@ export default function SellPage() {
                     </ScrollArea>
                     
                     <h2 className="text-lg font-semibold tracking-tight -mb-2">
-                        {searchQuery ? `Résultats de la recherche` : "Accès Rapide / Populaires"}
+                        {searchQuery ? `Résultats de la recherche` : `Accès Rapide / Populaires ${selectedCategory !== 'all' ? `en ${selectedCategory}`: ''}`}
                     </h2>
 
                     <ScrollArea className="flex-grow">
@@ -716,48 +708,21 @@ export default function SellPage() {
                                         <CardTitle className="text-lg">Client</CardTitle>
                                     </CardHeader>
                                     <CardContent className="p-4 pt-0">
-                                        {cart.customerId ? (
-                                            <div className="space-y-2">
-                                                <div className="flex items-start justify-between">
-                                                    <div className="flex items-center gap-3">
-                                                         <div className="bg-muted rounded-full p-2">
-                                                            <User className="h-5 w-5 text-primary"/>
-                                                         </div>
-                                                         <div>
-                                                            <p className="font-bold text-lg">{cart.customerName}</p>
-                                                            <p className="text-sm text-muted-foreground">{customers?.find(c => c.id === cart.customerId)?.phone || 'Aucun numéro'}</p>
-                                                         </div>
-                                                    </div>
-                                                    <Button variant="ghost" size="sm" onClick={() => handleCustomerSelect(cart, 'walk-in')}>
-                                                        Changer
-                                                    </Button>
-                                                </div>
-                                                {(customerDebts.get(cart.customerId) ?? 0) > 0 && (
-                                                    <div className="font-semibold text-destructive p-2 bg-destructive/10 rounded-md text-sm text-center">
-                                                        Dette actuelle: {customerDebts.get(cart.customerId)?.toFixed(1)} DA
-                                                    </div>
-                                                )}
+                                        <div className="flex items-center gap-2">
+                                            <div className="flex-grow">
+                                                <Combobox
+                                                    options={customerOptions}
+                                                    onSelect={(customerId) => handleCustomerSelect(cart, customerId)}
+                                                    value={cart.customerId || 'walk-in'}
+                                                    placeholder="Vente au comptoir"
+                                                    searchPlaceholder="Rechercher un client..."
+                                                    notFoundMessage="Aucun client trouvé."
+                                                />
                                             </div>
-                                        ) : (
-                                            <div className="space-y-2">
-                                                 <p className="text-sm text-muted-foreground">Aucun client sélectionné (vente au comptoir).</p>
-                                                <div className="flex gap-2">
-                                                    <div className="flex-grow">
-                                                        <Combobox
-                                                            options={customerOptions}
-                                                            onSelect={(customerId) => handleCustomerSelect(cart, customerId)}
-                                                            value={'walk-in'}
-                                                            placeholder="Sélectionner un client..."
-                                                            searchPlaceholder="Rechercher un client..."
-                                                            notFoundMessage="Aucun client trouvé."
-                                                        />
-                                                    </div>
-                                                    <Button variant="outline" onClick={() => setIsAddCustomerOpen(true)}>
-                                                        <PlusCircle className="mr-2 h-4 w-4" />Nouveau
-                                                    </Button>
-                                                </div>
-                                            </div>
-                                        )}
+                                            <Button variant="outline" onClick={() => setIsAddCustomerOpen(true)}>
+                                                <PlusCircle className="mr-2 h-4 w-4" />Nouveau
+                                            </Button>
+                                        </div>
                                     </CardContent>
                                 </Card>
 

@@ -31,7 +31,7 @@ export interface ComboboxOption {
 interface ComboboxProps {
     options: ComboboxOption[];
     onSelect: (value: string) => void;
-    value?: string;
+    value: string;
     placeholder: string;
     searchPlaceholder: string;
     notFoundMessage: string;
@@ -40,6 +40,7 @@ interface ComboboxProps {
 
 export const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(({ options, onSelect, value, placeholder, searchPlaceholder, notFoundMessage }, ref) => {
   const [open, setOpen] = React.useState(false)
+  const selectedOption = React.useMemo(() => options.find(o => o.value === value), [options, value]);
   
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -49,20 +50,33 @@ export const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(({ op
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="w-full justify-between"
+          className="w-full justify-between h-auto py-2"
         >
-            <div className="flex items-center gap-2">
-                {value === 'walk-in' ? (
-                    <UserX className="h-4 w-4 text-muted-foreground" />
-                ) : (
-                    <User className="h-4 w-4 text-muted-foreground" />
-                )}
-                <span className="line-clamp-1">{placeholder}</span>
+            <div className="flex items-center gap-3 overflow-hidden text-left flex-grow">
+                {/* Icon */}
+                <div className="flex-shrink-0">
+                    {selectedOption?.value === 'walk-in' || !selectedOption ? (
+                        <UserX className="h-5 w-5 text-muted-foreground" />
+                    ) : (
+                        <User className="h-5 w-5 text-primary" />
+                    )}
+                </div>
+                {/* Text content */}
+                <div className="flex-grow truncate">
+                  {selectedOption ? (
+                    <>
+                      <p className="font-medium truncate">{selectedOption.label}</p>
+                      {selectedOption.subLabel && <p className="text-xs text-destructive font-medium truncate">{selectedOption.subLabel}</p>}
+                    </>
+                  ) : (
+                    <p className="font-medium">{placeholder}</p> // Fallback
+                  )}
+                </div>
             </div>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-full p-0" align="start">
+      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
         <Command>
           <CommandInput placeholder={searchPlaceholder} />
            <CommandList>
@@ -74,10 +88,9 @@ export const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(({ op
                   value={option.label}
                   disabled={option.disabled}
                   onSelect={(currentValue) => {
-                    // Find the original option to get the correct value
-                    const selectedOption = options.find(opt => opt.label.toLowerCase() === currentValue.toLowerCase());
-                    if (selectedOption) {
-                        onSelect(selectedOption.value)
+                    const selected = options.find(opt => opt.label.toLowerCase() === currentValue.toLowerCase());
+                    if (selected) {
+                        onSelect(selected.value)
                     }
                     setOpen(false)
                   }}
