@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
@@ -379,6 +380,16 @@ export default function SellPage() {
             const customer = customers?.find(c => c.id === customerId);
             if (customer) {
                 updateCart({ ...cart, customerId: customer.id, customerName: `${customer.firstName} ${customer.lastName}` });
+                const debt = customerDebts.get(customerId);
+                if (debt && debt > 0) {
+                    toast.warning(`Ce client a une dette de ${debt.toFixed(1)} DA.`, {
+                        description: `${customer.firstName} ${customer.lastName}`,
+                        action: {
+                            label: 'Voir détails',
+                            onClick: () => router.push(`/customers/${customerId}`),
+                        },
+                    });
+                }
             }
         }
     };
@@ -850,3 +861,5 @@ export default function SellPage() {
         </>
     );
 }
+
+    
