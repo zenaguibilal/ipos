@@ -1,7 +1,8 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { useUser, useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking } from '@/firebase';
+import { useUser, useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, useDoc } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { collection, doc, writeBatch, serverTimestamp, getDocs, query, where } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
