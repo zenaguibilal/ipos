@@ -1,9 +1,10 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc, addDocumentNonBlocking } from '@/firebase';
+import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { collection, doc, writeBatch, serverTimestamp, getDocs, query, where } from 'firebase/firestore';
+import { collection, doc, runTransaction, serverTimestamp } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -66,7 +67,7 @@ const ProductCard = ({ product, onAddToCart, isInCart }: { product: Product; onA
                     className={cn("object-cover transition-transform", isInCart && "scale-105")}
                     data-ai-hint={product.name.split(' ').slice(0, 2).join(' ')}
                 />
-                {isOutOfStock ? (
+                 {isOutOfStock ? (
                     <Badge variant="destructive" className="absolute top-2 left-2">Épuisé</Badge>
                 ) : isLowStock && (
                      <Badge variant="secondary" className="absolute top-2 left-2">Stock Faible</Badge>
@@ -346,75 +347,80 @@ export default function SellPage() {
         if (!activeCart || activeCart.items.length === 0 || !user || !firestore) return;
         setIsSavingSale(true);
 
-        const batch = writeBatch(firestore);
         const saleId = doc(collection(firestore, 'users', user.uid, 'sales')).id;
-        const saleRef = doc(firestore, 'users', user.uid, 'sales', saleId);
-        
-        let finalPaymentStatus: 'paid' | 'partial' | 'unpaid' = 'unpaid';
-        const amountPaidNum = parseFloat(amountPaid) || 0;
-        const remainingBalance = total - amountPaidNum;
-        if (amountPaidNum >= total) finalPaymentStatus = 'paid';
-        else if (amountPaidNum > 0) finalPaymentStatus = 'partial';
+        let newSaleData: Omit<Sale, 'id' | 'createdAt'>; // To be used later for the dialog
 
         try {
-            const saleItemsForDb: SaleItem[] = [];
-            const productIdsToUpdate: string[] = [];
-            for (const item of activeCart.items) {
-                saleItemsForDb.push({
+            // Run as a transaction
+            await runTransaction(firestore, async (transaction) => {
+                // 1. Prepare Sale Data
+                let finalPaymentStatus: 'paid' | 'partial' | 'unpaid' = 'unpaid';
+                const amountPaidNum = parseFloat(amountPaid) || 0;
+                const remainingBalance = total - amountPaidNum;
+                if (amountPaidNum >= total) finalPaymentStatus = 'paid';
+                else if (amountPaidNum > 0) finalPaymentStatus = 'partial';
+
+                const saleItemsForDb: SaleItem[] = activeCart.items.map(item => ({
                     id: item.id,
                     name: item.name,
                     price: item.price,
                     purchasePrice: item.purchasePrice,
                     quantity: item.cartQuantity,
-                });
-                if (!item.id.startsWith('custom-')) {
-                    productIdsToUpdate.push(item.id);
-                }
-            }
-
-            if(productIdsToUpdate.length > 0) {
-                const productsRef = collection(firestore, 'users', user.uid, 'products');
-                const q = query(productsRef, where('__name__', 'in', productIdsToUpdate));
-                const productSnapshots = await getDocs(q);
-                const stockLevels: Record<string, number> = {};
-                productSnapshots.forEach(doc => {
-                    stockLevels[doc.id] = doc.data().quantity;
-                });
+                }));
                 
-                for(const item of activeCart.items.filter(i => !i.id.startsWith('custom-'))) {
-                    if (stockLevels[item.id] < item.cartQuantity) {
-                       throw new Error(`Stock insuffisant pour ${item.name}. Disponible : ${stockLevels[item.id]}`);
-                    }
-                    const productRef = doc(firestore, 'users', user.uid, 'products', item.id);
-                    const newQuantity = stockLevels[item.id] - item.cartQuantity;
-                    batch.update(productRef, { quantity: newQuantity });
-                }
-            }
+                newSaleData = {
+                    invoiceNumber: `INV-${Date.now()}`,
+                    items: saleItemsForDb,
+                    subtotal,
+                    discountType: activeCart.discountType,
+                    discountAmount: activeCart.discountValue,
+                    total,
+                    amountPaid: amountPaidNum,
+                    remainingBalance: remainingBalance > 0 ? remainingBalance : 0,
+                    paymentStatus: finalPaymentStatus,
+                    customerId: activeCart.customerId,
+                    customerName: activeCart.customerName,
+                    createdAt: serverTimestamp(),
+                };
 
-            const saleData: Sale = {
-                id: saleId,
-                invoiceNumber: `INV-${Date.now()}`,
-                items: saleItemsForDb,
-                subtotal,
-                discountType: activeCart.discountType,
-                discountAmount: activeCart.discountValue,
-                total,
-                amountPaid: amountPaidNum,
-                remainingBalance: remainingBalance > 0 ? remainingBalance : 0,
-                paymentStatus: finalPaymentStatus,
-                customerId: activeCart.customerId,
-                customerName: activeCart.customerName,
-                createdAt: serverTimestamp(),
-            };
-            batch.set(saleRef, saleData);
+                // 2. Read and Update Product Stock
+                for (const item of activeCart.items) {
+                    if (item.id.startsWith('custom-')) continue;
+
+                    const productRef = doc(firestore, 'users', user.uid, 'products', item.id);
+                    const productDoc = await transaction.get(productRef);
+
+                    if (!productDoc.exists()) {
+                        throw new Error(`Produit ${item.name} introuvable dans l'inventaire.`);
+                    }
+
+                    const currentQuantity = productDoc.data().quantity;
+                    if (currentQuantity < item.cartQuantity) {
+                        throw new Error(`Stock insuffisant pour ${item.name}. Disponible : ${currentQuantity}`);
+                    }
+
+                    const newQuantity = currentQuantity - item.cartQuantity;
+                    transaction.update(productRef, { quantity: newQuantity });
+                }
+
+                // 3. Create the Sale Document
+                const saleRef = doc(firestore, 'users', user.uid, 'sales', saleId);
+                transaction.set(saleRef, newSaleData);
+            });
             
-            await batch.commit();
+            // If transaction is successful:
+            const completedSaleDataForDialog: Sale = {
+                id: saleId,
+                ...newSaleData,
+                createdAt: new Date(), // Use current date for the dialog
+            };
 
             toast.success("Vente enregistrée avec succès !");
-            setCompletedSale(saleData);
+            setCompletedSale(completedSaleDataForDialog);
             setCompletedSaleCustomer(customers?.find(c => c.id === activeCart.customerId) || null);
             setIsPaymentDialogOpen(false);
             
+            // Reset cart
             const newCarts = carts.filter(c => c.id !== activeCartId);
             if (newCarts.length === 0) {
                  const newId = addNewCart();
@@ -705,16 +711,20 @@ export default function SellPage() {
                                     </Card>
 
                                     <div className="mt-auto">
-                                        <Button 
-                                            className="w-full text-lg py-7" 
-                                            disabled={cart.items.length === 0}
-                                            onClick={() => {
-                                                setAmountPaid(total.toFixed(1));
-                                                setIsPaymentDialogOpen(true);
-                                            }}
-                                        >
-                                            <CheckCircle className="mr-2 h-5 w-5" /> Finaliser la vente
-                                        </Button>
+                                        <Dialog>
+                                            <DialogTrigger asChild>
+                                                <Button 
+                                                    className="w-full text-lg py-7" 
+                                                    disabled={cart.items.length === 0}
+                                                    onClick={() => {
+                                                        setAmountPaid(total.toFixed(1));
+                                                        setIsPaymentDialogOpen(true);
+                                                    }}
+                                                >
+                                                    <CheckCircle className="mr-2 h-5 w-5" /> Finaliser la vente
+                                                </Button>
+                                            </DialogTrigger>
+                                        </Dialog>
                                     </div>
                                 </div>
 
@@ -726,3 +736,5 @@ export default function SellPage() {
         </>
     );
 }
+
+    
