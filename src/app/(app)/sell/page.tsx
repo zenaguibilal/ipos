@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
@@ -10,19 +9,21 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Search, PlusCircle, X, Trash2, Minus, Plus, User, FileText, CheckCircle, Barcode } from 'lucide-react';
+import { Search, PlusCircle, X, Trash2, Minus, Plus, User, FilePlus2, CheckCircle, Barcode } from 'lucide-react';
 import { toast } from 'sonner';
-import { cn, safeToDate } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import type { Product, Customer, SaleItem, CompanyProfile, Sale } from '@/lib/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Combobox, ComboboxOption } from '@/components/ui/combobox';
 import { v4 as uuidv4 } from 'uuid';
 import { AddCustomerDialog } from '@/components/customers/add-customer-dialog';
 import { SaleCompleteDialog } from '@/components/sales/sale-complete-dialog';
+import { AddCustomProductDialog } from '@/components/sales/add-custom-product-dialog';
+
 
 // Define Cart types locally
 type CartItem = SaleItem & { cartQuantity: number };
@@ -55,6 +56,7 @@ export default function SellPage() {
     const [activeCartId, setActiveCartId] = useState<string>('');
     const [isClient, setIsClient] = useState(false);
     const [isAddCustomerOpen, setIsAddCustomerOpen] = useState(false);
+    const [isCustomProductDialogOpen, setIsCustomProductDialogOpen] = useState(false);
     const [completedSale, setCompletedSale] = useState<Sale | null>(null);
     const [completedSaleCustomer, setCompletedSaleCustomer] = useState<Customer | null>(null);
     const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
@@ -160,6 +162,23 @@ export default function SellPage() {
         toast.success(`${product.name} ajouté au panier.`);
     };
 
+    const addCustomProductToCart = (name: string, price: number) => {
+        if (!activeCart) return;
+
+        const newItem: CartItem = {
+            id: `custom-${uuidv4()}`,
+            name,
+            price,
+            purchasePrice: 0,
+            quantity: Infinity, // Not a stock-managed item
+            cartQuantity: 1,
+        };
+
+        const newItems = [...activeCart.items, newItem];
+        updateCart({ ...activeCart, items: newItems });
+        toast.success(`${name} ajouté au panier.`);
+    };
+
     const handleBarcodeScan = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter') {
             e.preventDefault();
@@ -259,18 +278,34 @@ export default function SellPage() {
         else if (amountPaidNum > 0) finalPaymentStatus = 'partial';
 
         try {
+            // Map cart items to sale items for DB, separating real product IDs
+            const saleItemsForDb: SaleItem[] = [];
+            const productIdsToUpdate: string[] = [];
+            for (const item of activeCart.items) {
+                saleItemsForDb.push({
+                    id: item.id,
+                    name: item.name,
+                    price: item.price,
+                    purchasePrice: item.purchasePrice,
+                    quantity: item.cartQuantity, // Use cartQuantity as the final quantity
+                });
+                if (!item.id.startsWith('custom-')) {
+                    productIdsToUpdate.push(item.id);
+                }
+            }
+
             // Fetch product quantities to ensure stock
-            const productIds = activeCart.items.map(item => item.id);
-            if(productIds.length > 0) {
+            if(productIdsToUpdate.length > 0) {
                 const productsRef = collection(firestore, 'users', user.uid, 'products');
-                const q = query(productsRef, where('__name__', 'in', productIds));
+                const q = query(productsRef, where('__name__', 'in', productIdsToUpdate));
                 const productSnapshots = await getDocs(q);
                 const stockLevels: Record<string, number> = {};
                 productSnapshots.forEach(doc => {
                     stockLevels[doc.id] = doc.data().quantity;
                 });
                 
-                for(const item of activeCart.items) {
+                // Only iterate over items that are actual products
+                for(const item of activeCart.items.filter(i => !i.id.startsWith('custom-'))) {
                     if (stockLevels[item.id] < item.cartQuantity) {
                        throw new Error(`Stock insuffisant pour ${item.name}. Disponible : ${stockLevels[item.id]}`);
                     }
@@ -283,7 +318,7 @@ export default function SellPage() {
             const saleData: Sale = {
                 id: saleId,
                 invoiceNumber: `INV-${Date.now()}`,
-                items: activeCart.items,
+                items: saleItemsForDb,
                 subtotal,
                 discountType: activeCart.discountType,
                 discountAmount: activeCart.discountValue,
@@ -343,6 +378,11 @@ export default function SellPage() {
                         });
                     }
                 }}
+            />
+             <AddCustomProductDialog 
+                isOpen={isCustomProductDialogOpen}
+                onOpenChange={setIsCustomProductDialogOpen}
+                onConfirm={addCustomProductToCart}
             />
             {completedSale && (
                 <SaleCompleteDialog
@@ -435,8 +475,8 @@ export default function SellPage() {
                                             </Button>
                                         </CardContent>
                                     </Card>
-                                    <div className="relative">
-                                         <Popover>
+                                     <div className="grid grid-cols-1 gap-2">
+                                        <Popover>
                                             <PopoverTrigger asChild>
                                                 <div className="relative">
                                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -464,10 +504,16 @@ export default function SellPage() {
                                                 </Command>
                                             </PopoverContent>
                                         </Popover>
-                                    </div>
-                                    <div className="relative">
-                                        <Barcode className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                        <Input ref={barcodeInputRef} placeholder="Scanner un code-barres (Ctrl+I)" onKeyDown={handleBarcodeScan} className="pl-9" />
+                                        <div className="flex gap-2">
+                                            <div className="relative flex-grow">
+                                                <Barcode className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                                <Input ref={barcodeInputRef} placeholder="Scanner un code-barres (Ctrl+I)" onKeyDown={handleBarcodeScan} className="pl-9" />
+                                            </div>
+                                            <Button variant="outline" onClick={() => setIsCustomProductDialogOpen(true)}>
+                                                <FilePlus2 className="mr-2 h-4 w-4" />
+                                                Article
+                                            </Button>
+                                        </div>
                                     </div>
                                     <Card className="flex-grow flex flex-col">
                                         <CardHeader className="p-4">
@@ -568,5 +614,3 @@ export default function SellPage() {
         </>
     );
 }
-
-    
