@@ -7,7 +7,7 @@ import { doc, collection, query, where, orderBy } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Timeline, TimelineItem, TimelineConnector, TimelineHeader, TimelineIcon, TimelineTitle, TimelineBody } from "@/components/ui/timeline";
-import { ArrowLeft, Edit, HandCoins, Phone, CreditCard, ShoppingCart, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Edit, HandCoins, Phone, CreditCard, ShoppingCart, MessageSquare, FileText } from 'lucide-react';
 import Link from 'next/link';
 import { safeToDate } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -17,8 +17,12 @@ import { CustomerDialog } from '@/components/customers/customer-dialog';
 import { AddPaymentForm } from '@/components/customers/add-payment-form';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import dynamic from 'next/dynamic';
+
 
 type Transaction = { type: 'sale', data: Sale } | { type: 'payment', data: Payment };
+
+const SaleDetailsDialog = dynamic(() => import('@/components/sales/sale-details-dialog').then(mod => mod.SaleDetailsDialog));
 
 export default function CustomerDetailPage() {
     const { user, isUserLoading } = useUser();
@@ -30,6 +34,7 @@ export default function CustomerDetailPage() {
     // State for dialogs
     const [isEditOpen, setIsEditOpen] = useState(false);
     const [isPaymentOpen, setIsPaymentOpen] = useState(false);
+    const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
 
     // Data fetching
     const customerRef = useMemoFirebase(() => (user && firestore && customerId) ? doc(firestore, 'users', user.uid, 'customers', customerId) : null, [user, firestore, customerId]);
@@ -128,6 +133,15 @@ export default function CustomerDetailPage() {
                     userId={user.uid}
                 />
             )}
+            {selectedSale && (
+                <SaleDetailsDialog
+                    isOpen={!!selectedSale}
+                    onOpenChange={() => setSelectedSale(null)}
+                    sale={selectedSale}
+                    companyProfile={companyProfile}
+                    customer={customer}
+                />
+            )}
             <main className="flex-1 overflow-auto p-4 sm:p-6">
                 <div className="mb-4">
                     <Button variant="outline" size="sm" asChild>
@@ -199,48 +213,72 @@ export default function CustomerDetailPage() {
                                     <p className="text-muted-foreground">Aucune transaction pour ce client.</p>
                                 ) : (
                                     <Timeline>
-                                        {combinedTransactions.map((tx, index) => (
-                                            <TimelineItem key={`${tx.type}-${tx.data.id}`}>
-                                                {index < combinedTransactions.length - 1 && <TimelineConnector />}
-                                                <TimelineHeader>
-                                                    <TimelineIcon>
-                                                        {tx.type === 'sale' ? <ShoppingCart className="h-5 w-5"/> : <CreditCard className="h-5 w-5 text-green-500" />}
-                                                    </TimelineIcon>
-                                                    <TimelineTitle>
-                                                        {tx.type === 'sale' ? 'Vente' : 'Paiement'}
-                                                    </TimelineTitle>
-                                                    <span className="text-xs text-muted-foreground ml-auto">
-                                                        {tx.data.createdAt ? format(safeToDate(tx.data.createdAt), 'd MMM yyyy, HH:mm', { locale: fr }) : ''}
-                                                    </span>
-                                                </TimelineHeader>
-                                                <TimelineBody>
-                                                     <div className="bg-muted/50 p-4 rounded-md border">
-                                                        {tx.type === 'sale' ? (
-                                                            <div className="flex justify-between items-start">
-                                                                <div>
-                                                                    <p>Facture <Link href={`/sales-history?search=${tx.data.invoiceNumber}`} className="font-mono underline hover:text-primary">{tx.data.invoiceNumber}</Link></p>
-                                                                    <p className="text-xs text-muted-foreground">{tx.data.items.length} article(s)</p>
-                                                                </div>
-                                                                <div className="text-right">
-                                                                    <p className="font-bold text-lg">{tx.data.total.toFixed(1)} DA</p>
-                                                                    <p className="text-xs text-green-600 font-medium">Payé sur facture: {tx.data.amountPaid.toFixed(1)} DA</p>
-                                                                    <div className="mt-1">
-                                                                        {tx.data.paymentStatus === 'unpaid' && <Badge variant="destructive">Impayé</Badge>}
-                                                                        {tx.data.paymentStatus === 'partial' && <Badge variant="secondary">Partiel</Badge>}
-                                                                        {tx.data.paymentStatus === 'paid' && <Badge>Payé</Badge>}
+                                        {combinedTransactions.map((tx, index) => {
+                                            if (tx.type === 'sale') {
+                                                return (
+                                                    <TimelineItem key={`${tx.type}-${tx.data.id}`}>
+                                                        {index < combinedTransactions.length - 1 && <TimelineConnector />}
+                                                        <TimelineHeader>
+                                                            <TimelineIcon>
+                                                                <ShoppingCart className="h-5 w-5"/>
+                                                            </TimelineIcon>
+                                                            <TimelineTitle>Vente</TimelineTitle>
+                                                            <span className="text-xs text-muted-foreground ml-auto">
+                                                                {tx.data.createdAt ? format(safeToDate(tx.data.createdAt), 'd MMM yyyy, HH:mm', { locale: fr }) : ''}
+                                                            </span>
+                                                        </TimelineHeader>
+                                                        <TimelineBody>
+                                                            <div className="bg-muted/50 p-4 rounded-md border group hover:border-primary transition-colors">
+                                                                <div className="flex justify-between items-start">
+                                                                    <div>
+                                                                        <p>Facture <span className="font-mono">{tx.data.invoiceNumber}</span></p>
+                                                                        <p className="text-xs text-muted-foreground">{tx.data.items.length} article(s)</p>
+                                                                    </div>
+                                                                    <div className="text-right">
+                                                                        <p className="font-bold text-lg">{tx.data.total.toFixed(1)} DA</p>
+                                                                        <p className="text-xs text-green-600 font-medium">Payé sur facture: {tx.data.amountPaid.toFixed(1)} DA</p>
+                                                                        <div className="mt-1">
+                                                                            {tx.data.paymentStatus === 'unpaid' && <Badge variant="destructive">Impayé</Badge>}
+                                                                            {tx.data.paymentStatus === 'partial' && <Badge variant="secondary">Partiel</Badge>}
+                                                                            {tx.data.paymentStatus === 'paid' && <Badge>Payé</Badge>}
+                                                                        </div>
                                                                     </div>
                                                                 </div>
+                                                                <div className="mt-3 text-right -mb-2 -mr-2">
+                                                                    <Button variant="ghost" size="sm" onClick={() => setSelectedSale(tx.data)}>
+                                                                        <FileText className="mr-2 h-4 w-4"/>
+                                                                        Voir les détails
+                                                                    </Button>
+                                                                </div>
                                                             </div>
-                                                        ) : (
-                                                            <div className="flex justify-between items-center">
-                                                                <p>Règlement de dette</p>
-                                                                <p className="font-bold text-lg text-green-600">+{tx.data.amount.toFixed(1)} DA</p>
+                                                        </TimelineBody>
+                                                    </TimelineItem>
+                                                )
+                                            } else { // Payment
+                                                return (
+                                                    <TimelineItem key={`${tx.type}-${tx.data.id}`}>
+                                                        {index < combinedTransactions.length - 1 && <TimelineConnector />}
+                                                        <TimelineHeader>
+                                                            <TimelineIcon>
+                                                                <CreditCard className="h-5 w-5 text-green-500" />
+                                                            </TimelineIcon>
+                                                            <TimelineTitle>Paiement</TimelineTitle>
+                                                            <span className="text-xs text-muted-foreground ml-auto">
+                                                                {tx.data.createdAt ? format(safeToDate(tx.data.createdAt), 'd MMM yyyy, HH:mm', { locale: fr }) : ''}
+                                                            </span>
+                                                        </TimelineHeader>
+                                                        <TimelineBody>
+                                                            <div className="bg-muted/50 p-4 rounded-md border">
+                                                                <div className="flex justify-between items-center">
+                                                                    <p>Règlement de dette</p>
+                                                                    <p className="font-bold text-lg text-green-600">+{tx.data.amount.toFixed(1)} DA</p>
+                                                                </div>
                                                             </div>
-                                                        )}
-                                                    </div>
-                                                </TimelineBody>
-                                            </TimelineItem>
-                                        ))}
+                                                        </TimelineBody>
+                                                    </TimelineItem>
+                                                )
+                                            }
+                                        })}
                                     </Timeline>
                                 )}
                             </CardContent>
