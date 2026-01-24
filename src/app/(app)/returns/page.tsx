@@ -10,7 +10,6 @@ import { Input } from '@/components/ui/input';
 import { Search, PlusCircle, Undo2, CircleDollarSign, Hash, MoreHorizontal, FileText, Trash2, Download, ChevronDown } from 'lucide-react';
 import type { ProductReturn } from '@/lib/types';
 import { safeToDate } from '@/lib/utils';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import Link from 'next/link';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { DateRangePicker } from '@/components/dashboard/date-range-picker';
@@ -19,6 +18,7 @@ import { subDays, startOfDay, endOfDay, format } from 'date-fns';
 import { toast } from 'sonner';
 import Papa from 'papaparse';
 import dynamic from 'next/dynamic';
+import { ReturnCard } from '@/components/returns/return-card';
 
 const ReturnDetailsDialog = dynamic(() => import('@/components/returns/return-details-dialog').then(mod => mod.ReturnDetailsDialog));
 const DeleteReturnDialog = dynamic(() => import('@/components/returns/delete-return-dialog').then(mod => mod.DeleteReturnDialog));
@@ -224,52 +224,15 @@ export default function ReturnsPage() {
                                 </p>
                             </div>
                         ) : (
-                            <div className="overflow-x-auto">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Date</TableHead>
-                                            <TableHead>N° Facture Originale</TableHead>
-                                            <TableHead>Client</TableHead>
-                                            <TableHead className="text-center">Articles</TableHead>
-                                            <TableHead className="text-right">Valeur du Retour</TableHead>
-                                            <TableHead className="text-right">Montant Remboursé</TableHead>
-                                            <TableHead><span className="sr-only">Actions</span></TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {filteredReturns.map((r) => (
-                                            <TableRow key={r.id}>
-                                                <TableCell>{safeToDate(r.createdAt).toLocaleDateString('fr-FR')}</TableCell>
-                                                <TableCell className="font-mono text-xs">{r.originalInvoiceNumber}</TableCell>
-                                                <TableCell>{r.customerName || 'N/A'}</TableCell>
-                                                <TableCell className="text-center">{r.items.reduce((acc, item) => acc + item.quantity, 0)}</TableCell>
-                                                <TableCell className="text-right font-semibold">{r.totalReturnValue.toFixed(1)} DA</TableCell>
-                                                <TableCell className="text-right text-destructive font-semibold">-{r.amountRefunded.toFixed(1)} DA</TableCell>
-                                                <TableCell className="text-right">
-                                                    <DropdownMenu>
-                                                        <DropdownMenuTrigger asChild>
-                                                            <Button variant="ghost" className="h-8 w-8 p-0">
-                                                                <span className="sr-only">Ouvrir le menu</span>
-                                                                <MoreHorizontal className="h-4 w-4" />
-                                                            </Button>
-                                                        </DropdownMenuTrigger>
-                                                        <DropdownMenuContent align="end">
-                                                             <DropdownMenuItem onClick={() => setSelectedReturn(r)}>
-                                                                <FileText className="mr-2 h-4 w-4" />
-                                                                <span>Voir les détails</span>
-                                                            </DropdownMenuItem>
-                                                            <DropdownMenuItem onClick={() => setDeletingReturn(r)} className="text-destructive focus:text-destructive-foreground focus:bg-destructive">
-                                                                <Trash2 className="mr-2 h-4 w-4" />
-                                                                <span>Annuler & Supprimer</span>
-                                                            </DropdownMenuItem>
-                                                        </DropdownMenuContent>
-                                                    </DropdownMenu>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                                {filteredReturns.map((r) => (
+                                    <ReturnCard 
+                                        key={r.id}
+                                        productReturn={r}
+                                        onViewDetails={setSelectedReturn}
+                                        onDelete={setDeletingReturn}
+                                    />
+                                ))}
                             </div>
                         )}
                     </CardContent>

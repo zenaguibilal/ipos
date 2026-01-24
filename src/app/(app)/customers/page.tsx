@@ -12,16 +12,15 @@ import type { Customer, Sale, Payment, CustomerWithSalesData } from '@/lib/types
 import { CustomerDialog } from '@/components/customers/customer-dialog';
 import { DeleteCustomerDialog } from '@/components/customers/delete-customer-dialog';
 import { AddPaymentForm } from '@/components/customers/add-payment-form';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { safeToDate } from '@/lib/utils';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import Papa from 'papaparse';
 import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Link from 'next/link';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { CustomerCard } from '@/components/customers/customer-card';
 
 export default function CustomersPage() {
     const { user, isUserLoading } = useUser();
@@ -71,7 +70,10 @@ export default function CustomersPage() {
             const lastSaleDate = validSales.length > 0 ? Math.max(...validSales.map(s => safeToDate(s.createdAt).getTime())) : 0;
             
             const validPayments = customerPayments.filter(p => p.createdAt);
-            const lastPaymentDate = validPayments.length > 0 ? Math.max(...validPayments.map(p => safeToDate(p.createdAt).getTime())) : 0;
+            const lastPaymentDate = validPayments.length > 0 ? Math.max(...validPayments.map(p => {
+                if (!p.createdAt) return 0;
+                return safeToDate(p.createdAt).getTime();
+            })) : 0;
 
             const lastActivityTimestamp = Math.max(lastSaleDate, lastPaymentDate);
             const lastActivityDate = lastActivityTimestamp > 0 ? new Date(lastActivityTimestamp) : null;
@@ -277,83 +279,25 @@ export default function CustomersPage() {
                         </div>
                     </CardHeader>
                     <CardContent>
-                         {filteredCustomers.length === 0 ? (
+                         {isLoading ? (
+                            <div className="text-center p-8">Chargement des clients...</div>
+                         ) : filteredCustomers.length === 0 ? (
                             <div className="flex h-40 items-center justify-center rounded-md border-2 border-dashed border-border bg-card">
                                 <p className="text-muted-foreground">
                                     {customers && customers.length > 0 ? "Aucun client ne correspond à votre recherche." : "Aucun client trouvé. Commencez par en ajouter un."}
                                 </p>
                             </div>
                         ) : (
-                            <div className="overflow-x-auto">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Nom</TableHead>
-                                            <TableHead>Téléphone</TableHead>
-                                            <TableHead className="text-right">Dette</TableHead>
-                                            <TableHead className="text-right">Total Dépensé</TableHead>
-                                            <TableHead>Dernière Activité</TableHead>
-                                            <TableHead className="text-center">Jour de règlement</TableHead>
-                                            <TableHead><span className="sr-only">Actions</span></TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {filteredCustomers.map((customer) => (
-                                            <TableRow key={customer.id}>
-                                                <TableCell className="font-medium">
-                                                    <Link href={`/customers/${customer.id}`} className="hover:underline">
-                                                        {`${customer.firstName} ${customer.lastName}`}
-                                                    </Link>
-                                                </TableCell>
-                                                <TableCell>{customer.phone || 'N/A'}</TableCell>
-                                                <TableCell className="text-right font-semibold text-destructive">{customer.outstandingBalance.toFixed(1)} DA</TableCell>
-                                                <TableCell className="text-right">{customer.totalSpent.toFixed(1)} DA</TableCell>
-                                                <TableCell>{customer.lastActivityDate ? format(customer.lastActivityDate, 'd MMM yyyy', { locale: fr }) : 'N/A'}</TableCell>
-                                                <TableCell className="text-center">
-                                                    <div className="flex items-center justify-center gap-1">
-                                                        {customer.settlementDay || 'N/A'}
-                                                        {customer.isReminderDue && (
-                                                            <TooltipProvider>
-                                                                <Tooltip>
-                                                                    <TooltipTrigger>
-                                                                        <AlertCircle className="h-4 w-4 text-destructive" />
-                                                                    </TooltipTrigger>
-                                                                    <TooltipContent>
-                                                                        <p>La date de règlement est dépassée.</p>
-                                                                    </TooltipContent>
-                                                                </Tooltip>
-                                                            </TooltipProvider>
-                                                        )}
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell className="text-right">
-                                                    <DropdownMenu>
-                                                        <DropdownMenuTrigger asChild>
-                                                            <Button variant="ghost" className="h-8 w-8 p-0">
-                                                                <span className="sr-only">Ouvrir le menu</span>
-                                                                <MoreHorizontal className="h-4 w-4" />
-                                                            </Button>
-                                                        </DropdownMenuTrigger>
-                                                        <DropdownMenuContent align="end">
-                                                            <DropdownMenuItem asChild>
-                                                                <Link href={`/customers/${customer.id}`}>
-                                                                    <FileText className="mr-2 h-4 w-4" />
-                                                                    Voir les détails
-                                                                </Link>
-                                                            </DropdownMenuItem>
-                                                            <DropdownMenuItem onClick={() => setCustomerForPayment(customer)}>
-                                                                <HandCoins className="mr-2 h-4 w-4" />
-                                                                Encaisser un paiement
-                                                            </DropdownMenuItem>
-                                                            <DropdownMenuItem onClick={() => handleEditClick(customer)}>Modifier</DropdownMenuItem>
-                                                            <DropdownMenuItem onClick={() => setCustomerToDelete(customer)} className="text-destructive">Supprimer</DropdownMenuItem>
-                                                        </DropdownMenuContent>
-                                                    </DropdownMenu>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                                {filteredCustomers.map((customer) => (
+                                    <CustomerCard
+                                        key={customer.id}
+                                        customer={customer}
+                                        onEdit={() => handleEditClick(customer)}
+                                        onDelete={setCustomerToDelete}
+                                        onAddPayment={setCustomerForPayment}
+                                    />
+                                ))}
                             </div>
                          )}
                     </CardContent>

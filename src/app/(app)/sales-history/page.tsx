@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect, useState, useMemo, useRef } from 'react';
@@ -11,7 +10,6 @@ import { Input } from '@/components/ui/input';
 import { Search, CreditCard, HandCoins, CircleDollarSign, Download, ChevronDown, TrendingUp, MoreHorizontal, Trash2, FileText, MessageSquare, BellRing } from 'lucide-react';
 import type { Sale, Payment, CompanyProfile, Customer, SaleItem } from '@/lib/types';
 import { cn, safeToDate } from '@/lib/utils';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DateRangePicker } from '@/components/dashboard/date-range-picker';
 import { DateRange } from 'react-day-picker';
 import { subDays, startOfDay, endOfDay, format } from 'date-fns';
@@ -23,6 +21,7 @@ import dynamic from 'next/dynamic';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { A4Receipt } from '@/components/sales/a4-receipt';
 import html2canvas from 'html2canvas';
+import { TransactionCard } from '@/components/sales/transaction-card';
 
 
 const SaleDetailsDialog = dynamic(() => import('@/components/sales/sale-details-dialog').then(mod => mod.SaleDetailsDialog));
@@ -486,124 +485,35 @@ export default function SalesHistoryPage() {
                                 </p>
                             </div>
                         ) : (
-                             <div className="overflow-x-auto">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead className="hidden sm:table-cell">Type</TableHead>
-                                            <TableHead>Client / N° Facture</TableHead>
-                                            <TableHead>Heure</TableHead>
-                                            <TableHead>Statut / Détails</TableHead>
-                                            <TableHead className="text-right">Montant</TableHead>
-                                            <TableHead className="text-right">Actions</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {Object.entries(groupedTransactions).map(([dateStr, group]) => (
-                                            <React.Fragment key={dateStr}>
-                                                <TableRow className="bg-muted hover:bg-muted">
-                                                    <TableCell colSpan={6} className="py-2 px-4 font-medium text-foreground">
-                                                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1">
-                                                            <span className="font-semibold text-base">{format(new Date(dateStr + 'T12:00:00'), 'eeee d MMMM yyyy', { locale: fr })}</span>
-                                                            <div className="sm:text-right text-xs flex flex-wrap gap-x-4 gap-y-1 justify-start sm:justify-end">
-                                                                <span>Bénéfice: <span className="font-bold text-green-600">{group.dailyProfit.toFixed(1)} DA</span></span>
-                                                                <span>C.A.: <span className="font-bold">{group.dailyRevenue.toFixed(1)} DA</span></span>
-                                                                <span>Encaissé: <span className="font-bold text-green-600">{group.dailyCollected.toFixed(1)} DA</span></span>
-                                                            </div>
-                                                        </div>
-                                                    </TableCell>
-                                                </TableRow>
-                                                {group.transactions.map((transaction, index) => {
-                                                     if (!transaction.data.createdAt) return null;
-                                                     const currentDate = safeToDate(transaction.data.createdAt);
-                                                     const isSale = transaction.type === 'sale';
-                                                     const saleData = isSale ? transaction.data as Sale : null;
-                                                     const customerForSale = saleData?.customerId && customers ? customers.find(c => c.id === saleData.customerId) : null;
-                                                     const canSendWhatsApp = !!(customerForSale && customerForSale.phone);
-
-                                                     return (
-                                                        <TableRow 
-                                                            key={`${transaction.type}-${transaction.data.id}-${index}`}
-                                                            className={cn(
-                                                                "border-b transition-colors",
-                                                                !isSale && "bg-green-500/10"
-                                                            )}
-                                                        >
-                                                            <TableCell className="hidden sm:table-cell">
-                                                                <div className="flex items-center gap-2">
-                                                                {isSale ? <CreditCard className="h-4 w-4 text-muted-foreground"/> : <HandCoins className="h-4 w-4 text-green-500"/>}
-                                                                <span>{isSale ? 'Vente' : 'Paiement'}</span>
-                                                                </div>
-                                                            </TableCell>
-                                                            <TableCell className="p-3 font-medium">
-                                                                <div>{transaction.data.customerName || (isSale ? 'Vente au comptoir' : 'Paiement inconnu')}</div>
-                                                                {isSale && <div className="font-mono text-xs text-muted-foreground">{transaction.data.invoiceNumber}</div>}
-                                                            </TableCell>
-                                                            <TableCell className="p-3 text-muted-foreground">
-                                                                {currentDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
-                                                            </TableCell>
-                                                            <TableCell className="p-3 text-center">
-                                                                {isSale && saleData ? (
-                                                                    <span className={cn(
-                                                                        'rounded-full px-2.5 py-0.5 text-xs font-semibold',
-                                                                        saleData.paymentStatus === 'paid' && 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
-                                                                        saleData.paymentStatus === 'partial' && 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
-                                                                        saleData.paymentStatus === 'unpaid' && 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
-                                                                    )}>
-                                                                        {saleData.paymentStatus === 'paid' ? 'Payé' : saleData.paymentStatus === 'partial' ? 'Partiel' : 'Impayé'}
-                                                                    </span>
-                                                                ) : !isSale ? (
-                                                                    <span className="text-xs text-green-600">Règlement de dette</span>
-                                                                ) : null}
-                                                            </TableCell>
-                                                            <TableCell className={cn(
-                                                                "p-3 text-right font-semibold",
-                                                                isSale ? 'text-primary' : 'text-green-600'
-                                                            )}>
-                                                                {isSale && saleData ? saleData.total.toFixed(1) : `+${transaction.data.amount.toFixed(1)}`} DA
-                                                            </TableCell>
-                                                             <TableCell className="p-3 text-right">
-                                                                <DropdownMenu>
-                                                                    <DropdownMenuTrigger asChild>
-                                                                        <Button variant="ghost" className="h-8 w-8 p-0">
-                                                                            <span className="sr-only">Ouvrir le menu</span>
-                                                                            <MoreHorizontal className="h-4 w-4" />
-                                                                        </Button>
-                                                                    </DropdownMenuTrigger>
-                                                                    <DropdownMenuContent align="end">
-                                                                        {isSale && saleData && (
-                                                                            <>
-                                                                                <DropdownMenuItem onClick={() => setSelectedSale(saleData)} className="cursor-pointer">
-                                                                                    <FileText className="mr-2 h-4 w-4" />
-                                                                                    <span>Voir les détails</span>
-                                                                                </DropdownMenuItem>
-                                                                                <DropdownMenuItem onClick={() => handleSendReceipt(saleData)} disabled={!canSendWhatsApp} className="cursor-pointer">
-                                                                                    <MessageSquare className="mr-2 h-4 w-4" />
-                                                                                    <span>Envoyer Reçu</span>
-                                                                                </DropdownMenuItem>
-                                                                                {(saleData.paymentStatus === 'unpaid' || saleData.paymentStatus === 'partial') && (
-                                                                                    <DropdownMenuItem onClick={() => handleSendReminder(saleData)} disabled={!canSendWhatsApp} className="cursor-pointer">
-                                                                                        <BellRing className="mr-2 h-4 w-4" />
-                                                                                        <span>Envoyer Rappel</span>
-                                                                                    </DropdownMenuItem>
-                                                                                )}
-                                                                                <DropdownMenuSeparator />
-                                                                            </>
-                                                                        )}
-                                                                        <DropdownMenuItem onClick={() => setTransactionToDelete(transaction)} className="text-destructive focus:text-destructive-foreground focus:bg-destructive cursor-pointer">
-                                                                            <Trash2 className="mr-2 h-4 w-4" />
-                                                                            Supprimer
-                                                                        </DropdownMenuItem>
-                                                                    </DropdownMenuContent>
-                                                                </DropdownMenu>
-                                                            </TableCell>
-                                                        </TableRow>
-                                                     );
-                                                })}
-                                            </React.Fragment>
-                                        ))}
-                                    </TableBody>
-                                </Table>
+                             <div className="space-y-8">
+                                {Object.entries(groupedTransactions).map(([dateStr, group]) => (
+                                    <div key={dateStr}>
+                                        <div className="mb-4">
+                                            <h3 className="text-lg font-semibold">{format(new Date(dateStr + 'T12:00:00'), 'eeee d MMMM yyyy', { locale: fr })}</h3>
+                                            <div className="text-xs flex flex-wrap gap-x-4 gap-y-1 text-muted-foreground">
+                                                 <span>Bénéfice: <span className="font-bold text-green-600">{group.dailyProfit.toFixed(1)} DA</span></span>
+                                                 <span>C.A.: <span className="font-bold">{group.dailyRevenue.toFixed(1)} DA</span></span>
+                                                 <span>Encaissé: <span className="font-bold text-green-600">{group.dailyCollected.toFixed(1)} DA</span></span>
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                                            {group.transactions.map((transaction, index) => {
+                                                const customerForSale = transaction.type === 'sale' ? (customers ? customers.find(c => c.id === transaction.data.customerId) : null) : null;
+                                                return (
+                                                    <TransactionCard
+                                                        key={`${transaction.type}-${transaction.data.id}-${index}`}
+                                                        transaction={transaction}
+                                                        customerForSale={customerForSale}
+                                                        onViewDetails={setSelectedSale}
+                                                        onSendReceipt={handleSendReceipt}
+                                                        onSendReminder={handleSendReminder}
+                                                        onDelete={setTransactionToDelete}
+                                                    />
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         )}
                     </CardContent>

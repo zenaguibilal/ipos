@@ -11,14 +11,11 @@ import { Search, PlusCircle, Package, Layers, CircleDollarSign, AlertTriangle, M
 import type { Product } from '@/lib/types';
 import { ProductDialog } from '@/components/products/product-dialog';
 import { DeleteProductDialog } from '@/components/products/delete-product-dialog';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
-import Image from 'next/image';
 import Papa from 'papaparse';
 import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ProductCard } from '@/components/products/product-card';
 
 export default function ProductsPage() {
     const { user, isUserLoading } = useUser();
@@ -54,8 +51,8 @@ export default function ProductsPage() {
 
     const categories = useMemo(() => {
         if (!products) return [];
-        const allCategories = products.map(p => p.category).filter(Boolean);
-        return ['all', ...Array.from(new Set(allCategories as string[]))];
+        const allCategories = products.map(p => p.category).filter(Boolean) as string[];
+        return ['all', ...Array.from(new Set(allCategories))];
     }, [products]);
 
     const filteredProducts = useMemo(() => {
@@ -84,7 +81,7 @@ export default function ProductsPage() {
             totalInventoryValue: products.reduce((sum, p) => sum + (p.purchasePrice || 0) * p.quantity, 0),
             lowStockCount: products.filter(p => p.quantity <= p.minStockLevel).length,
             totalProducts: products.length,
-            totalCategories: categories.length - 1, // Exclude 'all'
+            totalCategories: categories.length > 1 ? categories.length - 1 : 0, // Exclude 'all'
         }
     }, [products, categories]);
     
@@ -227,66 +224,24 @@ export default function ProductsPage() {
                         </div>
                     </CardHeader>
                     <CardContent>
-                        {filteredProducts.length === 0 ? (
+                        {isLoading ? (
+                            <div className="text-center p-8">Chargement des produits...</div>
+                        ) : filteredProducts.length === 0 ? (
                             <div className="flex h-40 items-center justify-center rounded-md border-2 border-dashed border-border bg-card">
                                 <p className="text-muted-foreground">
                                     {products && products.length > 0 ? "Aucun produit ne correspond à vos filtres." : "Aucun produit trouvé. Commencez par en ajouter un."}
                                 </p>
                             </div>
                         ) : (
-                            <div className="overflow-x-auto">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead className="w-[60px]">Image</TableHead>
-                                            <TableHead>Produit</TableHead>
-                                            <TableHead>Catégorie</TableHead>
-                                            <TableHead className="text-right">Prix Achat</TableHead>
-                                            <TableHead className="text-right">Prix Vente</TableHead>
-                                            <TableHead className="text-center">Stock</TableHead>
-                                            <TableHead><span className="sr-only">Actions</span></TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {filteredProducts.map((product) => (
-                                            <TableRow key={product.id}>
-                                                <TableCell>
-                                                    <Image 
-                                                        src={product.imageUrl || `https://picsum.photos/seed/${product.id}/40`}
-                                                        alt={product.name}
-                                                        width={40}
-                                                        height={40}
-                                                        className="rounded-md object-cover"
-                                                        data-ai-hint={product.name.split(' ').slice(0,2).join(' ')}
-                                                    />
-                                                </TableCell>
-                                                <TableCell className="font-medium">{product.name}</TableCell>
-                                                <TableCell>{product.category || 'N/A'}</TableCell>
-                                                <TableCell className="text-right">{product.purchasePrice.toFixed(1)} DA</TableCell>
-                                                <TableCell className="text-right font-semibold text-primary">{product.price.toFixed(1)} DA</TableCell>
-                                                <TableCell className="text-center">
-                                                    <Badge variant={product.quantity <= product.minStockLevel ? 'destructive' : 'secondary'}>
-                                                        {product.quantity}
-                                                    </Badge>
-                                                </TableCell>
-                                                <TableCell className="text-right">
-                                                    <DropdownMenu>
-                                                        <DropdownMenuTrigger asChild>
-                                                            <Button variant="ghost" className="h-8 w-8 p-0">
-                                                                <span className="sr-only">Ouvrir le menu</span>
-                                                                <MoreHorizontal className="h-4 w-4" />
-                                                            </Button>
-                                                        </DropdownMenuTrigger>
-                                                        <DropdownMenuContent align="end">
-                                                            <DropdownMenuItem onClick={() => handleEditClick(product)}>Modifier</DropdownMenuItem>
-                                                            <DropdownMenuItem onClick={() => setProductToDelete(product)} className="text-destructive">Supprimer</DropdownMenuItem>
-                                                        </DropdownMenuContent>
-                                                    </DropdownMenu>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                                {filteredProducts.map((product) => (
+                                    <ProductCard 
+                                        key={product.id}
+                                        product={product}
+                                        onEdit={handleEditClick}
+                                        onDelete={setProductToDelete}
+                                    />
+                                ))}
                             </div>
                         )}
                     </CardContent>

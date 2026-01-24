@@ -8,18 +8,18 @@ import { collection, query, orderBy } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Search, PlusCircle, Archive, FileText, MoreHorizontal, Download, ChevronDown, CircleDollarSign, Hash } from 'lucide-react';
+import { Search, PlusCircle, Archive, FileText, Download, ChevronDown, CircleDollarSign, Hash } from 'lucide-react';
 import type { StockIntake } from '@/lib/types';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { safeToDate } from '@/lib/utils';
 import { format, subDays, startOfDay, endOfDay } from 'date-fns';
-import { fr } from 'date-fns/locale';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import Papa from 'papaparse';
 import { toast } from 'sonner';
 import { DateRangePicker } from '@/components/dashboard/date-range-picker';
 import { DateRange } from 'react-day-picker';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { StockIntakeCard } from '@/components/stock/stock-intake-card';
 
 // Details Dialog Component defined inside the page
 function StockIntakeDetailsDialog({ isOpen, onOpenChange, intake }: { isOpen: boolean, onOpenChange: (open: boolean) => void, intake: StockIntake | null }) {
@@ -254,48 +254,14 @@ export default function StockPage() {
                                 </div>
                             </div>
                         ) : (
-                             <div className="overflow-x-auto">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Date Réception</TableHead>
-                                            <TableHead>Fournisseur</TableHead>
-                                            <TableHead>N° Facture</TableHead>
-                                            <TableHead>Date Facture</TableHead>
-                                            <TableHead className="text-right">Valeur Totale</TableHead>
-                                            <TableHead className="text-center">Articles</TableHead>
-                                            <TableHead><span className="sr-only">Actions</span></TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {filteredIntakes.map((intake) => (
-                                            <TableRow key={intake.id}>
-                                                <TableCell className="font-medium">{format(safeToDate(intake.createdAt), 'd MMM yyyy', { locale: fr })}</TableCell>
-                                                <TableCell>{intake.supplier}</TableCell>
-                                                <TableCell>{intake.invoiceNumber}</TableCell>
-                                                <TableCell>{format(safeToDate(intake.invoiceDate), 'd MMM yyyy', { locale: fr })}</TableCell>
-                                                <TableCell className="text-right font-semibold">{intake.totalValue.toFixed(1)} DA</TableCell>
-                                                <TableCell className="text-center">{intake.items.length}</TableCell>
-                                                <TableCell className="text-right">
-                                                    <DropdownMenu>
-                                                        <DropdownMenuTrigger asChild>
-                                                            <Button variant="ghost" className="h-8 w-8 p-0">
-                                                                <span className="sr-only">Ouvrir le menu</span>
-                                                                <MoreHorizontal className="h-4 w-4" />
-                                                            </Button>
-                                                        </DropdownMenuTrigger>
-                                                        <DropdownMenuContent align="end">
-                                                            <DropdownMenuItem onClick={() => setSelectedIntake(intake)}>
-                                                                <FileText className="mr-2 h-4 w-4" />
-                                                                Voir les détails
-                                                            </DropdownMenuItem>
-                                                        </DropdownMenuContent>
-                                                    </DropdownMenu>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
+                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                                {filteredIntakes.map((intake) => (
+                                    <StockIntakeCard 
+                                        key={intake.id}
+                                        intake={intake}
+                                        onViewDetails={setSelectedIntake}
+                                    />
+                                ))}
                             </div>
                         )}
                     </CardContent>
