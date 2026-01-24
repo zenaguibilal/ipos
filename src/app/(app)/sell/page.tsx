@@ -13,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Search, PlusCircle, X, Trash2, Minus, Plus, User, FilePlus2, CheckCircle, Barcode } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import type { Product, Customer, SaleItem, CompanyProfile, Sale } from '@/lib/types';
+import type { Product, Customer, SaleItem, CompanyProfile, Sale, Payment } from '@/lib/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -95,13 +95,15 @@ export default function SellPage() {
 
     // Data Fetching
     const productsQuery = useMemoFirebase(() => user && firestore ? query(collection(firestore, 'users', user.uid, 'products'), orderBy('createdAt', 'desc')) : null, [user, firestore]);
-    const customersQuery = useMemoFirebase(() => user && firestore ? query(collection(firestore, 'users', user.uid, 'customers')) : null, [user, firestore]);
+    const customersQuery = useMemoFirebase(() => user && firestore ? collection(firestore, 'users', user.uid, 'customers')) : null, [user, firestore]);
     const salesQuery = useMemoFirebase(() => user && firestore ? query(collection(firestore, 'users', user.uid, 'sales')) : null, [user, firestore]);
+    const paymentsQuery = useMemoFirebase(() => user && firestore ? query(collection(firestore, 'users', user.uid, 'payments')) : null, [user, firestore]);
     const companyDocRef = useMemoFirebase(() => user && firestore ? doc(firestore, 'users', user.uid, 'companyProfile', 'main') : null, [user, firestore]);
     
     const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
     const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersQuery);
     const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
+    const { data: payments, isLoading: isLoadingPayments } = useCollection<Payment>(paymentsQuery);
     const { data: companyProfile, isLoading: isLoadingCompany } = useDoc<CompanyProfile>(companyDocRef);
 
     // Component State
@@ -163,18 +165,20 @@ export default function SellPage() {
     const filteredProducts = useMemo(() => {
         if (!products) return [];
 
-        // 1. Filter by category first
-        const categoryFiltered = selectedCategory === 'all'
-            ? products
-            : products.filter(p => p.category === selectedCategory);
-
-        // 2. Filter by search query if it exists
+        let availableProducts = products;
+        
+        // 1. Filter by search query if it exists - this searches all products
         if (searchQuery) {
-            return categoryFiltered.filter(p =>
+            return availableProducts.filter(p =>
                 p.name.toLowerCase().includes(searchQuery.toLowerCase())
             );
         }
 
+        // 2. Filter by category
+        const categoryFiltered = selectedCategory === 'all'
+            ? availableProducts
+            : availableProducts.filter(p => p.category === selectedCategory);
+        
         // 3. If no search, show popular items from the filtered category
         if (sales && sales.length > 0) {
             const productSales: { [productId: string]: number } = {};
@@ -339,14 +343,37 @@ export default function SellPage() {
         setLastTouchedItemId(productId);
     };
 
+    const customerDebts = useMemo(() => {
+        if (!customers || !sales || !payments) return new Map<string, number>();
+
+        const debtMap = new Map<string, number>();
+        customers.forEach(customer => {
+            const customerSales = sales.filter(s => s.customerId === customer.id);
+            const totalSpent = customerSales.reduce((acc, s) => acc + s.total, 0);
+            
+            const totalPaidFromSales = customerSales.reduce((acc, s) => acc + s.amountPaid, 0);
+            const totalStandalonePayments = payments.filter(p => p.customerId === customer.id).reduce((acc, p) => acc + p.amount, 0);
+            
+            const outstandingBalance = totalSpent - totalPaidFromSales - totalStandalonePayments;
+            const finalBalance = outstandingBalance < 0.01 ? 0 : outstandingBalance;
+
+            debtMap.set(customer.id, finalBalance);
+        });
+        return debtMap;
+    }, [customers, sales, payments]);
+
     const customerOptions: ComboboxOption[] = useMemo(() => {
-        const options: ComboboxOption[] = customers?.map(c => ({
-            value: c.id,
-            label: `${c.firstName} ${c.lastName}`
-        })) || [];
+        const options: ComboboxOption[] = customers?.map(c => {
+            const debt = customerDebts.get(c.id);
+            return {
+                value: c.id,
+                label: `${c.firstName} ${c.lastName}`,
+                subLabel: debt !== undefined && debt > 0 ? `Dette: ${debt.toFixed(1)} DA` : undefined
+            };
+        }) || [];
         options.unshift({ value: 'walk-in', label: 'Vente au comptoir' });
         return options;
-    }, [customers]);
+    }, [customers, customerDebts]);
 
     const handleCustomerSelect = (cart: Cart, customerId: string) => {
         if (customerId === 'walk-in') {
@@ -486,7 +513,7 @@ export default function SellPage() {
         setCartToClear(null);
     };
 
-    const isLoading = isUserLoading || isLoadingProducts || isLoadingCustomers || isLoadingCompany || isLoadingSales;
+    const isLoading = isUserLoading || isLoadingProducts || isLoadingCustomers || isLoadingCompany || isLoadingSales || isLoadingPayments;
     
     useEffect(() => {
         if (!isLoading && !user) {
@@ -669,7 +696,7 @@ export default function SellPage() {
                 </div>
                 
                 {/* Right Side: Carts */}
-                <div className="bg-muted/40 p-4 flex flex-col h-full border-l">
+                <div className="bg-card p-4 flex flex-col h-full border-l">
                     <Tabs value={activeCartId} onValueChange={handleTabChange} className="flex-grow flex flex-col">
                          <TabsList className="h-auto self-start">
                             {carts.map(cart => (
@@ -692,20 +719,27 @@ export default function SellPage() {
                                             <CardTitle className="text-lg">Client</CardTitle>
                                         </div>
                                     </CardHeader>
-                                    <CardContent className="p-4 pt-0 flex gap-2">
-                                        <div className="flex-grow">
-                                            <Combobox
-                                                options={customerOptions}
-                                                onSelect={(customerId) => handleCustomerSelect(cart, customerId)}
-                                                value={cart.customerId || 'walk-in'}
-                                                placeholder={cart.customerName}
-                                                searchPlaceholder="Rechercher un client..."
-                                                notFoundMessage="Aucun client trouvé."
-                                            />
+                                    <CardContent className="p-4 pt-0 space-y-2">
+                                        <div className="flex gap-2">
+                                            <div className="flex-grow">
+                                                <Combobox
+                                                    options={customerOptions}
+                                                    onSelect={(customerId) => handleCustomerSelect(cart, customerId)}
+                                                    value={cart.customerId || 'walk-in'}
+                                                    placeholder={cart.customerName}
+                                                    searchPlaceholder="Rechercher un client..."
+                                                    notFoundMessage="Aucun client trouvé."
+                                                />
+                                            </div>
+                                            <Button variant="outline" onClick={() => setIsAddCustomerOpen(true)}>
+                                                <PlusCircle className="mr-2 h-4 w-4" />Nouveau
+                                            </Button>
                                         </div>
-                                        <Button variant="outline" onClick={() => setIsAddCustomerOpen(true)}>
-                                            <PlusCircle className="mr-2 h-4 w-4" />Nouveau
-                                        </Button>
+                                        {cart.customerId && (customerDebts.get(cart.customerId) ?? 0) > 0 && (
+                                            <div className="text-center text-sm font-semibold text-destructive p-2 bg-destructive/10 rounded-md">
+                                                Dette actuelle: {customerDebts.get(cart.customerId)?.toFixed(1)} DA
+                                            </div>
+                                        )}
                                     </CardContent>
                                 </Card>
 
@@ -817,3 +851,5 @@ export default function SellPage() {
         </>
     );
 }
+
+    
