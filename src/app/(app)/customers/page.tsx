@@ -7,7 +7,7 @@ import { collection, query, orderBy } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Search, PlusCircle, Users, HandCoins, UserCheck, AlertCircle, MoreHorizontal, Download, ChevronDown, ListFilter } from 'lucide-react';
+import { Search, PlusCircle, Users, HandCoins, UserCheck, AlertCircle, MoreHorizontal, Download, ChevronDown, ListFilter, FileText } from 'lucide-react';
 import type { Customer, Sale, Payment, CustomerWithSalesData } from '@/lib/types';
 import { CustomerDialog } from '@/components/customers/customer-dialog';
 import { DeleteCustomerDialog } from '@/components/customers/delete-customer-dialog';
@@ -21,6 +21,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import Papa from 'papaparse';
 import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import Link from 'next/link';
 
 export default function CustomersPage() {
     const { user, isUserLoading } = useUser();
@@ -299,7 +300,11 @@ export default function CustomersPage() {
                                     <TableBody>
                                         {filteredCustomers.map((customer) => (
                                             <TableRow key={customer.id}>
-                                                <TableCell className="font-medium">{`${customer.firstName} ${customer.lastName}`}</TableCell>
+                                                <TableCell className="font-medium">
+                                                    <Link href={`/customers/${customer.id}`} className="hover:underline">
+                                                        {`${customer.firstName} ${customer.lastName}`}
+                                                    </Link>
+                                                </TableCell>
                                                 <TableCell>{customer.phone || 'N/A'}</TableCell>
                                                 <TableCell className="text-right font-semibold text-destructive">{customer.outstandingBalance.toFixed(1)} DA</TableCell>
                                                 <TableCell className="text-right">{customer.totalSpent.toFixed(1)} DA</TableCell>
@@ -330,6 +335,12 @@ export default function CustomersPage() {
                                                             </Button>
                                                         </DropdownMenuTrigger>
                                                         <DropdownMenuContent align="end">
+                                                            <DropdownMenuItem asChild>
+                                                                <Link href={`/customers/${customer.id}`}>
+                                                                    <FileText className="mr-2 h-4 w-4" />
+                                                                    Voir les détails
+                                                                </Link>
+                                                            </DropdownMenuItem>
                                                             <DropdownMenuItem onClick={() => setCustomerForPayment(customer)}>
                                                                 <HandCoins className="mr-2 h-4 w-4" />
                                                                 Encaisser un paiement
