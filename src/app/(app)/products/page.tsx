@@ -16,6 +16,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { MoreHorizontal } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import Image from 'next/image';
 
 export default function ProductsPage() {
     const { user, isUserLoading } = useUser();
@@ -160,6 +161,7 @@ export default function ProductsPage() {
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
+                                            <TableHead className="w-[60px]">Image</TableHead>
                                             <TableHead>Produit</TableHead>
                                             <TableHead>Catégorie</TableHead>
                                             <TableHead className="text-right">Prix Achat</TableHead>
@@ -171,6 +173,16 @@ export default function ProductsPage() {
                                     <TableBody>
                                         {filteredProducts.map((product) => (
                                             <TableRow key={product.id}>
+                                                <TableCell>
+                                                    <Image 
+                                                        src={product.imageUrl || `https://picsum.photos/seed/${product.id}/40`}
+                                                        alt={product.name}
+                                                        width={40}
+                                                        height={40}
+                                                        className="rounded-md object-cover"
+                                                        data-ai-hint={product.name.split(' ').slice(0,2).join(' ')}
+                                                    />
+                                                </TableCell>
                                                 <TableCell className="font-medium">{product.name}</TableCell>
                                                 <TableCell>{product.category || 'N/A'}</TableCell>
                                                 <TableCell className="text-right">{product.purchasePrice.toFixed(1)} DA</TableCell>
@@ -206,3 +218,5 @@ export default function ProductsPage() {
         </>
     );
 }
+
+    

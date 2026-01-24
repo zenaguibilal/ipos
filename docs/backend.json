@@ -446,6 +446,10 @@
       "description": "Represents a record of stock being received from a supplier.",
       "type": "object",
       "properties": {
+        "supplier": {
+          "type": "string",
+          "description": "The name of the supplier for this intake."
+        },
         "invoiceNumber": {
           "type": "string",
           "description": "The supplier's invoice number for this delivery."
@@ -479,7 +483,7 @@
           "description": "Timestamp indicating when this intake was recorded in the system."
         }
       },
-      "required": ["invoiceNumber", "invoiceDate", "items", "totalValue", "createdAt"]
+      "required": ["supplier", "invoiceNumber", "invoiceDate", "items", "totalValue", "createdAt"]
     },
     "ProductReturn": {
       "$schema": "http://json-schema.org/draft-07/schema#",

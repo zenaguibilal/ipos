@@ -15,6 +15,9 @@ import { AddPaymentForm } from '@/components/customers/add-payment-form';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { MoreHorizontal } from 'lucide-react';
+import { safeToDate } from '@/lib/utils';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
 
 export default function CustomersPage() {
     const { user, isUserLoading } = useUser();
@@ -47,18 +50,25 @@ export default function CustomersPage() {
 
         return customers.map(customer => {
             const customerSales = sales.filter(s => s.customerId === customer.id);
+            const customerPayments = payments.filter(p => p.customerId === customer.id);
             const totalSpent = customerSales.reduce((acc, s) => acc + s.total, 0);
 
             const totalPaidFromSales = customerSales.reduce((acc, s) => acc + s.amountPaid, 0);
-            const totalStandalonePayments = payments.filter(p => p.customerId === customer.id).reduce((acc, p) => acc + p.amount, 0);
+            const totalStandalonePayments = customerPayments.reduce((acc, p) => acc + p.amount, 0);
             
             const outstandingBalance = totalSpent - totalPaidFromSales - totalStandalonePayments;
             const finalBalance = outstandingBalance < 0.01 ? 0 : outstandingBalance;
+            
+            const lastSaleDate = customerSales.length > 0 ? Math.max(...customerSales.map(s => safeToDate(s.createdAt).getTime())) : 0;
+            const lastPaymentDate = customerPayments.length > 0 ? Math.max(...customerPayments.map(p => safeToDate(p.createdAt).getTime())) : 0;
+            const lastActivityTimestamp = Math.max(lastSaleDate, lastPaymentDate);
+            const lastActivityDate = lastActivityTimestamp > 0 ? new Date(lastActivityTimestamp) : null;
 
             return {
                 ...customer,
                 totalSpent,
                 outstandingBalance: finalBalance,
+                lastActivityDate,
             };
         });
     }, [customers, sales, payments]);
@@ -187,6 +197,8 @@ export default function CustomersPage() {
                                             <TableHead>Nom</TableHead>
                                             <TableHead>Téléphone</TableHead>
                                             <TableHead className="text-right">Dette</TableHead>
+                                            <TableHead className="text-right">Total Dépensé</TableHead>
+                                            <TableHead>Dernière Activité</TableHead>
                                             <TableHead className="text-center">Jour de règlement</TableHead>
                                             <TableHead><span className="sr-only">Actions</span></TableHead>
                                         </TableRow>
@@ -197,6 +209,8 @@ export default function CustomersPage() {
                                                 <TableCell className="font-medium">{`${customer.firstName} ${customer.lastName}`}</TableCell>
                                                 <TableCell>{customer.phone || 'N/A'}</TableCell>
                                                 <TableCell className="text-right font-semibold text-destructive">{customer.outstandingBalance.toFixed(1)} DA</TableCell>
+                                                <TableCell className="text-right">{customer.totalSpent.toFixed(1)} DA</TableCell>
+                                                <TableCell>{customer.lastActivityDate ? format(customer.lastActivityDate, 'd MMM yyyy', { locale: fr }) : 'N/A'}</TableCell>
                                                 <TableCell className="text-center">{customer.settlementDay || 'N/A'}</TableCell>
                                                 <TableCell className="text-right">
                                                     <DropdownMenu>
@@ -228,3 +242,5 @@ export default function CustomersPage() {
         </>
     )
 }
+
+    

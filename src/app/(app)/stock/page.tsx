@@ -36,7 +36,10 @@ export default function StockPage() {
 
     const filteredIntakes = useMemo(() => {
         if (!stockIntakes) return [];
-        return stockIntakes.filter(i => i.invoiceNumber.toLowerCase().includes(searchQuery.toLowerCase()));
+        return stockIntakes.filter(i => 
+            i.invoiceNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            i.supplier.toLowerCase().includes(searchQuery.toLowerCase())
+        );
     }, [stockIntakes, searchQuery]);
 
     const isLoading = isUserLoading || isLoadingIntakes;
@@ -64,7 +67,7 @@ export default function StockPage() {
                     <div className="relative w-full max-w-sm">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
-                            placeholder="Rechercher par N° de facture fournisseur..."
+                            placeholder="Rechercher par N° facture ou fournisseur..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             className="pl-9 w-full"
@@ -91,7 +94,8 @@ export default function StockPage() {
                                 <TableHeader>
                                     <TableRow>
                                         <TableHead>Date Réception</TableHead>
-                                        <TableHead>N° Facture Fournisseur</TableHead>
+                                        <TableHead>Fournisseur</TableHead>
+                                        <TableHead>N° Facture</TableHead>
                                         <TableHead>Date Facture</TableHead>
                                         <TableHead className="text-right">Valeur Totale</TableHead>
                                         <TableHead className="text-center">Articles</TableHead>
@@ -101,6 +105,7 @@ export default function StockPage() {
                                     {filteredIntakes.map((intake) => (
                                         <TableRow key={intake.id}>
                                             <TableCell className="font-medium">{format(safeToDate(intake.createdAt), 'd MMM yyyy', { locale: fr })}</TableCell>
+                                            <TableCell>{intake.supplier}</TableCell>
                                             <TableCell>{intake.invoiceNumber}</TableCell>
                                             <TableCell>{format(safeToDate(intake.invoiceDate), 'd MMM yyyy', { locale: fr })}</TableCell>
                                             <TableCell className="text-right font-semibold">{intake.totalValue.toFixed(1)} DA</TableCell>
@@ -116,3 +121,5 @@ export default function StockPage() {
         </main>
     );
 }
+
+    

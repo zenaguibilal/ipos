@@ -23,6 +23,7 @@ export default function StockIntakePage() {
     const firestore = useFirestore();
     const router = useRouter();
 
+    const [supplier, setSupplier] = useState('');
     const [invoiceNumber, setInvoiceNumber] = useState('');
     const [invoiceDate, setInvoiceDate] = useState(format(new Date(), 'yyyy-MM-dd'));
     const [items, setItems] = useState<StockIntakeItem[]>([]);
@@ -88,8 +89,8 @@ export default function StockIntakePage() {
     }, [items]);
 
     const handleSaveIntake = async () => {
-        if (!invoiceNumber) {
-            toast.error("Le numéro de facture fournisseur est requis.");
+        if (!supplier || !invoiceNumber) {
+            toast.error("Le fournisseur et le numéro de facture sont requis.");
             return;
         }
         if (items.length === 0) {
@@ -126,6 +127,7 @@ export default function StockIntakePage() {
                             minStockLevel: 1, // Default min stock
                             barcodes: item.barcodes,
                             createdAt: serverTimestamp(),
+                            imageUrl: '',
                         });
                         productId = newProductRef.id;
                     } else if(productId) { // Update existing product
@@ -153,6 +155,7 @@ export default function StockIntakePage() {
                 
                 // Save the stock intake record
                 transaction.set(intakeRef, {
+                    supplier,
                     invoiceNumber,
                     invoiceDate: new Date(invoiceDate),
                     items: intakeItemsForDb,
@@ -190,7 +193,11 @@ export default function StockIntakePage() {
                     <CardDescription>Mettez à jour votre inventaire en enregistrant une livraison fournisseur.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                     <div className="grid md:grid-cols-2 gap-6">
+                     <div className="grid md:grid-cols-3 gap-6">
+                        <div className="space-y-2">
+                            <Label htmlFor="supplier">Fournisseur</Label>
+                            <Input id="supplier" value={supplier} onChange={e => setSupplier(e.target.value)} required />
+                        </div>
                         <div className="space-y-2">
                             <Label htmlFor="invoiceNumber">N° Facture Fournisseur</Label>
                             <Input id="invoiceNumber" value={invoiceNumber} onChange={e => setInvoiceNumber(e.target.value)} required />
@@ -206,15 +213,17 @@ export default function StockIntakePage() {
                             <h3 className="text-lg font-semibold">Articles Reçus</h3>
                             <Button type="button" size="sm" variant="outline" onClick={addNewItem}><PlusCircle className="mr-2 h-4 w-4"/>Ajouter</Button>
                         </div>
-                        <div className="rounded-md border">
+                        <div className="rounded-md border overflow-x-auto">
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead className="w-[30%]">Produit</TableHead>
-                                        <TableHead>Qté</TableHead>
-                                        <TableHead>Prix Achat</TableHead>
-                                        <TableHead>Prix Vente</TableHead>
-                                        <TableHead></TableHead>
+                                        <TableHead className="w-[250px]">Produit</TableHead>
+                                        <TableHead className="w-[150px]">Catégorie</TableHead>
+                                        <TableHead className="w-[200px]">Codes-barres</TableHead>
+                                        <TableHead className="w-[100px]">Qté</TableHead>
+                                        <TableHead className="w-[120px]">Prix Achat</TableHead>
+                                        <TableHead className="w-[120px]">Prix Vente</TableHead>
+                                        <TableHead className="w-[50px]"></TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -234,9 +243,20 @@ export default function StockIntakePage() {
                                                     />
                                                 )}
                                             </TableCell>
-                                            <TableCell><Input type="number" value={item.quantity} onChange={e => handleItemChange(item.id, 'quantity', parseInt(e.target.value) || 0)} className="w-20"/></TableCell>
-                                            <TableCell><Input type="number" step="0.1" value={item.purchasePrice} onChange={e => handleItemChange(item.id, 'purchasePrice', parseFloat(e.target.value) || 0)} className="w-24"/></TableCell>
-                                            <TableCell><Input type="number" step="0.1" value={item.price} onChange={e => handleItemChange(item.id, 'price', parseFloat(e.target.value) || 0)} className="w-24"/></TableCell>
+                                            <TableCell>
+                                                <Input placeholder="Catégorie..." value={item.category || ''} onChange={e => handleItemChange(item.id, 'category', e.target.value)} disabled={!item.isNew} />
+                                            </TableCell>
+                                             <TableCell>
+                                                <Input 
+                                                    placeholder="CB1, CB2,..." 
+                                                    value={(item.barcodes || []).join(', ')} 
+                                                    onChange={e => handleItemChange(item.id, 'barcodes', e.target.value.split(',').map(b => b.trim()).filter(b => b))} 
+                                                    disabled={!item.isNew} 
+                                                />
+                                            </TableCell>
+                                            <TableCell><Input type="number" value={item.quantity} onChange={e => handleItemChange(item.id, 'quantity', parseInt(e.target.value) || 0)}/></TableCell>
+                                            <TableCell><Input type="number" step="0.1" value={item.purchasePrice} onChange={e => handleItemChange(item.id, 'purchasePrice', parseFloat(e.target.value) || 0)}/></TableCell>
+                                            <TableCell><Input type="number" step="0.1" value={item.price} onChange={e => handleItemChange(item.id, 'price', parseFloat(e.target.value) || 0)} /></TableCell>
                                             <TableCell><Button variant="ghost" size="icon" onClick={() => removeItem(item.id)}><Trash2 className="h-4 w-4 text-destructive"/></Button></TableCell>
                                         </TableRow>
                                     ))}
@@ -258,3 +278,5 @@ export default function StockIntakePage() {
         </main>
     );
 }
+
+    

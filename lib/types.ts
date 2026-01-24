@@ -11,6 +11,7 @@ export interface Product {
     minStockLevel: number;
     barcodes?: string[];
     imageUrl?: string;
+    createdAt: Timestamp | Date;
 }
 
 export interface Customer {
@@ -29,6 +30,7 @@ export interface SaleItem {
     purchasePrice: number;
     quantity: number;
     cartQuantity?: number;
+    createdAt?: Timestamp | Date;
 }
 
 export interface Sale {
@@ -147,6 +149,7 @@ export interface StockIntakeItem {
 
 export interface StockIntake {
     id: string;
+    supplier: string;
     invoiceNumber: string;
     invoiceDate: Timestamp | Date;
     items: {
@@ -185,5 +188,4 @@ export interface ProductReturn {
     notes?: string;
 }
 
-    
     
