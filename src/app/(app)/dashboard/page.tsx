@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
@@ -11,9 +10,9 @@ import { DateRangePicker } from '@/components/dashboard/date-range-picker';
 import { DateRange } from 'react-day-picker';
 import { subDays, startOfDay, endOfDay, format, eachDayOfInterval, parse } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import type { Sale, ProductReturn, SaleItem, ReturnItem } from '@/lib/types';
+import type { Sale, ProductReturn, SaleItem, ReturnItem, Product, Customer } from '@/lib/types';
 import { safeToDate } from '@/lib/utils';
-import { CircleDollarSign, TrendingUp, Undo2, ShoppingCart, Activity, Users, Package } from 'lucide-react';
+import { CircleDollarSign, TrendingUp, Undo2, ShoppingCart, Users, Package, Award, Archive } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 
@@ -61,8 +60,19 @@ export default function DashboardPage() {
         (user && firestore) ? query(collection(firestore, 'users', user.uid, 'returns'), orderBy('createdAt', 'desc')) : null, 
     [user, firestore]);
 
+    const productsQuery = useMemoFirebase(() => 
+        (user && firestore) ? query(collection(firestore, 'users', user.uid, 'products')) : null, 
+    [user, firestore]);
+
+    const customersQuery = useMemoFirebase(() => 
+        (user && firestore) ? query(collection(firestore, 'users', user.uid, 'customers')) : null, 
+    [user, firestore]);
+
     const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
     const { data: returns, isLoading: isLoadingReturns } = useCollection<ProductReturn>(returnsQuery);
+    const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
+    const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersQuery);
+
 
     useEffect(() => {
         if (!isUserLoading && !user) {
@@ -75,6 +85,8 @@ export default function DashboardPage() {
         netProfit,
         totalReturnsValue,
         salesCount,
+        inventoryValue,
+        totalCustomers,
         chartData,
         recentTransactions,
         topProducts,
@@ -223,20 +235,25 @@ export default function DashboardPage() {
             .sort((a, b) => b.totalSpent - a.totalSpent)
             .slice(0, 5);
 
+        const inventoryValue = products?.reduce((sum, p) => sum + ((p.purchasePrice || 0) * (p.quantity || 0)), 0) || 0;
+        const totalCustomers = customers?.length || 0;
+
         return {
             netRevenue: finalNetRevenue,
             netProfit: finalNetProfit,
             totalReturnsValue: returnsValue,
             salesCount: filteredSales.length,
+            inventoryValue,
+            totalCustomers,
             chartData: finalChartData,
             recentTransactions: combined,
             topProducts: topProductsList,
             topCustomers: topCustomersList
         };
 
-    }, [sales, returns, dateRange]);
+    }, [sales, returns, products, customers, dateRange]);
 
-    const isLoading = isUserLoading || isLoadingSales || isLoadingReturns;
+    const isLoading = isUserLoading || isLoadingSales || isLoadingReturns || isLoadingProducts || isLoadingCustomers;
 
     if (isLoading || !user) {
         return <div className="flex h-full items-center justify-center"><p>Chargement du tableau de bord...</p></div>;
@@ -256,7 +273,7 @@ export default function DashboardPage() {
                 <DateRangePicker onUpdate={setDateRange} />
             </div>
 
-             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
+             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-6">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Chiffre d'affaires Net</CardTitle>
@@ -279,12 +296,32 @@ export default function DashboardPage() {
                 </Card>
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Valeur du stock</CardTitle>
+                        <Archive className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{formatCurrency(inventoryValue)}</div>
+                        <p className="text-xs text-muted-foreground">Valeur d'achat de l'inventaire</p>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Nombre de Ventes</CardTitle>
                         <ShoppingCart className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">{salesCount}</div>
                         <p className="text-xs text-muted-foreground">Transactions de vente</p>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Clients Totaux</CardTitle>
+                        <Users className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{totalCustomers}</div>
+                        <p className="text-xs text-muted-foreground">Nombre total de clients enregistrés</p>
                     </CardContent>
                 </Card>
                 <Card>
@@ -432,7 +469,7 @@ export default function DashboardPage() {
                 </Card>
                 <Card>
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2"><Users className="h-5 w-5 text-muted-foreground" /> Meilleurs clients</CardTitle>
+                        <CardTitle className="flex items-center gap-2"><Award className="h-5 w-5 text-muted-foreground" /> Meilleurs clients</CardTitle>
                         <CardDescription>Top 5 des clients par total d'achats net sur la période.</CardDescription>
                     </CardHeader>
                     <CardContent className="h-[300px]">
