@@ -11,6 +11,7 @@ export interface Product {
     minStockLevel: number;
     barcodes?: string[];
     imageUrl?: string;
+    createdAt: Timestamp | Date;
 }
 
 export interface Customer {
@@ -29,6 +30,7 @@ export interface SaleItem {
     purchasePrice: number;
     quantity: number;
     cartQuantity?: number;
+    createdAt?: Timestamp | Date;
 }
 
 export interface Sale {
@@ -42,6 +44,7 @@ export interface Sale {
     amountPaid: number;
     remainingBalance: number;
     paymentStatus: 'paid' | 'partial' | 'unpaid';
+    paymentMethod?: 'cash' | 'card' | 'other';
     customerId?: string;
     customerName?: string;
     createdAt: Timestamp | Date;

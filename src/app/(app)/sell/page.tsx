@@ -1,10 +1,9 @@
-
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
+import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { collection, doc, runTransaction, serverTimestamp, query } from 'firebase/firestore';
+import { collection, doc, runTransaction, serverTimestamp, query, orderBy } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -94,12 +93,14 @@ export default function SellPage() {
     const router = useRouter();
 
     // Data Fetching
-    const productsQuery = useMemoFirebase(() => user && firestore ? query(collection(firestore, 'users', user.uid, 'products')) : null, [user, firestore]);
+    const productsQuery = useMemoFirebase(() => user && firestore ? query(collection(firestore, 'users', user.uid, 'products'), orderBy('createdAt', 'desc')) : null, [user, firestore]);
     const customersQuery = useMemoFirebase(() => user && firestore ? query(collection(firestore, 'users', user.uid, 'customers')) : null, [user, firestore]);
+    const salesQuery = useMemoFirebase(() => user && firestore ? query(collection(firestore, 'users', user.uid, 'sales')) : null, [user, firestore]);
     const companyDocRef = useMemoFirebase(() => user && firestore ? doc(firestore, 'users', user.uid, 'companyProfile', 'main') : null, [user, firestore]);
     
     const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
     const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersQuery);
+    const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
     const { data: companyProfile, isLoading: isLoadingCompany } = useDoc<CompanyProfile>(companyDocRef);
 
     // Component State
@@ -120,12 +121,6 @@ export default function SellPage() {
     const [selectedCategory, setSelectedCategory] = useState('all');
     const [lastTouchedItemId, setLastTouchedItemId] = useState<string | null>(null);
 
-
-    useEffect(() => {
-        if (!isUserLoading && !user) {
-            router.push('/login');
-        }
-    }, [user, isUserLoading, router]);
 
     // Initialize carts on component mount
     useEffect(() => {
@@ -166,12 +161,45 @@ export default function SellPage() {
 
     const filteredProducts = useMemo(() => {
         if (!products) return [];
-        return products.filter(p => {
+
+        let baseProductList: Product[];
+
+        // If sales data is available and there are sales, calculate top 15 by sales
+        if (sales && sales.length > 0) {
+            const productSales: { [productId: string]: number } = {};
+            sales.forEach(sale => {
+                if (sale.items) {
+                    sale.items.forEach(item => {
+                        if (item.id && !item.id.startsWith('custom-')) {
+                            productSales[item.id] = (productSales[item.id] || 0) + (item.cartQuantity || item.quantity);
+                        }
+                    });
+                }
+            });
+
+            const top15ProductIds = new Set(
+                Object.entries(productSales)
+                    .sort(([, a], [, b]) => b - a)
+                    .slice(0, 15)
+                    .map(([productId]) => productId)
+            );
+            
+            baseProductList = products
+                .filter(p => top15ProductIds.has(p.id))
+                .sort((a, b) => (productSales[b.id] || 0) - (productSales[a.id] || 0));
+        } else {
+            // Fallback: if no sales, show the 15 most recently added products.
+            // This requires `productsQuery` to be sorted by `createdAt` descending.
+            baseProductList = products.slice(0, 15);
+        }
+        
+        // Now apply filters on the base list
+        return baseProductList.filter(p => {
             const matchesCategory = selectedCategory === 'all' || p.category === selectedCategory;
             const matchesSearch = searchQuery === '' || p.name.toLowerCase().includes(searchQuery.toLowerCase());
             return matchesCategory && matchesSearch;
         });
-    }, [products, selectedCategory, searchQuery]);
+    }, [products, sales, selectedCategory, searchQuery]);
 
     const addNewCart = () => {
         const newCartId = uuidv4();
@@ -266,6 +294,7 @@ export default function SellPage() {
             quantity: Infinity, // Not a stock-managed item
             cartQuantity: 1,
             minStockLevel: 0, // Added to satisfy SaleItem/Product interface
+            createdAt: new Date(),
         };
 
         const newItems = [...activeCart.items, newItem];
@@ -374,7 +403,7 @@ export default function SellPage() {
                 if (amountPaidNum >= total) finalPaymentStatus = 'paid';
                 else if (amountPaidNum > 0) finalPaymentStatus = 'partial';
 
-                const saleItemsForDb: SaleItem[] = activeCart.items.map(item => ({
+                const saleItemsForDb: Omit<SaleItem, 'cartQuantity'>[] = activeCart.items.map(item => ({
                     id: item.id,
                     name: item.name,
                     price: item.price,
@@ -460,7 +489,13 @@ export default function SellPage() {
         setIsClearCartDialogOpen(false);
     };
 
-    const isLoading = isUserLoading || isLoadingProducts || isLoadingCustomers || isLoadingCompany;
+    const isLoading = isUserLoading || isLoadingProducts || isLoadingCustomers || isLoadingCompany || isLoadingSales;
+    
+    useEffect(() => {
+        if (!isLoading && !user) {
+            router.push('/login');
+        }
+    }, [user, isLoading, router]);
 
     if (isLoading || !isClient || !user || !activeCart) {
         return <div className="flex h-full items-center justify-center"><p>Chargement de l'interface de vente...</p></div>;
@@ -770,5 +805,3 @@ export default function SellPage() {
         </>
     );
 }
-
-    
