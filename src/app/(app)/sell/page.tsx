@@ -731,14 +731,30 @@ export default function SellPage() {
                                         </CardTitle>
                                     </CardHeader>
                                     <CardContent className="p-4 pt-0">
-                                        <Combobox
-                                            options={customerOptions}
-                                            onSelect={(customerId) => handleCustomerSelect(cart, customerId)}
-                                            value={cart.customerId || 'walk-in'}
-                                            placeholder="Vente au comptoir"
-                                            searchPlaceholder="Rechercher un client..."
-                                            notFoundMessage="Aucun client trouvé."
-                                        />
+                                        <div className="flex items-center gap-2">
+                                            <div className="flex-grow">
+                                                <Combobox
+                                                    options={customerOptions}
+                                                    onSelect={(customerId) => handleCustomerSelect(cart, customerId)}
+                                                    value={cart.customerId || 'walk-in'}
+                                                    placeholder="Vente au comptoir"
+                                                    searchPlaceholder="Rechercher un client..."
+                                                    notFoundMessage="Aucun client trouvé."
+                                                />
+                                            </div>
+                                            {cart.customerId && (
+                                                <Button 
+                                                    type="button"
+                                                    variant="outline" 
+                                                    size="icon" 
+                                                    onClick={() => handleCustomerSelect(cart, 'walk-in')}
+                                                    aria-label="Retirer le client"
+                                                    className="flex-shrink-0"
+                                                >
+                                                    <UserX className="h-5 w-5 text-muted-foreground" />
+                                                </Button>
+                                            )}
+                                        </div>
                                          {(() => {
                                             const debt = cart.customerId ? customerDebts.get(cart.customerId) : 0;
                                             if (debt && debt > 0) {
@@ -862,4 +878,3 @@ export default function SellPage() {
     );
 }
 
-    
