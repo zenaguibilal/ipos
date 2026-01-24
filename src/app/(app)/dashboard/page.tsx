@@ -239,15 +239,18 @@ export default function DashboardPage() {
                     </CardHeader>
                     <CardContent className="pl-2">
                          <ResponsiveContainer width="100%" height={350}>
-                            <LineChart data={chartData}>
+                            <BarChart data={chartData}>
                                 <CartesianGrid strokeDasharray="3 3" />
                                 <XAxis dataKey="date" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
                                 <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value} DA`} />
-                                <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                                <Tooltip
+                                    formatter={(value: number) => formatCurrency(value)}
+                                    cursor={{ fill: 'hsl(var(--muted))' }}
+                                />
                                 <Legend />
-                                <Line type="monotone" dataKey="Chiffre d'affaires" stroke="hsl(var(--primary))" dot={false} strokeWidth={2} />
-                                <Line type="monotone" dataKey="Bénéfice" stroke="hsl(var(--chart-secondary))" dot={false} strokeWidth={2} />
-                            </LineChart>
+                                <Bar dataKey="Chiffre d'affaires" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                                <Bar dataKey="Bénéfice" fill="hsl(var(--chart-secondary))" radius={[4, 4, 0, 0]} />
+                            </BarChart>
                         </ResponsiveContainer>
                     </CardContent>
                 </Card>
