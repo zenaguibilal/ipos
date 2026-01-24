@@ -1,0 +1,271 @@
+
+'use client';
+
+import React, { useEffect, useMemo, useState } from 'react';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { useRouter } from 'next/navigation';
+import { collection, query, orderBy, where, Timestamp } from 'firebase/firestore';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
+import { DateRangePicker } from '@/components/dashboard/date-range-picker';
+import { DateRange } from 'react-day-picker';
+import { subDays, startOfDay, endOfDay, format, eachDayOfInterval, parse } from 'date-fns';
+import { fr } from 'date-fns/locale';
+import type { Sale, ProductReturn, SaleItem, ChartData } from '@/lib/types';
+import { safeToDate } from '@/lib/utils';
+import { CircleDollarSign, TrendingUp, Undo2, ShoppingCart, Activity } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+
+export default function DashboardPage() {
+    const { user, isUserLoading } = useUser();
+    const firestore = useFirestore();
+    const router = useRouter();
+
+    const [dateRange, setDateRange] = useState<DateRange | undefined>({
+        from: startOfDay(subDays(new Date(), 6)),
+        to: endOfDay(new Date()),
+    });
+
+    // --- Data Fetching ---
+    const salesQuery = useMemoFirebase(() => 
+        (user && firestore) ? query(collection(firestore, 'users', user.uid, 'sales'), orderBy('createdAt', 'desc')) : null, 
+    [user, firestore]);
+    
+    const returnsQuery = useMemoFirebase(() => 
+        (user && firestore) ? query(collection(firestore, 'users', user.uid, 'returns'), orderBy('createdAt', 'desc')) : null, 
+    [user, firestore]);
+
+    const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
+    const { data: returns, isLoading: isLoadingReturns } = useCollection<ProductReturn>(returnsQuery);
+
+    useEffect(() => {
+        if (!isUserLoading && !user) {
+            router.push('/login');
+        }
+    }, [user, isUserLoading, router]);
+
+    const {
+        totalRevenue,
+        totalProfit,
+        totalReturnsValue,
+        salesCount,
+        chartData,
+        recentTransactions
+    } = useMemo(() => {
+        const fromDate = dateRange?.from;
+        const toDate = dateRange?.to;
+
+        const filteredSales = sales?.filter(s => {
+            if (!s.createdAt) return false;
+            const saleDate = safeToDate(s.createdAt);
+            return (!fromDate || saleDate >= fromDate) && (!toDate || saleDate <= toDate);
+        }) || [];
+
+        const filteredReturns = returns?.filter(r => {
+            if (!r.createdAt) return false;
+            const returnDate = safeToDate(r.createdAt);
+            return (!fromDate || returnDate >= fromDate) && (!toDate || returnDate <= toDate);
+        }) || [];
+
+        let revenue = 0;
+        let profit = 0;
+        let salesCt = 0;
+
+        for (const sale of filteredSales) {
+            revenue += sale.total;
+            salesCt++;
+            let saleProfit = 0;
+            sale.items.forEach((item: SaleItem) => {
+                const purchasePrice = typeof item.purchasePrice === 'number' ? item.purchasePrice : 0;
+                const quantity = typeof item.quantity === 'number' ? item.quantity : (item.cartQuantity || 0);
+                if(item.price && purchasePrice) {
+                    saleProfit += (item.price - purchasePrice) * quantity;
+                }
+            });
+            profit += saleProfit;
+        }
+
+        const returnsValue = filteredReturns.reduce((sum, r) => sum + r.totalReturnValue, 0);
+
+        // Process data for chart
+        const dailyData: { [key: string]: { revenue: number, profit: number } } = {};
+        
+        if (fromDate && toDate) {
+            const interval = eachDayOfInterval({ start: fromDate, end: toDate });
+            for (const day of interval) {
+                const dateKey = format(day, 'yyyy-MM-dd');
+                dailyData[dateKey] = { revenue: 0, profit: 0 };
+            }
+        }
+        
+        for (const sale of filteredSales) {
+            if(!sale.createdAt) continue;
+            const dateKey = format(safeToDate(sale.createdAt), 'yyyy-MM-dd');
+            if (dailyData[dateKey]) {
+                dailyData[dateKey].revenue += sale.total;
+
+                let saleProfit = 0;
+                sale.items.forEach((item: SaleItem) => {
+                     const purchasePrice = typeof item.purchasePrice === 'number' ? item.purchasePrice : 0;
+                    const quantity = typeof item.quantity === 'number' ? item.quantity : (item.cartQuantity || 0);
+                    if(item.price && purchasePrice) {
+                        saleProfit += (item.price - purchasePrice) * quantity;
+                    }
+                });
+                dailyData[dateKey].profit += saleProfit;
+            }
+        }
+        
+        const finalChartData = Object.keys(dailyData).sort((a, b) => new Date(a).getTime() - new Date(b).getTime()).map(dateKey => ({
+            date: format(parse(dateKey, 'yyyy-MM-dd', new Date()), 'd MMM', { locale: fr }),
+            'Chiffre d\'affaires': dailyData[dateKey].revenue,
+            'Bénéfice': dailyData[dateKey].profit,
+        }));
+        
+        // Recent transactions
+        const combined = [
+            ...filteredSales.map(s => ({ type: 'Vente', data: s, date: safeToDate(s.createdAt!) })),
+            ...filteredReturns.map(r => ({ type: 'Retour', data: r, date: safeToDate(r.createdAt!) }))
+        ].sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 5);
+
+
+        return {
+            totalRevenue: revenue,
+            totalProfit: profit,
+            totalReturnsValue: returnsValue,
+            salesCount: salesCt,
+            chartData: finalChartData,
+            recentTransactions: combined,
+        };
+
+    }, [sales, returns, dateRange]);
+
+    const isLoading = isUserLoading || isLoadingSales || isLoadingReturns;
+
+    if (isLoading || !user) {
+        return <div className="flex h-full items-center justify-center"><p>Chargement du tableau de bord...</p></div>;
+    }
+    
+    const formatCurrency = (value: number) => `${value.toFixed(1)} DA`;
+
+    return (
+        <main className="flex-1 overflow-auto p-4 sm:p-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+                <div>
+                    <h1 className="text-2xl font-bold">Tableau de Bord</h1>
+                    <p className="text-muted-foreground">
+                        Aperçu des performances de votre commerce.
+                    </p>
+                </div>
+                <DateRangePicker onUpdate={setDateRange} />
+            </div>
+
+             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Chiffre d'affaires</CardTitle>
+                        <CircleDollarSign className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{formatCurrency(totalRevenue)}</div>
+                        <p className="text-xs text-muted-foreground">sur la période sélectionnée</p>
+                    </CardContent>
+                </Card>
+                 <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Bénéfice net</CardTitle>
+                        <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold text-green-600">{formatCurrency(totalProfit)}</div>
+                         <p className="text-xs text-muted-foreground">Bénéfice brut estimé</p>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Nombre de Ventes</CardTitle>
+                        <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{salesCount}</div>
+                        <p className="text-xs text-muted-foreground">Transactions de vente</p>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Valeur des Retours</CardTitle>
+                        <Undo2 className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold text-destructive">{formatCurrency(totalReturnsValue)}</div>
+                        <p className="text-xs text-muted-foreground">Valeur des articles retournés</p>
+                    </CardContent>
+                </Card>
+            </div>
+            
+             <div className="grid gap-6 lg:grid-cols-5">
+                <Card className="lg:col-span-3">
+                    <CardHeader>
+                        <CardTitle>Analyse des Revenus</CardTitle>
+                        <CardDescription>Chiffre d'affaires et bénéfice sur la période sélectionnée.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="pl-2">
+                         <ResponsiveContainer width="100%" height={350}>
+                            <LineChart data={chartData}>
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis dataKey="date" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                                <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value} DA`} />
+                                <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                                <Legend />
+                                <Line type="monotone" dataKey="Chiffre d'affaires" stroke="hsl(var(--primary))" dot={false} strokeWidth={2} />
+                                <Line type="monotone" dataKey="Bénéfice" stroke="hsl(var(--chart-secondary))" dot={false} strokeWidth={2} />
+                            </LineChart>
+                        </ResponsiveContainer>
+                    </CardContent>
+                </Card>
+                <Card className="lg:col-span-2">
+                     <CardHeader>
+                        <CardTitle>Activité Récente</CardTitle>
+                        <CardDescription>Les 5 dernières transactions de la période.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                         {recentTransactions.length === 0 ? (
+                            <div className="flex h-full items-center justify-center">
+                                <p className="text-muted-foreground">Aucune activité récente.</p>
+                            </div>
+                        ) : (
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Type</TableHead>
+                                        <TableHead>Client/Facture</TableHead>
+                                        <TableHead className="text-right">Montant</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {recentTransactions.map((tx, index) => (
+                                        <TableRow key={index}>
+                                            <TableCell>
+                                                <div className={`flex items-center gap-2 text-xs font-semibold ${tx.type === 'Vente' ? 'text-primary' : 'text-destructive'}`}>
+                                                    {tx.type === 'Vente' ? <ShoppingCart className="h-4 w-4"/> : <Undo2 className="h-4 w-4"/>}
+                                                    {tx.type}
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="font-medium">{(tx.data as Sale).customerName || (tx.data as ProductReturn).customerName || 'N/A'}</div>
+                                                <div className="text-xs text-muted-foreground font-mono">{(tx.data as Sale).invoiceNumber || (tx.data as ProductReturn).originalInvoiceNumber}</div>
+                                            </TableCell>
+                                            <TableCell className="text-right font-bold">
+                                                {formatCurrency(tx.type === 'Vente' ? (tx.data as Sale).total : (tx.data as ProductReturn).totalReturnValue)}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        )}
+                    </CardContent>
+                </Card>
+            </div>
+        </main>
+    );
+}

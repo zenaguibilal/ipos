@@ -12,6 +12,7 @@ import {
   Bell,
   Info,
   Undo2,
+  BarChart3,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -35,6 +36,7 @@ import { AnimatedLogo } from './animated-logo';
 
 
 const navLinks = [
+  { href: '/dashboard', label: 'Tableau de bord', icon: BarChart3 },
   { href: '/sales-history', label: 'Historique', icon: History },
   { href: '/returns', label: 'Retours', icon: Undo2 },
   { href: '/bread-orders', label: 'Commandes de Pain', icon: Cookie },
@@ -59,7 +61,7 @@ export function AppHeader() {
       <div className="flex-1 flex justify-start">
          <div className="flex items-baseline gap-2">
               <Link
-                  href="/bread-orders"
+                  href="/dashboard"
                   className="flex items-center gap-2 font-semibold"
               >
                   <span className="text-2xl">🏪</span>

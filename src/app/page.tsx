@@ -13,7 +13,7 @@ function HomePageContent() {
 
     useEffect(() => {
         if (!isUserLoading && user) {
-            router.push('/bread-orders');
+            router.push('/dashboard');
         }
     }, [user, isUserLoading, router]);
 
