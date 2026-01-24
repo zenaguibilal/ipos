@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
@@ -159,58 +160,40 @@ export default function SellPage() {
         return ['all', ...Array.from(new Set(allCategories as string[]))];
     }, [products]);
 
-     const filteredProducts = useMemo(() => {
+    const filteredProducts = useMemo(() => {
         if (!products) return [];
 
-        // If a search query is active, filter all products.
+        // 1. Filter by category first
+        const categoryFiltered = selectedCategory === 'all'
+            ? products
+            : products.filter(p => p.category === selectedCategory);
+
+        // 2. Filter by search query if it exists
         if (searchQuery) {
-            return products.filter(p => 
+            return categoryFiltered.filter(p =>
                 p.name.toLowerCase().includes(searchQuery.toLowerCase())
             );
-        } 
-        
-        let productListToShow: Product[];
-        
-        // If no search query, show top popular/recent products.
+        }
+
+        // 3. If no search, show popular items from the filtered category
         if (sales && sales.length > 0) {
             const productSales: { [productId: string]: number } = {};
             sales.forEach(sale => {
-                if (sale.items) {
-                    sale.items.forEach(item => {
-                        if (item.id && !item.id.startsWith('custom-')) {
-                            productSales[item.id] = (productSales[item.id] || 0) + (item.cartQuantity || item.quantity);
-                        }
-                    });
-                }
+                sale.items?.forEach(item => {
+                    if (item.id && !item.id.startsWith('custom-')) {
+                        productSales[item.id] = (productSales[item.id] || 0) + (item.cartQuantity || item.quantity);
+                    }
+                });
             });
 
-            const popularProducts = products
-                .filter(p => productSales[p.id] > 0)
-                .sort((a, b) => (productSales[b.id] || 0) - (productSales[a.id] || 0));
-
-            const recentProducts = products.slice(0, 15);
-            const combined = new Map<string, Product>();
-
-            popularProducts.forEach(p => combined.set(p.id, p));
-            recentProducts.forEach(p => {
-                if (!combined.has(p.id)) {
-                    combined.set(p.id, p);
-                }
-            });
-
-            productListToShow = Array.from(combined.values()).slice(0, 15);
-            
-        } else {
-            // Fallback: if no sales, show the 15 most recently added products.
-            productListToShow = products.slice(0, 15);
+            // Sort a copy of the category-filtered products by popularity
+            return [...categoryFiltered]
+                .sort((a, b) => (productSales[b.id] || 0) - (productSales[a.id] || 0))
+                .slice(0, 15);
         }
-        
-        // Apply category filter on the resulting list.
-        if (selectedCategory !== 'all') {
-            return productListToShow.filter(p => p.category === selectedCategory);
-        }
-        
-        return productListToShow;
+
+        // 4. Fallback for new stores with no sales: show most recent from the category
+        return categoryFiltered.slice(0, 15);
 
     }, [products, sales, selectedCategory, searchQuery]);
 
@@ -624,212 +607,211 @@ export default function SellPage() {
                 </AlertDialogContent>
             </AlertDialog>
 
-            <main className="flex flex-col h-full max-h-[calc(100vh-theme(space.14))]">
-                <div className="grid lg:grid-cols-3 xl:grid-cols-4 h-full max-h-[calc(100vh-theme(space.14))]">
-
-                    <div className="lg:col-span-2 xl:col-span-3 flex flex-col p-4 gap-4">
-                        <div className="flex gap-2 flex-col sm:flex-row">
-                            <div className="relative flex-grow">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                <Input 
-                                    placeholder="Rechercher un produit par nom..." 
-                                    className="pl-9"
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                />
-                            </div>
-                            <div className="relative">
-                                <Barcode className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                <Input ref={barcodeInputRef} placeholder="Scanner un code-barres (Ctrl+I)" onKeyDown={handleBarcodeScan} className="pl-9" />
-                            </div>
-                            <Button variant="outline" onClick={() => setIsCustomProductDialogOpen(true)}>
-                                <FilePlus2 className="mr-2 h-4 w-4" />
-                                Article
-                            </Button>
+            <main className="grid lg:grid-cols-[1fr,450px] xl:grid-cols-[1fr,500px] h-full max-h-[calc(100vh-theme(space.14))]">
+                {/* Left Side: Product Grid */}
+                <div className="flex flex-col p-4 gap-4 h-full">
+                    <div className="flex gap-2 flex-col sm:flex-row">
+                        <div className="relative flex-grow">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input 
+                                placeholder="Rechercher un produit par nom..." 
+                                className="pl-9"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                            />
                         </div>
-
-                        <ScrollArea className="w-full whitespace-nowrap">
-                            <div className="flex gap-2 pb-2">
-                                {categories.map(category => (
-                                    <Button
-                                        key={category}
-                                        variant={selectedCategory === category ? 'default' : 'outline'}
-                                        onClick={() => setSelectedCategory(category)}
-                                        className="capitalize"
-                                    >
-                                        {category === 'all' ? 'Tous' : category}
-                                    </Button>
-                                ))}
-                            </div>
-                        </ScrollArea>
-                        
-                        <h2 className="text-lg font-semibold tracking-tight -mb-2">
-                            {searchQuery ? `Résultats de la recherche` : "Accès Rapide / Populaires"}
-                        </h2>
-
-                        <ScrollArea className="flex-grow">
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4 pr-4">
-                                {filteredProducts.map(product => (
-                                    <ProductCard 
-                                        key={product.id} 
-                                        product={product} 
-                                        onAddToCart={addProductToCart} 
-                                        isInCart={activeCartItemIds.has(product.id)}
-                                    />
-                                ))}
-                                {filteredProducts.length === 0 && (
-                                    <div className="col-span-full h-full flex items-center justify-center text-muted-foreground">
-                                        Aucun produit trouvé.
-                                    </div>
-                                )}
-                            </div>
-                        </ScrollArea>
+                        <div className="relative">
+                            <Barcode className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input ref={barcodeInputRef} placeholder="Scanner un code-barres (Ctrl+I)" onKeyDown={handleBarcodeScan} className="pl-9" />
+                        </div>
+                        <Button variant="outline" onClick={() => setIsCustomProductDialogOpen(true)}>
+                            <FilePlus2 className="mr-2 h-4 w-4" />
+                            Article
+                        </Button>
                     </div>
-                    
-                    <div className="lg:col-span-1 xl:col-span-1 bg-muted/40 p-4 flex flex-col">
-                        <Tabs value={activeCartId} onValueChange={handleTabChange} className="flex-grow flex flex-col">
-                             <TabsList className="h-auto self-start">
-                                {carts.map(cart => (
-                                    <TabsTrigger key={cart.id} value={cart.id} className="relative pr-8">
-                                        {cart.name}
-                                        <button onClick={(e) => handleRemoveTab(e, cart.id)} className="absolute top-1/2 right-1.5 -translate-y-1/2 rounded-full p-0.5 hover:bg-muted-foreground/20">
-                                            <X className="h-3 w-3" />
-                                        </button>
-                                    </TabsTrigger>
-                                ))}
-                                <Button variant="ghost" size="icon" onClick={handleAddTab}><PlusCircle className="h-5 w-5" /></Button>
-                            </TabsList>
 
-                            {carts.map(cart => (
-                                <TabsContent key={cart.id} value={cart.id} className="flex-grow flex flex-col gap-4 m-0 mt-4 data-[state=inactive]:hidden">
-                                     <Card>
-                                        <CardHeader className="p-4">
-                                            <div className="flex items-center gap-2">
-                                                <User className="h-5 w-5 text-primary"/>
-                                                <CardTitle className="text-lg">Client</CardTitle>
-                                            </div>
-                                        </CardHeader>
-                                        <CardContent className="p-4 pt-0 flex gap-2">
-                                            <div className="flex-grow">
-                                                <Combobox
-                                                    options={customerOptions}
-                                                    onSelect={(customerId) => handleCustomerSelect(cart, customerId)}
-                                                    value={cart.customerId || 'walk-in'}
-                                                    placeholder={cart.customerName}
-                                                    searchPlaceholder="Rechercher un client..."
-                                                    notFoundMessage="Aucun client trouvé."
-                                                />
-                                            </div>
-                                            <Button variant="outline" onClick={() => setIsAddCustomerOpen(true)}>
-                                                <PlusCircle className="mr-2 h-4 w-4" />Nouveau
-                                            </Button>
-                                        </CardContent>
-                                    </Card>
-
-                                    <Card className="flex-grow flex flex-col">
-                                        <CardHeader className="p-4 flex flex-row items-center justify-between">
-                                            <CardTitle className="text-lg">Panier ({cart.items.length})</CardTitle>
-                                            {cart.items.length > 0 && (
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => setCartToClear(cart)}>
-                                                    <Trash2 className="h-4 w-4" />
-                                                    <span className="sr-only">Vider le panier</span>
-                                                </Button>
-                                            )}
-                                        </CardHeader>
-                                        <CardContent className="p-0 flex-1 flex flex-col">
-                                            {cart.items.length === 0 ? (
-                                                <div className="flex-grow flex items-center justify-center text-muted-foreground">Le panier est vide</div>
-                                            ) : (
-                                                <ScrollArea className="flex-grow">
-                                                    <Table>
-                                                        <TableHeader>
-                                                            <TableRow>
-                                                                <TableHead>Produit</TableHead>
-                                                                <TableHead className="w-[120px]">Quantité</TableHead>
-                                                                <TableHead className="text-right">Total</TableHead>
-                                                            </TableRow>
-                                                        </TableHeader>
-                                                        <TableBody>
-                                                            {cart.items.map(item => (
-                                                                <TableRow key={item.id} className={cn(lastTouchedItemId === item.id && 'animate-flash rounded-lg')}>
-                                                                    <TableCell>
-                                                                        <div className="font-medium">{item.name}</div>
-                                                                        <div className="text-xs text-muted-foreground">{item.price.toFixed(1)} DA</div>
-                                                                    </TableCell>
-                                                                    <TableCell>
-                                                                        <div className="flex items-center gap-1">
-                                                                            <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => updateItemQuantity(cart.id, item.id, item.cartQuantity - 1)}><Minus className="h-4 w-4" /></Button>
-                                                                            <Input type="number" value={item.cartQuantity} onChange={(e) => updateItemQuantity(cart.id, item.id, parseInt(e.target.value) || 0)} className="h-7 w-12 text-center" />
-                                                                            <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => updateItemQuantity(cart.id, item.id, item.cartQuantity + 1)}><Plus className="h-4 w-4" /></Button>
-                                                                        </div>
-                                                                    </TableCell>
-                                                                    <TableCell className="text-right font-semibold">{(item.price * item.cartQuantity).toFixed(1)} DA</TableCell>
-                                                                </TableRow>
-                                                            ))}
-                                                        </TableBody>
-                                                    </Table>
-                                                </ScrollArea>
-                                            )}
-                                        </CardContent>
-                                        {cart.items.length > 0 && (
-                                            <CardFooter className="p-4 flex-col items-stretch space-y-2 border-t">
-                                                {(
-                                                    () => {
-                                                        const subtotal = cart.items.reduce((acc, item) => acc + (item.price * item.cartQuantity), 0);
-                                                        const discount = cart.discountType === 'fixed' ? cart.discountValue : subtotal * (cart.discountValue / 100);
-                                                        const total = subtotal - discount > 0 ? subtotal - discount : 0;
-                                                        
-                                                        return (
-                                                            <>
-                                                                <div className="flex justify-between text-md">
-                                                                    <span>Sous-total</span>
-                                                                    <span>{subtotal.toFixed(1)} DA</span>
-                                                                </div>
-                                                                <div className="flex justify-between items-center text-sm">
-                                                                    <div className="flex items-center gap-1">
-                                                                        <Button size="sm" variant={cart.discountType === 'fixed' ? 'secondary' : 'ghost'} onClick={() => handleDiscountTypeChange(cart, 'fixed')}>Remise (DA)</Button>
-                                                                        <Button size="sm" variant={cart.discountType === 'percentage' ? 'secondary' : 'ghost'} onClick={() => handleDiscountTypeChange(cart, 'percentage')}>Remise (%)</Button>
-                                                                    </div>
-                                                                    <Input type="number" value={cart.discountValue} onChange={(e) => handleDiscountValueChange(cart, e.target.value)} className="w-24 h-8" />
-                                                                </div>
-                                                                <div className="flex justify-between text-sm text-muted-foreground">
-                                                                    <span>Total Remise</span>
-                                                                    <span>- {discount.toFixed(1)} DA</span>
-                                                                </div>
-                                                                <div className="border-t pt-2 mt-2">
-                                                                    <div className="flex justify-between text-2xl font-bold text-primary">
-                                                                        <span>TOTAL</span>
-                                                                        <span>{total.toFixed(1)} DA</span>
-                                                                    </div>
-                                                                </div>
-                                                            </>
-                                                        )
-                                                    }
-                                                )()}
-                                            </CardFooter>
-                                        )}
-                                    </Card>
-
-                                    <div className="mt-auto">
-                                        <Button 
-                                            className="w-full text-lg py-7" 
-                                            disabled={cart.items.length === 0}
-                                            onClick={() => {
-                                                const subtotal = cart.items.reduce((acc, item) => acc + (item.price * item.cartQuantity), 0);
-                                                const discount = cart.discountType === 'fixed' ? cart.discountValue : subtotal * (cart.discountValue / 100);
-                                                const total = subtotal - discount > 0 ? subtotal - discount : 0;
-                                                setAmountPaid(total.toFixed(1));
-                                                setPaymentMethod('cash');
-                                                setCartToPay(cart);
-                                            }}
-                                        >
-                                            <CheckCircle className="mr-2 h-5 w-5" /> Finaliser la vente
-                                        </Button>
-                                    </div>
-                                </TabsContent>
+                    <ScrollArea className="w-full whitespace-nowrap">
+                        <div className="flex gap-2 pb-2">
+                            {categories.map(category => (
+                                <Button
+                                    key={category}
+                                    variant={selectedCategory === category ? 'default' : 'outline'}
+                                    onClick={() => setSelectedCategory(category)}
+                                    className="capitalize"
+                                >
+                                    {category === 'all' ? 'Tous' : category}
+                                </Button>
                             ))}
-                        </Tabs>
-                    </div>
+                        </div>
+                    </ScrollArea>
+                    
+                    <h2 className="text-lg font-semibold tracking-tight -mb-2">
+                        {searchQuery ? `Résultats de la recherche` : "Accès Rapide / Populaires"}
+                    </h2>
+
+                    <ScrollArea className="flex-grow">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4 pr-4">
+                            {filteredProducts.map(product => (
+                                <ProductCard 
+                                    key={product.id} 
+                                    product={product} 
+                                    onAddToCart={addProductToCart} 
+                                    isInCart={activeCartItemIds.has(product.id)}
+                                />
+                            ))}
+                            {filteredProducts.length === 0 && (
+                                <div className="col-span-full h-full flex items-center justify-center text-muted-foreground">
+                                    Aucun produit trouvé.
+                                </div>
+                            )}
+                        </div>
+                    </ScrollArea>
+                </div>
+                
+                {/* Right Side: Carts */}
+                <div className="bg-muted/40 p-4 flex flex-col h-full border-l">
+                    <Tabs value={activeCartId} onValueChange={handleTabChange} className="flex-grow flex flex-col">
+                         <TabsList className="h-auto self-start">
+                            {carts.map(cart => (
+                                <TabsTrigger key={cart.id} value={cart.id} className="relative pr-8">
+                                    {cart.name}
+                                    <button onClick={(e) => handleRemoveTab(e, cart.id)} className="absolute top-1/2 right-1.5 -translate-y-1/2 rounded-full p-0.5 hover:bg-muted-foreground/20">
+                                        <X className="h-3 w-3" />
+                                    </button>
+                                </TabsTrigger>
+                            ))}
+                            <Button variant="ghost" size="icon" onClick={handleAddTab}><PlusCircle className="h-5 w-5" /></Button>
+                        </TabsList>
+
+                        {carts.map(cart => (
+                            <TabsContent key={cart.id} value={cart.id} className="flex-grow flex flex-col gap-4 m-0 mt-4 data-[state=inactive]:hidden">
+                                 <Card>
+                                    <CardHeader className="p-4">
+                                        <div className="flex items-center gap-2">
+                                            <User className="h-5 w-5 text-primary"/>
+                                            <CardTitle className="text-lg">Client</CardTitle>
+                                        </div>
+                                    </CardHeader>
+                                    <CardContent className="p-4 pt-0 flex gap-2">
+                                        <div className="flex-grow">
+                                            <Combobox
+                                                options={customerOptions}
+                                                onSelect={(customerId) => handleCustomerSelect(cart, customerId)}
+                                                value={cart.customerId || 'walk-in'}
+                                                placeholder={cart.customerName}
+                                                searchPlaceholder="Rechercher un client..."
+                                                notFoundMessage="Aucun client trouvé."
+                                            />
+                                        </div>
+                                        <Button variant="outline" onClick={() => setIsAddCustomerOpen(true)}>
+                                            <PlusCircle className="mr-2 h-4 w-4" />Nouveau
+                                        </Button>
+                                    </CardContent>
+                                </Card>
+
+                                <Card className="flex-grow flex flex-col">
+                                    <CardHeader className="p-4 flex flex-row items-center justify-between">
+                                        <CardTitle className="text-lg">Panier ({cart.items.length})</CardTitle>
+                                        {cart.items.length > 0 && (
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => setCartToClear(cart)}>
+                                                <Trash2 className="h-4 w-4" />
+                                                <span className="sr-only">Vider le panier</span>
+                                            </Button>
+                                        )}
+                                    </CardHeader>
+                                    <CardContent className="p-0 flex-1 flex flex-col">
+                                        {cart.items.length === 0 ? (
+                                            <div className="flex-grow flex items-center justify-center text-muted-foreground">Le panier est vide</div>
+                                        ) : (
+                                            <ScrollArea className="flex-grow">
+                                                <Table>
+                                                    <TableHeader>
+                                                        <TableRow>
+                                                            <TableHead>Produit</TableHead>
+                                                            <TableHead className="w-[120px]">Quantité</TableHead>
+                                                            <TableHead className="text-right">Total</TableHead>
+                                                        </TableRow>
+                                                    </TableHeader>
+                                                    <TableBody>
+                                                        {cart.items.map(item => (
+                                                            <TableRow key={item.id} className={cn(lastTouchedItemId === item.id && 'animate-flash rounded-lg')}>
+                                                                <TableCell>
+                                                                    <div className="font-medium">{item.name}</div>
+                                                                    <div className="text-xs text-muted-foreground">{item.price.toFixed(1)} DA</div>
+                                                                </TableCell>
+                                                                <TableCell>
+                                                                    <div className="flex items-center gap-1">
+                                                                        <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => updateItemQuantity(cart.id, item.id, item.cartQuantity - 1)}><Minus className="h-4 w-4" /></Button>
+                                                                        <Input type="number" value={item.cartQuantity} onChange={(e) => updateItemQuantity(cart.id, item.id, parseInt(e.target.value) || 0)} className="h-7 w-12 text-center" />
+                                                                        <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => updateItemQuantity(cart.id, item.id, item.cartQuantity + 1)}><Plus className="h-4 w-4" /></Button>
+                                                                    </div>
+                                                                </TableCell>
+                                                                <TableCell className="text-right font-semibold">{(item.price * item.cartQuantity).toFixed(1)} DA</TableCell>
+                                                            </TableRow>
+                                                        ))}
+                                                    </TableBody>
+                                                </Table>
+                                            </ScrollArea>
+                                        )}
+                                    </CardContent>
+                                    {cart.items.length > 0 && (
+                                        <CardFooter className="p-4 flex-col items-stretch space-y-2 border-t">
+                                            {(
+                                                () => {
+                                                    const subtotal = cart.items.reduce((acc, item) => acc + (item.price * item.cartQuantity), 0);
+                                                    const discount = cart.discountType === 'fixed' ? cart.discountValue : subtotal * (cart.discountValue / 100);
+                                                    const total = subtotal - discount > 0 ? subtotal - discount : 0;
+                                                    
+                                                    return (
+                                                        <>
+                                                            <div className="flex justify-between text-md">
+                                                                <span>Sous-total</span>
+                                                                <span>{subtotal.toFixed(1)} DA</span>
+                                                            </div>
+                                                            <div className="flex justify-between items-center text-sm">
+                                                                <div className="flex items-center gap-1">
+                                                                    <Button size="sm" variant={cart.discountType === 'fixed' ? 'secondary' : 'ghost'} onClick={() => handleDiscountTypeChange(cart, 'fixed')}>Remise (DA)</Button>
+                                                                    <Button size="sm" variant={cart.discountType === 'percentage' ? 'secondary' : 'ghost'} onClick={() => handleDiscountTypeChange(cart, 'percentage')}>Remise (%)</Button>
+                                                                </div>
+                                                                <Input type="number" value={cart.discountValue} onChange={(e) => handleDiscountValueChange(cart, e.target.value)} className="w-24 h-8" />
+                                                            </div>
+                                                            <div className="flex justify-between text-sm text-muted-foreground">
+                                                                <span>Total Remise</span>
+                                                                <span>- {discount.toFixed(1)} DA</span>
+                                                            </div>
+                                                            <div className="border-t pt-2 mt-2">
+                                                                <div className="flex justify-between text-2xl font-bold text-primary">
+                                                                    <span>TOTAL</span>
+                                                                    <span>{total.toFixed(1)} DA</span>
+                                                                </div>
+                                                            </div>
+                                                        </>
+                                                    )
+                                                }
+                                            )()}
+                                        </CardFooter>
+                                    )}
+                                </Card>
+
+                                <div className="mt-auto">
+                                    <Button 
+                                        className="w-full text-lg py-7" 
+                                        disabled={cart.items.length === 0}
+                                        onClick={() => {
+                                            const subtotal = cart.items.reduce((acc, item) => acc + (item.price * item.cartQuantity), 0);
+                                            const discount = cart.discountType === 'fixed' ? cart.discountValue : subtotal * (cart.discountValue / 100);
+                                            const total = subtotal - discount > 0 ? subtotal - discount : 0;
+                                            setAmountPaid(total.toFixed(1));
+                                            setPaymentMethod('cash');
+                                            setCartToPay(cart);
+                                        }}
+                                    >
+                                        <CheckCircle className="mr-2 h-5 w-5" /> Finaliser la vente
+                                    </Button>
+                                </div>
+                            </TabsContent>
+                        ))}
+                    </Tabs>
                 </div>
             </main>
         </>
