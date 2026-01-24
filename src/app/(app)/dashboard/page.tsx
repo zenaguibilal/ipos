@@ -125,7 +125,7 @@ export default function DashboardPage() {
             
             let saleProfit = 0;
             sale.items.forEach((item: SaleItem) => {
-                const purchasePrice = typeof item.purchasePrice === 'number' ? item.purchasePrice : 0;
+                const purchasePrice = item.purchasePrice || 0;
                 const quantity = typeof item.quantity === 'number' ? item.quantity : (item.cartQuantity || 0);
 
                 if (!topProductsMap[item.name]) {
@@ -147,7 +147,7 @@ export default function DashboardPage() {
         
         const lostProfitFromReturns = filteredReturns.reduce((sum, r) => {
             const returnProfitLoss = r.items.reduce((itemSum, item: ReturnItem) => {
-                const purchasePrice = typeof item.purchasePrice === 'number' ? item.purchasePrice : item.price;
+                const purchasePrice = item.purchasePrice || 0;
                 const profitLoss = (item.price - purchasePrice) * item.quantity;
                 return itemSum + profitLoss;
             }, 0);
@@ -158,7 +158,7 @@ export default function DashboardPage() {
         for (const ret of filteredReturns) {
             for (const item of ret.items) {
                 if (topProductsMap[item.productName]) {
-                    const purchasePrice = typeof item.purchasePrice === 'number' ? item.purchasePrice : item.price;
+                    const purchasePrice = item.purchasePrice || 0;
                     const profitLoss = (item.price - purchasePrice) * item.quantity;
                     topProductsMap[item.productName].unitsSold -= item.quantity;
                     topProductsMap[item.productName].totalRevenue -= item.price * item.quantity;
@@ -191,7 +191,7 @@ export default function DashboardPage() {
                 dailyData[dateKey].revenue += sale.total;
                 let saleProfit = 0;
                 sale.items.forEach((item: SaleItem) => {
-                     const purchasePrice = typeof item.purchasePrice === 'number' ? item.purchasePrice : 0;
+                     const purchasePrice = item.purchasePrice || 0;
                     const quantity = typeof item.quantity === 'number' ? item.quantity : (item.cartQuantity || 0);
                     if(item.price && purchasePrice) {
                         saleProfit += (item.price - purchasePrice) * quantity;
@@ -207,7 +207,7 @@ export default function DashboardPage() {
             if (dailyData[dateKey]) {
                 dailyData[dateKey].revenue -= ret.totalReturnValue;
                 const returnProfitLoss = ret.items.reduce((itemSum, item) => {
-                    const purchasePrice = typeof (item as any).purchasePrice === 'number' ? (item as any).purchasePrice : item.price;
+                    const purchasePrice = (item as any).purchasePrice || 0;
                     const profitLoss = (item.price - purchasePrice) * item.quantity;
                     return itemSum + profitLoss;
                 }, 0);
