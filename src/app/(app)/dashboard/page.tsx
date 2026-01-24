@@ -84,6 +84,7 @@ export default function DashboardPage() {
     const {
         netRevenue,
         netProfit,
+        profitMargin,
         totalReturnsValue,
         salesCount,
         inventoryValue,
@@ -173,6 +174,7 @@ export default function DashboardPage() {
 
         const finalNetRevenue = grossRevenue - returnsValue;
         const finalNetProfit = grossProfit - lostProfitFromReturns;
+        const finalProfitMargin = finalNetRevenue > 0 ? (finalNetProfit / finalNetRevenue) * 100 : 0;
 
         // Process data for chart
         const dailyData: { [key: string]: { revenue: number, profit: number } } = {};
@@ -242,6 +244,7 @@ export default function DashboardPage() {
         return {
             netRevenue: finalNetRevenue,
             netProfit: finalNetProfit,
+            profitMargin: finalProfitMargin,
             totalReturnsValue: returnsValue,
             salesCount: filteredSales.length,
             inventoryValue,
@@ -292,7 +295,9 @@ export default function DashboardPage() {
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold text-green-600">{formatCurrency(netProfit)}</div>
-                         <p className="text-xs text-muted-foreground">Bénéfice net estimé sur la période</p>
+                         <p className="text-xs text-muted-foreground">
+                            {netRevenue > 0 ? `Marge de ${profitMargin.toFixed(1)}% sur la période` : 'Bénéfice net estimé sur la période'}
+                         </p>
                     </CardContent>
                 </Card>
                 <Card>
@@ -493,6 +498,7 @@ export default function DashboardPage() {
                                         fontSize={12}
                                         tick={{ transform: 'translate(-10, 0)' }}
                                         style={{ textAnchor: 'start' }}
+                                        tickFormatter={(value) => value.length > 15 ? `${value.substring(0, 15)}…` : value}
                                     />
                                     <Tooltip
                                         contentStyle={{
