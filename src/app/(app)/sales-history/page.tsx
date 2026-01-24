@@ -7,7 +7,7 @@ import { collection, query, orderBy, doc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Search, ShoppingCart, HandCoins, CircleDollarSign, Download, ChevronDown, TrendingUp } from 'lucide-react';
+import { Search, CreditCard, HandCoins, CircleDollarSign, Download, ChevronDown, TrendingUp } from 'lucide-react';
 import type { Sale, Payment, CompanyProfile, Customer, SaleItem } from '@/lib/types';
 import { cn, safeToDate } from '@/lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -289,7 +289,7 @@ export default function SalesHistoryPage() {
                          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
                             <Card>
                                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                    <CardTitle className="text-sm font-medium">Chiffre d'affaires (filtré)</CardTitle>
+                                    <CardTitle className="text-sm font-medium">Chiffre d'affaires</CardTitle>
                                     <CircleDollarSign className="h-4 w-4 text-muted-foreground" />
                                 </CardHeader>
                                 <CardContent>
@@ -298,7 +298,7 @@ export default function SalesHistoryPage() {
                             </Card>
                              <Card>
                                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                    <CardTitle className="text-sm font-medium">Bénéfice net (filtré)</CardTitle>
+                                    <CardTitle className="text-sm font-medium">Bénéfice net</CardTitle>
                                     <TrendingUp className="h-4 w-4 text-muted-foreground" />
                                 </CardHeader>
                                 <CardContent>
@@ -307,7 +307,7 @@ export default function SalesHistoryPage() {
                             </Card>
                             <Card>
                                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                    <CardTitle className="text-sm font-medium">Total Encaissé (filtré)</CardTitle>
+                                    <CardTitle className="text-sm font-medium">Total Encaissé</CardTitle>
                                     <HandCoins className="h-4 w-4 text-muted-foreground" />
                                 </CardHeader>
                                 <CardContent>
@@ -316,11 +316,11 @@ export default function SalesHistoryPage() {
                             </Card>
                             <Card>
                                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                    <CardTitle className="text-sm font-medium">Nombre de Ventes (filtré)</CardTitle>
-                                    <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+                                    <CardTitle className="text-sm font-medium">Solde Impayé</CardTitle>
+                                    <CreditCard className="h-4 w-4 text-muted-foreground" />
                                 </CardHeader>
                                 <CardContent>
-                                    <div className="text-2xl font-bold">{salesCount}</div>
+                                    <div className="text-2xl font-bold text-destructive">{(totalRevenue - totalCollected).toFixed(1)} DA</div>
                                 </CardContent>
                             </Card>
                         </div>
@@ -347,11 +347,11 @@ export default function SalesHistoryPage() {
                                             <React.Fragment key={dateStr}>
                                                 <TableRow className="bg-muted hover:bg-muted">
                                                     <TableCell colSpan={5} className="py-2 px-4 font-medium text-foreground">
-                                                        <div className="flex justify-between items-center">
+                                                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1">
                                                             <span className="font-semibold text-base">{format(new Date(dateStr + 'T12:00:00'), 'eeee d MMMM yyyy', { locale: fr })}</span>
-                                                            <div className="text-right text-xs space-x-4 hidden sm:block">
+                                                            <div className="sm:text-right text-xs flex flex-wrap gap-x-4 gap-y-1 justify-start sm:justify-end">
                                                                 <span>Bénéfice: <span className="font-bold text-green-600">{group.dailyProfit.toFixed(1)} DA</span></span>
-                                                                <span>Chiffre d'affaires: <span className="font-bold">{group.dailyRevenue.toFixed(1)} DA</span></span>
+                                                                <span>C.A.: <span className="font-bold">{group.dailyRevenue.toFixed(1)} DA</span></span>
                                                                 <span>Encaissé: <span className="font-bold text-green-600">{group.dailyCollected.toFixed(1)} DA</span></span>
                                                             </div>
                                                         </div>
@@ -377,7 +377,7 @@ export default function SalesHistoryPage() {
                                                         >
                                                             <TableCell className="hidden sm:table-cell">
                                                                 <div className="flex items-center gap-2">
-                                                                {isSale ? <ShoppingCart className="h-4 w-4 text-muted-foreground"/> : <HandCoins className="h-4 w-4 text-green-500"/>}
+                                                                {isSale ? <CreditCard className="h-4 w-4 text-muted-foreground"/> : <HandCoins className="h-4 w-4 text-green-500"/>}
                                                                 <span>{isSale ? 'Vente' : 'Paiement'}</span>
                                                                 </div>
                                                             </TableCell>
