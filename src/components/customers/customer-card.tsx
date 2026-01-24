@@ -18,7 +18,7 @@ interface CustomerCardProps {
 
 export function CustomerCard({ customer, onEdit, onDelete, onAddPayment }: CustomerCardProps) {
     return (
-        <Card className="flex flex-col transition-shadow duration-300 hover:shadow-xl">
+        <Card className="flex flex-col transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
             <CardHeader>
                 <div className="flex justify-between items-start">
                     <div className="space-y-1">

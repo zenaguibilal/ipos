@@ -17,7 +17,7 @@ interface ReturnCardProps {
 export function ReturnCard({ productReturn, onViewDetails, onDelete }: ReturnCardProps) {
 
     return (
-        <Card className="transition-shadow duration-300 hover:shadow-xl">
+        <Card className="transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
             <CardHeader>
                 <div className="flex justify-between items-start">
                     <div>
