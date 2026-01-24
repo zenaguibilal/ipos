@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useState, useMemo, useRef } from 'react';
@@ -292,9 +293,10 @@ export default function SalesHistoryPage() {
                 const fileName = `facture-${sale.invoiceNumber}.png`;
                 const file = new File([blob], fileName, { type: 'image/png' });
     
+                const customerName = `${customer.firstName || ''} ${customer.lastName || ''}`.trim();
                 const shareText = isReminder
-                    ? `Bonjour ${customer.firstName || ''}. Un petit rappel concernant votre facture N°${sale.invoiceNumber}. Le solde restant est de ${sale.remainingBalance.toFixed(1)} DA. Merci de votre attention.`
-                    : `Bonjour ${customer.firstName || ''}. Ci-joint votre facture N°${sale.invoiceNumber}. Total: ${sale.total.toFixed(1)} DA, Payé: ${sale.amountPaid.toFixed(1)} DA, Solde: ${sale.remainingBalance.toFixed(1)} DA.`;
+                    ? `Bonjour ${customerName}. Un petit rappel concernant votre facture N°${sale.invoiceNumber}. Le solde restant est de ${sale.remainingBalance.toFixed(1)} DA. Merci de votre attention.`
+                    : `Bonjour ${customerName}. Ci-joint votre facture N°${sale.invoiceNumber}. Total: ${sale.total.toFixed(1)} DA, Payé: ${sale.amountPaid.toFixed(1)} DA, Solde: ${sale.remainingBalance.toFixed(1)} DA.`;
     
                 if (navigator.share && navigator.canShare({ files: [file] })) {
                     try {
