@@ -166,20 +166,20 @@ export default function SellPage() {
         if (!products) return [];
 
         let availableProducts = products;
-        
-        // 1. Filter by category first
-        const categoryFiltered = selectedCategory === 'all'
-            ? availableProducts
-            : availableProducts.filter(p => p.category === selectedCategory);
 
-        // 2. Then, filter by search query if it exists - this searches all products regardless of category
         if (searchQuery) {
             return products.filter(p =>
                 p.name.toLowerCase().includes(searchQuery.toLowerCase())
             );
         }
         
-        // 3. If no search, show popular items from the filtered category
+        // 1. Filter by category first
+        const categoryFiltered = selectedCategory === 'all'
+            ? availableProducts
+            : availableProducts.filter(p => p.category === selectedCategory);
+
+        
+        // 2. If no search, show popular items from the filtered category
         if (sales && sales.length > 0) {
             const productSales: { [productId: string]: number } = {};
             sales.forEach(sale => {
@@ -195,7 +195,7 @@ export default function SellPage() {
                 .sort((a, b) => (productSales[b.id] || 0) - (productSales[a.id] || 0));
         }
 
-        // 4. Fallback for new stores with no sales: show most recent from the category
+        // 3. Fallback for new stores with no sales: show most recent from the category
         return categoryFiltered.slice(0, 15);
 
     }, [products, sales, selectedCategory, searchQuery]);
@@ -713,49 +713,51 @@ export default function SellPage() {
                             <TabsContent key={cart.id} value={cart.id} className="flex-grow flex flex-col gap-4 m-0 mt-4 data-[state=inactive]:hidden">
                                  <Card>
                                     <CardHeader className="p-4">
-                                        <div className="flex items-center gap-2">
-                                            <User className="h-5 w-5 text-primary"/>
-                                            <CardTitle className="text-lg">Client</CardTitle>
-                                        </div>
+                                        <CardTitle className="text-lg">Client</CardTitle>
                                     </CardHeader>
-                                    <CardContent className="p-4 pt-0 space-y-2">
-                                        <div className="flex gap-2">
-                                            <div className="flex-grow">
-                                                <Combobox
-                                                    options={customerOptions}
-                                                    onSelect={(customerId) => handleCustomerSelect(cart, customerId)}
-                                                    value={cart.customerId || 'walk-in'}
-                                                    placeholder={cart.customerName}
-                                                    searchPlaceholder="Rechercher un client..."
-                                                    notFoundMessage="Aucun client trouvé."
-                                                />
-                                            </div>
-                                            <Button variant="outline" onClick={() => setIsAddCustomerOpen(true)}>
-                                                <PlusCircle className="mr-2 h-4 w-4" />Nouveau
-                                            </Button>
-                                        </div>
-                                        {cart.customerId && (() => {
-                                            const customer = customers?.find(c => c.id === cart.customerId);
-                                            const hasDebt = (customerDebts.get(cart.customerId) ?? 0) > 0;
-                                            const hasPhone = !!customer?.phone;
-                                            
-                                            if (!hasDebt && !hasPhone) return null;
-
-                                            return (
-                                                <div className="text-center text-sm space-y-1 pt-2">
-                                                    {hasDebt && (
-                                                        <div className="font-semibold text-destructive p-2 bg-destructive/10 rounded-md">
-                                                            Dette actuelle: {customerDebts.get(cart.customerId)?.toFixed(1)} DA
-                                                        </div>
-                                                    )}
-                                                    {hasPhone && (
-                                                        <p className="text-xs text-muted-foreground">
-                                                            Tél: {customer?.phone}
-                                                        </p>
-                                                    )}
+                                    <CardContent className="p-4 pt-0">
+                                        {cart.customerId ? (
+                                            <div className="space-y-2">
+                                                <div className="flex items-start justify-between">
+                                                    <div className="flex items-center gap-3">
+                                                         <div className="bg-muted rounded-full p-2">
+                                                            <User className="h-5 w-5 text-primary"/>
+                                                         </div>
+                                                         <div>
+                                                            <p className="font-bold text-lg">{cart.customerName}</p>
+                                                            <p className="text-sm text-muted-foreground">{customers?.find(c => c.id === cart.customerId)?.phone || 'Aucun numéro'}</p>
+                                                         </div>
+                                                    </div>
+                                                    <Button variant="ghost" size="sm" onClick={() => handleCustomerSelect(cart, 'walk-in')}>
+                                                        Changer
+                                                    </Button>
                                                 </div>
-                                            );
-                                        })()}
+                                                {(customerDebts.get(cart.customerId) ?? 0) > 0 && (
+                                                    <div className="font-semibold text-destructive p-2 bg-destructive/10 rounded-md text-sm text-center">
+                                                        Dette actuelle: {customerDebts.get(cart.customerId)?.toFixed(1)} DA
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-2">
+                                                 <p className="text-sm text-muted-foreground">Aucun client sélectionné (vente au comptoir).</p>
+                                                <div className="flex gap-2">
+                                                    <div className="flex-grow">
+                                                        <Combobox
+                                                            options={customerOptions}
+                                                            onSelect={(customerId) => handleCustomerSelect(cart, customerId)}
+                                                            value={'walk-in'}
+                                                            placeholder="Sélectionner un client..."
+                                                            searchPlaceholder="Rechercher un client..."
+                                                            notFoundMessage="Aucun client trouvé."
+                                                        />
+                                                    </div>
+                                                    <Button variant="outline" onClick={() => setIsAddCustomerOpen(true)}>
+                                                        <PlusCircle className="mr-2 h-4 w-4" />Nouveau
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        )}
                                     </CardContent>
                                 </Card>
 
