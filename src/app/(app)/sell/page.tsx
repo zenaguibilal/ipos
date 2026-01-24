@@ -95,9 +95,9 @@ export default function SellPage() {
 
     // Data Fetching
     const productsQuery = useMemoFirebase(() => user && firestore ? query(collection(firestore, 'users', user.uid, 'products'), orderBy('createdAt', 'desc')) : null, [user, firestore]);
-    const customersQuery = useMemoFirebase(() => user && firestore ? collection(firestore, 'users', user.uid, 'customers')) : null, [user, firestore]);
-    const salesQuery = useMemoFirebase(() => user && firestore ? query(collection(firestore, 'users', user.uid, 'sales')) : null, [user, firestore]);
-    const paymentsQuery = useMemoFirebase(() => user && firestore ? query(collection(firestore, 'users', user.uid, 'payments')) : null, [user, firestore]);
+    const customersQuery = useMemoFirebase(() => user && firestore ? collection(firestore, 'users', user.uid, 'customers') : null, [user, firestore]);
+    const salesQuery = useMemoFirebase(() => user && firestore ? collection(firestore, 'users', user.uid, 'sales') : null, [user, firestore]);
+    const paymentsQuery = useMemoFirebase(() => user && firestore ? collection(firestore, 'users', user.uid, 'payments') : null, [user, firestore]);
     const companyDocRef = useMemoFirebase(() => user && firestore ? doc(firestore, 'users', user.uid, 'companyProfile', 'main') : null, [user, firestore]);
     
     const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
@@ -192,8 +192,7 @@ export default function SellPage() {
 
             // Sort a copy of the category-filtered products by popularity
             return [...categoryFiltered]
-                .sort((a, b) => (productSales[b.id] || 0) - (productSales[a.id] || 0))
-                .slice(0, 15);
+                .sort((a, b) => (productSales[b.id] || 0) - (productSales[a.id] || 0));
         }
 
         // 4. Fallback for new stores with no sales: show most recent from the category
@@ -851,5 +850,3 @@ export default function SellPage() {
         </>
     );
 }
-
-    
