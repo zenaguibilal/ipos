@@ -16,7 +16,7 @@ import { cn } from '@/lib/utils';
 import type { Product, Customer, SaleItem, CompanyProfile, Sale } from '@/lib/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Combobox, ComboboxOption } from '@/components/ui/combobox';
 import { v4 as uuidv4 } from 'uuid';
@@ -47,7 +47,7 @@ const ProductCard = ({ product, onAddToCart }: { product: Product; onAddToCart: 
     return (
         <Card 
             className={cn(
-                "overflow-hidden cursor-pointer transition-all hover:shadow-lg hover:-translate-y-1",
+                "overflow-hidden cursor-pointer transition-all hover:shadow-lg hover:-translate-y-1 flex flex-col",
                 isOutOfStock && "opacity-50 cursor-not-allowed"
             )}
             onClick={() => !isOutOfStock && onAddToCart(product)}
@@ -61,12 +61,20 @@ const ProductCard = ({ product, onAddToCart }: { product: Product; onAddToCart: 
                     className="object-cover"
                     data-ai-hint={product.name.split(' ').slice(0, 2).join(' ')}
                 />
-                {isLowStock && <Badge variant="destructive" className="absolute top-2 right-2">Stock Faible</Badge>}
-                {isOutOfStock && <Badge variant="destructive" className="absolute top-2 right-2">Épuisé</Badge>}
+                {isOutOfStock ? (
+                    <Badge variant="destructive" className="absolute top-2 right-2">Épuisé</Badge>
+                ) : isLowStock && (
+                     <Badge variant="secondary" className="absolute top-2 right-2">Stock Faible</Badge>
+                )}
             </div>
-            <div className="p-2 text-sm">
+            <div className="p-2 text-sm flex-grow flex flex-col">
                 <h3 className="font-semibold truncate h-5">{product.name}</h3>
-                <p className="text-primary font-bold">{product.price.toFixed(1)} DA</p>
+                <div className="mt-auto pt-1 flex justify-between items-center">
+                    <p className="text-primary font-bold">{product.price.toFixed(1)} DA</p>
+                    <p className="text-xs text-muted-foreground font-semibold">
+                        Stock: {product.quantity}
+                    </p>
+                </div>
             </div>
         </Card>
     );
@@ -679,16 +687,20 @@ export default function SellPage() {
                                     </Card>
 
                                     <div className="mt-auto">
-                                        <Button 
-                                            className="w-full text-lg py-7" 
-                                            disabled={cart.items.length === 0}
-                                            onClick={() => {
-                                                setAmountPaid(total.toFixed(1));
-                                                setIsPaymentDialogOpen(true);
-                                            }}
-                                        >
-                                            <CheckCircle className="mr-2 h-5 w-5" /> Finaliser la vente
-                                        </Button>
+                                        <Dialog>
+                                            <DialogTrigger asChild>
+                                                <Button 
+                                                    className="w-full text-lg py-7" 
+                                                    disabled={cart.items.length === 0}
+                                                    onClick={() => {
+                                                        setAmountPaid(total.toFixed(1));
+                                                        setIsPaymentDialogOpen(true);
+                                                    }}
+                                                >
+                                                    <CheckCircle className="mr-2 h-5 w-5" /> Finaliser la vente
+                                                </Button>
+                                            </DialogTrigger>
+                                        </Dialog>
                                     </div>
                                 </div>
 
