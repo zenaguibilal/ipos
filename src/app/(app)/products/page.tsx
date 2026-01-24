@@ -7,16 +7,17 @@ import { collection, query, orderBy } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Search, PlusCircle, Package, Layers, CircleDollarSign, AlertTriangle } from 'lucide-react';
+import { Search, PlusCircle, Package, Layers, CircleDollarSign, AlertTriangle, MoreHorizontal, Download, ChevronDown } from 'lucide-react';
 import type { Product } from '@/lib/types';
 import { ProductDialog } from '@/components/products/product-dialog';
 import { DeleteProductDialog } from '@/components/products/delete-product-dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
+import Papa from 'papaparse';
+import { toast } from 'sonner';
 
 export default function ProductsPage() {
     const { user, isUserLoading } = useUser();
@@ -66,6 +67,33 @@ export default function ProductsPage() {
             totalCategories: [...new Set(products.map(p => p.category).filter(Boolean))].length,
         }
     }, [products]);
+    
+     const handleExport = () => {
+        if (filteredProducts.length === 0) {
+            toast.info("Aucun produit à exporter.");
+            return;
+        }
+
+        const dataToExport = filteredProducts.map(p => ({
+            'Nom': p.name,
+            'Catégorie': p.category || '',
+            'Prix Achat': p.purchasePrice,
+            'Prix Vente': p.price,
+            'Quantité': p.quantity,
+            'Stock Min': p.minStockLevel,
+            'Codes-barres': p.barcodes?.join(', ') || '',
+        }));
+
+        const csv = Papa.unparse(dataToExport);
+        const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'inventaire_produits.csv';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast.success("Inventaire exporté avec succès.");
+    };
 
     const isLoading = isUserLoading || isLoadingProducts;
 
@@ -93,10 +121,24 @@ export default function ProductsPage() {
                         <h1 className="text-2xl font-bold">Gestion des Produits</h1>
                         <p className="text-muted-foreground">Ajoutez, modifiez et suivez votre inventaire.</p>
                     </div>
-                    <Button onClick={handleAddClick}>
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        Ajouter un produit
-                    </Button>
+                     <div className="flex items-center gap-2">
+                         <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="outline">
+                                    Actions <ChevronDown className="ml-2 h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={handleExport}>
+                                    <Download className="mr-2 h-4 w-4" /> Exporter en CSV
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                        <Button onClick={handleAddClick}>
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            Ajouter un produit
+                        </Button>
+                    </div>
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">

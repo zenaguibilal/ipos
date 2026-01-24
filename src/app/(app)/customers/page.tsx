@@ -7,18 +7,19 @@ import { collection, query, orderBy } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Search, PlusCircle, Users, HandCoins, UserCheck, AlertCircle } from 'lucide-react';
+import { Search, PlusCircle, Users, HandCoins, UserCheck, AlertCircle, MoreHorizontal, Download, ChevronDown } from 'lucide-react';
 import type { Customer, Sale, Payment, CustomerWithSalesData } from '@/lib/types';
 import { CustomerDialog } from '@/components/customers/customer-dialog';
 import { DeleteCustomerDialog } from '@/components/customers/delete-customer-dialog';
 import { AddPaymentForm } from '@/components/customers/add-payment-form';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal } from 'lucide-react';
 import { safeToDate } from '@/lib/utils';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import Papa from 'papaparse';
+import { toast } from 'sonner';
 
 export default function CustomersPage() {
     const { user, isUserLoading } = useUser();
@@ -33,7 +34,7 @@ export default function CustomersPage() {
 
     // Data fetching
     const customersQuery = useMemoFirebase(() => (user && firestore) ? query(collection(firestore, 'users', user.uid, 'customers'), orderBy('createdAt', 'desc')) : null, [user, firestore]);
-    const salesQuery = useMemoFirebase(() => (user && firestore) ? query(collection(firestore, 'users', user.uid, 'sales')) : null, [user, firestore]);
+    const salesQuery = useMemoFirebase(() => (user && firestore) ? collection(firestore, 'users', user.uid, 'sales') : null, [user, firestore]);
     const paymentsQuery = useMemoFirebase(() => (user && firestore) ? query(collection(firestore, 'users', user.uid, 'payments')) : null, [user, firestore]);
 
     const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersQuery);
@@ -116,6 +117,32 @@ export default function CustomersPage() {
         setSelectedCustomer(customer);
         setIsDialogOpen(true);
     };
+    
+    const handleExport = () => {
+        if (filteredCustomers.length === 0) {
+            toast.info("Aucun client à exporter.");
+            return;
+        }
+
+        const dataToExport = filteredCustomers.map(c => ({
+            'Prénom': c.firstName,
+            'Nom': c.lastName,
+            'Téléphone': c.phone || '',
+            'Dette Actuelle (DA)': c.outstandingBalance,
+            'Total Dépensé (DA)': c.totalSpent,
+            'Jour de Règlement': c.settlementDay || '',
+        }));
+
+        const csv = Papa.unparse(dataToExport);
+        const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'liste_clients.csv';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast.success("Liste des clients exportée avec succès.");
+    };
 
     const isLoading = isUserLoading || isLoadingCustomers || isLoadingSales || isLoadingPayments;
 
@@ -151,10 +178,24 @@ export default function CustomersPage() {
                         <h1 className="text-2xl font-bold">Gestion des Clients</h1>
                         <p className="text-muted-foreground">Suivez vos clients et leurs dettes.</p>
                     </div>
-                    <Button onClick={handleAddClick}>
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        Ajouter un client
-                    </Button>
+                     <div className="flex items-center gap-2">
+                         <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="outline">
+                                    Actions <ChevronDown className="ml-2 h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={handleExport}>
+                                    <Download className="mr-2 h-4 w-4" /> Exporter en CSV
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                        <Button onClick={handleAddClick}>
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            Ajouter un client
+                        </Button>
+                    </div>
                 </div>
                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
                     <Card>
