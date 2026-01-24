@@ -124,7 +124,8 @@ export default function NewReturnPage() {
                     productId: item.id.startsWith('custom-') ? null : item.id,
                     productName: item.name,
                     quantity: item.returnQuantity,
-                    price: item.price
+                    price: item.price,
+                    purchasePrice: item.purchasePrice
                 })),
                 totalReturnValue: totalReturnValue,
                 amountRefunded: refundAmount,

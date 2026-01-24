@@ -496,12 +496,13 @@
           "items": {
             "type": "object",
             "properties": {
-              "productId": { "type": "string" },
+              "productId": { "type": ["string", "null"] },
               "productName": { "type": "string" },
               "quantity": { "type": "number" },
-              "price": { "type": "number", "description": "The price at which the item was sold." }
+              "price": { "type": "number", "description": "The price at which the item was sold." },
+              "purchasePrice": { "type": "number", "description": "The purchase price of the item at the time of the original sale." }
             },
-            "required": ["productId", "productName", "quantity", "price"]
+            "required": ["productId", "productName", "quantity", "price", "purchasePrice"]
           }
         },
         "totalReturnValue": {
@@ -597,3 +598,4 @@
     }
   }
 }
+

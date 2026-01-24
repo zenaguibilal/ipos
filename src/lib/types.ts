@@ -164,10 +164,11 @@ export interface InventoryValueData {
 }
 
 export interface ReturnItem {
-    productId: string;
+    productId: string | null;
     productName: string;
     quantity: number;
     price: number; // The price at which it was sold
+    purchasePrice: number;
 }
 
 export interface ProductReturn {
@@ -182,3 +183,5 @@ export interface ProductReturn {
     createdAt: Timestamp | Date;
     notes?: string;
 }
+
+    

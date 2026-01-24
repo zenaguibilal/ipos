@@ -11,7 +11,7 @@ import { DateRangePicker } from '@/components/dashboard/date-range-picker';
 import { DateRange } from 'react-day-picker';
 import { subDays, startOfDay, endOfDay, format, eachDayOfInterval, parse } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import type { Sale, ProductReturn, SaleItem } from '@/lib/types';
+import type { Sale, ProductReturn, SaleItem, ReturnItem } from '@/lib/types';
 import { safeToDate } from '@/lib/utils';
 import { CircleDollarSign, TrendingUp, Undo2, ShoppingCart, Activity, Users, Package } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -71,8 +71,8 @@ export default function DashboardPage() {
     }, [user, isUserLoading, router]);
 
     const {
-        totalRevenue,
-        totalProfit,
+        netRevenue,
+        netProfit,
         totalReturnsValue,
         salesCount,
         chartData,
@@ -95,17 +95,14 @@ export default function DashboardPage() {
             return (!fromDate || returnDate >= fromDate) && (!toDate || returnDate <= toDate);
         }) || [];
 
-        let revenue = 0;
-        let profit = 0;
-        let salesCt = 0;
+        let grossRevenue = 0;
+        let grossProfit = 0;
         
         const topProductsMap: { [name: string]: { name: string; totalRevenue: number; unitsSold: number; totalProfit: number; } } = {};
         const topCustomersMap: { [name: string]: { name: string; totalSpent: number; } } = {};
 
-
         for (const sale of filteredSales) {
-            revenue += sale.total;
-            salesCt++;
+            grossRevenue += sale.total;
             
             if (sale.customerName) {
                  if (!topCustomersMap[sale.customerName]) {
@@ -131,10 +128,38 @@ export default function DashboardPage() {
                 
                 saleProfit += itemProfit;
             });
-            profit += saleProfit;
+            grossProfit += saleProfit;
         }
 
         const returnsValue = filteredReturns.reduce((sum, r) => sum + r.totalReturnValue, 0);
+        
+        const lostProfitFromReturns = filteredReturns.reduce((sum, r) => {
+            const returnProfitLoss = r.items.reduce((itemSum, item: ReturnItem) => {
+                const purchasePrice = typeof item.purchasePrice === 'number' ? item.purchasePrice : item.price;
+                const profitLoss = (item.price - purchasePrice) * item.quantity;
+                return itemSum + profitLoss;
+            }, 0);
+            return sum + returnProfitLoss;
+        }, 0);
+
+        // Adjust top products and customers based on returns
+        for (const ret of filteredReturns) {
+            for (const item of ret.items) {
+                if (topProductsMap[item.productName]) {
+                    const purchasePrice = typeof item.purchasePrice === 'number' ? item.purchasePrice : item.price;
+                    const profitLoss = (item.price - purchasePrice) * item.quantity;
+                    topProductsMap[item.productName].unitsSold -= item.quantity;
+                    topProductsMap[item.productName].totalRevenue -= item.price * item.quantity;
+                    topProductsMap[item.productName].totalProfit -= profitLoss;
+                }
+            }
+            if (ret.customerName && topCustomersMap[ret.customerName]) {
+                topCustomersMap[ret.customerName].totalSpent -= ret.totalReturnValue;
+            }
+        }
+
+        const finalNetRevenue = grossRevenue - returnsValue;
+        const finalNetProfit = grossProfit - lostProfitFromReturns;
 
         // Process data for chart
         const dailyData: { [key: string]: { revenue: number, profit: number } } = {};
@@ -152,7 +177,6 @@ export default function DashboardPage() {
             const dateKey = format(safeToDate(sale.createdAt), 'yyyy-MM-dd');
             if (dailyData[dateKey]) {
                 dailyData[dateKey].revenue += sale.total;
-
                 let saleProfit = 0;
                 sale.items.forEach((item: SaleItem) => {
                      const purchasePrice = typeof item.purchasePrice === 'number' ? item.purchasePrice : 0;
@@ -164,11 +188,25 @@ export default function DashboardPage() {
                 dailyData[dateKey].profit += saleProfit;
             }
         }
+
+        for (const ret of filteredReturns) {
+            if (!ret.createdAt) continue;
+            const dateKey = format(safeToDate(ret.createdAt), 'yyyy-MM-dd');
+            if (dailyData[dateKey]) {
+                dailyData[dateKey].revenue -= ret.totalReturnValue;
+                const returnProfitLoss = ret.items.reduce((itemSum, item) => {
+                    const purchasePrice = typeof (item as any).purchasePrice === 'number' ? (item as any).purchasePrice : item.price;
+                    const profitLoss = (item.price - purchasePrice) * item.quantity;
+                    return itemSum + profitLoss;
+                }, 0);
+                dailyData[dateKey].profit -= returnProfitLoss;
+            }
+        }
         
         const finalChartData = Object.keys(dailyData).sort((a, b) => new Date(a).getTime() - new Date(b).getTime()).map(dateKey => ({
             date: format(parse(dateKey, 'yyyy-MM-dd', new Date()), 'd MMM', { locale: fr }),
-            'Chiffre d\'affaires': dailyData[dateKey].revenue,
-            'Bénéfice': dailyData[dateKey].profit,
+            'Chiffre d\'affaires Net': dailyData[dateKey].revenue,
+            'Bénéfice Net': dailyData[dateKey].profit,
         }));
         
         // Recent transactions
@@ -186,10 +224,10 @@ export default function DashboardPage() {
             .slice(0, 5);
 
         return {
-            totalRevenue: revenue,
-            totalProfit: profit,
+            netRevenue: finalNetRevenue,
+            netProfit: finalNetProfit,
             totalReturnsValue: returnsValue,
-            salesCount: salesCt,
+            salesCount: filteredSales.length,
             chartData: finalChartData,
             recentTransactions: combined,
             topProducts: topProductsList,
@@ -221,22 +259,22 @@ export default function DashboardPage() {
              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Chiffre d'affaires</CardTitle>
+                        <CardTitle className="text-sm font-medium">Chiffre d'affaires Net</CardTitle>
                         <CircleDollarSign className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{formatCurrency(totalRevenue)}</div>
-                        <p className="text-xs text-muted-foreground">sur la période sélectionnée</p>
+                        <div className="text-2xl font-bold">{formatCurrency(netRevenue)}</div>
+                        <p className="text-xs text-muted-foreground">Après déduction des retours</p>
                     </CardContent>
                 </Card>
                  <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Bénéfice Brut</CardTitle>
+                        <CardTitle className="text-sm font-medium">Bénéfice Net</CardTitle>
                         <TrendingUp className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-green-600">{formatCurrency(totalProfit)}</div>
-                         <p className="text-xs text-muted-foreground">Bénéfice brut estimé sur la période</p>
+                        <div className="text-2xl font-bold text-green-600">{formatCurrency(netProfit)}</div>
+                         <p className="text-xs text-muted-foreground">Bénéfice net estimé sur la période</p>
                     </CardContent>
                 </Card>
                 <Card>
@@ -265,7 +303,7 @@ export default function DashboardPage() {
                 <Card className="lg:col-span-3">
                     <CardHeader>
                         <CardTitle>Analyse des Revenus</CardTitle>
-                        <CardDescription>Chiffre d'affaires et bénéfice sur la période sélectionnée.</CardDescription>
+                        <CardDescription>Chiffre d'affaires net et bénéfice net sur la période.</CardDescription>
                     </CardHeader>
                     <CardContent className="pl-2">
                          <ResponsiveContainer width="100%" height={350}>
@@ -294,8 +332,8 @@ export default function DashboardPage() {
                                     cursor={{ fill: 'hsl(var(--muted))' }}
                                 />
                                 <Legend wrapperStyle={{ fontSize: '0.8rem' }}/>
-                                <Bar dataKey="Chiffre d'affaires" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                                <Bar dataKey="Bénéfice" fill="hsl(var(--chart-secondary))" radius={[4, 4, 0, 0]} />
+                                <Bar dataKey="Chiffre d'affaires Net" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                                <Bar dataKey="Bénéfice Net" fill="hsl(var(--chart-secondary))" radius={[4, 4, 0, 0]} />
                             </BarChart>
                         </ResponsiveContainer>
                     </CardContent>
@@ -347,7 +385,7 @@ export default function DashboardPage() {
                  <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2"><Package className="h-5 w-5 text-muted-foreground" /> Produits les plus rentables</CardTitle>
-                        <CardDescription>Top 5 des produits par bénéfice sur la période.</CardDescription>
+                        <CardDescription>Top 5 des produits par bénéfice net sur la période.</CardDescription>
                     </CardHeader>
                      <CardContent className="h-[300px]">
                         {topProducts.length === 0 ? (
@@ -374,7 +412,7 @@ export default function DashboardPage() {
                                                 <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} stroke={'hsl(var(--background))'} />
                                             ))}
                                         </Pie>
-                                        <Tooltip formatter={(value: number) => [formatCurrency(value), 'Bénéfice']} />
+                                        <Tooltip formatter={(value: number) => [formatCurrency(value), 'Bénéfice Net']} />
                                     </PieChart>
                                 </ResponsiveContainer>
                                 <div className="flex flex-col justify-center space-y-3">
@@ -395,7 +433,7 @@ export default function DashboardPage() {
                 <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2"><Users className="h-5 w-5 text-muted-foreground" /> Meilleurs clients</CardTitle>
-                        <CardDescription>Top 5 des clients par total d'achats sur la période.</CardDescription>
+                        <CardDescription>Top 5 des clients par total d'achats net sur la période.</CardDescription>
                     </CardHeader>
                     <CardContent className="h-[300px]">
                         {topCustomers.length === 0 ? (
@@ -408,7 +446,7 @@ export default function DashboardPage() {
                                     <TableHeader>
                                         <TableRow>
                                             <TableHead>Client</TableHead>
-                                            <TableHead className="text-right">Total Dépensé</TableHead>
+                                            <TableHead className="text-right">Total Dépensé (Net)</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
