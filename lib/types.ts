@@ -42,6 +42,7 @@ export interface Sale {
     amountPaid: number;
     remainingBalance: number;
     paymentStatus: 'paid' | 'partial' | 'unpaid';
+    paymentMethod?: 'cash' | 'card' | 'other';
     customerId?: string;
     customerName?: string;
     createdAt: Timestamp | Date;
@@ -164,10 +165,11 @@ export interface InventoryValueData {
 }
 
 export interface ReturnItem {
-    productId: string;
+    productId: string | null;
     productName: string;
     quantity: number;
     price: number; // The price at which it was sold
+    purchasePrice: number;
 }
 
 export interface ProductReturn {
@@ -183,4 +185,5 @@ export interface ProductReturn {
     notes?: string;
 }
 
+    
     

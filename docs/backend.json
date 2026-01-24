@@ -206,6 +206,11 @@
           "description": "The payment status of the sale.",
           "enum": ["paid", "partial", "unpaid"]
         },
+        "paymentMethod": {
+            "type": "string",
+            "description": "The payment method used for the sale.",
+            "enum": ["cash", "card", "other"]
+        },
         "customerId": {
           "type": "string",
           "description": "Optional ID of the customer associated with the sale."
@@ -599,3 +604,4 @@
   }
 }
 
+    

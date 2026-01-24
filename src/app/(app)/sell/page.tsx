@@ -25,6 +25,7 @@ import { SaleCompleteDialog } from '@/components/sales/sale-complete-dialog';
 import { AddCustomProductDialog } from '@/components/sales/add-custom-product-dialog';
 import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 
 // Define Cart types locally
@@ -111,6 +112,7 @@ export default function SellPage() {
     const [completedSaleCustomer, setCompletedSaleCustomer] = useState<Customer | null>(null);
     const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
     const [amountPaid, setAmountPaid] = useState('');
+    const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'other'>('cash');
     const [isSavingSale, setIsSavingSale] = useState(false);
     const [isClearCartDialogOpen, setIsClearCartDialogOpen] = useState(false);
     const barcodeInputRef = useRef<HTMLInputElement>(null);
@@ -321,9 +323,7 @@ export default function SellPage() {
 
     const handleCustomerSelect = (customerId: string) => {
         if (!activeCart) return;
-        if (customerId === 'new') {
-            setIsAddCustomerOpen(true);
-        } else if (customerId === 'walk-in') {
+        if (customerId === 'walk-in') {
             updateCart({ ...activeCart, customerId: null, customerName: 'Vente au comptoir' });
         } else {
             const customer = customers?.find(c => c.id === customerId);
@@ -392,6 +392,7 @@ export default function SellPage() {
                     amountPaid: amountPaidNum,
                     remainingBalance: remainingBalance > 0 ? remainingBalance : 0,
                     paymentStatus: finalPaymentStatus,
+                    paymentMethod: paymentMethod,
                     customerId: activeCart.customerId,
                     customerName: activeCart.customerName,
                     createdAt: serverTimestamp(),
@@ -508,18 +509,34 @@ export default function SellPage() {
                             <p className="text-sm text-muted-foreground">Total à payer</p>
                             <p className="text-4xl font-bold">{total.toFixed(1)} DA</p>
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="amount-paid">Montant Payé (DA)</Label>
-                            <Input
-                                id="amount-paid"
-                                type="number"
-                                autoFocus
-                                value={amountPaid}
-                                onChange={(e) => setAmountPaid(e.target.value)}
-                                onFocus={(e) => e.target.select()}
-                                onKeyDown={(e) => e.key === 'Enter' && handleFinalizeSale()}
-                            />
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="amount-paid">Montant Payé (DA)</Label>
+                                <Input
+                                    id="amount-paid"
+                                    type="number"
+                                    autoFocus
+                                    value={amountPaid}
+                                    onChange={(e) => setAmountPaid(e.target.value)}
+                                    onFocus={(e) => e.target.select()}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleFinalizeSale()}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="payment-method">Méthode</Label>
+                                <Select value={paymentMethod} onValueChange={(value) => setPaymentMethod(value as any)}>
+                                    <SelectTrigger id="payment-method">
+                                        <SelectValue placeholder="Méthode..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="cash">Espèces</SelectItem>
+                                        <SelectItem value="card">Carte</SelectItem>
+                                        <SelectItem value="other">Autre</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
                         </div>
+
                         <div className="grid grid-cols-4 gap-2 text-sm">
                            <Button type="button" variant="outline" onClick={() => setAmountPaid(total.toFixed(1))}>Exact</Button>
                            <Button type="button" variant="outline" onClick={() => setAmountPaid('500')}>500</Button>
@@ -691,7 +708,7 @@ export default function SellPage() {
                                                                     <TableCell>
                                                                         <div className="flex items-center gap-1">
                                                                             <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => updateItemQuantity(item.id, item.cartQuantity - 1)}><Minus className="h-4 w-4" /></Button>
-                                                                            <Input type="number" value={item.cartQuantity} onChange={(e) => updateItemQuantity(item.id, parseInt(e.target.value))} className="h-7 w-12 text-center" />
+                                                                            <Input type="number" value={item.cartQuantity} onChange={(e) => updateItemQuantity(item.id, parseInt(e.target.value) || 0)} className="h-7 w-12 text-center" />
                                                                             <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => updateItemQuantity(item.id, item.cartQuantity + 1)}><Plus className="h-4 w-4" /></Button>
                                                                         </div>
                                                                     </TableCell>
@@ -736,6 +753,7 @@ export default function SellPage() {
                                             disabled={cart.items.length === 0}
                                             onClick={() => {
                                                 setAmountPaid(total.toFixed(1));
+                                                setPaymentMethod('cash');
                                                 setIsPaymentDialogOpen(true);
                                             }}
                                         >
@@ -752,3 +770,5 @@ export default function SellPage() {
         </>
     );
 }
+
+    
