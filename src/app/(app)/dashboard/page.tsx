@@ -73,7 +73,7 @@ export default function DashboardPage() {
         let profit = 0;
         let salesCt = 0;
         
-        const topProductsMap: { [name: string]: { name: string; totalRevenue: number; unitsSold: number; } } = {};
+        const topProductsMap: { [name: string]: { name: string; totalRevenue: number; unitsSold: number; totalProfit: number; } } = {};
         const topCustomersMap: { [name: string]: { name: string; totalSpent: number; } } = {};
 
 
@@ -92,14 +92,18 @@ export default function DashboardPage() {
             sale.items.forEach((item: SaleItem) => {
                 const purchasePrice = typeof item.purchasePrice === 'number' ? item.purchasePrice : 0;
                 const quantity = typeof item.quantity === 'number' ? item.quantity : (item.cartQuantity || 0);
-                if(item.price && purchasePrice) {
-                    saleProfit += (item.price - purchasePrice) * quantity;
+
+                if (!topProductsMap[item.name]) {
+                    topProductsMap[item.name] = { name: item.name, totalRevenue: 0, unitsSold: 0, totalProfit: 0 };
                 }
-                 if (!topProductsMap[item.name]) {
-                    topProductsMap[item.name] = { name: item.name, totalRevenue: 0, unitsSold: 0 };
-                }
+
+                const itemProfit = (item.price && purchasePrice) ? (item.price - purchasePrice) * quantity : 0;
+                
                 topProductsMap[item.name].unitsSold += quantity;
                 topProductsMap[item.name].totalRevenue += item.price * quantity;
+                topProductsMap[item.name].totalProfit += itemProfit;
+                
+                saleProfit += itemProfit;
             });
             profit += saleProfit;
         }
@@ -148,7 +152,7 @@ export default function DashboardPage() {
         ].sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 5);
 
         const topProductsList = Object.values(topProductsMap)
-            .sort((a, b) => b.totalRevenue - a.totalRevenue)
+            .sort((a, b) => b.totalProfit - a.totalProfit)
             .slice(0, 5);
 
         const topCustomersList = Object.values(topCustomersMap)
@@ -301,7 +305,7 @@ export default function DashboardPage() {
                 <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2"><Package className="h-5 w-5 text-muted-foreground" /> Produits les plus vendus</CardTitle>
-                        <CardDescription>Top 5 des produits par chiffre d'affaires sur la période.</CardDescription>
+                        <CardDescription>Top 5 des produits par bénéfice sur la période.</CardDescription>
                     </CardHeader>
                     <CardContent>
                         {topProducts.length === 0 ? (
@@ -314,7 +318,8 @@ export default function DashboardPage() {
                                     <TableRow>
                                         <TableHead>Produit</TableHead>
                                         <TableHead className="text-center">Unités</TableHead>
-                                        <TableHead className="text-right">Chiffre d'affaires</TableHead>
+                                        <TableHead className="text-right">Bénéfice</TableHead>
+                                        <TableHead className="text-right">C.A.</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -322,6 +327,7 @@ export default function DashboardPage() {
                                         <TableRow key={product.name}>
                                             <TableCell className="font-medium">{product.name}</TableCell>
                                             <TableCell className="text-center">{product.unitsSold}</TableCell>
+                                            <TableCell className="text-right font-semibold text-green-600">{formatCurrency(product.totalProfit)}</TableCell>
                                             <TableCell className="text-right font-semibold">{formatCurrency(product.totalRevenue)}</TableCell>
                                         </TableRow>
                                     ))}
@@ -364,3 +370,5 @@ export default function DashboardPage() {
         </main>
     );
 }
+
+    
