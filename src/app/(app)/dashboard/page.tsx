@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
@@ -244,14 +243,30 @@ export default function DashboardPage() {
                     <CardContent className="pl-2">
                          <ResponsiveContainer width="100%" height={350}>
                             <BarChart data={chartData}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="date" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
-                                <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value} DA`} />
+                                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                                <XAxis
+                                    dataKey="date"
+                                    stroke="hsl(var(--muted-foreground))"
+                                    fontSize={12}
+                                    tickLine={false}
+                                    axisLine={false}
+                                />
+                                <YAxis
+                                    stroke="hsl(var(--muted-foreground))"
+                                    fontSize={12}
+                                    tickLine={false}
+                                    axisLine={false}
+                                    tickFormatter={(value) => `${value} DA`}
+                                />
                                 <Tooltip
+                                    contentStyle={{
+                                        backgroundColor: "hsl(var(--background))",
+                                        borderColor: "hsl(var(--border))",
+                                    }}
                                     formatter={(value: number) => formatCurrency(value)}
                                     cursor={{ fill: 'hsl(var(--muted))' }}
                                 />
-                                <Legend />
+                                <Legend wrapperStyle={{ fontSize: '0.8rem' }}/>
                                 <Bar dataKey="Chiffre d'affaires" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
                                 <Bar dataKey="Bénéfice" fill="hsl(var(--chart-secondary))" radius={[4, 4, 0, 0]} />
                             </BarChart>
@@ -370,5 +385,3 @@ export default function DashboardPage() {
         </main>
     );
 }
-
-    
