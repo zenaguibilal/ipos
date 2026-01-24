@@ -57,12 +57,13 @@ export default function ProductsPage() {
         );
     }, [products, searchQuery]);
 
-    const { totalInventoryValue, lowStockCount, totalProducts } = useMemo(() => {
-        if (!products) return { totalInventoryValue: 0, lowStockCount: 0, totalProducts: 0 };
+    const { totalInventoryValue, lowStockCount, totalProducts, totalCategories } = useMemo(() => {
+        if (!products) return { totalInventoryValue: 0, lowStockCount: 0, totalProducts: 0, totalCategories: 0 };
         return {
-            totalInventoryValue: products.reduce((sum, p) => sum + p.purchasePrice * p.quantity, 0),
+            totalInventoryValue: products.reduce((sum, p) => sum + (p.purchasePrice || 0) * p.quantity, 0),
             lowStockCount: products.filter(p => p.quantity <= p.minStockLevel).length,
             totalProducts: products.length,
+            totalCategories: [...new Set(products.map(p => p.category).filter(Boolean))].length,
         }
     }, [products]);
 
@@ -132,7 +133,7 @@ export default function ProductsPage() {
                             <Layers className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold">{[...new Set(products?.map(p => p.category).filter(Boolean))].length}</div>
+                            <div className="text-2xl font-bold">{totalCategories}</div>
                         </CardContent>
                     </Card>
                 </div>
@@ -218,5 +219,3 @@ export default function ProductsPage() {
         </>
     );
 }
-
-    

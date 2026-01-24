@@ -18,6 +18,7 @@ import { MoreHorizontal } from 'lucide-react';
 import { safeToDate } from '@/lib/utils';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 export default function CustomersPage() {
     const { user, isUserLoading } = useUser();
@@ -47,6 +48,9 @@ export default function CustomersPage() {
 
     const customersWithSalesData = useMemo<CustomerWithSalesData[]>(() => {
         if (!customers || !sales || !payments) return [];
+        
+        const today = new Date();
+        const currentDayOfMonth = today.getDate();
 
         return customers.map(customer => {
             const customerSales = sales.filter(s => s.customerId === customer.id);
@@ -68,11 +72,19 @@ export default function CustomersPage() {
             const lastActivityTimestamp = Math.max(lastSaleDate, lastPaymentDate);
             const lastActivityDate = lastActivityTimestamp > 0 ? new Date(lastActivityTimestamp) : null;
 
+            let isReminderDue = false;
+            if (finalBalance > 0 && customer.settlementDay) {
+                if (currentDayOfMonth > customer.settlementDay) {
+                    isReminderDue = true;
+                }
+            }
+
             return {
                 ...customer,
                 totalSpent,
                 outstandingBalance: finalBalance,
                 lastActivityDate,
+                isReminderDue,
             };
         });
     }, [customers, sales, payments]);
@@ -215,7 +227,23 @@ export default function CustomersPage() {
                                                 <TableCell className="text-right font-semibold text-destructive">{customer.outstandingBalance.toFixed(1)} DA</TableCell>
                                                 <TableCell className="text-right">{customer.totalSpent.toFixed(1)} DA</TableCell>
                                                 <TableCell>{customer.lastActivityDate ? format(customer.lastActivityDate, 'd MMM yyyy', { locale: fr }) : 'N/A'}</TableCell>
-                                                <TableCell className="text-center">{customer.settlementDay || 'N/A'}</TableCell>
+                                                <TableCell className="text-center">
+                                                    <div className="flex items-center justify-center gap-1">
+                                                        {customer.settlementDay || 'N/A'}
+                                                        {customer.isReminderDue && (
+                                                            <TooltipProvider>
+                                                                <Tooltip>
+                                                                    <TooltipTrigger>
+                                                                        <AlertCircle className="h-4 w-4 text-destructive" />
+                                                                    </TooltipTrigger>
+                                                                    <TooltipContent>
+                                                                        <p>La date de règlement est dépassée.</p>
+                                                                    </TooltipContent>
+                                                                </Tooltip>
+                                                            </TooltipProvider>
+                                                        )}
+                                                    </div>
+                                                </TableCell>
                                                 <TableCell className="text-right">
                                                     <DropdownMenu>
                                                         <DropdownMenuTrigger asChild>

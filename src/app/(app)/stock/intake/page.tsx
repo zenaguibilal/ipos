@@ -28,6 +28,7 @@ export default function StockIntakePage() {
     const [invoiceDate, setInvoiceDate] = useState(format(new Date(), 'yyyy-MM-dd'));
     const [items, setItems] = useState<StockIntakeItem[]>([]);
     const [isSaving, setIsSaving] = useState(false);
+    const [barcode, setBarcode] = useState('');
 
     const productsQuery = useMemoFirebase(() => user && firestore ? query(collection(firestore, 'users', user.uid, 'products')) : null, [user, firestore]);
     const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
@@ -41,6 +42,48 @@ export default function StockIntakePage() {
     const productOptions = useMemo<ComboboxOption[]>(() => 
         products?.map(p => ({ value: p.id, label: p.name, subLabel: `Stock: ${p.quantity}` })) || [],
     [products]);
+    
+    const handleItemChange = (id: string, field: keyof StockIntakeItem, value: any) => {
+        setItems(prev => prev.map(item => item.id === id ? { ...item, [field]: value } : item));
+    };
+    
+    const handleBarcodeScanned = useCallback((scannedBarcode: string) => {
+        if (!scannedBarcode.trim() || !products) return;
+    
+        const product = products.find(p => p.barcodes?.includes(scannedBarcode.trim()));
+    
+        if (product) {
+            setItems(prevItems => {
+                const existingItem = prevItems.find(i => !i.isNew && i.productId === product.id);
+                if (existingItem) {
+                    toast.info(`Quantité pour ${product.name} augmentée.`);
+                    return prevItems.map(item => 
+                        item.id === existingItem.id 
+                            ? { ...item, quantity: item.quantity + 1 } 
+                            : item
+                    );
+                } else {
+                    toast.success(`${product.name} ajouté à la liste.`);
+                    const newItem: StockIntakeItem = {
+                        id: uuidv4(),
+                        productId: product.id,
+                        name: product.name,
+                        category: product.category || '',
+                        barcodes: product.barcodes || [],
+                        quantity: 1,
+                        purchasePrice: product.purchasePrice,
+                        price: product.price,
+                        isNew: false,
+                    };
+                    return [newItem, ...prevItems];
+                }
+            });
+        } else {
+            toast.error('Aucun produit trouvé pour ce code-barres.');
+        }
+        setBarcode('');
+    }, [products]);
+
 
     const addNewItem = () => {
         setItems(prev => [...prev, {
@@ -56,10 +99,6 @@ export default function StockIntakePage() {
         }]);
     };
 
-    const handleItemChange = (id: string, field: keyof StockIntakeItem, value: any) => {
-        setItems(prev => prev.map(item => item.id === id ? { ...item, [field]: value } : item));
-    };
-    
     const handleProductSelect = (itemId: string, productId: string) => {
         const product = products?.find(p => p.id === productId);
         if (!product) return;
@@ -209,9 +248,23 @@ export default function StockIntakePage() {
                     </div>
 
                     <div className="border-t pt-4">
-                         <div className="flex justify-between items-center mb-2">
-                            <h3 className="text-lg font-semibold">Articles Reçus</h3>
-                            <Button type="button" size="sm" variant="outline" onClick={addNewItem}><PlusCircle className="mr-2 h-4 w-4"/>Ajouter</Button>
+                         <div className="flex flex-col md:flex-row justify-between items-center mb-4 gap-4">
+                             <div className="relative w-full md:max-w-sm">
+                                <Barcode className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                    placeholder="Scanner un code-barres pour ajouter un produit..."
+                                    className="pl-9"
+                                    value={barcode}
+                                    onChange={(e) => setBarcode(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            e.preventDefault();
+                                            handleBarcodeScanned(e.currentTarget.value);
+                                        }
+                                    }}
+                                />
+                            </div>
+                            <Button type="button" size="sm" variant="outline" onClick={addNewItem}><PlusCircle className="mr-2 h-4 w-4"/>Ajouter une ligne manuellement</Button>
                         </div>
                         <div className="rounded-md border overflow-x-auto">
                             <Table>
@@ -278,5 +331,3 @@ export default function StockIntakePage() {
         </main>
     );
 }
-
-    
