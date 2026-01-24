@@ -8,7 +8,7 @@ import { collection, query, orderBy } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Search, PlusCircle, Archive, FileText, MoreHorizontal, Download, ChevronDown, CircleDollarSign } from 'lucide-react';
+import { Search, PlusCircle, Archive, FileText, MoreHorizontal, Download, ChevronDown, CircleDollarSign, Hash } from 'lucide-react';
 import type { StockIntake } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { safeToDate } from '@/lib/utils';
@@ -86,13 +86,15 @@ export default function StockPage() {
         }
     }, [user, isUserLoading, router]);
 
-    const filteredIntakes = useMemo(() => {
-        if (!stockIntakes) return [];
-        
+    const { filteredIntakes, totalIntakeValue, intakesCount, totalItemsReceived } = useMemo(() => {
+        if (!stockIntakes) {
+            return { filteredIntakes: [], totalIntakeValue: 0, intakesCount: 0, totalItemsReceived: 0 };
+        }
+
         const fromDate = dateRange?.from;
         const toDate = dateRange?.to;
 
-        return stockIntakes.filter(i => {
+        const filtered = stockIntakes.filter(i => {
             const intakeDate = safeToDate(i.createdAt);
             if (fromDate && intakeDate < fromDate) return false;
             if (toDate && intakeDate > toDate) return false;
@@ -103,11 +105,17 @@ export default function StockPage() {
             }
             return true;
         });
-    }, [stockIntakes, searchQuery, dateRange]);
 
-    const totalIntakeValue = useMemo(() => {
-        return filteredIntakes.reduce((sum, intake) => sum + intake.totalValue, 0);
-    }, [filteredIntakes]);
+        const totalValue = filtered.reduce((sum, intake) => sum + intake.totalValue, 0);
+        const totalItems = filtered.reduce((acc, intake) => acc + intake.items.reduce((itemAcc, item) => itemAcc + item.quantityReceived, 0), 0);
+
+        return { 
+            filteredIntakes: filtered, 
+            totalIntakeValue: totalValue,
+            intakesCount: filtered.length,
+            totalItemsReceived: totalItems
+        };
+    }, [stockIntakes, searchQuery, dateRange]);
     
     const handleExport = () => {
         if (filteredIntakes.length === 0) {
@@ -180,14 +188,15 @@ export default function StockPage() {
                     </div>
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
+                <div className="grid gap-4 md:grid-cols-3 mb-6">
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">Réceptions (filtrées)</CardTitle>
                             <Archive className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold">{filteredIntakes.length}</div>
+                            <div className="text-2xl font-bold">{intakesCount}</div>
+                            <p className="text-xs text-muted-foreground">Transactions de réception sur la période</p>
                         </CardContent>
                     </Card>
                     <Card>
@@ -197,6 +206,19 @@ export default function StockPage() {
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold">{totalIntakeValue.toFixed(1)} DA</div>
+                            <p className="text-xs text-muted-foreground">Valeur d'achat des marchandises</p>
+                        </CardContent>
+                    </Card>
+                     <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Articles Reçus (filtrés)</CardTitle>
+                            <Hash className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">
+                                {totalItemsReceived}
+                            </div>
+                            <p className="text-xs text-muted-foreground">Nombre d'articles reçus</p>
                         </CardContent>
                     </Card>
                 </div>
