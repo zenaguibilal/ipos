@@ -1,11 +1,8 @@
-
 'use client';
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  LayoutDashboard,
-  ShoppingBasket,
   Package,
   Users,
   Cookie,
@@ -14,8 +11,6 @@ import {
 import { cn } from '@/lib/utils';
 
 const navLinks = [
-  { href: '/dashboard', label: 'Tableau', icon: LayoutDashboard },
-  { href: '/sell', label: 'Vendre', icon: ShoppingBasket },
   { href: '/products', label: 'Produits', icon: Package },
   { href: '/customers', label: 'Clients', icon: Users },
   { href: '/bread-orders', label: 'Pain', icon: Cookie },
@@ -27,7 +22,7 @@ export function BottomNavBar() {
 
   return (
     <div className="fixed bottom-0 left-0 z-10 w-full border-t bg-background/95 backdrop-blur-sm md:hidden print-hide">
-      <nav className="grid grid-cols-6 items-center justify-around h-16">
+      <nav className="grid grid-cols-4 items-center justify-around h-16">
         {navLinks.map(link => (
           <Link
             key={link.href}

@@ -5,8 +5,6 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
   LogOut,
   User as UserIcon,
-  LayoutDashboard,
-  ShoppingBasket,
   Package,
   History,
   Settings,
@@ -39,8 +37,6 @@ import { AnimatedLogo } from './animated-logo';
 
 
 const navLinks = [
-  { href: '/dashboard', label: 'Tableau de Bord', icon: LayoutDashboard },
-  { href: '/sell', label: 'Vendre', icon: ShoppingBasket },
   { href: '/stock-intake', label: 'Réception Stock', icon: Truck },
   { href: '/products', label: 'Produits', icon: Package },
   { href: '/customers', label: 'Clients', icon: Users },
@@ -68,7 +64,7 @@ export function AppHeader() {
       <div className="flex-1 flex justify-start">
          <div className="flex items-baseline gap-2">
               <Link
-                  href="/dashboard"
+                  href="/products"
                   className="flex items-center gap-2 font-semibold"
               >
                   <span className="text-2xl">🏪</span>
