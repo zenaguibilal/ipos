@@ -111,11 +111,11 @@ export default function SellPage() {
     const [isCustomProductDialogOpen, setIsCustomProductDialogOpen] = useState(false);
     const [completedSale, setCompletedSale] = useState<Sale | null>(null);
     const [completedSaleCustomer, setCompletedSaleCustomer] = useState<Customer | null>(null);
-    const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+    const [cartToPay, setCartToPay] = useState<Cart | null>(null);
     const [amountPaid, setAmountPaid] = useState('');
     const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'other'>('cash');
     const [isSavingSale, setIsSavingSale] = useState(false);
-    const [isClearCartDialogOpen, setIsClearCartDialogOpen] = useState(false);
+    const [cartToClear, setCartToClear] = useState<Cart | null>(null);
     const barcodeInputRef = useRef<HTMLInputElement>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('all');
@@ -159,51 +159,50 @@ export default function SellPage() {
         return ['all', ...Array.from(new Set(allCategories as string[]))];
     }, [products]);
 
-    const filteredProducts = useMemo(() => {
+     const filteredProducts = useMemo(() => {
         if (!products) return [];
-
-        let productListToShow: Product[];
 
         // If a search query is active, filter all products.
         if (searchQuery) {
-            productListToShow = products.filter(p => 
+            return products.filter(p => 
                 p.name.toLowerCase().includes(searchQuery.toLowerCase())
             );
         } 
+        
+        let productListToShow: Product[];
+        
         // If no search query, show top popular/recent products.
-        else {
-            if (sales && sales.length > 0) {
-                const productSales: { [productId: string]: number } = {};
-                sales.forEach(sale => {
-                    if (sale.items) {
-                        sale.items.forEach(item => {
-                            if (item.id && !item.id.startsWith('custom-')) {
-                                productSales[item.id] = (productSales[item.id] || 0) + (item.cartQuantity || item.quantity);
-                            }
-                        });
-                    }
-                });
+        if (sales && sales.length > 0) {
+            const productSales: { [productId: string]: number } = {};
+            sales.forEach(sale => {
+                if (sale.items) {
+                    sale.items.forEach(item => {
+                        if (item.id && !item.id.startsWith('custom-')) {
+                            productSales[item.id] = (productSales[item.id] || 0) + (item.cartQuantity || item.quantity);
+                        }
+                    });
+                }
+            });
 
-                const popularProducts = products
-                    .filter(p => productSales[p.id] > 0)
-                    .sort((a, b) => (productSales[b.id] || 0) - (productSales[a.id] || 0));
+            const popularProducts = products
+                .filter(p => productSales[p.id] > 0)
+                .sort((a, b) => (productSales[b.id] || 0) - (productSales[a.id] || 0));
 
-                const recentProducts = products.slice(0, 15);
-                const combined = new Map<string, Product>();
+            const recentProducts = products.slice(0, 15);
+            const combined = new Map<string, Product>();
 
-                popularProducts.forEach(p => combined.set(p.id, p));
-                recentProducts.forEach(p => {
-                    if (!combined.has(p.id)) {
-                        combined.set(p.id, p);
-                    }
-                });
+            popularProducts.forEach(p => combined.set(p.id, p));
+            recentProducts.forEach(p => {
+                if (!combined.has(p.id)) {
+                    combined.set(p.id, p);
+                }
+            });
 
-                productListToShow = Array.from(combined.values()).slice(0, 15);
-                
-            } else {
-                // Fallback: if no sales, show the 15 most recently added products.
-                productListToShow = products.slice(0, 15);
-            }
+            productListToShow = Array.from(combined.values()).slice(0, 15);
+            
+        } else {
+            // Fallback: if no sales, show the 15 most recently added products.
+            productListToShow = products.slice(0, 15);
         }
         
         // Apply category filter on the resulting list.
@@ -214,6 +213,7 @@ export default function SellPage() {
         return productListToShow;
 
     }, [products, sales, selectedCategory, searchQuery]);
+
 
     const addNewCart = () => {
         const newCartId = uuidv4();
@@ -333,12 +333,13 @@ export default function SellPage() {
         }
     };
 
-    const updateItemQuantity = (productId: string, newQuantity: number) => {
-        if (!activeCart) return;
+    const updateItemQuantity = (cartId: string, productId: string, newQuantity: number) => {
+        const cartToUpdate = carts.find(c => c.id === cartId);
+        if (!cartToUpdate) return;
         
         if (newQuantity <= 0) {
-            const newItems = activeCart.items.filter(item => item.id !== productId);
-            updateCart({ ...activeCart, items: newItems });
+            const newItems = cartToUpdate.items.filter(item => item.id !== productId);
+            updateCart({ ...cartToUpdate, items: newItems });
             return;
         }
 
@@ -348,10 +349,10 @@ export default function SellPage() {
             return;
         }
 
-        const newItems = activeCart.items.map(item =>
+        const newItems = cartToUpdate.items.map(item =>
             item.id === productId ? { ...item, cartQuantity: newQuantity } : item
         );
-        updateCart({ ...activeCart, items: newItems });
+        updateCart({ ...cartToUpdate, items: newItems });
         setLastTouchedItemId(productId);
     };
 
@@ -364,45 +365,41 @@ export default function SellPage() {
         return options;
     }, [customers]);
 
-    const handleCustomerSelect = (customerId: string) => {
-        if (!activeCart) return;
+    const handleCustomerSelect = (cart: Cart, customerId: string) => {
         if (customerId === 'walk-in') {
-            updateCart({ ...activeCart, customerId: null, customerName: 'Vente au comptoir' });
+            updateCart({ ...cart, customerId: null, customerName: 'Vente au comptoir' });
         } else {
             const customer = customers?.find(c => c.id === customerId);
             if (customer) {
-                updateCart({ ...activeCart, customerId: customer.id, customerName: `${customer.firstName} ${customer.lastName}` });
+                updateCart({ ...cart, customerId: customer.id, customerName: `${customer.firstName} ${customer.lastName}` });
             }
         }
     };
 
-    const handleDiscountValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (!activeCart) return;
-        updateCart({ ...activeCart, discountValue: parseFloat(e.target.value) || 0 });
+    const handleDiscountValueChange = (cart: Cart, value: string) => {
+        updateCart({ ...cart, discountValue: parseFloat(value) || 0 });
     };
     
-    const handleDiscountTypeChange = (type: 'fixed' | 'percentage') => {
-        if (!activeCart) return;
-        updateCart({ ...activeCart, discountType: type });
+    const handleDiscountTypeChange = (cart: Cart, type: 'fixed' | 'percentage') => {
+        updateCart({ ...cart, discountType: type });
     };
 
-    const { subtotal, discount, total } = useMemo(() => {
-        if (!activeCart) return { subtotal: 0, discount: 0, total: 0 };
-        const sub = activeCart.items.reduce((acc, item) => acc + (item.price * item.cartQuantity), 0);
-        let disc = 0;
-        if(activeCart.discountType === 'fixed') {
-            disc = activeCart.discountValue;
-        } else {
-            disc = sub * (activeCart.discountValue / 100);
-        }
-        const tot = sub - disc;
-        return { subtotal: sub, discount: disc, total: tot > 0 ? tot : 0 };
-    }, [activeCart]);
-
-
     const handleFinalizeSale = async () => {
-        if (!activeCart || activeCart.items.length === 0 || !user || !firestore) return;
+        if (!cartToPay || cartToPay.items.length === 0 || !user || !firestore) return;
         setIsSavingSale(true);
+
+        const { subtotal, discount, total } = (() => {
+            const sub = cartToPay.items.reduce((acc, item) => acc + (item.price * item.cartQuantity), 0);
+            let disc = 0;
+            if(cartToPay.discountType === 'fixed') {
+                disc = cartToPay.discountValue;
+            } else {
+                disc = sub * (cartToPay.discountValue / 100);
+            }
+            const tot = sub - disc;
+            return { subtotal: sub, discount: disc, total: tot > 0 ? tot : 0 };
+        })();
+
 
         const saleId = doc(collection(firestore, 'users', user.uid, 'sales')).id;
         let newSaleData: Omit<Sale, 'id' | 'createdAt'>; // To be used later for the dialog
@@ -417,7 +414,7 @@ export default function SellPage() {
                 if (amountPaidNum >= total) finalPaymentStatus = 'paid';
                 else if (amountPaidNum > 0) finalPaymentStatus = 'partial';
 
-                const saleItemsForDb: Omit<SaleItem, 'cartQuantity' | 'createdAt'>[] = activeCart.items.map(item => ({
+                const saleItemsForDb: Omit<SaleItem, 'cartQuantity' | 'createdAt'>[] = cartToPay.items.map(item => ({
                     id: item.id,
                     name: item.name,
                     price: item.price,
@@ -429,20 +426,20 @@ export default function SellPage() {
                     invoiceNumber: `INV-${Date.now()}`,
                     items: saleItemsForDb,
                     subtotal,
-                    discountType: activeCart.discountType,
-                    discountAmount: activeCart.discountValue,
+                    discountType: cartToPay.discountType,
+                    discountAmount: cartToPay.discountValue,
                     total,
                     amountPaid: amountPaidNum,
                     remainingBalance: remainingBalance > 0 ? remainingBalance : 0,
                     paymentStatus: finalPaymentStatus,
                     paymentMethod: paymentMethod,
-                    customerId: activeCart.customerId,
-                    customerName: activeCart.customerName,
+                    customerId: cartToPay.customerId,
+                    customerName: cartToPay.customerName,
                     createdAt: serverTimestamp(),
                 };
 
                 // 2. Read and Update Product Stock
-                for (const item of activeCart.items) {
+                for (const item of cartToPay.items) {
                     if (item.id.startsWith('custom-')) continue;
 
                     const productRef = doc(firestore, 'users', user.uid, 'products', item.id);
@@ -475,17 +472,20 @@ export default function SellPage() {
 
             toast.success("Vente enregistrée avec succès !");
             setCompletedSale(completedSaleDataForDialog);
-            setCompletedSaleCustomer(customers?.find(c => c.id === activeCart.customerId) || null);
-            setIsPaymentDialogOpen(false);
+            setCompletedSaleCustomer(customers?.find(c => c.id === cartToPay.customerId) || null);
+            setCartToPay(null);
             
             // Reset cart
-            const newCarts = carts.filter(c => c.id !== activeCartId);
+            const newCarts = carts.filter(c => c.id !== cartToPay.id);
             if (newCarts.length === 0) {
                  const newId = addNewCart();
                  setActiveCartId(newId);
             } else {
                  setCarts(newCarts);
-                 setActiveCartId(newCarts[0].id);
+                 // If the active cart was the one that was paid, switch to another one
+                 if (activeCartId === cartToPay.id) {
+                    setActiveCartId(newCarts[0].id);
+                 }
             }
 
         } catch (error: any) {
@@ -497,10 +497,10 @@ export default function SellPage() {
     };
     
     const handleClearCart = () => {
-        if (!activeCart) return;
-        updateCart({ ...activeCart, items: [], discountType: 'fixed', discountValue: 0 });
+        if (!cartToClear) return;
+        updateCart({ ...cartToClear, items: [], discountType: 'fixed', discountValue: 0 });
         toast.info("Le panier a été vidé.");
-        setIsClearCartDialogOpen(false);
+        setCartToClear(null);
     };
 
     const isLoading = isUserLoading || isLoadingProducts || isLoadingCustomers || isLoadingCompany || isLoadingSales;
@@ -511,7 +511,7 @@ export default function SellPage() {
         }
     }, [user, isLoading, router]);
 
-    if (isLoading || !isClient || !user || !activeCart) {
+    if (isLoading || !isClient || !user) {
         return <div className="flex h-full items-center justify-center"><p>Chargement de l'interface de vente...</p></div>;
     }
 
@@ -525,11 +525,7 @@ export default function SellPage() {
                     userId={user.uid}
                     onCustomerAdded={(newCustomer) => {
                         if (activeCart) {
-                            updateCart({
-                                ...activeCart,
-                                customerId: newCustomer.id,
-                                customerName: `${newCustomer.firstName} ${newCustomer.lastName}`
-                            });
+                            handleCustomerSelect(activeCart, newCustomer.id)
                         }
                     }}
                 />
@@ -548,7 +544,7 @@ export default function SellPage() {
                     companyProfile={companyProfile}
                 />
             )}
-             <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
+             <Dialog open={!!cartToPay} onOpenChange={(isOpen) => !isOpen && setCartToPay(null)}>
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Finaliser la vente</DialogTitle>
@@ -556,7 +552,9 @@ export default function SellPage() {
                     <div className='space-y-4'>
                         <div className="text-center py-4 bg-muted rounded-lg">
                             <p className="text-sm text-muted-foreground">Total à payer</p>
-                            <p className="text-4xl font-bold">{total.toFixed(1)} DA</p>
+                            <p className="text-4xl font-bold">
+                                {cartToPay ? (cartToPay.items.reduce((acc, item) => acc + (item.price * item.cartQuantity), 0) - (cartToPay.discountType === 'fixed' ? cartToPay.discountValue : cartToPay.items.reduce((acc, item) => acc + (item.price * item.cartQuantity), 0) * (cartToPay.discountValue / 100))).toFixed(1) : '0.0'} DA
+                            </p>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
@@ -587,21 +585,23 @@ export default function SellPage() {
                         </div>
 
                         <div className="grid grid-cols-4 gap-2 text-sm">
-                           <Button type="button" variant="outline" onClick={() => setAmountPaid(total.toFixed(1))}>Exact</Button>
+                           <Button type="button" variant="outline" onClick={() => setAmountPaid(cartToPay ? (cartToPay.items.reduce((acc, item) => acc + (item.price * item.cartQuantity), 0) - (cartToPay.discountType === 'fixed' ? cartToPay.discountValue : cartToPay.items.reduce((acc, item) => acc + (item.price * item.cartQuantity), 0) * (cartToPay.discountValue / 100))).toFixed(1) : '0')}>Exact</Button>
                            <Button type="button" variant="outline" onClick={() => setAmountPaid('500')}>500</Button>
                            <Button type="button" variant="outline" onClick={() => setAmountPaid('1000')}>1000</Button>
                            <Button type="button" variant="outline" onClick={() => setAmountPaid('2000')}>2000</Button>
                         </div>
-                        <div className="text-sm text-center">
-                            {parseFloat(amountPaid) >= total ? (
-                                <p>Reste à rendre: <span className="font-bold text-green-500">{(parseFloat(amountPaid) - total).toFixed(1)} DA</span></p>
-                            ) : (
-                                <p>Solde restant dû: <span className="font-bold text-destructive">{(total - (parseFloat(amountPaid) || 0)).toFixed(1)} DA</span></p>
-                            )}
-                        </div>
+                        {cartToPay &&
+                            <div className="text-sm text-center">
+                                {parseFloat(amountPaid) >= (cartToPay.items.reduce((acc, item) => acc + (item.price * item.cartQuantity), 0) - (cartToPay.discountType === 'fixed' ? cartToPay.discountValue : cartToPay.items.reduce((acc, item) => acc + (item.price * item.cartQuantity), 0) * (cartToPay.discountValue / 100))) ? (
+                                    <p>Reste à rendre: <span className="font-bold text-green-500">{(parseFloat(amountPaid) - (cartToPay.items.reduce((acc, item) => acc + (item.price * item.cartQuantity), 0) - (cartToPay.discountType === 'fixed' ? cartToPay.discountValue : cartToPay.items.reduce((acc, item) => acc + (item.price * item.cartQuantity), 0) * (cartToPay.discountValue / 100)))).toFixed(1)} DA</span></p>
+                                ) : (
+                                    <p>Solde restant dû: <span className="font-bold text-destructive">{((cartToPay.items.reduce((acc, item) => acc + (item.price * item.cartQuantity), 0) - (cartToPay.discountType === 'fixed' ? cartToPay.discountValue : cartToPay.items.reduce((acc, item) => acc + (item.price * item.cartQuantity), 0) * (cartToPay.discountValue / 100))) - (parseFloat(amountPaid) || 0)).toFixed(1)} DA</span></p>
+                                )}
+                            </div>
+                        }
                     </div>
                     <DialogFooter>
-                        <Button variant="secondary" onClick={() => setIsPaymentDialogOpen(false)} disabled={isSavingSale}>Annuler</Button>
+                        <Button variant="secondary" onClick={() => setCartToPay(null)} disabled={isSavingSale}>Annuler</Button>
                         <Button onClick={handleFinalizeSale} disabled={isSavingSale}>
                             {isSavingSale ? "Enregistrement..." : "Confirmer la vente"}
                         </Button>
@@ -609,12 +609,12 @@ export default function SellPage() {
                 </DialogContent>
             </Dialog>
 
-             <AlertDialog open={isClearCartDialogOpen} onOpenChange={setIsClearCartDialogOpen}>
+             <AlertDialog open={!!cartToClear} onOpenChange={(isOpen) => !isOpen && setCartToClear(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>Vider le panier ?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Cette action est irréversible. Tous les articles du panier actuel ({activeCart.items.length} articles) seront supprimés.
+                            Cette action est irréversible. Tous les articles du panier actuel ({cartToClear?.items.length} articles) seront supprimés.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -625,86 +625,84 @@ export default function SellPage() {
             </AlertDialog>
 
             <main className="flex flex-col h-full max-h-[calc(100vh-theme(space.14))]">
-                <Tabs value={activeCartId} onValueChange={handleTabChange} className="flex flex-col h-full">
-                    <div className="p-2 border-b">
-                        <TabsList className="h-auto">
-                            {carts.map(cart => (
-                                <TabsTrigger key={cart.id} value={cart.id} className="relative pr-8">
-                                    {cart.name}
-                                    <button onClick={(e) => handleRemoveTab(e, cart.id)} className="absolute top-1/2 right-1.5 -translate-y-1/2 rounded-full p-0.5 hover:bg-muted-foreground/20">
-                                        <X className="h-3 w-3" />
-                                    </button>
-                                </TabsTrigger>
-                            ))}
-                            <Button variant="ghost" size="icon" onClick={handleAddTab}><PlusCircle className="h-5 w-5" /></Button>
-                        </TabsList>
-                    </div>
+                <div className="grid lg:grid-cols-3 xl:grid-cols-4 h-full max-h-[calc(100vh-theme(space.14))]">
 
-                    {carts.map(cart => (
-                        <TabsContent key={cart.id} value={cart.id} className="flex-grow m-0 data-[state=inactive]:hidden">
-                            <div className="grid lg:grid-cols-3 xl:grid-cols-4 h-full max-h-[calc(100vh-theme(space.14)-theme(space.16))]">
+                    <div className="lg:col-span-2 xl:col-span-3 flex flex-col p-4 gap-4">
+                        <div className="flex gap-2 flex-col sm:flex-row">
+                            <div className="relative flex-grow">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input 
+                                    placeholder="Rechercher un produit par nom..." 
+                                    className="pl-9"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                />
+                            </div>
+                            <div className="relative">
+                                <Barcode className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input ref={barcodeInputRef} placeholder="Scanner un code-barres (Ctrl+I)" onKeyDown={handleBarcodeScan} className="pl-9" />
+                            </div>
+                            <Button variant="outline" onClick={() => setIsCustomProductDialogOpen(true)}>
+                                <FilePlus2 className="mr-2 h-4 w-4" />
+                                Article
+                            </Button>
+                        </div>
 
-                                <div className="lg:col-span-2 xl:col-span-3 flex flex-col p-4 gap-4">
-                                    <div className="flex gap-2 flex-col sm:flex-row">
-                                        <div className="relative flex-grow">
-                                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                            <Input 
-                                                placeholder="Rechercher un produit par nom..." 
-                                                className="pl-9"
-                                                value={searchQuery}
-                                                onChange={(e) => setSearchQuery(e.target.value)}
-                                            />
-                                        </div>
-                                        <div className="relative">
-                                            <Barcode className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                            <Input ref={barcodeInputRef} placeholder="Scanner un code-barres (Ctrl+I)" onKeyDown={handleBarcodeScan} className="pl-9" />
-                                        </div>
-                                        <Button variant="outline" onClick={() => setIsCustomProductDialogOpen(true)}>
-                                            <FilePlus2 className="mr-2 h-4 w-4" />
-                                            Article
-                                        </Button>
+                        <ScrollArea className="w-full whitespace-nowrap">
+                            <div className="flex gap-2 pb-2">
+                                {categories.map(category => (
+                                    <Button
+                                        key={category}
+                                        variant={selectedCategory === category ? 'default' : 'outline'}
+                                        onClick={() => setSelectedCategory(category)}
+                                        className="capitalize"
+                                    >
+                                        {category === 'all' ? 'Tous' : category}
+                                    </Button>
+                                ))}
+                            </div>
+                        </ScrollArea>
+                        
+                        <h2 className="text-lg font-semibold tracking-tight -mb-2">
+                            {searchQuery ? `Résultats de la recherche` : "Accès Rapide / Populaires"}
+                        </h2>
+
+                        <ScrollArea className="flex-grow">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4 pr-4">
+                                {filteredProducts.map(product => (
+                                    <ProductCard 
+                                        key={product.id} 
+                                        product={product} 
+                                        onAddToCart={addProductToCart} 
+                                        isInCart={activeCartItemIds.has(product.id)}
+                                    />
+                                ))}
+                                {filteredProducts.length === 0 && (
+                                    <div className="col-span-full h-full flex items-center justify-center text-muted-foreground">
+                                        Aucun produit trouvé.
                                     </div>
+                                )}
+                            </div>
+                        </ScrollArea>
+                    </div>
+                    
+                    <div className="lg:col-span-1 xl:col-span-1 bg-muted/40 p-4 flex flex-col">
+                        <Tabs value={activeCartId} onValueChange={handleTabChange} className="flex-grow flex flex-col">
+                             <TabsList className="h-auto self-start">
+                                {carts.map(cart => (
+                                    <TabsTrigger key={cart.id} value={cart.id} className="relative pr-8">
+                                        {cart.name}
+                                        <button onClick={(e) => handleRemoveTab(e, cart.id)} className="absolute top-1/2 right-1.5 -translate-y-1/2 rounded-full p-0.5 hover:bg-muted-foreground/20">
+                                            <X className="h-3 w-3" />
+                                        </button>
+                                    </TabsTrigger>
+                                ))}
+                                <Button variant="ghost" size="icon" onClick={handleAddTab}><PlusCircle className="h-5 w-5" /></Button>
+                            </TabsList>
 
-                                    <ScrollArea className="w-full whitespace-nowrap">
-                                        <div className="flex gap-2 pb-2">
-                                            {categories.map(category => (
-                                                <Button
-                                                    key={category}
-                                                    variant={selectedCategory === category ? 'default' : 'outline'}
-                                                    onClick={() => setSelectedCategory(category)}
-                                                    className="capitalize"
-                                                >
-                                                    {category === 'all' ? 'Tous' : category}
-                                                </Button>
-                                            ))}
-                                        </div>
-                                    </ScrollArea>
-                                    
-                                    <h2 className="text-lg font-semibold tracking-tight -mb-2">
-                                        {searchQuery ? `Résultats de la recherche` : "Accès Rapide / Populaires"}
-                                    </h2>
-
-                                    <ScrollArea className="flex-grow">
-                                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4 pr-4">
-                                            {filteredProducts.map(product => (
-                                                <ProductCard 
-                                                    key={product.id} 
-                                                    product={product} 
-                                                    onAddToCart={addProductToCart} 
-                                                    isInCart={activeCartItemIds.has(product.id)}
-                                                />
-                                            ))}
-                                            {filteredProducts.length === 0 && (
-                                                <div className="col-span-full h-full flex items-center justify-center text-muted-foreground">
-                                                    Aucun produit trouvé.
-                                                </div>
-                                            )}
-                                        </div>
-                                    </ScrollArea>
-                                </div>
-                                
-                                <div className="lg:col-span-1 xl:col-span-1 bg-muted/40 p-4 flex flex-col gap-4">
-                                    <Card>
+                            {carts.map(cart => (
+                                <TabsContent key={cart.id} value={cart.id} className="flex-grow flex flex-col gap-4 m-0 mt-4 data-[state=inactive]:hidden">
+                                     <Card>
                                         <CardHeader className="p-4">
                                             <div className="flex items-center gap-2">
                                                 <User className="h-5 w-5 text-primary"/>
@@ -715,7 +713,7 @@ export default function SellPage() {
                                             <div className="flex-grow">
                                                 <Combobox
                                                     options={customerOptions}
-                                                    onSelect={handleCustomerSelect}
+                                                    onSelect={(customerId) => handleCustomerSelect(cart, customerId)}
                                                     value={cart.customerId || 'walk-in'}
                                                     placeholder={cart.customerName}
                                                     searchPlaceholder="Rechercher un client..."
@@ -732,7 +730,7 @@ export default function SellPage() {
                                         <CardHeader className="p-4 flex flex-row items-center justify-between">
                                             <CardTitle className="text-lg">Panier ({cart.items.length})</CardTitle>
                                             {cart.items.length > 0 && (
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => setIsClearCartDialogOpen(true)}>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => setCartToClear(cart)}>
                                                     <Trash2 className="h-4 w-4" />
                                                     <span className="sr-only">Vider le panier</span>
                                                 </Button>
@@ -760,9 +758,9 @@ export default function SellPage() {
                                                                     </TableCell>
                                                                     <TableCell>
                                                                         <div className="flex items-center gap-1">
-                                                                            <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => updateItemQuantity(item.id, item.cartQuantity - 1)}><Minus className="h-4 w-4" /></Button>
-                                                                            <Input type="number" value={item.cartQuantity} onChange={(e) => updateItemQuantity(item.id, parseInt(e.target.value) || 0)} className="h-7 w-12 text-center" />
-                                                                            <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => updateItemQuantity(item.id, item.cartQuantity + 1)}><Plus className="h-4 w-4" /></Button>
+                                                                            <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => updateItemQuantity(cart.id, item.id, item.cartQuantity - 1)}><Minus className="h-4 w-4" /></Button>
+                                                                            <Input type="number" value={item.cartQuantity} onChange={(e) => updateItemQuantity(cart.id, item.id, parseInt(e.target.value) || 0)} className="h-7 w-12 text-center" />
+                                                                            <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => updateItemQuantity(cart.id, item.id, item.cartQuantity + 1)}><Plus className="h-4 w-4" /></Button>
                                                                         </div>
                                                                     </TableCell>
                                                                     <TableCell className="text-right font-semibold">{(item.price * item.cartQuantity).toFixed(1)} DA</TableCell>
@@ -775,27 +773,39 @@ export default function SellPage() {
                                         </CardContent>
                                         {cart.items.length > 0 && (
                                             <CardFooter className="p-4 flex-col items-stretch space-y-2 border-t">
-                                                <div className="flex justify-between text-md">
-                                                    <span>Sous-total</span>
-                                                    <span>{subtotal.toFixed(1)} DA</span>
-                                                </div>
-                                                <div className="flex justify-between items-center text-sm">
-                                                    <div className="flex items-center gap-1">
-                                                        <Button size="sm" variant={cart.discountType === 'fixed' ? 'secondary' : 'ghost'} onClick={() => handleDiscountTypeChange('fixed')}>Remise (DA)</Button>
-                                                        <Button size="sm" variant={cart.discountType === 'percentage' ? 'secondary' : 'ghost'} onClick={() => handleDiscountTypeChange('percentage')}>Remise (%)</Button>
-                                                    </div>
-                                                    <Input type="number" value={cart.discountValue} onChange={handleDiscountValueChange} className="w-24 h-8" />
-                                                </div>
-                                                <div className="flex justify-between text-sm text-muted-foreground">
-                                                    <span>Total Remise</span>
-                                                    <span>- {discount.toFixed(1)} DA</span>
-                                                </div>
-                                                <div className="border-t pt-2 mt-2">
-                                                     <div className="flex justify-between text-2xl font-bold text-primary">
-                                                        <span>TOTAL</span>
-                                                        <span>{total.toFixed(1)} DA</span>
-                                                    </div>
-                                                </div>
+                                                {(
+                                                    () => {
+                                                        const subtotal = cart.items.reduce((acc, item) => acc + (item.price * item.cartQuantity), 0);
+                                                        const discount = cart.discountType === 'fixed' ? cart.discountValue : subtotal * (cart.discountValue / 100);
+                                                        const total = subtotal - discount > 0 ? subtotal - discount : 0;
+                                                        
+                                                        return (
+                                                            <>
+                                                                <div className="flex justify-between text-md">
+                                                                    <span>Sous-total</span>
+                                                                    <span>{subtotal.toFixed(1)} DA</span>
+                                                                </div>
+                                                                <div className="flex justify-between items-center text-sm">
+                                                                    <div className="flex items-center gap-1">
+                                                                        <Button size="sm" variant={cart.discountType === 'fixed' ? 'secondary' : 'ghost'} onClick={() => handleDiscountTypeChange(cart, 'fixed')}>Remise (DA)</Button>
+                                                                        <Button size="sm" variant={cart.discountType === 'percentage' ? 'secondary' : 'ghost'} onClick={() => handleDiscountTypeChange(cart, 'percentage')}>Remise (%)</Button>
+                                                                    </div>
+                                                                    <Input type="number" value={cart.discountValue} onChange={(e) => handleDiscountValueChange(cart, e.target.value)} className="w-24 h-8" />
+                                                                </div>
+                                                                <div className="flex justify-between text-sm text-muted-foreground">
+                                                                    <span>Total Remise</span>
+                                                                    <span>- {discount.toFixed(1)} DA</span>
+                                                                </div>
+                                                                <div className="border-t pt-2 mt-2">
+                                                                    <div className="flex justify-between text-2xl font-bold text-primary">
+                                                                        <span>TOTAL</span>
+                                                                        <span>{total.toFixed(1)} DA</span>
+                                                                    </div>
+                                                                </div>
+                                                            </>
+                                                        )
+                                                    }
+                                                )()}
                                             </CardFooter>
                                         )}
                                     </Card>
@@ -805,20 +815,22 @@ export default function SellPage() {
                                             className="w-full text-lg py-7" 
                                             disabled={cart.items.length === 0}
                                             onClick={() => {
+                                                const subtotal = cart.items.reduce((acc, item) => acc + (item.price * item.cartQuantity), 0);
+                                                const discount = cart.discountType === 'fixed' ? cart.discountValue : subtotal * (cart.discountValue / 100);
+                                                const total = subtotal - discount > 0 ? subtotal - discount : 0;
                                                 setAmountPaid(total.toFixed(1));
                                                 setPaymentMethod('cash');
-                                                setIsPaymentDialogOpen(true);
+                                                setCartToPay(cart);
                                             }}
                                         >
                                             <CheckCircle className="mr-2 h-5 w-5" /> Finaliser la vente
                                         </Button>
                                     </div>
-                                </div>
-
-                            </div>
-                        </TabsContent>
-                    ))}
-                </Tabs>
+                                </TabsContent>
+                            ))}
+                        </Tabs>
+                    </div>
+                </div>
             </main>
         </>
     );
