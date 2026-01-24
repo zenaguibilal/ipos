@@ -13,7 +13,7 @@ import { subDays, startOfDay, endOfDay, format, eachDayOfInterval, parse } from 
 import { fr } from 'date-fns/locale';
 import type { Sale, ProductReturn, SaleItem, ChartData } from '@/lib/types';
 import { safeToDate } from '@/lib/utils';
-import { CircleDollarSign, TrendingUp, Undo2, ShoppingCart, Activity } from 'lucide-react';
+import { CircleDollarSign, TrendingUp, Undo2, ShoppingCart, Activity, Users, Package } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 export default function DashboardPage() {
@@ -50,7 +50,9 @@ export default function DashboardPage() {
         totalReturnsValue,
         salesCount,
         chartData,
-        recentTransactions
+        recentTransactions,
+        topProducts,
+        topCustomers
     } = useMemo(() => {
         const fromDate = dateRange?.from;
         const toDate = dateRange?.to;
@@ -70,10 +72,22 @@ export default function DashboardPage() {
         let revenue = 0;
         let profit = 0;
         let salesCt = 0;
+        
+        const topProductsMap: { [name: string]: { name: string; totalRevenue: number; unitsSold: number; } } = {};
+        const topCustomersMap: { [name: string]: { name: string; totalSpent: number; } } = {};
+
 
         for (const sale of filteredSales) {
             revenue += sale.total;
             salesCt++;
+            
+            if (sale.customerName) {
+                 if (!topCustomersMap[sale.customerName]) {
+                    topCustomersMap[sale.customerName] = { name: sale.customerName, totalSpent: 0 };
+                }
+                topCustomersMap[sale.customerName].totalSpent += sale.total;
+            }
+            
             let saleProfit = 0;
             sale.items.forEach((item: SaleItem) => {
                 const purchasePrice = typeof item.purchasePrice === 'number' ? item.purchasePrice : 0;
@@ -81,6 +95,11 @@ export default function DashboardPage() {
                 if(item.price && purchasePrice) {
                     saleProfit += (item.price - purchasePrice) * quantity;
                 }
+                 if (!topProductsMap[item.name]) {
+                    topProductsMap[item.name] = { name: item.name, totalRevenue: 0, unitsSold: 0 };
+                }
+                topProductsMap[item.name].unitsSold += quantity;
+                topProductsMap[item.name].totalRevenue += item.price * quantity;
             });
             profit += saleProfit;
         }
@@ -128,6 +147,13 @@ export default function DashboardPage() {
             ...filteredReturns.map(r => ({ type: 'Retour', data: r, date: safeToDate(r.createdAt!) }))
         ].sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 5);
 
+        const topProductsList = Object.values(topProductsMap)
+            .sort((a, b) => b.totalRevenue - a.totalRevenue)
+            .slice(0, 5);
+
+        const topCustomersList = Object.values(topCustomersMap)
+            .sort((a, b) => b.totalSpent - a.totalSpent)
+            .slice(0, 5);
 
         return {
             totalRevenue: revenue,
@@ -136,6 +162,8 @@ export default function DashboardPage() {
             salesCount: salesCt,
             chartData: finalChartData,
             recentTransactions: combined,
+            topProducts: topProductsList,
+            topCustomers: topCustomersList
         };
 
     }, [sales, returns, dateRange]);
@@ -258,6 +286,70 @@ export default function DashboardPage() {
                                             <TableCell className="text-right font-bold">
                                                 {formatCurrency(tx.type === 'Vente' ? (tx.data as Sale).total : (tx.data as ProductReturn).totalReturnValue)}
                                             </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        )}
+                    </CardContent>
+                </Card>
+            </div>
+            <div className="grid gap-6 mt-6 md:grid-cols-2">
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2"><Package className="h-5 w-5 text-muted-foreground" /> Produits les plus vendus</CardTitle>
+                        <CardDescription>Top 5 des produits par chiffre d'affaires sur la période.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {topProducts.length === 0 ? (
+                            <div className="flex h-24 items-center justify-center text-sm text-muted-foreground">
+                                <p>Aucune donnée de vente pour afficher les meilleurs produits.</p>
+                            </div>
+                        ) : (
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Produit</TableHead>
+                                        <TableHead className="text-center">Unités</TableHead>
+                                        <TableHead className="text-right">Chiffre d'affaires</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {topProducts.map((product) => (
+                                        <TableRow key={product.name}>
+                                            <TableCell className="font-medium">{product.name}</TableCell>
+                                            <TableCell className="text-center">{product.unitsSold}</TableCell>
+                                            <TableCell className="text-right font-semibold">{formatCurrency(product.totalRevenue)}</TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        )}
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2"><Users className="h-5 w-5 text-muted-foreground" /> Meilleurs clients</CardTitle>
+                        <CardDescription>Top 5 des clients par total d'achats sur la période.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {topCustomers.length === 0 ? (
+                            <div className="flex h-24 items-center justify-center text-sm text-muted-foreground">
+                                <p>Aucune donnée de vente pour afficher les meilleurs clients.</p>
+                            </div>
+                        ) : (
+                             <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Client</TableHead>
+                                        <TableHead className="text-right">Total Dépensé</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {topCustomers.map((customer) => (
+                                        <TableRow key={customer.name}>
+                                            <TableCell className="font-medium">{customer.name}</TableCell>
+                                            <TableCell className="text-right font-semibold">{formatCurrency(customer.totalSpent)}</TableCell>
                                         </TableRow>
                                     ))}
                                 </TableBody>
