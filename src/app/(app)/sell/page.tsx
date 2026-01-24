@@ -173,8 +173,10 @@ export default function SellPage() {
 
         // 2. If there is a search query, filter within the category
         if (searchQuery) {
+            const lowercasedQuery = searchQuery.toLowerCase();
             return categoryFiltered.filter(p =>
-                p.name.toLowerCase().includes(searchQuery.toLowerCase())
+                p.name.toLowerCase().includes(lowercasedQuery) ||
+                p.barcodes?.some(b => b.includes(lowercasedQuery))
             );
         }
         
@@ -637,7 +639,7 @@ export default function SellPage() {
                         <div className="relative flex-grow">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input 
-                                placeholder="Rechercher un produit par nom..." 
+                                placeholder="Rechercher par nom ou code-barres..." 
                                 className="pl-9"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
