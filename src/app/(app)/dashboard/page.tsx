@@ -174,7 +174,7 @@ export default function DashboardPage() {
         return <div className="flex h-full items-center justify-center"><p>Chargement du tableau de bord...</p></div>;
     }
     
-    const formatCurrency = (value: number) => `${value.toFixed(1)} DA`;
+    const formatCurrency = (value: number) => `${value.toFixed(2)} DA`;
 
     return (
         <main className="flex-1 overflow-auto p-4 sm:p-6">
@@ -201,12 +201,12 @@ export default function DashboardPage() {
                 </Card>
                  <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Bénéfice net</CardTitle>
+                        <CardTitle className="text-sm font-medium">Bénéfice Brut</CardTitle>
                         <TrendingUp className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold text-green-600">{formatCurrency(totalProfit)}</div>
-                         <p className="text-xs text-muted-foreground">Bénéfice brut estimé</p>
+                         <p className="text-xs text-muted-foreground">Bénéfice brut estimé sur la période</p>
                     </CardContent>
                 </Card>
                 <Card>
