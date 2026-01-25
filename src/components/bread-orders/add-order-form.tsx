@@ -8,19 +8,26 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import { Loader2 } from 'lucide-react';
+import { Loader2, ChevronsUpDown, Check } from 'lucide-react';
+import type { Customer } from '@/lib/types';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { cn } from '@/lib/utils';
 
 interface AddOrderFormProps {
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
     onConfirm: (name: string, quantity: number, isRecurring: boolean) => Promise<void>;
+    customers: Customer[];
+    isLoadingCustomers: boolean;
 }
 
-export function AddOrderForm({ isOpen, onOpenChange, onConfirm }: AddOrderFormProps) {
+export function AddOrderForm({ isOpen, onOpenChange, onConfirm, customers, isLoadingCustomers }: AddOrderFormProps) {
     const [name, setName] = useState('');
     const [quantity, setQuantity] = useState('1');
     const [isRecurring, setIsRecurring] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [isComboboxOpen, setIsComboboxOpen] = useState(false);
 
     const resetForm = () => {
         setName('');
@@ -45,7 +52,7 @@ export function AddOrderForm({ isOpen, onOpenChange, onConfirm }: AddOrderFormPr
 
         setIsLoading(true);
         try {
-            await onConfirm(name, quantityNumber, isRecurring);
+            await onConfirm(name.trim(), quantityNumber, isRecurring);
             onOpenChange(false);
         } catch (error) {
             // Error toast is shown by the parent page
@@ -74,7 +81,50 @@ export function AddOrderForm({ isOpen, onOpenChange, onConfirm }: AddOrderFormPr
                     <div className="grid gap-4 py-4">
                          <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="order-name" className="text-right">Nom</Label>
-                            <Input id="order-name" value={name} onChange={(e) => setName(e.target.value)} className="col-span-3" required disabled={isLoading} autoFocus/>
+                            <Popover open={isComboboxOpen} onOpenChange={setIsComboboxOpen}>
+                                <PopoverTrigger asChild className="col-span-3">
+                                    <Button
+                                        variant="outline"
+                                        role="combobox"
+                                        aria-expanded={isComboboxOpen}
+                                        className="w-full justify-between font-normal"
+                                        disabled={isLoadingCustomers || isLoading}
+                                    >
+                                        <span className="truncate">{name || "Sélectionnez ou entrez un nom..."}</span>
+                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
+                                    <Command>
+                                        <CommandInput 
+                                            placeholder="Rechercher ou créer un nom..."
+                                            value={name}
+                                            onValueChange={setName}
+                                        />
+                                        <CommandList>
+                                            <CommandEmpty>Aucun client trouvé. Le nom sera créé.</CommandEmpty>
+                                            <CommandGroup>
+                                                {customers.map((customer) => {
+                                                    const fullName = `${customer.firstName} ${customer.lastName}`;
+                                                    return (
+                                                        <CommandItem
+                                                            key={customer.id}
+                                                            value={fullName}
+                                                            onSelect={() => {
+                                                                setName(fullName);
+                                                                setIsComboboxOpen(false);
+                                                            }}
+                                                        >
+                                                            <Check className={cn("mr-2 h-4 w-4", name.toLowerCase() === fullName.toLowerCase() ? "opacity-100" : "opacity-0")} />
+                                                            {fullName}
+                                                        </CommandItem>
+                                                    );
+                                                })}
+                                            </CommandGroup>
+                                        </CommandList>
+                                    </Command>
+                                </PopoverContent>
+                            </Popover>
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="order-quantity" className="text-right">Quantité</Label>

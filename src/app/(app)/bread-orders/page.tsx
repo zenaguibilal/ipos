@@ -518,6 +518,8 @@ export default function BreadOrdersPage() {
                 isOpen={isAddingOrder}
                 onOpenChange={setIsAddingOrder}
                 onConfirm={handleAddOrder}
+                customers={customers || []}
+                isLoadingCustomers={isLoadingCustomers}
             />
             {editingOrder && (
                  <EditOrderForm
