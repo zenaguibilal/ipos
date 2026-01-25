@@ -85,18 +85,18 @@ export default function BreadOrdersPage() {
         }
     }, [user, isUserLoading, router]);
 
-    const autoReset = useCallback(async () => {
-        if (!firestore || !user || !orders || !companyProfile || !companyProfile.lastBreadOrderReset) return;
+    const autoReset = useCallback(async (currentOrders: BreadOrder[], currentProfile: CompanyProfile) => {
+        if (!firestore || !user) return;
 
-        const breadPrice = companyProfile?.breadPrice ?? 0;
-        if (breadPrice === 0 && orders.some(o => o.isDelivered && !o.isPaid)) {
+        const breadPrice = currentProfile?.breadPrice ?? 0;
+        if (breadPrice === 0 && currentOrders.some(o => o.isDelivered && !o.isPaid)) {
             console.warn("Automatic reset skipped: Bread price is not set, and there are unpaid orders to archive. Please set the bread price in company profile.");
             return;
         }
 
         const batch = writeBatch(firestore);
         
-        const unpaidOnes = orders.filter(o => o.isDelivered && !o.isPaid);
+        const unpaidOnes = currentOrders.filter(o => o.isDelivered && !o.isPaid);
         if (breadPrice > 0) {
             unpaidOnes.forEach(order => {
                 const unpaidOrderRef = doc(collection(firestore, 'users', user.uid, 'unpaidBreadOrders'));
@@ -112,7 +112,7 @@ export default function BreadOrdersPage() {
             });
         }
 
-        orders.forEach(order => {
+        currentOrders.forEach(order => {
             const orderRef = doc(firestore, 'users', user.uid, 'breadOrders', order.id);
             if (order.isRecurring) {
                 batch.update(orderRef, { isPaid: false, isDelivered: false, createdAt: serverTimestamp() });
@@ -134,7 +134,7 @@ export default function BreadOrdersPage() {
             console.error("Automatic bread order reset failed:", error);
             toast.error("La réinitialisation automatique des commandes de pain a échoué.");
         }
-    }, [firestore, user, orders, companyProfile]);
+    }, [firestore, user]);
 
     // Automatic daily reset effect
     useEffect(() => {
@@ -147,7 +147,7 @@ export default function BreadOrdersPage() {
 
         if ((!lastReset || !isSameDay(today, lastReset)) && !isAutoResettingRef.current) {
             isAutoResettingRef.current = true;
-            autoReset().finally(() => {
+            autoReset(orders, companyProfile).finally(() => {
                 isAutoResettingRef.current = false;
             });
         }
