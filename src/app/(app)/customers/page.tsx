@@ -51,23 +51,49 @@ export default function CustomersPage() {
         }
     }, [user, isUserLoading, router]);
 
-    const customersWithSalesData = useMemo<CustomerWithSalesData[]>(() => {
-        if (!customers || !sales || !payments) return [];
+    const { customersWithSalesData, totalCustomers, totalDebt, customersWithDebt } = useMemo(() => {
+        if (!customers || !sales || !payments) {
+            return { customersWithSalesData: [], totalCustomers: 0, totalDebt: 0, customersWithDebt: 0 };
+        }
+
+        // Pre-process sales and payments for O(1) lookup per customer
+        const salesByCustomer = sales.reduce((acc, sale) => {
+            if (sale.customerId) {
+                if (!acc[sale.customerId]) acc[sale.customerId] = [];
+                acc[sale.customerId].push(sale);
+            }
+            return acc;
+        }, {} as Record<string, Sale[]>);
+
+        const paymentsByCustomer = payments.reduce((acc, payment) => {
+            if (payment.customerId) {
+                if (!acc[payment.customerId]) acc[payment.customerId] = [];
+                acc[payment.customerId].push(payment);
+            }
+            return acc;
+        }, {} as Record<string, Payment[]>);
         
         const today = new Date();
         const currentDayOfMonth = today.getDate();
+        let runningTotalDebt = 0;
+        let runningCustomersWithDebt = 0;
 
-        return customers.map(customer => {
-            const customerSales = sales.filter(s => s.customerId === customer.id);
-            const customerPayments = payments.filter(p => p.customerId === customer.id);
+        const data = customers.map(customer => {
+            const customerSales = salesByCustomer[customer.id] || [];
+            const customerPayments = paymentsByCustomer[customer.id] || [];
+            
             const totalSpent = customerSales.reduce((acc, s) => acc + s.total, 0);
-
             const totalPaidFromSales = customerSales.reduce((acc, s) => acc + s.amountPaid, 0);
             const totalStandalonePayments = customerPayments.reduce((acc, p) => acc + p.amount, 0);
             
             const outstandingBalance = totalSpent - totalPaidFromSales - totalStandalonePayments;
             const finalBalance = outstandingBalance < 0.01 ? 0 : outstandingBalance;
             
+            if (finalBalance > 0) {
+                runningTotalDebt += finalBalance;
+                runningCustomersWithDebt++;
+            }
+
             const validSales = customerSales.filter(s => s.createdAt);
             const lastSaleDate = validSales.length > 0 ? Math.max(...validSales.map(s => safeToDate(s.createdAt).getTime())) : 0;
             
@@ -95,6 +121,13 @@ export default function CustomersPage() {
                 isReminderDue,
             };
         });
+
+        return {
+            customersWithSalesData: data,
+            totalCustomers: customers.length,
+            totalDebt: runningTotalDebt,
+            customersWithDebt: runningCustomersWithDebt,
+        };
     }, [customers, sales, payments]);
 
     const filteredCustomers = useMemo(() => {
@@ -125,15 +158,6 @@ export default function CustomersPage() {
 
         return tempCustomers;
     }, [customersWithSalesData, searchQuery, sortOption]);
-
-    const { totalCustomers, totalDebt, customersWithDebt } = useMemo(() => {
-        return {
-            totalCustomers: customers?.length || 0,
-            totalDebt: customersWithSalesData.reduce((sum, c) => sum + c.outstandingBalance, 0),
-            customersWithDebt: customersWithSalesData.filter(c => c.outstandingBalance > 0).length,
-        }
-    }, [customers, customersWithSalesData]);
-
 
     const handleAddClick = () => {
         setSelectedCustomer(null);
