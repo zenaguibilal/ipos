@@ -45,7 +45,7 @@ function SignupFormComponent() {
 
   useEffect(() => {
     if (user) {
-      router.push('/bread-orders');
+      router.push('/dashboard');
     }
   }, [user, router]);
 
