@@ -13,6 +13,7 @@ import { FinalizeSaleDialog } from './FinalizeSaleDialog';
 import { CustomProductDialog } from './CustomProductDialog';
 import { SaleDetailsDialog } from '@/components/sales/sale-details-dialog';
 import { CustomerDialog } from '@/components/customers/customer-dialog';
+import { ProductDialog } from '@/components/products/product-dialog';
 
 export function SellPageClient() {
     const { user } = useUser();
@@ -33,6 +34,7 @@ export function SellPageClient() {
     const [isSavingSale, setIsSavingSale] = useState(false);
     const [isCustomProductOpen, setIsCustomProductOpen] = useState(false);
     const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
+    const [isNewProductDialogOpen, setIsNewProductDialogOpen] = useState(false);
     const [completedSale, setCompletedSale] = useState<Sale | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
 
@@ -301,7 +303,7 @@ export function SellPageClient() {
             }
              if (e.altKey && e.key.toLowerCase() === 'n') {
                 e.preventDefault();
-                router.push('/products'); 
+                setIsNewProductDialogOpen(true);
             }
         };
 
@@ -317,7 +319,7 @@ export function SellPageClient() {
                 isLoading={isLoadingProducts}
                 onProductSelect={handleAddProductToCart}
                 onAddCustomProduct={() => setIsCustomProductOpen(true)}
-                onAddNewProduct={() => router.push('/products')}
+                onAddNewProduct={() => setIsNewProductDialogOpen(true)}
                 searchQuery={searchQuery}
                 onSearchQueryChange={setSearchQuery}
             />
@@ -358,6 +360,13 @@ export function SellPageClient() {
                 customer={null}
                 userId={user.uid}
                 onCustomerAdded={handleAddNewCustomer}
+            />}
+
+            {user && <ProductDialog
+                isOpen={isNewProductDialogOpen}
+                onOpenChange={setIsNewProductDialogOpen}
+                product={null}
+                userId={user.uid}
             />}
 
             {completedSale && (
