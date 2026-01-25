@@ -10,7 +10,7 @@ import { DateRangePicker } from '@/components/dashboard/date-range-picker';
 import { DateRange } from 'react-day-picker';
 import { subDays, startOfDay, endOfDay, format, eachDayOfInterval, parse } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import type { Sale, ProductReturn, SaleItem, Product, Customer } from '@/lib/types';
+import type { Sale, ProductReturn, Product, Customer } from '@/lib/types';
 import { safeToDate } from '@/lib/utils';
 import { CircleDollarSign, TrendingUp, Undo2, ShoppingCart, Users, Package, Award, Archive } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -82,7 +82,7 @@ function calculateDashboardMetrics(
     const topProductsMap: { [name: string]: { name: string; totalRevenue: number; unitsSold: number; totalProfit: number; } } = {};
     const topCustomersMap: { [name: string]: { name: string; totalSpent: number; } } = {};
     const dailyData: { [key: string]: { revenue: number, profit: number } } = {};
-    const allTransactionsForPeriod: { type: 'Vente' | 'Retour', data: Sale | ProductReturn, date: Date }[] = [];
+    const allTransactionsForPeriod: { type: 'Vente' | 'Retour', date: Date, customerName: string, invoiceNumber: string, amount: number }[] = [];
     
     if (fromDate && toDate) {
         const interval = eachDayOfInterval({ start: fromDate, end: toDate });
@@ -93,7 +93,13 @@ function calculateDashboardMetrics(
     }
 
     for (const sale of filteredSales) {
-        allTransactionsForPeriod.push({ type: 'Vente', data: sale, date: safeToDate(sale.createdAt!) });
+        allTransactionsForPeriod.push({
+            type: 'Vente',
+            date: safeToDate(sale.createdAt!),
+            customerName: sale.customerName || 'N/A',
+            invoiceNumber: sale.invoiceNumber,
+            amount: sale.total,
+        });
         grossRevenue += sale.total;
         
         if (sale.customerName) {
@@ -104,7 +110,7 @@ function calculateDashboardMetrics(
         }
         
         let saleProfit = 0;
-        sale.items.forEach((item: SaleItem) => {
+        sale.items.forEach((item) => {
             const purchasePrice = item.purchasePrice || 0;
             const quantity = item.quantity;
 
@@ -132,7 +138,13 @@ function calculateDashboardMetrics(
     }
 
     for (const ret of filteredReturns) {
-        allTransactionsForPeriod.push({ type: 'Retour', data: ret, date: safeToDate(ret.createdAt!) });
+        allTransactionsForPeriod.push({
+            type: 'Retour',
+            date: safeToDate(ret.createdAt!),
+            customerName: ret.customerName || 'N/A',
+            invoiceNumber: ret.originalInvoiceNumber,
+            amount: ret.totalReturnValue,
+        });
         returnsValue += ret.totalReturnValue;
 
         let returnProfitLoss = 0;
@@ -413,11 +425,11 @@ export default function DashboardPage() {
                                                 </div>
                                             </TableCell>
                                             <TableCell>
-                                                <div className="font-medium">{(tx.data as Sale).customerName || (tx.data as ProductReturn).customerName || 'N/A'}</div>
-                                                <div className="text-xs text-muted-foreground font-mono">{(tx.data as Sale).invoiceNumber || (tx.data as ProductReturn).originalInvoiceNumber}</div>
+                                                <div className="font-medium">{tx.customerName}</div>
+                                                <div className="text-xs text-muted-foreground font-mono">{tx.invoiceNumber}</div>
                                             </TableCell>
                                             <TableCell className="text-right font-bold">
-                                                {formatCurrency(tx.type === 'Vente' ? (tx.data as Sale).total : (tx.data as ProductReturn).totalReturnValue)}
+                                                {formatCurrency(tx.amount)}
                                             </TableCell>
                                         </TableRow>
                                     ))}
