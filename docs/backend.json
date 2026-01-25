@@ -288,6 +288,10 @@
           "type": "boolean",
           "description": "Whether this is a recurring daily order."
         },
+        "customerId": {
+            "type": "string",
+            "description": "Optional ID of the customer associated with the order."
+        },
         "createdAt": {
           "type": "string",
           "format": "date-time",
@@ -322,6 +326,10 @@
                 "type": "string",
                 "format": "date-time",
                 "description": "The original date the order was placed/active."
+            },
+            "customerId": {
+                "type": "string",
+                "description": "Optional ID of the customer associated with the archived order."
             },
             "archivedAt": {
                 "type": "string",

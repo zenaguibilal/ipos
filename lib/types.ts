@@ -65,6 +65,7 @@ export interface BreadOrder {
     isPaid: boolean;
     isDelivered: boolean;
     isRecurring: boolean;
+    customerId?: string;
     createdAt: Timestamp;
 }
 
@@ -75,6 +76,7 @@ export interface UnpaidBreadOrder {
     pricePerUnit: number;
     totalOwed: number;
     originalOrderDate: Timestamp | Date;
+    customerId?: string;
     archivedAt: Timestamp | Date;
 }
 
@@ -187,5 +189,7 @@ export interface ProductReturn {
     createdAt: Timestamp | Date;
     notes?: string;
 }
+
+    
 
     

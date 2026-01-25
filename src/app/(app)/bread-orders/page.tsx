@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useUser, useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, deleteDocumentNonBlocking, useDoc } from '@/firebase';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { collection, query, orderBy, serverTimestamp, doc, writeBatch, updateDoc, addDoc, deleteDoc } from 'firebase/firestore';
@@ -23,6 +23,7 @@ import { PrintableBreadList } from '@/components/bread-orders/printable-bread-li
 import dynamic from 'next/dynamic';
 import { OrderCardSkeleton } from '@/components/bread-orders/order-card-skeleton';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useDoc } from '@/firebase/firestore/use-doc';
 
 const AddOrderForm = dynamic(() => import('@/components/bread-orders/add-order-form').then(mod => mod.AddOrderForm));
 const EditOrderForm = dynamic(() => import('@/components/bread-orders/edit-order-form').then(mod => mod.EditOrderForm));
@@ -84,7 +85,7 @@ export default function BreadOrdersPage() {
     }, [user, isUserLoading, router]);
 
     const autoReset = useCallback(async () => {
-        if (!firestore || !user || !orders || !companyProfile) return;
+        if (!firestore || !user || !orders || !companyProfile || !companyProfile.lastBreadOrderReset) return;
 
         const breadPrice = companyProfile?.breadPrice ?? 0;
         if (breadPrice === 0 && orders.some(o => o.isDelivered && !o.isPaid)) {
@@ -107,6 +108,7 @@ export default function BreadOrdersPage() {
                     pricePerUnit: breadPrice,
                     totalOwed: order.quantity * breadPrice,
                     originalOrderDate: order.createdAt,
+                    customerId: order.customerId || null,
                     archivedAt: serverTimestamp()
                 });
             });
@@ -225,7 +227,7 @@ export default function BreadOrdersPage() {
     const selectedOrderIds = useMemo(() => Object.keys(selectedOrders).filter(id => selectedOrders[id]), [selectedOrders]);
 
 
-    const handleAddOrder = async (name: string, quantity: number, isRecurring: boolean) => {
+    const handleAddOrder = async (name: string, quantity: number, isRecurring: boolean, customerId: string | null) => {
         if (!firestore || !user) throw new Error("Non authentifié");
         const ordersCollectionRef = collection(firestore, 'users', user.uid, 'breadOrders');
         
@@ -237,6 +239,7 @@ export default function BreadOrdersPage() {
                 isPaid: false,
                 isDelivered: false,
                 isRecurring,
+                customerId: customerId || null,
                 createdAt: serverTimestamp()
             });
             toast.success('Commande de pain ajoutée.');
@@ -327,6 +330,7 @@ export default function BreadOrdersPage() {
                     pricePerUnit: breadPrice,
                     totalOwed: order.quantity * breadPrice,
                     originalOrderDate: order.createdAt,
+                    customerId: order.customerId || null,
                     archivedAt: serverTimestamp()
                 });
             });
@@ -440,18 +444,15 @@ export default function BreadOrdersPage() {
     };
 
     const confirmSettleUnpaidOrder = async () => {
-        if (!firestore || !user || !settlingUnpaidOrder || !customers) return;
-
+        if (!firestore || !user || !settlingUnpaidOrder) return;
+    
         setIsSettlingDebt(true);
-
+    
         const batch = writeBatch(firestore);
-
-        // Find customer by name to link the sale
+    
+        const customerId = settlingUnpaidOrder.customerId;
         const customerName = settlingUnpaidOrder.name;
-        const customerMatch = customers.find(c => 
-            `${c.firstName} ${c.lastName}`.trim().toLowerCase() === customerName.trim().toLowerCase()
-        );
-
+    
         // Create a Sale document to record the income
         const salesCollectionRef = collection(firestore, 'users', user.uid, 'sales');
         const newSaleRef = doc(salesCollectionRef);
@@ -471,16 +472,16 @@ export default function BreadOrdersPage() {
             remainingBalance: 0,
             paymentStatus: 'paid' as const,
             paymentMethod: 'cash' as const,
-            customerId: customerMatch ? customerMatch.id : undefined,
-            customerName: settlingUnpaidOrder.name,
+            customerId: customerId || undefined,
+            customerName: customerName,
             createdAt: serverTimestamp()
         };
         batch.set(newSaleRef, saleData);
-
+    
         // Delete the unpaid order log entry
         const unpaidOrderRef = doc(firestore, 'users', user.uid, 'unpaidBreadOrders', settlingUnpaidOrder.id);
         batch.delete(unpaidOrderRef);
-
+    
         try {
             await batch.commit();
             toast.success(`La dette de ${settlingUnpaidOrder.name} a été réglée et enregistrée comme une vente.`);
@@ -807,3 +808,5 @@ export default function BreadOrdersPage() {
         </>
     )
 }
+
+    

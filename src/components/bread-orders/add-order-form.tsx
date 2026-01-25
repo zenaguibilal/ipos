@@ -17,7 +17,7 @@ import { cn } from '@/lib/utils';
 interface AddOrderFormProps {
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
-    onConfirm: (name: string, quantity: number, isRecurring: boolean) => Promise<void>;
+    onConfirm: (name: string, quantity: number, isRecurring: boolean, customerId: string | null) => Promise<void>;
     customers: Customer[];
     isLoadingCustomers: boolean;
 }
@@ -28,11 +28,13 @@ export function AddOrderForm({ isOpen, onOpenChange, onConfirm, customers, isLoa
     const [isRecurring, setIsRecurring] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [isComboboxOpen, setIsComboboxOpen] = useState(false);
+    const [customerId, setCustomerId] = useState<string | null>(null);
 
     const resetForm = () => {
         setName('');
         setQuantity('1');
         setIsRecurring(false);
+        setCustomerId(null);
     };
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -52,7 +54,7 @@ export function AddOrderForm({ isOpen, onOpenChange, onConfirm, customers, isLoa
 
         setIsLoading(true);
         try {
-            await onConfirm(name.trim(), quantityNumber, isRecurring);
+            await onConfirm(name.trim(), quantityNumber, isRecurring, customerId);
             onOpenChange(false);
         } catch (error) {
             // Error toast is shown by the parent page
@@ -99,7 +101,14 @@ export function AddOrderForm({ isOpen, onOpenChange, onConfirm, customers, isLoa
                                         <CommandInput 
                                             placeholder="Rechercher ou créer un nom..."
                                             value={name}
-                                            onValueChange={setName}
+                                            onValueChange={(searchValue) => {
+                                                setName(searchValue);
+                                                // If the typed value doesn't exactly match a customer name, it's a new entry.
+                                                const exactMatch = customers.find(c => `${c.firstName} ${c.lastName}` === searchValue);
+                                                if (!exactMatch) {
+                                                    setCustomerId(null);
+                                                }
+                                            }}
                                         />
                                         <CommandList>
                                             <CommandEmpty>Aucun client trouvé. Le nom sera créé.</CommandEmpty>
@@ -112,10 +121,11 @@ export function AddOrderForm({ isOpen, onOpenChange, onConfirm, customers, isLoa
                                                             value={fullName}
                                                             onSelect={() => {
                                                                 setName(fullName);
+                                                                setCustomerId(customer.id);
                                                                 setIsComboboxOpen(false);
                                                             }}
                                                         >
-                                                            <Check className={cn("mr-2 h-4 w-4", name.toLowerCase() === fullName.toLowerCase() ? "opacity-100" : "opacity-0")} />
+                                                            <Check className={cn("mr-2 h-4 w-4", customerId === customer.id ? "opacity-100" : "opacity-0")} />
                                                             {fullName}
                                                         </CommandItem>
                                                     );
@@ -155,3 +165,5 @@ export function AddOrderForm({ isOpen, onOpenChange, onConfirm, customers, isLoa
         </Dialog>
     );
 }
+
+    
