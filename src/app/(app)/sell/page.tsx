@@ -292,7 +292,6 @@ export default function SellPage() {
             purchasePrice: 0,
             quantity: Infinity, // Not a stock-managed item
             cartQuantity: 1,
-            minStockLevel: 0,
             createdAt: new Date(),
         };
 
