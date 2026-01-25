@@ -450,7 +450,7 @@ export default function SellPage() {
                     remainingBalance: remainingBalance > 0 ? remainingBalance : 0,
                     paymentStatus: finalPaymentStatus,
                     paymentMethod: paymentMethod,
-                    customerId: cartToPay.customerId,
+                    customerId: cartToPay.customerId ?? undefined,
                     customerName: cartToPay.customerName,
                     createdAt: serverTimestamp(),
                 };
