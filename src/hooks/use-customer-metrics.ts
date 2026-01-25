@@ -19,10 +19,10 @@ export function useCustomerMetrics(sales: Sale[] | null, payments: Payment[] | n
         const balance = totalSaleAmount - totalPaidFromSales - totalStandalonePayments;
         const finalBalance = balance < 0.01 ? 0 : balance;
 
-        const saleTransactions: Transaction[] = sales.map(s => ({ type: 'sale', data: s }));
-        const paymentTransactions: Transaction[] = payments.map(p => ({ type: 'payment', data: p }));
-
-        const allTransactions = [...saleTransactions, ...paymentTransactions].sort((a, b) => {
+        const allTransactions = [
+            ...sales.map((s): Transaction => ({ type: 'sale', data: s })),
+            ...payments.map((p): Transaction => ({ type: 'payment', data: p }))
+        ].sort((a, b) => {
             const timeB = b.data.createdAt ? safeToDate(b.data.createdAt).getTime() : 0;
             const timeA = a.data.createdAt ? safeToDate(a.data.createdAt).getTime() : 0;
             return timeB - timeA;
