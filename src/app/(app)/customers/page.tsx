@@ -51,9 +51,9 @@ export default function CustomersPage() {
         }
     }, [user, isUserLoading, router]);
 
-    const { customersWithSalesData, totalCustomers, totalDebt, customersWithDebt } = useMemo(() => {
+    const { customersWithSalesData, totalDebt, customersWithDebt } = useMemo(() => {
         if (!customers || !sales || !payments) {
-            return { customersWithSalesData: [], totalCustomers: 0, totalDebt: 0, customersWithDebt: 0 };
+            return { customersWithSalesData: [], totalDebt: 0, customersWithDebt: 0 };
         }
 
         // Pre-process sales and payments for O(1) lookup per customer
@@ -94,8 +94,8 @@ export default function CustomersPage() {
                 runningCustomersWithDebt++;
             }
 
-            const lastSaleDate = customerSales.length > 0 ? Math.max(...customerSales.map(s => safeToDate(s.createdAt).getTime())) : 0;
-            const lastPaymentDate = customerPayments.length > 0 ? Math.max(...customerPayments.map(p => safeToDate(p.createdAt).getTime())) : 0;
+            const lastSaleDate = Math.max(...customerSales.map(s => safeToDate(s.createdAt).getTime()));
+            const lastPaymentDate = Math.max(...customerPayments.map(p => safeToDate(p.createdAt).getTime()));
 
             const lastActivityTimestamp = Math.max(lastSaleDate, lastPaymentDate);
             const lastActivityDate = lastActivityTimestamp > 0 ? new Date(lastActivityTimestamp) : null;
@@ -118,11 +118,12 @@ export default function CustomersPage() {
 
         return {
             customersWithSalesData: data,
-            totalCustomers: customers.length,
             totalDebt: runningTotalDebt,
             customersWithDebt: runningCustomersWithDebt,
         };
     }, [customers, sales, payments]);
+
+    const totalCustomers = customers?.length || 0;
 
     const filteredCustomers = useMemo(() => {
         if (!customersWithSalesData) return [];
