@@ -4,7 +4,7 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { collection, doc, query, where, getDocs, runTransaction, serverTimestamp, setDoc } from 'firebase/firestore';
+import { collection, doc, query, where, getDocs, runTransaction, serverTimestamp } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -16,8 +16,9 @@ import Link from 'next/link';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import type { Sale, SaleItem, ReturnItem } from '@/lib/types';
+import type { Sale, SaleItem } from '@/lib/types';
 import { cn, safeToDate } from '@/lib/utils';
+import { Checkbox } from '@/components/ui/checkbox';
 
 type ReturnFormItem = SaleItem & { returnQuantity: number };
 
@@ -31,6 +32,7 @@ export default function NewReturnPage() {
     const [isSearching, setIsSearching] = useState(false);
     const [foundSale, setFoundSale] = useState<Sale | null>(null);
     const [itemsToReturn, setItemsToReturn] = useState<ReturnFormItem[]>([]);
+    const [itemsToRestock, setItemsToRestock] = useState<Record<string, boolean>>({});
     const [amountRefunded, setAmountRefunded] = useState('');
     const [notes, setNotes] = useState('');
     const [isSaving, setIsSaving] = useState(false);
@@ -45,6 +47,7 @@ export default function NewReturnPage() {
         setIsSearching(true);
         setFoundSale(null);
         setItemsToReturn([]);
+        setItemsToRestock({});
 
         const q = query(salesCollectionRef, where('invoiceNumber', '==', invoiceToSearch.trim()));
         
@@ -56,7 +59,18 @@ export default function NewReturnPage() {
                 const saleDoc = querySnapshot.docs[0];
                 const saleData = { ...saleDoc.data(), id: saleDoc.id } as Sale;
                 setFoundSale(saleData);
-                setItemsToReturn(saleData.items.map(item => ({ ...item, returnQuantity: 0 })));
+                
+                const initialItems = saleData.items.map(item => ({ ...item, returnQuantity: 0 }));
+                setItemsToReturn(initialItems);
+                
+                const initialRestockState: Record<string, boolean> = {};
+                initialItems.forEach(item => {
+                    if (!item.id.startsWith('custom-')) {
+                        initialRestockState[item.id] = true;
+                    }
+                });
+                setItemsToRestock(initialRestockState);
+                
                 setAmountRefunded('0.0');
                 toast.success(`Vente ${saleData.invoiceNumber} trouvée.`);
             }
@@ -116,33 +130,50 @@ export default function NewReturnPage() {
 
         setIsSaving(true);
         try {
-            const newReturnRef = doc(collection(firestore, 'users', user.uid, 'returns'));
-            const returnData: Omit<any, 'id' | 'createdAt'> = {
-                originalSaleId: foundSale.id,
-                originalInvoiceNumber: foundSale.invoiceNumber,
-                items: returnedItems.map(item => ({
-                    productId: item.id.startsWith('custom-') ? null : item.id,
-                    productName: item.name,
-                    quantity: item.returnQuantity,
-                    price: item.price,
-                    purchasePrice: item.purchasePrice
-                })),
-                totalReturnValue: totalReturnValue,
-                amountRefunded: refundAmount,
-                customerId: foundSale.customerId,
-                customerName: foundSale.customerName,
-                createdAt: serverTimestamp(),
-                notes: notes,
-            };
+            await runTransaction(firestore, async (transaction) => {
+                // 1. Update stock for restocked items
+                for (const item of returnedItems) {
+                    const shouldRestock = itemsToRestock[item.id];
+                    if (shouldRestock && !item.id.startsWith('custom-')) {
+                        const productRef = doc(firestore, 'users', user.uid, 'products', item.id);
+                        const productDoc = await transaction.get(productRef);
+                        if (productDoc.exists()) {
+                            const currentQuantity = productDoc.data().quantity;
+                            transaction.update(productRef, {
+                                quantity: currentQuantity + item.returnQuantity
+                            });
+                        }
+                    }
+                }
+
+                // 2. Create the return document
+                const newReturnRef = doc(collection(firestore, 'users', user.uid, 'returns'));
+                const returnData = {
+                    originalSaleId: foundSale.id,
+                    originalInvoiceNumber: foundSale.invoiceNumber,
+                    items: returnedItems.map(item => ({
+                        productId: item.id.startsWith('custom-') ? null : item.id,
+                        productName: item.name,
+                        quantity: item.returnQuantity,
+                        price: item.price,
+                        purchasePrice: item.purchasePrice
+                    })),
+                    totalReturnValue: totalReturnValue,
+                    amountRefunded: refundAmount,
+                    customerId: foundSale.customerId,
+                    customerName: foundSale.customerName,
+                    createdAt: serverTimestamp(),
+                    notes: notes,
+                };
+                transaction.set(newReturnRef, returnData);
+            });
             
-            await setDoc(newReturnRef, returnData);
-            
-            toast.success("Le retour a été enregistré avec succès.");
+            toast.success("Le retour a été enregistré et le stock mis à jour.");
             router.push('/returns');
 
-        } catch (error) {
+        } catch (error: any) {
             console.error("Failed to save return:", error);
-            toast.error("Une erreur est survenue lors de l'enregistrement du retour.");
+            toast.error(error.message || "Une erreur est survenue lors de l'enregistrement du retour.");
         } finally {
             setIsSaving(false);
         }
@@ -205,6 +236,7 @@ export default function NewReturnPage() {
                                                 <TableHead className="text-center">Qté Achetée</TableHead>
                                                 <TableHead className="text-right">Prix Unitaire</TableHead>
                                                 <TableHead className="w-[150px] text-center">Qté à Retourner</TableHead>
+                                                <TableHead className="w-[120px] text-center">Remettre en stock ?</TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
@@ -222,6 +254,17 @@ export default function NewReturnPage() {
                                                             min="0"
                                                             max={item.quantity}
                                                         />
+                                                    </TableCell>
+                                                     <TableCell className="text-center">
+                                                        {!item.id.startsWith('custom-') && (
+                                                            <Checkbox
+                                                                checked={itemsToRestock[item.id] ?? false}
+                                                                onCheckedChange={(checked) => {
+                                                                    setItemsToRestock(prev => ({ ...prev, [item.id]: !!checked }))
+                                                                }}
+                                                                aria-label="Remettre en stock"
+                                                            />
+                                                        )}
                                                     </TableCell>
                                                 </TableRow>
                                             ))}
