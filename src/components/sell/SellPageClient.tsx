@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, doc, serverTimestamp, getDoc, runTransaction } from 'firebase/firestore';
+import { collection, doc, serverTimestamp, runTransaction } from 'firebase/firestore';
 import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
 import { useRouter } from 'next/navigation';
@@ -34,6 +34,7 @@ export function SellPageClient() {
     const [isCustomProductOpen, setIsCustomProductOpen] = useState(false);
     const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
     const [completedSale, setCompletedSale] = useState<Sale | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
 
     const productsQuery = useMemoFirebase(() => user && firestore ? collection(firestore, 'users', user.uid, 'products') : null, [user, firestore]);
     const customersQuery = useMemoFirebase(() => user && firestore ? collection(firestore, 'users', user.uid, 'customers') : null, [user, firestore]);
@@ -121,17 +122,16 @@ export function SellPageClient() {
     };
     
     const handleAddCustomProduct = (name: string, price: number) => {
-        const customProduct: CartItem = {
+        const customProduct: Omit<CartItem, 'minStockLevel'> = {
             id: `custom-${uuidv4()}`,
             name,
             price,
             purchasePrice: 0, 
             quantity: Infinity, // Not a stock-managed item
             cartQuantity: 1,
-            minStockLevel: 0,
             createdAt: new Date(),
         };
-        handleAddProductToCart(customProduct);
+        handleAddProductToCart(customProduct as CartItem);
         setIsCustomProductOpen(false);
     };
 
@@ -217,7 +217,7 @@ export function SellPageClient() {
             quantity: item.cartQuantity
         }));
 
-        const newSaleData: Omit<Sale, 'id'> = {
+        const newSaleData: Omit<Sale, 'id' | 'createdAt'> = {
             invoiceNumber: `INV-${Date.now()}`,
             items: saleItems,
             subtotal: subtotal,
@@ -230,7 +230,6 @@ export function SellPageClient() {
             paymentMethod: paymentMethod,
             customerId: cartToPay.customerId ?? undefined,
             customerName: cartToPay.customerName,
-            createdAt: serverTimestamp(),
         };
     
         try {
@@ -257,7 +256,7 @@ export function SellPageClient() {
                     }
                 }
     
-                transaction.set(saleRef, newSaleData);
+                transaction.set(saleRef, {...newSaleData, createdAt: serverTimestamp()});
             });
     
             toast.success("Vente finalisée avec succès!");
@@ -319,6 +318,8 @@ export function SellPageClient() {
                 onProductSelect={handleAddProductToCart}
                 onAddCustomProduct={() => setIsCustomProductOpen(true)}
                 onAddNewProduct={() => router.push('/products')}
+                searchQuery={searchQuery}
+                onSearchQueryChange={setSearchQuery}
             />
             <CartPanel
                 carts={carts}

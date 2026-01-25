@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useMemo } from 'react';
 import type { Product, CartItem } from '@/lib/types';
@@ -8,6 +7,7 @@ import { Search, PlusCircle, PenSquare } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ProductGridCard } from './ProductGridCard';
 import { ProductCardSkeleton } from '../products/product-card-skeleton';
+import { toast } from 'sonner';
 
 interface ProductGridProps {
     products: Product[];
@@ -16,10 +16,11 @@ interface ProductGridProps {
     onProductSelect: (product: Product) => void;
     onAddCustomProduct: () => void;
     onAddNewProduct: () => void;
+    searchQuery: string;
+    onSearchQueryChange: (query: string) => void;
 }
 
-export function ProductGrid({ products, cartItems, isLoading, onProductSelect, onAddCustomProduct, onAddNewProduct }: ProductGridProps) {
-    const [searchQuery, setSearchQuery] = useState('');
+export function ProductGrid({ products, cartItems, isLoading, onProductSelect, onAddCustomProduct, onAddNewProduct, searchQuery, onSearchQueryChange }: ProductGridProps) {
     const [selectedCategory, setSelectedCategory] = useState('all');
 
     const categories = useMemo(() => {
@@ -47,6 +48,25 @@ export function ProductGrid({ products, cartItems, isLoading, onProductSelect, o
 
     const cartItemIds = useMemo(() => new Set(cartItems.map(item => item.id)), [cartItems]);
 
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            if (filteredProducts.length === 1) {
+                const product = filteredProducts[0];
+                if (product.quantity > 0) {
+                    onProductSelect(product);
+                    onSearchQueryChange(''); // Clear search after adding
+                } else {
+                    toast.error(`${product.name} est en rupture de stock.`);
+                }
+            } else if (filteredProducts.length > 1) {
+                toast.info("Plusieurs produits correspondent. Veuillez affiner votre recherche.");
+            } else {
+                toast.error("Aucun produit trouvé pour cette recherche.");
+            }
+        }
+    };
+
     return (
         <div className="md:col-span-2 xl:col-span-3 flex flex-col p-4 bg-muted/30 h-full">
             <header className="flex-shrink-0 mb-4">
@@ -56,7 +76,8 @@ export function ProductGrid({ products, cartItems, isLoading, onProductSelect, o
                         <Input
                             placeholder="Scanner ou rechercher un produit..."
                             value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
+                            onChange={(e) => onSearchQueryChange(e.target.value)}
+                            onKeyDown={handleKeyDown}
                             className="pl-9 h-11 text-base"
                         />
                     </div>
