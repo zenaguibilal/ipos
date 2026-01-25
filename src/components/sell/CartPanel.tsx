@@ -1,21 +1,20 @@
-
 'use client';
-import type { Cart, Customer, CartItem, CustomerWithSalesData } from '@/lib/types';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import type { Cart, CustomerWithSalesData } from '@/lib/types';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { PlusCircle, Trash2, X, ShoppingCart, Wallet, HandCoins, Users } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { PlusCircle, Trash2, X, ShoppingCart, Users } from 'lucide-react';
 import { CustomerSelector } from './CustomerSelector';
 import { CartItemControls } from './CartItemControls';
 import { Input } from '../ui/input';
 import { Skeleton } from '../ui/skeleton';
-import { useMemo } from 'react';
 
 interface CartPanelProps {
     carts: Cart[];
     activeCartId: string;
     customersWithData: CustomerWithSalesData[];
+    activeCustomer: CustomerWithSalesData | null;
     isLoading: boolean;
     onAddCart: () => void;
     onRemoveCart: (cartId: string) => void;
@@ -30,14 +29,9 @@ interface CartPanelProps {
 }
 
 export function CartPanel(props: CartPanelProps) {
-    const { carts, activeCartId, customersWithData } = props;
+    const { carts, activeCartId, customersWithData, activeCustomer } = props;
     const activeCart = carts.find(c => c.id === activeCartId);
     if (!activeCart) return null;
-
-    const activeCustomerData = useMemo(() => {
-        if (!activeCart?.customerId) return null;
-        return customersWithData.find(c => c.id === activeCart.customerId);
-    }, [activeCart?.customerId, customersWithData]);
 
     const subtotal = activeCart.items.reduce((acc, item) => acc + (item.price * item.cartQuantity), 0);
     const discountAmount = activeCart.discount.type === 'fixed'
@@ -91,15 +85,15 @@ export function CartPanel(props: CartPanelProps) {
                         <Skeleton className="h-8 w-full" />
                     )}
 
-                    {activeCustomerData && (
+                    {activeCustomer && (
                         <div className="border-t pt-3 mt-3 space-y-2">
                              <div className="flex justify-between items-center text-sm">
                                 <span className="text-muted-foreground">Téléphone</span>
-                                <span className="font-medium">{activeCustomerData.phone || 'N/A'}</span>
+                                <span className="font-medium">{activeCustomer.phone || 'N/A'}</span>
                             </div>
                             <div className="flex justify-between items-center text-sm">
                                 <span className="text-muted-foreground">Dette précédente</span>
-                                <span className={`font-bold ${activeCustomerData.outstandingBalance > 0 ? 'text-destructive' : ''}`}>{activeCustomerData.outstandingBalance.toFixed(1)} DA</span>
+                                <span className={`font-bold ${activeCustomer.outstandingBalance > 0 ? 'text-destructive' : ''}`}>{activeCustomer.outstandingBalance.toFixed(1)} DA</span>
                             </div>
                         </div>
                     )}

@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
@@ -7,7 +6,7 @@ import { collection, doc, serverTimestamp, runTransaction, query } from 'firebas
 import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
 import { useRouter } from 'next/navigation';
-import type { Product, Customer, Cart, CartItem, Sale, SalePayment, CustomerWithSalesData, Payment } from '@/lib/types';
+import type { Product, Customer, Cart, CartItem, Sale, CustomerWithSalesData, Payment } from '@/lib/types';
 import { ProductGrid } from '@/components/sell/ProductGrid';
 import { CartPanel } from '@/components/sell/CartPanel';
 import { Loader2 } from 'lucide-react';
@@ -205,7 +204,7 @@ export default function SellPage() {
             return countB - countA;
         });
 
-        return sortedProducts.slice(0, 15);
+        return sortedProducts;
     }, [products, sales]);
 
 
@@ -534,6 +533,7 @@ export default function SellPage() {
                 carts={carts}
                 activeCartId={activeCartId}
                 customersWithData={customersWithSalesData}
+                activeCustomer={activeCustomer}
                 isLoading={isLoadingCustomers || isLoadingSales || isLoadingPayments}
                 onAddCart={handleAddCart}
                 onRemoveCart={handleRemoveCart}
