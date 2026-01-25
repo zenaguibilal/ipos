@@ -10,13 +10,16 @@ import { useRouter } from 'next/navigation';
 import type { Product, Customer, Cart, CartItem, Sale, SaleItem, Payment, CompanyProfile } from '@/lib/types';
 import { ProductGrid } from './ProductGrid';
 import { CartPanel } from './CartPanel';
-import { FinalizeSaleDialog } from './FinalizeSaleDialog';
-import { CustomProductDialog } from './CustomProductDialog';
-import { SaleDetailsDialog } from '@/components/sales/sale-details-dialog';
-import { CustomerDialog } from '@/components/customers/customer-dialog';
-import { ProductDialog } from '@/components/products/product-dialog';
 import { Loader2 } from 'lucide-react';
-import { AddPaymentForm } from '@/components/customers/add-payment-form';
+import dynamic from 'next/dynamic';
+
+const FinalizeSaleDialog = dynamic(() => import('./FinalizeSaleDialog').then(mod => mod.FinalizeSaleDialog));
+const CustomProductDialog = dynamic(() => import('./CustomProductDialog').then(mod => mod.CustomProductDialog));
+const SaleDetailsDialog = dynamic(() => import('@/components/sales/sale-details-dialog').then(mod => mod.SaleDetailsDialog));
+const CustomerDialog = dynamic(() => import('@/components/customers/customer-dialog').then(mod => mod.CustomerDialog));
+const ProductDialog = dynamic(() => import('@/components/products/product-dialog').then(mod => mod.ProductDialog));
+const AddPaymentForm = dynamic(() => import('@/components/customers/add-payment-form').then(mod => mod.AddPaymentForm));
+
 
 export function SellPageClient() {
     const { user, isUserLoading } = useUser();
