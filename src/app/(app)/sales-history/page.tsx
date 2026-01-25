@@ -96,10 +96,6 @@ export default function SalesHistoryPage() {
 
         const fromDate = dateRange?.from;
         const toDate = dateRange?.to;
-        let runningRevenue = 0;
-        let runningCollected = 0;
-        let runningSalesCount = 0;
-        let runningProfit = 0;
 
         const filtered = combinedTransactions.filter(transaction => {
             if (!transaction.data.createdAt) return false;
@@ -128,50 +124,53 @@ export default function SalesHistoryPage() {
             }
         });
         
-        const groups = filtered.reduce((acc, transaction) => {
-            if (!transaction.data.createdAt) return acc;
-            const dateStr = format(safeToDate(transaction.data.createdAt), 'yyyy-MM-dd');
-            if (!acc[dateStr]) {
-                acc[dateStr] = {
-                    transactions: [],
-                    dailyRevenue: 0,
-                    dailyCollected: 0,
-                    dailyProfit: 0,
-                };
+        const initialStats = {
+            groupedTransactions: {} as Record<string, { transactions: Transaction[], dailyRevenue: number, dailyCollected: number, dailyProfit: number }>,
+            totalRevenue: 0,
+            totalCollected: 0,
+            salesCount: 0,
+            totalProfit: 0,
+        };
+
+        const finalStats = filtered.reduce((acc, transaction) => {
+            // Grouping Logic
+            const dateStr = format(safeToDate(transaction.data.createdAt!), 'yyyy-MM-dd');
+            if (!acc.groupedTransactions[dateStr]) {
+                acc.groupedTransactions[dateStr] = { transactions: [], dailyRevenue: 0, dailyCollected: 0, dailyProfit: 0 };
             }
-            acc[dateStr].transactions.push(transaction);
+            acc.groupedTransactions[dateStr].transactions.push(transaction);
 
+            // Calculation Logic
             if (transaction.type === 'sale') {
-                acc[dateStr].dailyRevenue += transaction.data.total;
-                acc[dateStr].dailyCollected += transaction.data.amountPaid;
-
-                let saleProfit = 0;
-                transaction.data.items.forEach((item: SaleItem) => {
+                const sale = transaction.data;
+                const saleProfit = sale.items.reduce((profit, item) => {
                     const purchasePrice = typeof item.purchasePrice === 'number' ? item.purchasePrice : 0;
                     const quantity = typeof item.quantity === 'number' ? item.quantity : 0;
-                    saleProfit += (item.price - purchasePrice) * quantity;
-                });
-                acc[dateStr].dailyProfit += saleProfit;
+                    return profit + (item.price - purchasePrice) * quantity;
+                }, 0);
 
-                runningRevenue += transaction.data.total;
-                runningCollected += transaction.data.amountPaid;
-                runningSalesCount++;
-                runningProfit += saleProfit;
-            } else { // payment
-                acc[dateStr].dailyCollected += transaction.data.amount;
-                runningCollected += transaction.data.amount;
+                // Update daily stats
+                acc.groupedTransactions[dateStr].dailyRevenue += sale.total;
+                acc.groupedTransactions[dateStr].dailyCollected += sale.amountPaid;
+                acc.groupedTransactions[dateStr].dailyProfit += saleProfit;
+
+                // Update total stats
+                acc.totalRevenue += sale.total;
+                acc.totalCollected += sale.amountPaid;
+                acc.salesCount++;
+                acc.totalProfit += saleProfit;
+            } else { // Payment
+                const payment = transaction.data;
+                // Update daily stats
+                acc.groupedTransactions[dateStr].dailyCollected += payment.amount;
+                // Update total stats
+                acc.totalCollected += payment.amount;
             }
 
             return acc;
-        }, {} as Record<string, { transactions: Transaction[], dailyRevenue: number, dailyCollected: number, dailyProfit: number }>);
+        }, initialStats);
         
-        return { 
-            groupedTransactions: groups, 
-            totalRevenue: runningRevenue, 
-            totalCollected: runningCollected, 
-            salesCount: runningSalesCount,
-            totalProfit: runningProfit,
-        };
+        return finalStats;
 
     }, [combinedTransactions, searchQuery, statusFilter, dateRange]);
 
@@ -540,3 +539,5 @@ export default function SalesHistoryPage() {
         </>
     );
 }
+
+    
