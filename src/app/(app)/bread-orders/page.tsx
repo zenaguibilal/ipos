@@ -50,6 +50,7 @@ export default function BreadOrdersPage() {
     const [deletingUnpaidOrder, setDeletingUnpaidOrder] = useState<UnpaidBreadOrder | null>(null);
     const [settlingUnpaidOrder, setSettlingUnpaidOrder] = useState<UnpaidBreadOrder | null>(null);
     const [isSettlingDebt, setIsSettlingDebt] = useState(false);
+    const [isDeletingUnpaid, setIsDeletingUnpaid] = useState(false);
     const printRef = useRef<HTMLDivElement>(null);
 
     const [updatingItems, setUpdatingItems] = useState<Record<string, boolean>>({});
@@ -296,7 +297,7 @@ export default function BreadOrdersPage() {
         setIsProcessingReset(true);
 
         const breadPrice = companyProfile?.breadPrice ?? 0;
-        if (breadPrice === 0) {
+        if (breadPrice === 0 && orders.some(o => o.isDelivered && !o.isPaid)) {
             toast.error("Le prix du pain n'est pas défini. Impossible d'archiver les dettes.", {
                 description: "Veuillez le configurer dans votre profil d'entreprise avant de réinitialiser."
             });
@@ -308,17 +309,19 @@ export default function BreadOrdersPage() {
         const batch = writeBatch(firestore);
         
         const unpaidOnes = orders.filter(o => o.isDelivered && !o.isPaid);
-        unpaidOnes.forEach(order => {
-            const unpaidOrderRef = doc(collection(firestore, 'users', user.uid, 'unpaidBreadOrders'));
-            batch.set(unpaidOrderRef, {
-                name: order.name,
-                quantity: order.quantity,
-                pricePerUnit: breadPrice,
-                totalOwed: order.quantity * breadPrice,
-                originalOrderDate: order.createdAt,
-                archivedAt: serverTimestamp()
+        if (breadPrice > 0) {
+            unpaidOnes.forEach(order => {
+                const unpaidOrderRef = doc(collection(firestore, 'users', user.uid, 'unpaidBreadOrders'));
+                batch.set(unpaidOrderRef, {
+                    name: order.name,
+                    quantity: order.quantity,
+                    pricePerUnit: breadPrice,
+                    totalOwed: order.quantity * breadPrice,
+                    originalOrderDate: order.createdAt,
+                    archivedAt: serverTimestamp()
+                });
             });
-        });
+        }
 
         orders.forEach(order => {
             const orderRef = doc(firestore, 'users', user.uid, 'breadOrders', order.id);
@@ -410,20 +413,21 @@ export default function BreadOrdersPage() {
         }
     };
 
-    const confirmDeleteUnpaidOrder = () => {
+    const confirmDeleteUnpaidOrder = async () => {
         if (!firestore || !user || !deletingUnpaidOrder) return;
+        setIsDeletingUnpaid(true);
         const docRef = doc(firestore, 'users', user.uid, 'unpaidBreadOrders', deletingUnpaidOrder.id);
-        deleteDocumentNonBlocking(docRef, {
-            onSuccess: () => {
-                toast.success(`La dette de ${deletingUnpaidOrder.name} a été supprimée.`);
-                setDeletingUnpaidOrder(null);
-            },
-            onError: (err) => {
-                toast.error("Erreur lors de la suppression de la dette.");
-                console.error(err);
-                setDeletingUnpaidOrder(null);
-            }
-        });
+        
+        try {
+            await deleteDoc(docRef);
+            toast.success(`La dette de ${deletingUnpaidOrder.name} a été supprimée.`);
+            setDeletingUnpaidOrder(null);
+        } catch (err) {
+            toast.error("Erreur lors de la suppression de la dette.");
+            console.error(err);
+        } finally {
+            setIsDeletingUnpaid(false);
+        }
     };
 
     const confirmSettleUnpaidOrder = async () => {
@@ -526,7 +530,7 @@ export default function BreadOrdersPage() {
                 onConfirm={handleClearLog}
                 isProcessing={isClearingLog}
             />
-            <AlertDialog open={!!deletingUnpaidOrder} onOpenChange={(isOpen) => !isOpen && setDeletingUnpaidOrder(null)}>
+            <AlertDialog open={!!deletingUnpaidOrder} onOpenChange={(isOpen) => !isOpen && !isDeletingUnpaid && setDeletingUnpaidOrder(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>Confirmer la suppression?</AlertDialogTitle>
@@ -535,10 +539,15 @@ export default function BreadOrdersPage() {
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel>Annuler</AlertDialogCancel>
-                        <AlertDialogAction onClick={confirmDeleteUnpaidOrder} className={cn(buttonVariants({ variant: "destructive" }))}>
+                        <AlertDialogCancel disabled={isDeletingUnpaid}>Annuler</AlertDialogCancel>
+                        <Button
+                            onClick={confirmDeleteUnpaidOrder}
+                            disabled={isDeletingUnpaid}
+                            variant="destructive"
+                        >
+                            {isDeletingUnpaid && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Supprimer
-                        </AlertDialogAction>
+                        </Button>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
