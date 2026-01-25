@@ -155,21 +155,34 @@ export default function BreadOrdersPage() {
 
     const isLoading = isUserLoading || isLoadingOrders || isLoadingCompany || isLoadingUnpaid || isLoadingCustomers;
 
-    const { filteredOrders, totalQuantity, deliveredQuantity, undeliveredQuantity, totalPaid, totalOwed } = useMemo(() => {
-        if (!orders || isLoading) return { filteredOrders: [], totalQuantity: 0, deliveredQuantity: 0, undeliveredQuantity: 0, totalPaid: 0, totalOwed: 0 };
-        
+    const { totalQuantity, deliveredQuantity, totalPaid, totalOwed } = useMemo(() => {
+        if (!orders || isLoading) {
+            return { totalQuantity: 0, deliveredQuantity: 0, totalPaid: 0, totalOwed: 0 };
+        }
         const breadPrice = companyProfile?.breadPrice ?? 0;
-        
-        const totalQty = orders.reduce((sum, order) => sum + order.quantity, 0);
-        const deliveredQty = orders.filter(o => o.isDelivered).reduce((sum, order) => sum + order.quantity, 0);
 
-        const paid = orders
-            .filter(o => o.isPaid)
-            .reduce((sum, order) => sum + (order.quantity * breadPrice), 0);
-            
-        const owed = orders
-            .filter(o => o.isDelivered && !o.isPaid)
-            .reduce((sum, order) => sum + (order.quantity * breadPrice), 0);
+        return orders.reduce(
+            (acc, order) => {
+                acc.totalQuantity += order.quantity;
+                if (order.isDelivered) {
+                    acc.deliveredQuantity += order.quantity;
+                    if (!order.isPaid) {
+                        acc.totalOwed += order.quantity * breadPrice;
+                    }
+                }
+                if (order.isPaid) {
+                    acc.totalPaid += order.quantity * breadPrice;
+                }
+                return acc;
+            },
+            { totalQuantity: 0, deliveredQuantity: 0, totalPaid: 0, totalOwed: 0 }
+        );
+    }, [orders, companyProfile, isLoading]);
+
+    const undeliveredQuantity = totalQuantity - deliveredQuantity;
+    
+    const filteredOrders = useMemo(() => {
+        if (!orders) return [];
 
         let processedOrders = [...orders];
 
@@ -212,15 +225,8 @@ export default function BreadOrdersPage() {
             }
         });
 
-        return { 
-            filteredOrders: processedOrders, 
-            totalQuantity: totalQty, 
-            deliveredQuantity: deliveredQty, 
-            undeliveredQuantity: totalQty - deliveredQty,
-            totalPaid: paid,
-            totalOwed: owed,
-        };
-    }, [orders, searchQuery, companyProfile, viewFilter, sortOption, isLoading]);
+        return processedOrders;
+    }, [orders, searchQuery, viewFilter, sortOption]);
 
     const selectedOrderIds = useMemo(() => Object.keys(selectedOrders).filter(id => selectedOrders[id]), [selectedOrders]);
 
