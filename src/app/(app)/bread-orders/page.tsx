@@ -243,7 +243,6 @@ export default function BreadOrdersPage() {
         if (!firestore || !user) throw new Error("Non authentifié");
         const ordersCollectionRef = collection(firestore, 'users', user.uid, 'breadOrders');
         
-        setUpdatingItems(prev => ({ ...prev, new: true }));
         try {
             await addDoc(ordersCollectionRef, {
                 name,
@@ -259,8 +258,6 @@ export default function BreadOrdersPage() {
             toast.error("Erreur lors de l'ajout de la commande.");
             console.error(err);
             throw err;
-        } finally {
-            setUpdatingItems(prev => ({ ...prev, new: false }));
         }
     };
 
@@ -790,7 +787,7 @@ export default function BreadOrdersPage() {
                                         onSelectChange={(checked) => {
                                             setSelectedOrders(prev => ({ ...prev, [order.id]: checked }));
                                         }}
-                                        isUpdating={!!updatingItems[order.id] || !!updatingItems['new']}
+                                        isUpdating={!!updatingItems[order.id]}
                                     />
                                 ))}
                             </div>
