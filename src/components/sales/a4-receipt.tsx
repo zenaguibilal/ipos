@@ -19,7 +19,7 @@ export function A4Receipt({ sale, companyProfile, customer }: A4ReceiptProps) {
     const saleDate = safeToDate(sale.createdAt);
 
     // Provide fallbacks for potentially missing numeric fields in old sale documents
-    const calculatedSubtotal = sale.items.reduce((sum, item) => sum + ((item.price || 0) * (item.cartQuantity || item.quantity)), 0);
+    const calculatedSubtotal = sale.items.reduce((sum, item) => sum + ((item.price || 0) * item.quantity), 0);
     const subtotal = sale.subtotal ?? calculatedSubtotal;
     const total = sale.total ?? subtotal; // Simplified fallback
     const amountPaid = sale.amountPaid ?? 0;
@@ -77,9 +77,9 @@ export function A4Receipt({ sale, companyProfile, customer }: A4ReceiptProps) {
                         {sale.items.map((item, index) => (
                             <tr key={index} className="border-b">
                                 <td className="p-3">{item.name}</td>
-                                <td className="p-3 text-center">{item.cartQuantity || item.quantity}</td>
+                                <td className="p-3 text-center">{item.quantity}</td>
                                 <td className="p-3 text-right">{(item.price || 0).toFixed(1)} DA</td>
-                                <td className="p-3 text-right font-semibold">{((item.price || 0) * (item.cartQuantity || item.quantity)).toFixed(1)} DA</td>
+                                <td className="p-3 text-right font-semibold">{((item.price || 0) * item.quantity).toFixed(1)} DA</td>
                             </tr>
                         ))}
                     </tbody>

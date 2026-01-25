@@ -24,7 +24,7 @@ export function ThermalReceipt({ sale, companyProfile }: ThermalReceiptProps) {
     const saleDate = safeToDate(sale.createdAt);
 
     // Provide fallbacks for potentially missing numeric fields in old sale documents
-    const calculatedSubtotal = sale.items.reduce((sum, item) => sum + ((item.price || 0) * (item.cartQuantity || item.quantity)), 0);
+    const calculatedSubtotal = sale.items.reduce((sum, item) => sum + ((item.price || 0) * item.quantity), 0);
     const subtotal = sale.subtotal ?? calculatedSubtotal;
     const total = sale.total ?? subtotal; // Simplified fallback, as discount logic can be complex
     const amountPaid = sale.amountPaid ?? 0;
@@ -104,9 +104,9 @@ export function ThermalReceipt({ sale, companyProfile }: ThermalReceiptProps) {
                     {sale.items.map((item, index) => (
                         <tr key={index} >
                             <td className="py-1 w-1/2 align-top break-words">{item.name}</td>
-                            <td className="text-center align-top">{item.cartQuantity || item.quantity}</td>
+                            <td className="text-center align-top">{item.quantity}</td>
                             <td className="text-right align-top">{(item.price || 0).toFixed(1)}</td>
-                            <td className="text-right font-bold align-top">{((item.price || 0) * (item.cartQuantity || item.quantity)).toFixed(1)}</td>
+                            <td className="text-right font-bold align-top">{((item.price || 0) * item.quantity).toFixed(1)}</td>
                         </tr>
                     ))}
                 </tbody>

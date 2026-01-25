@@ -128,7 +128,7 @@ export default function DashboardPage() {
             let saleProfit = 0;
             sale.items.forEach((item: SaleItem) => {
                 const purchasePrice = item.purchasePrice || 0;
-                const quantity = typeof item.quantity === 'number' ? item.quantity : (item.cartQuantity || 0);
+                const quantity = item.quantity;
 
                 if (!topProductsMap[item.name]) {
                     topProductsMap[item.name] = { name: item.name, totalRevenue: 0, unitsSold: 0, totalProfit: 0 };
@@ -195,7 +195,7 @@ export default function DashboardPage() {
                 let saleProfit = 0;
                 sale.items.forEach((item: SaleItem) => {
                      const purchasePrice = item.purchasePrice || 0;
-                    const quantity = typeof item.quantity === 'number' ? item.quantity : (item.cartQuantity || 0);
+                    const quantity = item.quantity;
                     if(item.price && purchasePrice) {
                         saleProfit += (item.price - purchasePrice) * quantity;
                     }

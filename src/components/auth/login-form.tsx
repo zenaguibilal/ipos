@@ -35,7 +35,7 @@ function LoginFormComponent() {
 
   useEffect(() => {
     if (user) {
-      const redirectUrl = searchParams.get('redirectUrl') || '/bread-orders';
+      const redirectUrl = searchParams.get('redirectUrl') || '/dashboard';
       router.push(redirectUrl);
     }
   }, [user, router, searchParams]);
