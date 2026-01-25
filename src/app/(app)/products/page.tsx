@@ -51,10 +51,46 @@ export default function ProductsPage() {
         setIsDialogOpen(true);
     };
 
-    const categories = useMemo(() => {
-        if (!products) return [];
-        const allCategories = products.map(p => p.category).filter(Boolean) as string[];
-        return ['all', ...Array.from(new Set(allCategories))];
+    const { 
+        categories, 
+        totalInventoryValue, 
+        lowStockCount, 
+        totalProducts, 
+        totalCategories 
+    } = useMemo(() => {
+        if (!products) {
+            return {
+                categories: ['all'],
+                totalInventoryValue: 0,
+                lowStockCount: 0,
+                totalProducts: 0,
+                totalCategories: 0,
+            };
+        }
+
+        let inventoryValue = 0;
+        let lowStock = 0;
+        const categorySet = new Set<string>();
+
+        for (const p of products) {
+            inventoryValue += (p.purchasePrice || 0) * p.quantity;
+            if (p.quantity <= p.minStockLevel) {
+                lowStock++;
+            }
+            if (p.category) {
+                categorySet.add(p.category);
+            }
+        }
+        
+        const uniqueCategories = ['all', ...Array.from(categorySet)];
+
+        return {
+            categories: uniqueCategories,
+            totalInventoryValue: inventoryValue,
+            lowStockCount: lowStock,
+            totalProducts: products.length,
+            totalCategories: uniqueCategories.length > 1 ? uniqueCategories.length - 1 : 0,
+        };
     }, [products]);
 
     const filteredProducts = useMemo(() => {
@@ -77,16 +113,6 @@ export default function ProductsPage() {
         return tempProducts;
     }, [products, searchQuery, selectedCategory]);
 
-    const { totalInventoryValue, lowStockCount, totalProducts, totalCategories } = useMemo(() => {
-        if (!products) return { totalInventoryValue: 0, lowStockCount: 0, totalProducts: 0, totalCategories: 0 };
-        return {
-            totalInventoryValue: products.reduce((sum, p) => sum + (p.purchasePrice || 0) * p.quantity, 0),
-            lowStockCount: products.filter(p => p.quantity <= p.minStockLevel).length,
-            totalProducts: products.length,
-            totalCategories: categories.length > 1 ? categories.length - 1 : 0, // Exclude 'all'
-        }
-    }, [products, categories]);
-    
      const handleExport = () => {
         if (filteredProducts.length === 0) {
             toast.info("Aucun produit à exporter.");
