@@ -389,7 +389,7 @@ export default function SellPage() {
             const saleId = uuidv4();
             
             const newSaleData = await runTransaction(firestore, async (transaction) => {
-                // 1. Verify stock and get product data within the transaction
+                // 1. Verify stock and update it
                 for (const item of cartToPay.items) {
                     if (!item.id.startsWith('custom-')) {
                         const productRef = doc(firestore, 'users', user.uid, 'products', item.id);
@@ -397,38 +397,34 @@ export default function SellPage() {
                         if (!productDoc.exists() || productDoc.data().quantity < item.cartQuantity) {
                             throw new Error(`Stock insuffisant pour ${item.name}. ${productDoc.exists() ? productDoc.data().quantity : 0} restant(s).`);
                         }
-                        // 2. Update stock
                         const newQuantity = productDoc.data().quantity - item.cartQuantity;
                         transaction.update(productRef, { quantity: newQuantity });
                     }
                 }
 
-                // 3. Prepare Sale Data
+                // 2. Prepare Sale and Payment Data
                 const totalAmountFromPayments = payments.reduce((acc, p) => acc + p.amount, 0);
                 const cartSubtotal = cartToPay.items.reduce((acc, item) => acc + (item.price * item.cartQuantity), 0);
                 const { value: discountValue, type: discountType } = cartToPay.discount;
                 const discountAmount = discountType === 'fixed' ? discountValue : (cartSubtotal * discountValue) / 100;
                 const saleTotal = cartSubtotal - discountAmount;
                 
-                let saleAmountPaid = totalAmountFromPayments;
-                const currentCustomerBalance = customerBalance || 0;
+                // 3. Correctly distribute the payment between the current sale and past debts
+                const amountForThisSale = Math.min(totalAmountFromPayments, saleTotal);
+                const amountForDebt = totalAmountFromPayments - amountForThisSale;
 
-                // 4. Handle Debt Settlement
-                if (settleDebt && currentCustomerBalance > 0 && cartToPay.customerId) {
-                    const amountToClearDebt = Math.min(totalAmountFromPayments, currentCustomerBalance);
-                    if (amountToClearDebt > 0) {
-                        const paymentRef = doc(collection(firestore, 'users', user.uid, 'payments'));
-                        transaction.set(paymentRef, {
-                            customerId: cartToPay.customerId,
-                            customerName: cartToPay.customerName,
-                            amount: amountToClearDebt,
-                            createdAt: serverTimestamp()
-                        });
-                    }
-                    saleAmountPaid = Math.max(0, totalAmountFromPayments - amountToClearDebt);
+                // 4. Handle debt payment if applicable
+                if (amountForDebt > 0 && cartToPay.customerId) {
+                    const paymentRef = doc(collection(firestore, 'users', user.uid, 'payments'));
+                    transaction.set(paymentRef, {
+                        customerId: cartToPay.customerId,
+                        customerName: cartToPay.customerName,
+                        amount: amountForDebt,
+                        createdAt: serverTimestamp()
+                    });
                 }
-
-                const finalPaymentStatus = saleAmountPaid >= saleTotal ? 'paid' : saleAmountPaid > 0 ? 'partial' : 'unpaid';
+                
+                const finalPaymentStatus = amountForThisSale >= saleTotal ? 'paid' : amountForThisSale > 0 ? 'partial' : 'unpaid';
                 
                 const saleDataForDb = {
                     invoiceNumber: `INV-${Date.now()}`,
@@ -443,8 +439,8 @@ export default function SellPage() {
                     discountType,
                     discountAmount: discountValue,
                     total: saleTotal,
-                    amountPaid: saleAmountPaid,
-                    remainingBalance: saleTotal - saleAmountPaid,
+                    amountPaid: amountForThisSale,
+                    remainingBalance: saleTotal - amountForThisSale,
                     paymentStatus: finalPaymentStatus,
                     payments,
                     customerId: cartToPay.customerId ?? undefined,
