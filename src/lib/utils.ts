@@ -24,35 +24,6 @@ export function safeToDate(date: Timestamp | Date): Date {
 
 
 /**
- * Calculates financial metrics for a single customer based on all sales and payments.
- * @param customer The customer to calculate metrics for.
- * @param allSales A list of all sale transactions.
- * @param allPayments A list of all standalone payment transactions.
- * @returns An object containing the customer's total spending and outstanding balance.
- */
-export function calculateCustomerMetrics(
-    customer: Customer,
-    allSales: Sale[],
-    allPayments: Payment[]
-): { totalSpent: number; outstandingBalance: number } {
-    const customerSales = allSales.filter(s => s.customerId === customer.id);
-    const customerPayments = allPayments.filter(p => p.customerId === customer.id);
-    
-    const totalSpent = customerSales.reduce((acc, s) => acc + s.total, 0);
-    const totalPaidFromSales = customerSales.reduce((acc, s) => acc + s.amountPaid, 0);
-    const totalStandalonePayments = customerPayments.reduce((acc, p) => acc + p.amount, 0);
-    
-    const outstandingBalance = totalSpent - totalPaidFromSales - totalStandalonePayments;
-    const finalBalance = outstandingBalance < 0.01 ? 0 : outstandingBalance;
-
-    return {
-        totalSpent,
-        outstandingBalance: finalBalance,
-    };
-}
-
-
-/**
  * Calculates financial metrics for all customers.
  * @param customers List of all customers.
  * @param allSales List of all sales.
