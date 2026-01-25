@@ -4,7 +4,7 @@
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
-import { getFirestore, initializeFirestore, enableIndexedDbPersistence, Firestore, persistentLocalCache, memoryLocalCache } from 'firebase/firestore'
+import { getFirestore, initializeFirestore, enableIndexedDbPersistence, Firestore, persistentLocalCache, memoryLocalCache, runTransaction } from 'firebase/firestore'
 
 let firebaseApp: FirebaseApp;
 let auth: Auth;
@@ -63,6 +63,24 @@ export function getSdks(app: FirebaseApp) {
     auth: auth,
     firestore: firestore
   };
+}
+
+
+// Wrapper for transactions to handle errors
+export async function runTransactionNonBlocking<T>(
+  firestore: Firestore,
+  updateFunction: (transaction: any) => Promise<T>,
+  callbacks?: { onSuccess?: (result: T) => void; onError?: (error: any) => void }
+) {
+  try {
+    const result = await runTransaction(firestore, updateFunction);
+    callbacks?.onSuccess?.(result);
+    return result;
+  } catch (error) {
+    callbacks?.onError?.(error);
+    // You might want to re-throw or handle it globally
+    throw error;
+  }
 }
 
 

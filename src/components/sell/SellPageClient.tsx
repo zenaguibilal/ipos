@@ -1,0 +1,372 @@
+
+'use client';
+
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useUser, useFirestore, useCollection, useMemoFirebase, runTransactionNonBlocking, setDocumentNonBlocking } from '@/firebase';
+import { collection, doc, serverTimestamp, getDoc, runTransaction } from 'firebase/firestore';
+import { toast } from 'sonner';
+import { v4 as uuidv4 } from 'uuid';
+import { useRouter } from 'next/navigation';
+import type { Product, Customer, Cart, CartItem, Sale, SaleItem } from '@/lib/types';
+import { ProductGrid } from './ProductGrid';
+import { CartPanel } from './CartPanel';
+import { FinalizeSaleDialog } from './FinalizeSaleDialog';
+import { CustomProductDialog } from './CustomProductDialog';
+import { SaleDetailsDialog } from '@/components/sales/sale-details-dialog';
+import { CustomerDialog } from '@/components/customers/customer-dialog';
+
+export function SellPageClient() {
+    const { user } = useUser();
+    const firestore = useFirestore();
+    const router = useRouter();
+
+    const [carts, setCarts] = useState<Cart[]>([{
+        id: uuidv4(),
+        name: 'Panier 1',
+        items: [],
+        customerId: null,
+        customerName: 'Vente au comptoir',
+        discount: { type: 'fixed', value: 0 }
+    }]);
+    const [activeCartId, setActiveCartId] = useState<string>(carts[0].id);
+
+    const [isFinalizeOpen, setIsFinalizeOpen] = useState(false);
+    const [isCustomProductOpen, setIsCustomProductOpen] = useState(false);
+    const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
+    const [completedSale, setCompletedSale] = useState<Sale | null>(null);
+
+    const productsQuery = useMemoFirebase(() => user && firestore ? collection(firestore, 'users', user.uid, 'products') : null, [user, firestore]);
+    const customersQuery = useMemoFirebase(() => user && firestore ? collection(firestore, 'users', user.uid, 'customers') : null, [user, firestore]);
+
+    const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
+    const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersQuery);
+
+    const activeCart = useMemo(() => carts.find(c => c.id === activeCartId), [carts, activeCartId]);
+
+    const handleAddProductToCart = useCallback((product: Product | CartItem) => {
+        if (!activeCart) return;
+
+        if (product.quantity === 0 && !('cartQuantity' in product)) {
+            toast.error(`${product.name} est en rupture de stock.`);
+            return;
+        }
+
+        setCarts(prevCarts => prevCarts.map(cart => {
+            if (cart.id === activeCartId) {
+                const existingItem = cart.items.find(item => item.id === product.id);
+                if (existingItem) {
+                    if (existingItem.cartQuantity < product.quantity) {
+                        return {
+                            ...cart,
+                            items: cart.items.map(item =>
+                                item.id === product.id ? { ...item, cartQuantity: item.cartQuantity + 1, flash: true } : item
+                            )
+                        };
+                    } else {
+                        toast.warning(`Stock maximum atteint pour ${product.name}.`);
+                        return cart;
+                    }
+                } else {
+                    const newItem: CartItem = {
+                        ...product,
+                        cartQuantity: 1,
+                        flash: true,
+                    };
+                    return { ...cart, items: [newItem, ...cart.items] };
+                }
+            }
+            return cart;
+        }));
+
+        // Remove flash effect after animation
+        setTimeout(() => {
+            setCarts(prev => prev.map(cart => {
+                if (cart.id === activeCartId) {
+                    return { ...cart, items: cart.items.map(i => ({ ...i, flash: false })) };
+                }
+                return cart;
+            }));
+        }, 500);
+    }, [activeCart, activeCartId]);
+
+    const handleUpdateCartItemQuantity = (productId: string, newQuantity: number) => {
+        setCarts(prevCarts => prevCarts.map(cart => {
+            if (cart.id === activeCartId) {
+                const itemToUpdate = cart.items.find(i => i.id === productId);
+                if (!itemToUpdate) return cart;
+
+                if (newQuantity > 0 && newQuantity <= itemToUpdate.quantity) {
+                    return {
+                        ...cart,
+                        items: cart.items.map(item =>
+                            item.id === productId ? { ...item, cartQuantity: newQuantity } : item
+                        )
+                    };
+                } else if (newQuantity === 0) {
+                    return { ...cart, items: cart.items.filter(item => item.id !== productId) };
+                } else if (newQuantity > itemToUpdate.quantity) {
+                    toast.warning(`Stock insuffisant. ${itemToUpdate.quantity} articles restants pour ${itemToUpdate.name}.`);
+                }
+            }
+            return cart;
+        }));
+    };
+
+    const handleRemoveCartItem = (productId: string) => {
+        setCarts(prevCarts => prevCarts.map(cart =>
+            cart.id === activeCartId
+                ? { ...cart, items: cart.items.filter(item => item.id !== productId) }
+                : cart
+        ));
+    };
+    
+    const handleAddCustomProduct = (name: string, price: number) => {
+        const customProduct: CartItem = {
+            id: `custom-${uuidv4()}`,
+            name,
+            price,
+            purchasePrice: 0, 
+            quantity: Infinity, // Not a stock-managed item
+            cartQuantity: 1,
+            createdAt: new Date(),
+        };
+        handleAddProductToCart(customProduct);
+        setIsCustomProductOpen(false);
+    };
+
+    const handleSelectCustomer = (customerId: string | null) => {
+        const customer = customers?.find(c => c.id === customerId);
+        setCarts(prevCarts => prevCarts.map(cart =>
+            cart.id === activeCartId
+                ? {
+                    ...cart,
+                    customerId: customerId,
+                    customerName: customer ? `${customer.firstName} ${customer.lastName}` : 'Vente au comptoir'
+                }
+                : cart
+        ));
+    };
+
+    const handleAddNewCustomer = (customer: Customer) => {
+        handleSelectCustomer(customer.id);
+        setIsCustomerDialogOpen(false);
+    };
+
+    const handleUpdateDiscount = (type: 'fixed' | 'percentage', value: number) => {
+        setCarts(prevCarts => prevCarts.map(cart =>
+            cart.id === activeCartId
+                ? { ...cart, discount: { type, value } }
+                : cart
+        ));
+    };
+
+    const handleClearCart = () => {
+        setCarts(prevCarts => prevCarts.map(cart =>
+            cart.id === activeCartId ? { ...cart, items: [], discount: { type: 'fixed', value: 0 } } : cart
+        ));
+    };
+
+    const handleAddCart = () => {
+        const newCartName = `Panier ${carts.length + 1}`;
+        const newCart: Cart = {
+            id: uuidv4(),
+            name: newCartName,
+            items: [],
+            customerId: null,
+            customerName: 'Vente au comptoir',
+            discount: { type: 'fixed', value: 0 }
+        };
+        setCarts(prev => [...prev, newCart]);
+        setActiveCartId(newCart.id);
+    };
+    
+    const handleRemoveCart = (cartId: string) => {
+        if (carts.length === 1) {
+            toast.error("Impossible de supprimer le dernier panier.");
+            return;
+        }
+        setCarts(prev => prev.filter(c => c.id !== cartId));
+        // If the active cart is deleted, switch to the first remaining cart
+        if(activeCartId === cartId) {
+            setActiveCartId(carts.find(c => c.id !== cartId)!.id);
+        }
+    };
+    
+    const handleFinalizeSale = async (amountPaid: number, paymentMethod: 'cash' | 'card' | 'other') => {
+        if (!firestore || !user || !activeCart) return;
+    
+        const saleId = uuidv4();
+        const saleRef = doc(firestore, 'users', user.uid, 'sales', saleId);
+    
+        const subtotal = activeCart.items.reduce((acc, item) => acc + (item.price * item.cartQuantity), 0);
+        const discountAmount = activeCart.discount.type === 'fixed'
+            ? activeCart.discount.value
+            : (subtotal * activeCart.discount.value) / 100;
+        const total = subtotal - discountAmount;
+    
+        const finalPaymentStatus = amountPaid >= total ? 'paid' : amountPaid > 0 ? 'partial' : 'unpaid';
+    
+        const saleItems: SaleItem[] = activeCart.items.map(item => ({
+            id: item.id,
+            name: item.name,
+            price: item.price,
+            purchasePrice: item.purchasePrice,
+            quantity: item.cartQuantity
+        }));
+
+        const newSaleData: Omit<Sale, 'id' | 'createdAt'> = {
+            invoiceNumber: `INV-${Date.now()}`,
+            items: saleItems,
+            subtotal: subtotal,
+            discountType: activeCart.discount.type,
+            discountAmount: activeCart.discount.value,
+            total: total,
+            amountPaid: amountPaid,
+            remainingBalance: total - amountPaid,
+            paymentStatus: finalPaymentStatus,
+            paymentMethod: paymentMethod,
+            customerId: activeCart.customerId ?? undefined,
+            customerName: activeCart.customerName,
+        };
+    
+        try {
+            await runTransaction(firestore, async (transaction) => {
+                const productUpdates = new Map<string, { ref: any, newQuantity: number }>();
+    
+                for (const item of activeCart.items) {
+                    if (!item.id.startsWith('custom-')) {
+                        const productRef = doc(firestore, 'users', user.uid, 'products', item.id);
+                        const productDoc = await transaction.get(productRef);
+                        
+                        if (!productDoc.exists()) {
+                            throw new Error(`Produit ${item.name} non trouvé.`);
+                        }
+    
+                        const currentQuantity = productDoc.data().quantity;
+                        const newQuantity = currentQuantity - item.cartQuantity;
+    
+                        if (newQuantity < 0) {
+                            throw new Error(`Stock insuffisant pour ${item.name}.`);
+                        }
+                        
+                        productUpdates.set(item.id, { ref: productRef, newQuantity });
+                    }
+                }
+    
+                // Perform all updates after reading
+                productUpdates.forEach(update => {
+                    transaction.update(update.ref, { quantity: update.newQuantity });
+                });
+    
+                transaction.set(saleRef, { ...newSaleData, createdAt: serverTimestamp() });
+            });
+    
+            toast.success("Vente finalisée avec succès!");
+            const completedSaleDataForDialog: Sale = {
+                id: saleId,
+                ...newSaleData,
+                createdAt: new Date(), 
+            };
+            setCompletedSale(completedSaleDataForDialog);
+
+            // Reset or remove cart
+            if (carts.length > 1) {
+                handleRemoveCart(activeCartId);
+            } else {
+                handleClearCart();
+            }
+    
+        } catch (error: any) {
+            console.error("Erreur lors de la finalisation de la vente:", error);
+            toast.error(error.message || "Une erreur est survenue lors de la vente.");
+        } finally {
+            setIsFinalizeOpen(false);
+        }
+    };
+    
+
+    // Keyboard shortcuts
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'F4') {
+                e.preventDefault();
+                if(activeCart && activeCart.items.length > 0) {
+                    setIsFinalizeOpen(true);
+                } else {
+                    toast.info("Le panier est vide.")
+                }
+            }
+            if (e.altKey && e.key.toLowerCase() === 'a') {
+                e.preventDefault();
+                setIsCustomProductOpen(true);
+            }
+             if (e.altKey && e.key.toLowerCase() === 'n') {
+                e.preventDefault();
+                router.push('/products'); 
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [activeCart, router]);
+
+    return (
+        <div className="h-screen max-h-screen overflow-hidden grid grid-cols-1 md:grid-cols-3 xl:grid-cols-4">
+            <ProductGrid
+                products={products || []}
+                cartItems={activeCart?.items || []}
+                isLoading={isLoadingProducts}
+                onProductSelect={handleAddProductToCart}
+                onAddCustomProduct={() => setIsCustomProductOpen(true)}
+                onAddNewProduct={() => router.push('/products')}
+            />
+            <CartPanel
+                carts={carts}
+                activeCartId={activeCartId}
+                customers={customers || []}
+                isLoading={isLoadingCustomers}
+                onAddCart={handleAddCart}
+                onRemoveCart={handleRemoveCart}
+                onSwitchCart={setActiveCartId}
+                onUpdateQuantity={handleUpdateCartItemQuantity}
+                onRemoveItem={handleRemoveCartItem}
+                onClearCart={handleClearCart}
+                onSelectCustomer={handleSelectCustomer}
+                onFinalize={() => setIsFinalizeOpen(true)}
+                onUpdateDiscount={handleUpdateDiscount}
+                onAddNewCustomer={() => setIsCustomerDialogOpen(true)}
+            />
+
+            {activeCart && <FinalizeSaleDialog
+                isOpen={isFinalizeOpen}
+                onOpenChange={setIsFinalizeOpen}
+                cart={activeCart}
+                onConfirm={handleFinalizeSale}
+            />}
+
+            <CustomProductDialog
+                isOpen={isCustomProductOpen}
+                onOpenChange={setIsCustomProductOpen}
+                onConfirm={handleAddCustomProduct}
+            />
+            
+            <CustomerDialog 
+                isOpen={isCustomerDialogOpen}
+                onOpenChange={setIsCustomerDialogOpen}
+                customer={null}
+                userId={user.uid}
+                onCustomerAdded={handleAddNewCustomer}
+            />
+
+            {completedSale && (
+                <SaleDetailsDialog
+                    isOpen={!!completedSale}
+                    onOpenChange={() => setCompletedSale(null)}
+                    sale={completedSale}
+                    companyProfile={null} // Not needed for this context
+                    customer={customers?.find(c => c.id === completedSale.customerId) || null}
+                />
+            )}
+        </div>
+    );
+}

@@ -13,9 +13,9 @@ import {
 import { cn } from '@/lib/utils';
 
 const navLinks = [
+  { href: '/sell', label: 'Vente', icon: Store },
   { href: '/products', label: 'Produits', icon: Package },
   { href: '/customers', label: 'Clients', icon: Users },
-  { href: '/stock', label: 'Stock', icon: Archive },
   { href: '/sales-history', label: 'Historique', icon: History },
 ];
 
@@ -42,5 +42,3 @@ export function BottomNavBar() {
     </div>
   );
 }
-
-    

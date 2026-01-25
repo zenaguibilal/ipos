@@ -22,7 +22,7 @@ const GoogleIcon = () => (
     </svg>
 );
 
-function SignupFormComponent() {
+function SignupFormComponent({ redirectUrl = '/sell' }: { redirectUrl?: string }) {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
@@ -45,9 +45,9 @@ function SignupFormComponent() {
 
   useEffect(() => {
     if (user) {
-      router.push('/dashboard');
+      router.push(redirectUrl);
     }
-  }, [user, router]);
+  }, [user, router, redirectUrl]);
 
   const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newPassword = e.target.value;
@@ -332,10 +332,10 @@ function SignupFormComponent() {
   );
 }
 
-export function SignupForm() {
+export function SignupForm({ redirectUrl }: { redirectUrl?: string }) {
   return (
     <Suspense fallback={<div className="text-center">Chargement...</div>}>
-      <SignupFormComponent />
+      <SignupFormComponent redirectUrl={redirectUrl} />
     </Suspense>
   )
 }

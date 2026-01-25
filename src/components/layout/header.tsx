@@ -15,7 +15,8 @@ import {
   BarChart3,
   Package,
   Users,
-  Archive
+  Archive,
+  Store
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -39,6 +40,7 @@ import { AnimatedLogo } from './animated-logo';
 
 
 const navLinks = [
+  { href: '/sell', label: 'Vente', icon: Store },
   { href: '/dashboard', label: 'Tableau de bord', icon: BarChart3 },
   { href: '/products', label: 'Produits', icon: Package },
   { href: '/customers', label: 'Clients', icon: Users },
