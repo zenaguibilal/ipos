@@ -1,5 +1,5 @@
 'use client';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -37,17 +37,16 @@ export function FinalizeSaleDialog({ isOpen, onOpenChange, cart, onConfirm, isSa
         if (isOpen) {
             setPaidAmountStr(totalToPay > 0 ? totalToPay.toFixed(1) : '0');
         } else {
-            // Reset on close
             setPaidAmountStr('');
         }
     }, [isOpen, totalToPay]);
     
-    const handleSubmit = () => {
+    const handleSubmit = useCallback(() => {
         if (isSaving) return;
         
-        const finalPayments: SalePayment[] = paidAmount > 0 ? [{ method: 'cash', amount: paidAmount }] : [];
+        const finalPayments: SalePayment[] = [{ method: 'cash' as const, amount: paidAmount }];
         onConfirm(finalPayments);
-    };
+    }, [isSaving, paidAmount, onConfirm]);
 
     const handleDialogChange = (open: boolean) => {
         if (!isSaving) {
@@ -55,21 +54,48 @@ export function FinalizeSaleDialog({ isOpen, onOpenChange, cart, onConfirm, isSa
         }
     };
     
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (!isOpen) return;
+
+            if (e.key === 'F8') {
+                e.preventDefault();
+                setPaidAmountStr(totalToPay.toFixed(1));
+            }
+            if (e.key === 'F9') {
+                e.preventDefault();
+                setPaidAmountStr('');
+                const input = document.getElementById('paidAmount');
+                if (input) input.focus();
+            }
+            if (e.key === 'F10') {
+                e.preventDefault();
+                setPaidAmountStr('0');
+            }
+            if (e.key === 'Enter' && !isSaving) {
+                e.preventDefault();
+                handleSubmit();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [isOpen, isSaving, totalToPay, handleSubmit]);
+
     return (
         <Dialog open={isOpen} onOpenChange={handleDialogChange}>
             <DialogContent className="max-w-md">
                 <DialogHeader>
                     <DialogTitle>Finaliser la vente</DialogTitle>
-                    <DialogDescription>Confirmez le montant reçu du client.</DialogDescription>
+                    <DialogDescription>Confirmez le montant reçu. Utilisez les raccourcis pour accélérer.</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-6">
-                    {/* Total Display */}
                     <div className="flex justify-between items-center bg-muted p-4 rounded-lg">
                         <span className="text-lg font-bold">Total à Payer</span>
                         <span className="text-3xl font-black text-primary">{totalToPay.toFixed(1)} DA</span>
                     </div>
-
-                    {/* Payment Input Section */}
                     <div className="space-y-3">
                         <Label htmlFor="paidAmount" className="text-base font-semibold">Montant Reçu</Label>
                         <Input 
@@ -84,21 +110,21 @@ export function FinalizeSaleDialog({ isOpen, onOpenChange, cart, onConfirm, isSa
                         />
                          <div className="grid grid-cols-3 gap-2 pt-2">
                             <Button type="button" variant="outline" onClick={() => setPaidAmountStr(totalToPay.toFixed(1))}>
-                                Complet
+                                Complet <kbd className="hidden lg:inline-block pointer-events-none ml-2 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">F8</kbd>
                             </Button>
                             <Button type="button" variant="secondary" onClick={() => {
                                 setPaidAmountStr('');
-                                document.getElementById('paidAmount')?.focus();
+                                const input = document.getElementById('paidAmount');
+                                if (input) input.focus();
                             }}>
-                                Partiel
+                                Partiel <kbd className="hidden lg:inline-block pointer-events-none ml-2 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">F9</kbd>
                             </Button>
                             <Button type="button" variant="destructive" onClick={() => setPaidAmountStr('0')}>
-                                Crédit
+                                Crédit <kbd className="hidden lg:inline-block pointer-events-none ml-2 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">F10</kbd>
                             </Button>
                         </div>
                     </div>
                     
-                    {/* Feedback Section (Change/Remaining) */}
                     <div className="space-y-2 text-sm pt-4 border-t">
                         {remainingBalance > 0 && (
                             <div className="flex justify-between items-center text-destructive p-3 rounded-lg bg-destructive/10">
@@ -118,7 +144,12 @@ export function FinalizeSaleDialog({ isOpen, onOpenChange, cart, onConfirm, isSa
                     <Button type="button" variant="secondary" onClick={() => handleDialogChange(false)} disabled={isSaving}>Annuler</Button>
                     <Button type="button" onClick={handleSubmit} disabled={isSaving}>
                         {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                        {isSaving ? 'Finalisation...' : 'Confirmer la Vente'}
+                        {isSaving ? 'Finalisation...' : (
+                            <>
+                                Confirmer la Vente
+                                <kbd className="hidden lg:inline-block pointer-events-none ml-2 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">Entrée</kbd>
+                            </>
+                        )}
                     </Button>
                 </DialogFooter>
             </DialogContent>
