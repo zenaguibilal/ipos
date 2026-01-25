@@ -1,3 +1,4 @@
+
 'use client';
 import type { Cart, Customer, CartItem, CustomerWithSalesData } from '@/lib/types';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -26,7 +27,6 @@ interface CartPanelProps {
     onFinalize: () => void;
     onUpdateDiscount: (type: 'fixed' | 'percentage', value: number) => void;
     onAddNewCustomer: () => void;
-    onSettleDebt?: () => void;
 }
 
 export function CartPanel(props: CartPanelProps) {
@@ -101,12 +101,6 @@ export function CartPanel(props: CartPanelProps) {
                                 <span className="text-muted-foreground">Dette précédente</span>
                                 <span className={`font-bold ${activeCustomerData.outstandingBalance > 0 ? 'text-destructive' : ''}`}>{activeCustomerData.outstandingBalance.toFixed(1)} DA</span>
                             </div>
-                            {activeCustomerData.outstandingBalance > 0 && props.onSettleDebt && (
-                                <Button size="sm" variant="secondary" className="w-full mt-2" onClick={props.onSettleDebt}>
-                                    <HandCoins className="mr-2 h-4 w-4" />
-                                    Régler la dette
-                                </Button>
-                            )}
                         </div>
                     )}
                 </div>

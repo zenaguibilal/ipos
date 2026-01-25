@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
@@ -17,7 +18,6 @@ const CustomProductDialog = dynamic(() => import('./CustomProductDialog').then(m
 const SaleDetailsDialog = dynamic(() => import('@/components/sales/sale-details-dialog').then(mod => mod.SaleDetailsDialog));
 const CustomerDialog = dynamic(() => import('@/components/customers/customer-dialog').then(mod => mod.CustomerDialog));
 const ProductDialog = dynamic(() => import('@/components/products/product-dialog').then(mod => mod.ProductDialog));
-const AddPaymentForm = dynamic(() => import('@/components/customers/add-payment-form').then(mod => mod.AddPaymentForm));
 
 
 export function SellPageClient() {
@@ -36,7 +36,6 @@ export function SellPageClient() {
     const [isNewProductDialogOpen, setIsNewProductDialogOpen] = useState(false);
     const [completedSale, setCompletedSale] = useState<Sale | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
-    const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
 
 
     const productsQuery = useMemoFirebase(() => user && firestore ? collection(firestore, 'users', user.uid, 'products') : null, [user, firestore]);
@@ -558,7 +557,6 @@ export function SellPageClient() {
                 onFinalize={() => setIsFinalizeOpen(true)}
                 onUpdateDiscount={handleUpdateDiscount}
                 onAddNewCustomer={() => setIsCustomerDialogOpen(true)}
-                onSettleDebt={() => setIsPaymentDialogOpen(true)}
             />
 
             {activeCart && <FinalizeSaleDialog
@@ -591,15 +589,6 @@ export function SellPageClient() {
                 userId={user.uid}
             />}
             
-            {activeCustomer && user && (
-                <AddPaymentForm
-                    isOpen={isPaymentDialogOpen}
-                    onOpenChange={setIsPaymentDialogOpen}
-                    customer={activeCustomer}
-                    userId={user.uid}
-                />
-            )}
-
             {completedSale && (
                 <SaleDetailsDialog
                     isOpen={!!completedSale}
