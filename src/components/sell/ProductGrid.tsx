@@ -55,6 +55,21 @@ export function ProductGrid({ allProducts, topProducts, cartItems, isLoading, on
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter') {
             e.preventDefault();
+
+            // Prioritize exact barcode match for scanner-like behavior
+            const exactBarcodeMatch = allProducts.find(p => p.barcodes?.includes(searchQuery.trim()));
+
+            if (exactBarcodeMatch) {
+                if (exactBarcodeMatch.quantity > 0) {
+                    onProductSelect(exactBarcodeMatch);
+                    onSearchQueryChange(''); // Clear search after adding
+                } else {
+                    toast.error(`${exactBarcodeMatch.name} est en rupture de stock.`);
+                }
+                return; // Stop further processing
+            }
+
+            // Fallback to current search results if no exact barcode match
             if (productsToDisplay.length === 1) {
                 const product = productsToDisplay[0];
                 if (product.quantity > 0) {
