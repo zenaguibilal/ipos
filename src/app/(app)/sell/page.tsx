@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
@@ -6,11 +7,12 @@ import { collection, doc, serverTimestamp, runTransaction, query } from 'firebas
 import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
 import { useRouter } from 'next/navigation';
-import type { Product, Customer, Cart, CartItem, Sale, SaleItem, Payment, CompanyProfile, SalePayment, CustomerWithSalesData } from '@/lib/types';
+import type { Product, Customer, Cart, CartItem, Sale, SalePayment, CustomerWithSalesData, Payment } from '@/lib/types';
 import { ProductGrid } from '@/components/sell/ProductGrid';
 import { CartPanel } from '@/components/sell/CartPanel';
 import { Loader2 } from 'lucide-react';
 import dynamic from 'next/dynamic';
+import { calculateCustomerMetrics } from '@/lib/utils';
 
 const FinalizeSaleDialog = dynamic(() => import('@/components/sell/FinalizeSaleDialog').then(mod => mod.FinalizeSaleDialog));
 const CustomProductDialog = dynamic(() => import('@/components/sell/CustomProductDialog').then(mod => mod.CustomProductDialog));
@@ -171,23 +173,9 @@ export default function SellPage() {
 
     const customersWithSalesData = useMemo<CustomerWithSalesData[]>(() => {
         if (!customers || !sales || !payments) return [];
-
         return customers.map(customer => {
-            const customerSales = sales.filter(s => s.customerId === customer.id);
-            const customerPayments = payments.filter(p => p.customerId === customer.id);
-            const totalSpent = customerSales.reduce((acc, s) => acc + s.total, 0);
-
-            const totalPaidFromSales = customerSales.reduce((acc, s) => acc + s.amountPaid, 0);
-            const totalStandalonePayments = customerPayments.reduce((acc, p) => acc + p.amount, 0);
-            
-            const outstandingBalance = totalSpent - totalPaidFromSales - totalStandalonePayments;
-            const finalBalance = outstandingBalance < 0.01 ? 0 : outstandingBalance;
-
-            return {
-                ...customer,
-                totalSpent,
-                outstandingBalance: finalBalance,
-            };
+            const metrics = calculateCustomerMetrics(customer, sales, payments);
+            return { ...customer, ...metrics };
         });
     }, [customers, sales, payments]);
 
