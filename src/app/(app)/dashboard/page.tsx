@@ -124,6 +124,7 @@ export default function DashboardPage() {
         const topProductsMap: { [name: string]: { name: string; totalRevenue: number; unitsSold: number; totalProfit: number; } } = {};
         const topCustomersMap: { [name: string]: { name: string; totalSpent: number; } } = {};
         const dailyData: { [key: string]: { revenue: number, profit: number } } = {};
+        const allTransactionsForPeriod: { type: 'Vente' | 'Retour', data: Sale | ProductReturn, date: Date }[] = [];
         
         if (fromDate && toDate) {
             const interval = eachDayOfInterval({ start: fromDate, end: toDate });
@@ -134,6 +135,7 @@ export default function DashboardPage() {
         }
 
         for (const sale of filteredSales) {
+            allTransactionsForPeriod.push({ type: 'Vente', data: sale, date: safeToDate(sale.createdAt!) });
             grossRevenue += sale.total;
             
             if (sale.customerName) {
@@ -172,6 +174,7 @@ export default function DashboardPage() {
         }
 
         for (const ret of filteredReturns) {
+            allTransactionsForPeriod.push({ type: 'Retour', data: ret, date: safeToDate(ret.createdAt!) });
             returnsValue += ret.totalReturnValue;
 
             let returnProfitLoss = 0;
@@ -211,10 +214,9 @@ export default function DashboardPage() {
             'Bénéfice Net': dailyData[dateKey].profit,
         }));
         
-        const recentTransactions = [
-            ...filteredSales.map(s => ({ type: 'Vente', data: s, date: safeToDate(s.createdAt!) })),
-            ...filteredReturns.map(r => ({ type: 'Retour', data: r, date: safeToDate(r.createdAt!) }))
-        ].sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 5);
+        const recentTransactions = allTransactionsForPeriod
+            .sort((a, b) => b.date.getTime() - a.date.getTime())
+            .slice(0, 5);
 
         const topProductsList = Object.values(topProductsMap)
             .sort((a, b) => b.totalProfit - a.totalProfit)
