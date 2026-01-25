@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useUser, useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking, useDoc } from '@/firebase';
+import { useUser, useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, deleteDocumentNonBlocking, useDoc } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { collection, query, orderBy, serverTimestamp, doc, writeBatch, updateDoc } from 'firebase/firestore';
@@ -189,8 +189,8 @@ export default function BreadOrdersPage() {
                 case 'quantity_desc':
                     return b.quantity - a.quantity;
                 case 'createdAt_desc':
-                    const timeB_desc = b.createdAt ? safeToDate(b.createdAt).getTime() : 0;
-                    const timeA_desc = a.createdAt ? safeToDate(a.createdAt).getTime() : 0;
+                    const timeB_desc = b.createdAt ? safeToDate(b.createdAt).getTime() : Number.MIN_SAFE_INTEGER;
+                    const timeA_desc = a.createdAt ? safeToDate(a.createdAt).getTime() : Number.MIN_SAFE_INTEGER;
                     return timeB_desc - timeA_desc;
                 case 'status':
                 default:
@@ -243,35 +243,35 @@ export default function BreadOrdersPage() {
         });
     };
 
-    const handleUpdateOrderToggles = (id: string, field: keyof Omit<BreadOrder, 'id' | 'name' | 'quantity' | 'createdAt' | 'isRecurring'>, value: boolean) => {
+    const handleUpdateOrderToggles = async (id: string, field: keyof Omit<BreadOrder, 'id' | 'name' | 'quantity' | 'createdAt' | 'isRecurring'>, value: boolean) => {
         if (!firestore || !user) return;
         const orderDocRef = doc(firestore, 'users', user.uid, 'breadOrders', id);
-        updateDocumentNonBlocking(orderDocRef, { [field]: value }, {
-            onSuccess: () => toast.info(`Commande marquée comme ${field === 'isPaid' ? (value ? 'payée' : 'non payée') : (value ? 'livrée' : 'non livrée')}.`),
-            onError: (err) => {
-                toast.error("Erreur lors de la mise à jour.");
-                console.error(err);
-            }
-        });
+        
+        try {
+            await updateDoc(orderDocRef, { [field]: value });
+            toast.info(`Commande marquée comme ${field === 'isPaid' ? (value ? 'payée' : 'non payée') : (value ? 'livrée' : 'non livrée')}.`);
+        } catch (err) {
+            toast.error("Erreur lors de la mise à jour.");
+            console.error(err);
+        }
     };
     
-    const handleUpdateOrderDetails = (id: string, name: string, quantity: number, isRecurring: boolean) => {
+    const handleUpdateOrderDetails = async (id: string, name: string, quantity: number, isRecurring: boolean) => {
         if (!firestore || !user) return;
         const orderDocRef = doc(firestore, 'users', user.uid, 'breadOrders', id);
-         updateDocumentNonBlocking(orderDocRef, { 
-             name,
-             quantity, 
-             isRecurring 
-            }, {
-            onSuccess: () => {
-                setEditingOrder(null);
-                toast.success('Commande mise à jour.');
-            },
-            onError: (err) => {
-                toast.error("Erreur lors de la mise à jour.");
-                console.error(err);
-            }
-        });
+         
+        try {
+            await updateDoc(orderDocRef, { 
+                name,
+                quantity, 
+                isRecurring 
+            });
+            setEditingOrder(null);
+            toast.success('Commande mise à jour.');
+        } catch(err) {
+            toast.error("Erreur lors de la mise à jour.");
+            console.error(err);
+        }
     };
 
     const handleDeleteOrder = (id: string) => {
