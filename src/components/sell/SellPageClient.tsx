@@ -51,37 +51,69 @@ export function SellPageClient() {
     const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
     const { data: payments, isLoading: isLoadingPayments } = useCollection<Payment>(paymentsQuery);
     
-    // Load carts from localStorage on initial mount
+    // Load carts from localStorage on user change
     useEffect(() => {
-        const initializeCarts = () => {
-            try {
-                const savedCarts = localStorage.getItem('ipos-carts');
-                const savedActiveCartId = localStorage.getItem('ipos-active-cart-id');
-                if (savedCarts) {
-                    const parsedCarts: Cart[] = JSON.parse(savedCarts);
-                    if (Array.isArray(parsedCarts) && parsedCarts.length > 0) {
-                        const cleanedCarts = parsedCarts.map(cart => ({
-                            ...cart,
-                            items: cart.items.map(item => ({ ...item, flash: false }))
-                        }));
-                        setCarts(cleanedCarts);
-                        setActiveCartId(savedActiveCartId && cleanedCarts.some(c => c.id === savedActiveCartId) ? savedActiveCartId : cleanedCarts[0].id);
-                        return;
-                    }
-                }
-            } catch (error) {
-                console.error("Failed to load or parse carts from localStorage", error);
-            }
-
-            // Default case if anything fails or no carts are saved
+        if (isUserLoading) {
+            return; // Wait until auth state is resolved
+        }
+    
+        // If logged out, reset to a clean default state
+        if (!user) {
             const defaultCartId = uuidv4();
             setCarts([{ id: defaultCartId, name: 'Panier 1', items: [], customerId: null, customerName: 'Vente au comptoir', discount: { type: 'fixed', value: 0 } }]);
             setActiveCartId(defaultCartId);
-        };
+            setIsCartsLoading(false);
+            return;
+        }
 
-        initializeCarts();
+        // If a user is logged in, load their specific carts
+        setIsCartsLoading(true);
+        let loadedCarts: Cart[] | null = null;
+        let loadedActiveCartId: string | null = null;
+    
+        try {
+            const savedCarts = localStorage.getItem(`ipos-carts-${user.uid}`);
+            if (savedCarts) {
+                const parsedCarts: Cart[] = JSON.parse(savedCarts);
+                if (Array.isArray(parsedCarts) && parsedCarts.length > 0) {
+                    loadedCarts = parsedCarts.map(cart => ({
+                        ...cart,
+                        items: cart.items.map(item => ({ ...item, flash: false }))
+                    }));
+                    const savedActiveCartId = localStorage.getItem(`ipos-active-cart-id-${user.uid}`);
+                    loadedActiveCartId = savedActiveCartId && loadedCarts.some(c => c.id === savedActiveCartId) ? savedActiveCartId : loadedCarts[0].id;
+                }
+            }
+        } catch (error) {
+            console.error("Failed to load or parse carts from localStorage", error);
+        }
+        
+        if (loadedCarts && loadedActiveCartId) {
+            setCarts(loadedCarts);
+            setActiveCartId(loadedActiveCartId);
+        } else {
+            // Default case if no carts are saved for this user
+            const defaultCartId = uuidv4();
+            setCarts([{ id: defaultCartId, name: 'Panier 1', items: [], customerId: null, customerName: 'Vente au comptoir', discount: { type: 'fixed', value: 0 } }]);
+            setActiveCartId(defaultCartId);
+        }
+        
         setIsCartsLoading(false);
-    }, []);
+
+    }, [user, isUserLoading]);
+
+    // Save carts to localStorage whenever they change
+    useEffect(() => {
+        if (!isCartsLoading && user) {
+            try {
+                localStorage.setItem(`ipos-carts-${user.uid}`, JSON.stringify(carts));
+                localStorage.setItem(`ipos-active-cart-id-${user.uid}`, activeCartId);
+            } catch (error) {
+                console.error("Failed to save carts to localStorage", error);
+                toast.error("Impossible de sauvegarder le panier localement.");
+            }
+        }
+    }, [carts, activeCartId, isCartsLoading, user]);
 
     // Sync carts with live product data from Firestore
     useEffect(() => {
@@ -135,14 +167,6 @@ export function SellPageClient() {
             return prevCarts;
         });
     }, [products, isCartsLoading]);
-
-    // Save carts to localStorage whenever they change
-    useEffect(() => {
-        if (!isCartsLoading) {
-            localStorage.setItem('ipos-carts', JSON.stringify(carts));
-            localStorage.setItem('ipos-active-cart-id', activeCartId);
-        }
-    }, [carts, activeCartId, isCartsLoading]);
 
 
     const activeCart = useMemo(() => carts.find(c => c.id === activeCartId), [carts, activeCartId]);
