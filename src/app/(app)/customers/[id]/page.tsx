@@ -101,7 +101,7 @@ export default function CustomerDetailPage() {
         return <div className="flex h-full items-center justify-center"><p>Chargement du profil client...</p></div>;
     }
 
-    if (!customer && !isLoading) {
+    if (!customer) {
         return (
              <div className="flex h-full items-center justify-center">
                  <div className="text-center">
