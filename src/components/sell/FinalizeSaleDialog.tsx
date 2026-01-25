@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
@@ -13,7 +14,7 @@ interface FinalizeSaleDialogProps {
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
     cart: Cart;
-    onConfirm: (payments: SalePayment[], settleDebt: boolean) => void;
+    onConfirm: (payments: SalePayment[]) => void;
     isSaving: boolean;
     customerBalance?: number | null;
 }
@@ -58,9 +59,8 @@ export function FinalizeSaleDialog({ isOpen, onOpenChange, cart, onConfirm, isSa
     const handleSubmit = () => {
         if (isSaving) return;
         
-        // As we simplified the payment method, we assume 'cash' for any amount paid.
         const finalPayments: SalePayment[] = paidAmount > 0 ? [{ method: 'cash', amount: paidAmount }] : [];
-        onConfirm(finalPayments, settleDebt);
+        onConfirm(finalPayments);
     };
 
     const handleDialogChange = (open: boolean) => {

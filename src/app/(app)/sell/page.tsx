@@ -377,7 +377,7 @@ export default function SellPage() {
         }
     };
     
-    const handleFinalizeSale = async (payments: SalePayment[], settleDebt: boolean) => {
+    const handleFinalizeSale = async (payments: SalePayment[]) => {
         if (!firestore || !user || !activeCart) return;
 
         setIsSavingSale(true);
@@ -403,8 +403,11 @@ export default function SellPage() {
                 // 2. Prepare Sale and Payment Data
                 const totalAmountFromPayments = payments.reduce((acc, p) => acc + p.amount, 0);
                 const cartSubtotal = cartToPay.items.reduce((acc, item) => acc + (item.price * item.cartQuantity), 0);
-                const { value: discountValue, type: discountType } = cartToPay.discount;
+                
+                const discountValue = cartToPay.discount.value;
+                const discountType = cartToPay.discount.type;
                 const discountAmount = discountType === 'fixed' ? discountValue : (cartSubtotal * discountValue) / 100;
+                
                 const saleTotal = cartSubtotal - discountAmount;
                 
                 // 3. Correctly distribute the payment between the current sale and past debts
