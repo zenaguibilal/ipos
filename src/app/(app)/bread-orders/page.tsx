@@ -53,6 +53,7 @@ export default function BreadOrdersPage() {
     const [isSettlingDebt, setIsSettlingDebt] = useState(false);
     const [isDeletingUnpaid, setIsDeletingUnpaid] = useState(false);
     const printRef = useRef<HTMLDivElement>(null);
+    const [resetSummary, setResetSummary] = useState({ toArchive: 0, toReset: 0, toDelete: 0, problematic: 0 });
 
     const [updatingItems, setUpdatingItems] = useState<Record<string, boolean>>({});
     const isAutoResettingRef = useRef(false);
@@ -90,9 +91,6 @@ export default function BreadOrdersPage() {
         const breadPrice = companyProfile?.breadPrice ?? 0;
         if (breadPrice === 0 && orders.some(o => o.isDelivered && !o.isPaid)) {
             console.warn("Automatic reset skipped: Bread price is not set, and there are unpaid orders to archive. Please set the bread price in company profile.");
-            // We do NOT update the lastBreadOrderReset timestamp here.
-            // This allows the auto-reset logic to try again on the next page load
-            // after the user has hopefully set the price.
             return;
         }
 
@@ -196,8 +194,8 @@ export default function BreadOrdersPage() {
                 case 'quantity_desc':
                     return b.quantity - a.quantity;
                 case 'createdAt_desc':
-                    const timeB_desc = b.createdAt ? safeToDate(b.createdAt).getTime() : Number.MIN_SAFE_INTEGER;
-                    const timeA_desc = a.createdAt ? safeToDate(a.createdAt).getTime() : Number.MIN_SAFE_INTEGER;
+                    const timeB_desc = b.createdAt ? safeToDate(b.createdAt).getTime() : 0;
+                    const timeA_desc = a.createdAt ? safeToDate(a.createdAt).getTime() : 0;
                     return timeB_desc - timeA_desc;
                 case 'status':
                 default:
@@ -208,8 +206,8 @@ export default function BreadOrdersPage() {
                         if (a.isPaid && !b.isPaid) return 1;
                         if (!a.isPaid && b.isPaid) return -1;
                     }
-                    const timeA = a.createdAt ? safeToDate(a.createdAt).getTime() : Number.MAX_SAFE_INTEGER;
-                    const timeB = b.createdAt ? safeToDate(b.createdAt).getTime() : Number.MAX_SAFE_INTEGER;
+                    const timeA = a.createdAt ? safeToDate(a.createdAt).getTime() : 0;
+                    const timeB = b.createdAt ? safeToDate(b.createdAt).getTime() : 0;
                     return timeA - timeB;
             }
         });
@@ -302,6 +300,21 @@ export default function BreadOrdersPage() {
             console.error(err);
             setUpdatingItems(prev => ({ ...prev, [id]: false }));
         }
+    };
+
+    const handleOpenResetDialog = () => {
+        if (!orders) return;
+        
+        const toArchive = orders.filter(o => o.isDelivered && !o.isPaid).length;
+        const recurringOrders = orders.filter(o => o.isRecurring);
+        const nonRecurringOrders = orders.filter(o => !o.isRecurring);
+
+        const toReset = recurringOrders.length;
+        const toDelete = nonRecurringOrders.length;
+        const problematic = nonRecurringOrders.filter(o => !o.isDelivered).length;
+
+        setResetSummary({ toArchive, toReset, toDelete, problematic });
+        setIsResetting(true);
     };
 
     const handleResetOrders = async () => {
@@ -538,6 +551,7 @@ export default function BreadOrdersPage() {
                 onOpenChange={setIsResetting}
                 onConfirm={handleResetOrders}
                 isProcessing={isProcessingReset}
+                summary={resetSummary}
             />
             <BulkDeleteOrdersDialog
                 isOpen={isBulkDeleting}
@@ -634,7 +648,7 @@ export default function BreadOrdersPage() {
                                 <Printer className="mr-2 h-4 w-4" />
                                 Imprimer
                             </Button>
-                            <Button variant="outline" onClick={() => setIsResetting(true)}>
+                            <Button variant="outline" onClick={handleOpenResetDialog}>
                                 <RotateCcw className="mr-2 h-4 w-4" />
                                 Réinitialiser
                             </Button>
