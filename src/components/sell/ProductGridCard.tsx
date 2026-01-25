@@ -1,4 +1,3 @@
-
 'use client';
 import type { Product } from '@/lib/types';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { initiateEmailSignIn } from '@/firebase/non-blocking-login';
@@ -35,7 +34,7 @@ function LoginFormComponent() {
 
   useEffect(() => {
     if (user) {
-      const redirectUrl = searchParams.get('redirectUrl') || '/dashboard';
+      const redirectUrl = searchParams.get('redirectUrl') || '/sell';
       router.push(redirectUrl);
     }
   }, [user, router, searchParams]);
