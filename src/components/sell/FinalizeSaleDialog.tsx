@@ -12,29 +12,18 @@ interface FinalizeSaleDialogProps {
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
     cart: Cart;
-    onConfirm: (payments: SalePayment[], settleDebt: boolean) => void;
+    onConfirm: (payments: SalePayment[]) => void;
     isSaving: boolean;
-    customerBalance?: number | null;
 }
 
-export function FinalizeSaleDialog({ isOpen, onOpenChange, cart, onConfirm, isSaving, customerBalance }: FinalizeSaleDialogProps) {
+export function FinalizeSaleDialog({ isOpen, onOpenChange, cart, onConfirm, isSaving }: FinalizeSaleDialogProps) {
     const [paidAmountStr, setPaidAmountStr] = useState('');
     
-    // The logic to settle debt is now implicit. If a customer with a balance is selected, we assume the debt is being settled.
-    const shouldSettleDebt = !!(customerBalance && customerBalance > 0);
-
-    const cartTotal = useMemo(() => {
+    const totalToPay = useMemo(() => {
         const subtotal = cart.items.reduce((acc, item) => acc + (item.price * item.cartQuantity), 0);
         const discountAmount = cart.discount.type === 'fixed' ? cart.discount.value : (subtotal * cart.discount.value) / 100;
         return subtotal - discountAmount;
     }, [cart.items, cart.discount]);
-
-    const totalToPay = useMemo(() => {
-        if (shouldSettleDebt && customerBalance) {
-            return cartTotal + customerBalance;
-        }
-        return cartTotal;
-    }, [cartTotal, customerBalance, shouldSettleDebt]);
 
     const paidAmount = useMemo(() => {
         const parsed = parseFloat(paidAmountStr);
@@ -46,8 +35,7 @@ export function FinalizeSaleDialog({ isOpen, onOpenChange, cart, onConfirm, isSa
 
     useEffect(() => {
         if (isOpen) {
-            const initialTotal = totalToPay;
-            setPaidAmountStr(initialTotal > 0 ? initialTotal.toFixed(1) : '0');
+            setPaidAmountStr(totalToPay > 0 ? totalToPay.toFixed(1) : '0');
         } else {
             // Reset on close
             setPaidAmountStr('');
@@ -58,7 +46,7 @@ export function FinalizeSaleDialog({ isOpen, onOpenChange, cart, onConfirm, isSa
         if (isSaving) return;
         
         const finalPayments: SalePayment[] = paidAmount > 0 ? [{ method: 'cash', amount: paidAmount }] : [];
-        onConfirm(finalPayments, shouldSettleDebt);
+        onConfirm(finalPayments);
     };
 
     const handleDialogChange = (open: boolean) => {
@@ -72,23 +60,9 @@ export function FinalizeSaleDialog({ isOpen, onOpenChange, cart, onConfirm, isSa
             <DialogContent className="max-w-md">
                 <DialogHeader>
                     <DialogTitle>Finaliser la vente</DialogTitle>
-                    <DialogDescription>Confirmez les détails du paiement.</DialogDescription>
+                    <DialogDescription>Confirmez le montant reçu du client.</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-6">
-                    {/* Calculation Summary Section */}
-                    <div className="space-y-2 text-sm border-b pb-4">
-                        <div className="flex justify-between">
-                            <span>Total des articles :</span>
-                            <span className="font-medium">{cartTotal.toFixed(1)} DA</span>
-                        </div>
-                        {shouldSettleDebt && (
-                             <div className={cn("flex justify-between items-center transition-colors", "text-destructive")}>
-                                <span>Dette précédente :</span>
-                                <span className="font-medium">{customerBalance!.toFixed(1)} DA</span>
-                            </div>
-                        )}
-                    </div>
-                    
                     {/* Total Display */}
                     <div className="flex justify-between items-center bg-muted p-4 rounded-lg">
                         <span className="text-lg font-bold">Total à Payer</span>

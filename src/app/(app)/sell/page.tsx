@@ -183,7 +183,6 @@ export default function SellPage() {
         return customersWithSalesData.find(c => c.id === activeCart.customerId) || null;
     }, [activeCart?.customerId, customersWithSalesData]);
     
-    const customerBalance = activeCustomer?.outstandingBalance;
 
     const topProducts = useMemo(() => {
         if (!products || !sales) return [];
@@ -408,7 +407,7 @@ export default function SellPage() {
         }
     };
     
-    const handleFinalizeSale = async (payments: SalePayment[], settleDebt: boolean) => {
+    const handleFinalizeSale = async (payments: SalePayment[]) => {
         if (!firestore || !user || !activeCart) return;
 
         setIsSavingSale(true);
@@ -431,7 +430,7 @@ export default function SellPage() {
                     }
                 }
 
-                // 2. Prepare Sale and Payment Data
+                // 2. Prepare Sale Data
                 const totalAmountFromPayments = payments.reduce((acc, p) => acc + p.amount, 0);
                 const cartSubtotal = cartToPay.items.reduce((acc, item) => acc + (item.price * item.cartQuantity), 0);
                 
@@ -441,22 +440,9 @@ export default function SellPage() {
                 
                 const saleTotal = cartSubtotal - discountAmount;
                 
-                // 3. Correctly distribute the payment between the current sale and past debts
-                const amountForThisSale = Math.min(totalAmountFromPayments, saleTotal);
-                const amountForDebt = totalAmountFromPayments - amountForThisSale;
-
-                // 4. Handle debt payment if applicable
-                if (amountForDebt > 0 && cartToPay.customerId && settleDebt) {
-                    const paymentRef = doc(collection(firestore, 'users', user.uid, 'payments'));
-                    transaction.set(paymentRef, {
-                        customerId: cartToPay.customerId,
-                        customerName: cartToPay.customerName,
-                        amount: amountForDebt,
-                        createdAt: serverTimestamp()
-                    });
-                }
+                const amountPaidForSale = Math.min(totalAmountFromPayments, saleTotal);
                 
-                const finalPaymentStatus = amountForThisSale >= saleTotal ? 'paid' : amountForThisSale > 0 ? 'partial' : 'unpaid';
+                const finalPaymentStatus = amountPaidForSale >= saleTotal ? 'paid' : amountPaidForSale > 0 ? 'partial' : 'unpaid';
                 
                 const saleDataForDb = {
                     invoiceNumber: `INV-${Date.now()}`,
@@ -471,8 +457,8 @@ export default function SellPage() {
                     discountType,
                     discountAmount: discountAmount,
                     total: saleTotal,
-                    amountPaid: amountForThisSale,
-                    remainingBalance: saleTotal - amountForThisSale,
+                    amountPaid: amountPaidForSale,
+                    remainingBalance: saleTotal - amountPaidForSale,
                     paymentStatus: finalPaymentStatus,
                     payments,
                     customerId: cartToPay.customerId ?? undefined,
@@ -480,7 +466,7 @@ export default function SellPage() {
                     createdAt: serverTimestamp()
                 };
 
-                // 5. Create Sale Document
+                // 3. Create Sale Document
                 const saleRef = doc(firestore, 'users', user.uid, 'sales', saleId);
                 transaction.set(saleRef, saleDataForDb);
                 
@@ -583,7 +569,6 @@ export default function SellPage() {
                 cart={activeCart}
                 onConfirm={handleFinalizeSale}
                 isSaving={isSavingSale}
-                customerBalance={customerBalance}
             />}
 
             <CustomProductDialog
