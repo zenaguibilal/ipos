@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
@@ -434,7 +435,7 @@ export default function SellPage() {
                     })),
                     subtotal: cartSubtotal,
                     discountType,
-                    discountAmount: discountValue,
+                    discountAmount: discountAmount,
                     total: saleTotal,
                     amountPaid: amountForThisSale,
                     remainingBalance: saleTotal - amountForThisSale,

@@ -187,7 +187,7 @@
         },
         "discountAmount": {
             "type": "number",
-            "description": "The value of the discount (either a percentage or a fixed amount)."
+            "description": "The calculated monetary value of the discount applied."
         },
         "total": {
           "type": "number",
@@ -532,9 +532,13 @@
               "productName": { "type": "string" },
               "quantity": { "type": "number" },
               "price": { "type": "number", "description": "The price at which the item was sold." },
-              "purchasePrice": { "type": "number", "description": "The purchase price of the item at the time of the original sale." }
+              "purchasePrice": { "type": "number", "description": "The purchase price of the item at the time of the original sale." },
+              "wasRestocked": {
+                "type": "boolean",
+                "description": "Indicates if the item's quantity was added back to the main product stock during the return."
+              }
             },
-            "required": ["productId", "productName", "quantity", "price", "purchasePrice"]
+            "required": ["productId", "productName", "quantity", "price", "purchasePrice", "wasRestocked"]
           }
         },
         "totalReturnValue": {

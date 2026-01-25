@@ -197,6 +197,7 @@ export interface ReturnItem {
     quantity: number;
     price: number; // The price at which it was sold
     purchasePrice: number;
+    wasRestocked: boolean;
 }
 
 export interface ProductReturn {

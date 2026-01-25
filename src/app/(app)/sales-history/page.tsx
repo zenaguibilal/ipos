@@ -1,9 +1,10 @@
+
 'use client';
 
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase, deleteDocumentNonBlocking } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { collection, query, orderBy, doc } from 'firebase/firestore';
+import { collection, query, orderBy, doc, runTransaction } from 'firebase/firestore';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -239,24 +240,59 @@ export default function SalesHistoryPage() {
         toast.success("Historique des transactions exporté avec succès.");
     };
 
-    const handleDeleteTransaction = () => {
+    const handleDeleteTransaction = async () => {
         if (!transactionToDelete || !firestore || !user) return;
     
         const { type, data } = transactionToDelete;
-        const collectionName = type === 'sale' ? 'sales' : 'payments';
-        const docRef = doc(firestore, 'users', user.uid, collectionName, data.id);
     
-        deleteDocumentNonBlocking(docRef, {
-            onSuccess: () => {
-                toast.success(`La transaction a été supprimée.`);
-                setTransactionToDelete(null);
-            },
-            onError: (err) => {
-                toast.error("Erreur lors de la suppression de la transaction.");
-                console.error(err);
+        if (type === 'payment') {
+            const docRef = doc(firestore, 'users', user.uid, 'payments', data.id);
+            deleteDocumentNonBlocking(docRef, {
+                onSuccess: () => {
+                    toast.success(`Le paiement a été supprimé.`);
+                    setTransactionToDelete(null);
+                },
+                onError: (err) => {
+                    toast.error("Erreur lors de la suppression du paiement.");
+                    console.error(err);
+                    setTransactionToDelete(null);
+                }
+            });
+            return;
+        }
+    
+        if (type === 'sale') {
+            const saleToDelete = data as Sale;
+            toast.info("Annulation de la vente en cours... Le stock est en cours de restauration.");
+    
+            try {
+                await runTransaction(firestore, async (transaction) => {
+                    const saleRef = doc(firestore, 'users', user.uid, 'sales', saleToDelete.id);
+                    
+                    for (const item of saleToDelete.items) {
+                        if (item.id && !item.id.startsWith('custom-')) {
+                            const productRef = doc(firestore, 'users', user.uid, 'products', item.id);
+                            const productDoc = await transaction.get(productRef);
+                            if (productDoc.exists()) {
+                                const currentQuantity = productDoc.data().quantity;
+                                transaction.update(productRef, {
+                                    quantity: currentQuantity + item.quantity
+                                });
+                            }
+                        }
+                    }
+                    
+                    transaction.delete(saleRef);
+                });
+    
+                toast.success("Vente annulée et stock restauré.");
+            } catch (error) {
+                console.error("Failed to delete sale and restock:", error);
+                toast.error("Échec de l'annulation de la vente. Le stock n'a pas été modifié.");
+            } finally {
                 setTransactionToDelete(null);
             }
-        });
+        }
     };
 
     const handleShareReceiptAsImage = async (sale: Sale, isReminder: boolean) => {
@@ -378,7 +414,7 @@ export default function SalesHistoryPage() {
                         <AlertDialogHeader>
                             <AlertDialogTitle>Confirmer la suppression?</AlertDialogTitle>
                             <AlertDialogDescription>
-                                Êtes-vous sûr de vouloir supprimer cette transaction ? Cette action est irréversible et affectera les soldes des clients et les rapports.
+                                Êtes-vous sûr de vouloir supprimer cette transaction ? Cette action est irréversible et affectera les soldes des clients et les rapports. Pour les ventes, le stock sera restauré.
                             </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>

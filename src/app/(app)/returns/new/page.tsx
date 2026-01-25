@@ -156,7 +156,8 @@ export default function NewReturnPage() {
                         productName: item.name,
                         quantity: item.returnQuantity,
                         price: item.price,
-                        purchasePrice: item.purchasePrice
+                        purchasePrice: item.purchasePrice,
+                        wasRestocked: itemsToRestock[item.id] ?? false
                     })),
                     totalReturnValue: totalReturnValue,
                     amountRefunded: refundAmount,
