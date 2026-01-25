@@ -22,6 +22,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { PrintableBreadList } from '@/components/bread-orders/printable-bread-list';
 import dynamic from 'next/dynamic';
 import { OrderCardSkeleton } from '@/components/bread-orders/order-card-skeleton';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const AddOrderForm = dynamic(() => import('@/components/bread-orders/add-order-form').then(mod => mod.AddOrderForm));
 const EditOrderForm = dynamic(() => import('@/components/bread-orders/edit-order-form').then(mod => mod.EditOrderForm));
@@ -147,9 +148,10 @@ export default function BreadOrdersPage() {
         }
     }, [companyProfile, orders, isUserLoading, isLoadingOrders, isLoadingCompany, autoReset]);
 
+    const isLoading = isUserLoading || isLoadingOrders || isLoadingCompany || isLoadingUnpaid;
 
     const { filteredOrders, totalQuantity, deliveredQuantity, undeliveredQuantity, totalPaid, totalOwed } = useMemo(() => {
-        if (!orders) return { filteredOrders: [], totalQuantity: 0, deliveredQuantity: 0, undeliveredQuantity: 0, totalPaid: 0, totalOwed: 0 };
+        if (!orders || isLoading) return { filteredOrders: [], totalQuantity: 0, deliveredQuantity: 0, undeliveredQuantity: 0, totalPaid: 0, totalOwed: 0 };
         
         const breadPrice = companyProfile?.breadPrice ?? 0;
         
@@ -213,7 +215,7 @@ export default function BreadOrdersPage() {
             totalPaid: paid,
             totalOwed: owed,
         };
-    }, [orders, searchQuery, companyProfile, viewFilter, sortOption]);
+    }, [orders, searchQuery, companyProfile, viewFilter, sortOption, isLoading]);
 
     const selectedOrderIds = useMemo(() => Object.keys(selectedOrders).filter(id => selectedOrders[id]), [selectedOrders]);
 
@@ -484,7 +486,7 @@ export default function BreadOrdersPage() {
     };
 
 
-    const isLoading = isUserLoading || isLoadingOrders || isLoadingCompany || isLoadingUnpaid;
+    
     const breadPrice = companyProfile?.breadPrice;
 
     return (
@@ -676,7 +678,7 @@ export default function BreadOrdersPage() {
                                     <Cookie className="h-4 w-4 text-primary" />
                                 </CardHeader>
                                 <CardContent>
-                                    <div className="text-2xl font-bold">{totalQuantity}</div>
+                                    {isLoading ? <Skeleton className="h-8 w-16" /> : <div className="text-2xl font-bold">{totalQuantity}</div>}
                                 </CardContent>
                             </Card>
                             <Card>
@@ -685,7 +687,7 @@ export default function BreadOrdersPage() {
                                     <CheckCheck className="h-4 w-4 text-green-700 dark:text-green-400" />
                                 </CardHeader>
                                 <CardContent>
-                                    <div className="text-2xl font-bold">{deliveredQuantity}</div>
+                                    {isLoading ? <Skeleton className="h-8 w-16" /> : <div className="text-2xl font-bold">{deliveredQuantity}</div>}
                                 </CardContent>
                             </Card>
                             <Card>
@@ -694,7 +696,7 @@ export default function BreadOrdersPage() {
                                     <Truck className="h-4 w-4 text-yellow-700 dark:text-yellow-400" />
                                 </CardHeader>
                                 <CardContent>
-                                    <div className="text-2xl font-bold">{undeliveredQuantity}</div>
+                                    {isLoading ? <Skeleton className="h-8 w-16" /> : <div className="text-2xl font-bold">{undeliveredQuantity}</div>}
                                 </CardContent>
                             </Card>
                             <Card className="bg-green-500/20 border-green-500/50 sm:col-span-2 lg:col-span-3">
@@ -702,14 +704,23 @@ export default function BreadOrdersPage() {
                                     <CardTitle className="text-sm font-medium">Analyse Financière</CardTitle>
                                 </CardHeader>
                                 <CardContent className="flex justify-around items-center">
-                                    <div className="text-center">
-                                        <p className="text-xs text-muted-foreground">Total Encaissé</p>
-                                        <p className="text-2xl font-bold">{totalPaid.toFixed(1)} DA</p>
-                                    </div>
-                                    <div className="text-center">
-                                        <p className="text-xs text-muted-foreground">Total Dû</p>
-                                        <p className="text-2xl font-bold text-destructive">{totalOwed.toFixed(1)} DA</p>
-                                    </div>
+                                     {isLoading ? (
+                                        <>
+                                            <div className="flex flex-col items-center gap-2"><Skeleton className="h-4 w-20" /><Skeleton className="h-8 w-24" /></div>
+                                            <div className="flex flex-col items-center gap-2"><Skeleton className="h-4 w-16" /><Skeleton className="h-8 w-24" /></div>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <div className="text-center">
+                                                <p className="text-xs text-muted-foreground">Total Encaissé</p>
+                                                <p className="text-2xl font-bold">{totalPaid.toFixed(1)} DA</p>
+                                            </div>
+                                            <div className="text-center">
+                                                <p className="text-xs text-muted-foreground">Total Dû</p>
+                                                <p className="text-2xl font-bold text-destructive">{totalOwed.toFixed(1)} DA</p>
+                                            </div>
+                                        </>
+                                    )}
                                 </CardContent>
                             </Card>
                         </div>
