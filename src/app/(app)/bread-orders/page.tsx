@@ -80,14 +80,12 @@ export default function BreadOrdersPage() {
     const autoReset = useCallback(async () => {
         if (!firestore || !user || !orders || !companyProfile) return;
 
-        console.log("Automatic daily reset for bread orders triggered.");
-
         const breadPrice = companyProfile?.breadPrice ?? 0;
         if (breadPrice === 0 && orders.some(o => o.isDelivered && !o.isPaid)) {
-            toast.info("Réinitialisation auto. ignorée: prix du pain non défini pour archiver les dettes.");
-            // Still update the reset date to avoid constant checks
-            const companyRef = doc(firestore, 'users', user.uid, 'companyProfile', 'main');
-            await updateDoc(companyRef, { lastBreadOrderReset: serverTimestamp() });
+            console.warn("Automatic reset skipped: Bread price is not set, and there are unpaid orders to archive. Please set the bread price in company profile.");
+            // We do NOT update the lastBreadOrderReset timestamp here.
+            // This allows the auto-reset logic to try again on the next page load
+            // after the user has hopefully set the price.
             return;
         }
 
