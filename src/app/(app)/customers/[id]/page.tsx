@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { useRouter, useParams } from 'next/navigation';
 import { doc, collection, query, where, orderBy } from 'firebase/firestore';
@@ -18,9 +18,9 @@ import { AddPaymentForm } from '@/components/customers/add-payment-form';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import dynamic from 'next/dynamic';
+import { useCustomerMetrics } from '@/hooks/use-customer-metrics';
+import type { Transaction } from '@/hooks/use-customer-metrics';
 
-
-type Transaction = { type: 'sale', data: Sale } | { type: 'payment', data: Payment };
 
 const SaleDetailsDialog = dynamic(() => import('@/components/sales/sale-details-dialog').then(mod => mod.SaleDetailsDialog));
 
@@ -66,34 +66,7 @@ export default function CustomerDetailPage() {
         window.open(whatsappUrl, '_blank');
     };
 
-    const { totalSpent, outstandingBalance, combinedTransactions } = useMemo(() => {
-        if (!sales || !payments) return { totalSpent: 0, outstandingBalance: 0, combinedTransactions: [] };
-
-        const customerSales = sales || [];
-        const customerPayments = payments || [];
-
-        const totalSaleAmount = customerSales.reduce((acc, s) => acc + s.total, 0);
-        const totalPaidFromSales = customerSales.reduce((acc, s) => acc + s.amountPaid, 0);
-        const totalStandalonePayments = customerPayments.reduce((acc, p) => acc + p.amount, 0);
-        
-        const balance = totalSaleAmount - totalPaidFromSales - totalStandalonePayments;
-        const finalBalance = balance < 0.01 ? 0 : balance;
-
-        const saleTransactions: Transaction[] = customerSales.map(s => ({ type: 'sale', data: s }));
-        const paymentTransactions: Transaction[] = customerPayments.map(p => ({ type: 'payment', data: p }));
-
-        const allTransactions = [...saleTransactions, ...paymentTransactions].sort((a, b) => {
-            const timeB = b.data.createdAt ? safeToDate(b.data.createdAt).getTime() : 0;
-            const timeA = a.data.createdAt ? safeToDate(a.data.createdAt).getTime() : 0;
-            return timeB - timeA;
-        });
-
-        return {
-            totalSpent: totalSaleAmount,
-            outstandingBalance: finalBalance,
-            combinedTransactions: allTransactions,
-        };
-    }, [sales, payments]);
+    const { totalSpent, outstandingBalance, combinedTransactions } = useCustomerMetrics(sales, payments);
 
     const isLoading = isUserLoading || isLoadingCustomer || isLoadingSales || isLoadingPayments || isLoadingCompany;
 
@@ -213,7 +186,7 @@ export default function CustomerDetailPage() {
                                     <p className="text-muted-foreground">Aucune transaction pour ce client.</p>
                                 ) : (
                                     <Timeline>
-                                        {combinedTransactions.map((tx, index) => {
+                                        {combinedTransactions.map((tx: Transaction, index) => {
                                             if (tx.type === 'sale') {
                                                 return (
                                                     <TimelineItem key={`${tx.type}-${tx.data.id}`}>
