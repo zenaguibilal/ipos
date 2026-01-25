@@ -9,7 +9,7 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Search, CreditCard, HandCoins, CircleDollarSign, Download, ChevronDown, TrendingUp, MoreHorizontal, Trash2, FileText, MessageSquare, BellRing } from 'lucide-react';
-import type { Sale, Payment, CompanyProfile, Customer, SaleItem } from '@/lib/types';
+import type { Sale, Payment, CompanyProfile, Customer } from '@/lib/types';
 import { cn, safeToDate } from '@/lib/utils';
 import { DateRangePicker } from '@/components/dashboard/date-range-picker';
 import { DateRange } from 'react-day-picker';
@@ -97,33 +97,6 @@ export default function SalesHistoryPage() {
         const fromDate = dateRange?.from;
         const toDate = dateRange?.to;
 
-        const filtered = combinedTransactions.filter(transaction => {
-            if (!transaction.data.createdAt) return false;
-            const transactionDate = safeToDate(transaction.data.createdAt);
-            if (fromDate && transactionDate < fromDate) return false;
-            if (toDate && transactionDate > toDate) return false;
-
-            const matchesSearch = searchQuery 
-                ? (transaction.data.customerName?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                  ('invoiceNumber' in transaction.data && transaction.data.invoiceNumber.toLowerCase().includes(searchQuery.toLowerCase())))
-                : true;
-
-            if (!matchesSearch) return false;
-
-            switch (statusFilter) {
-                case 'all':
-                    return true;
-                case 'paid':
-                    return transaction.type === 'sale' && transaction.data.paymentStatus === 'paid';
-                case 'unpaid':
-                     return transaction.type === 'sale' && (transaction.data.paymentStatus === 'unpaid' || transaction.data.paymentStatus === 'partial');
-                case 'payments':
-                    return transaction.type === 'payment';
-                default:
-                    return true;
-            }
-        });
-        
         const initialStats = {
             groupedTransactions: {} as Record<string, { transactions: Transaction[], dailyRevenue: number, dailyCollected: number, dailyProfit: number }>,
             totalRevenue: 0,
@@ -132,9 +105,40 @@ export default function SalesHistoryPage() {
             totalProfit: 0,
         };
 
-        const finalStats = filtered.reduce((acc, transaction) => {
+        const finalStats = combinedTransactions.reduce((acc, transaction) => {
+            if (!transaction.data.createdAt) return acc;
+            
+            const transactionDate = safeToDate(transaction.data.createdAt);
+            if (fromDate && transactionDate < fromDate) return acc;
+            if (toDate && transactionDate > toDate) return acc;
+
+            const matchesSearch = searchQuery 
+                ? (transaction.data.customerName?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                  ('invoiceNumber' in transaction.data && transaction.data.invoiceNumber.toLowerCase().includes(searchQuery.toLowerCase())))
+                : true;
+            if (!matchesSearch) return acc;
+
+            let statusMatch = false;
+            switch (statusFilter) {
+                case 'all':
+                    statusMatch = true;
+                    break;
+                case 'paid':
+                    statusMatch = transaction.type === 'sale' && transaction.data.paymentStatus === 'paid';
+                    break;
+                case 'unpaid':
+                     statusMatch = transaction.type === 'sale' && (transaction.data.paymentStatus === 'unpaid' || transaction.data.paymentStatus === 'partial');
+                    break;
+                case 'payments':
+                    statusMatch = transaction.type === 'payment';
+                    break;
+                default:
+                    statusMatch = true;
+            }
+            if (!statusMatch) return acc;
+
             // Grouping Logic
-            const dateStr = format(safeToDate(transaction.data.createdAt!), 'yyyy-MM-dd');
+            const dateStr = format(transactionDate, 'yyyy-MM-dd');
             if (!acc.groupedTransactions[dateStr]) {
                 acc.groupedTransactions[dateStr] = { transactions: [], dailyRevenue: 0, dailyCollected: 0, dailyProfit: 0 };
             }
@@ -149,21 +153,16 @@ export default function SalesHistoryPage() {
                     return profit + (item.price - purchasePrice) * quantity;
                 }, 0);
 
-                // Update daily stats
                 acc.groupedTransactions[dateStr].dailyRevenue += sale.total;
                 acc.groupedTransactions[dateStr].dailyCollected += sale.amountPaid;
                 acc.groupedTransactions[dateStr].dailyProfit += saleProfit;
-
-                // Update total stats
                 acc.totalRevenue += sale.total;
                 acc.totalCollected += sale.amountPaid;
                 acc.salesCount++;
                 acc.totalProfit += saleProfit;
             } else { // Payment
                 const payment = transaction.data;
-                // Update daily stats
                 acc.groupedTransactions[dateStr].dailyCollected += payment.amount;
-                // Update total stats
                 acc.totalCollected += payment.amount;
             }
 
