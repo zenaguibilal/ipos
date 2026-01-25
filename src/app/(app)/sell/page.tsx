@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
@@ -19,6 +18,7 @@ const CustomProductDialog = dynamic(() => import('@/components/sell/CustomProduc
 const SaleDetailsDialog = dynamic(() => import('@/components/sales/sale-details-dialog').then(mod => mod.SaleDetailsDialog));
 const CustomerDialog = dynamic(() => import('@/components/customers/customer-dialog').then(mod => mod.CustomerDialog));
 const ProductDialog = dynamic(() => import('@/components/products/product-dialog').then(mod => mod.ProductDialog));
+const AddPaymentForm = dynamic(() => import('@/components/customers/add-payment-form').then(mod => mod.AddPaymentForm));
 
 
 export default function SellPage() {
@@ -37,6 +37,7 @@ export default function SellPage() {
     const [isNewProductDialogOpen, setIsNewProductDialogOpen] = useState(false);
     const [completedSale, setCompletedSale] = useState<Sale | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
+    const [customerForPayment, setCustomerForPayment] = useState<CustomerWithSalesData | null>(null);
 
 
     const productsQuery = useMemoFirebase(() => user && firestore ? query(collection(firestore, 'users', user.uid, 'products')) : null, [user, firestore]);
@@ -573,6 +574,7 @@ export default function SellPage() {
                 onFinalize={() => setIsFinalizeOpen(true)}
                 onUpdateDiscount={handleUpdateDiscount}
                 onAddNewCustomer={() => setIsCustomerDialogOpen(true)}
+                onCollectDebt={setCustomerForPayment}
             />
 
             {activeCart && <FinalizeSaleDialog
@@ -612,6 +614,15 @@ export default function SellPage() {
                     sale={completedSale}
                     companyProfile={companyProfile || null}
                     customer={customers?.find(c => c.id === completedSale.customerId) || null}
+                />
+            )}
+
+            {customerForPayment && user && (
+                <AddPaymentForm
+                    isOpen={!!customerForPayment}
+                    onOpenChange={() => setCustomerForPayment(null)}
+                    customer={customerForPayment}
+                    userId={user.uid}
                 />
             )}
         </div>

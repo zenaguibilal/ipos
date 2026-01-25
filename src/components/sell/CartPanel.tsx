@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { PlusCircle, Trash2, X, ShoppingCart, Users } from 'lucide-react';
+import { PlusCircle, Trash2, X, ShoppingCart, Users, HandCoins } from 'lucide-react';
 import { CustomerSelector } from './CustomerSelector';
 import { CartItemControls } from './CartItemControls';
 import { Input } from '../ui/input';
@@ -26,10 +26,11 @@ interface CartPanelProps {
     onFinalize: () => void;
     onUpdateDiscount: (type: 'fixed' | 'percentage', value: number) => void;
     onAddNewCustomer: () => void;
+    onCollectDebt: (customer: CustomerWithSalesData) => void;
 }
 
 export function CartPanel(props: CartPanelProps) {
-    const { carts, activeCartId, customersWithData, activeCustomer } = props;
+    const { carts, activeCartId, customersWithData, activeCustomer, onCollectDebt } = props;
     const activeCart = carts.find(c => c.id === activeCartId);
     if (!activeCart) return null;
 
@@ -95,6 +96,12 @@ export function CartPanel(props: CartPanelProps) {
                                 <span className="text-muted-foreground">Dette précédente</span>
                                 <span className={`font-bold ${activeCustomer.outstandingBalance > 0 ? 'text-destructive' : ''}`}>{activeCustomer.outstandingBalance.toFixed(1)} DA</span>
                             </div>
+                            {activeCustomer.outstandingBalance > 0 && (
+                                <Button variant="secondary" size="sm" className="w-full" onClick={() => onCollectDebt(activeCustomer)}>
+                                    <HandCoins className="mr-2 h-4 w-4" />
+                                    Encaisser la dette
+                                </Button>
+                            )}
                         </div>
                     )}
                 </div>
