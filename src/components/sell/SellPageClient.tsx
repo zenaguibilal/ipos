@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
@@ -31,6 +30,7 @@ export function SellPageClient() {
     const [activeCartId, setActiveCartId] = useState<string>(carts[0].id);
 
     const [isFinalizeOpen, setIsFinalizeOpen] = useState(false);
+    const [isSavingSale, setIsSavingSale] = useState(false);
     const [isCustomProductOpen, setIsCustomProductOpen] = useState(false);
     const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
     const [completedSale, setCompletedSale] = useState<Sale | null>(null);
@@ -195,6 +195,8 @@ export function SellPageClient() {
     
     const handleFinalizeSale = async (amountPaid: number, paymentMethod: 'cash' | 'card' | 'other') => {
         if (!firestore || !user || !activeCart) return;
+
+        setIsSavingSale(true);
         
         const cartToPay = activeCart;
         const saleId = uuidv4();
@@ -215,7 +217,7 @@ export function SellPageClient() {
             quantity: item.cartQuantity
         }));
 
-        const newSaleData: Omit<Sale, 'id' | 'createdAt'> = {
+        const newSaleData: Omit<Sale, 'id'> = {
             invoiceNumber: `INV-${Date.now()}`,
             items: saleItems,
             subtotal: subtotal,
@@ -228,6 +230,7 @@ export function SellPageClient() {
             paymentMethod: paymentMethod,
             customerId: cartToPay.customerId ?? undefined,
             customerName: cartToPay.customerName,
+            createdAt: serverTimestamp(),
         };
     
         try {
@@ -254,7 +257,7 @@ export function SellPageClient() {
                     }
                 }
     
-                transaction.set(saleRef, { ...newSaleData, createdAt: serverTimestamp() });
+                transaction.set(saleRef, newSaleData);
             });
     
             toast.success("Vente finalisée avec succès!");
@@ -277,6 +280,7 @@ export function SellPageClient() {
             toast.error(error.message || "Une erreur est survenue lors de la vente.");
         } finally {
             setIsFinalizeOpen(false);
+            setIsSavingSale(false);
         }
     };
     
@@ -338,6 +342,7 @@ export function SellPageClient() {
                 onOpenChange={setIsFinalizeOpen}
                 cart={activeCart}
                 onConfirm={handleFinalizeSale}
+                isSaving={isSavingSale}
             />}
 
             <CustomProductDialog
