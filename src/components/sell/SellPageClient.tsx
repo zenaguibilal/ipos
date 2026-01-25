@@ -14,9 +14,10 @@ import { CustomProductDialog } from './CustomProductDialog';
 import { SaleDetailsDialog } from '@/components/sales/sale-details-dialog';
 import { CustomerDialog } from '@/components/customers/customer-dialog';
 import { ProductDialog } from '@/components/products/product-dialog';
+import { Loader2 } from 'lucide-react';
 
 export function SellPageClient() {
-    const { user } = useUser();
+    const { user, isUserLoading } = useUser();
     const firestore = useFirestore();
     const router = useRouter();
 
@@ -45,6 +46,12 @@ export function SellPageClient() {
     const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersQuery);
 
     const activeCart = useMemo(() => carts.find(c => c.id === activeCartId), [carts, activeCartId]);
+
+    useEffect(() => {
+        if (!isUserLoading && !user) {
+            router.push('/login');
+        }
+    }, [isUserLoading, user, router]);
 
     const handleAddProductToCart = useCallback((product: Product | CartItem) => {
         if (!activeCart) return;
@@ -204,9 +211,11 @@ export function SellPageClient() {
         const saleId = uuidv4();
     
         const subtotal = cartToPay.items.reduce((acc, item) => acc + (item.price * item.cartQuantity), 0);
-        const discountAmount = cartToPay.discount.type === 'fixed'
-            ? cartToPay.discount.value
-            : (subtotal * cartToPay.discount.value) / 100;
+        const discountValue = cartToPay.discount.value;
+        const discountType = cartToPay.discount.type;
+        const discountAmount = discountType === 'fixed'
+            ? discountValue
+            : (subtotal * discountValue) / 100;
         const total = subtotal - discountAmount;
     
         const finalPaymentStatus = amountPaid >= total ? 'paid' : amountPaid > 0 ? 'partial' : 'unpaid';
@@ -219,12 +228,12 @@ export function SellPageClient() {
             quantity: item.cartQuantity
         }));
 
-        const newSaleData: Omit<Sale, 'id' | 'createdAt'> = {
+        const newSaleData = {
             invoiceNumber: `INV-${Date.now()}`,
             items: saleItems,
             subtotal: subtotal,
-            discountType: cartToPay.discount.type,
-            discountAmount: cartToPay.discount.value,
+            discountType: discountType,
+            discountAmount: discountValue,
             total: total,
             amountPaid: amountPaid,
             remainingBalance: total - amountPaid,
@@ -309,7 +318,20 @@ export function SellPageClient() {
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [activeCart, router]);
+    }, [activeCart]);
+
+    const isLoading = isUserLoading || isLoadingProducts || isLoadingCustomers;
+
+    if (isLoading || !user) {
+        return (
+            <div className="flex h-screen w-full items-center justify-center">
+                <div className="flex flex-col items-center gap-2">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <p className="text-muted-foreground">Chargement de l'interface de vente...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="h-screen max-h-screen overflow-hidden grid grid-cols-1 md:grid-cols-3 xl:grid-cols-4">
