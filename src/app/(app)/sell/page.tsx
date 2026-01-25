@@ -6,7 +6,7 @@ import { collection, doc, serverTimestamp, runTransaction, query } from 'firebas
 import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
 import { useRouter } from 'next/navigation';
-import type { Product, Customer, Cart, CartItem, Sale, CustomerWithSalesData, Payment, SalePayment } from '@/lib/types';
+import type { Product, Customer, Cart, CartItem, Sale, CustomerWithSalesData, Payment, SalePayment, CompanyProfile } from '@/lib/types';
 import { ProductGrid } from '@/components/sell/ProductGrid';
 import { CartPanel } from '@/components/sell/CartPanel';
 import { Loader2 } from 'lucide-react';
