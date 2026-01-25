@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
@@ -22,14 +23,15 @@ export function SellPageClient() {
     const router = useRouter();
 
     const [carts, setCarts] = useState<Cart[]>([{
-        id: uuidv4(),
+        id: 'initial-cart',
         name: 'Panier 1',
         items: [],
         customerId: null,
         customerName: 'Vente au comptoir',
         discount: { type: 'fixed', value: 0 }
     }]);
-    const [activeCartId, setActiveCartId] = useState<string>(carts[0].id);
+    const [activeCartId, setActiveCartId] = useState<string>('initial-cart');
+    const [isCartsLoading, setIsCartsLoading] = useState(true);
 
     const [isFinalizeOpen, setIsFinalizeOpen] = useState(false);
     const [isSavingSale, setIsSavingSale] = useState(false);
@@ -44,6 +46,55 @@ export function SellPageClient() {
 
     const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
     const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersQuery);
+    
+    // Load carts from localStorage on initial mount
+    useEffect(() => {
+        try {
+            const savedCarts = localStorage.getItem('ipos-carts');
+            const savedActiveCartId = localStorage.getItem('ipos-active-cart-id');
+
+            if (savedCarts) {
+                const parsedCarts: Cart[] = JSON.parse(savedCarts);
+                if (Array.isArray(parsedCarts) && parsedCarts.length > 0) {
+                    const cleanedCarts = parsedCarts.map(cart => ({
+                        ...cart,
+                        items: cart.items.map(item => ({...item, flash: false }))
+                    }));
+                    setCarts(cleanedCarts);
+                    
+                    if (savedActiveCartId && cleanedCarts.some(c => c.id === savedActiveCartId)) {
+                        setActiveCartId(savedActiveCartId);
+                    } else {
+                        setActiveCartId(cleanedCarts[0].id);
+                    }
+                } else {
+                     const defaultCartId = uuidv4();
+                     setCarts([{ id: defaultCartId, name: 'Panier 1', items: [], customerId: null, customerName: 'Vente au comptoir', discount: { type: 'fixed', value: 0 } }]);
+                     setActiveCartId(defaultCartId);
+                }
+            } else {
+                 const defaultCartId = uuidv4();
+                 setCarts([{ id: defaultCartId, name: 'Panier 1', items: [], customerId: null, customerName: 'Vente au comptoir', discount: { type: 'fixed', value: 0 } }]);
+                 setActiveCartId(defaultCartId);
+            }
+        } catch (error) {
+            console.error("Failed to load carts from localStorage", error);
+            const defaultCartId = uuidv4();
+            setCarts([{ id: defaultCartId, name: 'Panier 1', items: [], customerId: null, customerName: 'Vente au comptoir', discount: { type: 'fixed', value: 0 } }]);
+            setActiveCartId(defaultCartId);
+        } finally {
+            setIsCartsLoading(false);
+        }
+    }, []);
+
+    // Save carts to localStorage whenever they change
+    useEffect(() => {
+        if (!isCartsLoading) {
+            localStorage.setItem('ipos-carts', JSON.stringify(carts));
+            localStorage.setItem('ipos-active-cart-id', activeCartId);
+        }
+    }, [carts, activeCartId, isCartsLoading]);
+
 
     const activeCart = useMemo(() => carts.find(c => c.id === activeCartId), [carts, activeCartId]);
 
@@ -195,10 +246,12 @@ export function SellPageClient() {
             toast.error("Impossible de supprimer le dernier panier.");
             return;
         }
-        setCarts(prev => prev.filter(c => c.id !== cartId));
-        // If the active cart is deleted, switch to the first remaining cart
+        
+        const remainingCarts = carts.filter(c => c.id !== cartId);
+        setCarts(remainingCarts);
+        
         if(activeCartId === cartId) {
-            setActiveCartId(carts.find(c => c.id !== cartId)!.id);
+            setActiveCartId(remainingCarts[0].id);
         }
     };
     
@@ -320,7 +373,7 @@ export function SellPageClient() {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [activeCart]);
 
-    const isLoading = isUserLoading || isLoadingProducts || isLoadingCustomers;
+    const isLoading = isUserLoading || isLoadingProducts || isLoadingCustomers || isCartsLoading;
 
     if (isLoading || !user) {
         return (
@@ -403,3 +456,5 @@ export function SellPageClient() {
         </div>
     );
 }
+
+    
