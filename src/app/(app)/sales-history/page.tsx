@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect, useState, useMemo, useRef } from 'react';
@@ -89,9 +88,9 @@ export default function SalesHistoryPage() {
             });
     }, [sales, payments]);
 
-    const { groupedTransactions, totalRevenue, totalCollected, salesCount, totalProfit } = useMemo(() => {
+    const { groupedTransactions, totalRevenue, totalCollected, totalProfit } = useMemo(() => {
         if (!combinedTransactions) {
-            return { groupedTransactions: {}, totalRevenue: 0, totalCollected: 0, salesCount: 0, totalProfit: 0 };
+            return { groupedTransactions: {}, totalRevenue: 0, totalCollected: 0, totalProfit: 0 };
         }
 
         const fromDate = dateRange?.from;
@@ -101,7 +100,6 @@ export default function SalesHistoryPage() {
             groupedTransactions: {} as Record<string, { transactions: Transaction[], dailyRevenue: number, dailyCollected: number, dailyProfit: number }>,
             totalRevenue: 0,
             totalCollected: 0,
-            salesCount: 0,
             totalProfit: 0,
         };
 
@@ -158,7 +156,6 @@ export default function SalesHistoryPage() {
                 acc.groupedTransactions[dateStr].dailyProfit += saleProfit;
                 acc.totalRevenue += sale.total;
                 acc.totalCollected += sale.amountPaid;
-                acc.salesCount++;
                 acc.totalProfit += saleProfit;
             } else { // Payment
                 const payment = transaction.data;
@@ -538,5 +535,3 @@ export default function SalesHistoryPage() {
         </>
     );
 }
-
-    
