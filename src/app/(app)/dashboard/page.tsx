@@ -11,7 +11,7 @@ import { DateRangePicker } from '@/components/dashboard/date-range-picker';
 import { DateRange } from 'react-day-picker';
 import { subDays, startOfDay, endOfDay, format, eachDayOfInterval, parse } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import type { Sale, ProductReturn, SaleItem, ReturnItem, Product, Customer } from '@/lib/types';
+import type { Sale, ProductReturn, SaleItem, Product, Customer } from '@/lib/types';
 import { safeToDate } from '@/lib/utils';
 import { CircleDollarSign, TrendingUp, Undo2, ShoppingCart, Users, Package, Award, Archive } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -80,6 +80,15 @@ export default function DashboardPage() {
             router.push('/login');
         }
     }, [user, isUserLoading, router]);
+    
+    // Memoize calculations that don't depend on the date range
+    const inventoryValue = useMemo(() => {
+        return products?.reduce((sum, p) => sum + ((p.purchasePrice || 0) * (p.quantity || 0)), 0) || 0;
+    }, [products]);
+
+    const totalCustomers = useMemo(() => {
+        return customers?.length || 0;
+    }, [customers]);
 
     const {
         netRevenue,
@@ -87,8 +96,6 @@ export default function DashboardPage() {
         profitMargin,
         totalReturnsValue,
         salesCount,
-        inventoryValue,
-        totalCustomers,
         chartData,
         recentTransactions,
         topProducts,
@@ -217,24 +224,19 @@ export default function DashboardPage() {
             .sort((a, b) => b.totalSpent - a.totalSpent)
             .slice(0, 5);
 
-        const inventoryValue = products?.reduce((sum, p) => sum + ((p.purchasePrice || 0) * (p.quantity || 0)), 0) || 0;
-        const totalCustomers = customers?.length || 0;
-
         return {
             netRevenue: finalNetRevenue,
             netProfit: finalNetProfit,
             profitMargin: finalProfitMargin,
             totalReturnsValue: returnsValue,
             salesCount: filteredSales.length,
-            inventoryValue,
-            totalCustomers,
             chartData: finalChartData,
             recentTransactions,
             topProducts: topProductsList,
             topCustomers: topCustomersList
         };
 
-    }, [sales, returns, products, customers, dateRange]);
+    }, [sales, returns, dateRange]);
 
     const isLoading = isUserLoading || isLoadingSales || isLoadingReturns || isLoadingProducts || isLoadingCustomers;
 
