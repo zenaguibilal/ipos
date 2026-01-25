@@ -1,4 +1,3 @@
-
 'use client';
 import type { Cart, Customer, CartItem } from '@/lib/types';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -68,17 +67,60 @@ export function CartPanel(props: CartPanelProps) {
                     isLoading={props.isLoading}
                 />
             </div>
+            
+            {/* Totals and Actions Panel */}
+            <div className="p-4 border-b space-y-4">
+                 <div className="w-full space-y-2">
+                    <p className="text-sm font-medium">Remise sur le panier</p>
+                    <div className="flex gap-2">
+                        <Input 
+                            type="number"
+                            value={activeCart.discount.value}
+                            onChange={(e) => props.onUpdateDiscount(activeCart.discount.type, parseFloat(e.target.value) || 0)}
+                            className="h-9"
+                        />
+                        <div className="flex items-center rounded-md border">
+                            <Button size="sm" variant={activeCart.discount.type === 'fixed' ? 'secondary' : 'ghost'} onClick={() => props.onUpdateDiscount('fixed', activeCart.discount.value)} className="rounded-r-none h-9">DA</Button>
+                            <Button size="sm" variant={activeCart.discount.type === 'percentage' ? 'secondary' : 'ghost'} onClick={() => props.onUpdateDiscount('percentage', activeCart.discount.value)} className="rounded-l-none border-l h-9">%</Button>
+                        </div>
+                    </div>
+                </div>
 
-            <Card className="flex flex-col flex-grow m-4 mt-0 border-none shadow-none">
-                <CardHeader className="flex-row items-center justify-between pb-2">
-                    <CardTitle className="text-xl">Panier</CardTitle>
+                <div className="w-full space-y-2 text-sm">
+                    <div className="flex justify-between">
+                        <span>Sous-total</span>
+                        <span>{subtotal.toFixed(1)} DA</span>
+                    </div>
+                    <div className="flex justify-between text-destructive">
+                        <span>Remise</span>
+                        <span>-{discountAmount.toFixed(1)} DA</span>
+                    </div>
+                    <div className="flex justify-between font-bold text-2xl border-t pt-2 mt-2">
+                        <span>TOTAL</span>
+                        <span>{total.toFixed(1)} DA</span>
+                    </div>
+                </div>
+                <Button
+                    size="lg"
+                    className="w-full text-base"
+                    onClick={props.onFinalize}
+                    disabled={activeCart.items.length === 0}
+                >
+                    VENTE <span className="text-muted-foreground ml-2 text-xs">(F4)</span>
+                </Button>
+            </div>
+
+            {/* Cart Items List */}
+            <Card className="flex flex-col flex-grow m-0 border-none shadow-none">
+                <CardHeader className="flex-row items-center justify-between pb-2 p-4">
+                    <CardTitle className="text-xl">Articles</CardTitle>
                     <Button variant="ghost" size="sm" onClick={props.onClearCart} disabled={activeCart.items.length === 0}>
                         <Trash2 className="mr-2 h-4 w-4 text-destructive" /> Vider
                     </Button>
                 </CardHeader>
                 
                 <ScrollArea className="flex-grow">
-                    <CardContent>
+                    <CardContent className="p-4 pt-0">
                         {activeCart.items.length === 0 ? (
                             <div className="flex flex-col items-center justify-center text-center text-muted-foreground h-40">
                                 <ShoppingCart className="h-10 w-10 mb-2" />
@@ -104,47 +146,6 @@ export function CartPanel(props: CartPanelProps) {
                         )}
                     </CardContent>
                 </ScrollArea>
-
-                <CardFooter className="flex flex-col gap-4 border-t p-4 mt-auto">
-                    <div className="w-full space-y-2">
-                        <p className="text-sm font-medium">Remise sur le panier</p>
-                        <div className="flex gap-2">
-                            <Input 
-                                type="number"
-                                value={activeCart.discount.value}
-                                onChange={(e) => props.onUpdateDiscount(activeCart.discount.type, parseFloat(e.target.value) || 0)}
-                                className="h-9"
-                            />
-                            <div className="flex items-center rounded-md border">
-                                <Button size="sm" variant={activeCart.discount.type === 'fixed' ? 'secondary' : 'ghost'} onClick={() => props.onUpdateDiscount('fixed', activeCart.discount.value)} className="rounded-r-none h-9">DA</Button>
-                                <Button size="sm" variant={activeCart.discount.type === 'percentage' ? 'secondary' : 'ghost'} onClick={() => props.onUpdateDiscount('percentage', activeCart.discount.value)} className="rounded-l-none border-l h-9">%</Button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="w-full space-y-2 text-sm">
-                        <div className="flex justify-between">
-                            <span>Sous-total</span>
-                            <span>{subtotal.toFixed(1)} DA</span>
-                        </div>
-                        <div className="flex justify-between text-destructive">
-                            <span>Remise</span>
-                            <span>-{discountAmount.toFixed(1)} DA</span>
-                        </div>
-                        <div className="flex justify-between font-bold text-2xl border-t pt-2 mt-2">
-                            <span>TOTAL</span>
-                            <span>{total.toFixed(1)} DA</span>
-                        </div>
-                    </div>
-                    <Button
-                        size="lg"
-                        className="w-full text-base"
-                        onClick={props.onFinalize}
-                        disabled={activeCart.items.length === 0}
-                    >
-                        VENTE <span className="text-muted-foreground ml-2 text-xs">(F4)</span>
-                    </Button>
-                </CardFooter>
             </Card>
         </div>
     );
