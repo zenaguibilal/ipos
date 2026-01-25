@@ -125,7 +125,7 @@ export function CartPanel(props: CartPanelProps) {
                     </div>
                     <div className="flex justify-between text-green-600 dark:text-green-400">
                         <span className="flex items-center gap-1.5"><TrendingUp className="h-4 w-4" />Bénéfice estimé</span>
-                        <span className="font-semibold">{profit.toFixed(1)} DA ({profitMargin.toFixed(0)}%)</span>
+                        <span className="font-semibold">{profit.toFixed(1)} DA ({Math.round(profitMargin)}%)</span>
                     </div>
                     <div className="flex justify-between font-bold text-2xl border-t pt-2 mt-2">
                         <span>TOTAL</span>
