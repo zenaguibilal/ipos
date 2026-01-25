@@ -3,7 +3,6 @@
 import {
   setDoc,
   addDoc,
-  updateDoc,
   deleteDoc,
   CollectionReference,
   DocumentReference,
@@ -72,7 +71,9 @@ export function addDocumentNonBlocking(colRef: CollectionReference, data: any, c
  * Does NOT await the write operation internally.
  */
 export function updateDocumentNonBlocking(docRef: DocumentReference, data: any, callbacks?: MutationCallbacks) {
-  return updateDoc(docRef, data)
+  // Using setDoc with { merge: true } for robustness. It's equivalent to updateDoc
+  // but can be more resilient in some edge cases.
+  return setDoc(docRef, data, { merge: true })
     .then(() => {
         callbacks?.onSuccess?.();
     })
