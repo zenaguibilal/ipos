@@ -5,62 +5,74 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { CreditCard, Landmark, CircleDollarSign, Loader2 } from 'lucide-react';
+import { CreditCard, Landmark, CircleDollarSign, Loader2, Wallet } from 'lucide-react';
 import type { Cart } from '@/lib/types';
+import { Switch } from '@/components/ui/switch';
+import { cn } from '@/lib/utils';
 
 interface FinalizeSaleDialogProps {
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
     cart: Cart;
-    onConfirm: (amountPaid: number, paymentMethod: 'cash' | 'card' | 'other') => void;
+    onConfirm: (amountPaid: number, paymentMethod: 'cash' | 'card' | 'other', settleDebt: boolean) => void;
     isSaving: boolean;
+    customerBalance?: number | null;
 }
 
-export function FinalizeSaleDialog({ isOpen, onOpenChange, cart, onConfirm, isSaving }: FinalizeSaleDialogProps) {
+export function FinalizeSaleDialog({ isOpen, onOpenChange, cart, onConfirm, isSaving, customerBalance }: FinalizeSaleDialogProps) {
     const [amountPaid, setAmountPaid] = useState('');
     const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'other'>('cash');
-    
-    const subtotal = useMemo(() => cart.items.reduce((acc, item) => acc + (item.price * item.cartQuantity), 0), [cart.items]);
-    const discountAmount = useMemo(() => cart.discount.type === 'fixed' ? cart.discount.value : (subtotal * cart.discount.value) / 100, [cart.discount, subtotal]);
-    const total = useMemo(() => subtotal - discountAmount, [subtotal, discountAmount]);
+    const [settleDebt, setSettleDebt] = useState(true);
+
+    const cartTotal = useMemo(() => {
+        const subtotal = cart.items.reduce((acc, item) => acc + (item.price * item.cartQuantity), 0);
+        const discountAmount = cart.discount.type === 'fixed' ? cart.discount.value : (subtotal * cart.discount.value) / 100;
+        return subtotal - discountAmount;
+    }, [cart.items, cart.discount]);
+
+    const totalToPay = useMemo(() => {
+        if (settleDebt && customerBalance && customerBalance > 0) {
+            return cartTotal + customerBalance;
+        }
+        return cartTotal;
+    }, [cartTotal, customerBalance, settleDebt]);
+
     const change = useMemo(() => {
         const paid = parseFloat(amountPaid);
-        if (isNaN(paid) || paid < total) return 0;
-        return paid - total;
-    }, [amountPaid, total]);
+        if (isNaN(paid) || paid < totalToPay) return 0;
+        return paid - totalToPay;
+    }, [amountPaid, totalToPay]);
 
     useEffect(() => {
         if (isOpen) {
-            setAmountPaid(total.toFixed(1));
+            setAmountPaid(totalToPay.toFixed(1));
+            setSettleDebt(!!(customerBalance && customerBalance > 0));
         }
-    }, [isOpen, total]);
+    }, [isOpen, totalToPay, customerBalance]);
 
     const quickCashSuggestions = useMemo(() => {
-        if (total <= 0) return [];
+        if (totalToPay <= 0) return [];
         const suggestions = new Set<number>();
     
-        // Suggest exact amount rounded up
-        suggestions.add(Math.ceil(total));
+        suggestions.add(Math.ceil(totalToPay));
     
-        // Suggest next round fifty and hundred
-        const nextFifty = Math.ceil(total / 50) * 50;
-        if (nextFifty > total) suggestions.add(nextFifty);
+        const nextFifty = Math.ceil(totalToPay / 50) * 50;
+        if (nextFifty > totalToPay) suggestions.add(nextFifty);
 
-        const nextHundred = Math.ceil(total / 100) * 100;
-        if (nextHundred > total) suggestions.add(nextHundred);
+        const nextHundred = Math.ceil(totalToPay / 100) * 100;
+        if (nextHundred > totalToPay) suggestions.add(nextHundred);
     
-        // Suggest common banknotes
-        const banknotes = [500, 1000, 2000];
+        const banknotes = [500, 1000, 2000, 5000];
         banknotes.forEach(note => {
-            if (note >= total) {
+            if (note >= totalToPay) {
                 suggestions.add(note);
             }
         });
     
         return Array.from(suggestions)
             .sort((a, b) => a - b)
-            .slice(0, 4); // Limit to 4 suggestions
-    }, [total]);
+            .slice(0, 4);
+    }, [totalToPay]);
 
     const handleSubmit = () => {
         const paid = parseFloat(amountPaid);
@@ -68,7 +80,7 @@ export function FinalizeSaleDialog({ isOpen, onOpenChange, cart, onConfirm, isSa
             alert("Montant payé invalide.");
             return;
         }
-        onConfirm(paid, paymentMethod);
+        onConfirm(paid, paymentMethod, settleDebt);
     };
 
     const handleDialogChange = (open: boolean) => {
@@ -77,6 +89,8 @@ export function FinalizeSaleDialog({ isOpen, onOpenChange, cart, onConfirm, isSa
         }
     };
 
+    const hasDebt = customerBalance && customerBalance > 0;
+
     return (
         <Dialog open={isOpen} onOpenChange={handleDialogChange}>
             <DialogContent>
@@ -84,10 +98,37 @@ export function FinalizeSaleDialog({ isOpen, onOpenChange, cart, onConfirm, isSa
                     <DialogTitle>Finaliser la vente</DialogTitle>
                     <DialogDescription>Confirmez les détails du paiement.</DialogDescription>
                 </DialogHeader>
-                <div className="space-y-6">
+                <div className="space-y-4">
+
+                    <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                            <span>Total des articles :</span>
+                            <span className="font-medium">{cartTotal.toFixed(1)} DA</span>
+                        </div>
+                        {hasDebt && (
+                             <div className={cn("flex justify-between items-center transition-colors", settleDebt ? "text-destructive" : "text-muted-foreground")}>
+                                <span>Dette précédente :</span>
+                                <span className="font-medium">{customerBalance.toFixed(1)} DA</span>
+                            </div>
+                        )}
+                        {hasDebt && (
+                             <div className="flex items-center space-x-2 pt-2 border-t mt-2">
+                                <Switch
+                                    id="settle-debt"
+                                    checked={settleDebt}
+                                    onCheckedChange={setSettleDebt}
+                                    disabled={!hasDebt}
+                                />
+                                <Label htmlFor="settle-debt" className="text-sm font-medium">
+                                    Solder la dette avec ce paiement
+                                </Label>
+                            </div>
+                        )}
+                    </div>
+
                     <div className="flex justify-between items-center bg-muted p-4 rounded-lg">
                         <span className="text-lg font-bold">Total à Payer</span>
-                        <span className="text-3xl font-black text-primary">{total.toFixed(1)} DA</span>
+                        <span className="text-3xl font-black text-primary">{totalToPay.toFixed(1)} DA</span>
                     </div>
 
                     <div className="space-y-2">

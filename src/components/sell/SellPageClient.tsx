@@ -321,13 +321,12 @@ export function SellPageClient() {
         }
     };
     
-    const handleFinalizeSale = async (amountPaid: number, paymentMethod: 'cash' | 'card' | 'other') => {
+    const handleFinalizeSale = async (amountPaid: number, paymentMethod: 'cash' | 'card' | 'other', settleDebt: boolean) => {
         if (!firestore || !user || !activeCart) return;
 
         setIsSavingSale(true);
         const cartToPay = activeCart;
     
-        // 1. Pre-fetch product data and validate stock
         const productRefs = [];
         const stockQuantities: { [id: string]: number } = {};
         for (const item of cartToPay.items) {
@@ -338,7 +337,6 @@ export function SellPageClient() {
         }
 
         try {
-            // This part reads from cache if offline, but fetches from server if online
             const productDocs = await Promise.all(productRefs.map(ref => getDoc(ref)));
 
             for (const productDoc of productDocs) {
@@ -349,7 +347,6 @@ export function SellPageClient() {
                 stockQuantities[productDoc.id] = productDoc.data().quantity;
             }
 
-            // Check stock levels based on fetched data
             for (const item of cartToPay.items) {
                 if (!item.id.startsWith('custom-')) {
                     if (stockQuantities[item.id] < item.cartQuantity) {
@@ -358,12 +355,10 @@ export function SellPageClient() {
                 }
             }
 
-            // 2. If stock is sufficient, proceed with a writeBatch which works offline
             const batch = writeBatch(firestore);
             const saleId = uuidv4();
             const saleRef = doc(firestore, 'users', user.uid, 'sales', saleId);
 
-            // Decrement stock for each product in the batch
             for (const item of cartToPay.items) {
                 if (!item.id.startsWith('custom-')) {
                     const productRef = doc(firestore, 'users', user.uid, 'products', item.id);
@@ -372,13 +367,11 @@ export function SellPageClient() {
                 }
             }
             
-            // Create sale data
-            const subtotal = cartToPay.items.reduce((acc, item) => acc + (item.price * item.cartQuantity), 0);
+            const cartSubtotal = cartToPay.items.reduce((acc, item) => acc + (item.price * item.cartQuantity), 0);
             const discountValue = cartToPay.discount.value;
             const discountType = cartToPay.discount.type;
-            const discountAmount = discountType === 'fixed' ? discountValue : (subtotal * discountValue) / 100;
-            const total = subtotal - discountAmount;
-            const finalPaymentStatus = amountPaid >= total ? 'paid' : amountPaid > 0 ? 'partial' : 'unpaid';
+            const discountAmount = discountType === 'fixed' ? discountValue : (cartSubtotal * discountValue) / 100;
+            const saleTotal = cartSubtotal - discountAmount;
             const saleItems: SaleItem[] = cartToPay.items.map(item => ({
                 id: item.id,
                 name: item.name,
@@ -386,15 +379,34 @@ export function SellPageClient() {
                 purchasePrice: item.purchasePrice,
                 quantity: item.cartQuantity
             }));
+
+            let saleAmountPaid = amountPaid;
+            const currentCustomerBalance = customerBalance || 0;
+
+            if (settleDebt && currentCustomerBalance > 0 && cartToPay.customerId) {
+                const amountToClearDebt = Math.min(amountPaid, currentCustomerBalance);
+                if (amountToClearDebt > 0) {
+                    const paymentRef = doc(collection(firestore, 'users', user.uid, 'payments'));
+                    batch.set(paymentRef, {
+                        customerId: cartToPay.customerId,
+                        customerName: cartToPay.customerName,
+                        amount: amountToClearDebt,
+                        createdAt: serverTimestamp()
+                    });
+                }
+                saleAmountPaid = Math.max(0, amountPaid - amountToClearDebt);
+            }
+
+            const finalPaymentStatus = saleAmountPaid >= saleTotal ? 'paid' : saleAmountPaid > 0 ? 'partial' : 'unpaid';
             const newSaleData = {
                 invoiceNumber: `INV-${Date.now()}`,
                 items: saleItems,
-                subtotal: subtotal,
+                subtotal: cartSubtotal,
                 discountType: discountType,
                 discountAmount: discountValue,
-                total: total,
-                amountPaid: amountPaid,
-                remainingBalance: total - amountPaid,
+                total: saleTotal,
+                amountPaid: saleAmountPaid,
+                remainingBalance: saleTotal - saleAmountPaid,
                 paymentStatus: finalPaymentStatus,
                 paymentMethod: paymentMethod,
                 customerId: cartToPay.customerId ?? undefined,
@@ -402,16 +414,10 @@ export function SellPageClient() {
                 createdAt: serverTimestamp()
             };
 
-            // Add sale creation to the batch
             batch.set(saleRef, newSaleData);
 
-            // 3. Commit the batch. This will be queued by Firestore if offline.
             await batch.commit();
 
-            // Success logic
-            if (newSaleData.customerId && newSaleData.remainingBalance > 0) {
-                setCustomerBalance(prev => (prev ?? 0) + newSaleData.remainingBalance);
-            }
             toast.success("Vente finalisée avec succès!");
             const completedSaleDataForDialog: Sale = {
                 id: saleId,
@@ -420,7 +426,6 @@ export function SellPageClient() {
             } as unknown as Sale;
             setCompletedSale(completedSaleDataForDialog);
 
-            // Reset or remove cart
             if (carts.length > 1) {
                 handleRemoveCart(activeCartId);
             } else {
@@ -513,6 +518,7 @@ export function SellPageClient() {
                 cart={activeCart}
                 onConfirm={handleFinalizeSale}
                 isSaving={isSavingSale}
+                customerBalance={customerBalance}
             />}
 
             <CustomProductDialog
