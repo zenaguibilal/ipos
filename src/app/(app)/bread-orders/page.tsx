@@ -9,7 +9,7 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { OrderCard } from '@/components/bread-orders/order-card';
 import type { BreadOrder, CompanyProfile, UnpaidBreadOrder } from '@/lib/types';
-import { PlusCircle, RotateCcw, Search, Cookie, CheckCheck, Truck, CircleDollarSign, CreditCard, ListFilter, Trash2, Printer } from 'lucide-react';
+import { PlusCircle, RotateCcw, Search, Cookie, CheckCheck, Truck, CircleDollarSign, CreditCard, ListFilter, Trash2, Printer, HandCoins, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
@@ -47,6 +47,8 @@ export default function BreadOrdersPage() {
     const [isClearingLog, setIsClearingLog] = useState(false);
     const [isClearLogDialogOpen, setIsClearLogDialogOpen] = useState(false);
     const [deletingUnpaidOrder, setDeletingUnpaidOrder] = useState<UnpaidBreadOrder | null>(null);
+    const [settlingUnpaidOrder, setSettlingUnpaidOrder] = useState<UnpaidBreadOrder | null>(null);
+    const [isSettlingDebt, setIsSettlingDebt] = useState(false);
     const printRef = useRef<HTMLDivElement>(null);
 
     const isAutoResettingRef = useRef(false);
@@ -420,6 +422,54 @@ export default function BreadOrdersPage() {
         });
     };
 
+    const confirmSettleUnpaidOrder = async () => {
+        if (!firestore || !user || !settlingUnpaidOrder) return;
+
+        setIsSettlingDebt(true);
+
+        const batch = writeBatch(firestore);
+
+        // 1. Create a Sale document to record the income
+        const salesCollectionRef = collection(firestore, 'users', user.uid, 'sales');
+        const newSaleRef = doc(salesCollectionRef);
+        
+        const saleData = {
+            invoiceNumber: `DEBT-${Date.now()}`,
+            items: [{
+                id: `bread-debt-${settlingUnpaidOrder.id}`,
+                name: `Règlement dette pain (${settlingUnpaidOrder.name})`,
+                price: settlingUnpaidOrder.totalOwed,
+                purchasePrice: 0,
+                quantity: 1,
+            }],
+            subtotal: settlingUnpaidOrder.totalOwed,
+            total: settlingUnpaidOrder.totalOwed,
+            amountPaid: settlingUnpaidOrder.totalOwed,
+            remainingBalance: 0,
+            paymentStatus: 'paid' as const,
+            paymentMethod: 'cash' as const,
+            customerId: undefined,
+            customerName: settlingUnpaidOrder.name,
+            createdAt: serverTimestamp()
+        };
+        batch.set(newSaleRef, saleData);
+
+        // 2. Delete the unpaid order log entry
+        const unpaidOrderRef = doc(firestore, 'users', user.uid, 'unpaidBreadOrders', settlingUnpaidOrder.id);
+        batch.delete(unpaidOrderRef);
+
+        try {
+            await batch.commit();
+            toast.success(`La dette de ${settlingUnpaidOrder.name} a été réglée et enregistrée comme une vente.`);
+        } catch (error) {
+            console.error("Failed to settle bread debt:", error);
+            toast.error("Erreur lors du règlement de la dette.");
+        } finally {
+            setIsSettlingDebt(false);
+            setSettlingUnpaidOrder(null);
+        }
+    };
+
     const handlePrint = () => {
         const printContainer = document.getElementById('receipt-for-print');
         const listElement = printRef.current;
@@ -488,6 +538,26 @@ export default function BreadOrdersPage() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+            <AlertDialog open={!!settlingUnpaidOrder} onOpenChange={(isOpen) => !isOpen && setSettlingUnpaidOrder(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Confirmer le règlement de la dette?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Êtes-vous sûr de vouloir régler la dette de <span className="font-bold">{settlingUnpaidOrder?.name}</span> d'un montant de <span className="font-bold">{settlingUnpaidOrder?.totalOwed.toFixed(1)} DA</span>?
+                            <br/><br/>
+                            Cette action créera une nouvelle transaction de vente marquée comme payée et supprimera cette entrée du journal des dettes.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={isSettlingDebt}>Annuler</AlertDialogCancel>
+                        <AlertDialogAction onClick={confirmSettleUnpaidOrder} disabled={isSettlingDebt} className={cn(buttonVariants({ variant: "default" }), "bg-green-600 hover:bg-green-700")}>
+                             {isSettlingDebt ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <HandCoins className="mr-2 h-4 w-4" />}
+                             Régler la dette
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
             <div className="hidden">
                 <div ref={printRef}>
                     <PrintableBreadList orders={filteredOrders} totalQuantity={totalQuantity} />
@@ -689,6 +759,7 @@ export default function BreadOrdersPage() {
                             isLoading={isLoadingUnpaid}
                             onClearLog={() => setIsClearLogDialogOpen(true)}
                             onDeleteOrder={(order) => setDeletingUnpaidOrder(order)}
+                            onSettleOrder={(order) => setSettlingUnpaidOrder(order)}
                         />
                     </div>
                 </div>

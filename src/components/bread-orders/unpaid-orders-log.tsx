@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { UnpaidBreadOrder } from '@/lib/types';
@@ -5,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Wallet, Trash2 } from 'lucide-react';
+import { Wallet, Trash2, HandCoins } from 'lucide-react';
 import { safeToDate } from '@/lib/utils';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -14,10 +15,11 @@ interface UnpaidOrdersLogProps {
     unpaidOrders: UnpaidBreadOrder[];
     onClearLog: () => void;
     onDeleteOrder: (order: UnpaidBreadOrder) => void;
+    onSettleOrder: (order: UnpaidBreadOrder) => void;
     isLoading: boolean;
 }
 
-export function UnpaidOrdersLog({ unpaidOrders, onClearLog, onDeleteOrder, isLoading }: UnpaidOrdersLogProps) {
+export function UnpaidOrdersLog({ unpaidOrders, onClearLog, onDeleteOrder, onSettleOrder, isLoading }: UnpaidOrdersLogProps) {
     const totalDebt = unpaidOrders.reduce((sum, order) => sum + order.totalOwed, 0);
 
     return (
@@ -51,8 +53,8 @@ export function UnpaidOrdersLog({ unpaidOrders, onClearLog, onDeleteOrder, isLoa
                                 <TableRow>
                                     <TableHead>Nom</TableHead>
                                     <TableHead>Montant</TableHead>
-                                    <TableHead className="text-right">Date</TableHead>
-                                    <TableHead><span className="sr-only">Actions</span></TableHead>
+                                    <TableHead>Date</TableHead>
+                                    <TableHead className="text-right">Actions</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -60,13 +62,18 @@ export function UnpaidOrdersLog({ unpaidOrders, onClearLog, onDeleteOrder, isLoa
                                     <TableRow key={order.id}>
                                         <TableCell className="font-medium">{order.name}</TableCell>
                                         <TableCell>{order.totalOwed.toFixed(1)} DA</TableCell>
-                                        <TableCell className="text-right text-xs text-muted-foreground">
+                                        <TableCell className="text-xs text-muted-foreground">
                                             {order.archivedAt ? format(safeToDate(order.archivedAt), 'd MMM', { locale: fr }) : '...'}
                                         </TableCell>
                                         <TableCell className="text-right">
-                                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onDeleteOrder(order)}>
-                                                <Trash2 className="h-4 w-4 text-destructive" />
-                                            </Button>
+                                            <div className="flex justify-end gap-1">
+                                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onSettleOrder(order)}>
+                                                    <HandCoins className="h-4 w-4 text-green-600" />
+                                                </Button>
+                                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onDeleteOrder(order)}>
+                                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                                </Button>
+                                            </div>
                                         </TableCell>
                                     </TableRow>
                                 ))}
