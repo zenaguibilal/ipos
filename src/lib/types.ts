@@ -31,12 +31,13 @@ export interface SaleItem {
     quantity: number;
     cartQuantity?: number;
     createdAt?: Timestamp | Date;
+    minStockLevel?: number;
 }
 
 export interface Sale {
     id: string;
     invoiceNumber: string;
-    items: SaleItem[];
+    items: Omit<SaleItem, 'cartQuantity' | 'createdAt' | 'minStockLevel'>[];
     subtotal: number;
     discountType?: 'percentage' | 'fixed';
     discountAmount?: number;

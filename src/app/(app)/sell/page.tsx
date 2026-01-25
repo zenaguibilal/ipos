@@ -1,9 +1,10 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { collection, doc, runTransaction, serverTimestamp, query, orderBy } from 'firebase/firestore';
+import { collection, doc, writeBatch, serverTimestamp, query, orderBy } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -291,6 +292,7 @@ export default function SellPage() {
             purchasePrice: 0,
             quantity: Infinity, // Not a stock-managed item
             cartQuantity: 1,
+            minStockLevel: 0,
             createdAt: new Date(),
         };
 
@@ -424,7 +426,7 @@ export default function SellPage() {
         if (amountPaidNum >= total) finalPaymentStatus = 'paid';
         else if (amountPaidNum > 0) finalPaymentStatus = 'partial';
 
-        const saleItemsForDb: Omit<SaleItem, 'cartQuantity' | 'createdAt'>[] = cartToPay.items.map(item => ({
+        const saleItemsForDb: Omit<SaleItem, 'cartQuantity' | 'createdAt' | 'minStockLevel'>[] = cartToPay.items.map(item => ({
             id: item.id,
             name: item.name,
             price: item.price,
@@ -448,33 +450,40 @@ export default function SellPage() {
         };
 
         try {
-            // Run as a transaction
-            await runTransaction(firestore, async (transaction) => {
-                // 1. Read and Update Product Stock
-                for (const item of cartToPay.items) {
-                    if (item.id.startsWith('custom-')) continue;
+            // Use a write batch for efficiency, reducing operations to a single commit.
+            const batch = writeBatch(firestore);
 
-                    const productRef = doc(firestore, 'users', user.uid, 'products', item.id);
-                    const productDoc = await transaction.get(productRef);
+            // Client-side stock check before creating the batch
+            for (const item of cartToPay.items) {
+                if (item.id.startsWith('custom-')) continue;
 
-                    if (!productDoc.exists()) {
-                        throw new Error(`Produit ${item.name} introuvable dans l'inventaire.`);
-                    }
-
-                    const currentQuantity = productDoc.data().quantity;
-                    if (currentQuantity < item.cartQuantity) {
-                        throw new Error(`Stock insuffisant pour ${item.name}. Disponible : ${currentQuantity}`);
-                    }
-
-                    const newQuantity = currentQuantity - item.cartQuantity;
-                    transaction.update(productRef, { quantity: newQuantity });
+                const productInState = products?.find(p => p.id === item.id);
+                if (!productInState) {
+                    throw new Error(`Produit ${item.name} introuvable dans l'inventaire local.`);
                 }
+                if (productInState.quantity < item.cartQuantity) {
+                    throw new Error(`Stock insuffisant pour ${item.name}. Disponible : ${productInState.quantity}`);
+                }
+            }
 
-                // 2. Create the Sale Document
-                const saleRef = doc(firestore, 'users', user.uid, 'sales', saleId);
-                transaction.set(saleRef, { ...newSaleData, createdAt: serverTimestamp() });
-            });
+            // Prepare batch operations
+            for (const item of cartToPay.items) {
+                if (item.id.startsWith('custom-')) continue;
+                
+                const productRef = doc(firestore, 'users', user.uid, 'products', item.id);
+                const productInState = products!.find(p => p.id === item.id)!; // We know it exists from the check above
+                const newQuantity = productInState.quantity - item.cartQuantity;
+
+                batch.update(productRef, { quantity: newQuantity });
+            }
+
+            // Add the sale document to the batch
+            const saleRef = doc(firestore, 'users', user.uid, 'sales', saleId);
+            batch.set(saleRef, { ...newSaleData, createdAt: serverTimestamp() });
             
+            // Commit the entire batch as one atomic operation
+            await batch.commit();
+
             // If transaction is successful:
             const completedSaleDataForDialog: Sale = {
                 id: saleId,
