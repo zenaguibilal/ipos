@@ -94,14 +94,8 @@ export default function CustomersPage() {
                 runningCustomersWithDebt++;
             }
 
-            const validSales = customerSales.filter(s => s.createdAt);
-            const lastSaleDate = validSales.length > 0 ? Math.max(...validSales.map(s => safeToDate(s.createdAt).getTime())) : 0;
-            
-            const validPayments = customerPayments.filter(p => p.createdAt);
-            const lastPaymentDate = validPayments.length > 0 ? Math.max(...validPayments.map(p => {
-                if (!p.createdAt) return 0;
-                return safeToDate(p.createdAt).getTime();
-            })) : 0;
+            const lastSaleDate = customerSales.length > 0 ? Math.max(...customerSales.map(s => safeToDate(s.createdAt).getTime())) : 0;
+            const lastPaymentDate = customerPayments.length > 0 ? Math.max(...customerPayments.map(p => safeToDate(p.createdAt).getTime())) : 0;
 
             const lastActivityTimestamp = Math.max(lastSaleDate, lastPaymentDate);
             const lastActivityDate = lastActivityTimestamp > 0 ? new Date(lastActivityTimestamp) : null;
