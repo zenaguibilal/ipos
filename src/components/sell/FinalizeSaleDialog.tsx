@@ -58,6 +58,7 @@ export function FinalizeSaleDialog({ isOpen, onOpenChange, cart, onConfirm, isSa
     const handleSubmit = () => {
         if (isSaving) return;
         
+        // As we simplified the payment method, we assume 'cash' for any amount paid.
         const finalPayments: SalePayment[] = paidAmount > 0 ? [{ method: 'cash', amount: paidAmount }] : [];
         onConfirm(finalPayments, settleDebt);
     };
@@ -107,25 +108,29 @@ export function FinalizeSaleDialog({ isOpen, onOpenChange, cart, onConfirm, isSa
                     {/* Payment Input Section */}
                     <div className="space-y-3">
                         <Label htmlFor="paidAmount" className="text-base">Montant Encaissé</Label>
-                        <div className="flex gap-2 items-center">
-                            <Input 
-                                id="paidAmount" 
-                                type="number" 
-                                className="h-14 text-2xl font-bold flex-grow"
-                                placeholder="0.00"
-                                value={paidAmountStr}
-                                onChange={(e) => setPaidAmountStr(e.target.value)}
-                                autoFocus
-                                onFocus={(e) => e.target.select()}
-                            />
-                            <div className="flex flex-col gap-2">
-                                <Button variant="outline" className="h-7 text-xs px-2" onClick={() => setPaidAmountStr(totalToPay.toFixed(1))}>
-                                    Paiement Complet
-                                </Button>
-                                <Button variant="destructive" className="h-7 text-xs px-2" onClick={() => setPaidAmountStr('0')}>
-                                    Vente à Crédit
-                                </Button>
-                            </div>
+                        <Input 
+                            id="paidAmount" 
+                            type="number" 
+                            className="h-14 text-2xl font-bold text-center"
+                            placeholder="0.00"
+                            value={paidAmountStr}
+                            onChange={(e) => setPaidAmountStr(e.target.value)}
+                            autoFocus
+                            onFocus={(e) => e.target.select()}
+                        />
+                         <div className="grid grid-cols-3 gap-2 pt-2">
+                            <Button type="button" variant="outline" onClick={() => setPaidAmountStr(totalToPay.toFixed(1))}>
+                                Complet
+                            </Button>
+                            <Button type="button" variant="secondary" onClick={() => {
+                                setPaidAmountStr('');
+                                document.getElementById('paidAmount')?.focus();
+                            }}>
+                                Partiel
+                            </Button>
+                            <Button type="button" variant="destructive" onClick={() => setPaidAmountStr('0')}>
+                                Crédit
+                            </Button>
                         </div>
                     </div>
                     
