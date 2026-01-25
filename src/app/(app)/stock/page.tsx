@@ -96,26 +96,27 @@ export default function StockPage() {
         const fromDate = dateRange?.from;
         const toDate = dateRange?.to;
 
-        const filtered = stockIntakes.filter(i => {
-            const intakeDate = safeToDate(i.createdAt);
-            if (fromDate && intakeDate < fromDate) return false;
-            if (toDate && intakeDate > toDate) return false;
+        return stockIntakes.reduce(
+            (accumulator, intake) => {
+                const intakeDate = safeToDate(intake.createdAt);
+                
+                const isDateInRange = (!fromDate || intakeDate >= fromDate) && (!toDate || intakeDate <= toDate);
+                
+                const matchesSearch = !searchQuery || 
+                                      intake.invoiceNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                      intake.supplier.toLowerCase().includes(searchQuery.toLowerCase());
+    
+                if (isDateInRange && matchesSearch) {
+                    accumulator.filteredIntakes.push(intake);
+                    accumulator.totalIntakeValue += intake.totalValue;
+                    accumulator.totalItemsReceived += intake.items.reduce((itemAcc, item) => itemAcc + item.quantityReceived, 0);
+                }
+                
+                return accumulator;
+            },
+            { filteredIntakes: [] as StockIntake[], totalIntakeValue: 0, totalItemsReceived: 0 }
+        );
 
-            if (searchQuery) {
-                return i.invoiceNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                       i.supplier.toLowerCase().includes(searchQuery.toLowerCase());
-            }
-            return true;
-        });
-
-        const totalValue = filtered.reduce((sum, intake) => sum + intake.totalValue, 0);
-        const totalItems = filtered.reduce((acc, intake) => acc + intake.items.reduce((itemAcc, item) => itemAcc + item.quantityReceived, 0), 0);
-
-        return { 
-            filteredIntakes: filtered, 
-            totalIntakeValue: totalValue,
-            totalItemsReceived: totalItems
-        };
     }, [stockIntakes, searchQuery, dateRange]);
     
     const handleExport = () => {
