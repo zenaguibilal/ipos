@@ -268,7 +268,7 @@ export default function BreadOrdersPage() {
         }
     };
     
-    const handleUpdateOrderDetails = async (id: string, name: string, quantity: number, isRecurring: boolean) => {
+    const handleUpdateOrderDetails = async (id: string, name: string, quantity: number, isRecurring: boolean, customerId: string | null) => {
         if (!firestore || !user) throw new Error("Non authentifié");
         setUpdatingItems(prev => ({ ...prev, [id]: true }));
         const orderDocRef = doc(firestore, 'users', user.uid, 'breadOrders', id);
@@ -277,7 +277,8 @@ export default function BreadOrdersPage() {
             await updateDoc(orderDocRef, { 
                 name,
                 quantity, 
-                isRecurring 
+                isRecurring,
+                customerId: customerId || null
             });
             toast.success('Commande mise à jour.');
         } catch(err) {
@@ -528,6 +529,8 @@ export default function BreadOrdersPage() {
                     onOpenChange={() => setEditingOrder(null)}
                     onConfirm={handleUpdateOrderDetails}
                     order={editingOrder}
+                    customers={customers || []}
+                    isLoadingCustomers={isLoadingCustomers}
                 />
             )}
             <ResetOrdersDialog
@@ -808,5 +811,3 @@ export default function BreadOrdersPage() {
         </>
     )
 }
-
-    
