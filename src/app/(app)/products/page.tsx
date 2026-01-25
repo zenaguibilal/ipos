@@ -89,7 +89,7 @@ export default function ProductsPage() {
             totalInventoryValue: inventoryValue,
             lowStockCount: lowStock,
             totalProducts: products.length,
-            totalCategories: uniqueCategories.length > 1 ? uniqueCategories.length - 1 : 0,
+            totalCategories: uniqueCategories.length - 1,
         };
     }, [products]);
 
