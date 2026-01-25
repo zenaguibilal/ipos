@@ -12,8 +12,15 @@ export function useCustomerMetrics(sales: Sale[] | null, payments: Payment[] | n
             return { totalSpent: 0, outstandingBalance: 0, combinedTransactions: [] };
         }
 
-        const totalSaleAmount = sales.reduce((acc, s) => acc + s.total, 0);
-        const totalPaidFromSales = sales.reduce((acc, s) => acc + s.amountPaid, 0);
+        const { totalSaleAmount, totalPaidFromSales } = sales.reduce(
+            (acc, s) => {
+                acc.totalSaleAmount += s.total;
+                acc.totalPaidFromSales += s.amountPaid;
+                return acc;
+            },
+            { totalSaleAmount: 0, totalPaidFromSales: 0 }
+        );
+        
         const totalStandalonePayments = payments.reduce((acc, p) => acc + p.amount, 0);
         
         const balance = totalSaleAmount - totalPaidFromSales - totalStandalonePayments;
