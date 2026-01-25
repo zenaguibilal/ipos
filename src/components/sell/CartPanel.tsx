@@ -1,5 +1,5 @@
 'use client';
-import type { Cart, Customer, CartItem } from '@/lib/types';
+import type { Cart, Customer, CartItem, CustomerWithSalesData } from '@/lib/types';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -9,11 +9,12 @@ import { CustomerSelector } from './CustomerSelector';
 import { CartItemControls } from './CartItemControls';
 import { Input } from '../ui/input';
 import { Skeleton } from '../ui/skeleton';
+import { useMemo } from 'react';
 
 interface CartPanelProps {
     carts: Cart[];
     activeCartId: string;
-    customers: Customer[];
+    customersWithData: CustomerWithSalesData[];
     isLoading: boolean;
     onAddCart: () => void;
     onRemoveCart: (cartId: string) => void;
@@ -25,14 +26,20 @@ interface CartPanelProps {
     onFinalize: () => void;
     onUpdateDiscount: (type: 'fixed' | 'percentage', value: number) => void;
     onAddNewCustomer: () => void;
-    customerBalance: number | null;
-    isBalanceLoading: boolean;
     onSettleDebt?: () => void;
 }
 
 export function CartPanel(props: CartPanelProps) {
-    const activeCart = props.carts.find(c => c.id === props.activeCartId);
+    const { carts, activeCartId, customersWithData } = props;
+    const activeCart = carts.find(c => c.id === activeCartId);
     if (!activeCart) return null;
+
+    const activeCustomerData = useMemo(() => {
+        if (!activeCart?.customerId) return null;
+        return customersWithData.find(c => c.id === activeCart.customerId);
+    }, [activeCart?.customerId, customersWithData]);
+
+    const customerBalance = activeCustomerData?.outstandingBalance;
 
     const subtotal = activeCart.items.reduce((acc, item) => acc + (item.price * item.cartQuantity), 0);
     const discountAmount = activeCart.discount.type === 'fixed'
@@ -64,22 +71,22 @@ export function CartPanel(props: CartPanelProps) {
             
             <div className="p-4 border-t border-b">
                 <CustomerSelector
-                    customers={props.customers}
+                    customersWithData={customersWithData}
                     selectedCustomerId={activeCart.customerId}
                     onSelectCustomer={props.onSelectCustomer}
                     onAddNewCustomer={props.onAddNewCustomer}
                     isLoading={props.isLoading}
                 />
-                 {props.isBalanceLoading && (
+                 {props.isLoading && !customersWithData.length && (
                     <div className="mt-3 p-2 h-[42px] flex items-center">
                         <Skeleton className="h-4 w-full" />
                     </div>
                 )}
-                {!props.isBalanceLoading && props.customerBalance !== null && props.customerBalance > 0 && (
+                {customerBalance !== undefined && customerBalance > 0 && (
                     <div className="mt-3 p-2 pr-1 bg-destructive/10 text-destructive text-sm rounded-md flex items-center justify-between">
                         <div className="flex items-center gap-2">
                            <Wallet className="h-4 w-4" />
-                           <span className="font-semibold">Dette: {props.customerBalance.toFixed(1)} DA</span>
+                           <span className="font-semibold">Dette: {customerBalance.toFixed(1)} DA</span>
                         </div>
                         {props.onSettleDebt && (
                             <Button size="sm" variant="ghost" className="h-7 text-destructive hover:bg-destructive/20" onClick={props.onSettleDebt}>

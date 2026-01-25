@@ -26,6 +26,7 @@ export interface ComboboxOption {
     label: string;
     subLabel?: string;
     disabled?: boolean;
+    subLabelClassName?: string;
 }
 
 interface ComboboxProps {
@@ -66,7 +67,7 @@ export const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(({ op
                   {selectedOption ? (
                     <>
                       <p className="font-medium truncate">{selectedOption.label}</p>
-                      {selectedOption.subLabel && <p className="text-xs text-destructive font-medium truncate">{selectedOption.subLabel}</p>}
+                      {selectedOption.subLabel && <p className={cn("text-xs font-medium truncate", selectedOption.subLabelClassName || 'text-muted-foreground')}>{selectedOption.subLabel}</p>}
                     </>
                   ) : (
                     <p className="font-medium">{placeholder}</p> // Fallback
@@ -103,7 +104,7 @@ export const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(({ op
                   />
                   <div>
                     <p>{option.label}</p>
-                    {option.subLabel && <p className="text-xs text-destructive">{option.subLabel}</p>}
+                    {option.subLabel && <p className={cn("text-xs", option.subLabelClassName || 'text-muted-foreground')}>{option.subLabel}</p>}
                   </div>
                 </CommandItem>
               ))}

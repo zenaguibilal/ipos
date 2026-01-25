@@ -6,7 +6,7 @@ import { collection, doc, serverTimestamp, getDoc, writeBatch, query, where, get
 import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
 import { useRouter } from 'next/navigation';
-import type { Product, Customer, Cart, CartItem, Sale, SaleItem, Payment, CompanyProfile, SalePayment } from '@/lib/types';
+import type { Product, Customer, Cart, CartItem, Sale, SaleItem, Payment, CompanyProfile, SalePayment, CustomerWithSalesData } from '@/lib/types';
 import { ProductGrid } from './ProductGrid';
 import { CartPanel } from './CartPanel';
 import { Loader2 } from 'lucide-react';
@@ -43,8 +43,6 @@ export function SellPageClient() {
     const [isNewProductDialogOpen, setIsNewProductDialogOpen] = useState(false);
     const [completedSale, setCompletedSale] = useState<Sale | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
-    const [customerBalance, setCustomerBalance] = useState<number | null>(null);
-    const [isBalanceLoading, setIsBalanceLoading] = useState(false);
     const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
 
 
@@ -52,11 +50,13 @@ export function SellPageClient() {
     const customersQuery = useMemoFirebase(() => user && firestore ? collection(firestore, 'users', user.uid, 'customers') : null, [user, firestore]);
     const companyDocRef = useMemoFirebase(() => user && firestore ? doc(firestore, 'users', user.uid, 'companyProfile', 'main') : null, [user, firestore]);
     const salesQuery = useMemoFirebase(() => user && firestore ? query(collection(firestore, 'users', user.uid, 'sales')) : null, [user, firestore]);
+    const paymentsQuery = useMemoFirebase(() => user && firestore ? query(collection(firestore, 'users', user.uid, 'payments')) : null, [user, firestore]);
 
     const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
     const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersQuery);
     const { data: companyProfile } = useDoc<CompanyProfile>(companyDocRef);
     const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
+    const { data: payments, isLoading: isLoadingPayments } = useCollection<Payment>(paymentsQuery);
     
     // Load carts from localStorage on initial mount
     useEffect(() => {
@@ -109,10 +109,34 @@ export function SellPageClient() {
 
     const activeCart = useMemo(() => carts.find(c => c.id === activeCartId), [carts, activeCartId]);
 
+    const customersWithSalesData = useMemo<CustomerWithSalesData[]>(() => {
+        if (!customers || !sales || !payments) return [];
+
+        return customers.map(customer => {
+            const customerSales = sales.filter(s => s.customerId === customer.id);
+            const customerPayments = payments.filter(p => p.customerId === customer.id);
+            const totalSpent = customerSales.reduce((acc, s) => acc + s.total, 0);
+
+            const totalPaidFromSales = customerSales.reduce((acc, s) => acc + s.amountPaid, 0);
+            const totalStandalonePayments = customerPayments.reduce((acc, p) => acc + p.amount, 0);
+            
+            const outstandingBalance = totalSpent - totalPaidFromSales - totalStandalonePayments;
+            const finalBalance = outstandingBalance < 0.01 ? 0 : outstandingBalance;
+
+            return {
+                ...customer,
+                totalSpent,
+                outstandingBalance: finalBalance,
+            };
+        });
+    }, [customers, sales, payments]);
+
     const activeCustomer = useMemo(() => {
-        if (!activeCart?.customerId || !customers) return null;
-        return customers.find(c => c.id === activeCart.customerId) || null;
-    }, [activeCart?.customerId, customers]);
+        if (!activeCart?.customerId || !customersWithSalesData) return null;
+        return customersWithSalesData.find(c => c.id === activeCart.customerId) || null;
+    }, [activeCart?.customerId, customersWithSalesData]);
+    
+    const customerBalance = activeCustomer?.outstandingBalance;
 
     const topProducts = useMemo(() => {
         if (!products) return [];
@@ -137,44 +161,6 @@ export function SellPageClient() {
         return sortedProducts.slice(0, 15);
     }, [products, sales]);
 
-
-    // Recalculate customer balance when active customer changes
-    useEffect(() => {
-        const calculateBalance = async () => {
-            if (!activeCart || !activeCart.customerId || !firestore || !user) {
-                setCustomerBalance(null);
-                return;
-            }
-
-            setIsBalanceLoading(true);
-            try {
-                const salesQuery = query(collection(firestore, 'users', user.uid, 'sales'), where('customerId', '==', activeCart.customerId));
-                const paymentsQuery = query(collection(firestore, 'users', user.uid, 'payments'), where('customerId', '==', activeCart.customerId));
-                
-                const [salesSnapshot, paymentsSnapshot] = await Promise.all([
-                    getDocs(salesQuery),
-                    getDocs(paymentsQuery)
-                ]);
-
-                const customerSales: Sale[] = salesSnapshot.docs.map(doc => doc.data() as Sale);
-                const customerPayments: Payment[] = paymentsSnapshot.docs.map(doc => doc.data() as Payment);
-                
-                const totalSaleAmount = customerSales.reduce((acc, s) => acc + s.total, 0);
-                const totalPaidFromSales = customerSales.reduce((acc, s) => acc + s.amountPaid, 0);
-                const totalStandalonePayments = customerPayments.reduce((acc, p) => acc + p.amount, 0);
-                const balance = totalSaleAmount - totalPaidFromSales - totalStandalonePayments;
-                
-                setCustomerBalance(balance > 0.01 ? balance : 0);
-            } catch (error) {
-                console.error("Failed to calculate customer balance:", error);
-                setCustomerBalance(null);
-            } finally {
-                setIsBalanceLoading(false);
-            }
-        };
-
-        calculateBalance();
-    }, [activeCart?.customerId, firestore, user]);
 
     useEffect(() => {
         if (!isUserLoading && !user) {
@@ -494,7 +480,7 @@ export function SellPageClient() {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [activeCart]);
 
-    const isLoading = isUserLoading || isLoadingProducts || isLoadingCustomers || isCartsLoading || isLoadingSales;
+    const isLoading = isUserLoading || isLoadingProducts || isLoadingCustomers || isCartsLoading || isLoadingSales || isLoadingPayments;
 
     if (isLoading || !user) {
         return (
@@ -522,8 +508,8 @@ export function SellPageClient() {
             <CartPanel
                 carts={carts}
                 activeCartId={activeCartId}
-                customers={customers || []}
-                isLoading={isLoadingCustomers}
+                customersWithData={customersWithSalesData}
+                isLoading={isLoadingCustomers || isLoadingSales || isLoadingPayments}
                 onAddCart={handleAddCart}
                 onRemoveCart={handleRemoveCart}
                 onSwitchCart={setActiveCartId}
@@ -534,8 +520,6 @@ export function SellPageClient() {
                 onFinalize={() => setIsFinalizeOpen(true)}
                 onUpdateDiscount={handleUpdateDiscount}
                 onAddNewCustomer={() => setIsCustomerDialogOpen(true)}
-                customerBalance={customerBalance}
-                isBalanceLoading={isBalanceLoading}
                 onSettleDebt={() => setIsPaymentDialogOpen(true)}
             />
 
@@ -576,7 +560,10 @@ export function SellPageClient() {
                     customer={activeCustomer}
                     userId={user.uid}
                     onSuccess={(paidAmount) => {
-                        setCustomerBalance(prev => Math.max(0, (prev ?? 0) - paidAmount));
+                        // This is an optimistic update. The main data will refetch eventually.
+                        const newBalance = Math.max(0, (customerBalance ?? 0) - paidAmount);
+                        // A full refetch of customersWithSalesData would be better, but this is a quick UI update.
+                        // For now, we rely on SWR/useCollection's revalidation to get the true state.
                         setIsPaymentDialogOpen(false);
                     }}
                 />
