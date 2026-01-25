@@ -4,7 +4,7 @@
 import { useUser, useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, deleteDocumentNonBlocking, useDoc } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
-import { collection, query, orderBy, serverTimestamp, doc, writeBatch, updateDoc } from 'firebase/firestore';
+import { collection, query, orderBy, serverTimestamp, doc, writeBatch, updateDoc, addDoc, deleteDoc } from 'firebase/firestore';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { OrderCard } from '@/components/bread-orders/order-card';
@@ -52,6 +52,7 @@ export default function BreadOrdersPage() {
     const [isSettlingDebt, setIsSettlingDebt] = useState(false);
     const printRef = useRef<HTMLDivElement>(null);
 
+    const [updatingItems, setUpdatingItems] = useState<Record<string, boolean>>({});
     const isAutoResettingRef = useRef(false);
 
 
@@ -220,31 +221,30 @@ export default function BreadOrdersPage() {
     const selectedOrderIds = useMemo(() => Object.keys(selectedOrders).filter(id => selectedOrders[id]), [selectedOrders]);
 
 
-    const handleAddOrder = (name: string, quantity: number, isRecurring: boolean) => {
-        if (!firestore || !user) return;
+    const handleAddOrder = async (name: string, quantity: number, isRecurring: boolean) => {
+        if (!firestore || !user) throw new Error("Non authentifié");
         const ordersCollectionRef = collection(firestore, 'users', user.uid, 'breadOrders');
         
-        addDocumentNonBlocking(ordersCollectionRef, {
-            name,
-            quantity,
-            isPaid: false,
-            isDelivered: false,
-            isRecurring,
-            createdAt: serverTimestamp()
-        }, {
-            onSuccess: () => {
-                setIsAddingOrder(false);
-                toast.success('Commande de pain ajoutée.');
-            },
-            onError: (err) => {
-                toast.error("Erreur lors de l'ajout de la commande.");
-                console.error(err);
-            }
-        });
+        try {
+            await addDoc(ordersCollectionRef, {
+                name,
+                quantity,
+                isPaid: false,
+                isDelivered: false,
+                isRecurring,
+                createdAt: serverTimestamp()
+            });
+            toast.success('Commande de pain ajoutée.');
+        } catch (err) {
+            toast.error("Erreur lors de l'ajout de la commande.");
+            console.error(err);
+            throw err;
+        }
     };
 
     const handleUpdateOrderToggles = async (id: string, field: keyof Omit<BreadOrder, 'id' | 'name' | 'quantity' | 'createdAt' | 'isRecurring'>, value: boolean) => {
         if (!firestore || !user) return;
+        setUpdatingItems(prev => ({ ...prev, [id]: true }));
         const orderDocRef = doc(firestore, 'users', user.uid, 'breadOrders', id);
         
         try {
@@ -253,11 +253,13 @@ export default function BreadOrdersPage() {
         } catch (err) {
             toast.error("Erreur lors de la mise à jour.");
             console.error(err);
+        } finally {
+            setUpdatingItems(prev => ({ ...prev, [id]: false }));
         }
     };
     
     const handleUpdateOrderDetails = async (id: string, name: string, quantity: number, isRecurring: boolean) => {
-        if (!firestore || !user) return;
+        if (!firestore || !user) throw new Error("Non authentifié");
         const orderDocRef = doc(firestore, 'users', user.uid, 'breadOrders', id);
          
         try {
@@ -266,24 +268,26 @@ export default function BreadOrdersPage() {
                 quantity, 
                 isRecurring 
             });
-            setEditingOrder(null);
             toast.success('Commande mise à jour.');
         } catch(err) {
             toast.error("Erreur lors de la mise à jour.");
             console.error(err);
+            throw err;
         }
     };
 
-    const handleDeleteOrder = (id: string) => {
+    const handleDeleteOrder = async (id: string) => {
         if (!firestore || !user) return;
+        setUpdatingItems(prev => ({ ...prev, [id]: true }));
         const orderDocRef = doc(firestore, 'users', user.uid, 'breadOrders', id);
-        deleteDocumentNonBlocking(orderDocRef, {
-            onSuccess: () => toast.success("Commande supprimée."),
-            onError: (err) => {
-                toast.error("Erreur lors de la suppression.");
-                console.error(err);
-            }
-        });
+        try {
+            await deleteDoc(orderDocRef);
+            toast.success("Commande supprimée.");
+        } catch (err) {
+            toast.error("Erreur lors de la suppression.");
+            console.error(err);
+            setUpdatingItems(prev => ({ ...prev, [id]: false }));
+        }
     };
 
     const handleResetOrders = async () => {
@@ -757,6 +761,7 @@ export default function BreadOrdersPage() {
                                         onSelectChange={(checked) => {
                                             setSelectedOrders(prev => ({ ...prev, [order.id]: checked }));
                                         }}
+                                        isUpdating={!!updatingItems[order.id]}
                                     />
                                 ))}
                             </div>

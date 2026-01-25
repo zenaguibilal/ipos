@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { BreadOrder } from '@/lib/types';
@@ -5,7 +6,7 @@ import { Card, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { MoreVertical, Trash2, Repeat, Edit } from 'lucide-react';
+import { MoreVertical, Trash2, Repeat, Edit, Loader2 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,9 +26,10 @@ interface OrderCardProps {
     onDelete: () => void;
     isSelected: boolean;
     onSelectChange: (checked: boolean) => void;
+    isUpdating?: boolean;
 }
 
-export function OrderCard({ order, onUpdateToggles, onEdit, onDelete, isSelected, onSelectChange }: OrderCardProps) {
+export function OrderCard({ order, onUpdateToggles, onEdit, onDelete, isSelected, onSelectChange, isUpdating }: OrderCardProps) {
     const getStatus = () => {
         if (order.isDelivered) {
             if (order.isPaid) {
@@ -44,12 +46,18 @@ export function OrderCard({ order, onUpdateToggles, onEdit, onDelete, isSelected
             "flex flex-col justify-between transition-all relative hover:shadow-xl hover:-translate-y-1",
             isSelected && "border-primary ring-2 ring-primary"
         )}>
+             {isUpdating && (
+                <div className="absolute inset-0 bg-background/80 flex items-center justify-center z-20 rounded-lg">
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                </div>
+            )}
              <div className="absolute top-2 left-2 z-10">
                 <Checkbox
                     checked={isSelected}
                     onCheckedChange={onSelectChange}
                     aria-label={`Sélectionner la commande de ${order.name}`}
                     className="h-5 w-5 bg-background border-border"
+                    disabled={isUpdating}
                 />
             </div>
             <CardHeader className="flex-row items-start justify-between pb-2 pt-3 pl-10">
@@ -63,7 +71,7 @@ export function OrderCard({ order, onUpdateToggles, onEdit, onDelete, isSelected
                  <div className="flex flex-col items-end gap-2">
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <Button variant="ghost" size="icon" className="h-8 w-8" disabled={isUpdating}>
                                 <MoreVertical className="h-4 w-4" />
                             </Button>
                         </DropdownMenuTrigger>
@@ -94,6 +102,7 @@ export function OrderCard({ order, onUpdateToggles, onEdit, onDelete, isSelected
                         checked={order.isPaid}
                         onCheckedChange={(checked) => onUpdateToggles(order.id, 'isPaid', checked)}
                         aria-label="Marquer comme payé"
+                        disabled={isUpdating}
                     />
                 </div>
                 <div className="flex items-center justify-between">
@@ -105,6 +114,7 @@ export function OrderCard({ order, onUpdateToggles, onEdit, onDelete, isSelected
                         checked={order.isDelivered}
                         onCheckedChange={(checked) => onUpdateToggles(order.id, 'isDelivered', checked)}
                         aria-label="Marquer comme livré"
+                        disabled={isUpdating}
                     />
                 </div>
             </CardFooter>
