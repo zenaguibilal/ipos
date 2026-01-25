@@ -2,11 +2,11 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, doc, serverTimestamp, getDoc, writeBatch } from 'firebase/firestore';
+import { collection, doc, serverTimestamp, getDoc, writeBatch, query, where, getDocs } from 'firebase/firestore';
 import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
 import { useRouter } from 'next/navigation';
-import type { Product, Customer, Cart, CartItem, Sale, SaleItem } from '@/lib/types';
+import type { Product, Customer, Cart, CartItem, Sale, SaleItem, Payment } from '@/lib/types';
 import { ProductGrid } from './ProductGrid';
 import { CartPanel } from './CartPanel';
 import { FinalizeSaleDialog } from './FinalizeSaleDialog';
@@ -39,6 +39,9 @@ export function SellPageClient() {
     const [isNewProductDialogOpen, setIsNewProductDialogOpen] = useState(false);
     const [completedSale, setCompletedSale] = useState<Sale | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
+    const [customerBalance, setCustomerBalance] = useState<number | null>(null);
+    const [isBalanceLoading, setIsBalanceLoading] = useState(false);
+
 
     const productsQuery = useMemoFirebase(() => user && firestore ? collection(firestore, 'users', user.uid, 'products') : null, [user, firestore]);
     const customersQuery = useMemoFirebase(() => user && firestore ? collection(firestore, 'users', user.uid, 'customers') : null, [user, firestore]);
@@ -96,6 +99,44 @@ export function SellPageClient() {
 
 
     const activeCart = useMemo(() => carts.find(c => c.id === activeCartId), [carts, activeCartId]);
+
+    // Recalculate customer balance when active customer changes
+    useEffect(() => {
+        const calculateBalance = async () => {
+            if (!activeCart || !activeCart.customerId || !firestore || !user) {
+                setCustomerBalance(null);
+                return;
+            }
+
+            setIsBalanceLoading(true);
+            try {
+                const salesQuery = query(collection(firestore, 'users', user.uid, 'sales'), where('customerId', '==', activeCart.customerId));
+                const paymentsQuery = query(collection(firestore, 'users', user.uid, 'payments'), where('customerId', '==', activeCart.customerId));
+                
+                const [salesSnapshot, paymentsSnapshot] = await Promise.all([
+                    getDocs(salesQuery),
+                    getDocs(paymentsQuery)
+                ]);
+
+                const customerSales: Sale[] = salesSnapshot.docs.map(doc => doc.data() as Sale);
+                const customerPayments: Payment[] = paymentsSnapshot.docs.map(doc => doc.data() as Payment);
+                
+                const totalSaleAmount = customerSales.reduce((acc, s) => acc + s.total, 0);
+                const totalPaidFromSales = customerSales.reduce((acc, s) => acc + s.amountPaid, 0);
+                const totalStandalonePayments = customerPayments.reduce((acc, p) => acc + p.amount, 0);
+                const balance = totalSaleAmount - totalPaidFromSales - totalStandalonePayments;
+                
+                setCustomerBalance(balance > 0.01 ? balance : 0);
+            } catch (error) {
+                console.error("Failed to calculate customer balance:", error);
+                setCustomerBalance(null);
+            } finally {
+                setIsBalanceLoading(false);
+            }
+        };
+
+        calculateBalance();
+    }, [activeCart?.customerId, firestore, user]);
 
     useEffect(() => {
         if (!isUserLoading && !user) {
@@ -445,6 +486,8 @@ export function SellPageClient() {
                 onFinalize={() => setIsFinalizeOpen(true)}
                 onUpdateDiscount={handleUpdateDiscount}
                 onAddNewCustomer={() => setIsCustomerDialogOpen(true)}
+                customerBalance={customerBalance}
+                isBalanceLoading={isBalanceLoading}
             />
 
             {activeCart && <FinalizeSaleDialog

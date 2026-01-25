@@ -4,10 +4,11 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { PlusCircle, Trash2, X, ShoppingCart } from 'lucide-react';
+import { PlusCircle, Trash2, X, ShoppingCart, Wallet } from 'lucide-react';
 import { CustomerSelector } from './CustomerSelector';
 import { CartItemControls } from './CartItemControls';
 import { Input } from '../ui/input';
+import { Skeleton } from '../ui/skeleton';
 
 interface CartPanelProps {
     carts: Cart[];
@@ -24,6 +25,8 @@ interface CartPanelProps {
     onFinalize: () => void;
     onUpdateDiscount: (type: 'fixed' | 'percentage', value: number) => void;
     onAddNewCustomer: () => void;
+    customerBalance: number | null;
+    isBalanceLoading: boolean;
 }
 
 export function CartPanel(props: CartPanelProps) {
@@ -66,6 +69,20 @@ export function CartPanel(props: CartPanelProps) {
                     onAddNewCustomer={props.onAddNewCustomer}
                     isLoading={props.isLoading}
                 />
+                 {props.isBalanceLoading && (
+                    <div className="mt-3 p-2 h-[42px] flex items-center">
+                        <Skeleton className="h-4 w-full" />
+                    </div>
+                )}
+                {!props.isBalanceLoading && props.customerBalance !== null && props.customerBalance > 0 && (
+                    <div className="mt-3 p-2 bg-destructive/10 text-destructive text-sm rounded-md flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                           <Wallet className="h-4 w-4" />
+                           <span className="font-semibold">Dette existante:</span>
+                        </div>
+                        <span className="font-bold">{props.customerBalance.toFixed(1)} DA</span>
+                    </div>
+                )}
             </div>
             
             {/* Totals and Actions Panel */}
