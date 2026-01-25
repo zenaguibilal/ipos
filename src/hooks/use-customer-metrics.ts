@@ -12,19 +12,15 @@ export function useCustomerMetrics(sales: Sale[] | null, payments: Payment[] | n
             return { totalSpent: 0, outstandingBalance: 0, combinedTransactions: [] };
         }
 
-        // The fetched data is already filtered for the specific customer.
-        const customerSales = sales;
-        const customerPayments = payments;
-
-        const totalSaleAmount = customerSales.reduce((acc, s) => acc + s.total, 0);
-        const totalPaidFromSales = customerSales.reduce((acc, s) => acc + s.amountPaid, 0);
-        const totalStandalonePayments = customerPayments.reduce((acc, p) => acc + p.amount, 0);
+        const totalSaleAmount = sales.reduce((acc, s) => acc + s.total, 0);
+        const totalPaidFromSales = sales.reduce((acc, s) => acc + s.amountPaid, 0);
+        const totalStandalonePayments = payments.reduce((acc, p) => acc + p.amount, 0);
         
         const balance = totalSaleAmount - totalPaidFromSales - totalStandalonePayments;
         const finalBalance = balance < 0.01 ? 0 : balance;
 
-        const saleTransactions: Transaction[] = customerSales.map(s => ({ type: 'sale', data: s }));
-        const paymentTransactions: Transaction[] = customerPayments.map(p => ({ type: 'payment', data: p }));
+        const saleTransactions: Transaction[] = sales.map(s => ({ type: 'sale', data: s }));
+        const paymentTransactions: Transaction[] = payments.map(p => ({ type: 'payment', data: p }));
 
         const allTransactions = [...saleTransactions, ...paymentTransactions].sort((a, b) => {
             const timeB = b.data.createdAt ? safeToDate(b.data.createdAt).getTime() : 0;
