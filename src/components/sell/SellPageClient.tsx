@@ -509,7 +509,8 @@ export function SellPageClient() {
     return (
         <div className="h-screen max-h-screen overflow-hidden grid grid-cols-1 md:grid-cols-3 xl:grid-cols-4">
             <ProductGrid
-                products={topProducts}
+                allProducts={products || []}
+                topProducts={topProducts}
                 cartItems={activeCart?.items || []}
                 isLoading={isLoadingProducts || isLoadingSales}
                 onProductSelect={handleAddProductToCart}

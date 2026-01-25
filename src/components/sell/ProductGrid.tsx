@@ -10,7 +10,8 @@ import { ProductCardSkeleton } from '../products/product-card-skeleton';
 import { toast } from 'sonner';
 
 interface ProductGridProps {
-    products: Product[];
+    allProducts: Product[];
+    topProducts: Product[];
     cartItems: CartItem[];
     isLoading: boolean;
     onProductSelect: (product: Product) => void;
@@ -20,46 +21,49 @@ interface ProductGridProps {
     onSearchQueryChange: (query: string) => void;
 }
 
-export function ProductGrid({ products, cartItems, isLoading, onProductSelect, onAddCustomProduct, onAddNewProduct, searchQuery, onSearchQueryChange }: ProductGridProps) {
+export function ProductGrid({ allProducts, topProducts, cartItems, isLoading, onProductSelect, onAddCustomProduct, onAddNewProduct, searchQuery, onSearchQueryChange }: ProductGridProps) {
     const [selectedCategory, setSelectedCategory] = useState('all');
 
     const categories = useMemo(() => {
-        const allCategories = products.map(p => p.category).filter(Boolean) as string[];
+        if (!allProducts) return [];
+        const allCategories = allProducts.map(p => p.category).filter(Boolean) as string[];
         return ['all', ...Array.from(new Set(allCategories))];
-    }, [products]);
+    }, [allProducts]);
 
-    const filteredProducts = useMemo(() => {
-        let tempProducts = [...products];
-
-        if (selectedCategory !== 'all') {
-            tempProducts = tempProducts.filter(p => p.category === selectedCategory);
-        }
+    const productsToDisplay = useMemo(() => {
+        let results: Product[];
 
         if (searchQuery) {
             const lowercasedQuery = searchQuery.toLowerCase();
-            tempProducts = tempProducts.filter(p =>
+            results = (allProducts || []).filter(p =>
                 p.name.toLowerCase().includes(lowercasedQuery) ||
                 p.barcodes?.some(b => b.includes(lowercasedQuery))
             );
+        } else {
+            results = topProducts || [];
         }
 
-        return tempProducts;
-    }, [products, searchQuery, selectedCategory]);
+        if (selectedCategory !== 'all') {
+            return results.filter(p => p.category === selectedCategory);
+        }
+        
+        return results;
+    }, [allProducts, topProducts, searchQuery, selectedCategory]);
 
     const cartItemIds = useMemo(() => new Set(cartItems.map(item => item.id)), [cartItems]);
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter') {
             e.preventDefault();
-            if (filteredProducts.length === 1) {
-                const product = filteredProducts[0];
+            if (productsToDisplay.length === 1) {
+                const product = productsToDisplay[0];
                 if (product.quantity > 0) {
                     onProductSelect(product);
                     onSearchQueryChange(''); // Clear search after adding
                 } else {
                     toast.error(`${product.name} est en rupture de stock.`);
                 }
-            } else if (filteredProducts.length > 1) {
+            } else if (productsToDisplay.length > 1) {
                 toast.info("Plusieurs produits correspondent. Veuillez affiner votre recherche.");
             } else {
                 toast.error("Aucun produit trouvé pour cette recherche.");
@@ -109,13 +113,13 @@ export function ProductGrid({ products, cartItems, isLoading, onProductSelect, o
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
                             {Array.from({ length: 18 }).map((_, i) => <ProductCardSkeleton key={i} />)}
                         </div>
-                    ) : filteredProducts.length === 0 ? (
+                    ) : productsToDisplay.length === 0 ? (
                         <div className="flex h-60 items-center justify-center">
                             <p className="text-muted-foreground">Aucun produit trouvé.</p>
                         </div>
                     ) : (
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-                            {filteredProducts.map(product => (
+                            {productsToDisplay.map(product => (
                                 <ProductGridCard
                                     key={product.id}
                                     product={product}
