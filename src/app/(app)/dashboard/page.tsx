@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
@@ -40,6 +39,163 @@ const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, per
     </text>
   );
 };
+
+function calculateDashboardMetrics(
+  sales: Sale[] | null,
+  returns: ProductReturn[] | null,
+  dateRange: DateRange | undefined
+) {
+    const fromDate = dateRange?.from;
+    const toDate = dateRange?.to;
+
+    if (!sales || !returns) {
+      return {
+          netRevenue: 0,
+          netProfit: 0,
+          profitMargin: 0,
+          totalReturnsValue: 0,
+          salesCount: 0,
+          chartData: [],
+          recentTransactions: [],
+          topProducts: [],
+          topCustomers: [],
+      };
+    }
+
+    const filteredSales = sales.filter(s => {
+        if (!s.createdAt) return false;
+        const saleDate = safeToDate(s.createdAt);
+        return (!fromDate || saleDate >= fromDate) && (!toDate || saleDate <= toDate);
+    });
+
+    const filteredReturns = returns.filter(r => {
+        if (!r.createdAt) return false;
+        const returnDate = safeToDate(r.createdAt);
+        return (!fromDate || returnDate >= fromDate) && (!toDate || returnDate <= toDate);
+    });
+
+    let grossRevenue = 0;
+    let grossProfit = 0;
+    let returnsValue = 0;
+    let lostProfitFromReturns = 0;
+    
+    const topProductsMap: { [name: string]: { name: string; totalRevenue: number; unitsSold: number; totalProfit: number; } } = {};
+    const topCustomersMap: { [name: string]: { name: string; totalSpent: number; } } = {};
+    const dailyData: { [key: string]: { revenue: number, profit: number } } = {};
+    const allTransactionsForPeriod: { type: 'Vente' | 'Retour', data: Sale | ProductReturn, date: Date }[] = [];
+    
+    if (fromDate && toDate) {
+        const interval = eachDayOfInterval({ start: fromDate, end: toDate });
+        for (const day of interval) {
+            const dateKey = format(day, 'yyyy-MM-dd');
+            dailyData[dateKey] = { revenue: 0, profit: 0 };
+        }
+    }
+
+    for (const sale of filteredSales) {
+        allTransactionsForPeriod.push({ type: 'Vente', data: sale, date: safeToDate(sale.createdAt!) });
+        grossRevenue += sale.total;
+        
+        if (sale.customerName) {
+             if (!topCustomersMap[sale.customerName]) {
+                topCustomersMap[sale.customerName] = { name: sale.customerName, totalSpent: 0 };
+            }
+            topCustomersMap[sale.customerName].totalSpent += sale.total;
+        }
+        
+        let saleProfit = 0;
+        sale.items.forEach((item: SaleItem) => {
+            const purchasePrice = item.purchasePrice || 0;
+            const quantity = item.quantity;
+
+            if (!topProductsMap[item.name]) {
+                topProductsMap[item.name] = { name: item.name, totalRevenue: 0, unitsSold: 0, totalProfit: 0 };
+            }
+
+            const itemProfit = (item.price && purchasePrice) ? (item.price - purchasePrice) * quantity : 0;
+            
+            topProductsMap[item.name].unitsSold += quantity;
+            topProductsMap[item.name].totalRevenue += item.price * quantity;
+            topProductsMap[item.name].totalProfit += itemProfit;
+            
+            saleProfit += itemProfit;
+        });
+        grossProfit += saleProfit;
+
+        if(sale.createdAt) {
+            const dateKey = format(safeToDate(sale.createdAt), 'yyyy-MM-dd');
+            if (dailyData[dateKey]) {
+                dailyData[dateKey].revenue += sale.total;
+                dailyData[dateKey].profit += saleProfit;
+            }
+        }
+    }
+
+    for (const ret of filteredReturns) {
+        allTransactionsForPeriod.push({ type: 'Retour', data: ret, date: safeToDate(ret.createdAt!) });
+        returnsValue += ret.totalReturnValue;
+
+        let returnProfitLoss = 0;
+        for (const item of ret.items) {
+            const purchasePrice = item.purchasePrice || 0;
+            const profitLoss = (item.price - purchasePrice) * item.quantity;
+            returnProfitLoss += profitLoss;
+
+            if (topProductsMap[item.productName]) {
+                topProductsMap[item.productName].unitsSold -= item.quantity;
+                topProductsMap[item.productName].totalRevenue -= item.price * item.quantity;
+                topProductsMap[item.productName].totalProfit -= profitLoss;
+            }
+        }
+        lostProfitFromReturns += returnProfitLoss;
+        
+        if (ret.customerName && topCustomersMap[ret.customerName]) {
+            topCustomersMap[ret.customerName].totalSpent -= ret.totalReturnValue;
+        }
+
+        if (ret.createdAt) {
+            const dateKey = format(safeToDate(ret.createdAt), 'yyyy-MM-dd');
+            if (dailyData[dateKey]) {
+                dailyData[dateKey].revenue -= ret.totalReturnValue;
+                dailyData[dateKey].profit -= returnProfitLoss;
+            }
+        }
+    }
+
+    const finalNetRevenue = grossRevenue - returnsValue;
+    const finalNetProfit = grossProfit - lostProfitFromReturns;
+    const finalProfitMargin = finalNetRevenue > 0 ? (finalNetProfit / finalNetRevenue) * 100 : 0;
+    
+    const finalChartData = Object.keys(dailyData).sort((a, b) => new Date(a).getTime() - new Date(b).getTime()).map(dateKey => ({
+        date: format(parse(dateKey, 'yyyy-MM-dd', new Date()), 'd MMM', { locale: fr }),
+        'Chiffre d\'affaires Net': dailyData[dateKey].revenue,
+        'Bénéfice Net': dailyData[dateKey].profit,
+    }));
+    
+    const recentTransactions = allTransactionsForPeriod
+        .sort((a, b) => b.date.getTime() - a.date.getTime())
+        .slice(0, 5);
+
+    const topProductsList = Object.values(topProductsMap)
+        .sort((a, b) => b.totalProfit - a.totalProfit)
+        .slice(0, 5);
+
+    const topCustomersList = Object.values(topCustomersMap)
+        .sort((a, b) => b.totalSpent - a.totalSpent)
+        .slice(0, 5);
+
+    return {
+        netRevenue: finalNetRevenue,
+        netProfit: finalNetProfit,
+        profitMargin: finalProfitMargin,
+        totalReturnsValue: returnsValue,
+        salesCount: filteredSales.length,
+        chartData: finalChartData,
+        recentTransactions,
+        topProducts: topProductsList,
+        topCustomers: topCustomersList
+    };
+}
 
 
 export default function DashboardPage() {
@@ -101,143 +257,7 @@ export default function DashboardPage() {
         topProducts,
         topCustomers
     } = useMemo(() => {
-        const fromDate = dateRange?.from;
-        const toDate = dateRange?.to;
-
-        const filteredSales = sales?.filter(s => {
-            if (!s.createdAt) return false;
-            const saleDate = safeToDate(s.createdAt);
-            return (!fromDate || saleDate >= fromDate) && (!toDate || saleDate <= toDate);
-        }) || [];
-
-        const filteredReturns = returns?.filter(r => {
-            if (!r.createdAt) return false;
-            const returnDate = safeToDate(r.createdAt);
-            return (!fromDate || returnDate >= fromDate) && (!toDate || returnDate <= toDate);
-        }) || [];
-
-        let grossRevenue = 0;
-        let grossProfit = 0;
-        let returnsValue = 0;
-        let lostProfitFromReturns = 0;
-        
-        const topProductsMap: { [name: string]: { name: string; totalRevenue: number; unitsSold: number; totalProfit: number; } } = {};
-        const topCustomersMap: { [name: string]: { name: string; totalSpent: number; } } = {};
-        const dailyData: { [key: string]: { revenue: number, profit: number } } = {};
-        const allTransactionsForPeriod: { type: 'Vente' | 'Retour', data: Sale | ProductReturn, date: Date }[] = [];
-        
-        if (fromDate && toDate) {
-            const interval = eachDayOfInterval({ start: fromDate, end: toDate });
-            for (const day of interval) {
-                const dateKey = format(day, 'yyyy-MM-dd');
-                dailyData[dateKey] = { revenue: 0, profit: 0 };
-            }
-        }
-
-        for (const sale of filteredSales) {
-            allTransactionsForPeriod.push({ type: 'Vente', data: sale, date: safeToDate(sale.createdAt!) });
-            grossRevenue += sale.total;
-            
-            if (sale.customerName) {
-                 if (!topCustomersMap[sale.customerName]) {
-                    topCustomersMap[sale.customerName] = { name: sale.customerName, totalSpent: 0 };
-                }
-                topCustomersMap[sale.customerName].totalSpent += sale.total;
-            }
-            
-            let saleProfit = 0;
-            sale.items.forEach((item: SaleItem) => {
-                const purchasePrice = item.purchasePrice || 0;
-                const quantity = item.quantity;
-
-                if (!topProductsMap[item.name]) {
-                    topProductsMap[item.name] = { name: item.name, totalRevenue: 0, unitsSold: 0, totalProfit: 0 };
-                }
-
-                const itemProfit = (item.price && purchasePrice) ? (item.price - purchasePrice) * quantity : 0;
-                
-                topProductsMap[item.name].unitsSold += quantity;
-                topProductsMap[item.name].totalRevenue += item.price * quantity;
-                topProductsMap[item.name].totalProfit += itemProfit;
-                
-                saleProfit += itemProfit;
-            });
-            grossProfit += saleProfit;
-
-            if(sale.createdAt) {
-                const dateKey = format(safeToDate(sale.createdAt), 'yyyy-MM-dd');
-                if (dailyData[dateKey]) {
-                    dailyData[dateKey].revenue += sale.total;
-                    dailyData[dateKey].profit += saleProfit;
-                }
-            }
-        }
-
-        for (const ret of filteredReturns) {
-            allTransactionsForPeriod.push({ type: 'Retour', data: ret, date: safeToDate(ret.createdAt!) });
-            returnsValue += ret.totalReturnValue;
-
-            let returnProfitLoss = 0;
-            for (const item of ret.items) {
-                const purchasePrice = item.purchasePrice || 0;
-                const profitLoss = (item.price - purchasePrice) * item.quantity;
-                returnProfitLoss += profitLoss;
-
-                if (topProductsMap[item.productName]) {
-                    topProductsMap[item.productName].unitsSold -= item.quantity;
-                    topProductsMap[item.productName].totalRevenue -= item.price * item.quantity;
-                    topProductsMap[item.productName].totalProfit -= profitLoss;
-                }
-            }
-            lostProfitFromReturns += returnProfitLoss;
-            
-            if (ret.customerName && topCustomersMap[ret.customerName]) {
-                topCustomersMap[ret.customerName].totalSpent -= ret.totalReturnValue;
-            }
-
-            if (ret.createdAt) {
-                const dateKey = format(safeToDate(ret.createdAt), 'yyyy-MM-dd');
-                if (dailyData[dateKey]) {
-                    dailyData[dateKey].revenue -= ret.totalReturnValue;
-                    dailyData[dateKey].profit -= returnProfitLoss;
-                }
-            }
-        }
-
-        const finalNetRevenue = grossRevenue - returnsValue;
-        const finalNetProfit = grossProfit - lostProfitFromReturns;
-        const finalProfitMargin = finalNetRevenue > 0 ? (finalNetProfit / finalNetRevenue) * 100 : 0;
-        
-        const finalChartData = Object.keys(dailyData).sort((a, b) => new Date(a).getTime() - new Date(b).getTime()).map(dateKey => ({
-            date: format(parse(dateKey, 'yyyy-MM-dd', new Date()), 'd MMM', { locale: fr }),
-            'Chiffre d\'affaires Net': dailyData[dateKey].revenue,
-            'Bénéfice Net': dailyData[dateKey].profit,
-        }));
-        
-        const recentTransactions = allTransactionsForPeriod
-            .sort((a, b) => b.date.getTime() - a.date.getTime())
-            .slice(0, 5);
-
-        const topProductsList = Object.values(topProductsMap)
-            .sort((a, b) => b.totalProfit - a.totalProfit)
-            .slice(0, 5);
-
-        const topCustomersList = Object.values(topCustomersMap)
-            .sort((a, b) => b.totalSpent - a.totalSpent)
-            .slice(0, 5);
-
-        return {
-            netRevenue: finalNetRevenue,
-            netProfit: finalNetProfit,
-            profitMargin: finalProfitMargin,
-            totalReturnsValue: returnsValue,
-            salesCount: filteredSales.length,
-            chartData: finalChartData,
-            recentTransactions,
-            topProducts: topProductsList,
-            topCustomers: topCustomersList
-        };
-
+        return calculateDashboardMetrics(sales, returns, dateRange);
     }, [sales, returns, dateRange]);
 
     const isLoading = isUserLoading || isLoadingSales || isLoadingReturns || isLoadingProducts || isLoadingCustomers;
@@ -246,7 +266,7 @@ export default function DashboardPage() {
         return <div className="flex h-full items-center justify-center"><p>Chargement du tableau de bord...</p></div>;
     }
     
-    const formatCurrency = (value: number) => `${value.toFixed(2)} DA`;
+    const formatCurrency = (value: number) => `${value.toFixed(1)} DA`;
 
     return (
         <main className="flex-1 overflow-auto p-4 sm:p-6">
