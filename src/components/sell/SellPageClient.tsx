@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, doc, serverTimestamp, getDoc, writeBatch, query, where, getDocs } from 'firebase/firestore';
+import { collection, doc, serverTimestamp, getDoc, runTransaction, query } from 'firebase/firestore';
 import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
 import { useRouter } from 'next/navigation';
@@ -25,15 +25,8 @@ export function SellPageClient() {
     const firestore = useFirestore();
     const router = useRouter();
 
-    const [carts, setCarts] = useState<Cart[]>([{
-        id: 'initial-cart',
-        name: 'Panier 1',
-        items: [],
-        customerId: null,
-        customerName: 'Vente au comptoir',
-        discount: { type: 'fixed', value: 0 }
-    }]);
-    const [activeCartId, setActiveCartId] = useState<string>('initial-cart');
+    const [carts, setCarts] = useState<Cart[]>([]);
+    const [activeCartId, setActiveCartId] = useState<string>('');
     const [isCartsLoading, setIsCartsLoading] = useState(true);
 
     const [isFinalizeOpen, setIsFinalizeOpen] = useState(false);
@@ -60,43 +53,88 @@ export function SellPageClient() {
     
     // Load carts from localStorage on initial mount
     useEffect(() => {
-        try {
-            const savedCarts = localStorage.getItem('ipos-carts');
-            const savedActiveCartId = localStorage.getItem('ipos-active-cart-id');
-
-            if (savedCarts) {
-                const parsedCarts: Cart[] = JSON.parse(savedCarts);
-                if (Array.isArray(parsedCarts) && parsedCarts.length > 0) {
-                    const cleanedCarts = parsedCarts.map(cart => ({
-                        ...cart,
-                        items: cart.items.map(item => ({...item, flash: false }))
-                    }));
-                    setCarts(cleanedCarts);
-                    
-                    if (savedActiveCartId && cleanedCarts.some(c => c.id === savedActiveCartId)) {
-                        setActiveCartId(savedActiveCartId);
-                    } else {
-                        setActiveCartId(cleanedCarts[0].id);
+        const initializeCarts = () => {
+            try {
+                const savedCarts = localStorage.getItem('ipos-carts');
+                const savedActiveCartId = localStorage.getItem('ipos-active-cart-id');
+                if (savedCarts) {
+                    const parsedCarts: Cart[] = JSON.parse(savedCarts);
+                    if (Array.isArray(parsedCarts) && parsedCarts.length > 0) {
+                        const cleanedCarts = parsedCarts.map(cart => ({
+                            ...cart,
+                            items: cart.items.map(item => ({ ...item, flash: false }))
+                        }));
+                        setCarts(cleanedCarts);
+                        setActiveCartId(savedActiveCartId && cleanedCarts.some(c => c.id === savedActiveCartId) ? savedActiveCartId : cleanedCarts[0].id);
+                        return;
                     }
-                } else {
-                     const defaultCartId = uuidv4();
-                     setCarts([{ id: defaultCartId, name: 'Panier 1', items: [], customerId: null, customerName: 'Vente au comptoir', discount: { type: 'fixed', value: 0 } }]);
-                     setActiveCartId(defaultCartId);
                 }
-            } else {
-                 const defaultCartId = uuidv4();
-                 setCarts([{ id: defaultCartId, name: 'Panier 1', items: [], customerId: null, customerName: 'Vente au comptoir', discount: { type: 'fixed', value: 0 } }]);
-                 setActiveCartId(defaultCartId);
+            } catch (error) {
+                console.error("Failed to load or parse carts from localStorage", error);
             }
-        } catch (error) {
-            console.error("Failed to load carts from localStorage", error);
+
+            // Default case if anything fails or no carts are saved
             const defaultCartId = uuidv4();
             setCarts([{ id: defaultCartId, name: 'Panier 1', items: [], customerId: null, customerName: 'Vente au comptoir', discount: { type: 'fixed', value: 0 } }]);
             setActiveCartId(defaultCartId);
-        } finally {
-            setIsCartsLoading(false);
-        }
+        };
+
+        initializeCarts();
+        setIsCartsLoading(false);
     }, []);
+
+    // Sync carts with live product data from Firestore
+    useEffect(() => {
+        if (isCartsLoading || !products) {
+            return;
+        }
+
+        setCarts(prevCarts => {
+            let hasChanges = false;
+            const updatedCarts = prevCarts.map(cart => {
+                let cartHasChanges = false;
+                const updatedItems = cart.items.map(item => {
+                    if (item.id.startsWith('custom-')) {
+                        return item;
+                    }
+                    const productData = products.find(p => p.id === item.id);
+
+                    if (productData) {
+                        const newCartQuantity = Math.min(item.cartQuantity, productData.quantity);
+                        if (
+                            item.name !== productData.name ||
+                            item.price !== productData.price ||
+                            item.quantity !== productData.quantity ||
+                            item.cartQuantity !== newCartQuantity
+                        ) {
+                            cartHasChanges = true;
+                            if (item.cartQuantity > newCartQuantity) {
+                                toast.info(`La quantité de "${productData.name}" a été ajustée au stock disponible (${productData.quantity}).`);
+                            }
+                            return {
+                                ...productData,
+                                cartQuantity: newCartQuantity,
+                                flash: item.flash
+                            };
+                        }
+                    } else {
+                        cartHasChanges = true;
+                        toast.warning(`Le produit "${item.name}" a été retiré du panier car il n'existe plus.`);
+                        return null;
+                    }
+                    return item;
+                }).filter((item): item is CartItem => item !== null && item.cartQuantity > 0);
+                
+                if (cartHasChanges) hasChanges = true;
+                return { ...cart, items: updatedItems };
+            });
+
+            if (hasChanges) {
+                return updatedCarts;
+            }
+            return prevCarts;
+        });
+    }, [products, isCartsLoading]);
 
     // Save carts to localStorage whenever they change
     useEffect(() => {
@@ -139,8 +177,7 @@ export function SellPageClient() {
     const customerBalance = activeCustomer?.outstandingBalance;
 
     const topProducts = useMemo(() => {
-        if (!products) return [];
-        if (!sales) return products; // Return all products if sales data is not ready, but don't show top 15
+        if (!products || !sales) return [];
 
         const productSalesCount: { [productId: string]: number } = {};
 
@@ -203,7 +240,6 @@ export function SellPageClient() {
             return cart;
         }));
 
-        // Remove flash effect after animation
         setTimeout(() => {
             setCarts(prev => prev.map(cart => {
                 if (cart.id === activeCartId) {
@@ -251,7 +287,7 @@ export function SellPageClient() {
             name,
             price,
             purchasePrice: 0, 
-            quantity: Infinity, // Not a stock-managed item
+            quantity: Infinity,
             cartQuantity: 1,
             createdAt: new Date(),
         };
@@ -281,7 +317,7 @@ export function SellPageClient() {
         if (!activeCart) return;
 
         const subtotal = activeCart.items.reduce((acc, item) => acc + (item.price * item.cartQuantity), 0);
-        let validatedValue = Math.max(0, value); // No negative discounts
+        let validatedValue = Math.max(0, value);
 
         if (type === 'fixed' && validatedValue > subtotal) {
             toast.warning("La remise ne peut excéder le sous-total.");
@@ -336,108 +372,85 @@ export function SellPageClient() {
         if (!firestore || !user || !activeCart) return;
 
         setIsSavingSale(true);
-        const cartToPay = activeCart;
-    
-        const productRefs = [];
-        const stockQuantities: { [id: string]: number } = {};
-        for (const item of cartToPay.items) {
-            if (!item.id.startsWith('custom-')) {
-                const productRef = doc(firestore, 'users', user.uid, 'products', item.id);
-                productRefs.push(productRef);
-            }
-        }
+        const cartToPay = { ...activeCart }; // Create a stable copy of the cart
 
         try {
-            const productDocs = await Promise.all(productRefs.map(ref => getDoc(ref)));
-
-            for (const productDoc of productDocs) {
-                if (!productDoc.exists()) {
-                    const failedItem = cartToPay.items.find(i => i.id === productDoc.id);
-                    throw new Error(`Produit ${failedItem?.name || productDoc.id} non trouvé.`);
-                }
-                stockQuantities[productDoc.id] = productDoc.data().quantity;
-            }
-
-            for (const item of cartToPay.items) {
-                if (!item.id.startsWith('custom-')) {
-                    if (stockQuantities[item.id] < item.cartQuantity) {
-                        throw new Error(`Stock insuffisant pour ${item.name}. ${stockQuantities[item.id]} restant(s).`);
+            const saleId = uuidv4();
+            
+            const newSaleData = await runTransaction(firestore, async (transaction) => {
+                // 1. Verify stock and get product data within the transaction
+                for (const item of cartToPay.items) {
+                    if (!item.id.startsWith('custom-')) {
+                        const productRef = doc(firestore, 'users', user.uid, 'products', item.id);
+                        const productDoc = await transaction.get(productRef);
+                        if (!productDoc.exists() || productDoc.data().quantity < item.cartQuantity) {
+                            throw new Error(`Stock insuffisant pour ${item.name}. ${productDoc.exists() ? productDoc.data().quantity : 0} restant(s).`);
+                        }
+                        // 2. Update stock
+                        const newQuantity = productDoc.data().quantity - item.cartQuantity;
+                        transaction.update(productRef, { quantity: newQuantity });
                     }
                 }
-            }
 
-            const batch = writeBatch(firestore);
-            const saleId = uuidv4();
-            const saleRef = doc(firestore, 'users', user.uid, 'sales', saleId);
+                // 3. Prepare Sale Data
+                const totalAmountFromPayments = payments.reduce((acc, p) => acc + p.amount, 0);
+                const cartSubtotal = cartToPay.items.reduce((acc, item) => acc + (item.price * item.cartQuantity), 0);
+                const { value: discountValue, type: discountType } = cartToPay.discount;
+                const discountAmount = discountType === 'fixed' ? discountValue : (cartSubtotal * discountValue) / 100;
+                const saleTotal = cartSubtotal - discountAmount;
+                
+                let saleAmountPaid = totalAmountFromPayments;
+                const currentCustomerBalance = customerBalance || 0;
 
-            for (const item of cartToPay.items) {
-                if (!item.id.startsWith('custom-')) {
-                    const productRef = doc(firestore, 'users', user.uid, 'products', item.id);
-                    const newQuantity = stockQuantities[item.id] - item.cartQuantity;
-                    batch.update(productRef, { quantity: newQuantity });
+                // 4. Handle Debt Settlement
+                if (settleDebt && currentCustomerBalance > 0 && cartToPay.customerId) {
+                    const amountToClearDebt = Math.min(totalAmountFromPayments, currentCustomerBalance);
+                    if (amountToClearDebt > 0) {
+                        const paymentRef = doc(collection(firestore, 'users', user.uid, 'payments'));
+                        transaction.set(paymentRef, {
+                            customerId: cartToPay.customerId,
+                            customerName: cartToPay.customerName,
+                            amount: amountToClearDebt,
+                            createdAt: serverTimestamp()
+                        });
+                    }
+                    saleAmountPaid = Math.max(0, totalAmountFromPayments - amountToClearDebt);
                 }
-            }
-            
-            const totalAmountFromPayments = payments.reduce((acc, p) => acc + p.amount, 0);
 
-            const cartSubtotal = cartToPay.items.reduce((acc, item) => acc + (item.price * item.cartQuantity), 0);
-            const discountValue = cartToPay.discount.value;
-            const discountType = cartToPay.discount.type;
-            const discountAmount = discountType === 'fixed' ? discountValue : (cartSubtotal * discountValue) / 100;
-            const saleTotal = cartSubtotal - discountAmount;
-            const saleItems: SaleItem[] = cartToPay.items.map(item => ({
-                id: item.id,
-                name: item.name,
-                price: item.price,
-                purchasePrice: item.purchasePrice,
-                quantity: item.cartQuantity
-            }));
+                const finalPaymentStatus = saleAmountPaid >= saleTotal ? 'paid' : saleAmountPaid > 0 ? 'partial' : 'unpaid';
+                
+                const saleDataForDb = {
+                    invoiceNumber: `INV-${Date.now()}`,
+                    items: cartToPay.items.map(item => ({
+                        id: item.id,
+                        name: item.name,
+                        price: item.price,
+                        purchasePrice: item.purchasePrice,
+                        quantity: item.cartQuantity
+                    })),
+                    subtotal: cartSubtotal,
+                    discountType,
+                    discountAmount: discountValue,
+                    total: saleTotal,
+                    amountPaid: saleAmountPaid,
+                    remainingBalance: saleTotal - saleAmountPaid,
+                    paymentStatus: finalPaymentStatus,
+                    payments,
+                    customerId: cartToPay.customerId ?? undefined,
+                    customerName: cartToPay.customerName,
+                    createdAt: serverTimestamp()
+                };
 
-            let saleAmountPaid = totalAmountFromPayments;
-            const currentCustomerBalance = customerBalance || 0;
+                // 5. Create Sale Document
+                const saleRef = doc(firestore, 'users', user.uid, 'sales', saleId);
+                transaction.set(saleRef, saleDataForDb);
+                
+                return saleDataForDb;
+            });
 
-            if (settleDebt && currentCustomerBalance > 0 && cartToPay.customerId) {
-                const amountToClearDebt = Math.min(totalAmountFromPayments, currentCustomerBalance);
-                if (amountToClearDebt > 0) {
-                    const paymentRef = doc(collection(firestore, 'users', user.uid, 'payments'));
-                    batch.set(paymentRef, {
-                        customerId: cartToPay.customerId,
-                        customerName: cartToPay.customerName,
-                        amount: amountToClearDebt,
-                        createdAt: serverTimestamp()
-                    });
-                }
-                saleAmountPaid = Math.max(0, totalAmountFromPayments - amountToClearDebt);
-            }
-
-            const finalPaymentStatus = saleAmountPaid >= saleTotal ? 'paid' : saleAmountPaid > 0 ? 'partial' : 'unpaid';
-            const newSaleData = {
-                invoiceNumber: `INV-${Date.now()}`,
-                items: saleItems,
-                subtotal: cartSubtotal,
-                discountType: discountType,
-                discountAmount: discountValue,
-                total: saleTotal,
-                amountPaid: saleAmountPaid,
-                remainingBalance: saleTotal - saleAmountPaid,
-                paymentStatus: finalPaymentStatus,
-                payments: payments,
-                customerId: cartToPay.customerId ?? undefined,
-                customerName: cartToPay.customerName,
-                createdAt: serverTimestamp()
-            };
-
-            batch.set(saleRef, newSaleData);
-
-            await batch.commit();
-
+            // After transaction success
             toast.success("Vente finalisée avec succès!");
-            const completedSaleDataForDialog: Sale = {
-                id: saleId,
-                ...newSaleData,
-                createdAt: new Date(), 
-            } as unknown as Sale;
-            setCompletedSale(completedSaleDataForDialog);
+            setCompletedSale({ id: saleId, ...newSaleData, createdAt: new Date() } as Sale);
 
             if (carts.length > 1) {
                 handleRemoveCart(activeCartId);
@@ -559,13 +572,6 @@ export function SellPageClient() {
                     onOpenChange={setIsPaymentDialogOpen}
                     customer={activeCustomer}
                     userId={user.uid}
-                    onSuccess={(paidAmount) => {
-                        // This is an optimistic update. The main data will refetch eventually.
-                        const newBalance = Math.max(0, (customerBalance ?? 0) - paidAmount);
-                        // A full refetch of customersWithSalesData would be better, but this is a quick UI update.
-                        // For now, we rely on SWR/useCollection's revalidation to get the true state.
-                        setIsPaymentDialogOpen(false);
-                    }}
                 />
             )}
 
