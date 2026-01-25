@@ -88,9 +88,9 @@ export default function StockPage() {
         }
     }, [user, isUserLoading, router]);
 
-    const { filteredIntakes, totalIntakeValue, intakesCount, totalItemsReceived } = useMemo(() => {
+    const { filteredIntakes, totalIntakeValue, totalItemsReceived } = useMemo(() => {
         if (!stockIntakes) {
-            return { filteredIntakes: [], totalIntakeValue: 0, intakesCount: 0, totalItemsReceived: 0 };
+            return { filteredIntakes: [], totalIntakeValue: 0, totalItemsReceived: 0 };
         }
 
         const fromDate = dateRange?.from;
@@ -114,7 +114,6 @@ export default function StockPage() {
         return { 
             filteredIntakes: filtered, 
             totalIntakeValue: totalValue,
-            intakesCount: filtered.length,
             totalItemsReceived: totalItems
         };
     }, [stockIntakes, searchQuery, dateRange]);
@@ -197,7 +196,7 @@ export default function StockPage() {
                             <Archive className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold">{intakesCount}</div>
+                            <div className="text-2xl font-bold">{filteredIntakes.length}</div>
                             <p className="text-xs text-muted-foreground">Transactions de réception sur la période</p>
                         </CardContent>
                     </Card>
