@@ -14,55 +14,14 @@ import type { StockIntake } from '@/lib/types';
 import { safeToDate } from '@/lib/utils';
 import { format, subDays, startOfDay, endOfDay } from 'date-fns';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import Papa from 'papaparse';
 import { toast } from 'sonner';
 import { DateRangePicker } from '@/components/dashboard/date-range-picker';
 import { DateRange } from 'react-day-picker';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { StockIntakeCard } from '@/components/stock/stock-intake-card';
 import { StockIntakeCardSkeleton } from '@/components/stock/stock-intake-card-skeleton';
+import { StockIntakeDetailsDialog } from '@/components/stock/stock-intake-details-dialog';
 
-// Details Dialog Component defined inside the page
-function StockIntakeDetailsDialog({ isOpen, onOpenChange, intake }: { isOpen: boolean, onOpenChange: (open: boolean) => void, intake: StockIntake | null }) {
-    if (!intake) return null;
-
-    return (
-        <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-2xl">
-                <DialogHeader>
-                    <DialogTitle>Détails de la réception</DialogTitle>
-                    <DialogDescription>
-                        Fournisseur: <span className="font-semibold">{intake.supplier}</span> | Facture n°: <span className="font-mono">{intake.invoiceNumber}</span>
-                    </DialogDescription>
-                </DialogHeader>
-                <div className="max-h-[60vh] overflow-y-auto">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Produit</TableHead>
-                                <TableHead className="text-center">Quantité Reçue</TableHead>
-                                <TableHead className="text-right">Prix d'achat</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {intake.items.map((item, index) => (
-                                <TableRow key={index}>
-                                    <TableCell>{item.productName}</TableCell>
-                                    <TableCell className="text-center">{item.quantityReceived}</TableCell>
-                                    <TableCell className="text-right">{item.purchasePrice.toFixed(1)} DA</TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </div>
-                <DialogFooter>
-                    <Button onClick={() => onOpenChange(false)}>Fermer</Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-    );
-}
 
 export default function StockPage() {
     const { user, isUserLoading } = useUser();

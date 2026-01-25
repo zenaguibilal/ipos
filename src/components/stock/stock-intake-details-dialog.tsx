@@ -1,0 +1,74 @@
+
+'use client';
+
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import type { StockIntake } from '@/lib/types';
+
+export function StockIntakeDetailsDialog({
+    isOpen,
+    onOpenChange,
+    intake,
+}: {
+    isOpen: boolean;
+    onOpenChange: (open: boolean) => void;
+    intake: StockIntake | null;
+}) {
+    if (!intake) return null;
+
+    return (
+        <Dialog open={isOpen} onOpenChange={onOpenChange}>
+            <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                    <DialogTitle>Détails de la réception</DialogTitle>
+                    <DialogDescription>
+                        Fournisseur: <span className="font-semibold">{intake.supplier}</span> | Facture n°:{' '}
+                        <span className="font-mono">{intake.invoiceNumber}</span>
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="max-h-[60vh] overflow-y-auto">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Produit</TableHead>
+                                <TableHead className="text-center">Quantité Reçue</TableHead>
+                                <TableHead className="text-right">Prix d'achat</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {intake.items.map((item, index) => (
+                                <TableRow key={index}>
+                                    <TableCell>{item.productName}</TableCell>
+                                    <TableCell className="text-center">
+                                        {item.quantityReceived}
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                        {item.purchasePrice.toFixed(1)} DA
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </div>
+                <DialogFooter>
+                    <Button onClick={() => onOpenChange(false)}>Fermer</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
