@@ -1,11 +1,10 @@
-
 'use client';
 import type { Cart, Customer, CartItem } from '@/lib/types';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { PlusCircle, Trash2, X, ShoppingCart, Wallet, HandCoins } from 'lucide-react';
+import { PlusCircle, Trash2, X, ShoppingCart, Wallet, HandCoins, TrendingUp } from 'lucide-react';
 import { CustomerSelector } from './CustomerSelector';
 import { CartItemControls } from './CartItemControls';
 import { Input } from '../ui/input';
@@ -40,6 +39,11 @@ export function CartPanel(props: CartPanelProps) {
         ? activeCart.discount.value
         : (subtotal * activeCart.discount.value) / 100;
     const total = subtotal - discountAmount;
+    
+    const purchaseTotal = activeCart.items.reduce((acc, item) => acc + ((item.purchasePrice || 0) * item.cartQuantity), 0);
+    const profit = subtotal - purchaseTotal;
+    const profitMargin = subtotal > 0 ? (profit / subtotal) * 100 : 0;
+
 
     return (
         <div className="md:col-span-1 xl:col-span-1 flex flex-col h-full bg-card border-l">
@@ -118,6 +122,10 @@ export function CartPanel(props: CartPanelProps) {
                     <div className="flex justify-between text-destructive">
                         <span>Remise</span>
                         <span>-{discountAmount.toFixed(1)} DA</span>
+                    </div>
+                    <div className="flex justify-between text-green-600 dark:text-green-400">
+                        <span className="flex items-center gap-1.5"><TrendingUp className="h-4 w-4" />Bénéfice estimé</span>
+                        <span className="font-semibold">{profit.toFixed(1)} DA ({profitMargin.toFixed(0)}%)</span>
                     </div>
                     <div className="flex justify-between font-bold text-2xl border-t pt-2 mt-2">
                         <span>TOTAL</span>
