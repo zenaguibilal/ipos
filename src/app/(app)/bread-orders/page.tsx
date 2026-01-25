@@ -189,8 +189,8 @@ export default function BreadOrdersPage() {
                 case 'quantity_desc':
                     return b.quantity - a.quantity;
                 case 'createdAt_desc':
-                    const timeB_desc = b.createdAt ? safeToDate(b.createdAt).getTime() : Number.MAX_SAFE_INTEGER;
-                    const timeA_desc = a.createdAt ? safeToDate(a.createdAt).getTime() : Number.MAX_SAFE_INTEGER;
+                    const timeB_desc = b.createdAt ? safeToDate(b.createdAt).getTime() : 0;
+                    const timeA_desc = a.createdAt ? safeToDate(a.createdAt).getTime() : 0;
                     return timeB_desc - timeA_desc;
                 case 'status':
                 default:
