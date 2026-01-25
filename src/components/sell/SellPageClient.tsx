@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useUser, useFirestore, useCollection, useMemoFirebase, runTransactionNonBlocking, setDocumentNonBlocking } from '@/firebase';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, doc, serverTimestamp, getDoc, runTransaction } from 'firebase/firestore';
 import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
@@ -128,6 +128,7 @@ export function SellPageClient() {
             purchasePrice: 0, 
             quantity: Infinity, // Not a stock-managed item
             cartQuantity: 1,
+            minStockLevel: 0,
             createdAt: new Date(),
         };
         handleAddProductToCart(customProduct);
@@ -194,19 +195,19 @@ export function SellPageClient() {
     
     const handleFinalizeSale = async (amountPaid: number, paymentMethod: 'cash' | 'card' | 'other') => {
         if (!firestore || !user || !activeCart) return;
-    
+        
+        const cartToPay = activeCart;
         const saleId = uuidv4();
-        const saleRef = doc(firestore, 'users', user.uid, 'sales', saleId);
     
-        const subtotal = activeCart.items.reduce((acc, item) => acc + (item.price * item.cartQuantity), 0);
-        const discountAmount = activeCart.discount.type === 'fixed'
-            ? activeCart.discount.value
-            : (subtotal * activeCart.discount.value) / 100;
+        const subtotal = cartToPay.items.reduce((acc, item) => acc + (item.price * item.cartQuantity), 0);
+        const discountAmount = cartToPay.discount.type === 'fixed'
+            ? cartToPay.discount.value
+            : (subtotal * cartToPay.discount.value) / 100;
         const total = subtotal - discountAmount;
     
         const finalPaymentStatus = amountPaid >= total ? 'paid' : amountPaid > 0 ? 'partial' : 'unpaid';
     
-        const saleItems: SaleItem[] = activeCart.items.map(item => ({
+        const saleItems: SaleItem[] = cartToPay.items.map(item => ({
             id: item.id,
             name: item.name,
             price: item.price,
@@ -218,22 +219,22 @@ export function SellPageClient() {
             invoiceNumber: `INV-${Date.now()}`,
             items: saleItems,
             subtotal: subtotal,
-            discountType: activeCart.discount.type,
-            discountAmount: activeCart.discount.value,
+            discountType: cartToPay.discount.type,
+            discountAmount: cartToPay.discount.value,
             total: total,
             amountPaid: amountPaid,
             remainingBalance: total - amountPaid,
             paymentStatus: finalPaymentStatus,
             paymentMethod: paymentMethod,
-            customerId: activeCart.customerId ?? undefined,
-            customerName: activeCart.customerName,
+            customerId: cartToPay.customerId ?? undefined,
+            customerName: cartToPay.customerName,
         };
     
         try {
             await runTransaction(firestore, async (transaction) => {
-                const productUpdates = new Map<string, { ref: any, newQuantity: number }>();
-    
-                for (const item of activeCart.items) {
+                const saleRef = doc(firestore, 'users', user.uid, 'sales', saleId);
+
+                for (const item of cartToPay.items) {
                     if (!item.id.startsWith('custom-')) {
                         const productRef = doc(firestore, 'users', user.uid, 'products', item.id);
                         const productDoc = await transaction.get(productRef);
@@ -249,14 +250,9 @@ export function SellPageClient() {
                             throw new Error(`Stock insuffisant pour ${item.name}.`);
                         }
                         
-                        productUpdates.set(item.id, { ref: productRef, newQuantity });
+                        transaction.update(productRef, { quantity: newQuantity });
                     }
                 }
-    
-                // Perform all updates after reading
-                productUpdates.forEach(update => {
-                    transaction.update(update.ref, { quantity: update.newQuantity });
-                });
     
                 transaction.set(saleRef, { ...newSaleData, createdAt: serverTimestamp() });
             });
@@ -350,13 +346,13 @@ export function SellPageClient() {
                 onConfirm={handleAddCustomProduct}
             />
             
-            <CustomerDialog 
+            {user && <CustomerDialog 
                 isOpen={isCustomerDialogOpen}
                 onOpenChange={setIsCustomerDialogOpen}
                 customer={null}
                 userId={user.uid}
                 onCustomerAdded={handleAddNewCustomer}
-            />
+            />}
 
             {completedSale && (
                 <SaleDetailsDialog
