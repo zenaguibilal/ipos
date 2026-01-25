@@ -72,7 +72,7 @@ export function EditOrderForm({ isOpen, onOpenChange, onConfirm, order }: EditOr
                     <div className="grid gap-4 py-4">
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="edit-order-name" className="text-right">Nom</Label>
-                            <Input id="edit-order-name" value={name} onChange={(e) => setName(e.target.value)} className="col-span-3" required disabled={isLoading} />
+                            <Input id="edit-order-name" value={name} onChange={(e) => setName(e.target.value)} className="col-span-3" required disabled={isLoading} autoFocus/>
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="edit-order-quantity" className="text-right">Quantité</Label>

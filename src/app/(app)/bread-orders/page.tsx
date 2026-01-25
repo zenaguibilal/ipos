@@ -8,7 +8,7 @@ import { collection, query, orderBy, serverTimestamp, doc, writeBatch, updateDoc
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { OrderCard } from '@/components/bread-orders/order-card';
-import type { BreadOrder, CompanyProfile, UnpaidBreadOrder } from '@/lib/types';
+import type { BreadOrder, CompanyProfile, UnpaidBreadOrder, Customer } from '@/lib/types';
 import { PlusCircle, RotateCcw, Search, Cookie, CheckCheck, Truck, CircleDollarSign, CreditCard, ListFilter, Trash2, Printer, HandCoins, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -73,6 +73,9 @@ export default function BreadOrdersPage() {
     }, [user, firestore]);
     const { data: unpaidOrders, isLoading: isLoadingUnpaid } = useCollection<UnpaidBreadOrder>(unpaidOrdersQuery);
 
+    const customersQuery = useMemoFirebase(() => (user && firestore) ? query(collection(firestore, 'users', user.uid, 'customers')) : null, [user, firestore]);
+    const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersQuery);
+
 
     useEffect(() => {
         if (!isUserLoading && !user) {
@@ -135,7 +138,7 @@ export default function BreadOrdersPage() {
 
     // Automatic daily reset effect
     useEffect(() => {
-        if (isUserLoading || isLoadingOrders || isLoadingCompany || !companyProfile || !orders) {
+        if (isUserLoading || isLoadingOrders || isLoadingCompany || !companyProfile || !orders || isLoadingCustomers) {
             return;
         }
 
@@ -148,9 +151,9 @@ export default function BreadOrdersPage() {
                 isAutoResettingRef.current = false;
             });
         }
-    }, [companyProfile, orders, isUserLoading, isLoadingOrders, isLoadingCompany, autoReset]);
+    }, [companyProfile, orders, isUserLoading, isLoadingOrders, isLoadingCompany, autoReset, isLoadingCustomers]);
 
-    const isLoading = isUserLoading || isLoadingOrders || isLoadingCompany || isLoadingUnpaid;
+    const isLoading = isUserLoading || isLoadingOrders || isLoadingCompany || isLoadingUnpaid || isLoadingCustomers;
 
     const { filteredOrders, totalQuantity, deliveredQuantity, undeliveredQuantity, totalPaid, totalOwed } = useMemo(() => {
         if (!orders || isLoading) return { filteredOrders: [], totalQuantity: 0, deliveredQuantity: 0, undeliveredQuantity: 0, totalPaid: 0, totalOwed: 0 };
@@ -226,6 +229,7 @@ export default function BreadOrdersPage() {
         if (!firestore || !user) throw new Error("Non authentifié");
         const ordersCollectionRef = collection(firestore, 'users', user.uid, 'breadOrders');
         
+        setUpdatingItems(prev => ({ ...prev, new: true }));
         try {
             await addDoc(ordersCollectionRef, {
                 name,
@@ -240,6 +244,8 @@ export default function BreadOrdersPage() {
             toast.error("Erreur lors de l'ajout de la commande.");
             console.error(err);
             throw err;
+        } finally {
+            setUpdatingItems(prev => ({ ...prev, new: false }));
         }
     };
 
@@ -261,6 +267,7 @@ export default function BreadOrdersPage() {
     
     const handleUpdateOrderDetails = async (id: string, name: string, quantity: number, isRecurring: boolean) => {
         if (!firestore || !user) throw new Error("Non authentifié");
+        setUpdatingItems(prev => ({ ...prev, [id]: true }));
         const orderDocRef = doc(firestore, 'users', user.uid, 'breadOrders', id);
          
         try {
@@ -274,6 +281,8 @@ export default function BreadOrdersPage() {
             toast.error("Erreur lors de la mise à jour.");
             console.error(err);
             throw err;
+        } finally {
+            setUpdatingItems(prev => ({ ...prev, [id]: false }));
         }
     };
 
@@ -431,13 +440,19 @@ export default function BreadOrdersPage() {
     };
 
     const confirmSettleUnpaidOrder = async () => {
-        if (!firestore || !user || !settlingUnpaidOrder) return;
+        if (!firestore || !user || !settlingUnpaidOrder || !customers) return;
 
         setIsSettlingDebt(true);
 
         const batch = writeBatch(firestore);
 
-        // 1. Create a Sale document to record the income
+        // Find customer by name to link the sale
+        const customerName = settlingUnpaidOrder.name;
+        const customerMatch = customers.find(c => 
+            `${c.firstName} ${c.lastName}`.trim().toLowerCase() === customerName.trim().toLowerCase()
+        );
+
+        // Create a Sale document to record the income
         const salesCollectionRef = collection(firestore, 'users', user.uid, 'sales');
         const newSaleRef = doc(salesCollectionRef);
         
@@ -456,13 +471,13 @@ export default function BreadOrdersPage() {
             remainingBalance: 0,
             paymentStatus: 'paid' as const,
             paymentMethod: 'cash' as const,
-            customerId: undefined,
+            customerId: customerMatch ? customerMatch.id : undefined,
             customerName: settlingUnpaidOrder.name,
             createdAt: serverTimestamp()
         };
         batch.set(newSaleRef, saleData);
 
-        // 2. Delete the unpaid order log entry
+        // Delete the unpaid order log entry
         const unpaidOrderRef = doc(firestore, 'users', user.uid, 'unpaidBreadOrders', settlingUnpaidOrder.id);
         batch.delete(unpaidOrderRef);
 
@@ -770,7 +785,7 @@ export default function BreadOrdersPage() {
                                         onSelectChange={(checked) => {
                                             setSelectedOrders(prev => ({ ...prev, [order.id]: checked }));
                                         }}
-                                        isUpdating={!!updatingItems[order.id]}
+                                        isUpdating={!!updatingItems[order.id] || !!updatingItems['new']}
                                     />
                                 ))}
                             </div>
