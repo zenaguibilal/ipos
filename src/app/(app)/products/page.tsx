@@ -95,22 +95,23 @@ export default function ProductsPage() {
 
     const filteredProducts = useMemo(() => {
         if (!products) return [];
-        
-        let tempProducts = [...products];
 
-        if (selectedCategory !== 'all') {
-            tempProducts = tempProducts.filter(p => p.category === selectedCategory);
-        }
+        const lowercasedQuery = searchQuery.toLowerCase();
 
-        if (searchQuery) {
-            const lowercasedQuery = searchQuery.toLowerCase();
-            tempProducts = tempProducts.filter(p => 
-                p.name.toLowerCase().includes(lowercasedQuery) ||
-                p.barcodes?.some(b => b.includes(lowercasedQuery))
-            );
-        }
-        
-        return tempProducts;
+        return products.filter(p => {
+            const categoryMatch = selectedCategory === 'all' || p.category === selectedCategory;
+            if (!categoryMatch) {
+                return false;
+            }
+
+            if (searchQuery) {
+                const nameMatch = p.name.toLowerCase().includes(lowercasedQuery);
+                const barcodeMatch = p.barcodes?.some(b => b.includes(lowercasedQuery));
+                return nameMatch || barcodeMatch;
+            }
+
+            return true;
+        });
     }, [products, searchQuery, selectedCategory]);
 
      const handleExport = () => {
