@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
@@ -7,7 +6,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
 import type { Cart, SalePayment } from '@/lib/types';
-import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 
 interface FinalizeSaleDialogProps {
@@ -21,7 +19,9 @@ interface FinalizeSaleDialogProps {
 
 export function FinalizeSaleDialog({ isOpen, onOpenChange, cart, onConfirm, isSaving, customerBalance }: FinalizeSaleDialogProps) {
     const [paidAmountStr, setPaidAmountStr] = useState('');
-    const [settleDebt, setSettleDebt] = useState(true);
+    
+    // The logic to settle debt is now implicit. If a customer with a balance is selected, we assume the debt is being settled.
+    const shouldSettleDebt = !!(customerBalance && customerBalance > 0);
 
     const cartTotal = useMemo(() => {
         const subtotal = cart.items.reduce((acc, item) => acc + (item.price * item.cartQuantity), 0);
@@ -30,11 +30,11 @@ export function FinalizeSaleDialog({ isOpen, onOpenChange, cart, onConfirm, isSa
     }, [cart.items, cart.discount]);
 
     const totalToPay = useMemo(() => {
-        if (settleDebt && customerBalance && customerBalance > 0) {
+        if (shouldSettleDebt && customerBalance) {
             return cartTotal + customerBalance;
         }
         return cartTotal;
-    }, [cartTotal, customerBalance, settleDebt]);
+    }, [cartTotal, customerBalance, shouldSettleDebt]);
 
     const paidAmount = useMemo(() => {
         const parsed = parseFloat(paidAmountStr);
@@ -46,21 +46,19 @@ export function FinalizeSaleDialog({ isOpen, onOpenChange, cart, onConfirm, isSa
 
     useEffect(() => {
         if (isOpen) {
-            const shouldSettleDebt = !!(customerBalance && customerBalance > 0);
-            setSettleDebt(shouldSettleDebt);
-            const initialTotal = cartTotal + (shouldSettleDebt && customerBalance ? customerBalance : 0);
+            const initialTotal = totalToPay;
             setPaidAmountStr(initialTotal > 0 ? initialTotal.toFixed(1) : '0');
         } else {
             // Reset on close
             setPaidAmountStr('');
         }
-    }, [isOpen, cartTotal, customerBalance]);
+    }, [isOpen, totalToPay]);
     
     const handleSubmit = () => {
         if (isSaving) return;
         
         const finalPayments: SalePayment[] = paidAmount > 0 ? [{ method: 'cash', amount: paidAmount }] : [];
-        onConfirm(finalPayments, settleDebt);
+        onConfirm(finalPayments, shouldSettleDebt);
     };
 
     const handleDialogChange = (open: boolean) => {
@@ -68,8 +66,6 @@ export function FinalizeSaleDialog({ isOpen, onOpenChange, cart, onConfirm, isSa
             onOpenChange(open);
         }
     };
-
-    const hasDebt = customerBalance && customerBalance > 0;
     
     return (
         <Dialog open={isOpen} onOpenChange={handleDialogChange}>
@@ -85,13 +81,12 @@ export function FinalizeSaleDialog({ isOpen, onOpenChange, cart, onConfirm, isSa
                             <span>Total des articles :</span>
                             <span className="font-medium">{cartTotal.toFixed(1)} DA</span>
                         </div>
-                        {hasDebt && (
-                             <div className={cn("flex justify-between items-center transition-colors", settleDebt ? "text-destructive" : "text-muted-foreground")}>
+                        {shouldSettleDebt && (
+                             <div className={cn("flex justify-between items-center transition-colors", "text-destructive")}>
                                 <span>Dette précédente :</span>
-                                <span className="font-medium">{customerBalance.toFixed(1)} DA</span>
+                                <span className="font-medium">{customerBalance!.toFixed(1)} DA</span>
                             </div>
                         )}
-                        
                     </div>
                     
                     {/* Total Display */}
@@ -99,14 +94,6 @@ export function FinalizeSaleDialog({ isOpen, onOpenChange, cart, onConfirm, isSa
                         <span className="text-lg font-bold">Total à Payer</span>
                         <span className="text-3xl font-black text-primary">{totalToPay.toFixed(1)} DA</span>
                     </div>
-                    
-                    {hasDebt && (
-                        <div className="flex items-center space-x-2 pt-2 justify-center">
-                            <Label htmlFor="settle-debt" className="text-sm font-medium">Régler la dette avec ce paiement</Label>
-                            <Switch id="settle-debt" checked={settleDebt} onCheckedChange={setSettleDebt} disabled={!hasDebt} />
-                        </div>
-                    )}
-
 
                     {/* Payment Input Section */}
                     <div className="space-y-3">
