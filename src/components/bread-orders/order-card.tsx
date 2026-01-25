@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { BreadOrder } from '@/lib/types';
@@ -16,7 +15,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
-import Link from 'next/link';
+import { Badge } from '@/components/ui/badge';
+
 
 interface OrderCardProps {
     order: BreadOrder;
@@ -28,11 +28,20 @@ interface OrderCardProps {
 }
 
 export function OrderCard({ order, onUpdateToggles, onEdit, onDelete, isSelected, onSelectChange }: OrderCardProps) {
+    const getStatus = () => {
+        if (order.isDelivered) {
+            if (order.isPaid) {
+                return { text: 'Terminé', variant: 'default' as const, className: 'bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800 border-transparent text-primary-foreground' };
+            }
+            return { text: 'Dû', variant: 'destructive' as const, className: '' };
+        }
+        return { text: 'En attente', variant: 'secondary' as const, className: '' };
+    };
+    const status = getStatus();
+
     return (
         <Card className={cn(
             "flex flex-col justify-between transition-all relative hover:shadow-xl hover:-translate-y-1",
-            order.isDelivered && !order.isPaid && "bg-red-500/10 border-red-500/30",
-            order.isDelivered && order.isPaid && "bg-green-500/10 border-green-500/30",
             isSelected && "border-primary ring-2 ring-primary"
         )}>
              <div className="absolute top-2 left-2 z-10">
@@ -48,27 +57,32 @@ export function OrderCard({ order, onUpdateToggles, onEdit, onDelete, isSelected
                     <CardTitle className="text-lg font-bold">{order.name}</CardTitle>
                     <div className="flex items-center gap-2 text-muted-foreground">
                        <span className="text-2xl font-black text-primary">{order.quantity}</span>
-                        {order.isRecurring && <Repeat className="h-4 w-4"/>}
+                        {order.isRecurring && <Repeat className="h-4 w-4" title="Commande récurrente"/>}
                     </div>
                 </div>
-                 <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreVertical className="h-4 w-4" />
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                         <DropdownMenuItem onClick={onEdit}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            Modifier
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={onDelete} className="text-destructive focus:bg-destructive focus:text-destructive-foreground">
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Supprimer
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
+                 <div className="flex flex-col items-end gap-2">
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <MoreVertical className="h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={onEdit}>
+                                <Edit className="mr-2 h-4 w-4" />
+                                Modifier
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={onDelete} className="text-destructive focus:bg-destructive focus:text-destructive-foreground">
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Supprimer
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                    <Badge variant={status.variant} className={cn("pointer-events-none", status.className)}>
+                        {status.text}
+                    </Badge>
+                </div>
             </CardHeader>
             <CardFooter className="flex-col items-stretch gap-3 pt-4 border-t">
                 <div className="flex items-center justify-between">
