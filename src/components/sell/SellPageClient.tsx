@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
@@ -52,10 +51,12 @@ export function SellPageClient() {
     const productsQuery = useMemoFirebase(() => user && firestore ? collection(firestore, 'users', user.uid, 'products') : null, [user, firestore]);
     const customersQuery = useMemoFirebase(() => user && firestore ? collection(firestore, 'users', user.uid, 'customers') : null, [user, firestore]);
     const companyDocRef = useMemoFirebase(() => user && firestore ? doc(firestore, 'users', user.uid, 'companyProfile', 'main') : null, [user, firestore]);
+    const salesQuery = useMemoFirebase(() => user && firestore ? query(collection(firestore, 'users', user.uid, 'sales')) : null, [user, firestore]);
 
     const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
     const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersQuery);
     const { data: companyProfile } = useDoc<CompanyProfile>(companyDocRef);
+    const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
     
     // Load carts from localStorage on initial mount
     useEffect(() => {
@@ -112,6 +113,30 @@ export function SellPageClient() {
         if (!activeCart?.customerId || !customers) return null;
         return customers.find(c => c.id === activeCart.customerId) || null;
     }, [activeCart?.customerId, customers]);
+
+    const topProducts = useMemo(() => {
+        if (!products) return [];
+        if (!sales) return products; // Return all products if sales data is not ready, but don't show top 15
+
+        const productSalesCount: { [productId: string]: number } = {};
+
+        sales.forEach(sale => {
+            sale.items.forEach(item => {
+                if (item.id && !item.id.startsWith('custom-')) {
+                    productSalesCount[item.id] = (productSalesCount[item.id] || 0) + item.quantity;
+                }
+            });
+        });
+
+        const sortedProducts = [...products].sort((a, b) => {
+            const countA = productSalesCount[a.id] || 0;
+            const countB = productSalesCount[b.id] || 0;
+            return countB - countA;
+        });
+
+        return sortedProducts.slice(0, 15);
+    }, [products, sales]);
+
 
     // Recalculate customer balance when active customer changes
     useEffect(() => {
@@ -469,7 +494,7 @@ export function SellPageClient() {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [activeCart]);
 
-    const isLoading = isUserLoading || isLoadingProducts || isLoadingCustomers || isCartsLoading;
+    const isLoading = isUserLoading || isLoadingProducts || isLoadingCustomers || isCartsLoading || isLoadingSales;
 
     if (isLoading || !user) {
         return (
@@ -485,9 +510,9 @@ export function SellPageClient() {
     return (
         <div className="h-screen max-h-screen overflow-hidden grid grid-cols-1 md:grid-cols-3 xl:grid-cols-4">
             <ProductGrid
-                products={products || []}
+                products={topProducts}
                 cartItems={activeCart?.items || []}
-                isLoading={isLoadingProducts}
+                isLoading={isLoadingProducts || isLoadingSales}
                 onProductSelect={handleAddProductToCart}
                 onAddCustomProduct={() => setIsCustomProductOpen(true)}
                 onAddNewProduct={() => setIsNewProductDialogOpen(true)}
