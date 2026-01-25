@@ -2,12 +2,12 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
 import { collection, doc, serverTimestamp, getDoc, writeBatch, query, where, getDocs } from 'firebase/firestore';
 import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
 import { useRouter } from 'next/navigation';
-import type { Product, Customer, Cart, CartItem, Sale, SaleItem, Payment } from '@/lib/types';
+import type { Product, Customer, Cart, CartItem, Sale, SaleItem, Payment, CompanyProfile } from '@/lib/types';
 import { ProductGrid } from './ProductGrid';
 import { CartPanel } from './CartPanel';
 import { FinalizeSaleDialog } from './FinalizeSaleDialog';
@@ -48,9 +48,11 @@ export function SellPageClient() {
 
     const productsQuery = useMemoFirebase(() => user && firestore ? collection(firestore, 'users', user.uid, 'products') : null, [user, firestore]);
     const customersQuery = useMemoFirebase(() => user && firestore ? collection(firestore, 'users', user.uid, 'customers') : null, [user, firestore]);
+    const companyDocRef = useMemoFirebase(() => user && firestore ? doc(firestore, 'users', user.uid, 'companyProfile', 'main') : null, [user, firestore]);
 
     const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
     const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersQuery);
+    const { data: companyProfile } = useDoc<CompanyProfile>(companyDocRef);
     
     // Load carts from localStorage on initial mount
     useEffect(() => {
@@ -549,7 +551,7 @@ export function SellPageClient() {
                     isOpen={!!completedSale}
                     onOpenChange={() => setCompletedSale(null)}
                     sale={completedSale}
-                    companyProfile={null} // Not needed for this context
+                    companyProfile={companyProfile || null}
                     customer={customers?.find(c => c.id === completedSale.customerId) || null}
                 />
             )}
