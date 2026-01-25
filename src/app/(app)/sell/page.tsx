@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { collection, doc, writeBatch, serverTimestamp, query, orderBy } from 'firebase/firestore';
+import { collection, doc, writeBatch, serverTimestamp, query, orderBy, runTransaction } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -292,7 +292,6 @@ export default function SellPage() {
             purchasePrice: 0,
             quantity: Infinity, // Not a stock-managed item
             cartQuantity: 1,
-            minStockLevel: 0,
             createdAt: new Date(),
         };
 
@@ -405,7 +404,7 @@ export default function SellPage() {
     const handleFinalizeSale = async () => {
         if (!cartToPay || cartToPay.items.length === 0 || !user || !firestore) return;
         setIsSavingSale(true);
-
+    
         const { subtotal, discount, total } = (() => {
             const sub = cartToPay.items.reduce((acc, item) => acc + (item.price * item.cartQuantity), 0);
             let disc = 0;
@@ -417,80 +416,72 @@ export default function SellPage() {
             const tot = sub - disc;
             return { subtotal: sub, discount: disc, total: tot > 0 ? tot : 0 };
         })();
-
+    
         const saleId = doc(collection(firestore, 'users', user.uid, 'sales')).id;
-        
+        const finalAmountPaid = parseFloat(amountPaid) || 0;
+        const remainingBalance = total - finalAmountPaid;
+    
         let finalPaymentStatus: 'paid' | 'partial' | 'unpaid' = 'unpaid';
-        const amountPaidNum = parseFloat(amountPaid) || 0;
-        const remainingBalance = total - amountPaidNum;
-        if (amountPaidNum >= total) finalPaymentStatus = 'paid';
-        else if (amountPaidNum > 0) finalPaymentStatus = 'partial';
-
-        const saleItemsForDb: Omit<SaleItem, 'cartQuantity' | 'createdAt' | 'minStockLevel'>[] = cartToPay.items.map(item => ({
-            id: item.id,
-            name: item.name,
-            price: item.price,
-            purchasePrice: item.purchasePrice,
-            quantity: item.cartQuantity,
-        }));
-        
+        if (finalAmountPaid >= total) finalPaymentStatus = 'paid';
+        else if (finalAmountPaid > 0) finalPaymentStatus = 'partial';
+    
         const newSaleData: Omit<Sale, 'id' | 'createdAt'> = {
             invoiceNumber: `INV-${Date.now()}`,
-            items: saleItemsForDb,
+            items: cartToPay.items.map(item => ({
+                id: item.id,
+                name: item.name,
+                price: item.price,
+                purchasePrice: item.purchasePrice,
+                quantity: item.cartQuantity,
+            })),
             subtotal,
             discountType: cartToPay.discountType,
             discountAmount: cartToPay.discountValue,
             total,
-            amountPaid: amountPaidNum,
+            amountPaid: finalAmountPaid,
             remainingBalance: remainingBalance > 0 ? remainingBalance : 0,
             paymentStatus: finalPaymentStatus,
             paymentMethod: paymentMethod,
             customerId: cartToPay.customerId ?? undefined,
             customerName: cartToPay.customerName,
         };
-
+    
         try {
-            // Use a write batch for efficiency, reducing operations to a single commit.
-            const batch = writeBatch(firestore);
-
-            // Client-side stock check before creating the batch
-            for (const item of cartToPay.items) {
-                if (item.id.startsWith('custom-')) continue;
-
-                const productInState = products?.find(p => p.id === item.id);
-                if (!productInState) {
-                    throw new Error(`Produit ${item.name} introuvable dans l'inventaire local.`);
+            await runTransaction(firestore, async (transaction) => {
+                // 1. Update product stock
+                for (const item of cartToPay.items) {
+                    if (item.id.startsWith('custom-')) {
+                        continue; // Skip non-inventory items
+                    }
+    
+                    const productRef = doc(firestore, 'users', user.uid, 'products', item.id);
+                    const productDoc = await transaction.get(productRef);
+    
+                    if (!productDoc.exists()) {
+                        throw new Error(`Le produit "${item.name}" n'a pas été trouvé dans l'inventaire.`);
+                    }
+    
+                    const currentQuantity = productDoc.data().quantity;
+                    if (currentQuantity < item.cartQuantity) {
+                        throw new Error(`Stock insuffisant pour ${item.name}. Disponible : ${currentQuantity}`);
+                    }
+    
+                    const newQuantity = currentQuantity - item.cartQuantity;
+                    transaction.update(productRef, { quantity: newQuantity });
                 }
-                if (productInState.quantity < item.cartQuantity) {
-                    throw new Error(`Stock insuffisant pour ${item.name}. Disponible : ${productInState.quantity}`);
-                }
-            }
-
-            // Prepare batch operations
-            for (const item of cartToPay.items) {
-                if (item.id.startsWith('custom-')) continue;
-                
-                const productRef = doc(firestore, 'users', user.uid, 'products', item.id);
-                const productInState = products!.find(p => p.id === item.id)!; // We know it exists from the check above
-                const newQuantity = productInState.quantity - item.cartQuantity;
-
-                batch.update(productRef, { quantity: newQuantity });
-            }
-
-            // Add the sale document to the batch
-            const saleRef = doc(firestore, 'users', user.uid, 'sales', saleId);
-            batch.set(saleRef, { ...newSaleData, createdAt: serverTimestamp() });
-            
-            // Commit the entire batch as one atomic operation
-            await batch.commit();
-
-            // If transaction is successful:
+    
+                // 2. Create the sale document
+                const saleRef = doc(firestore, 'users', user.uid, 'sales', saleId);
+                transaction.set(saleRef, { ...newSaleData, createdAt: serverTimestamp() });
+            });
+    
+            // SUCCESS: If transaction completes without errors
             const completedSaleDataForDialog: Sale = {
                 id: saleId,
                 ...newSaleData,
-                createdAt: new Date(), // Use current date for the dialog
+                createdAt: new Date(),
             };
-
+    
             toast.success("Vente enregistrée avec succès !");
             setCompletedSale(completedSaleDataForDialog);
             setCompletedSaleCustomer(customers?.find(c => c.id === cartToPay.customerId) || null);
@@ -503,12 +494,11 @@ export default function SellPage() {
                  setActiveCartId(newId);
             } else {
                  setCarts(newCarts);
-                 // If the active cart was the one that was paid, switch to another one
                  if (activeCartId === cartToPay.id) {
                     setActiveCartId(newCarts[0].id);
                  }
             }
-
+    
         } catch (error: any) {
             console.error("Erreur lors de la finalisation de la vente:", error);
             toast.error(error.message || "Une erreur est survenue lors de la sauvegarde de la vente.");
