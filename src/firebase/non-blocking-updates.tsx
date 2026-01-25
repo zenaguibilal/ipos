@@ -22,7 +22,7 @@ interface MutationCallbacks {
  * Does NOT await the write operation internally.
  */
 export function setDocumentNonBlocking(docRef: DocumentReference, data: any, options: SetOptions, callbacks?: MutationCallbacks) {
-  setDoc(docRef, data, options)
+  return setDoc(docRef, data, options)
     .then(() => {
         callbacks?.onSuccess?.();
     })
@@ -36,8 +36,7 @@ export function setDocumentNonBlocking(docRef: DocumentReference, data: any, opt
             requestResourceData: data,
           })
         )
-    })
-  // Execution continues immediately
+    });
 }
 
 
@@ -47,7 +46,7 @@ export function setDocumentNonBlocking(docRef: DocumentReference, data: any, opt
  * Returns the Promise for the new doc ref, but typically not awaited by caller.
  */
 export function addDocumentNonBlocking(colRef: CollectionReference, data: any, callbacks?: MutationCallbacks) {
-  const promise = addDoc(colRef, data)
+  return addDoc(colRef, data)
     .then((docRef) => {
         callbacks?.onSuccess?.();
         return docRef;
@@ -65,7 +64,6 @@ export function addDocumentNonBlocking(colRef: CollectionReference, data: any, c
         })
       )
     });
-  return promise;
 }
 
 
@@ -74,7 +72,7 @@ export function addDocumentNonBlocking(colRef: CollectionReference, data: any, c
  * Does NOT await the write operation internally.
  */
 export function updateDocumentNonBlocking(docRef: DocumentReference, data: any, callbacks?: MutationCallbacks) {
-  updateDoc(docRef, data)
+  return updateDoc(docRef, data)
     .then(() => {
         callbacks?.onSuccess?.();
     })
@@ -97,7 +95,7 @@ export function updateDocumentNonBlocking(docRef: DocumentReference, data: any, 
  * Does NOT await the write operation internally.
  */
 export function deleteDocumentNonBlocking(docRef: DocumentReference, callbacks?: MutationCallbacks) {
-  deleteDoc(docRef)
+  return deleteDoc(docRef)
     .then(() => {
         callbacks?.onSuccess?.();
     })
