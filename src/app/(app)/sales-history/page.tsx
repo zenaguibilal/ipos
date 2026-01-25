@@ -148,7 +148,7 @@ export default function SalesHistoryPage() {
                 let saleProfit = 0;
                 transaction.data.items.forEach((item: SaleItem) => {
                     const purchasePrice = typeof item.purchasePrice === 'number' ? item.purchasePrice : 0;
-                    const quantity = typeof item.quantity === 'number' ? item.quantity : (item.cartQuantity || 0);
+                    const quantity = typeof item.quantity === 'number' ? item.quantity : 0;
                     saleProfit += (item.price - purchasePrice) * quantity;
                 });
                 acc[dateStr].dailyProfit += saleProfit;

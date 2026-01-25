@@ -39,8 +39,8 @@ export default function SellPage() {
     const [searchQuery, setSearchQuery] = useState('');
 
 
-    const productsQuery = useMemoFirebase(() => user && firestore ? collection(firestore, 'users', user.uid, 'products') : null, [user, firestore]);
-    const customersQuery = useMemoFirebase(() => user && firestore ? collection(firestore, 'users', user.uid, 'customers') : null, [user, firestore]);
+    const productsQuery = useMemoFirebase(() => user && firestore ? query(collection(firestore, 'users', user.uid, 'products')) : null, [user, firestore]);
+    const customersQuery = useMemoFirebase(() => user && firestore ? query(collection(firestore, 'users', user.uid, 'customers')) : null, [user, firestore]);
     const companyDocRef = useMemoFirebase(() => user && firestore ? doc(firestore, 'users', user.uid, 'companyProfile', 'main') : null, [user, firestore]);
     const salesQuery = useMemoFirebase(() => user && firestore ? query(collection(firestore, 'users', user.uid, 'sales')) : null, [user, firestore]);
     const paymentsQuery = useMemoFirebase(() => user && firestore ? query(collection(firestore, 'users', user.uid, 'payments')) : null, [user, firestore]);
@@ -292,16 +292,17 @@ export default function SellPage() {
     };
     
     const handleAddCustomProduct = (name: string, price: number) => {
-        const customProduct: Omit<CartItem, 'minStockLevel'> = {
+        const customProduct: CartItem = {
             id: `custom-${uuidv4()}`,
             name,
             price,
             purchasePrice: 0, 
             quantity: Infinity,
+            minStockLevel: 0,
             cartQuantity: 1,
             createdAt: new Date(),
         };
-        handleAddProductToCart(customProduct as CartItem);
+        handleAddProductToCart(customProduct);
         setIsCustomProductOpen(false);
     };
 
