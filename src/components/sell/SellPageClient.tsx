@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
@@ -15,6 +16,7 @@ import { SaleDetailsDialog } from '@/components/sales/sale-details-dialog';
 import { CustomerDialog } from '@/components/customers/customer-dialog';
 import { ProductDialog } from '@/components/products/product-dialog';
 import { Loader2 } from 'lucide-react';
+import { AddPaymentForm } from '@/components/customers/add-payment-form';
 
 export function SellPageClient() {
     const { user, isUserLoading } = useUser();
@@ -41,6 +43,7 @@ export function SellPageClient() {
     const [searchQuery, setSearchQuery] = useState('');
     const [customerBalance, setCustomerBalance] = useState<number | null>(null);
     const [isBalanceLoading, setIsBalanceLoading] = useState(false);
+    const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
 
 
     const productsQuery = useMemoFirebase(() => user && firestore ? collection(firestore, 'users', user.uid, 'products') : null, [user, firestore]);
@@ -99,6 +102,11 @@ export function SellPageClient() {
 
 
     const activeCart = useMemo(() => carts.find(c => c.id === activeCartId), [carts, activeCartId]);
+
+    const activeCustomer = useMemo(() => {
+        if (!activeCart?.customerId || !customers) return null;
+        return customers.find(c => c.id === activeCart.customerId) || null;
+    }, [activeCart?.customerId, customers]);
 
     // Recalculate customer balance when active customer changes
     useEffect(() => {
@@ -396,6 +404,9 @@ export function SellPageClient() {
             await batch.commit();
 
             // Success logic
+            if (newSaleData.customerId && newSaleData.remainingBalance > 0) {
+                setCustomerBalance(prev => (prev ?? 0) + newSaleData.remainingBalance);
+            }
             toast.success("Vente finalisée avec succès!");
             const completedSaleDataForDialog: Sale = {
                 id: saleId,
@@ -488,6 +499,7 @@ export function SellPageClient() {
                 onAddNewCustomer={() => setIsCustomerDialogOpen(true)}
                 customerBalance={customerBalance}
                 isBalanceLoading={isBalanceLoading}
+                onSettleDebt={() => setIsPaymentDialogOpen(true)}
             />
 
             {activeCart && <FinalizeSaleDialog
@@ -518,6 +530,19 @@ export function SellPageClient() {
                 product={null}
                 userId={user.uid}
             />}
+            
+            {activeCustomer && user && (
+                <AddPaymentForm
+                    isOpen={isPaymentDialogOpen}
+                    onOpenChange={setIsPaymentDialogOpen}
+                    customer={activeCustomer}
+                    userId={user.uid}
+                    onSuccess={(paidAmount) => {
+                        setCustomerBalance(prev => Math.max(0, (prev ?? 0) - paidAmount));
+                        setIsPaymentDialogOpen(false);
+                    }}
+                />
+            )}
 
             {completedSale && (
                 <SaleDetailsDialog

@@ -10,15 +10,17 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import type { Customer } from '@/lib/types';
+import { Loader2 } from 'lucide-react';
 
 interface AddPaymentFormProps {
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
     userId: string;
     customer: Customer;
+    onSuccess?: (amountPaid: number) => void;
 }
 
-export function AddPaymentForm({ isOpen, onOpenChange, userId, customer }: AddPaymentFormProps) {
+export function AddPaymentForm({ isOpen, onOpenChange, userId, customer, onSuccess }: AddPaymentFormProps) {
     const firestore = useFirestore();
     const [amount, setAmount] = useState('');
     const [error, setError] = useState<string | null>(null);
@@ -55,9 +57,12 @@ export function AddPaymentForm({ isOpen, onOpenChange, userId, customer }: AddPa
         }, {
             onSuccess: () => {
                 setIsLoading(false);
+                toast.success('Paiement enregistré avec succès.');
+                if (onSuccess) {
+                    onSuccess(amountNumber);
+                }
                 onOpenChange(false);
                 resetForm();
-                toast.success('Paiement enregistré avec succès.');
             },
             onError: (err) => {
                 setIsLoading(false);
@@ -103,7 +108,10 @@ export function AddPaymentForm({ isOpen, onOpenChange, userId, customer }: AddPa
                     </div>
                     <DialogFooter>
                         <Button type="button" variant="secondary" onClick={() => handleOpenChange(false)} disabled={isLoading}>Annuler</Button>
-                        <Button type="submit" disabled={isLoading}>{isLoading ? 'Enregistrement...' : 'Enregistrer le paiement'}</Button>
+                        <Button type="submit" disabled={isLoading}>
+                            {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                            {isLoading ? 'Enregistrement...' : 'Enregistrer le paiement'}
+                        </Button>
                     </DialogFooter>
                 </form>
             </DialogContent>
