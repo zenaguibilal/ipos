@@ -1,16 +1,13 @@
-
 'use client';
 import { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { CreditCard, Landmark, CircleDollarSign, Loader2, Wallet, Plus, Trash2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import type { Cart, SalePayment } from '@/lib/types';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
-import { Badge } from '../ui/badge';
 
 interface FinalizeSaleDialogProps {
     isOpen: boolean;
@@ -22,9 +19,7 @@ interface FinalizeSaleDialogProps {
 }
 
 export function FinalizeSaleDialog({ isOpen, onOpenChange, cart, onConfirm, isSaving, customerBalance }: FinalizeSaleDialogProps) {
-    const [payments, setPayments] = useState<SalePayment[]>([]);
-    const [currentAmount, setCurrentAmount] = useState('');
-    const [currentMethod, setCurrentMethod] = useState<'cash' | 'card' | 'other'>('cash');
+    const [paidAmountStr, setPaidAmountStr] = useState('');
     const [settleDebt, setSettleDebt] = useState(true);
 
     const cartTotal = useMemo(() => {
@@ -40,49 +35,31 @@ export function FinalizeSaleDialog({ isOpen, onOpenChange, cart, onConfirm, isSa
         return cartTotal;
     }, [cartTotal, customerBalance, settleDebt]);
 
-    const totalPaid = useMemo(() => payments.reduce((acc, p) => acc + p.amount, 0), [payments]);
-    const remainingToPay = useMemo(() => totalToPay - totalPaid, [totalToPay, totalPaid]);
+    const paidAmount = useMemo(() => {
+        const parsed = parseFloat(paidAmountStr);
+        return isNaN(parsed) ? 0 : parsed;
+    }, [paidAmountStr]);
+
+    const change = useMemo(() => (paidAmount > totalToPay ? paidAmount - totalToPay : 0), [paidAmount, totalToPay]);
+    const remainingBalance = useMemo(() => (totalToPay > paidAmount ? totalToPay - paidAmount : 0), [paidAmount, totalToPay]);
 
     useEffect(() => {
         if (isOpen) {
-            setPayments([]);
-            setCurrentAmount(remainingToPay > 0 ? remainingToPay.toFixed(1) : '');
-            setSettleDebt(!!(customerBalance && customerBalance > 0));
+            const shouldSettleDebt = !!(customerBalance && customerBalance > 0);
+            setSettleDebt(shouldSettleDebt);
+            const initialTotal = cartTotal + (shouldSettleDebt && customerBalance ? customerBalance : 0);
+            setPaidAmountStr(initialTotal > 0 ? initialTotal.toFixed(1) : '0');
+        } else {
+            // Reset on close
+            setPaidAmountStr('');
         }
-    }, [isOpen, customerBalance]);
+    }, [isOpen, cartTotal, customerBalance]);
     
-    useEffect(() => {
-        setCurrentAmount(remainingToPay > 0 ? remainingToPay.toFixed(1) : '');
-    }, [remainingToPay]);
-
-
-    const handleAddPayment = () => {
-        const amount = parseFloat(currentAmount);
-        if (isNaN(amount) || amount <= 0) {
-            return;
-        }
-        setPayments(prev => [...prev, { method: currentMethod, amount }]);
-    };
-
-    const handleRemovePayment = (index: number) => {
-        setPayments(prev => prev.filter((_, i) => i !== index));
-    };
-
     const handleSubmit = () => {
-        if (payments.length === 0) {
-            // If no payments added but there's an amount, add it first.
-            const amount = parseFloat(currentAmount);
-            if (!isNaN(amount) && amount > 0) {
-                 const finalPayments = [...payments, { method: currentMethod, amount }];
-                 if (finalPayments.reduce((acc,p) => acc + p.amount, 0) >= totalToPay) {
-                    onConfirm(finalPayments, settleDebt);
-                    return;
-                 }
-            }
-            alert("Veuillez ajouter au moins un paiement.");
-            return;
-        }
-        onConfirm(payments, settleDebt);
+        if (isSaving) return;
+        
+        const finalPayments: SalePayment[] = paidAmount > 0 ? [{ method: 'cash', amount: paidAmount }] : [];
+        onConfirm(finalPayments, settleDebt);
     };
 
     const handleDialogChange = (open: boolean) => {
@@ -92,9 +69,7 @@ export function FinalizeSaleDialog({ isOpen, onOpenChange, cart, onConfirm, isSa
     };
 
     const hasDebt = customerBalance && customerBalance > 0;
-    const isConfirmDisabled = isSaving || totalPaid < totalToPay;
-    const change = totalPaid - totalToPay;
-
+    
     return (
         <Dialog open={isOpen} onOpenChange={handleDialogChange}>
             <DialogContent className="max-w-md">
@@ -102,9 +77,9 @@ export function FinalizeSaleDialog({ isOpen, onOpenChange, cart, onConfirm, isSa
                     <DialogTitle>Finaliser la vente</DialogTitle>
                     <DialogDescription>Confirmez les détails du paiement.</DialogDescription>
                 </DialogHeader>
-                <div className="space-y-4">
-
-                     <div className="space-y-2 text-sm border-b pb-4">
+                <div className="space-y-6">
+                    {/* Calculation Summary Section */}
+                    <div className="space-y-2 text-sm border-b pb-4">
                         <div className="flex justify-between">
                             <span>Total des articles :</span>
                             <span className="font-medium">{cartTotal.toFixed(1)} DA</span>
@@ -118,62 +93,63 @@ export function FinalizeSaleDialog({ isOpen, onOpenChange, cart, onConfirm, isSa
                         {hasDebt && (
                              <div className="flex items-center space-x-2 pt-2">
                                 <Switch id="settle-debt" checked={settleDebt} onCheckedChange={setSettleDebt} disabled={!hasDebt} />
-                                <Label htmlFor="settle-debt" className="text-sm font-medium">Solder la dette avec ce paiement</Label>
+                                <Label htmlFor="settle-debt" className="text-sm font-medium">Régler la dette avec ce paiement</Label>
                             </div>
                         )}
                     </div>
                     
+                    {/* Total Display */}
                     <div className="flex justify-between items-center bg-muted p-4 rounded-lg">
                         <span className="text-lg font-bold">Total à Payer</span>
                         <span className="text-3xl font-black text-primary">{totalToPay.toFixed(1)} DA</span>
                     </div>
 
-                    <div className="space-y-2">
-                        <Label>Paiements</Label>
-                        <div className="space-y-2">
-                            {payments.map((p, i) => (
-                                <div key={i} className="flex items-center gap-2 bg-secondary/50 p-2 rounded-md">
-                                    <Badge variant="secondary" className="capitalize">{p.method}</Badge>
-                                    <span className="font-semibold flex-grow">{p.amount.toFixed(1)} DA</span>
-                                    <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => handleRemovePayment(i)}>
-                                        <Trash2 className="h-4 w-4"/>
-                                    </Button>
-                                </div>
-                            ))}
+                    {/* Payment Input Section */}
+                    <div className="space-y-3">
+                        <Label htmlFor="paidAmount" className="text-base">Montant Encaissé</Label>
+                        <div className="flex gap-2 items-center">
+                            <Input 
+                                id="paidAmount" 
+                                type="number" 
+                                className="h-14 text-2xl font-bold flex-grow"
+                                placeholder="0.00"
+                                value={paidAmountStr}
+                                onChange={(e) => setPaidAmountStr(e.target.value)}
+                                autoFocus
+                                onFocus={(e) => e.target.select()}
+                            />
+                            <div className="flex flex-col gap-2">
+                                <Button variant="outline" className="h-7 text-xs px-2" onClick={() => setPaidAmountStr(totalToPay.toFixed(1))}>
+                                    Paiement Complet
+                                </Button>
+                                <Button variant="destructive" className="h-7 text-xs px-2" onClick={() => setPaidAmountStr('0')}>
+                                    Vente à Crédit
+                                </Button>
+                            </div>
                         </div>
-                        {remainingToPay > 0 && (
-                            <div className="flex gap-2 items-end border-t pt-4">
-                                <div className="grid gap-1.5 flex-grow">
-                                    <Label htmlFor="currentAmount" className="text-xs">Montant à ajouter</Label>
-                                    <Input id="currentAmount" type="number" value={currentAmount} onChange={e => setCurrentAmount(e.target.value)} placeholder={`Restant: ${remainingToPay.toFixed(1)} DA`} />
-                                </div>
-                                <div className="grid gap-1.5">
-                                    <Label className="text-xs">Méthode</Label>
-                                    <Tabs value={currentMethod} onValueChange={(v) => setCurrentMethod(v as any)} className="w-full">
-                                        <TabsList className="grid w-full grid-cols-3 h-10">
-                                            <TabsTrigger value="cash" className="h-full"><CircleDollarSign className="h-4 w-4"/></TabsTrigger>
-                                            <TabsTrigger value="card" className="h-full"><CreditCard className="h-4 w-4"/></TabsTrigger>
-                                            <TabsTrigger value="other" className="h-full"><Landmark className="h-4 w-4"/></TabsTrigger>
-                                        </TabsList>
-                                    </Tabs>
-                                </div>
-                                <Button size="icon" onClick={handleAddPayment} className="h-10 w-10 flex-shrink-0"><Plus className="h-4 w-4"/></Button>
+                    </div>
+                    
+                    {/* Feedback Section (Change/Remaining) */}
+                    <div className="space-y-2 text-sm pt-4 border-t">
+                        {remainingBalance > 0 && (
+                            <div className="flex justify-between items-center text-destructive p-3 rounded-lg bg-destructive/10">
+                                <span className="font-semibold">Solde à payer :</span>
+                                <span className="text-lg font-bold">{remainingBalance.toFixed(1)} DA</span>
+                            </div>
+                        )}
+                        {change > 0 && (
+                            <div className="flex justify-between items-center text-green-700 dark:text-green-300 p-3 rounded-lg bg-green-500/10">
+                                <span className="font-semibold">Monnaie à rendre :</span>
+                                <span className="text-lg font-bold">{change.toFixed(1)} DA</span>
                             </div>
                         )}
                     </div>
-                    
-                    {change > 0 && (
-                        <div className="flex justify-between items-center bg-green-500/10 text-green-700 dark:text-green-300 p-4 rounded-lg">
-                            <span className="text-lg font-bold">Monnaie à rendre</span>
-                            <span className="text-2xl font-bold">{change.toFixed(1)} DA</span>
-                        </div>
-                    )}
                 </div>
-                <DialogFooter>
+                <DialogFooter className="mt-6">
                     <Button type="button" variant="secondary" onClick={() => handleDialogChange(false)} disabled={isSaving}>Annuler</Button>
-                    <Button type="button" onClick={handleSubmit} disabled={isConfirmDisabled}>
+                    <Button type="button" onClick={handleSubmit} disabled={isSaving}>
                         {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                        {isSaving ? 'Finalisation...' : 'Confirmer la vente'}
+                        {isSaving ? 'Finalisation...' : 'Confirmer la Vente'}
                     </Button>
                 </DialogFooter>
             </DialogContent>
