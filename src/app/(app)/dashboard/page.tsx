@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
@@ -79,8 +80,8 @@ function calculateDashboardMetrics(
     let returnsValue = 0;
     let lostProfitFromReturns = 0;
     
-    const topProductsMap: { [name: string]: { name: string; totalRevenue: number; unitsSold: number; totalProfit: number; } } = {};
-    const topCustomersMap: { [name: string]: { name: string; totalSpent: number; } } = {};
+    const topProductsMap: { [name: string]: { totalRevenue: number; unitsSold: number; totalProfit: number; } } = {};
+    const topCustomersMap: { [name: string]: { totalSpent: number; } } = {};
     const dailyData: { [key: string]: { revenue: number, profit: number } } = {};
     const allTransactionsForPeriod: { type: 'Vente' | 'Retour', date: Date, customerName: string, invoiceNumber: string, amount: number }[] = [];
     
@@ -104,7 +105,7 @@ function calculateDashboardMetrics(
         
         if (sale.customerName) {
              if (!topCustomersMap[sale.customerName]) {
-                topCustomersMap[sale.customerName] = { name: sale.customerName, totalSpent: 0 };
+                topCustomersMap[sale.customerName] = { totalSpent: 0 };
             }
             topCustomersMap[sale.customerName].totalSpent += sale.total;
         }
@@ -115,7 +116,7 @@ function calculateDashboardMetrics(
             const quantity = item.quantity;
 
             if (!topProductsMap[item.name]) {
-                topProductsMap[item.name] = { name: item.name, totalRevenue: 0, unitsSold: 0, totalProfit: 0 };
+                topProductsMap[item.name] = { totalRevenue: 0, unitsSold: 0, totalProfit: 0 };
             }
 
             const itemProfit = (item.price && purchasePrice) ? (item.price - purchasePrice) * quantity : 0;
@@ -188,11 +189,13 @@ function calculateDashboardMetrics(
         .sort((a, b) => b.date.getTime() - a.date.getTime())
         .slice(0, 5);
 
-    const topProductsList = Object.values(topProductsMap)
+    const topProductsList = Object.entries(topProductsMap)
+        .map(([name, data]) => ({ name, ...data }))
         .sort((a, b) => b.totalProfit - a.totalProfit)
         .slice(0, 5);
 
-    const topCustomersList = Object.values(topCustomersMap)
+    const topCustomersList = Object.entries(topCustomersMap)
+        .map(([name, data]) => ({ name, ...data }))
         .sort((a, b) => b.totalSpent - a.totalSpent)
         .slice(0, 5);
 
