@@ -35,6 +35,33 @@ export function FinalizeSaleDialog({ isOpen, onOpenChange, cart, onConfirm, isSa
         }
     }, [isOpen, total]);
 
+    const quickCashSuggestions = useMemo(() => {
+        if (total <= 0) return [];
+        const suggestions = new Set<number>();
+    
+        // Suggest exact amount rounded up
+        suggestions.add(Math.ceil(total));
+    
+        // Suggest next round fifty and hundred
+        const nextFifty = Math.ceil(total / 50) * 50;
+        if (nextFifty > total) suggestions.add(nextFifty);
+
+        const nextHundred = Math.ceil(total / 100) * 100;
+        if (nextHundred > total) suggestions.add(nextHundred);
+    
+        // Suggest common banknotes
+        const banknotes = [500, 1000, 2000];
+        banknotes.forEach(note => {
+            if (note >= total) {
+                suggestions.add(note);
+            }
+        });
+    
+        return Array.from(suggestions)
+            .sort((a, b) => a - b)
+            .slice(0, 4); // Limit to 4 suggestions
+    }, [total]);
+
     const handleSubmit = () => {
         const paid = parseFloat(amountPaid);
         if (isNaN(paid) || paid < 0) {
@@ -76,6 +103,15 @@ export function FinalizeSaleDialog({ isOpen, onOpenChange, cart, onConfirm, isSa
 
                     <div className="space-y-2">
                         <Label htmlFor="amountPaid">Montant payé par le client (DA)</Label>
+                        {paymentMethod === 'cash' && quickCashSuggestions.length > 0 && (
+                             <div className="flex flex-wrap gap-2 mb-2">
+                                {quickCashSuggestions.map(value => (
+                                    <Button key={value} type="button" variant="outline" size="sm" className="flex-grow" onClick={() => setAmountPaid(String(value))}>
+                                        {value} DA
+                                    </Button>
+                                ))}
+                            </div>
+                        )}
                         <Input 
                             id="amountPaid" 
                             type="number"
