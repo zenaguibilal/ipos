@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
@@ -417,44 +416,41 @@ export default function SellPage() {
             return { subtotal: sub, discount: disc, total: tot > 0 ? tot : 0 };
         })();
 
-
         const saleId = doc(collection(firestore, 'users', user.uid, 'sales')).id;
-        let newSaleData: Omit<Sale, 'id' | 'createdAt'>; // To be used later for the dialog
+        
+        let finalPaymentStatus: 'paid' | 'partial' | 'unpaid' = 'unpaid';
+        const amountPaidNum = parseFloat(amountPaid) || 0;
+        const remainingBalance = total - amountPaidNum;
+        if (amountPaidNum >= total) finalPaymentStatus = 'paid';
+        else if (amountPaidNum > 0) finalPaymentStatus = 'partial';
+
+        const saleItemsForDb: Omit<SaleItem, 'cartQuantity' | 'createdAt'>[] = cartToPay.items.map(item => ({
+            id: item.id,
+            name: item.name,
+            price: item.price,
+            purchasePrice: item.purchasePrice,
+            quantity: item.cartQuantity,
+        }));
+        
+        const newSaleData: Omit<Sale, 'id' | 'createdAt'> = {
+            invoiceNumber: `INV-${Date.now()}`,
+            items: saleItemsForDb,
+            subtotal,
+            discountType: cartToPay.discountType,
+            discountAmount: cartToPay.discountValue,
+            total,
+            amountPaid: amountPaidNum,
+            remainingBalance: remainingBalance > 0 ? remainingBalance : 0,
+            paymentStatus: finalPaymentStatus,
+            paymentMethod: paymentMethod,
+            customerId: cartToPay.customerId ?? undefined,
+            customerName: cartToPay.customerName,
+        };
 
         try {
             // Run as a transaction
             await runTransaction(firestore, async (transaction) => {
-                // 1. Prepare Sale Data
-                let finalPaymentStatus: 'paid' | 'partial' | 'unpaid' = 'unpaid';
-                const amountPaidNum = parseFloat(amountPaid) || 0;
-                const remainingBalance = total - amountPaidNum;
-                if (amountPaidNum >= total) finalPaymentStatus = 'paid';
-                else if (amountPaidNum > 0) finalPaymentStatus = 'partial';
-
-                const saleItemsForDb: Omit<SaleItem, 'cartQuantity' | 'createdAt'>[] = cartToPay.items.map(item => ({
-                    id: item.id,
-                    name: item.name,
-                    price: item.price,
-                    purchasePrice: item.purchasePrice,
-                    quantity: item.cartQuantity,
-                }));
-                
-                newSaleData = {
-                    invoiceNumber: `INV-${Date.now()}`,
-                    items: saleItemsForDb,
-                    subtotal,
-                    discountType: cartToPay.discountType,
-                    discountAmount: cartToPay.discountValue,
-                    total,
-                    amountPaid: amountPaidNum,
-                    remainingBalance: remainingBalance > 0 ? remainingBalance : 0,
-                    paymentStatus: finalPaymentStatus,
-                    paymentMethod: paymentMethod,
-                    customerId: cartToPay.customerId ?? undefined,
-                    customerName: cartToPay.customerName,
-                };
-
-                // 2. Read and Update Product Stock
+                // 1. Read and Update Product Stock
                 for (const item of cartToPay.items) {
                     if (item.id.startsWith('custom-')) continue;
 
@@ -474,7 +470,7 @@ export default function SellPage() {
                     transaction.update(productRef, { quantity: newQuantity });
                 }
 
-                // 3. Create the Sale Document
+                // 2. Create the Sale Document
                 const saleRef = doc(firestore, 'users', user.uid, 'sales', saleId);
                 transaction.set(saleRef, { ...newSaleData, createdAt: serverTimestamp() });
             });
