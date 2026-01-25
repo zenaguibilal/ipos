@@ -13,7 +13,7 @@ import type { Customer, Sale, Payment, CustomerWithSalesData } from '@/lib/types
 import { CustomerDialog } from '@/components/customers/customer-dialog';
 import { DeleteCustomerDialog } from '@/components/customers/delete-customer-dialog';
 import { AddPaymentForm } from '@/components/customers/add-payment-form';
-import { safeToDate } from '@/lib/utils';
+import { calculateAllCustomersMetrics } from '@/lib/utils';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import Papa from 'papaparse';
@@ -55,72 +55,7 @@ export default function CustomersPage() {
         if (!customers || !sales || !payments) {
             return { customersWithSalesData: [], totalDebt: 0, customersWithDebt: 0 };
         }
-
-        // Pre-process sales and payments for O(1) lookup per customer
-        const salesByCustomer = sales.reduce((acc, sale) => {
-            if (sale.customerId) {
-                if (!acc[sale.customerId]) acc[sale.customerId] = [];
-                acc[sale.customerId].push(sale);
-            }
-            return acc;
-        }, {} as Record<string, Sale[]>);
-
-        const paymentsByCustomer = payments.reduce((acc, payment) => {
-            if (payment.customerId) {
-                if (!acc[payment.customerId]) acc[payment.customerId] = [];
-                acc[payment.customerId].push(payment);
-            }
-            return acc;
-        }, {} as Record<string, Payment[]>);
-        
-        const today = new Date();
-        const currentDayOfMonth = today.getDate();
-        let runningTotalDebt = 0;
-        let runningCustomersWithDebt = 0;
-
-        const data = customers.map(customer => {
-            const customerSales = salesByCustomer[customer.id] || [];
-            const customerPayments = paymentsByCustomer[customer.id] || [];
-            
-            const totalSpent = customerSales.reduce((acc, s) => acc + s.total, 0);
-            const totalPaidFromSales = customerSales.reduce((acc, s) => acc + s.amountPaid, 0);
-            const totalStandalonePayments = customerPayments.reduce((acc, p) => acc + p.amount, 0);
-            
-            const outstandingBalance = totalSpent - totalPaidFromSales - totalStandalonePayments;
-            const finalBalance = outstandingBalance < 0.01 ? 0 : outstandingBalance;
-            
-            if (finalBalance > 0) {
-                runningTotalDebt += finalBalance;
-                runningCustomersWithDebt++;
-            }
-
-            const lastSaleDate = Math.max(...customerSales.map(s => safeToDate(s.createdAt).getTime()));
-            const lastPaymentDate = Math.max(...customerPayments.map(p => safeToDate(p.createdAt).getTime()));
-
-            const lastActivityTimestamp = Math.max(lastSaleDate, lastPaymentDate);
-            const lastActivityDate = lastActivityTimestamp > 0 ? new Date(lastActivityTimestamp) : null;
-
-            let isReminderDue = false;
-            if (finalBalance > 0 && customer.settlementDay) {
-                if (currentDayOfMonth > customer.settlementDay) {
-                    isReminderDue = true;
-                }
-            }
-
-            return {
-                ...customer,
-                totalSpent,
-                outstandingBalance: finalBalance,
-                lastActivityDate,
-                isReminderDue,
-            };
-        });
-
-        return {
-            customersWithSalesData: data,
-            totalDebt: runningTotalDebt,
-            customersWithDebt: runningCustomersWithDebt,
-        };
+        return calculateAllCustomersMetrics(customers, sales, payments);
     }, [customers, sales, payments]);
 
     const totalCustomers = customers?.length || 0;
