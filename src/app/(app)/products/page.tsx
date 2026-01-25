@@ -100,17 +100,12 @@ export default function ProductsPage() {
 
         return products.filter(p => {
             const categoryMatch = selectedCategory === 'all' || p.category === selectedCategory;
-            if (!categoryMatch) {
-                return false;
-            }
-
-            if (searchQuery) {
-                const nameMatch = p.name.toLowerCase().includes(lowercasedQuery);
-                const barcodeMatch = p.barcodes?.some(b => b.includes(lowercasedQuery));
-                return nameMatch || barcodeMatch;
-            }
-
-            return true;
+            
+            const searchMatch = !searchQuery || 
+                                p.name.toLowerCase().includes(lowercasedQuery) ||
+                                p.barcodes?.some(b => b.includes(lowercasedQuery));
+            
+            return categoryMatch && searchMatch;
         });
     }, [products, searchQuery, selectedCategory]);
 
