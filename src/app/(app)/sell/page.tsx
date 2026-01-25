@@ -452,7 +452,6 @@ export default function SellPage() {
                     paymentMethod: paymentMethod,
                     customerId: cartToPay.customerId ?? undefined,
                     customerName: cartToPay.customerName,
-                    createdAt: serverTimestamp(),
                 };
 
                 // 2. Read and Update Product Stock
@@ -477,7 +476,7 @@ export default function SellPage() {
 
                 // 3. Create the Sale Document
                 const saleRef = doc(firestore, 'users', user.uid, 'sales', saleId);
-                transaction.set(saleRef, newSaleData);
+                transaction.set(saleRef, { ...newSaleData, createdAt: serverTimestamp() });
             });
             
             // If transaction is successful:
@@ -876,4 +875,3 @@ export default function SellPage() {
         </>
     );
 }
-
