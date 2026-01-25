@@ -104,11 +104,20 @@ export function A4Receipt({ sale, companyProfile, customer }: A4ReceiptProps) {
                         <span>TOTAL:</span>
                         <span>{total.toFixed(1)} DA</span>
                     </div>
-                     <div className="border-t my-2"></div>
-                     <div className="flex justify-between">
-                        <span className="text-gray-600">Montant Payé:</span>
-                        <span className="font-semibold">{amountPaid.toFixed(1)} DA</span>
-                    </div>
+                    <div className="border-t my-2"></div>
+
+                    {sale.payments?.map((p, i) => (
+                        <div key={i} className="flex justify-between">
+                            <span className="text-gray-600">Payé ({p.method === 'cash' ? 'Espèces' : p.method === 'card' ? 'Carte' : 'Autre'}):</span>
+                            <span className="font-semibold">{p.amount.toFixed(1)} DA</span>
+                        </div>
+                    ))}
+                    {sale.payments?.length > 1 && (
+                        <div className="flex justify-between font-bold mt-1">
+                            <span className="text-gray-600">Total Payé:</span>
+                            <span className="font-semibold">{amountPaid.toFixed(1)} DA</span>
+                        </div>
+                    )}
                      <div className="flex justify-between">
                         <span className="text-gray-600">Solde Restant:</span>
                         <span className="font-semibold">{remainingBalance.toFixed(1)} DA</span>

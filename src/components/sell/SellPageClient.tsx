@@ -7,7 +7,7 @@ import { collection, doc, serverTimestamp, getDoc, writeBatch, query, where, get
 import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
 import { useRouter } from 'next/navigation';
-import type { Product, Customer, Cart, CartItem, Sale, SaleItem, Payment, CompanyProfile } from '@/lib/types';
+import type { Product, Customer, Cart, CartItem, Sale, SaleItem, Payment, CompanyProfile, SalePayment } from '@/lib/types';
 import { ProductGrid } from './ProductGrid';
 import { CartPanel } from './CartPanel';
 import { Loader2 } from 'lucide-react';
@@ -321,7 +321,7 @@ export function SellPageClient() {
         }
     };
     
-    const handleFinalizeSale = async (amountPaid: number, paymentMethod: 'cash' | 'card' | 'other', settleDebt: boolean) => {
+    const handleFinalizeSale = async (payments: SalePayment[], settleDebt: boolean) => {
         if (!firestore || !user || !activeCart) return;
 
         setIsSavingSale(true);
@@ -367,6 +367,8 @@ export function SellPageClient() {
                 }
             }
             
+            const totalAmountFromPayments = payments.reduce((acc, p) => acc + p.amount, 0);
+
             const cartSubtotal = cartToPay.items.reduce((acc, item) => acc + (item.price * item.cartQuantity), 0);
             const discountValue = cartToPay.discount.value;
             const discountType = cartToPay.discount.type;
@@ -380,11 +382,11 @@ export function SellPageClient() {
                 quantity: item.cartQuantity
             }));
 
-            let saleAmountPaid = amountPaid;
+            let saleAmountPaid = totalAmountFromPayments;
             const currentCustomerBalance = customerBalance || 0;
 
             if (settleDebt && currentCustomerBalance > 0 && cartToPay.customerId) {
-                const amountToClearDebt = Math.min(amountPaid, currentCustomerBalance);
+                const amountToClearDebt = Math.min(totalAmountFromPayments, currentCustomerBalance);
                 if (amountToClearDebt > 0) {
                     const paymentRef = doc(collection(firestore, 'users', user.uid, 'payments'));
                     batch.set(paymentRef, {
@@ -394,7 +396,7 @@ export function SellPageClient() {
                         createdAt: serverTimestamp()
                     });
                 }
-                saleAmountPaid = Math.max(0, amountPaid - amountToClearDebt);
+                saleAmountPaid = Math.max(0, totalAmountFromPayments - amountToClearDebt);
             }
 
             const finalPaymentStatus = saleAmountPaid >= saleTotal ? 'paid' : saleAmountPaid > 0 ? 'partial' : 'unpaid';
@@ -408,7 +410,7 @@ export function SellPageClient() {
                 amountPaid: saleAmountPaid,
                 remainingBalance: saleTotal - saleAmountPaid,
                 paymentStatus: finalPaymentStatus,
-                paymentMethod: paymentMethod,
+                payments: payments,
                 customerId: cartToPay.customerId ?? undefined,
                 customerName: cartToPay.customerName,
                 createdAt: serverTimestamp()

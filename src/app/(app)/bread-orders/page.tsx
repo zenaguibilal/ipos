@@ -485,7 +485,7 @@ export default function BreadOrdersPage() {
             amountPaid: settlingUnpaidOrder.totalOwed,
             remainingBalance: 0,
             paymentStatus: 'paid' as const,
-            paymentMethod: 'cash' as const,
+            payments: [{ method: 'cash', amount: settlingUnpaidOrder.totalOwed }],
             customerId: customerId || undefined,
             customerName: customerName,
             createdAt: serverTimestamp()

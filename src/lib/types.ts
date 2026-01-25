@@ -50,6 +50,10 @@ export interface Cart {
     };
 }
 
+export interface SalePayment {
+    method: 'cash' | 'card' | 'other';
+    amount: number;
+}
 
 export interface Sale {
     id: string;
@@ -62,7 +66,7 @@ export interface Sale {
     amountPaid: number;
     remainingBalance: number;
     paymentStatus: 'paid' | 'partial' | 'unpaid';
-    paymentMethod?: 'cash' | 'card' | 'other';
+    payments: SalePayment[];
     customerId?: string;
     customerName?: string;
     createdAt: Timestamp | Date;
@@ -83,6 +87,7 @@ export interface BreadOrder {
     isPaid: boolean;
     isDelivered: boolean;
     isRecurring: boolean;
+    customerId?: string;
     createdAt: Timestamp;
 }
 
@@ -93,6 +98,7 @@ export interface UnpaidBreadOrder {
     pricePerUnit: number;
     totalOwed: number;
     originalOrderDate: Timestamp | Date;
+    customerId?: string;
     archivedAt: Timestamp | Date;
 }
 

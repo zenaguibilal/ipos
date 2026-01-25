@@ -134,10 +134,18 @@ export function ThermalReceipt({ sale, companyProfile }: ThermalReceiptProps) {
 
                 <div className="border-t border-dashed border-black my-2"></div>
                 
-                <div className="flex justify-between">
-                    <span>Montant Payé:</span>
-                    <span>{amountPaid.toFixed(1)} DA</span>
-                </div>
+                {sale.payments?.map((p, i) => (
+                    <div key={i} className="flex justify-between">
+                        <span>Payé ({p.method === 'cash' ? 'Espèces' : p.method === 'card' ? 'Carte' : 'Autre'}):</span>
+                        <span>{p.amount.toFixed(1)} DA</span>
+                    </div>
+                ))}
+                {sale.payments?.length > 1 && (
+                    <div className="flex justify-between font-bold">
+                        <span>Total Payé:</span>
+                        <span>{amountPaid.toFixed(1)} DA</span>
+                    </div>
+                )}
                 <div className="flex justify-between">
                     <span>Solde Restant:</span>
                     <span>{remainingBalance.toFixed(1)} DA</span>

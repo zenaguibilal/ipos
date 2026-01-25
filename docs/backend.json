@@ -206,10 +206,24 @@
           "description": "The payment status of the sale.",
           "enum": ["paid", "partial", "unpaid"]
         },
-        "paymentMethod": {
-            "type": "string",
-            "description": "The payment method used for the sale.",
-            "enum": ["cash", "card", "other"]
+        "payments": {
+            "type": "array",
+            "description": "A list of payments made for this sale, allowing for split payments.",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "method": {
+                        "type": "string",
+                        "description": "The payment method used for this part of the payment.",
+                        "enum": ["cash", "card", "other"]
+                    },
+                    "amount": {
+                        "type": "number",
+                        "description": "The amount paid with this method."
+                    }
+                },
+                "required": ["method", "amount"]
+            }
         },
         "customerId": {
           "type": "string",
@@ -233,6 +247,7 @@
         "amountPaid",
         "remainingBalance",
         "paymentStatus",
+        "payments",
         "createdAt"
       ]
     },
@@ -615,5 +630,3 @@
     }
   }
 }
-
-    
