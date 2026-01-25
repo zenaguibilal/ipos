@@ -14,7 +14,7 @@ interface FinalizeSaleDialogProps {
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
     cart: Cart;
-    onConfirm: (payments: SalePayment[]) => void;
+    onConfirm: (payments: SalePayment[], settleDebt: boolean) => void;
     isSaving: boolean;
     customerBalance?: number | null;
 }
@@ -60,7 +60,7 @@ export function FinalizeSaleDialog({ isOpen, onOpenChange, cart, onConfirm, isSa
         if (isSaving) return;
         
         const finalPayments: SalePayment[] = paidAmount > 0 ? [{ method: 'cash', amount: paidAmount }] : [];
-        onConfirm(finalPayments);
+        onConfirm(finalPayments, settleDebt);
     };
 
     const handleDialogChange = (open: boolean) => {
@@ -91,12 +91,7 @@ export function FinalizeSaleDialog({ isOpen, onOpenChange, cart, onConfirm, isSa
                                 <span className="font-medium">{customerBalance.toFixed(1)} DA</span>
                             </div>
                         )}
-                        {hasDebt && (
-                             <div className="flex items-center space-x-2 pt-2">
-                                <Switch id="settle-debt" checked={settleDebt} onCheckedChange={setSettleDebt} disabled={!hasDebt} />
-                                <Label htmlFor="settle-debt" className="text-sm font-medium">Régler la dette avec ce paiement</Label>
-                            </div>
-                        )}
+                        
                     </div>
                     
                     {/* Total Display */}
@@ -104,14 +99,22 @@ export function FinalizeSaleDialog({ isOpen, onOpenChange, cart, onConfirm, isSa
                         <span className="text-lg font-bold">Total à Payer</span>
                         <span className="text-3xl font-black text-primary">{totalToPay.toFixed(1)} DA</span>
                     </div>
+                    
+                    {hasDebt && (
+                        <div className="flex items-center space-x-2 pt-2 justify-center">
+                            <Label htmlFor="settle-debt" className="text-sm font-medium">Régler la dette avec ce paiement</Label>
+                            <Switch id="settle-debt" checked={settleDebt} onCheckedChange={setSettleDebt} disabled={!hasDebt} />
+                        </div>
+                    )}
+
 
                     {/* Payment Input Section */}
                     <div className="space-y-3">
-                        <Label htmlFor="paidAmount" className="text-base">Montant Encaissé</Label>
+                        <Label htmlFor="paidAmount" className="text-base font-semibold">Montant Reçu</Label>
                         <Input 
                             id="paidAmount" 
                             type="number" 
-                            className="h-14 text-2xl font-bold text-center"
+                            className="h-16 text-3xl font-bold text-center tracking-wider"
                             placeholder="0.00"
                             value={paidAmountStr}
                             onChange={(e) => setPaidAmountStr(e.target.value)}
@@ -138,13 +141,13 @@ export function FinalizeSaleDialog({ isOpen, onOpenChange, cart, onConfirm, isSa
                     <div className="space-y-2 text-sm pt-4 border-t">
                         {remainingBalance > 0 && (
                             <div className="flex justify-between items-center text-destructive p-3 rounded-lg bg-destructive/10">
-                                <span className="font-semibold">Solde à payer :</span>
+                                <span className="font-semibold">Montant Restant :</span>
                                 <span className="text-lg font-bold">{remainingBalance.toFixed(1)} DA</span>
                             </div>
                         )}
                         {change > 0 && (
                             <div className="flex justify-between items-center text-green-700 dark:text-green-300 p-3 rounded-lg bg-green-500/10">
-                                <span className="font-semibold">Monnaie à rendre :</span>
+                                <span className="font-semibold">Montant à Rendre :</span>
                                 <span className="text-lg font-bold">{change.toFixed(1)} DA</span>
                             </div>
                         )}

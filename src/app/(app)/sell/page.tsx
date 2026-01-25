@@ -206,6 +206,30 @@ export default function SellPage() {
         return sortedProducts.slice(0, 15);
     }, [products, sales]);
 
+    // This effect will run when the component unmounts
+    useEffect(() => {
+        return () => {
+            // When navigating away, reset the cart state in localStorage to a single default cart
+            if (user) {
+                try {
+                    const defaultCartId = uuidv4();
+                    const defaultCarts: Cart[] = [{
+                        id: defaultCartId,
+                        name: 'Panier 1',
+                        items: [],
+                        customerId: null,
+                        customerName: 'Vente au comptoir',
+                        discount: { type: 'fixed', value: 0 }
+                    }];
+                    localStorage.setItem(`ipos-carts-${user.uid}`, JSON.stringify(defaultCarts));
+                    localStorage.setItem(`ipos-active-cart-id-${user.uid}`, defaultCartId);
+                } catch (error) {
+                    console.error("Failed to reset carts in localStorage on unmount", error);
+                }
+            }
+        };
+    }, [user]); // Depend on user to have access to user.uid in the cleanup function
+
 
     useEffect(() => {
         if (!isUserLoading && !user) {
@@ -345,7 +369,13 @@ export default function SellPage() {
 
     const handleClearCart = () => {
         setCarts(prevCarts => prevCarts.map(cart =>
-            cart.id === activeCartId ? { ...cart, items: [], discount: { type: 'fixed', value: 0 } } : cart
+            cart.id === activeCartId ? { 
+                ...cart, 
+                items: [], 
+                customerId: null,
+                customerName: 'Vente au comptoir',
+                discount: { type: 'fixed', value: 0 } 
+            } : cart
         ));
     };
 
@@ -377,7 +407,7 @@ export default function SellPage() {
         }
     };
     
-    const handleFinalizeSale = async (payments: SalePayment[]) => {
+    const handleFinalizeSale = async (payments: SalePayment[], settleDebt: boolean) => {
         if (!firestore || !user || !activeCart) return;
 
         setIsSavingSale(true);
@@ -415,7 +445,7 @@ export default function SellPage() {
                 const amountForDebt = totalAmountFromPayments - amountForThisSale;
 
                 // 4. Handle debt payment if applicable
-                if (amountForDebt > 0 && cartToPay.customerId) {
+                if (amountForDebt > 0 && cartToPay.customerId && settleDebt) {
                     const paymentRef = doc(collection(firestore, 'users', user.uid, 'payments'));
                     transaction.set(paymentRef, {
                         customerId: cartToPay.customerId,
