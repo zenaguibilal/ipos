@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
@@ -214,9 +213,22 @@ export function SellPageClient() {
     };
 
     const handleUpdateDiscount = (type: 'fixed' | 'percentage', value: number) => {
+        if (!activeCart) return;
+
+        const subtotal = activeCart.items.reduce((acc, item) => acc + (item.price * item.cartQuantity), 0);
+        let validatedValue = Math.max(0, value); // No negative discounts
+
+        if (type === 'fixed' && validatedValue > subtotal) {
+            toast.warning("La remise ne peut excéder le sous-total.");
+            validatedValue = subtotal;
+        } else if (type === 'percentage' && validatedValue > 100) {
+            toast.warning("La remise ne peut excéder 100%.");
+            validatedValue = 100;
+        }
+
         setCarts(prevCarts => prevCarts.map(cart =>
             cart.id === activeCartId
-                ? { ...cart, discount: { type, value } }
+                ? { ...cart, discount: { type, value: validatedValue } }
                 : cart
         ));
     };
@@ -456,5 +468,3 @@ export function SellPageClient() {
         </div>
     );
 }
-
-    
