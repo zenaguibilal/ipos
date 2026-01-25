@@ -425,7 +425,7 @@ export default function SellPage() {
         if (finalAmountPaid >= total) finalPaymentStatus = 'paid';
         else if (finalAmountPaid > 0) finalPaymentStatus = 'partial';
     
-        const newSaleData: Omit<Sale, 'id' | 'createdAt'> = {
+        const newSaleData: Omit<Sale, 'id'> = {
             invoiceNumber: `INV-${Date.now()}`,
             items: cartToPay.items.map(item => ({
                 id: item.id,
@@ -444,6 +444,7 @@ export default function SellPage() {
             paymentMethod: paymentMethod,
             customerId: cartToPay.customerId ?? undefined,
             customerName: cartToPay.customerName,
+            createdAt: serverTimestamp(),
         };
     
         try {
@@ -472,13 +473,13 @@ export default function SellPage() {
     
                 // 2. Create the sale document
                 const saleRef = doc(firestore, 'users', user.uid, 'sales', saleId);
-                transaction.set(saleRef, { ...newSaleData, createdAt: serverTimestamp() });
+                transaction.set(saleRef, newSaleData);
             });
     
             // SUCCESS: If transaction completes without errors
             const completedSaleDataForDialog: Sale = {
                 id: saleId,
-                ...newSaleData,
+                ...(newSaleData as Omit<Sale, 'id' | 'createdAt'>),
                 createdAt: new Date(),
             };
     
@@ -762,15 +763,69 @@ export default function SellPage() {
                                     </CardContent>
                                 </Card>
 
-                                <Card className="flex-grow flex flex-col">
-                                    <CardHeader className="p-4 flex flex-row items-center justify-between">
-                                        <CardTitle className="text-lg">Panier ({cart.items.length})</CardTitle>
+                                <Card>
+                                    <CardContent className="p-4 flex-col items-stretch space-y-2">
+                                        {(
+                                            () => {
+                                                const subtotal = cart.items.reduce((acc, item) => acc + (item.price * item.cartQuantity), 0);
+                                                const discount = cart.discountType === 'fixed' ? cart.discountValue : subtotal * (cart.discountValue / 100);
+                                                const total = subtotal - discount > 0 ? subtotal - discount : 0;
+                                                
+                                                return (
+                                                    <>
+                                                        <div className="flex justify-between text-md">
+                                                            <span>Sous-total</span>
+                                                            <span>{subtotal.toFixed(1)} DA</span>
+                                                        </div>
+                                                        <div className="flex justify-between items-center text-sm">
+                                                            <div className="flex items-center gap-1">
+                                                                <Button size="sm" variant={cart.discountType === 'fixed' ? 'secondary' : 'ghost'} onClick={() => handleDiscountTypeChange(cart, 'fixed')}>Remise (DA)</Button>
+                                                                <Button size="sm" variant={cart.discountType === 'percentage' ? 'secondary' : 'ghost'} onClick={() => handleDiscountTypeChange(cart, 'percentage')}>Remise (%)</Button>
+                                                            </div>
+                                                            <Input type="number" value={cart.discountValue} onChange={(e) => handleDiscountValueChange(cart, e.target.value)} className="w-24 h-8" />
+                                                        </div>
+                                                        <div className="flex justify-between text-sm text-muted-foreground">
+                                                            <span>Total Remise</span>
+                                                            <span>- {discount.toFixed(1)} DA</span>
+                                                        </div>
+                                                        <div className="border-t pt-2 mt-2">
+                                                            <div className="flex justify-between text-2xl font-bold text-primary">
+                                                                <span>TOTAL</span>
+                                                                <span>{total.toFixed(1)} DA</span>
+                                                            </div>
+                                                        </div>
+                                                    </>
+                                                )
+                                            }
+                                        )()}
+                                    </CardContent>
+                                    <CardFooter className="p-4 pt-0 flex gap-2">
+                                        <Button 
+                                            className="w-full" 
+                                            disabled={cart.items.length === 0}
+                                            onClick={() => {
+                                                const subtotal = cart.items.reduce((acc, item) => acc + (item.price * item.cartQuantity), 0);
+                                                const discount = cart.discountType === 'fixed' ? cart.discountValue : subtotal * (cart.discountValue / 100);
+                                                const total = subtotal - discount > 0 ? subtotal - discount : 0;
+                                                setAmountPaid(total.toFixed(1));
+                                                setPaymentMethod('cash');
+                                                setCartToPay(cart);
+                                            }}
+                                        >
+                                            <CheckCircle className="mr-2 h-4 w-4" /> Finaliser
+                                        </Button>
                                         {cart.items.length > 0 && (
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => setCartToClear(cart)}>
+                                            <Button variant="outline" size="icon" className="text-destructive" onClick={() => setCartToClear(cart)}>
                                                 <Trash2 className="h-4 w-4" />
                                                 <span className="sr-only">Vider le panier</span>
                                             </Button>
                                         )}
+                                    </CardFooter>
+                                </Card>
+
+                                <Card className="flex-grow flex flex-col">
+                                    <CardHeader className="p-4">
+                                        <CardTitle className="text-lg">Articles ({cart.items.length})</CardTitle>
                                     </CardHeader>
                                     <CardContent className="p-0 flex-1 flex flex-col">
                                         <ScrollArea className="flex-grow">
@@ -807,61 +862,8 @@ export default function SellPage() {
                                             )}
                                         </ScrollArea>
                                     </CardContent>
-                                    {cart.items.length > 0 && (
-                                        <CardFooter className="p-4 flex-col items-stretch space-y-2 border-t">
-                                            {(
-                                                () => {
-                                                    const subtotal = cart.items.reduce((acc, item) => acc + (item.price * item.cartQuantity), 0);
-                                                    const discount = cart.discountType === 'fixed' ? cart.discountValue : subtotal * (cart.discountValue / 100);
-                                                    const total = subtotal - discount > 0 ? subtotal - discount : 0;
-                                                    
-                                                    return (
-                                                        <>
-                                                            <div className="flex justify-between text-md">
-                                                                <span>Sous-total</span>
-                                                                <span>{subtotal.toFixed(1)} DA</span>
-                                                            </div>
-                                                            <div className="flex justify-between items-center text-sm">
-                                                                <div className="flex items-center gap-1">
-                                                                    <Button size="sm" variant={cart.discountType === 'fixed' ? 'secondary' : 'ghost'} onClick={() => handleDiscountTypeChange(cart, 'fixed')}>Remise (DA)</Button>
-                                                                    <Button size="sm" variant={cart.discountType === 'percentage' ? 'secondary' : 'ghost'} onClick={() => handleDiscountTypeChange(cart, 'percentage')}>Remise (%)</Button>
-                                                                </div>
-                                                                <Input type="number" value={cart.discountValue} onChange={(e) => handleDiscountValueChange(cart, e.target.value)} className="w-24 h-8" />
-                                                            </div>
-                                                            <div className="flex justify-between text-sm text-muted-foreground">
-                                                                <span>Total Remise</span>
-                                                                <span>- {discount.toFixed(1)} DA</span>
-                                                            </div>
-                                                            <div className="border-t pt-2 mt-2">
-                                                                <div className="flex justify-between text-2xl font-bold text-primary">
-                                                                    <span>TOTAL</span>
-                                                                    <span>{total.toFixed(1)} DA</span>
-                                                                </div>
-                                                            </div>
-                                                        </>
-                                                    )
-                                                }
-                                            )()}
-                                        </CardFooter>
-                                    )}
                                 </Card>
 
-                                <div className="mt-auto">
-                                    <Button 
-                                        className="w-full text-lg py-7" 
-                                        disabled={cart.items.length === 0}
-                                        onClick={() => {
-                                            const subtotal = cart.items.reduce((acc, item) => acc + (item.price * item.cartQuantity), 0);
-                                            const discount = cart.discountType === 'fixed' ? cart.discountValue : subtotal * (cart.discountValue / 100);
-                                            const total = subtotal - discount > 0 ? subtotal - discount : 0;
-                                            setAmountPaid(total.toFixed(1));
-                                            setPaymentMethod('cash');
-                                            setCartToPay(cart);
-                                        }}
-                                    >
-                                        <CheckCircle className="mr-2 h-5 w-5" /> Finaliser la vente
-                                    </Button>
-                                </div>
                             </TabsContent>
                         ))}
                     </Tabs>
