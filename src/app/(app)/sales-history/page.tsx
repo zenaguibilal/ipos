@@ -170,16 +170,20 @@ export default function SalesHistoryPage() {
 
     }, [combinedTransactions, searchQuery, statusFilter, dateRange]);
 
+    const customersMap = useMemo(() => {
+        if (!customers) return new Map<string, Customer>();
+        return new Map(customers.map(c => [c.id, c]));
+    }, [customers]);
 
     const selectedCustomer = useMemo(() => {
-        if (!selectedSale || !customers) return null;
-        return customers.find(c => c.id === selectedSale.customerId) || null;
-    }, [selectedSale, customers]);
+        if (!selectedSale?.customerId) return null;
+        return customersMap.get(selectedSale.customerId) || null;
+    }, [selectedSale, customersMap]);
 
     const customerForShare = useMemo(() => {
-        if (!saleForShare || !customers) return null;
-        return customers.find(c => c.id === saleForShare.customerId) || null;
-    }, [saleForShare, customers]);
+        if (!saleForShare?.customerId) return null;
+        return customersMap.get(saleForShare.customerId) || null;
+    }, [saleForShare, customersMap]);
 
 
     const handleExportToCSV = () => {
@@ -262,7 +266,7 @@ export default function SalesHistoryPage() {
         await new Promise(resolve => setTimeout(resolve, 100));
     
         const element = a4ReceiptRef.current;
-        const customer = customers?.find(c => c.id === sale.customerId);
+        const customer = sale.customerId ? customersMap.get(sale.customerId) : null;
     
         if (!element || !customer) {
             toast.error("Erreur: Impossible de générer l'image de la facture.");
@@ -333,7 +337,7 @@ export default function SalesHistoryPage() {
     };
 
     const handleSendReceipt = (sale: Sale) => {
-        const customer = customers?.find(c => c.id === sale.customerId);
+        const customer = sale.customerId ? customersMap.get(sale.customerId) : null;
         if (!customer || !customer.phone) {
             toast.error("Le numéro de téléphone de ce client n'est pas disponible.");
             return;
@@ -342,7 +346,7 @@ export default function SalesHistoryPage() {
     };
 
     const handleSendReminder = (sale: Sale) => {
-        const customer = customers?.find(c => c.id === sale.customerId);
+        const customer = sale.customerId ? customersMap.get(sale.customerId) : null;
         if (!customer || !customer.phone) {
             toast.error("Le numéro de téléphone de ce client n'est pas disponible pour un rappel.");
             return;
@@ -511,7 +515,9 @@ export default function SalesHistoryPage() {
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                                             {group.transactions.map((transaction, index) => {
-                                                const customerForSale = transaction.type === 'sale' ? (customers ? customers.find(c => c.id === transaction.data.customerId) : null) : null;
+                                                const customerForSale = transaction.type === 'sale' && transaction.data.customerId
+                                                    ? customersMap.get(transaction.data.customerId)
+                                                    : null;
                                                 return (
                                                     <TransactionCard
                                                         key={`${transaction.type}-${transaction.data.id}-${index}`}
