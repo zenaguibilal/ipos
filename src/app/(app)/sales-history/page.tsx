@@ -285,7 +285,7 @@ export default function SalesHistoryPage() {
                 backgroundColor: '#ffffff',
             });
             
-            canvas.toBlob(async (blob) => {
+            canvas.toBlob(async (blob: Blob | null) => {
                 if (!blob) {
                     toast.error("Erreur lors de la création de l'image.");
                     setSaleForShare(null);
