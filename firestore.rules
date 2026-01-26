@@ -14,6 +14,8 @@
  * /users/{userId}/stockIntakes/{stockIntakeId} - Records of stock received.
  * /users/{userId}/purchaseOrders/{purchaseOrderId} - Purchase orders created by the user.
  * /users/{userId}/returns/{returnId} - Product returns processed by the user.
+ * /users/{userId}/breadCustomers/{breadCustomerId} - Recurring bread customers.
+ * /users/{userId}/dailyBreadOrders/{dailyBreadOrderId} - Daily status for bread orders.
  *
  */
 rules_version = '2';
@@ -81,8 +83,16 @@ service cloud.firestore {
       match /returns/{returnId} {
         allow read, write: if isOwner(userId);
       }
+
+      // Rules for bread customers.
+      match /breadCustomers/{breadCustomerId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // Rules for daily bread orders.
+      match /dailyBreadOrders/{dailyBreadOrderId} {
+        allow read, write: if isOwner(userId);
+      }
     }
   }
 }
-
-    

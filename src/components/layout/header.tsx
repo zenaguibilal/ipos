@@ -15,7 +15,8 @@ import {
   Package,
   Users,
   Archive,
-  Store
+  Store,
+  ListChecks,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -46,6 +47,7 @@ const navLinks = [
   { href: '/stock', label: 'Stock', icon: Archive },
   { href: '/sales-history', label: 'Historique', icon: History },
   { href: '/returns', label: 'Retours', icon: Undo2 },
+  { href: '/bread', label: 'Pain', icon: ListChecks },
   { href: '/notifications', label: 'Alertes', icon: Bell },
 ];
 

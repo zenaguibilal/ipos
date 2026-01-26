@@ -48,10 +48,14 @@ export function CompanyProfileForm({ user }: CompanyProfileFormProps) {
         setIsSaving(true);
         setError(null);
 
-        setDocumentNonBlocking(companyDocRef, {
+        const dataToSave = {
             ...formState,
+            breadPrice: formState.breadPrice ? Number(formState.breadPrice) : undefined,
+            breadPurchasePrice: formState.breadPurchasePrice ? Number(formState.breadPurchasePrice) : undefined,
             updatedAt: serverTimestamp()
-        }, { merge: true }, {
+        };
+
+        setDocumentNonBlocking(companyDocRef, dataToSave, { merge: true }, {
             onSuccess: () => {
                 setIsSaving(false);
                 toast.success('Profil de l\'entreprise mis à jour avec succès.');
@@ -141,6 +145,20 @@ export function CompanyProfileForm({ user }: CompanyProfileFormProps) {
                             <div className="space-y-2">
                                 <Label htmlFor="website">Site Web</Label>
                                 <Input id="website" value={formState.website || ''} onChange={handleInputChange} disabled={isSaving} placeholder="https://www.exemple.com" />
+                            </div>
+                        </div>
+                        
+                        <div className="space-y-4 border-t pt-6">
+                            <h4 className="font-medium text-muted-foreground">Paramètres Spécifiques</h4>
+                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="breadPrice">Prix de vente du pain (DA)</Label>
+                                    <Input id="breadPrice" type="number" value={formState.breadPrice || ''} onChange={handleInputChange} disabled={isSaving} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="breadPurchasePrice">Prix d'achat du pain (DA)</Label>
+                                    <Input id="breadPurchasePrice" type="number" value={formState.breadPurchasePrice || ''} onChange={handleInputChange} disabled={isSaving} />
+                                </div>
                             </div>
                         </div>
 
