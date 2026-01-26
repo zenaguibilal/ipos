@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { Product } from '@/lib/types';
@@ -7,6 +8,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { MoreHorizontal, Edit, Trash2 } from 'lucide-react';
 import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
+import placeholderImages from '@/lib/placeholder-images.json';
 
 interface ProductCardProps {
     product: Product;
@@ -14,19 +16,31 @@ interface ProductCardProps {
     onDelete: (product: Product) => void;
 }
 
+type Placeholder = { url: string; width: number; height: number; hint: string };
+const placeholders = placeholderImages as Record<string, Placeholder>;
+
+const getPlaceholder = (category?: string): Placeholder => {
+    if (category && placeholders[category]) {
+        return placeholders[category];
+    }
+    return placeholders.default;
+};
+
 export function ProductCard({ product, onEdit, onDelete }: ProductCardProps) {
     const isLowStock = product.quantity <= product.minStockLevel;
+    const placeholder = getPlaceholder(product.category);
+    const imageUrl = product.imageUrl || placeholder.url;
 
     return (
         <Card className="flex flex-col transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
             <CardHeader className="p-0 relative">
                 <Image
-                    src={product.imageUrl || `https://picsum.photos/seed/${product.id}/400`}
+                    src={imageUrl}
                     alt={product.name}
-                    width={400}
-                    height={300}
+                    width={placeholder.width}
+                    height={placeholder.height}
                     className="rounded-t-lg object-cover aspect-[4/3]"
-                    data-ai-hint={product.name.split(' ').slice(0, 2).join(' ')}
+                    data-ai-hint={product.imageUrl ? product.name.split(' ').slice(0, 2).join(' ') : placeholder.hint}
                 />
                  {isLowStock && (
                      <Badge variant="destructive" className="absolute top-2 right-2">Stock Faible</Badge>

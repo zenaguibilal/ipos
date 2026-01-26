@@ -1,0 +1,44 @@
+{
+  "default": {
+    "url": "https://picsum.photos/seed/ipos-item/400/300",
+    "width": 400,
+    "height": 300,
+    "hint": "product item"
+  },
+  "Boulangerie": {
+    "url": "https://picsum.photos/seed/ipos-bakery/400/300",
+    "width": 400,
+    "height": 300,
+    "hint": "bread pastry"
+  },
+  "Boissons": {
+    "url": "https://picsum.photos/seed/ipos-drinks/400/300",
+    "width": 400,
+    "height": 300,
+    "hint": "drinks soda"
+  },
+  "Épicerie": {
+    "url": "https://picsum.photos/seed/ipos-grocery/400/300",
+    "width": 400,
+    "height": 300,
+    "hint": "grocery food"
+  },
+  "Fruits & Légumes": {
+    "url": "https://picsum.photos/seed/ipos-produce/400/300",
+    "width": 400,
+    "height": 300,
+    "hint": "fruits vegetables"
+  },
+  "Produits Laitiers": {
+    "url": "https://picsum.photos/seed/ipos-dairy/400/300",
+    "width": 400,
+    "height": 300,
+    "hint": "milk cheese"
+  },
+  "Personnalisé": {
+    "url": "https://picsum.photos/seed/ipos-custom/400/300",
+    "width": 400,
+    "height": 300,
+    "hint": "custom item"
+  }
+}

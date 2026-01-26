@@ -22,12 +22,28 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Label } from '@/components/ui/label';
 import { v4 as uuidv4 } from 'uuid';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import Image from 'next/image';
+import placeholderImages from '@/lib/placeholder-images.json';
+
+
+type Placeholder = { url: string; width: number; height: number; hint: string };
+const placeholders = placeholderImages as Record<string, Placeholder>;
+
+const getPlaceholder = (category?: string): Placeholder => {
+    if (category && placeholders[category]) {
+        return placeholders[category];
+    }
+    return placeholders.default;
+};
 
 
 // SellProductCard Component
 const SellProductCard = ({ product, onAddToCart }: { product: Product, onAddToCart: (product: Product) => void }) => {
     const isOutOfStock = product.quantity <= 0;
     const isLowStock = !isOutOfStock && product.quantity <= product.minStockLevel;
+
+    const placeholder = getPlaceholder(product.category);
+    const imageUrl = product.imageUrl || placeholder.url;
 
     return (
         <Card
@@ -38,11 +54,13 @@ const SellProductCard = ({ product, onAddToCart }: { product: Product, onAddToCa
             )}
         >
             <div className="relative">
-                <img
-                    src={product.imageUrl || `https://picsum.photos/seed/${product.id}/300`}
+                <Image
+                    src={imageUrl}
                     alt={product.name}
+                    width={placeholder.width}
+                    height={placeholder.height}
                     className="w-full h-28 object-cover"
-                    data-ai-hint={product.name.split(' ').slice(0, 2).join(' ')}
+                    data-ai-hint={product.imageUrl ? product.name.split(' ').slice(0, 2).join(' ') : placeholder.hint}
                 />
                 {(isOutOfStock || isLowStock) && (
                     <div className={cn(
@@ -67,9 +85,19 @@ const SellProductCard = ({ product, onAddToCart }: { product: Product, onAddToCa
 
 // CartItemCard Component
 const CartItemCard = ({ item, onUpdateQuantity, onRemoveItem }: { item: CartItem, onUpdateQuantity: (itemId: string, newQuantity: number) => void, onRemoveItem: (itemId: string) => void }) => {
+    const placeholder = getPlaceholder(item.category);
+    const imageUrl = item.imageUrl || placeholder.url;
+
     return (
         <div className={cn("flex items-center gap-3 py-3", item.flash && 'animate-flash')}>
-            <img src={item.imageUrl || `https://picsum.photos/seed/${item.id}/100`} alt={item.name} className="h-12 w-12 rounded-md object-cover" />
+            <Image 
+                src={imageUrl} 
+                alt={item.name} 
+                width={100}
+                height={100}
+                className="h-12 w-12 rounded-md object-cover"
+                data-ai-hint={item.imageUrl ? item.name.split(' ').slice(0, 2).join(' ') : placeholder.hint}
+            />
             <div className="flex-grow overflow-hidden">
                 <p className="font-semibold truncate text-sm">{item.name}</p>
                 <p className="text-xs text-muted-foreground">{item.cartQuantity} x {item.price.toFixed(1)} DA</p>
@@ -236,7 +264,7 @@ export default function SellPage() {
             createdAt: new Date(),
             category: 'Personnalisé',
             barcodes: [],
-            imageUrl: `https://picsum.photos/seed/custom-${Date.now()}/300`
+            imageUrl: placeholders['Personnalisé'].url
         };
     
         const newItems = [...activeCart.items.map(i => ({...i, flash: false})), customItem];
