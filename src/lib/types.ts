@@ -71,6 +71,7 @@ export interface Sale {
     customerId?: string;
     customerName?: string;
     createdAt: Timestamp | Date;
+    breadOrderDate?: string;
 }
 
 export interface Payment {

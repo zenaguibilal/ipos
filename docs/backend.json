@@ -237,6 +237,10 @@
           "type": "string",
           "description": "Timestamp indicating when the sale occurred.",
           "format": "date-time"
+        },
+        "breadOrderDate": {
+          "type": "string",
+          "description": "The date of the bread order this sale was generated from, in YYYY-MM-DD format. Used for querying."
         }
       },
       "required": [

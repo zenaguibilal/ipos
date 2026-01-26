@@ -1,6 +1,7 @@
+
 'use client';
 
-import type { BreadCustomer, BreadOrder } from '@/lib/types';
+import type { BreadCustomer, BreadOrder, Sale } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -11,6 +12,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 
 interface BreadOrderCardProps {
     order: BreadOrder;
+    sale?: Sale;
+    onViewSale: (sale: Sale) => void;
     onEditCustomer: (customer: BreadCustomer) => void;
     onDeleteCustomer: (customer: BreadCustomer) => void;
     onSetOrder: (order: BreadOrder) => void;
@@ -19,7 +22,7 @@ interface BreadOrderCardProps {
     isGloballyProcessing?: boolean;
 }
 
-export function BreadOrderCard({ order, onEditCustomer, onDeleteCustomer, onSetOrder, onGenerateSale, isProcessing, isGloballyProcessing }: BreadOrderCardProps) {
+export function BreadOrderCard({ order, sale, onViewSale, onEditCustomer, onDeleteCustomer, onSetOrder, onGenerateSale, isProcessing, isGloballyProcessing }: BreadOrderCardProps) {
     
     const displayQuantity = order.todaysOrder?.quantity ?? order.defaultOrderQuantity;
     const isCustomOrder = !!order.todaysOrder;
@@ -37,14 +40,16 @@ export function BreadOrderCard({ order, onEditCustomer, onDeleteCustomer, onSetO
                     <div className="space-y-1">
                         <CardTitle className="text-xl flex items-center gap-2">
                             {order.name}
-                            {isProcessed && (
+                             {isProcessed && sale && (
                                 <TooltipProvider>
                                     <Tooltip>
-                                        <TooltipTrigger>
-                                            <CheckCircle2 className="h-5 w-5 text-green-600" />
+                                        <TooltipTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-green-600 hover:bg-green-100 dark:hover:bg-green-900/50 rounded-full" onClick={() => onViewSale(sale)}>
+                                                <Receipt className="h-4 w-4" />
+                                            </Button>
                                         </TooltipTrigger>
                                         <TooltipContent>
-                                            <p>Vente générée pour cette commande.</p>
+                                            <p>Voir la vente N° {sale.invoiceNumber}</p>
                                         </TooltipContent>
                                     </Tooltip>
                                 </TooltipProvider>

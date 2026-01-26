@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -19,6 +20,10 @@ import { SetOrderDialog } from '@/components/bread/set-order-dialog';
 import { BreadOrderCard } from '@/components/bread/bread-order-card';
 import { BreadOrderCardSkeleton } from '@/components/bread/bread-order-card-skeleton';
 import { toast } from 'sonner';
+import dynamic from 'next/dynamic';
+
+const SaleDetailsDialog = dynamic(() => import('@/components/sales/sale-details-dialog').then(mod => mod.SaleDetailsDialog));
+
 
 export default function BreadPage() {
     const { user, isUserLoading } = useUser();
@@ -33,6 +38,8 @@ export default function BreadPage() {
     const [orderToEdit, setOrderToEdit] = useState<BreadOrder | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
     const [processingOrderId, setProcessingOrderId] = useState<string | null>(null);
+    const [viewingSale, setViewingSale] = useState<Sale | null>(null);
+
 
     const dateKey = format(selectedDate, 'yyyy-MM-dd');
 
@@ -40,16 +47,27 @@ export default function BreadPage() {
     const customersQuery = useMemoFirebase(() => (user && firestore) ? query(collection(firestore, 'users', user.uid, 'breadCustomers'), orderBy('name', 'asc')) : null, [user, firestore]);
     const ordersQuery = useMemoFirebase(() => (user && firestore) ? query(collection(firestore, 'users', user.uid, 'dailyBreadOrders'), where('date', '==', dateKey)) : null, [user, firestore, dateKey]);
     const companyProfileRef = useMemoFirebase(() => (user && firestore) ? doc(firestore, 'users', user.uid, 'companyProfile', 'main') : null, [user, firestore]);
+    const salesQuery = useMemoFirebase(() => (user && firestore) ? query(
+        collection(firestore, 'users', user.uid, 'sales'),
+        where('breadOrderDate', '==', dateKey)
+    ) : null, [user, firestore, dateKey]);
     
     const { data: breadCustomers, isLoading: isLoadingCustomers } = useCollection<BreadCustomer>(customersQuery);
     const { data: dailyOrders, isLoading: isLoadingOrders } = useCollection<DailyBreadOrder>(ordersQuery);
     const { data: companyProfile, isLoading: isCompanyProfileLoading } = useDoc<CompanyProfile>(companyProfileRef);
+    const { data: breadSales, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
 
     useEffect(() => {
         if (!isUserLoading && !user) {
             router.push('/login');
         }
     }, [user, isUserLoading, router]);
+    
+    const salesMap = useMemo<Map<string, Sale>>(() => {
+        if (!breadSales) return new Map();
+        return new Map(breadSales.map(sale => [sale.id, sale]));
+    }, [breadSales]);
+
 
     const breadOrders = useMemo<BreadOrder[]>(() => {
         if (!breadCustomers) return [];
@@ -150,6 +168,7 @@ export default function BreadPage() {
            payments: [],
            customerId: order.id,
            customerName: order.name,
+           breadOrderDate: dateKey,
        };
        batch.set(newSaleRef, { ...saleData, createdAt: serverTimestamp() });
        
@@ -222,7 +241,7 @@ export default function BreadPage() {
         }
     };
 
-    const isLoading = isUserLoading || isLoadingCustomers || isLoadingOrders || isCompanyProfileLoading;
+    const isLoading = isUserLoading || isLoadingCustomers || isLoadingOrders || isCompanyProfileLoading || isLoadingSales;
 
     if (!user && !isLoading) {
         return null;
@@ -253,6 +272,15 @@ export default function BreadPage() {
                     order={orderToEdit}
                     date={selectedDate}
                     userId={user.uid}
+                />
+            )}
+            {viewingSale && (
+                <SaleDetailsDialog
+                    isOpen={!!viewingSale}
+                    onOpenChange={() => setViewingSale(null)}
+                    sale={viewingSale}
+                    companyProfile={companyProfile}
+                    customer={null} 
                 />
             )}
 
@@ -357,6 +385,8 @@ export default function BreadPage() {
                                         <BreadOrderCard
                                             key={order.id}
                                             order={order}
+                                            sale={order.todaysOrder?.saleId ? salesMap.get(order.todaysOrder.saleId) : undefined}
+                                            onViewSale={setViewingSale}
                                             onEditCustomer={handleEditCustomer}
                                             onDeleteCustomer={setCustomerToDelete}
                                             onSetOrder={handleSetOrder}
@@ -378,6 +408,8 @@ export default function BreadPage() {
                                                 <BreadOrderCard
                                                     key={order.id}
                                                     order={order}
+                                                    sale={order.todaysOrder?.saleId ? salesMap.get(order.todaysOrder.saleId) : undefined}
+                                                    onViewSale={setViewingSale}
                                                     onEditCustomer={handleEditCustomer}
                                                     onDeleteCustomer={setCustomerToDelete}
                                                     onSetOrder={handleSetOrder}
