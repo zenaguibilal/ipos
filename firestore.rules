@@ -86,6 +86,3 @@ service cloud.firestore {
 }
 
     
-    
-
-    
