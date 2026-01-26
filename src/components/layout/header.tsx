@@ -17,6 +17,7 @@ import {
   Archive,
   Store,
   ListChecks,
+  ShoppingCart,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -41,6 +42,7 @@ import { AnimatedLogo } from './animated-logo';
 
 const navLinks = [
   { href: '/dashboard', label: 'Tableau de bord', icon: BarChart3 },
+  { href: '/sell', label: 'Caisse', icon: ShoppingCart },
   { href: '/products', label: 'Produits', icon: Package },
   { href: '/customers', label: 'Clients', icon: Users },
   { href: '/stock', label: 'Stock', icon: Archive },

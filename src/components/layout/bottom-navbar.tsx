@@ -4,7 +4,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  History,
+  ShoppingCart,
   Package,
   Users,
   BarChart3,
@@ -12,10 +12,10 @@ import {
 import { cn } from '@/lib/utils';
 
 const navLinks = [
+  { href: '/sell', label: 'Caisse', icon: ShoppingCart },
   { href: '/dashboard', label: 'Tableau', icon: BarChart3 },
   { href: '/products', label: 'Produits', icon: Package },
   { href: '/customers', label: 'Clients', icon: Users },
-  { href: '/sales-history', label: 'Historique', icon: History },
 ];
 
 export function BottomNavBar() {
@@ -30,7 +30,7 @@ export function BottomNavBar() {
             href={link.href}
             className={cn(
               'flex flex-col items-center justify-center gap-1 text-muted-foreground transition-colors hover:text-primary h-full',
-              pathname.startsWith(link.href) && 'text-primary'
+              (pathname === '/' && link.href === '/sell') || (link.href !== '/' && pathname.startsWith(link.href)) ? 'text-primary' : ''
             )}
           >
             <link.icon className="h-5 w-5" />
