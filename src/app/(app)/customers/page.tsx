@@ -99,30 +99,28 @@ export default function CustomersPage() {
         setIsDialogOpen(true);
     };
     
-    const handleExport = () => {
-        if (filteredCustomers.length === 0) {
-            toast.info("Aucun client à exporter.");
+    const handleExportDebts = () => {
+        const customersWithDebt = filteredCustomers.filter(c => c.outstandingBalance > 0);
+        if (customersWithDebt.length === 0) {
+            toast.info("Aucun client avec une dette à exporter.");
             return;
         }
 
-        const dataToExport = filteredCustomers.map(c => ({
-            'Prénom': c.firstName,
-            'Nom': c.lastName,
+        const dataToExport = customersWithDebt.map(c => ({
+            'Nom du client': `${c.firstName} ${c.lastName}`,
+            'Dette (DA)': c.outstandingBalance.toFixed(2),
             'Téléphone': c.phone || '',
-            'Dette Actuelle (DA)': c.outstandingBalance,
-            'Total Dépensé (DA)': c.totalSpent,
-            'Jour de Règlement': c.settlementDay || '',
         }));
 
         const csv = Papa.unparse(dataToExport);
         const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
-        link.download = 'liste_clients.csv';
+        link.download = 'dettes_clients.csv';
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        toast.success("Liste des clients exportée avec succès.");
+        toast.success("Liste des dettes clients exportée avec succès.");
     };
 
     const isLoading = isUserLoading || isLoadingCustomers || isLoadingSales || isLoadingPayments;
@@ -168,8 +166,8 @@ export default function CustomersPage() {
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={handleExport}>
-                                    <Download className="mr-2 h-4 w-4" /> Exporter en CSV
+                                <DropdownMenuItem onClick={handleExportDebts}>
+                                    <Download className="mr-2 h-4 w-4" /> Exporter les Dettes (CSV)
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
