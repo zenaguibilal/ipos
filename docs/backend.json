@@ -237,6 +237,11 @@
           "type": "string",
           "description": "Timestamp indicating when the sale occurred.",
           "format": "date-time"
+        },
+        "breadOrderDate": {
+          "type": "string",
+          "format": "date",
+          "description": "The date of the bread order this sale corresponds to, in YYYY-MM-DD format."
         }
       },
       "required": [
@@ -516,7 +521,8 @@
         "date": { "type": "string", "format": "date", "description": "The date of the order in YYYY-MM-DD format." },
         "isPaid": { "type": "boolean", "description": "Whether this specific day's order has been paid for." },
         "isDelivered": { "type": "boolean", "description": "Whether this specific day's order has been delivered." },
-        "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp of when this daily record was created/updated."}
+        "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp of when this daily record was created/updated."},
+        "saleId": { "type": "string", "description": "The ID of the sale generated when this order is paid." }
       },
       "required": ["breadCustomerId", "customerName", "quantity", "date", "isPaid", "isDelivered", "createdAt"]
     }

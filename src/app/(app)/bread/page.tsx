@@ -1,9 +1,10 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
-import { useUser, useFirestore, useCollection, useMemoFirebase, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
+import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { collection, query, where, orderBy, doc, serverTimestamp, writeBatch } from 'firebase/firestore';
+import { collection, query, where, orderBy, doc, serverTimestamp, writeBatch, deleteField } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Search, PlusCircle, Printer, RefreshCw, ListFilter, X, PackageOpen, Check, ShieldAlert, ChevronDown, Loader2 } from 'lucide-react';
@@ -28,7 +29,7 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Checkbox } from '@/components/ui/checkbox';
-import type { BreadCustomer, DailyBreadOrder, BreadOrder, CompanyProfile } from '@/lib/types';
+import type { BreadCustomer, DailyBreadOrder, BreadOrder, CompanyProfile, Sale } from '@/lib/types';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card } from '@/components/ui/card';
@@ -73,12 +74,11 @@ export default function BreadOrdersPage() {
     const dateString = format(selectedDate, 'yyyy-MM-dd');
     const customersQuery = useMemoFirebase(() => user && firestore ? query(collection(firestore, 'users', user.uid, 'breadCustomers'), orderBy('name', 'asc')) : null, [user, firestore]);
     const dailyOrdersQuery = useMemoFirebase(() => user && firestore ? query(collection(firestore, 'users', user.uid, 'dailyBreadOrders'), where('date', '==', dateString)) : null, [user, firestore, dateString]);
-    const companyProfileRef = useMemoFirebase(() => user && firestore ? collection(firestore, 'users', user.uid, 'companyProfile') : null, [user, firestore]);
+    const companyProfileRef = useMemoFirebase(() => user && firestore ? doc(firestore, 'users', user.uid, 'companyProfile', 'main') : null, [user, firestore]);
 
     const { data: breadCustomers, isLoading: isLoadingCustomers } = useCollection<BreadCustomer>(customersQuery);
     const { data: dailyOrders, isLoading: isLoadingDailyOrders } = useCollection<DailyBreadOrder>(dailyOrdersQuery);
-    const { data: companyProfileData, isLoading: isLoadingProfile } = useCollection<CompanyProfile>(companyProfileRef);
-    const companyProfile = useMemo(() => (companyProfileData && companyProfileData.length > 0) ? companyProfileData[0] : null, [companyProfileData]);
+    const { data: companyProfile, isLoading: isLoadingProfile } = useDoc<CompanyProfile>(companyProfileRef);
 
 
     useEffect(() => {
@@ -100,6 +100,7 @@ export default function BreadOrdersPage() {
                     quantity: dailyOrder.quantity,
                     isPaid: dailyOrder.isPaid,
                     isDelivered: dailyOrder.isDelivered,
+                    saleId: dailyOrder.saleId,
                 } : undefined,
             };
         }).filter(c => c.isActive);
@@ -142,44 +143,77 @@ export default function BreadOrdersPage() {
         }
     }, [selectedOrders.size, filteredOrders]);
 
-    const handleUpdateStatus = useCallback((order: BreadOrder, field: 'isPaid' | 'isDelivered', value: boolean) => {
+    const handleUpdateStatus = useCallback(async (order: BreadOrder, field: 'isPaid' | 'isDelivered', value: boolean) => {
         if (!firestore || !user) return;
-
-        setUpdatingItems(prev => [...prev, order.id]);
-
-        const dailyOrdersRef = collection(firestore, 'users', user.uid, 'dailyBreadOrders');
+    
+        const { breadPrice, breadPurchasePrice } = companyProfile || {};
         const todaysOrder = order.todaysOrder;
-
-        let docRef;
-        let data;
-
-        if (todaysOrder?.id) {
-            docRef = doc(dailyOrdersRef, todaysOrder.id);
-            data = { [field]: value };
-        } else {
-            docRef = doc(dailyOrdersRef);
-            data = {
-                breadCustomerId: order.id,
-                customerName: order.name,
-                quantity: order.defaultOrderQuantity,
-                date: dateString,
-                isPaid: field === 'isPaid' ? value : false,
-                isDelivered: field === 'isDelivered' ? value : false,
-                createdAt: serverTimestamp(),
-            };
+        
+        if (field === 'isPaid' && value && (!breadPrice || breadPrice <= 0)) {
+            toast.error("Prix du pain non défini. Veuillez le configurer dans le profil de l'entreprise.");
+            return;
         }
 
-        setDocumentNonBlocking(docRef, data, { merge: true }, {
-            onSuccess: () => {
-                 setUpdatingItems(prev => prev.filter(id => id !== order.id));
-            },
-            onError: (err) => {
-                console.error("Failed to update status:", err);
-                toast.error("Échec de la mise à jour du statut.");
-                setUpdatingItems(prev => prev.filter(id => id !== order.id));
+        setUpdatingItems(prev => [...prev, order.id]);
+        const batch = writeBatch(firestore);
+        const dailyOrdersRef = collection(firestore, 'users', user.uid, 'dailyBreadOrders');
+        
+        try {
+            if (field === 'isPaid') {
+                if (value) { // MARKING AS PAID
+                    if (todaysOrder?.isPaid) return;
+                    const quantity = todaysOrder?.quantity ?? order.defaultOrderQuantity;
+                    const total = quantity * (breadPrice as number);
+                    
+                    const newSaleRef = doc(collection(firestore, 'users', user.uid, 'sales'));
+                    const saleData: Omit<Sale, 'id' | 'createdAt'> & {createdAt: any} = {
+                        invoiceNumber: `PAIN-${Date.now()}`,
+                        items: [{ id: 'BREAD_PRODUCT', name: 'Pain', price: breadPrice as number, purchasePrice: breadPurchasePrice ?? 0, quantity }],
+                        subtotal: total,
+                        total,
+                        amountPaid: total,
+                        remainingBalance: 0,
+                        paymentStatus: 'paid',
+                        payments: [{ method: 'cash', amount: total }],
+                        customerId: order.id,
+                        customerName: order.name,
+                        breadOrderDate: dateString,
+                        createdAt: serverTimestamp(),
+                    };
+                    batch.set(newSaleRef, saleData);
+    
+                    const dailyOrderRef = todaysOrder?.id ? doc(dailyOrdersRef, todaysOrder.id) : doc(dailyOrdersRef);
+                    batch.set(dailyOrderRef, {
+                        breadCustomerId: order.id, customerName: order.name, date: dateString,
+                        quantity: quantity, isPaid: true, isDelivered: todaysOrder?.isDelivered ?? false,
+                        saleId: newSaleRef.id, createdAt: serverTimestamp(),
+                    }, { merge: true });
+                } else { // MARKING AS UNPAID
+                    if (!todaysOrder || !todaysOrder.isPaid) return;
+                    if (todaysOrder.saleId) {
+                        batch.delete(doc(firestore, 'users', user.uid, 'sales', todaysOrder.saleId));
+                    }
+                    batch.update(doc(dailyOrdersRef, todaysOrder.id), { isPaid: false, saleId: deleteField() });
+                }
+            } else { // UPDATING 'isDelivered'
+                const dailyOrderRef = todaysOrder?.id ? doc(dailyOrdersRef, todaysOrder.id) : doc(dailyOrdersRef);
+                batch.set(dailyOrderRef, {
+                    breadCustomerId: order.id, customerName: order.name, date: dateString,
+                    quantity: todaysOrder?.quantity ?? order.defaultOrderQuantity,
+                    isPaid: todaysOrder?.isPaid ?? false, isDelivered: value,
+                    createdAt: serverTimestamp(),
+                }, { merge: true });
             }
-        });
-    }, [firestore, user, dateString]);
+            
+            await batch.commit();
+            toast.success(`Statut pour ${order.name} mis à jour.`);
+        } catch (error) {
+            console.error("Failed to update status:", error);
+            toast.error("Échec de la mise à jour du statut.");
+        } finally {
+            setUpdatingItems(prev => prev.filter(id => id !== order.id));
+        }
+    }, [firestore, user, dateString, companyProfile]);
 
     const handleResetDay = useCallback(async () => {
         if (!firestore || !user || !dailyOrders || dailyOrders.length === 0) {
@@ -214,44 +248,72 @@ export default function BreadOrdersPage() {
             return;
         }
 
+        const { breadPrice, breadPurchasePrice } = companyProfile || {};
+        if (field === 'isPaid' && value && (!breadPrice || breadPrice <= 0)) {
+            toast.error("Prix du pain non défini. Veuillez le configurer dans le profil de l'entreprise.");
+            return;
+        }
+
         setIsUpdating(true);
-        
         const batch = writeBatch(firestore);
         const dailyOrdersRef = collection(firestore, 'users', user.uid, 'dailyBreadOrders');
-
-        const selectedCustomers = breadOrders.filter(bo => selectedOrders.has(bo.id));
-
-        for (const customer of selectedCustomers) {
-            const todaysOrder = customer.todaysOrder;
-            if (todaysOrder?.id) {
-                const docRef = doc(dailyOrdersRef, todaysOrder.id);
-                batch.update(docRef, { [field]: value });
-            } else {
-                const newDocRef = doc(dailyOrdersRef);
-                const data = {
-                    breadCustomerId: customer.id,
-                    customerName: customer.name,
-                    quantity: customer.defaultOrderQuantity,
-                    date: dateString,
-                    isPaid: field === 'isPaid' ? value : false,
-                    isDelivered: field === 'isDelivered' ? value : false,
-                    createdAt: serverTimestamp(),
-                };
-                batch.set(newDocRef, data);
-            }
-        }
+        const salesRef = collection(firestore, 'users', user.uid, 'sales');
         
         try {
+            const selectedCustomers = breadOrders.filter(bo => selectedOrders.has(bo.id));
+    
+            for (const customer of selectedCustomers) {
+                const todaysOrder = customer.todaysOrder;
+                if (field === 'isPaid') {
+                    if (value) { // MARKING AS PAID
+                        if (todaysOrder?.isPaid) continue;
+                        const quantity = todaysOrder?.quantity ?? customer.defaultOrderQuantity;
+                        const total = quantity * (breadPrice as number);
+                        
+                        const newSaleRef = doc(salesRef);
+                        const saleData: Omit<Sale, 'id' | 'createdAt'> & {createdAt: any} = {
+                           invoiceNumber: `PAIN-${Date.now()}-${customer.id.slice(0,4)}`,
+                           items: [{ id: 'BREAD_PRODUCT', name: 'Pain', price: breadPrice as number, purchasePrice: breadPurchasePrice ?? 0, quantity }],
+                           subtotal: total, total, amountPaid: total, remainingBalance: 0, paymentStatus: 'paid',
+                           payments: [{ method: 'cash', amount: total }], customerId: customer.id, customerName: customer.name,
+                           breadOrderDate: dateString, createdAt: serverTimestamp(),
+                        };
+                        batch.set(newSaleRef, saleData);
+    
+                        const dailyOrderRef = todaysOrder?.id ? doc(dailyOrdersRef, todaysOrder.id) : doc(dailyOrdersRef);
+                        batch.set(dailyOrderRef, {
+                            breadCustomerId: customer.id, customerName: customer.name, date: dateString,
+                            quantity, isPaid: true, isDelivered: todaysOrder?.isDelivered ?? false,
+                            saleId: newSaleRef.id, createdAt: serverTimestamp(),
+                        }, { merge: true });
+
+                    } else { // MARKING AS UNPAID
+                        if (!todaysOrder || !todaysOrder.isPaid) continue;
+                        if (todaysOrder.saleId) {
+                            batch.delete(doc(salesRef, todaysOrder.saleId));
+                        }
+                        batch.update(doc(dailyOrdersRef, todaysOrder.id), { isPaid: false, saleId: deleteField() });
+                    }
+                } else { // UPDATING isDelivered
+                    const dailyOrderRef = todaysOrder?.id ? doc(dailyOrdersRef, todaysOrder.id) : doc(dailyOrdersRef);
+                    batch.set(dailyOrderRef, {
+                        breadCustomerId: customer.id, customerName: customer.name, date: dateString,
+                        quantity: todaysOrder?.quantity ?? customer.defaultOrderQuantity,
+                        isPaid: todaysOrder?.isPaid ?? false, isDelivered: value, createdAt: serverTimestamp(),
+                    }, { merge: true });
+                }
+            }
+    
             await batch.commit();
             toast.success(`${selectedOrders.size} commande(s) mise(s) à jour.`);
-            setSelectedOrders(new Set()); // Clear selection
+            setSelectedOrders(new Set());
         } catch (error) {
             console.error("Error in bulk update:", error);
             toast.error("Erreur lors de la mise à jour groupée.");
         } finally {
             setIsUpdating(false);
         }
-    }, [firestore, user, dateString, breadOrders, selectedOrders]);
+    }, [firestore, user, dateString, breadOrders, selectedOrders, companyProfile]);
 
     const handlePrint = () => {
         const printableContent = document.getElementById('receipt-for-print');
