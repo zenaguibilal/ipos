@@ -38,9 +38,29 @@ import { cn } from '@/lib/utils';
 import { AnimatedLogo } from './animated-logo';
 
 
+const BreadIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...props}
+    >
+      <path d="M17.8 5.7A2.5 2.5 0 0 0 16 5H8a2.5 2.5 0 0 0-1.8 4.3l5.1 6.8c.4.6.3 1.4-.2 1.8-1.5 1.2-4.2 1.2-5.7 0-1.8-1.5-1.8-4.2 0-5.7.5-.4 1.2-.4 1.7 0l.3.3" />
+      <path d="M18 13.3a2.5 2.5 0 0 0-1.8-4.3H8.3a2.5 2.5 0 0 0-1.8 4.3l5.1 6.8c.4.6.3 1.4-.2 1.8-1.5 1.2-4.2 1.2-5.7 0-1.8-1.5-1.8-4.2 0-5.7.5-.4 1.2-.4 1.7 0l.3.3" />
+      <path d="M22 13.3a2.5 2.5 0 0 0-1.8-4.3h-7.9a2.5 2.5 0 0 0-1.8 4.3l5.1 6.8c.4.6.3 1.4-.2 1.8-1.5 1.2-4.2 1.2-5.7 0-1.8-1.5-1.8-4.2 0-5.7.5-.4 1.2-.4 1.7 0l.3.3" />
+    </svg>
+  );
+
 const navLinks = [
   { href: '/sell', label: 'Vente', icon: Store },
   { href: '/dashboard', label: 'Tableau de bord', icon: BarChart3 },
+  { href: '/bread', label: 'Pain', icon: BreadIcon },
   { href: '/products', label: 'Produits', icon: Package },
   { href: '/customers', label: 'Clients', icon: Users },
   { href: '/stock', label: 'Stock', icon: Archive },
@@ -150,5 +170,3 @@ export function AppHeader() {
     </header>
   );
 }
-
-    

@@ -117,6 +117,7 @@ export interface CompanyProfile {
     website?: string;
     vatNumber?: string;
     rcNumber?: string;
+    breadPrice?: number;
 }
 
 export interface PurchaseOrderItem {
@@ -190,4 +191,34 @@ export interface ProductReturn {
     notes?: string;
 }
 
-    
+export interface BreadCustomer {
+    id: string;
+    name: string;
+    isActive: boolean;
+    defaultOrderQuantity: number;
+    createdAt: Timestamp;
+}
+
+// Represents the order information for a customer on a given day
+export interface BreadOrder {
+    id: string; // breadCustomerId
+    name: string;
+    isActive: boolean;
+    defaultOrderQuantity: number;
+    todaysOrder?: {
+        id: string; // dailyBreadOrderId
+        quantity: number;
+        isRecurring: boolean;
+    };
+}
+
+
+export interface DailyBreadOrder {
+    id: string;
+    breadCustomerId: string;
+    customerName: string;
+    quantity: number;
+    isRecurring: boolean;
+    date: string; // YYYY-MM-DD
+    createdAt: Timestamp;
+}
