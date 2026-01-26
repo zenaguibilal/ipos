@@ -8,11 +8,12 @@ import { collection, query, where, orderBy, doc, writeBatch, serverTimestamp, up
 import { format, addDays, subDays } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import type { BreadCustomer, DailyBreadOrder, BreadOrder, CompanyProfile } from '@/lib/types';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
-import { PlusCircle, ArrowLeft, ArrowRight, CalendarIcon, RefreshCw, Printer, Search, ListFilter, Check, Package, AlertTriangle, Receipt } from 'lucide-react';
+import { Label } from '@/components/ui/label';
+import { PlusCircle, ArrowLeft, ArrowRight, CalendarIcon, RefreshCw, Printer, Search, ListFilter, Check, Package, AlertTriangle, Receipt, ChevronDown, X, HandCoins, Ban, Loader2 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { BreadCustomerDialog } from '@/components/bread/bread-customer-dialog';
@@ -22,6 +23,10 @@ import { BreadOrderRow } from '@/components/bread/BreadOrderRow';
 import { BreadOrderRowSkeleton } from '@/components/bread/BreadOrderRowSkeleton';
 import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { cn } from '@/lib/utils';
+
 
 type StatusFilter = 'all' | 'not-delivered' | 'not-paid';
 
@@ -33,10 +38,12 @@ export default function BreadPage() {
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
     const [isSetOrderDialogOpen, setIsSetOrderDialogOpen] = useState(false);
+    const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
     const [customerToDelete, setCustomerToDelete] = useState<BreadCustomer | null>(null);
     const [customerToEdit, setCustomerToEdit] = useState<BreadCustomer | null>(null);
     const [orderToEdit, setOrderToEdit] = useState<BreadOrder | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
+    const [isBulkProcessing, setIsBulkProcessing] = useState(false);
     
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -180,6 +187,71 @@ export default function BreadPage() {
     const isAllSelected = filteredBreadOrders.length > 0 && selectedCount === filteredBreadOrders.length;
     const isPartiallySelected = selectedCount > 0 && !isAllSelected;
 
+    const handleBulkUpdate = async (field: 'isPaid' | 'isDelivered', value: boolean) => {
+        if (!firestore || !user || selectedCount === 0) return;
+        setIsBulkProcessing(true);
+
+        const batch = writeBatch(firestore);
+        const selectedIds = Object.keys(selectedOrders).filter(id => selectedOrders[id]);
+        const ordersToUpdate = breadOrders.filter(order => selectedIds.includes(order.id));
+
+        for (const order of ordersToUpdate) {
+            if (order.todaysOrder?.id) {
+                const orderRef = doc(firestore, 'users', user.uid, 'dailyBreadOrders', order.todaysOrder.id);
+                batch.update(orderRef, { [field]: value });
+            } else {
+                const newOrderRef = doc(collection(firestore, 'users', user.uid, 'dailyBreadOrders'));
+                const newOrderData: Omit<DailyBreadOrder, 'id'> = {
+                    breadCustomerId: order.id,
+                    customerName: order.name,
+                    date: dateKey,
+                    quantity: order.defaultOrderQuantity,
+                    isPaid: field === 'isPaid' ? value : false,
+                    isDelivered: field === 'isDelivered' ? value : false,
+                    createdAt: serverTimestamp(),
+                };
+                batch.set(newOrderRef, newOrderData);
+            }
+        }
+
+        try {
+            await batch.commit();
+            toast.success(`${selectedCount} commande(s) mise(s) à jour.`);
+            setSelectedOrders({});
+        } catch(e) {
+            console.error('Bulk update failed', e);
+            toast.error('Erreur lors de la mise à jour groupée.');
+        } finally {
+            setIsBulkProcessing(false);
+        }
+    }
+    
+    const handleResetDay = async () => {
+        if (!firestore || !user || !dailyOrders || dailyOrders.length === 0) {
+            toast.info("Aucune commande personnalisée à réinitialiser pour ce jour.");
+            setIsResetDialogOpen(false);
+            return;
+        }
+        setIsProcessing(true);
+        const batch = writeBatch(firestore);
+
+        dailyOrders.forEach(order => {
+            const orderRef = doc(firestore, 'users', user.uid, 'dailyBreadOrders', order.id);
+            batch.delete(orderRef);
+        });
+
+        try {
+            await batch.commit();
+            toast.success(`Les commandes du ${format(selectedDate, 'd MMMM')} ont été réinitialisées.`);
+        } catch (e) {
+            console.error('Reset failed', e);
+            toast.error('Erreur lors de la réinitialisation.');
+        } finally {
+            setIsProcessing(false);
+            setIsResetDialogOpen(false);
+        }
+    }
+
     const isLoading = isUserLoading || isLoadingCustomers || isLoadingOrders || isCompanyProfileLoading;
 
     if (!user && !isLoading) {
@@ -213,6 +285,23 @@ export default function BreadPage() {
                     userId={user.uid}
                 />
             )}
+            <AlertDialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Réinitialiser les commandes du jour ?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Cette action est irréversible. Toutes les quantités personnalisées, ainsi que les statuts "Payé" et "Livré" pour le {format(selectedDate, 'd MMMM yyyy', { locale: fr })} seront supprimés. Les commandes reviendront à leur quantité par défaut.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Annuler</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleResetDay} className={cn(buttonVariants({ variant: "destructive" }))}>
+                            Confirmer et Réinitialiser
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialog>
+            </AlertDialog>
+
 
             <main className="flex-1 overflow-auto p-4 sm:p-6">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
@@ -313,19 +402,44 @@ export default function BreadPage() {
                                     <SelectItem value="not-paid">Non Payé</SelectItem>
                                 </SelectContent>
                             </Select>
-                             <Button variant="outline"><Printer className="mr-2 h-4 w-4"/> Imprimer</Button>
-                             <Button variant="outline"><RefreshCw className="mr-2 h-4 w-4"/> Réinitialiser</Button>
+                             <Button variant="outline" disabled><Printer className="mr-2 h-4 w-4"/> Imprimer</Button>
+                             <Button onClick={() => setIsResetDialogOpen(true)} variant="outline" disabled={dailyOrders?.length === 0}><RefreshCw className="mr-2 h-4 w-4"/> Réinitialiser</Button>
                              <Button onClick={handleAddCustomer}><PlusCircle className="mr-2 h-4 w-4"/> Ajouter</Button>
                         </div>
                     </CardHeader>
                     <CardContent>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
                             <Checkbox 
                                 id="select-all" 
                                 checked={isAllSelected || (isPartiallySelected ? 'indeterminate' : false)}
                                 onCheckedChange={handleMasterCheckboxChange}
                             />
-                            <Label htmlFor="select-all">{selectedCount} / {filteredBreadOrders.length} sélectionné(s)</Label>
+                            <Label htmlFor="select-all" className="flex-grow">{selectedCount} / {filteredBreadOrders.length} sélectionné(s)</Label>
+                             {selectedCount > 0 && (
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="outline" size="sm" disabled={isBulkProcessing}>
+                                             {isBulkProcessing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                            Actions <ChevronDown className="ml-2 h-4 w-4" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuItem onClick={() => handleBulkUpdate('isDelivered', true)}>
+                                            <Check className="mr-2 h-4 w-4" /> Marquer comme livré
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => handleBulkUpdate('isDelivered', false)}>
+                                            <X className="mr-2 h-4 w-4" /> Marquer comme non-livré
+                                        </DropdownMenuItem>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem onClick={() => handleBulkUpdate('isPaid', true)}>
+                                            <HandCoins className="mr-2 h-4 w-4" /> Marquer comme payé
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => handleBulkUpdate('isPaid', false)}>
+                                            <Ban className="mr-2 h-4 w-4" /> Marquer comme non-payé
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            )}
                         </div>
 
                          <div className="space-y-3">
@@ -346,7 +460,7 @@ export default function BreadPage() {
                                         onEditOrder={handleSetOrder}
                                         onEditCustomer={handleEditCustomer}
                                         onDeleteCustomer={setCustomerToDelete}
-                                        isProcessing={isProcessing}
+                                        isProcessing={isProcessing || isBulkProcessing}
                                     />
                                 ))
                             )}
@@ -357,3 +471,4 @@ export default function BreadPage() {
         </>
     );
 }
+
