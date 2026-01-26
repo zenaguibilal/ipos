@@ -84,7 +84,7 @@ service cloud.firestore {
       
       // Rules for the 'breadCustomers' subcollection.
       match /breadCustomers/{breadCustomerId} {
-        allow read, write: if isOwner(userId);
+        allow list, get, create, update, delete: if isOwner(userId);
       }
       
       // Rules for the 'dailyBreadOrders' subcollection.
