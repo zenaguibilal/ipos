@@ -5,15 +5,14 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   History,
-  Store,
   Package,
   Users,
-  Archive,
+  BarChart3,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navLinks = [
-  { href: '/sell', label: 'Vente', icon: Store },
+  { href: '/dashboard', label: 'Tableau', icon: BarChart3 },
   { href: '/products', label: 'Produits', icon: Package },
   { href: '/customers', label: 'Clients', icon: Users },
   { href: '/sales-history', label: 'Historique', icon: History },

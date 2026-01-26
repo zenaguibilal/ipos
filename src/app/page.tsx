@@ -12,7 +12,7 @@ function HomePageContent() {
 
     useEffect(() => {
         if (!isUserLoading && user) {
-            router.push('/sell');
+            router.push('/dashboard');
         }
     }, [user, isUserLoading, router]);
 

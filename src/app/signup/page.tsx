@@ -27,7 +27,7 @@ export default function SignupPage() {
         <div className="flex items-center justify-center py-12">
           <div className="mx-auto grid w-[350px] gap-6">
              <Suspense fallback={<div className="text-center">Chargement...</div>}>
-                <SignupForm redirectUrl="/sell" />
+                <SignupForm redirectUrl="/dashboard" />
             </Suspense>
           </div>
         </div>

@@ -32,31 +32,6 @@ export interface SaleItem {
     quantity: number;
 }
 
-// Represents an item in the live shopping cart
-export interface CartItem {
-    id: string; // Product ID or custom ID
-    name: string;
-    price: number;
-    purchasePrice: number;
-    quantity: number; // This is the available stock quantity of the product
-    cartQuantity: number;
-    flash?: boolean; // For UI animation
-    imageUrl?: string;
-}
-
-// Represents a single shopping cart session
-export interface Cart {
-    id: string;
-    name: string;
-    items: CartItem[];
-    customerId: string | null;
-    customerName: string;
-    discount: {
-        type: 'fixed' | 'percentage';
-        value: number;
-    };
-}
-
 export interface SalePayment {
     method: 'cash' | 'card' | 'other';
     amount: number;
