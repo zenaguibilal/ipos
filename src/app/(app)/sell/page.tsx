@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
@@ -128,10 +129,21 @@ export default function SellPage() {
             const updatedCarts = prevCarts.map(cart => {
                 const originalItemsString = JSON.stringify(cart.items);
 
+                // Reconstruct all items to ensure clean data structure
                 const newItems = cart.items.map(item => {
-                    // Custom items are not in Firestore, so we keep them as is
                     if (item.id.startsWith('custom-')) {
-                        return item;
+                        // For custom items, we still clean them up to ensure all fields are present.
+                        const cleanCustomItem: CartItem = {
+                            id: item.id,
+                            name: item.name,
+                            price: item.price ?? 0, // Default to 0 if missing
+                            purchasePrice: item.purchasePrice ?? 0, // Default to 0
+                            quantity: item.quantity, // Should be Infinity
+                            cartQuantity: item.cartQuantity ?? 1, // Default to 1
+                            flash: false, // Always reset flash animation
+                            imageUrl: item.imageUrl,
+                        };
+                        return cleanCustomItem;
                     }
                     
                     const productData = products.find(p => p.id === item.id);
@@ -143,8 +155,7 @@ export default function SellPage() {
                             toast.info(`La quantité de "${productData.name}" a été ajustée au stock disponible (${productData.quantity}).`);
                         }
                         
-                        // ALWAYS reconstruct the item to ensure a clean data structure.
-                        // This strips any unwanted properties from old localStorage formats.
+                        // ALWAYS reconstruct the item from the source of truth (Firestore).
                         const cleanItem: CartItem = {
                             id: productData.id,
                             name: productData.name,
@@ -152,13 +163,13 @@ export default function SellPage() {
                             purchasePrice: productData.purchasePrice ?? 0,
                             quantity: productData.quantity,
                             cartQuantity: newCartQuantity,
-                            flash: item.flash,
+                            flash: false, // Always reset flash animation
                             imageUrl: productData.imageUrl,
                         };
                         return cleanItem;
 
                     } else {
-                        // Product no longer exists, so we remove it from the cart
+                        // Product no longer exists, remove it from the cart
                         toast.warning(`Le produit "${item.name}" a été retiré du panier car il n'existe plus.`);
                         return null;
                     }
@@ -174,8 +185,11 @@ export default function SellPage() {
                 return cart;
             });
             
-            // Only update the state if a meaningful change occurred in any of the carts
-            return cartsWereUpdated ? updatedCarts : prevCarts;
+            // Only update the state if a meaningful change occurred
+            if (cartsWereUpdated) {
+                return updatedCarts;
+            }
+            return prevCarts;
         });
     }, [products, isCartsLoading]);
 
@@ -423,7 +437,7 @@ export default function SellPage() {
 
                 // 2. Prepare Sale Data
                 const totalAmountFromPayments = payments.reduce((acc, p) => acc + p.amount, 0);
-                const cartSubtotal = cartToPay.items.reduce((acc, item) => acc + (item.price * item.cartQuantity), 0);
+                const cartSubtotal = cartToPay.items.reduce((acc, item) => acc + ((item.price ?? 0) * (item.cartQuantity ?? 0)), 0);
                 
                 const discountValue = cartToPay.discount.value;
                 const discountType = cartToPay.discount.type;
@@ -440,9 +454,9 @@ export default function SellPage() {
                     items: cartToPay.items.map(item => ({
                         id: item.id,
                         name: item.name,
-                        price: item.price,
+                        price: item.price ?? 0,
                         purchasePrice: item.purchasePrice ?? 0,
-                        quantity: item.cartQuantity
+                        quantity: item.cartQuantity ?? 1
                     })),
                     subtotal: cartSubtotal,
                     discountType,
