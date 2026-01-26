@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useUser, useFirestore, useCollection, useMemoFirebase, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { collection, query, where, orderBy, doc, serverTimestamp, writeBatch } from 'firebase/firestore';
@@ -33,6 +33,7 @@ import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
+import { PrintableBreadList } from '@/components/bread/PrintableBreadList';
 
 // Dynamically import components
 const BreadStatsCards = React.lazy(() => import('@/components/bread/BreadStatsCards'));
@@ -63,6 +64,9 @@ export default function BreadOrdersPage() {
     // Loading State
     const [isUpdating, setIsUpdating] = useState(false); // For bulk actions
     const [updatingItems, setUpdatingItems] = useState<string[]>([]); // For individual card updates
+    
+    // Print Ref
+    const printableRef = useRef<HTMLDivElement>(null);
 
 
     // Data Fetching
@@ -249,6 +253,22 @@ export default function BreadOrdersPage() {
         }
     }, [firestore, user, dateString, breadOrders, selectedOrders]);
 
+    const handlePrint = () => {
+        const printableContent = document.getElementById('receipt-for-print');
+        const receiptElement = printableRef.current;
+    
+        if (!printableContent || !receiptElement) {
+          toast.error("Erreur: Impossible de préparer le document pour l'impression.");
+          return;
+        }
+    
+        printableContent.innerHTML = '';
+        printableContent.appendChild(receiptElement.cloneNode(true));
+        
+        setTimeout(() => {
+          window.print();
+        }, 100);
+    };
 
     const isLoading = isLoadingCustomers || isLoadingDailyOrders || isLoadingProfile;
     const breadPrice = companyProfile?.breadPrice ?? 0;
@@ -264,7 +284,7 @@ export default function BreadOrdersPage() {
                     </div>
                      <div className="flex items-center gap-2 flex-wrap">
                         <DatePicker date={selectedDate} setDate={setSelectedDate} />
-                         <Button variant="outline" onClick={() => {}} disabled={true}><Printer className="mr-2 h-4 w-4" />Imprimer</Button>
+                         <Button variant="outline" onClick={handlePrint} disabled={filteredOrders.length === 0}><Printer className="mr-2 h-4 w-4" />Imprimer la liste</Button>
                          <Button variant="outline" onClick={() => setIsResetDialogOpen(true)} disabled={isUpdating}><RefreshCw className="mr-2 h-4 w-4" />Réinitialiser</Button>
                          <Button onClick={() => setIsCustomerDialogOpen(true)} disabled={isUpdating}><PlusCircle className="mr-2 h-4 w-4" />Ajouter</Button>
                     </div>
@@ -439,6 +459,10 @@ export default function BreadOrdersPage() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            <div className="hidden">
+                <PrintableBreadList ref={printableRef} orders={filteredOrders} date={selectedDate} companyProfile={companyProfile} />
+            </div>
         </React.Suspense>
     );
 }
