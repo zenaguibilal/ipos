@@ -123,54 +123,59 @@ export default function SellPage() {
         }
 
         setCarts(prevCarts => {
-            let hasChanges = false;
+            let cartsWereUpdated = false;
+
             const updatedCarts = prevCarts.map(cart => {
-                let cartHasChanges = false;
-                const updatedItems = cart.items.map(item => {
+                const originalItemsString = JSON.stringify(cart.items);
+
+                const newItems = cart.items.map(item => {
+                    // Custom items are not in Firestore, so we keep them as is
                     if (item.id.startsWith('custom-')) {
                         return item;
                     }
+                    
                     const productData = products.find(p => p.id === item.id);
 
                     if (productData) {
                         const newCartQuantity = Math.min(item.cartQuantity, productData.quantity);
-                        if (
-                            item.name !== productData.name ||
-                            item.price !== productData.price ||
-                            item.quantity !== productData.quantity ||
-                            item.cartQuantity !== newCartQuantity
-                        ) {
-                            cartHasChanges = true;
-                            if (item.cartQuantity > newCartQuantity) {
-                                toast.info(`La quantité de "${productData.name}" a été ajustée au stock disponible (${productData.quantity}).`);
-                            }
-                            return {
-                                id: productData.id,
-                                name: productData.name,
-                                price: productData.price,
-                                purchasePrice: productData.purchasePrice ?? 0,
-                                quantity: productData.quantity,
-                                imageUrl: productData.imageUrl,
-                                cartQuantity: newCartQuantity,
-                                flash: item.flash
-                            };
+
+                        if (item.cartQuantity > newCartQuantity) {
+                            toast.info(`La quantité de "${productData.name}" a été ajustée au stock disponible (${productData.quantity}).`);
                         }
+                        
+                        // ALWAYS reconstruct the item to ensure a clean data structure.
+                        // This strips any unwanted properties from old localStorage formats.
+                        const cleanItem: CartItem = {
+                            id: productData.id,
+                            name: productData.name,
+                            price: productData.price,
+                            purchasePrice: productData.purchasePrice ?? 0,
+                            quantity: productData.quantity,
+                            cartQuantity: newCartQuantity,
+                            flash: item.flash,
+                            imageUrl: productData.imageUrl,
+                        };
+                        return cleanItem;
+
                     } else {
-                        cartHasChanges = true;
+                        // Product no longer exists, so we remove it from the cart
                         toast.warning(`Le produit "${item.name}" a été retiré du panier car il n'existe plus.`);
                         return null;
                     }
-                    return item;
-                }).filter((item): item is CartItem => item !== null && item.cartQuantity > 0);
-                
-                if (cartHasChanges) hasChanges = true;
-                return { ...cart, items: updatedItems };
-            });
+                }).filter((item): item is CartItem => item !== null && item.cartQuantity > 0); // Remove nulls and items with 0 quantity
 
-            if (hasChanges) {
-                return updatedCarts;
-            }
-            return prevCarts;
+                const newItemsString = JSON.stringify(newItems);
+                
+                if (originalItemsString !== newItemsString) {
+                    cartsWereUpdated = true;
+                    return { ...cart, items: newItems };
+                }
+                
+                return cart;
+            });
+            
+            // Only update the state if a meaningful change occurred in any of the carts
+            return cartsWereUpdated ? updatedCarts : prevCarts;
         });
     }, [products, isCartsLoading]);
 
