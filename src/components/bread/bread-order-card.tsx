@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { BreadCustomer, BreadOrder } from '@/lib/types';
@@ -8,6 +7,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { MoreHorizontal, Edit, Trash2, Repeat, GitMerge } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '../ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface BreadOrderCardProps {
     order: BreadOrder;
@@ -60,13 +60,27 @@ export function BreadOrderCard({ order, onEditCustomer, onDeleteCustomer, onSetO
                 </div>
             </CardContent>
             <CardFooter className="p-0">
-                <Button 
-                    className="w-full rounded-t-none" 
-                    variant={isCustomOrder ? 'secondary' : 'outline'}
-                    onClick={() => onSetOrder(order)}
-                >
-                    <Edit className="mr-2 h-4 w-4" /> {isCustomOrder ? "Modifier la commande" : "Définir la commande du jour"}
-                </Button>
+                <TooltipProvider>
+                    <Tooltip delayDuration={0}>
+                        <TooltipTrigger asChild>
+                            <div className="w-full">
+                                <Button 
+                                    className="w-full rounded-t-none" 
+                                    variant={isCustomOrder ? 'secondary' : 'outline'}
+                                    onClick={() => onSetOrder(order)}
+                                    disabled={!order.isActive}
+                                >
+                                    <Edit className="mr-2 h-4 w-4" /> {isCustomOrder ? "Modifier la commande" : "Définir la commande du jour"}
+                                </Button>
+                            </div>
+                        </TooltipTrigger>
+                        {!order.isActive && (
+                            <TooltipContent>
+                                <p>Réactivez le client pour modifier sa commande.</p>
+                            </TooltipContent>
+                        )}
+                    </Tooltip>
+                </TooltipProvider>
             </CardFooter>
         </Card>
     );
