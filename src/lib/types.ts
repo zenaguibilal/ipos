@@ -33,9 +33,15 @@ export interface SaleItem {
 }
 
 // Represents an item in the live shopping cart
-export interface CartItem extends Product {
+export interface CartItem {
+    id: string; // Product ID or custom ID
+    name: string;
+    price: number;
+    purchasePrice: number;
+    quantity: number; // This is the available stock quantity of the product
     cartQuantity: number;
     flash?: boolean; // For UI animation
+    imageUrl?: string;
 }
 
 // Represents a single shopping cart session

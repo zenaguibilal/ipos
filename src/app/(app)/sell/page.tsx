@@ -145,7 +145,12 @@ export default function SellPage() {
                                 toast.info(`La quantité de "${productData.name}" a été ajustée au stock disponible (${productData.quantity}).`);
                             }
                             return {
-                                ...productData,
+                                id: productData.id,
+                                name: productData.name,
+                                price: productData.price,
+                                purchasePrice: productData.purchasePrice,
+                                quantity: productData.quantity,
+                                imageUrl: productData.imageUrl,
                                 cartQuantity: newCartQuantity,
                                 flash: item.flash
                             };
@@ -206,30 +211,6 @@ export default function SellPage() {
         return sortedProducts.slice(0, 15);
     }, [products, sales]);
 
-    // This effect will run when the component unmounts
-    useEffect(() => {
-        return () => {
-            // When navigating away, reset the cart state in localStorage to a single default cart
-            if (user) {
-                try {
-                    const defaultCartId = uuidv4();
-                    const defaultCarts: Cart[] = [{
-                        id: defaultCartId,
-                        name: 'Panier 1',
-                        items: [],
-                        customerId: null,
-                        customerName: 'Vente au comptoir',
-                        discount: { type: 'fixed', value: 0 }
-                    }];
-                    localStorage.setItem(`ipos-carts-${user.uid}`, JSON.stringify(defaultCarts));
-                    localStorage.setItem(`ipos-active-cart-id-${user.uid}`, defaultCartId);
-                } catch (error) {
-                    console.error("Failed to reset carts in localStorage on unmount", error);
-                }
-            }
-        };
-    }, [user]); // Depend on user to have access to user.uid in the cleanup function
-
 
     useEffect(() => {
         if (!isUserLoading && !user) {
@@ -262,9 +243,14 @@ export default function SellPage() {
                     }
                 } else {
                     const newItem: CartItem = {
-                        ...product,
+                        id: product.id,
+                        name: product.name,
+                        price: product.price,
+                        purchasePrice: product.purchasePrice,
+                        quantity: product.quantity, // available stock from Product
                         cartQuantity: 1,
                         flash: true,
+                        imageUrl: (product as Product).imageUrl,
                     };
                     return { ...cart, items: [newItem, ...cart.items] };
                 }
@@ -314,17 +300,17 @@ export default function SellPage() {
     };
     
     const handleAddCustomProduct = (name: string, price: number) => {
-        const customProduct: CartItem = {
+        const customProduct = {
             id: `custom-${uuidv4()}`,
             name,
             price,
-            purchasePrice: 0, 
-            quantity: Infinity,
+            purchasePrice: 0,
+            quantity: Infinity, // available stock
+            category: 'Personnalisé',
             minStockLevel: 0,
-            cartQuantity: 1,
-            createdAt: new Date(),
+            createdAt: new Date()
         };
-        handleAddProductToCart(customProduct);
+        handleAddProductToCart(customProduct as Product);
         setIsCustomProductOpen(false);
     };
 
