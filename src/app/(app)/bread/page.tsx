@@ -32,6 +32,7 @@ export default function BreadPage() {
     const [customerToEdit, setCustomerToEdit] = useState<BreadCustomer | null>(null);
     const [orderToEdit, setOrderToEdit] = useState<BreadOrder | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
+    const [processingOrderId, setProcessingOrderId] = useState<string | null>(null);
 
     const dateKey = format(selectedDate, 'yyyy-MM-dd');
 
@@ -170,7 +171,7 @@ export default function BreadPage() {
    }
 
    const handleGenerateSingleSale = async (order: BreadOrder) => {
-        setIsProcessing(true);
+        setProcessingOrderId(order.id);
        toast.info(`Génération de la vente pour ${order.name}...`);
        try {
            if (!firestore) throw new Error("Firestore not available");
@@ -186,7 +187,7 @@ export default function BreadPage() {
             console.error("Failed to generate single bread sale:", error);
            toast.error(error.message || "Une erreur est survenue lors de la génération de la vente.");
        } finally {
-            setIsProcessing(false);
+            setProcessingOrderId(null);
        }
    }
 
@@ -262,7 +263,7 @@ export default function BreadPage() {
                         <p className="text-muted-foreground">Gérez les commandes de pain quotidiennes et générez les ventes associées.</p>
                     </div>
                      <div className="flex items-center gap-2">
-                        <Button onClick={handleGenerateAllSales} disabled={isProcessing || processableOrdersCount === 0}>
+                        <Button onClick={handleGenerateAllSales} disabled={isProcessing || !!processingOrderId || processableOrdersCount === 0}>
                             {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Receipt className="mr-2 h-4 w-4" />}
                             Générer {processableOrdersCount > 0 ? `${processableOrdersCount} ` : ''}Vente(s)
                         </Button>
@@ -360,6 +361,8 @@ export default function BreadPage() {
                                             onDeleteCustomer={setCustomerToDelete}
                                             onSetOrder={handleSetOrder}
                                             onGenerateSale={handleGenerateSingleSale}
+                                            isProcessing={processingOrderId === order.id}
+                                            isGloballyProcessing={isProcessing}
                                         />
                                     ))}
                                 </div>
@@ -379,6 +382,8 @@ export default function BreadPage() {
                                                     onDeleteCustomer={setCustomerToDelete}
                                                     onSetOrder={handleSetOrder}
                                                     onGenerateSale={handleGenerateSingleSale}
+                                                    isProcessing={processingOrderId === order.id}
+                                                    isGloballyProcessing={isProcessing}
                                                 />
                                             ))}
                                         </div>

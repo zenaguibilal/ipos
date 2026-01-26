@@ -4,7 +4,7 @@ import type { BreadCustomer, BreadOrder } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Edit, Trash2, Repeat, GitMerge, CheckCircle2, Receipt } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, Repeat, GitMerge, CheckCircle2, Receipt, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '../ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -15,13 +15,16 @@ interface BreadOrderCardProps {
     onDeleteCustomer: (customer: BreadCustomer) => void;
     onSetOrder: (order: BreadOrder) => void;
     onGenerateSale: (order: BreadOrder) => void;
+    isProcessing?: boolean;
+    isGloballyProcessing?: boolean;
 }
 
-export function BreadOrderCard({ order, onEditCustomer, onDeleteCustomer, onSetOrder, onGenerateSale }: BreadOrderCardProps) {
+export function BreadOrderCard({ order, onEditCustomer, onDeleteCustomer, onSetOrder, onGenerateSale, isProcessing, isGloballyProcessing }: BreadOrderCardProps) {
     
     const displayQuantity = order.todaysOrder?.quantity ?? order.defaultOrderQuantity;
     const isCustomOrder = !!order.todaysOrder;
     const isProcessed = !!order.todaysOrder?.saleId;
+    const canGenerateSale = order.isActive && !isProcessed && displayQuantity > 0;
 
     return (
         <Card className={cn(
@@ -51,20 +54,20 @@ export function BreadOrderCard({ order, onEditCustomer, onDeleteCustomer, onSetO
                     </div>
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                                <MoreHorizontal className="h-5 w-5" />
+                            <Button variant="ghost" size="icon" className="h-8 w-8" disabled={isProcessing || isGloballyProcessing}>
+                                {isProcessing ? <Loader2 className="h-5 w-5 animate-spin" /> : <MoreHorizontal className="h-5 w-5" />}
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => onEditCustomer(order as BreadCustomer)}>
+                            <DropdownMenuItem onClick={() => onEditCustomer(order as BreadCustomer)} disabled={isProcessing || isGloballyProcessing}>
                                 <Edit className="mr-2 h-4 w-4" /> Modifier le client
                             </DropdownMenuItem>
-                             {order.isActive && !isProcessed && displayQuantity > 0 && (
-                                <DropdownMenuItem onClick={() => onGenerateSale(order)}>
+                             {canGenerateSale && (
+                                <DropdownMenuItem onClick={() => onGenerateSale(order)} disabled={isProcessing || isGloballyProcessing}>
                                     <Receipt className="mr-2 h-4 w-4" /> Générer la vente
                                 </DropdownMenuItem>
                             )}
-                            <DropdownMenuItem onClick={() => onDeleteCustomer(order as BreadCustomer)} className="text-destructive focus:text-destructive">
+                            <DropdownMenuItem onClick={() => onDeleteCustomer(order as BreadCustomer)} className="text-destructive focus:text-destructive" disabled={isProcessing || isGloballyProcessing}>
                                 <Trash2 className="mr-2 h-4 w-4" /> Supprimer le client
                             </DropdownMenuItem>
                         </DropdownMenuContent>
@@ -90,7 +93,7 @@ export function BreadOrderCard({ order, onEditCustomer, onDeleteCustomer, onSetO
                                     className="w-full rounded-t-none" 
                                     variant={isCustomOrder ? 'secondary' : 'outline'}
                                     onClick={() => onSetOrder(order)}
-                                    disabled={!order.isActive || isProcessed}
+                                    disabled={!order.isActive || isProcessed || isProcessing || isGloballyProcessing}
                                 >
                                     <Edit className="mr-2 h-4 w-4" /> {isCustomOrder ? "Modifier la commande" : "Définir la commande du jour"}
                                 </Button>
