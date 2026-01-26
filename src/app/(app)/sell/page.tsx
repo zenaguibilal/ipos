@@ -334,6 +334,12 @@ export default function SellPage() {
             return false;
         }
 
+        const isCreditSale = total - amountPaid > 0.01;
+        if (isCreditSale && !activeCart.customerId) {
+            toast.error("Veuillez sélectionner un client pour une vente à crédit.");
+            return false;
+        }
+
         const saleItems: SaleItem[] = activeCart.items.map(item => ({
             id: item.id,
             name: item.name,
@@ -604,5 +610,7 @@ export default function SellPage() {
     );
 }
 
+
+    
 
     

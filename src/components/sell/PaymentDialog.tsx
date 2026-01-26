@@ -43,29 +43,31 @@ export function PaymentDialog({ isOpen, onOpenChange, totalAmount, onConfirm }: 
 
     useEffect(() => {
         if (isOpen) {
-            setCashAmount(totalAmount > 0 ? totalAmount.toFixed(1) : '');
+            setCashAmount(totalAmount > 0 ? totalAmount.toFixed(1) : '0.0');
             setCardAmount('');
             setIsSaving(false);
         }
     }, [isOpen, totalAmount]);
     
     const handleConfirm = async () => {
-        if (totalPaid <= 0) {
-            toast.error("Le montant payé doit être supérieur à zéro.");
+        const cashVal = parseFloat(cashAmount) || 0;
+        const cardVal = parseFloat(cardAmount) || 0;
+
+        if (cashVal < 0 || cardVal < 0) {
+            toast.error("Les montants ne peuvent pas être négatifs.");
             return;
         }
 
         setIsSaving(true);
         const payments: SalePayment[] = [];
-        const cash = parseFloat(cashAmount) || 0;
-        const card = parseFloat(cardAmount) || 0;
-
-        if (cash > 0) payments.push({ method: 'cash', amount: cash });
-        if (card > 0) payments.push({ method: 'card', amount: card });
+        
+        if (cashVal > 0) payments.push({ method: 'cash', amount: cashVal });
+        if (cardVal > 0) payments.push({ method: 'card', amount: cardVal });
 
         const success = await onConfirm(payments, totalPaid);
-        setIsSaving(false);
-        if (success) {
+        if (!success) {
+            setIsSaving(false);
+        } else {
             onOpenChange(false);
         }
     };
@@ -135,3 +137,5 @@ export function PaymentDialog({ isOpen, onOpenChange, totalAmount, onConfirm }: 
         </Dialog>
     );
 }
+
+    
