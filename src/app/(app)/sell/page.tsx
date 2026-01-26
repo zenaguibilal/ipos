@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
-import { useUser, useFirestore, useCollection, useMemoFirebase, runTransactionNonBlocking } from '@/firebase';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { collection, query, orderBy, doc, runTransaction, serverTimestamp, getDocs, where, writeBatch } from 'firebase/firestore';
+import { collection, query, orderBy, doc, runTransaction, serverTimestamp } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -64,7 +64,7 @@ const SellProductCard = ({ product, onAddToCart }: { product: Product, onAddToCa
 // CartItemCard Component
 const CartItemCard = ({ item, onUpdateQuantity, onRemoveItem }: { item: CartItem, onUpdateQuantity: (itemId: string, newQuantity: number) => void, onRemoveItem: (itemId: string) => void }) => {
     return (
-        <div className={cn("flex items-center gap-3 py-3", item.flash && 'flash-animation')}>
+        <div className={cn("flex items-center gap-3 py-3", item.flash && 'animate-flash')}>
             <img src={item.imageUrl || `https://picsum.photos/seed/${item.id}/100`} alt={item.name} className="h-12 w-12 rounded-md object-cover" />
             <div className="flex-grow overflow-hidden">
                 <p className="font-semibold truncate text-sm">{item.name}</p>
@@ -140,6 +140,18 @@ export default function SellPage() {
         const tot = sub - disc;
         return { subtotal: sub, discountAmount: disc, total: tot };
     }, [activeCart]);
+    
+    useEffect(() => {
+        if (activeCart && activeCart.items.some(item => item.flash)) {
+            const timer = setTimeout(() => {
+                updateCart({
+                    ...activeCart,
+                    items: activeCart.items.map(item => ({ ...item, flash: false }))
+                });
+            }, 500);
+            return () => clearTimeout(timer);
+        }
+    }, [activeCart, updateCart]);
 
     const handleAddToCart = useCallback((product: Product) => {
         if (!activeCart) return;
@@ -155,19 +167,15 @@ export default function SellPage() {
         let newItems: CartItem[];
         if (existingItem) {
             newItems = activeCart.items.map(item =>
-                item.id === product.id ? { ...item, cartQuantity: item.cartQuantity + 1, flash: true } : item
+                item.id === product.id ? { ...item, cartQuantity: item.cartQuantity + 1, flash: true } : { ...item, flash: false }
             );
         } else {
-            newItems = [...activeCart.items, { ...product, cartQuantity: 1, flash: true }];
+            newItems = [...activeCart.items.map(i => ({...i, flash: false})), { ...product, cartQuantity: 1, flash: true }];
         }
         updateCart({ ...activeCart, items: newItems });
-        
-        // Remove flash effect after animation
-        setTimeout(() => {
-            updateCart({ ...activeCart, items: newItems.map(i => ({...i, flash: false})) });
-        }, 500);
+        toast.success(`${product.name} ajouté au panier.`);
 
-    }, [activeCart, updateCart]);
+    }, [activeCart, updateCart, products]);
 
     const handleBarcodeScanned = useCallback((searchTerm: string) => {
         if (!searchTerm.trim() || !products) return;
@@ -186,7 +194,6 @@ export default function SellPage() {
         if (product) {
             handleAddToCart(product);
             setSearchQuery(''); // Clear input for next scan
-            toast.success(`${product.name} ajouté au panier.`);
         } else {
             toast.error(`Aucun produit trouvé pour "${term}".`);
         }
@@ -479,19 +486,3 @@ export default function SellPage() {
         </div>
     );
 }
-
-// Add CSS for flash animation
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes flash {
-        0% { background-color: transparent; }
-        25% { background-color: hsl(var(--primary) / 0.1); }
-        100% { background-color: transparent; }
-    }
-    .flash-animation {
-        animation: flash 0.5s ease-out;
-    }
-`;
-document.head.append(style);
-
-    

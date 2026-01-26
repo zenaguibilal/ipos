@@ -80,11 +80,17 @@ const config: Config = {
             transform: "translate(0px, 0px) scale(1)",
           },
         },
+        "flash": {
+          "0%": { backgroundColor: "transparent" },
+          "50%": { backgroundColor: "hsl(var(--primary) / 0.1)" },
+          "100%": { backgroundColor: "transparent" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "blob": "blob 7s infinite",
+        "flash": "flash 0.7s ease-out",
       },
     },
   },
