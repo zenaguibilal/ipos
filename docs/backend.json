@@ -333,6 +333,10 @@
           "type": "number",
           "description": "The price of one unit of bread."
         },
+        "breadPurchasePrice": {
+            "type": "number",
+            "description": "The purchase price of one unit of bread."
+        },
         "updatedAt": {
           "type": "string",
           "description": "Timestamp indicating when the profile was last updated.",
@@ -624,3 +628,5 @@
     }
   }
 }
+
+    

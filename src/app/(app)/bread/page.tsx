@@ -67,12 +67,17 @@ export default function BreadPage() {
     
     const salesMap = useMemo<Map<string, Sale>>(() => {
         if (!breadSales) return new Map();
-        return new Map(breadSales.map(sale => [sale.id, sale]));
+        // Use saleId as key
+        const map = new Map<string, Sale>();
+        breadSales.forEach(sale => {
+            map.set(sale.id, sale);
+        });
+        return map;
     }, [breadSales]);
 
 
     const breadOrders = useMemo<BreadOrder[]>(() => {
-        if (!breadCustomers) return [];
+        if (!breadCustomers || !dailyOrders) return [];
 
         const ordersMap = new Map(dailyOrders?.map(order => [order.breadCustomerId, order]));
 
@@ -149,6 +154,7 @@ export default function BreadPage() {
        const quantity = order.todaysOrder?.quantity ?? order.defaultOrderQuantity;
 
        const breadPrice = companyProfile.breadPrice;
+       const breadPurchasePrice = companyProfile.breadPurchasePrice || 0;
        const breadProductId = 'BREAD_PRODUCT_ID';
        const total = quantity * breadPrice;
 
@@ -159,7 +165,7 @@ export default function BreadPage() {
                id: breadProductId,
                name: 'Pain',
                price: breadPrice,
-               purchasePrice: 0,
+               purchasePrice: breadPurchasePrice,
                quantity: quantity,
            }],
            subtotal: total,
@@ -451,3 +457,5 @@ export default function BreadPage() {
         </>
     );
 }
+
+    

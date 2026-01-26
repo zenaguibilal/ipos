@@ -119,6 +119,7 @@ export interface CompanyProfile {
     vatNumber?: string;
     rcNumber?: string;
     breadPrice?: number;
+    breadPurchasePrice?: number;
 }
 
 export interface PurchaseOrderItem {
@@ -225,3 +226,5 @@ export interface DailyBreadOrder {
     createdAt: Timestamp;
     saleId?: string;
 }
+
+    
