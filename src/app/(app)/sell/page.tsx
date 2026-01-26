@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
@@ -169,6 +168,29 @@ export default function SellPage() {
         }, 500);
 
     }, [activeCart, updateCart]);
+
+    const handleBarcodeScanned = useCallback((searchTerm: string) => {
+        if (!searchTerm.trim() || !products) return;
+
+        const term = searchTerm.trim();
+        const termLowerCase = term.toLowerCase();
+
+        // Priority 1: Exact barcode match
+        let product = products.find(p => p.barcodes?.includes(term));
+
+        // Priority 2: Exact name match (case-insensitive)
+        if (!product) {
+            product = products.find(p => p.name.toLowerCase() === termLowerCase);
+        }
+
+        if (product) {
+            handleAddToCart(product);
+            setSearchQuery(''); // Clear input for next scan
+            toast.success(`${product.name} ajouté au panier.`);
+        } else {
+            toast.error(`Aucun produit trouvé pour "${term}".`);
+        }
+    }, [products, handleAddToCart]);
     
     const handleUpdateCartQuantity = useCallback((itemId: string, newQuantity: number) => {
         if (!activeCart) return;
@@ -240,6 +262,8 @@ export default function SellPage() {
             await runTransaction(firestore, async (transaction) => {
                 // 1. Check stock and prepare product updates
                 for (const item of saleItems) {
+                    if (item.id.startsWith('custom-')) continue; // Skip stock check for custom items
+                    
                     const productRef = doc(firestore, 'users', user.uid, 'products', item.id);
                     const productDoc = await transaction.get(productRef);
                     
@@ -284,7 +308,7 @@ export default function SellPage() {
     };
 
     useSellHotkeys({
-        onFinalize: () => setIsPaymentDialogOpen(true),
+        onFinalize: () => activeCart && activeCart.items.length > 0 && setIsPaymentDialogOpen(true),
     });
 
     const customerOptions = useMemo(() => {
@@ -310,7 +334,18 @@ export default function SellPage() {
                      <div className="flex gap-4">
                         <div className="relative flex-grow">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input placeholder="Scanner ou rechercher un produit..." className="pl-9" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+                            <Input 
+                                placeholder="Scanner ou rechercher un produit..." 
+                                className="pl-9" 
+                                value={searchQuery} 
+                                onChange={(e) => setSearchQuery(e.target.value)} 
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        handleBarcodeScanned(searchQuery);
+                                    }
+                                }}
+                            />
                         </div>
                         <div className="flex-shrink-0 flex gap-1 bg-muted p-1 rounded-lg">
                            {categories.slice(0, 5).map(cat => (
@@ -383,41 +418,43 @@ export default function SellPage() {
                             )}
 
                              {/* Cart Footer */}
-                            <div className="p-4 mt-auto border-t bg-secondary/30 space-y-3">
-                                <div className="flex justify-between items-center text-sm">
-                                    <span className="text-muted-foreground">Sous-total</span>
-                                    <span className="font-medium">{subtotal.toFixed(1)} DA</span>
-                                </div>
-                                <div className="flex justify-between items-center text-sm">
-                                     <Popover>
-                                        <PopoverTrigger asChild>
-                                            <Button variant="link" className="p-0 h-auto">Remise</Button>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-60">
-                                            <div className="space-y-4">
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="discount-value">Valeur</Label>
-                                                    <Input id="discount-value" type="number" value={cart.discount.value} onChange={(e) => handleSetDiscount(cart.discount.type, parseFloat(e.target.value))} />
+                             {activeCart && (
+                                <div className="p-4 mt-auto border-t bg-secondary/30 space-y-3">
+                                    <div className="flex justify-between items-center text-sm">
+                                        <span className="text-muted-foreground">Sous-total</span>
+                                        <span className="font-medium">{subtotal.toFixed(1)} DA</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-sm">
+                                        <Popover>
+                                            <PopoverTrigger asChild>
+                                                <Button variant="link" className="p-0 h-auto">Remise</Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-60">
+                                                <div className="space-y-4">
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="discount-value">Valeur</Label>
+                                                        <Input id="discount-value" type="number" value={activeCart.discount.value} onChange={(e) => handleSetDiscount(activeCart.discount.type, parseFloat(e.target.value))} />
+                                                    </div>
+                                                    <div className="flex gap-2">
+                                                        <Button size="sm" variant={activeCart.discount.type === 'fixed' ? 'default' : 'outline'} onClick={() => handleSetDiscount('fixed', activeCart.discount.value)}>Fixe (DA)</Button>
+                                                        <Button size="sm" variant={activeCart.discount.type === 'percentage' ? 'default' : 'outline'} onClick={() => handleSetDiscount('percentage', activeCart.discount.value)}>%</Button>
+                                                    </div>
                                                 </div>
-                                                <div className="flex gap-2">
-                                                    <Button size="sm" variant={cart.discount.type === 'fixed' ? 'default' : 'outline'} onClick={() => handleSetDiscount('fixed', cart.discount.value)}>Fixe (DA)</Button>
-                                                    <Button size="sm" variant={cart.discount.type === 'percentage' ? 'default' : 'outline'} onClick={() => handleSetDiscount('percentage', cart.discount.value)}>%</Button>
-                                                </div>
-                                            </div>
-                                        </PopoverContent>
-                                    </Popover>
-                                    <span className="font-medium text-destructive">- {discountAmount.toFixed(1)} DA</span>
+                                            </PopoverContent>
+                                        </Popover>
+                                        <span className="font-medium text-destructive">- {discountAmount.toFixed(1)} DA</span>
+                                    </div>
+                                    <div className="border-t"></div>
+                                    <div className="flex justify-between items-center text-2xl font-bold">
+                                        <span>TOTAL</span>
+                                        <span className="text-primary">{total.toFixed(1)} DA</span>
+                                    </div>
+                                    <div className="flex gap-2 pt-2">
+                                        <Button variant="outline" size="lg" className="w-1/4" onClick={() => clearCart(cart.id)}><Trash2/></Button>
+                                        <Button size="lg" className="w-3/4" onClick={() => setIsPaymentDialogOpen(true)} disabled={cart.items.length === 0}>Vente (F4)</Button>
+                                    </div>
                                 </div>
-                                <div className="border-t"></div>
-                                <div className="flex justify-between items-center text-2xl font-bold">
-                                    <span>TOTAL</span>
-                                    <span className="text-primary">{total.toFixed(1)} DA</span>
-                                </div>
-                                <div className="flex gap-2 pt-2">
-                                     <Button variant="outline" size="lg" className="w-1/4" onClick={() => clearCart(cart.id)}><Trash2/></Button>
-                                     <Button size="lg" className="w-3/4" onClick={() => setIsPaymentDialogOpen(true)} disabled={cart.items.length === 0}>Vente (F4)</Button>
-                                </div>
-                            </div>
+                             )}
                          </TabsContent>
                     ))}
                 </Tabs>
@@ -456,3 +493,5 @@ style.textContent = `
     }
 `;
 document.head.append(style);
+
+    
