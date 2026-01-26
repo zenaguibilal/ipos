@@ -22,7 +22,7 @@ const GoogleIcon = () => (
     </svg>
 );
 
-function SignupFormComponent({ redirectUrl = '/sell' }: { redirectUrl?: string }) {
+function SignupFormComponent({ redirectUrl = '/dashboard' }: { redirectUrl?: string }) {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
