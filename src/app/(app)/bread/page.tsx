@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -11,7 +10,7 @@ import type { BreadCustomer, DailyBreadOrder, BreadOrder, CompanyProfile, Sale }
 import { safeToDate } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
-import { PlusCircle, ArrowLeft, ArrowRight, CalendarIcon, Users, GitMerge, FileText, Receipt, Loader2 } from 'lucide-react';
+import { PlusCircle, ArrowLeft, ArrowRight, CalendarIcon, Users, GitMerge, FileText, Receipt, Loader2, AlertCircle } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { BreadCustomerDialog } from '@/components/bread/bread-customer-dialog';
@@ -21,6 +20,7 @@ import { BreadOrderCard } from '@/components/bread/bread-order-card';
 import { BreadOrderCardSkeleton } from '@/components/bread/bread-order-card-skeleton';
 import { toast } from 'sonner';
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
 
 const SaleDetailsDialog = dynamic(() => import('@/components/sales/sale-details-dialog').then(mod => mod.SaleDetailsDialog));
 
@@ -56,6 +56,8 @@ export default function BreadPage() {
     const { data: dailyOrders, isLoading: isLoadingOrders } = useCollection<DailyBreadOrder>(ordersQuery);
     const { data: companyProfile, isLoading: isCompanyProfileLoading } = useDoc<CompanyProfile>(companyProfileRef);
     const { data: breadSales, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
+
+    const isBreadPriceSet = useMemo(() => (companyProfile?.breadPrice ?? 0) > 0, [companyProfile]);
 
     useEffect(() => {
         if (!isUserLoading && !user) {
@@ -291,7 +293,7 @@ export default function BreadPage() {
                         <p className="text-muted-foreground">Gérez les commandes de pain quotidiennes et générez les ventes associées.</p>
                     </div>
                      <div className="flex items-center gap-2">
-                        <Button onClick={handleGenerateAllSales} disabled={isProcessing || !!processingOrderId || processableOrdersCount === 0}>
+                        <Button onClick={handleGenerateAllSales} disabled={isProcessing || !!processingOrderId || processableOrdersCount === 0 || !isBreadPriceSet}>
                             {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Receipt className="mr-2 h-4 w-4" />}
                             Générer {processableOrdersCount > 0 ? `${processableOrdersCount} ` : ''}Vente(s)
                         </Button>
@@ -301,6 +303,24 @@ export default function BreadPage() {
                         </Button>
                     </div>
                 </div>
+
+                {!isBreadPriceSet && !isCompanyProfileLoading && (
+                    <Card className="mb-6 bg-destructive/10 border-destructive/30 text-destructive">
+                        <CardHeader className="flex flex-row items-center gap-4 py-4">
+                            <AlertCircle className="h-6 w-6 flex-shrink-0" />
+                            <div className="flex-grow">
+                                <CardTitle>Prix du pain non défini</CardTitle>
+                                <CardDescription className="text-destructive/90">
+                                    Veuillez définir un prix pour le pain dans votre profil d'entreprise pour pouvoir générer des ventes.
+                                </CardDescription>
+                            </div>
+                            <Button asChild variant="destructive" className="ml-auto flex-shrink-0">
+                                <Link href="/profile">Définir le prix</Link>
+                            </Button>
+                        </CardHeader>
+                    </Card>
+                )}
+
 
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
                     <Card>
@@ -393,6 +413,7 @@ export default function BreadPage() {
                                             onGenerateSale={handleGenerateSingleSale}
                                             isProcessing={processingOrderId === order.id}
                                             isGloballyProcessing={isProcessing}
+                                            isBreadPriceSet={isBreadPriceSet}
                                         />
                                     ))}
                                 </div>
@@ -416,6 +437,7 @@ export default function BreadPage() {
                                                     onGenerateSale={handleGenerateSingleSale}
                                                     isProcessing={processingOrderId === order.id}
                                                     isGloballyProcessing={isProcessing}
+                                                    isBreadPriceSet={isBreadPriceSet}
                                                 />
                                             ))}
                                         </div>

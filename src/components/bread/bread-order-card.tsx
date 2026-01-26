@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { BreadCustomer, BreadOrder, Sale } from '@/lib/types';
@@ -20,9 +19,10 @@ interface BreadOrderCardProps {
     onGenerateSale: (order: BreadOrder) => void;
     isProcessing?: boolean;
     isGloballyProcessing?: boolean;
+    isBreadPriceSet: boolean;
 }
 
-export function BreadOrderCard({ order, sale, onViewSale, onEditCustomer, onDeleteCustomer, onSetOrder, onGenerateSale, isProcessing, isGloballyProcessing }: BreadOrderCardProps) {
+export function BreadOrderCard({ order, sale, onViewSale, onEditCustomer, onDeleteCustomer, onSetOrder, onGenerateSale, isProcessing, isGloballyProcessing, isBreadPriceSet }: BreadOrderCardProps) {
     
     const displayQuantity = order.todaysOrder?.quantity ?? order.defaultOrderQuantity;
     const isCustomOrder = !!order.todaysOrder;
@@ -68,7 +68,7 @@ export function BreadOrderCard({ order, sale, onViewSale, onEditCustomer, onDele
                                 <Edit className="mr-2 h-4 w-4" /> Modifier le client
                             </DropdownMenuItem>
                              {canGenerateSale && (
-                                <DropdownMenuItem onClick={() => onGenerateSale(order)} disabled={isProcessing || isGloballyProcessing}>
+                                <DropdownMenuItem onClick={() => onGenerateSale(order)} disabled={isProcessing || isGloballyProcessing || !isBreadPriceSet}>
                                     <Receipt className="mr-2 h-4 w-4" /> Générer la vente
                                 </DropdownMenuItem>
                             )}
