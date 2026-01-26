@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -64,6 +63,20 @@ export default function BreadPage() {
         }));
     }, [breadCustomers, dailyOrders]);
 
+    const { activeBreadOrders, inactiveBreadOrders } = useMemo(() => {
+        const active: BreadOrder[] = [];
+        const inactive: BreadOrder[] = [];
+        breadOrders.forEach(order => {
+            if (order.isActive) {
+                active.push(order);
+            } else {
+                inactive.push(order);
+            }
+        });
+        return { activeBreadOrders: active, inactiveBreadOrders: inactive };
+    }, [breadOrders]);
+
+
     const handleAddCustomer = () => {
         setCustomerToEdit(null);
         setIsCustomerDialogOpen(true);
@@ -81,11 +94,12 @@ export default function BreadPage() {
     
     const { totalQuantity, totalRevenue } = useMemo(() => {
         const price = companyProfile?.breadPrice ?? 0;
-        const total = breadOrders.reduce((sum, order) => {
-            return sum + (order.todaysOrder?.quantity ?? order.defaultOrderQuantity);
+        const total = activeBreadOrders.reduce((sum, order) => {
+            const quantity = order.todaysOrder?.quantity ?? order.defaultOrderQuantity;
+            return sum + quantity;
         }, 0);
         return { totalQuantity: total, totalRevenue: total * price };
-    }, [breadOrders, companyProfile]);
+    }, [activeBreadOrders, companyProfile]);
 
     const isLoading = isUserLoading || isLoadingCustomers || isLoadingOrders || isCompanyProfileLoading;
 
@@ -138,16 +152,16 @@ export default function BreadPage() {
                 <div className="grid gap-4 md:grid-cols-3 mb-6">
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Clients (Pain)</CardTitle>
+                            <CardTitle className="text-sm font-medium">Clients Actifs</CardTitle>
                             <Users className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold">{breadCustomers?.length ?? 0}</div>
+                            <div className="text-2xl font-bold">{activeBreadOrders.length ?? 0}</div>
                         </CardContent>
                     </Card>
                      <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Total Pains (Aujourd'hui)</CardTitle>
+                            <CardTitle className="text-sm font-medium">Total Pains (Actifs)</CardTitle>
                             <GitMerge className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
@@ -156,7 +170,7 @@ export default function BreadPage() {
                     </Card>
                      <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Revenu Estimé (Aujourd'hui)</CardTitle>
+                            <CardTitle className="text-sm font-medium">Revenu Estimé (Actifs)</CardTitle>
                             <FileText className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
@@ -203,17 +217,39 @@ export default function BreadPage() {
                                 <p className="text-muted-foreground">Aucun client de pain trouvé.</p>
                             </div>
                         ) : (
-                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                                {breadOrders.map(order => (
-                                    <BreadOrderCard
-                                        key={order.id}
-                                        order={order}
-                                        onEditCustomer={handleEditCustomer}
-                                        onDeleteCustomer={setCustomerToDelete}
-                                        onSetOrder={handleSetOrder}
-                                    />
-                                ))}
-                            </div>
+                             <>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                                    {activeBreadOrders.map(order => (
+                                        <BreadOrderCard
+                                            key={order.id}
+                                            order={order}
+                                            onEditCustomer={handleEditCustomer}
+                                            onDeleteCustomer={setCustomerToDelete}
+                                            onSetOrder={handleSetOrder}
+                                        />
+                                    ))}
+                                </div>
+
+                                {inactiveBreadOrders.length > 0 && (
+                                    <>
+                                        <div className="my-8">
+                                            <h3 className="text-lg font-semibold text-muted-foreground">Clients Inactifs</h3>
+                                            <div className="mt-2 border-b"></div>
+                                        </div>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                                            {inactiveBreadOrders.map(order => (
+                                                <BreadOrderCard
+                                                    key={order.id}
+                                                    order={order}
+                                                    onEditCustomer={handleEditCustomer}
+                                                    onDeleteCustomer={setCustomerToDelete}
+                                                    onSetOrder={handleSetOrder}
+                                                />
+                                            ))}
+                                        </div>
+                                    </>
+                                )}
+                             </>
                         )}
                     </CardContent>
                 </Card>
