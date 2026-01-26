@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
@@ -7,7 +8,7 @@ import { collection, query, orderBy, doc, runTransaction, serverTimestamp } from
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
-import { Search, Plus, Minus, Trash2, X, PlusCircle, UserPlus, Percent, ShoppingBasket } from 'lucide-react';
+import { Search, Plus, Minus, Trash2, X, PlusCircle, UserPlus, Percent, ShoppingBasket, MoreHorizontal } from 'lucide-react';
 import type { Product, Customer, Cart, CartItem, SaleItem, SalePayment } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { useCarts } from '@/hooks/useCarts';
@@ -19,6 +20,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { PaymentDialog } from '@/components/sell/PaymentDialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Label } from '@/components/ui/label';
+import { v4 as uuidv4 } from 'uuid';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+
 
 // SellProductCard Component
 const SellProductCard = ({ product, onAddToCart }: { product: Product, onAddToCart: (product: Product) => void }) => {
@@ -106,18 +110,27 @@ export default function SellPage() {
     const [categoryFilter, setCategoryFilter] = useState('all');
     const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
     const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+    const [customProductName, setCustomProductName] = useState('');
+    const [customProductPrice, setCustomProductPrice] = useState('');
+    const [isCustomProductPopoverOpen, setIsCustomProductPopoverOpen] = useState(false);
 
     const products = useMemo(() => productsData || [], [productsData]);
 
     // Derived State
     const activeCart = useMemo(() => carts.find(c => c.id === activeCartId), [carts, activeCartId]);
 
-    const categories = useMemo(() => {
+    const { categories, visibleCategories, hiddenCategories } = useMemo(() => {
         const allCats = products.reduce((acc, p) => {
             if (p.category) acc.add(p.category);
             return acc;
         }, new Set<string>());
-        return ['all', ...Array.from(allCats)];
+        const categoriesArray = ['all', ...Array.from(allCats)];
+        const MAX_VISIBLE_CATEGORIES = 4;
+        return {
+            categories: categoriesArray,
+            visibleCategories: categoriesArray.slice(0, MAX_VISIBLE_CATEGORIES),
+            hiddenCategories: categoriesArray.slice(MAX_VISIBLE_CATEGORIES),
+        }
     }, [products]);
 
     const filteredProducts = useMemo(() => {
@@ -199,6 +212,43 @@ export default function SellPage() {
         }
     }, [products, handleAddToCart]);
     
+    const handleAddCustomProduct = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!activeCart || !customProductName.trim() || !customProductPrice) {
+            toast.error("Veuillez entrer un nom et un prix pour le produit personnalisé.");
+            return;
+        }
+        const priceNum = parseFloat(customProductPrice);
+        if (isNaN(priceNum) || priceNum <= 0) {
+            toast.error("Veuillez entrer un prix valide.");
+            return;
+        }
+    
+        const customItem: CartItem = {
+            id: `custom-${uuidv4()}`,
+            name: customProductName.trim(),
+            price: priceNum,
+            purchasePrice: 0,
+            quantity: Infinity, // Unlimited stock for custom items
+            minStockLevel: 0,
+            cartQuantity: 1,
+            flash: true,
+            createdAt: new Date(),
+            category: 'Personnalisé',
+            barcodes: [],
+            imageUrl: `https://picsum.photos/seed/custom-${Date.now()}/300`
+        };
+    
+        const newItems = [...activeCart.items.map(i => ({...i, flash: false})), customItem];
+        updateCart({ ...activeCart, items: newItems });
+        
+        toast.success(`"${customItem.name}" ajouté au panier.`);
+        
+        setCustomProductName('');
+        setCustomProductPrice('');
+        setIsCustomProductPopoverOpen(false);
+    };
+
     const handleUpdateCartQuantity = useCallback((itemId: string, newQuantity: number) => {
         if (!activeCart) return;
 
@@ -208,7 +258,6 @@ export default function SellPage() {
         if (!itemToUpdate) return;
         
         if (newQuantity <= 0) {
-            // Remove item if quantity is zero or less
             const newItems = activeCart.items.filter(i => i.id !== itemId);
             updateCart({ ...activeCart, items: newItems });
             return;
@@ -269,7 +318,7 @@ export default function SellPage() {
             await runTransaction(firestore, async (transaction) => {
                 // 1. Check stock and prepare product updates
                 for (const item of saleItems) {
-                    if (item.id.startsWith('custom-')) continue; // Skip stock check for custom items
+                    if (item.id.startsWith('custom-')) continue;
                     
                     const productRef = doc(firestore, 'users', user.uid, 'products', item.id);
                     const productDoc = await transaction.get(productRef);
@@ -316,6 +365,7 @@ export default function SellPage() {
 
     useSellHotkeys({
         onFinalize: () => activeCart && activeCart.items.length > 0 && setIsPaymentDialogOpen(true),
+        onCustomProduct: () => setIsCustomProductPopoverOpen(true),
     });
 
     const customerOptions = useMemo(() => {
@@ -337,12 +387,12 @@ export default function SellPage() {
         <div className="h-full max-h-[calc(100vh-3.5rem)] grid grid-cols-1 lg:grid-cols-5 overflow-hidden">
             {/* Products Grid */}
             <div className="lg:col-span-3 xl:col-span-4 bg-muted/30 flex flex-col">
-                <div className="p-4 border-b">
-                     <div className="flex gap-4">
+                <div className="p-4 border-b space-y-4">
+                     <div className="flex gap-2 items-center">
                         <div className="relative flex-grow">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input 
-                                placeholder="Scanner ou rechercher un produit..." 
+                                placeholder="Scanner ou rechercher un produit... (Enter)" 
                                 className="pl-9" 
                                 value={searchQuery} 
                                 onChange={(e) => setSearchQuery(e.target.value)} 
@@ -354,12 +404,51 @@ export default function SellPage() {
                                 }}
                             />
                         </div>
-                        <div className="flex-shrink-0 flex gap-1 bg-muted p-1 rounded-lg">
-                           {categories.slice(0, 5).map(cat => (
-                               <Button key={cat} size="sm" variant={categoryFilter === cat ? 'default' : 'ghost'} onClick={() => setCategoryFilter(cat)} className="capitalize">{cat === 'all' ? 'Tous' : cat}</Button>
-                           ))}
-                           {/* Add dropdown for more categories if needed */}
-                        </div>
+                         <Popover open={isCustomProductPopoverOpen} onOpenChange={setIsCustomProductPopoverOpen}>
+                            <PopoverTrigger asChild>
+                                <Button variant="outline" className="flex-shrink-0">
+                                    <PlusCircle className="mr-2 h-4 w-4" /> Personnalisé (Alt+A)
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-80">
+                                <form onSubmit={handleAddCustomProduct} className="space-y-4">
+                                    <div className="space-y-2">
+                                        <h4 className="font-medium leading-none">Produit personnalisé</h4>
+                                        <p className="text-sm text-muted-foreground">
+                                            Pour les articles qui ne sont pas dans l'inventaire.
+                                        </p>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="custom-name">Nom du produit</Label>
+                                        <Input id="custom-name" value={customProductName} onChange={(e) => setCustomProductName(e.target.value)} autoFocus/>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="custom-price">Prix (DA)</Label>
+                                        <Input id="custom-price" type="number" value={customProductPrice} onChange={(e) => setCustomProductPrice(e.target.value)} />
+                                    </div>
+                                    <Button type="submit" className="w-full">Ajouter au panier</Button>
+                                </form>
+                            </PopoverContent>
+                        </Popover>
+                    </div>
+                     <div className="flex-shrink-0 flex gap-1 bg-muted p-1 rounded-lg">
+                        {visibleCategories.map(cat => (
+                            <Button key={cat} size="sm" variant={categoryFilter === cat ? 'default' : 'ghost'} onClick={() => setCategoryFilter(cat)} className="capitalize">{cat === 'all' ? 'Tous' : cat}</Button>
+                        ))}
+                        {hiddenCategories.length > 0 && (
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button size="sm" variant="ghost">
+                                        Plus <MoreHorizontal className="ml-1 h-4 w-4" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent>
+                                    {hiddenCategories.map(cat => (
+                                        <DropdownMenuItem key={cat} onSelect={() => setCategoryFilter(cat)} className="capitalize">{cat}</DropdownMenuItem>
+                                    ))}
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        )}
                     </div>
                 </div>
                 <div className="flex-grow overflow-y-auto p-4">
@@ -486,3 +575,6 @@ export default function SellPage() {
         </div>
     );
 }
+
+
+    
