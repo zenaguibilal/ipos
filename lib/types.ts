@@ -118,6 +118,7 @@ export interface CompanyProfile {
     vatNumber?: string;
     rcNumber?: string;
     breadPrice?: number;
+    breadPurchasePrice?: number;
 }
 
 export interface PurchaseOrderItem {
@@ -208,7 +209,8 @@ export interface BreadOrder {
     todaysOrder?: {
         id: string; // dailyBreadOrderId
         quantity: number;
-        isRecurring: boolean;
+        isPaid: boolean;
+        isDelivered: boolean;
     };
 }
 
@@ -218,7 +220,10 @@ export interface DailyBreadOrder {
     breadCustomerId: string;
     customerName: string;
     quantity: number;
-    isRecurring: boolean;
     date: string; // YYYY-MM-DD
     createdAt: Timestamp;
+    isPaid: boolean;
+    isDelivered: boolean;
 }
+
+    

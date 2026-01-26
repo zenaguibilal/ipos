@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -78,7 +77,6 @@ export default function BreadPage() {
                 quantity: ordersMap.get(customer.id)!.quantity,
                 isPaid: ordersMap.get(customer.id)!.isPaid,
                 isDelivered: ordersMap.get(customer.id)!.isDelivered,
-                saleId: ordersMap.get(customer.id)!.saleId,
             } : undefined
         }));
     }, [breadCustomers, dailyOrders]);
@@ -121,26 +119,26 @@ export default function BreadPage() {
             }
             
             return acc;
-        }, { totalOrdered: 0, totalDelivered: 0, totalRemaining: 0, totalCollected: 0, totalDue: 0, });
+        }, { totalOrdered: 0, totalDelivered: 0, totalRemaining: 0, totalCollected: 0, totalDue: 0 });
     }, [breadOrders, companyProfile]);
 
 
-    const handleAddCustomer = () => {
+    function handleAddCustomer() {
         setCustomerToEdit(null);
         setIsCustomerDialogOpen(true);
-    };
+    }
 
-    const handleEditCustomer = (customer: BreadCustomer) => {
+    function handleEditCustomer(customer: BreadCustomer) {
         setCustomerToEdit(customer);
         setIsCustomerDialogOpen(true);
-    };
+    }
 
-    const handleSetOrder = (order: BreadOrder) => {
+    function handleSetOrder(order: BreadOrder) {
         setOrderToEdit(order);
         setIsSetOrderDialogOpen(true);
-    };
+    }
     
-    const handleUpdateStatus = async (order: BreadOrder, field: 'isPaid' | 'isDelivered', value: boolean) => {
+    async function handleUpdateStatus(order: BreadOrder, field: 'isPaid' | 'isDelivered', value: boolean) {
         if (!firestore || !user) return;
         setIsProcessing(true);
 
@@ -151,7 +149,7 @@ export default function BreadPage() {
                 await updateDoc(orderRef, { [field]: value });
             } else {
                 const newOrderRef = doc(collection(firestore, 'users', user.uid, 'dailyBreadOrders'));
-                const newOrderData: Omit<DailyBreadOrder, 'id' > = {
+                const newOrderData: Omit<DailyBreadOrder, 'id'> = {
                     breadCustomerId: order.id,
                     customerName: order.name,
                     date: dateKey,
@@ -169,9 +167,9 @@ export default function BreadPage() {
         } finally {
             setIsProcessing(false);
         }
-    };
+    }
     
-    const handleMasterCheckboxChange = (checked: boolean | 'indeterminate') => {
+    function handleMasterCheckboxChange(checked: boolean | 'indeterminate') {
         if (checked) {
             const allIds = filteredBreadOrders.reduce((acc, order) => {
                 acc[order.id] = true;
@@ -181,13 +179,13 @@ export default function BreadPage() {
         } else {
             setSelectedOrders({});
         }
-    };
+    }
     
     const selectedCount = Object.values(selectedOrders).filter(Boolean).length;
     const isAllSelected = filteredBreadOrders.length > 0 && selectedCount === filteredBreadOrders.length;
     const isPartiallySelected = selectedCount > 0 && !isAllSelected;
 
-    const handleBulkUpdate = async (field: 'isPaid' | 'isDelivered', value: boolean) => {
+    async function handleBulkUpdate(field: 'isPaid' | 'isDelivered', value: boolean) {
         if (!firestore || !user || selectedCount === 0) return;
         setIsBulkProcessing(true);
 
@@ -226,7 +224,7 @@ export default function BreadPage() {
         }
     }
     
-    const handleResetDay = async () => {
+    async function handleResetDay() {
         if (!firestore || !user || !dailyOrders || dailyOrders.length === 0) {
             toast.info("Aucune commande personnalisée à réinitialiser pour ce jour.");
             setIsResetDialogOpen(false);
@@ -299,7 +297,7 @@ export default function BreadPage() {
                             Confirmer et Réinitialiser
                         </AlertDialogAction>
                     </AlertDialogFooter>
-                </AlertDialog>
+                </AlertDialogContent>
             </AlertDialog>
 
 
@@ -471,4 +469,3 @@ export default function BreadPage() {
         </>
     );
 }
-
