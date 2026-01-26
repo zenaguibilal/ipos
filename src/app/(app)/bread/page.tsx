@@ -1,8 +1,7 @@
-
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
-import { useUser, useFirestore, useCollection, useMemoFirebase, setDocumentNonBlocking } from '@/firebase';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { useUser, useFirestore, useCollection, useMemoFirebase, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { collection, query, where, orderBy, doc, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
@@ -13,6 +12,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
+  DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
   AlertDialog,
@@ -117,8 +117,8 @@ export default function BreadOrdersPage() {
         });
     }, [breadOrders, searchQuery, statusFilter]);
     
-     // Helper function for selection
-    function toggleOrderSelection(orderId: string) {
+    // Helper function for selection
+    const toggleOrderSelection = useCallback((orderId: string) => {
         setSelectedOrders(prev => {
             const newSet = new Set(prev);
             if (newSet.has(orderId)) {
@@ -128,17 +128,17 @@ export default function BreadOrdersPage() {
             }
             return newSet;
         });
-    };
+    }, []);
 
-    function toggleSelectAll() {
+    const toggleSelectAll = useCallback(() => {
         if (selectedOrders.size === filteredOrders.length) {
             setSelectedOrders(new Set());
         } else {
             setSelectedOrders(new Set(filteredOrders.map(o => o.id)));
         }
-    };
+    }, [selectedOrders.size, filteredOrders]);
 
-    function handleUpdateStatus(order: BreadOrder, field: 'isPaid' | 'isDelivered', value: boolean) {
+    const handleUpdateStatus = useCallback((order: BreadOrder, field: 'isPaid' | 'isDelivered', value: boolean) => {
         if (!firestore || !user) return;
 
         setUpdatingItems(prev => [...prev, order.id]);
@@ -175,9 +175,9 @@ export default function BreadOrdersPage() {
                 setUpdatingItems(prev => prev.filter(id => id !== order.id));
             }
         });
-    };
+    }, [firestore, user, dateString]);
 
-    async function handleResetDay() {
+    const handleResetDay = useCallback(async () => {
         if (!firestore || !user || !dailyOrders || dailyOrders.length === 0) {
             toast.info("Aucune modification à réinitialiser pour cette date.");
             setIsResetDialogOpen(false);
@@ -202,9 +202,9 @@ export default function BreadOrdersPage() {
             setIsUpdating(false);
             setIsResetDialogOpen(false);
         }
-    };
+    }, [firestore, user, dailyOrders]);
     
-    async function handleBulkUpdate(field: 'isPaid' | 'isDelivered', value: boolean) {
+    const handleBulkUpdate = useCallback(async (field: 'isPaid' | 'isDelivered', value: boolean) => {
         if (selectedOrders.size === 0 || !firestore || !user) {
             toast.info("Veuillez sélectionner au moins un client.");
             return;
@@ -247,7 +247,7 @@ export default function BreadOrdersPage() {
         } finally {
             setIsUpdating(false);
         }
-    };
+    }, [firestore, user, dateString, breadOrders, selectedOrders]);
 
 
     const isLoading = isLoadingCustomers || isLoadingDailyOrders || isLoadingProfile;
@@ -387,7 +387,7 @@ export default function BreadOrdersPage() {
                                 onSelect={() => toggleOrderSelection(order.id)}
                                 onEdit={() => setEditingOrder(order)}
                                 onDelete={() => setDeletingCustomer(order)}
-                                onUpdateStatus={(field, value) => handleUpdateStatus(order, field, value)}
+                                onUpdateStatus={handleUpdateStatus}
                                 isUpdating={updatingItems.includes(order.id)}
                             />
                         ))}
@@ -442,5 +442,3 @@ export default function BreadOrdersPage() {
         </React.Suspense>
     );
 }
-
-    
