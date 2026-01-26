@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
+import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc, setDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { collection, query, where, orderBy, doc, writeBatch, serverTimestamp, updateDoc, setDoc } from 'firebase/firestore';
+import { collection, query, where, orderBy, doc, writeBatch, serverTimestamp } from 'firebase/firestore';
 import { format, addDays, subDays } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import type { BreadCustomer, DailyBreadOrder, BreadOrder, CompanyProfile } from '@/lib/types';
@@ -41,7 +41,7 @@ export default function BreadPage() {
     const [customerToDelete, setCustomerToDelete] = useState<BreadCustomer | null>(null);
     const [customerToEdit, setCustomerToEdit] = useState<BreadCustomer | null>(null);
     const [orderToEdit, setOrderToEdit] = useState<BreadOrder | null>(null);
-    const [isProcessing, setIsProcessing] = useState(false);
+    const [processingOrderId, setProcessingOrderId] = useState<string | null>(null);
     const [isBulkProcessing, setIsBulkProcessing] = useState(false);
     
     const [searchQuery, setSearchQuery] = useState('');
@@ -138,34 +138,38 @@ export default function BreadPage() {
         setIsSetOrderDialogOpen(true);
     }
     
-    async function handleUpdateStatus(order: BreadOrder, field: 'isPaid' | 'isDelivered', value: boolean) {
+    function handleUpdateStatus(order: BreadOrder, field: 'isPaid' | 'isDelivered', value: boolean) {
         if (!firestore || !user) return;
-        setIsProcessing(true);
+        setProcessingOrderId(order.id);
 
         const orderId = order.todaysOrder?.id;
-        try {
-            if (orderId) {
-                const orderRef = doc(firestore, 'users', user.uid, 'dailyBreadOrders', orderId);
-                await updateDoc(orderRef, { [field]: value });
-            } else {
-                const newOrderRef = doc(collection(firestore, 'users', user.uid, 'dailyBreadOrders'));
-                const newOrderData: Omit<DailyBreadOrder, 'id'> = {
-                    breadCustomerId: order.id,
-                    customerName: order.name,
-                    date: dateKey,
-                    quantity: order.defaultOrderQuantity,
-                    isPaid: field === 'isPaid' ? value : false,
-                    isDelivered: field === 'isDelivered' ? value : false,
-                    createdAt: serverTimestamp(),
-                };
-                await setDoc(newOrderRef, newOrderData);
+
+        const callbacks = {
+            onSuccess: () => {
+                toast.success(`Statut pour ${order.name} mis à jour.`);
+                setProcessingOrderId(null);
+            },
+            onError: () => {
+                toast.error("Erreur lors de la mise à jour du statut.");
+                setProcessingOrderId(null);
             }
-            toast.success(`Statut pour ${order.name} mis à jour.`);
-        } catch(e) {
-            console.error("Failed to update status: ", e);
-            toast.error("Erreur lors de la mise à jour du statut.");
-        } finally {
-            setIsProcessing(false);
+        };
+
+        if (orderId) {
+            const orderRef = doc(firestore, 'users', user.uid, 'dailyBreadOrders', orderId);
+            setDocumentNonBlocking(orderRef, { [field]: value }, { merge: true }, callbacks);
+        } else {
+            const dailyOrdersCollection = collection(firestore, 'users', user.uid, 'dailyBreadOrders');
+            const newOrderData = {
+                breadCustomerId: order.id,
+                customerName: order.name,
+                date: dateKey,
+                quantity: order.defaultOrderQuantity,
+                isPaid: field === 'isPaid' ? value : false,
+                isDelivered: field === 'isDelivered' ? value : false,
+                createdAt: serverTimestamp(),
+            };
+            addDocumentNonBlocking(dailyOrdersCollection, newOrderData, callbacks);
         }
     }
     
@@ -185,7 +189,7 @@ export default function BreadPage() {
     const isAllSelected = filteredBreadOrders.length > 0 && selectedCount === filteredBreadOrders.length;
     const isPartiallySelected = selectedCount > 0 && !isAllSelected;
 
-    async function handleBulkUpdate(field: 'isPaid' | 'isDelivered', value: boolean) {
+    function handleBulkUpdate(field: 'isPaid' | 'isDelivered', value: boolean) {
         if (!firestore || !user || selectedCount === 0) return;
         setIsBulkProcessing(true);
 
@@ -199,7 +203,7 @@ export default function BreadPage() {
                 batch.update(orderRef, { [field]: value });
             } else {
                 const newOrderRef = doc(collection(firestore, 'users', user.uid, 'dailyBreadOrders'));
-                const newOrderData: Omit<DailyBreadOrder, 'id'> = {
+                const newOrderData = {
                     breadCustomerId: order.id,
                     customerName: order.name,
                     date: dateKey,
@@ -212,25 +216,24 @@ export default function BreadPage() {
             }
         }
 
-        try {
-            await batch.commit();
+        batch.commit().then(() => {
             toast.success(`${selectedCount} commande(s) mise(s) à jour.`);
             setSelectedOrders({});
-        } catch(e) {
+        }).catch((e) => {
             console.error('Bulk update failed', e);
             toast.error('Erreur lors de la mise à jour groupée.');
-        } finally {
+        }).finally(() => {
             setIsBulkProcessing(false);
-        }
+        });
     }
     
-    async function handleResetDay() {
+    function handleResetDay() {
         if (!firestore || !user || !dailyOrders || dailyOrders.length === 0) {
             toast.info("Aucune commande personnalisée à réinitialiser pour ce jour.");
             setIsResetDialogOpen(false);
             return;
         }
-        setIsProcessing(true);
+        setIsBulkProcessing(true);
         const batch = writeBatch(firestore);
 
         dailyOrders.forEach(order => {
@@ -238,16 +241,15 @@ export default function BreadPage() {
             batch.delete(orderRef);
         });
 
-        try {
-            await batch.commit();
+        batch.commit().then(() => {
             toast.success(`Les commandes du ${format(selectedDate, 'd MMMM')} ont été réinitialisées.`);
-        } catch (e) {
+        }).catch((e) => {
             console.error('Reset failed', e);
             toast.error('Erreur lors de la réinitialisation.');
-        } finally {
-            setIsProcessing(false);
+        }).finally(() => {
+            setIsBulkProcessing(false);
             setIsResetDialogOpen(false);
-        }
+        });
     }
 
     const isLoading = isUserLoading || isLoadingCustomers || isLoadingOrders || isCompanyProfileLoading;
@@ -292,8 +294,9 @@ export default function BreadPage() {
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel>Annuler</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleResetDay} className={cn(buttonVariants({ variant: "destructive" }))}>
+                        <AlertDialogCancel disabled={isBulkProcessing}>Annuler</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleResetDay} className={cn(buttonVariants({ variant: "destructive" }))} disabled={isBulkProcessing}>
+                            {isBulkProcessing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Confirmer et Réinitialiser
                         </AlertDialogAction>
                     </AlertDialogFooter>
@@ -458,7 +461,7 @@ export default function BreadPage() {
                                         onEditOrder={handleSetOrder}
                                         onEditCustomer={handleEditCustomer}
                                         onDeleteCustomer={setCustomerToDelete}
-                                        isProcessing={isProcessing || isBulkProcessing}
+                                        isProcessing={processingOrderId === order.id || isBulkProcessing}
                                     />
                                 ))
                             )}

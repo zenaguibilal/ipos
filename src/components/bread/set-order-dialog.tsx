@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -36,7 +35,7 @@ export function SetOrderDialog({ isOpen, onOpenChange, order, date, userId }: Se
     const dateKey = format(date, 'yyyy-MM-dd');
     const isDefaultQuantity = parseInt(quantity, 10) === order.defaultOrderQuantity;
 
-    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         
         setIsLoading(true);
@@ -48,39 +47,56 @@ export function SetOrderDialog({ isOpen, onOpenChange, order, date, userId }: Se
             return;
         }
 
-        if (!firestore) return;
+        if (!firestore || !userId) return;
 
-        try {
-            // If the new quantity is the default and a custom order exists, delete the custom order
-            if (isDefaultQuantity && order.todaysOrder?.id) {
-                const orderRef = doc(firestore, 'users', userId, 'dailyBreadOrders', order.todaysOrder.id);
-                await deleteDocumentNonBlocking(orderRef, {});
-                toast.success(`Commande pour ${order.name} réinitialisée à la valeur par défaut.`);
-            } 
-            // If the quantity is different from default, create or update the daily order
-            else if (!isDefaultQuantity) {
-                const orderRef = order.todaysOrder?.id 
-                    ? doc(firestore, 'users', userId, 'dailyBreadOrders', order.todaysOrder.id)
-                    : doc(collection(firestore, 'users', userId, 'dailyBreadOrders'));
-                
-                const orderData: Partial<DailyBreadOrder> = {
-                    breadCustomerId: order.id,
-                    customerName: order.name,
-                    quantity: newQuantity,
-                    date: dateKey,
-                    isPaid: order.todaysOrder?.isPaid ?? false,
-                    isDelivered: order.todaysOrder?.isDelivered ?? false,
-                    createdAt: order.todaysOrder?.id ? undefined : serverTimestamp(),
-                };
-                
-                await setDocumentNonBlocking(orderRef, orderData, { merge: true });
-                toast.success(`Commande pour ${order.name} mise à jour à ${newQuantity}.`);
+        const callbacks = {
+            onSuccess: () => {
+                 onOpenChange(false);
+                 setIsLoading(false);
+            },
+            onError: () => {
+                toast.error("Erreur lors de la mise à jour de la commande.");
+                setIsLoading(false);
             }
+        };
+
+        // If the new quantity is the default and a custom order exists, delete the custom order
+        if (isDefaultQuantity && order.todaysOrder?.id) {
+            const orderRef = doc(firestore, 'users', userId, 'dailyBreadOrders', order.todaysOrder.id);
+            deleteDocumentNonBlocking(orderRef, {
+                onSuccess: () => {
+                    toast.success(`Commande pour ${order.name} réinitialisée à la valeur par défaut.`);
+                    callbacks.onSuccess();
+                },
+                onError: callbacks.onError
+            });
+        } 
+        // If the quantity is different from default, create or update the daily order
+        else if (!isDefaultQuantity) {
+            const orderRef = order.todaysOrder?.id 
+                ? doc(firestore, 'users', userId, 'dailyBreadOrders', order.todaysOrder.id)
+                : doc(collection(firestore, 'users', userId, 'dailyBreadOrders'));
+            
+            const orderData: Partial<DailyBreadOrder> = {
+                breadCustomerId: order.id,
+                customerName: order.name,
+                quantity: newQuantity,
+                date: dateKey,
+                isPaid: order.todaysOrder?.isPaid ?? false,
+                isDelivered: order.todaysOrder?.isDelivered ?? false,
+                createdAt: order.todaysOrder?.id ? undefined : serverTimestamp(),
+            };
+            
+            setDocumentNonBlocking(orderRef, orderData, { merge: true }, {
+                onSuccess: () => {
+                    toast.success(`Commande pour ${order.name} mise à jour à ${newQuantity}.`);
+                    callbacks.onSuccess();
+                },
+                onError: callbacks.onError
+            });
+        } else {
+            // Case where quantity is default and no custom order exists. Do nothing, just close.
             onOpenChange(false);
-        } catch (error) {
-            toast.error("Erreur lors de la mise à jour de la commande.");
-            console.error(error);
-        } finally {
             setIsLoading(false);
         }
     };
@@ -123,5 +139,3 @@ export function SetOrderDialog({ isOpen, onOpenChange, order, date, userId }: Se
         </Dialog>
     );
 }
-
-    
