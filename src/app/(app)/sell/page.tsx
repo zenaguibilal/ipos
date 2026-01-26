@@ -148,7 +148,7 @@ export default function SellPage() {
                                 id: productData.id,
                                 name: productData.name,
                                 price: productData.price,
-                                purchasePrice: productData.purchasePrice,
+                                purchasePrice: productData.purchasePrice ?? 0,
                                 quantity: productData.quantity,
                                 imageUrl: productData.imageUrl,
                                 cartQuantity: newCartQuantity,
@@ -246,7 +246,7 @@ export default function SellPage() {
                         id: product.id,
                         name: product.name,
                         price: product.price,
-                        purchasePrice: product.purchasePrice,
+                        purchasePrice: product.purchasePrice ?? 0,
                         quantity: product.quantity, // available stock from Product
                         cartQuantity: 1,
                         flash: true,
@@ -436,7 +436,7 @@ export default function SellPage() {
                         id: item.id,
                         name: item.name,
                         price: item.price,
-                        purchasePrice: item.purchasePrice,
+                        purchasePrice: item.purchasePrice ?? 0,
                         quantity: item.cartQuantity
                     })),
                     subtotal: cartSubtotal,

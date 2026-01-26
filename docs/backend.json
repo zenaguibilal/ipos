@@ -172,7 +172,8 @@
               "id",
               "name",
               "price",
-              "quantity"
+              "quantity",
+              "purchasePrice"
             ]
           }
         },
@@ -495,36 +496,6 @@
         }
       },
       "required": ["originalInvoiceNumber", "items", "totalReturnValue", "amountRefunded", "createdAt"]
-    },
-    "BreadCustomer": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Bread Customer",
-      "description": "A customer with a recurring daily bread order.",
-      "type": "object",
-      "properties": {
-        "name": { "type": "string", "description": "Name of the customer." },
-        "isActive": { "type": "boolean", "description": "Whether the customer is currently active." },
-        "defaultOrderQuantity": { "type": "number", "description": "The default quantity of bread they order." },
-        "createdAt": { "type": "string", "format": "date-time", "description": "When the customer was added."}
-      },
-      "required": ["name", "isActive", "defaultOrderQuantity", "createdAt"]
-    },
-    "DailyBreadOrder": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Daily Bread Order",
-      "description": "Represents a modification or status update to a bread customer's order for a specific day.",
-      "type": "object",
-      "properties": {
-        "breadCustomerId": { "type": "string", "description": "The ID of the recurring bread customer." },
-        "customerName": { "type": "string", "description": "The name of the customer for quick reference." },
-        "quantity": { "type": "number", "description": "The quantity of bread ordered for this specific day." },
-        "date": { "type": "string", "format": "date", "description": "The date of the order in YYYY-MM-DD format." },
-        "isPaid": { "type": "boolean", "description": "Whether this specific day's order has been paid for." },
-        "isDelivered": { "type": "boolean", "description": "Whether this specific day's order has been delivered." },
-        "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp of when this daily record was created/updated."},
-        "saleId": { "type": "string", "description": "The ID of the sale generated when this order is paid." }
-      },
-      "required": ["breadCustomerId", "customerName", "quantity", "date", "isPaid", "isDelivered", "createdAt"]
     }
   },
   "auth": {
@@ -580,18 +551,6 @@
         "$ref": "#/entities/ProductReturn"
       },
       "description": "Product returns processed by the user."
-    },
-    "/users/{userId}/breadCustomers/{breadCustomerId}": {
-      "schema": {
-        "$ref": "#/entities/BreadCustomer"
-      },
-      "description": "Recurring bread customers."
-    },
-    "/users/{userId}/dailyBreadOrders/{dailyBreadOrderId}": {
-      "schema": {
-        "$ref": "#/entities/DailyBreadOrder"
-      },
-      "description": "Daily overrides and status for bread orders."
     }
   }
 }
