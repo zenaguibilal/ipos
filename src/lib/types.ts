@@ -1,4 +1,5 @@
 
+
 import { Timestamp } from "firebase/firestore";
 
 export interface Product {
@@ -80,28 +81,6 @@ export interface Payment {
     createdAt: Timestamp;
 }
 
-export interface BreadOrder {
-    id: string;
-    name: string;
-    quantity: number;
-    isPaid: boolean;
-    isDelivered: boolean;
-    isRecurring: boolean;
-    customerId?: string;
-    createdAt: Timestamp;
-}
-
-export interface UnpaidBreadOrder {
-    id: string;
-    name: string;
-    quantity: number;
-    pricePerUnit: number;
-    totalOwed: number;
-    originalOrderDate: Timestamp | Date;
-    customerId?: string;
-    archivedAt: Timestamp | Date;
-}
-
 export interface CustomerWithSalesData extends Customer {
     totalSpent: number;
     outstandingBalance: number;
@@ -138,8 +117,6 @@ export interface CompanyProfile {
     website?: string;
     vatNumber?: string;
     rcNumber?: string;
-    breadPrice?: number;
-    lastBreadOrderReset?: Timestamp | Date;
 }
 
 export interface PurchaseOrderItem {
