@@ -1,16 +1,17 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { collection, query, where, orderBy, doc } from 'firebase/firestore';
+import { collection, query, where, orderBy, doc, writeBatch, serverTimestamp } from 'firebase/firestore';
 import { format, addDays, subDays } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import type { BreadCustomer, DailyBreadOrder, BreadOrder, CompanyProfile } from '@/lib/types';
+import type { BreadCustomer, DailyBreadOrder, BreadOrder, CompanyProfile, Sale } from '@/lib/types';
 import { safeToDate } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
-import { PlusCircle, ArrowLeft, ArrowRight, CalendarIcon, Users, GitMerge, FileText } from 'lucide-react';
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
+import { PlusCircle, ArrowLeft, ArrowRight, CalendarIcon, Users, GitMerge, FileText, Receipt, Loader2 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { BreadCustomerDialog } from '@/components/bread/bread-customer-dialog';
@@ -18,6 +19,7 @@ import { DeleteBreadCustomerDialog } from '@/components/bread/delete-bread-custo
 import { SetOrderDialog } from '@/components/bread/set-order-dialog';
 import { BreadOrderCard } from '@/components/bread/bread-order-card';
 import { BreadOrderCardSkeleton } from '@/components/bread/bread-order-card-skeleton';
+import { toast } from 'sonner';
 
 export default function BreadPage() {
     const { user, isUserLoading } = useUser();
@@ -30,6 +32,7 @@ export default function BreadPage() {
     const [customerToDelete, setCustomerToDelete] = useState<BreadCustomer | null>(null);
     const [customerToEdit, setCustomerToEdit] = useState<BreadCustomer | null>(null);
     const [orderToEdit, setOrderToEdit] = useState<BreadOrder | null>(null);
+    const [isGeneratingSales, setIsGeneratingSales] = useState(false);
 
     const dateKey = format(selectedDate, 'yyyy-MM-dd');
 
@@ -59,6 +62,7 @@ export default function BreadPage() {
                 id: ordersMap.get(customer.id)!.id,
                 quantity: ordersMap.get(customer.id)!.quantity,
                 isRecurring: ordersMap.get(customer.id)!.isRecurring,
+                saleId: ordersMap.get(customer.id)!.saleId,
             } : undefined
         }));
     }, [breadCustomers, dailyOrders]);
@@ -92,14 +96,110 @@ export default function BreadPage() {
         setIsSetOrderDialogOpen(true);
     };
     
-    const { totalQuantity, totalRevenue } = useMemo(() => {
+    const { totalQuantity, totalRevenue, processableOrdersCount, generatedSalesCount } = useMemo(() => {
         const price = companyProfile?.breadPrice ?? 0;
-        const total = activeBreadOrders.reduce((sum, order) => {
-            const quantity = order.todaysOrder?.quantity ?? order.defaultOrderQuantity;
-            return sum + quantity;
-        }, 0);
-        return { totalQuantity: total, totalRevenue: total * price };
+        let quantity = 0;
+        let processable = 0;
+        let generated = 0;
+
+        for (const order of activeBreadOrders) {
+            const orderQuantity = order.todaysOrder?.quantity ?? order.defaultOrderQuantity;
+            quantity += orderQuantity;
+
+            if (orderQuantity > 0) {
+                 if (order.todaysOrder?.saleId) {
+                    generated++;
+                } else {
+                    processable++;
+                }
+            }
+        }
+        return { 
+            totalQuantity: quantity, 
+            totalRevenue: quantity * price,
+            processableOrdersCount: processable,
+            generatedSalesCount: generated,
+        };
     }, [activeBreadOrders, companyProfile]);
+
+    const handleGenerateSales = async () => {
+        if (!firestore || !user || !companyProfile?.breadPrice) {
+            toast.error("Veuillez définir un prix pour le pain dans votre profil d'entreprise.");
+            return;
+        }
+
+        const ordersToProcess = activeBreadOrders.filter(o => {
+            const quantity = o.todaysOrder?.quantity ?? o.defaultOrderQuantity;
+            return !o.todaysOrder?.saleId && quantity > 0;
+        });
+
+        if (ordersToProcess.length === 0) {
+            toast.info("Aucune nouvelle vente à générer pour aujourd'hui.");
+            return;
+        }
+
+        setIsGeneratingSales(true);
+        toast.info(`Génération de ${ordersToProcess.length} vente(s) en cours...`);
+
+        try {
+            const batch = writeBatch(firestore);
+            const breadPrice = companyProfile.breadPrice;
+            const breadProductId = 'BREAD_PRODUCT_ID';
+
+            for (const order of ordersToProcess) {
+                const quantity = order.todaysOrder?.quantity ?? order.defaultOrderQuantity;
+                const total = quantity * breadPrice;
+
+                // 1. Create the Sale document
+                const newSaleRef = doc(collection(firestore, 'users', user.uid, 'sales'));
+                const saleData: Omit<Sale, 'id' | 'createdAt'> = {
+                    invoiceNumber: `PAIN-${dateKey}-${order.id.slice(0, 5)}`,
+                    items: [{
+                        id: breadProductId,
+                        name: 'Pain',
+                        price: breadPrice,
+                        purchasePrice: 0, // Assuming no purchase price for bread
+                        quantity: quantity,
+                    }],
+                    subtotal: total,
+                    total: total,
+                    amountPaid: 0,
+                    remainingBalance: total,
+                    paymentStatus: 'unpaid',
+                    payments: [],
+                    customerId: order.id,
+                    customerName: order.name,
+                };
+                batch.set(newSaleRef, { ...saleData, createdAt: serverTimestamp() });
+                
+                // 2. Create or Update the DailyBreadOrder to link the sale
+                if (order.todaysOrder?.id) {
+                    const dailyOrderRef = doc(firestore, 'users', user.uid, 'dailyBreadOrders', order.todaysOrder.id);
+                    batch.update(dailyOrderRef, { saleId: newSaleRef.id });
+                } else {
+                    const newDailyOrderRef = doc(collection(firestore, 'users', user.uid, 'dailyBreadOrders'));
+                    batch.set(newDailyOrderRef, {
+                        breadCustomerId: order.id,
+                        customerName: order.name,
+                        quantity: quantity,
+                        date: dateKey,
+                        isRecurring: true,
+                        createdAt: serverTimestamp(),
+                        saleId: newSaleRef.id,
+                    });
+                }
+            }
+
+            await batch.commit();
+            toast.success(`${ordersToProcess.length} vente(s) générée(s) avec succès !`);
+
+        } catch (error) {
+            console.error("Failed to generate bread sales:", error);
+            toast.error("Une erreur est survenue lors de la génération des ventes.");
+        } finally {
+            setIsGeneratingSales(false);
+        }
+    };
 
     const isLoading = isUserLoading || isLoadingCustomers || isLoadingOrders || isCompanyProfileLoading;
 
@@ -139,9 +239,13 @@ export default function BreadPage() {
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
                     <div>
                         <h1 className="text-2xl font-bold">Commandes de Pain</h1>
-                        <p className="text-muted-foreground">Gérez les commandes de pain quotidiennes de vos clients.</p>
+                        <p className="text-muted-foreground">Gérez les commandes de pain quotidiennes et générez les ventes associées.</p>
                     </div>
                      <div className="flex items-center gap-2">
+                        <Button onClick={handleGenerateSales} disabled={isGeneratingSales || processableOrdersCount === 0}>
+                            {isGeneratingSales ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Receipt className="mr-2 h-4 w-4" />}
+                            Générer {processableOrdersCount > 0 ? `${processableOrdersCount} ` : ''}Vente(s)
+                        </Button>
                         <Button onClick={handleAddCustomer}>
                             <PlusCircle className="mr-2 h-4 w-4" />
                             Ajouter un client
@@ -149,7 +253,7 @@ export default function BreadPage() {
                     </div>
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-3 mb-6">
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">Clients Actifs</CardTitle>
@@ -161,7 +265,7 @@ export default function BreadPage() {
                     </Card>
                      <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Total Pains (Actifs)</CardTitle>
+                            <CardTitle className="text-sm font-medium">Total Pains du Jour (Actifs)</CardTitle>
                             <GitMerge className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
@@ -175,6 +279,15 @@ export default function BreadPage() {
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold">{totalRevenue.toFixed(2)} DA</div>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Ventes Générées</CardTitle>
+                            <Receipt className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{generatedSalesCount}</div>
                         </CardContent>
                     </Card>
                 </div>

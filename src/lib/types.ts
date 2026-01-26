@@ -209,6 +209,7 @@ export interface BreadOrder {
         id: string; // dailyBreadOrderId
         quantity: number;
         isRecurring: boolean;
+        saleId?: string;
     };
 }
 
@@ -221,4 +222,5 @@ export interface DailyBreadOrder {
     isRecurring: boolean;
     date: string; // YYYY-MM-DD
     createdAt: Timestamp;
+    saleId?: string;
 }

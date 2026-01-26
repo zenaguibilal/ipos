@@ -543,6 +543,10 @@
           "type": "string",
           "format": "date-time",
           "description": "Timestamp indicating when this order record was created."
+        },
+        "saleId": {
+          "type": "string",
+          "description": "The ID of the sale generated from this bread order."
         }
       },
       "required": ["breadCustomerId", "customerName", "quantity", "date", "createdAt"]

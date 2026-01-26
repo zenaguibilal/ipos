@@ -1,10 +1,11 @@
+
 'use client';
 
 import type { BreadCustomer, BreadOrder } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Edit, Trash2, Repeat, GitMerge } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, Repeat, GitMerge, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '../ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -20,16 +21,32 @@ export function BreadOrderCard({ order, onEditCustomer, onDeleteCustomer, onSetO
     
     const displayQuantity = order.todaysOrder?.quantity ?? order.defaultOrderQuantity;
     const isCustomOrder = !!order.todaysOrder;
+    const isProcessed = !!order.todaysOrder?.saleId;
 
     return (
         <Card className={cn(
             "flex flex-col transition-all duration-300 hover:shadow-lg",
-            !order.isActive && "bg-muted/50 opacity-60"
+            !order.isActive && "bg-muted/50 opacity-60",
+            isProcessed && "border-green-500/50 bg-green-500/5"
         )}>
             <CardHeader>
                 <div className="flex justify-between items-start">
                     <div className="space-y-1">
-                        <CardTitle className="text-xl">{order.name}</CardTitle>
+                        <CardTitle className="text-xl flex items-center gap-2">
+                            {order.name}
+                            {isProcessed && (
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger>
+                                            <CheckCircle2 className="h-5 w-5 text-green-600" />
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                            <p>Vente générée pour cette commande.</p>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                            )}
+                        </CardTitle>
                         {!order.isActive && <Badge variant="secondary">Inactif</Badge>}
                     </div>
                     <DropdownMenu>
@@ -68,17 +85,17 @@ export function BreadOrderCard({ order, onEditCustomer, onDeleteCustomer, onSetO
                                     className="w-full rounded-t-none" 
                                     variant={isCustomOrder ? 'secondary' : 'outline'}
                                     onClick={() => onSetOrder(order)}
-                                    disabled={!order.isActive}
+                                    disabled={!order.isActive || isProcessed}
                                 >
                                     <Edit className="mr-2 h-4 w-4" /> {isCustomOrder ? "Modifier la commande" : "Définir la commande du jour"}
                                 </Button>
                             </div>
                         </TooltipTrigger>
-                        {!order.isActive && (
-                            <TooltipContent>
-                                <p>Réactivez le client pour modifier sa commande.</p>
-                            </TooltipContent>
-                        )}
+                        {!order.isActive ? (
+                             <TooltipContent><p>Réactivez le client pour modifier sa commande.</p></TooltipContent>
+                        ) : isProcessed ? (
+                            <TooltipContent><p>Une vente a déjà été générée pour cette commande.</p></TooltipContent>
+                        ) : null}
                     </Tooltip>
                 </TooltipProvider>
             </CardFooter>
