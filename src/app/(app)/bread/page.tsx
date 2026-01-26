@@ -1,10 +1,9 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { collection, query, where, orderBy, doc, writeBatch, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, orderBy, doc, writeBatch, serverTimestamp, WriteBatch } from 'firebase/firestore';
 import { format, addDays, subDays } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import type { BreadCustomer, DailyBreadOrder, BreadOrder, CompanyProfile, Sale } from '@/lib/types';
@@ -32,7 +31,7 @@ export default function BreadPage() {
     const [customerToDelete, setCustomerToDelete] = useState<BreadCustomer | null>(null);
     const [customerToEdit, setCustomerToEdit] = useState<BreadCustomer | null>(null);
     const [orderToEdit, setOrderToEdit] = useState<BreadOrder | null>(null);
-    const [isGeneratingSales, setIsGeneratingSales] = useState(false);
+    const [isProcessing, setIsProcessing] = useState(false);
 
     const dateKey = format(selectedDate, 'yyyy-MM-dd');
 
@@ -122,12 +121,77 @@ export default function BreadPage() {
         };
     }, [activeBreadOrders, companyProfile]);
 
-    const handleGenerateSales = async () => {
+    const addSaleToBatch = (batch: WriteBatch, order: BreadOrder) => {
         if (!firestore || !user || !companyProfile?.breadPrice) {
-            toast.error("Veuillez définir un prix pour le pain dans votre profil d'entreprise.");
-            return;
-        }
+           throw new Error("Veuillez définir un prix pour le pain dans votre profil d'entreprise.");
+       }
+       const quantity = order.todaysOrder?.quantity ?? order.defaultOrderQuantity;
 
+       const breadPrice = companyProfile.breadPrice;
+       const breadProductId = 'BREAD_PRODUCT_ID';
+       const total = quantity * breadPrice;
+
+       const newSaleRef = doc(collection(firestore, 'users', user.uid, 'sales'));
+       const saleData: Omit<Sale, 'id' | 'createdAt'> = {
+           invoiceNumber: `PAIN-${dateKey}-${order.id.slice(0, 5)}`,
+           items: [{
+               id: breadProductId,
+               name: 'Pain',
+               price: breadPrice,
+               purchasePrice: 0,
+               quantity: quantity,
+           }],
+           subtotal: total,
+           total: total,
+           amountPaid: 0,
+           remainingBalance: total,
+           paymentStatus: 'unpaid',
+           payments: [],
+           customerId: order.id,
+           customerName: order.name,
+       };
+       batch.set(newSaleRef, { ...saleData, createdAt: serverTimestamp() });
+       
+       if (order.todaysOrder?.id) {
+           const dailyOrderRef = doc(firestore, 'users', user.uid, 'dailyBreadOrders', order.todaysOrder.id);
+           batch.update(dailyOrderRef, { saleId: newSaleRef.id });
+       } else {
+           const newDailyOrderRef = doc(collection(firestore, 'users', user.uid, 'dailyBreadOrders'));
+           batch.set(newDailyOrderRef, {
+               breadCustomerId: order.id,
+               customerName: order.name,
+               quantity: quantity,
+               date: dateKey,
+               isRecurring: true,
+               createdAt: serverTimestamp(),
+               saleId: newSaleRef.id,
+           });
+       }
+   }
+
+   const handleGenerateSingleSale = async (order: BreadOrder) => {
+        setIsProcessing(true);
+       toast.info(`Génération de la vente pour ${order.name}...`);
+       try {
+           if (!firestore) throw new Error("Firestore not available");
+           const quantity = order.todaysOrder?.quantity ?? order.defaultOrderQuantity;
+           if (quantity <= 0) throw new Error("La quantité est de 0.");
+           if (order.todaysOrder?.saleId) throw new Error("Vente déjà générée.");
+
+           const batch = writeBatch(firestore);
+           addSaleToBatch(batch, order);
+           await batch.commit();
+           toast.success(`Vente pour ${order.name} générée avec succès !`);
+       } catch (error: any) {
+            console.error("Failed to generate single bread sale:", error);
+           toast.error(error.message || "Une erreur est survenue lors de la génération de la vente.");
+       } finally {
+            setIsProcessing(false);
+       }
+   }
+
+    const handleGenerateAllSales = async () => {
+        if (!firestore) return;
         const ordersToProcess = activeBreadOrders.filter(o => {
             const quantity = o.todaysOrder?.quantity ?? o.defaultOrderQuantity;
             return !o.todaysOrder?.saleId && quantity > 0;
@@ -138,66 +202,22 @@ export default function BreadPage() {
             return;
         }
 
-        setIsGeneratingSales(true);
+        setIsProcessing(true);
         toast.info(`Génération de ${ordersToProcess.length} vente(s) en cours...`);
 
         try {
             const batch = writeBatch(firestore);
-            const breadPrice = companyProfile.breadPrice;
-            const breadProductId = 'BREAD_PRODUCT_ID';
-
             for (const order of ordersToProcess) {
-                const quantity = order.todaysOrder?.quantity ?? order.defaultOrderQuantity;
-                const total = quantity * breadPrice;
-
-                // 1. Create the Sale document
-                const newSaleRef = doc(collection(firestore, 'users', user.uid, 'sales'));
-                const saleData: Omit<Sale, 'id' | 'createdAt'> = {
-                    invoiceNumber: `PAIN-${dateKey}-${order.id.slice(0, 5)}`,
-                    items: [{
-                        id: breadProductId,
-                        name: 'Pain',
-                        price: breadPrice,
-                        purchasePrice: 0, // Assuming no purchase price for bread
-                        quantity: quantity,
-                    }],
-                    subtotal: total,
-                    total: total,
-                    amountPaid: 0,
-                    remainingBalance: total,
-                    paymentStatus: 'unpaid',
-                    payments: [],
-                    customerId: order.id,
-                    customerName: order.name,
-                };
-                batch.set(newSaleRef, { ...saleData, createdAt: serverTimestamp() });
-                
-                // 2. Create or Update the DailyBreadOrder to link the sale
-                if (order.todaysOrder?.id) {
-                    const dailyOrderRef = doc(firestore, 'users', user.uid, 'dailyBreadOrders', order.todaysOrder.id);
-                    batch.update(dailyOrderRef, { saleId: newSaleRef.id });
-                } else {
-                    const newDailyOrderRef = doc(collection(firestore, 'users', user.uid, 'dailyBreadOrders'));
-                    batch.set(newDailyOrderRef, {
-                        breadCustomerId: order.id,
-                        customerName: order.name,
-                        quantity: quantity,
-                        date: dateKey,
-                        isRecurring: true,
-                        createdAt: serverTimestamp(),
-                        saleId: newSaleRef.id,
-                    });
-                }
+                addSaleToBatch(batch, order);
             }
-
             await batch.commit();
             toast.success(`${ordersToProcess.length} vente(s) générée(s) avec succès !`);
 
-        } catch (error) {
+        } catch (error: any) {
             console.error("Failed to generate bread sales:", error);
-            toast.error("Une erreur est survenue lors de la génération des ventes.");
+            toast.error(error.message || "Une erreur est survenue lors de la génération des ventes.");
         } finally {
-            setIsGeneratingSales(false);
+            setIsProcessing(false);
         }
     };
 
@@ -242,8 +262,8 @@ export default function BreadPage() {
                         <p className="text-muted-foreground">Gérez les commandes de pain quotidiennes et générez les ventes associées.</p>
                     </div>
                      <div className="flex items-center gap-2">
-                        <Button onClick={handleGenerateSales} disabled={isGeneratingSales || processableOrdersCount === 0}>
-                            {isGeneratingSales ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Receipt className="mr-2 h-4 w-4" />}
+                        <Button onClick={handleGenerateAllSales} disabled={isProcessing || processableOrdersCount === 0}>
+                            {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Receipt className="mr-2 h-4 w-4" />}
                             Générer {processableOrdersCount > 0 ? `${processableOrdersCount} ` : ''}Vente(s)
                         </Button>
                         <Button onClick={handleAddCustomer}>
@@ -339,6 +359,7 @@ export default function BreadPage() {
                                             onEditCustomer={handleEditCustomer}
                                             onDeleteCustomer={setCustomerToDelete}
                                             onSetOrder={handleSetOrder}
+                                            onGenerateSale={handleGenerateSingleSale}
                                         />
                                     ))}
                                 </div>
@@ -357,6 +378,7 @@ export default function BreadPage() {
                                                     onEditCustomer={handleEditCustomer}
                                                     onDeleteCustomer={setCustomerToDelete}
                                                     onSetOrder={handleSetOrder}
+                                                    onGenerateSale={handleGenerateSingleSale}
                                                 />
                                             ))}
                                         </div>

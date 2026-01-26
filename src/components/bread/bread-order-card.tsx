@@ -1,11 +1,10 @@
-
 'use client';
 
 import type { BreadCustomer, BreadOrder } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Edit, Trash2, Repeat, GitMerge, CheckCircle2 } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, Repeat, GitMerge, CheckCircle2, Receipt } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '../ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -15,9 +14,10 @@ interface BreadOrderCardProps {
     onEditCustomer: (customer: BreadCustomer) => void;
     onDeleteCustomer: (customer: BreadCustomer) => void;
     onSetOrder: (order: BreadOrder) => void;
+    onGenerateSale: (order: BreadOrder) => void;
 }
 
-export function BreadOrderCard({ order, onEditCustomer, onDeleteCustomer, onSetOrder }: BreadOrderCardProps) {
+export function BreadOrderCard({ order, onEditCustomer, onDeleteCustomer, onSetOrder, onGenerateSale }: BreadOrderCardProps) {
     
     const displayQuantity = order.todaysOrder?.quantity ?? order.defaultOrderQuantity;
     const isCustomOrder = !!order.todaysOrder;
@@ -59,6 +59,11 @@ export function BreadOrderCard({ order, onEditCustomer, onDeleteCustomer, onSetO
                             <DropdownMenuItem onClick={() => onEditCustomer(order as BreadCustomer)}>
                                 <Edit className="mr-2 h-4 w-4" /> Modifier le client
                             </DropdownMenuItem>
+                             {order.isActive && !isProcessed && displayQuantity > 0 && (
+                                <DropdownMenuItem onClick={() => onGenerateSale(order)}>
+                                    <Receipt className="mr-2 h-4 w-4" /> Générer la vente
+                                </DropdownMenuItem>
+                            )}
                             <DropdownMenuItem onClick={() => onDeleteCustomer(order as BreadCustomer)} className="text-destructive focus:text-destructive">
                                 <Trash2 className="mr-2 h-4 w-4" /> Supprimer le client
                             </DropdownMenuItem>
