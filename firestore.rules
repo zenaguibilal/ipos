@@ -58,16 +58,6 @@ service cloud.firestore {
       match /payments/{paymentId} {
         allow read, write: if isOwner(userId);
       }
-
-      // Rules for the 'breadOrders' subcollection.
-      match /breadOrders/{orderId} {
-        allow read, write: if isOwner(userId);
-      }
-
-      // Rules for the 'unpaidBreadOrders' subcollection.
-      match /unpaidBreadOrders/{unpaidOrderId} {
-        allow get, list, create, update, delete: if isOwner(userId);
-      }
       
       // Rules for the 'companyProfile' subcollection.
       match /companyProfile/{docId} {
@@ -96,4 +86,6 @@ service cloud.firestore {
 }
 
     
+    
+
     

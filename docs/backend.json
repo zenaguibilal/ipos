@@ -277,83 +277,6 @@
       },
       "required": ["customerId", "amount", "createdAt"]
     },
-     "BreadOrder": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Bread Order",
-      "description": "Represents a single daily bread order.",
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string",
-          "description": "Name of the person who placed the order."
-        },
-        "quantity": {
-          "type": "integer",
-          "description": "Number of bread units ordered."
-        },
-        "isPaid": {
-          "type": "boolean",
-          "description": "Whether the order has been paid for."
-        },
-        "isDelivered": {
-          "type": "boolean",
-          "description": "Whether the bread has been delivered/picked up."
-        },
-        "isRecurring": {
-          "type": "boolean",
-          "description": "Whether this is a recurring daily order."
-        },
-        "customerId": {
-            "type": "string",
-            "description": "Optional ID of the customer associated with the order."
-        },
-        "createdAt": {
-          "type": "string",
-          "format": "date-time",
-          "description": "Timestamp of when the order was placed or last updated."
-        }
-      },
-      "required": ["name", "quantity", "isPaid", "isDelivered", "isRecurring", "createdAt"]
-    },
-    "UnpaidBreadOrder": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "Unpaid Bread Order",
-        "description": "Represents an archived unpaid bread order from the daily list.",
-        "type": "object",
-        "properties": {
-            "name": {
-                "type": "string",
-                "description": "Name of the person who placed the order."
-            },
-            "quantity": {
-                "type": "integer",
-                "description": "Number of bread units ordered."
-            },
-            "pricePerUnit": {
-                "type": "number",
-                "description": "The price per unit of bread at the time of archiving."
-            },
-            "totalOwed": {
-                "type": "number",
-                "description": "The total amount owed for this order."
-            },
-            "originalOrderDate": {
-                "type": "string",
-                "format": "date-time",
-                "description": "The original date the order was placed/active."
-            },
-            "customerId": {
-                "type": "string",
-                "description": "Optional ID of the customer associated with the archived order."
-            },
-            "archivedAt": {
-                "type": "string",
-                "format": "date-time",
-                "description": "Timestamp of when this unpaid order was archived."
-            }
-        },
-        "required": ["name", "quantity", "pricePerUnit", "totalOwed", "originalOrderDate", "archivedAt"]
-    },
     "CompanyProfile": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Company Profile",
@@ -401,15 +324,6 @@
         "rcNumber": {
           "type": "string",
           "description": "Trade Register (Registre du Commerce) number."
-        },
-        "breadPrice": {
-            "type": "number",
-            "description": "The unit price for a single bread item, used in the bread orders module."
-        },
-        "lastBreadOrderReset": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Timestamp of the last time the daily bread orders were reset."
         },
         "updatedAt": {
           "type": "string",
@@ -602,14 +516,6 @@
         "schema": { "$ref": "#/entities/Payment" },
         "description": "Standalone payments recorded for customers."
     },
-    "/users/{userId}/breadOrders/{orderId}": {
-      "schema": { "$ref": "#/entities/BreadOrder"},
-      "description": "Daily bread orders for the user."
-    },
-    "/users/{userId}/unpaidBreadOrders/{unpaidOrderId}": {
-      "schema": { "$ref": "#/entities/UnpaidBreadOrder" },
-      "description": "Archived unpaid bread orders."
-    },
     "/users/{userId}/companyProfile/main": {
       "schema": {
         "$ref": "#/entities/CompanyProfile"
@@ -634,3 +540,6 @@
     }
   }
 }
+
+
+    

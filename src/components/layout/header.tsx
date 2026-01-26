@@ -8,7 +8,6 @@ import {
   User as UserIcon,
   History,
   Settings,
-  Cookie,
   Bell,
   Info,
   Undo2,
@@ -47,7 +46,6 @@ const navLinks = [
   { href: '/stock', label: 'Stock', icon: Archive },
   { href: '/sales-history', label: 'Historique', icon: History },
   { href: '/returns', label: 'Retours', icon: Undo2 },
-  { href: '/bread-orders', label: 'Commandes de Pain', icon: Cookie },
   { href: '/notifications', label: 'Alertes', icon: Bell },
 ];
 
@@ -152,3 +150,5 @@ export function AppHeader() {
     </header>
   );
 }
+
+    

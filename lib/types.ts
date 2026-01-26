@@ -1,4 +1,5 @@
 
+
 import { Timestamp } from "firebase/firestore";
 
 export interface Product {
@@ -29,8 +30,30 @@ export interface SaleItem {
     price: number;
     purchasePrice: number;
     quantity: number;
-    cartQuantity?: number;
-    createdAt?: Timestamp | Date;
+}
+
+// Represents an item in the live shopping cart
+export interface CartItem extends Product {
+    cartQuantity: number;
+    flash?: boolean; // For UI animation
+}
+
+// Represents a single shopping cart session
+export interface Cart {
+    id: string;
+    name: string;
+    items: CartItem[];
+    customerId: string | null;
+    customerName: string;
+    discount: {
+        type: 'fixed' | 'percentage';
+        value: number;
+    };
+}
+
+export interface SalePayment {
+    method: 'cash' | 'card' | 'other';
+    amount: number;
 }
 
 export interface Sale {
@@ -44,7 +67,7 @@ export interface Sale {
     amountPaid: number;
     remainingBalance: number;
     paymentStatus: 'paid' | 'partial' | 'unpaid';
-    paymentMethod?: 'cash' | 'card' | 'other';
+    payments: SalePayment[];
     customerId?: string;
     customerName?: string;
     createdAt: Timestamp | Date;
@@ -56,28 +79,6 @@ export interface Payment {
     customerName?: string;
     amount: number;
     createdAt: Timestamp;
-}
-
-export interface BreadOrder {
-    id: string;
-    name: string;
-    quantity: number;
-    isPaid: boolean;
-    isDelivered: boolean;
-    isRecurring: boolean;
-    customerId?: string;
-    createdAt: Timestamp;
-}
-
-export interface UnpaidBreadOrder {
-    id: string;
-    name: string;
-    quantity: number;
-    pricePerUnit: number;
-    totalOwed: number;
-    originalOrderDate: Timestamp | Date;
-    customerId?: string;
-    archivedAt: Timestamp | Date;
 }
 
 export interface CustomerWithSalesData extends Customer {
@@ -116,8 +117,6 @@ export interface CompanyProfile {
     website?: string;
     vatNumber?: string;
     rcNumber?: string;
-    breadPrice?: number;
-    lastBreadOrderReset?: Timestamp | Date;
 }
 
 export interface PurchaseOrderItem {
@@ -175,6 +174,7 @@ export interface ReturnItem {
     quantity: number;
     price: number; // The price at which it was sold
     purchasePrice: number;
+    wasRestocked: boolean;
 }
 
 export interface ProductReturn {
@@ -189,7 +189,5 @@ export interface ProductReturn {
     createdAt: Timestamp | Date;
     notes?: string;
 }
-
-    
 
     
