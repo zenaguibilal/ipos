@@ -539,10 +539,6 @@
           "type": "integer",
           "description": "The quantity of bread for the order."
         },
-        "isRecurring": {
-            "type": "boolean",
-            "description": "Indicates if this is a recurring order or a one-off."
-        },
         "date": {
           "type": "string",
           "description": "The specific date for this order in YYYY-MM-DD format."
@@ -555,6 +551,14 @@
         "saleId": {
           "type": "string",
           "description": "The ID of the sale generated from this bread order."
+        },
+        "isPaid": {
+          "type": "boolean",
+          "description": "Indicates if the order for this day has been paid."
+        },
+        "isDelivered": {
+          "type": "boolean",
+          "description": "Indicates if the order for this day has been delivered."
         }
       },
       "required": ["breadCustomerId", "customerName", "quantity", "date", "createdAt"]
@@ -628,5 +632,3 @@
     }
   }
 }
-
-    

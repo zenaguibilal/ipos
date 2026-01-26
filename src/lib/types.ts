@@ -210,8 +210,9 @@ export interface BreadOrder {
     todaysOrder?: {
         id: string; // dailyBreadOrderId
         quantity: number;
-        isRecurring: boolean;
         saleId?: string;
+        isPaid: boolean;
+        isDelivered: boolean;
     };
 }
 
@@ -221,10 +222,9 @@ export interface DailyBreadOrder {
     breadCustomerId: string;
     customerName: string;
     quantity: number;
-    isRecurring: boolean;
     date: string; // YYYY-MM-DD
     createdAt: Timestamp;
     saleId?: string;
+    isPaid: boolean;
+    isDelivered: boolean;
 }
-
-    

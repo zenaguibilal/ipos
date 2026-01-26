@@ -1,29 +1,29 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { collection, query, where, orderBy, doc, writeBatch, serverTimestamp, WriteBatch } from 'firebase/firestore';
+import { collection, query, where, orderBy, doc, writeBatch, serverTimestamp, updateDoc, setDoc } from 'firebase/firestore';
 import { format, addDays, subDays } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import type { BreadCustomer, DailyBreadOrder, BreadOrder, CompanyProfile, Sale } from '@/lib/types';
-import { safeToDate } from '@/lib/utils';
+import type { BreadCustomer, DailyBreadOrder, BreadOrder, CompanyProfile } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
-import { PlusCircle, ArrowLeft, ArrowRight, CalendarIcon, Users, GitMerge, FileText, Receipt, Loader2, AlertCircle } from 'lucide-react';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
+import { PlusCircle, ArrowLeft, ArrowRight, CalendarIcon, RefreshCw, Printer, Search, ListFilter, Check, Package, AlertTriangle, Receipt } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { BreadCustomerDialog } from '@/components/bread/bread-customer-dialog';
 import { DeleteBreadCustomerDialog } from '@/components/bread/delete-bread-customer-dialog';
 import { SetOrderDialog } from '@/components/bread/set-order-dialog';
-import { BreadOrderCard } from '@/components/bread/bread-order-card';
-import { BreadOrderCardSkeleton } from '@/components/bread/bread-order-card-skeleton';
+import { BreadOrderRow } from '@/components/bread/BreadOrderRow';
+import { BreadOrderRowSkeleton } from '@/components/bread/BreadOrderRowSkeleton';
 import { toast } from 'sonner';
-import dynamic from 'next/dynamic';
-import Link from 'next/link';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-const SaleDetailsDialog = dynamic(() => import('@/components/sales/sale-details-dialog').then(mod => mod.SaleDetailsDialog));
-
+type StatusFilter = 'all' | 'not-delivered' | 'not-paid';
 
 export default function BreadPage() {
     const { user, isUserLoading } = useUser();
@@ -37,27 +37,21 @@ export default function BreadPage() {
     const [customerToEdit, setCustomerToEdit] = useState<BreadCustomer | null>(null);
     const [orderToEdit, setOrderToEdit] = useState<BreadOrder | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
-    const [processingOrderId, setProcessingOrderId] = useState<string | null>(null);
-    const [viewingSale, setViewingSale] = useState<Sale | null>(null);
-
+    
+    const [searchQuery, setSearchQuery] = useState('');
+    const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+    const [selectedOrders, setSelectedOrders] = useState<Record<string, boolean>>({});
 
     const dateKey = format(selectedDate, 'yyyy-MM-dd');
 
     // --- Data Fetching ---
-    const customersQuery = useMemoFirebase(() => (user && firestore) ? query(collection(firestore, 'users', user.uid, 'breadCustomers'), orderBy('name', 'asc')) : null, [user, firestore]);
+    const customersQuery = useMemoFirebase(() => (user && firestore) ? query(collection(firestore, 'users', user.uid, 'breadCustomers'), where('isActive', '==', true), orderBy('name', 'asc')) : null, [user, firestore]);
     const ordersQuery = useMemoFirebase(() => (user && firestore) ? query(collection(firestore, 'users', user.uid, 'dailyBreadOrders'), where('date', '==', dateKey)) : null, [user, firestore, dateKey]);
     const companyProfileRef = useMemoFirebase(() => (user && firestore) ? doc(firestore, 'users', user.uid, 'companyProfile', 'main') : null, [user, firestore]);
-    const salesQuery = useMemoFirebase(() => (user && firestore) ? query(
-        collection(firestore, 'users', user.uid, 'sales'),
-        where('breadOrderDate', '==', dateKey)
-    ) : null, [user, firestore, dateKey]);
     
     const { data: breadCustomers, isLoading: isLoadingCustomers } = useCollection<BreadCustomer>(customersQuery);
     const { data: dailyOrders, isLoading: isLoadingOrders } = useCollection<DailyBreadOrder>(ordersQuery);
     const { data: companyProfile, isLoading: isCompanyProfileLoading } = useDoc<CompanyProfile>(companyProfileRef);
-    const { data: breadSales, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
-
-    const isBreadPriceSet = useMemo(() => (companyProfile?.breadPrice ?? 0) > 0, [companyProfile]);
 
     useEffect(() => {
         if (!isUserLoading && !user) {
@@ -65,19 +59,8 @@ export default function BreadPage() {
         }
     }, [user, isUserLoading, router]);
     
-    const salesMap = useMemo<Map<string, Sale>>(() => {
-        if (!breadSales) return new Map();
-        // Use saleId as key
-        const map = new Map<string, Sale>();
-        breadSales.forEach(sale => {
-            map.set(sale.id, sale);
-        });
-        return map;
-    }, [breadSales]);
-
-
     const breadOrders = useMemo<BreadOrder[]>(() => {
-        if (!breadCustomers || !dailyOrders) return [];
+        if (!breadCustomers) return [];
 
         const ordersMap = new Map(dailyOrders?.map(order => [order.breadCustomerId, order]));
 
@@ -86,24 +69,53 @@ export default function BreadPage() {
             todaysOrder: ordersMap.get(customer.id) ? {
                 id: ordersMap.get(customer.id)!.id,
                 quantity: ordersMap.get(customer.id)!.quantity,
-                isRecurring: ordersMap.get(customer.id)!.isRecurring,
+                isPaid: ordersMap.get(customer.id)!.isPaid,
+                isDelivered: ordersMap.get(customer.id)!.isDelivered,
                 saleId: ordersMap.get(customer.id)!.saleId,
             } : undefined
         }));
     }, [breadCustomers, dailyOrders]);
 
-    const { activeBreadOrders, inactiveBreadOrders } = useMemo(() => {
-        const active: BreadOrder[] = [];
-        const inactive: BreadOrder[] = [];
-        breadOrders.forEach(order => {
-            if (order.isActive) {
-                active.push(order);
-            } else {
-                inactive.push(order);
+    const filteredBreadOrders = useMemo(() => {
+        return breadOrders.filter(order => {
+            const nameMatch = order.name.toLowerCase().includes(searchQuery.toLowerCase());
+            if (!nameMatch) return false;
+
+            const dailyOrder = order.todaysOrder;
+            const quantity = dailyOrder?.quantity ?? order.defaultOrderQuantity;
+            if(quantity === 0 && statusFilter !== 'all') return false;
+
+            switch (statusFilter) {
+                case 'not-delivered':
+                    return !dailyOrder?.isDelivered;
+                case 'not-paid':
+                    return !dailyOrder?.isPaid;
+                case 'all':
+                default:
+                    return true;
             }
         });
-        return { activeBreadOrders: active, inactiveBreadOrders: inactive };
-    }, [breadOrders]);
+    }, [breadOrders, searchQuery, statusFilter]);
+
+    const { totalOrdered, totalDelivered, totalRemaining, totalCollected, totalDue } = useMemo(() => {
+        const price = companyProfile?.breadPrice ?? 0;
+        return breadOrders.reduce((acc, order) => {
+            const quantity = order.todaysOrder?.quantity ?? order.defaultOrderQuantity;
+            acc.totalOrdered += quantity;
+
+            if (order.todaysOrder?.isDelivered) {
+                acc.totalDelivered += quantity;
+            }
+            if (order.todaysOrder?.isPaid) {
+                acc.totalCollected += quantity * price;
+            }
+            if (!order.todaysOrder?.isPaid && quantity > 0) {
+                 acc.totalDue += quantity * price;
+            }
+            
+            return acc;
+        }, { totalOrdered: 0, totalDelivered: 0, totalRemaining: 0, totalCollected: 0, totalDue: 0, });
+    }, [breadOrders, companyProfile]);
 
 
     const handleAddCustomer = () => {
@@ -121,135 +133,54 @@ export default function BreadPage() {
         setIsSetOrderDialogOpen(true);
     };
     
-    const { totalQuantity, totalRevenue, processableOrdersCount, generatedSalesCount } = useMemo(() => {
-        const price = companyProfile?.breadPrice ?? 0;
-        let quantity = 0;
-        let processable = 0;
-        let generated = 0;
-
-        for (const order of activeBreadOrders) {
-            const orderQuantity = order.todaysOrder?.quantity ?? order.defaultOrderQuantity;
-            quantity += orderQuantity;
-
-            if (orderQuantity > 0) {
-                 if (order.todaysOrder?.saleId) {
-                    generated++;
-                } else {
-                    processable++;
-                }
-            }
-        }
-        return { 
-            totalQuantity: quantity, 
-            totalRevenue: quantity * price,
-            processableOrdersCount: processable,
-            generatedSalesCount: generated,
-        };
-    }, [activeBreadOrders, companyProfile]);
-
-    const addSaleToBatch = (batch: WriteBatch, order: BreadOrder) => {
-        if (!firestore || !user || !companyProfile?.breadPrice) {
-           throw new Error("Veuillez définir un prix pour le pain dans votre profil d'entreprise.");
-       }
-       const quantity = order.todaysOrder?.quantity ?? order.defaultOrderQuantity;
-
-       const breadPrice = companyProfile.breadPrice;
-       const breadPurchasePrice = companyProfile.breadPurchasePrice || 0;
-       const breadProductId = 'BREAD_PRODUCT_ID';
-       const total = quantity * breadPrice;
-
-       const newSaleRef = doc(collection(firestore, 'users', user.uid, 'sales'));
-       const saleData: Omit<Sale, 'id' | 'createdAt'> = {
-           invoiceNumber: `PAIN-${dateKey}-${order.id.slice(0, 5)}`,
-           items: [{
-               id: breadProductId,
-               name: 'Pain',
-               price: breadPrice,
-               purchasePrice: breadPurchasePrice,
-               quantity: quantity,
-           }],
-           subtotal: total,
-           total: total,
-           amountPaid: 0,
-           remainingBalance: total,
-           paymentStatus: 'unpaid',
-           payments: [],
-           customerId: order.id,
-           customerName: order.name,
-           breadOrderDate: dateKey,
-       };
-       batch.set(newSaleRef, { ...saleData, createdAt: serverTimestamp() });
-       
-       if (order.todaysOrder?.id) {
-           const dailyOrderRef = doc(firestore, 'users', user.uid, 'dailyBreadOrders', order.todaysOrder.id);
-           batch.update(dailyOrderRef, { saleId: newSaleRef.id });
-       } else {
-           const newDailyOrderRef = doc(collection(firestore, 'users', user.uid, 'dailyBreadOrders'));
-           batch.set(newDailyOrderRef, {
-               breadCustomerId: order.id,
-               customerName: order.name,
-               quantity: quantity,
-               date: dateKey,
-               isRecurring: true,
-               createdAt: serverTimestamp(),
-               saleId: newSaleRef.id,
-           });
-       }
-   }
-
-   const handleGenerateSingleSale = async (order: BreadOrder) => {
-        setProcessingOrderId(order.id);
-       toast.info(`Génération de la vente pour ${order.name}...`);
-       try {
-           if (!firestore) throw new Error("Firestore not available");
-           const quantity = order.todaysOrder?.quantity ?? order.defaultOrderQuantity;
-           if (quantity <= 0) throw new Error("La quantité est de 0.");
-           if (order.todaysOrder?.saleId) throw new Error("Vente déjà générée.");
-
-           const batch = writeBatch(firestore);
-           addSaleToBatch(batch, order);
-           await batch.commit();
-           toast.success(`Vente pour ${order.name} générée avec succès !`);
-       } catch (error: any) {
-            console.error("Failed to generate single bread sale:", error);
-           toast.error(error.message || "Une erreur est survenue lors de la génération de la vente.");
-       } finally {
-            setProcessingOrderId(null);
-       }
-   }
-
-    const handleGenerateAllSales = async () => {
-        if (!firestore) return;
-        const ordersToProcess = activeBreadOrders.filter(o => {
-            const quantity = o.todaysOrder?.quantity ?? o.defaultOrderQuantity;
-            return !o.todaysOrder?.saleId && quantity > 0;
-        });
-
-        if (ordersToProcess.length === 0) {
-            toast.info("Aucune nouvelle vente à générer pour aujourd'hui.");
-            return;
-        }
-
+    const handleUpdateStatus = async (order: BreadOrder, field: 'isPaid' | 'isDelivered', value: boolean) => {
+        if (!firestore || !user) return;
         setIsProcessing(true);
-        toast.info(`Génération de ${ordersToProcess.length} vente(s) en cours...`);
 
+        const orderId = order.todaysOrder?.id;
         try {
-            const batch = writeBatch(firestore);
-            for (const order of ordersToProcess) {
-                addSaleToBatch(batch, order);
+            if (orderId) {
+                const orderRef = doc(firestore, 'users', user.uid, 'dailyBreadOrders', orderId);
+                await updateDoc(orderRef, { [field]: value });
+            } else {
+                const newOrderRef = doc(collection(firestore, 'users', user.uid, 'dailyBreadOrders'));
+                const newOrderData: Omit<DailyBreadOrder, 'id' > = {
+                    breadCustomerId: order.id,
+                    customerName: order.name,
+                    date: dateKey,
+                    quantity: order.defaultOrderQuantity,
+                    isPaid: field === 'isPaid' ? value : false,
+                    isDelivered: field === 'isDelivered' ? value : false,
+                    createdAt: serverTimestamp(),
+                };
+                await setDoc(newOrderRef, newOrderData);
             }
-            await batch.commit();
-            toast.success(`${ordersToProcess.length} vente(s) générée(s) avec succès !`);
-
-        } catch (error: any) {
-            console.error("Failed to generate bread sales:", error);
-            toast.error(error.message || "Une erreur est survenue lors de la génération des ventes.");
+            toast.success(`Statut pour ${order.name} mis à jour.`);
+        } catch(e) {
+            console.error("Failed to update status: ", e);
+            toast.error("Erreur lors de la mise à jour du statut.");
         } finally {
             setIsProcessing(false);
         }
     };
+    
+    const handleMasterCheckboxChange = (checked: boolean | 'indeterminate') => {
+        if (checked) {
+            const allIds = filteredBreadOrders.reduce((acc, order) => {
+                acc[order.id] = true;
+                return acc;
+            }, {} as Record<string, boolean>);
+            setSelectedOrders(allIds);
+        } else {
+            setSelectedOrders({});
+        }
+    };
+    
+    const selectedCount = Object.values(selectedOrders).filter(Boolean).length;
+    const isAllSelected = filteredBreadOrders.length > 0 && selectedCount === filteredBreadOrders.length;
+    const isPartiallySelected = selectedCount > 0 && !isAllSelected;
 
-    const isLoading = isUserLoading || isLoadingCustomers || isLoadingOrders || isCompanyProfileLoading || isLoadingSales;
+    const isLoading = isUserLoading || isLoadingCustomers || isLoadingOrders || isCompanyProfileLoading;
 
     if (!user && !isLoading) {
         return null;
@@ -282,180 +213,147 @@ export default function BreadPage() {
                     userId={user.uid}
                 />
             )}
-            {viewingSale && (
-                <SaleDetailsDialog
-                    isOpen={!!viewingSale}
-                    onOpenChange={() => setViewingSale(null)}
-                    sale={viewingSale}
-                    companyProfile={companyProfile}
-                    customer={null} 
-                />
-            )}
 
             <main className="flex-1 overflow-auto p-4 sm:p-6">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
                     <div>
-                        <h1 className="text-2xl font-bold">Commandes de Pain</h1>
-                        <p className="text-muted-foreground">Gérez les commandes de pain quotidiennes et générez les ventes associées.</p>
+                        <h1 className="text-2xl font-bold">Commandes de Pain du Jour</h1>
+                        <p className="text-muted-foreground">Gérez les commandes de pain quotidiennes.</p>
                     </div>
                      <div className="flex items-center gap-2">
-                        <Button onClick={handleGenerateAllSales} disabled={isProcessing || !!processingOrderId || processableOrdersCount === 0 || !isBreadPriceSet}>
-                            {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Receipt className="mr-2 h-4 w-4" />}
-                            Générer {processableOrdersCount > 0 ? `${processableOrdersCount} ` : ''}Vente(s)
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <Button variant="outline" className="w-[240px] justify-start text-left font-normal">
+                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                    {format(selectedDate, 'eeee, d MMMM yyyy', { locale: fr })}
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0">
+                                <Calendar mode="single" selected={selectedDate} onSelect={(date) => date && setSelectedDate(date)} initialFocus locale={fr}/>
+                            </PopoverContent>
+                        </Popover>
+                         <Button variant="outline" size="icon" onClick={() => setSelectedDate(subDays(selectedDate, 1))}>
+                            <ArrowLeft className="h-4 w-4" />
                         </Button>
-                        <Button onClick={handleAddCustomer}>
-                            <PlusCircle className="mr-2 h-4 w-4" />
-                            Ajouter un client
+                        <Button variant="outline" size="icon" onClick={() => setSelectedDate(addDays(selectedDate, 1))}>
+                            <ArrowRight className="h-4 w-4" />
                         </Button>
                     </div>
                 </div>
 
-                {!isBreadPriceSet && !isCompanyProfileLoading && (
-                    <Card className="mb-6 bg-destructive/10 border-destructive/30 text-destructive">
-                        <CardHeader className="flex flex-row items-center gap-4 py-4">
-                            <AlertCircle className="h-6 w-6 flex-shrink-0" />
-                            <div className="flex-grow">
-                                <CardTitle>Prix du pain non défini</CardTitle>
-                                <CardDescription className="text-destructive/90">
-                                    Veuillez définir un prix pour le pain dans votre profil d'entreprise pour pouvoir générer des ventes.
-                                </CardDescription>
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-6">
+                    <Card>
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-sm font-medium">Total Commandé</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold flex items-center justify-between">
+                                {totalOrdered} <Package className="h-5 w-5 text-muted-foreground"/>
                             </div>
-                            <Button asChild variant="destructive" className="ml-auto flex-shrink-0">
-                                <Link href="/profile">Définir le prix</Link>
-                            </Button>
-                        </CardHeader>
-                    </Card>
-                )}
-
-
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Clients Actifs</CardTitle>
-                            <Users className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{activeBreadOrders.length ?? 0}</div>
-                        </CardContent>
-                    </Card>
-                     <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Total Pains du Jour (Actifs)</CardTitle>
-                            <GitMerge className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{totalQuantity}</div>
-                        </CardContent>
-                    </Card>
-                     <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Revenu Estimé (Actifs)</CardTitle>
-                            <FileText className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{totalRevenue.toFixed(2)} DA</div>
                         </CardContent>
                     </Card>
                     <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Ventes Générées</CardTitle>
-                            <Receipt className="h-4 w-4 text-muted-foreground" />
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-sm font-medium">Quantité Livrée</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold">{generatedSalesCount}</div>
+                            <div className="text-2xl font-bold flex items-center justify-between">
+                               {totalDelivered} <Check className="h-5 w-5 text-muted-foreground"/>
+                            </div>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-sm font-medium">Quantité Restante</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold flex items-center justify-between">
+                                {totalOrdered - totalDelivered} <AlertTriangle className="h-5 w-5 text-muted-foreground"/>
+                            </div>
                         </CardContent>
                     </Card>
                 </div>
+
+                <Card className="mb-6 bg-green-500/10 border-green-500/20">
+                    <CardHeader>
+                        <CardTitle className="text-base text-green-800 dark:text-green-300">Analyse Financière</CardTitle>
+                    </CardHeader>
+                    <CardContent className="grid grid-cols-2 gap-4">
+                        <div className="text-center">
+                            <p className="text-sm text-muted-foreground">Total Encaissé</p>
+                            <p className="text-2xl font-bold text-green-600">{totalCollected.toFixed(2)} DA</p>
+                        </div>
+                        <div className="text-center">
+                            <p className="text-sm text-muted-foreground">Total Dû</p>
+                            <p className="text-2xl font-bold text-destructive">{totalDue.toFixed(2)} DA</p>
+                        </div>
+                    </CardContent>
+                </Card>
 
                 <Card>
                     <CardHeader>
-                        <div className="flex items-center gap-4">
-                            <Button variant="outline" onClick={() => setSelectedDate(subDays(selectedDate, 1))}>
-                                <ArrowLeft className="h-4 w-4" />
-                            </Button>
-                            <Popover>
-                                <PopoverTrigger asChild>
-                                    <Button variant="outline" className="w-[280px] justify-start text-left font-normal">
-                                        <CalendarIcon className="mr-2 h-4 w-4" />
-                                        {format(selectedDate, 'eeee, d MMMM yyyy', { locale: fr })}
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0">
-                                    <Calendar
-                                        mode="single"
-                                        selected={selectedDate}
-                                        onSelect={(date) => date && setSelectedDate(date)}
-                                        initialFocus
-                                        locale={fr}
-                                    />
-                                </PopoverContent>
-                            </Popover>
-                            <Button variant="outline" onClick={() => setSelectedDate(addDays(selectedDate, 1))}>
-                                <ArrowRight className="h-4 w-4" />
-                            </Button>
+                        <div className="flex flex-col sm:flex-row gap-4">
+                             <div className="relative flex-grow">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                    placeholder="Rechercher par nom..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="pl-9"
+                                />
+                            </div>
+                            <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
+                                <SelectTrigger className="w-full sm:w-[180px]">
+                                    <ListFilter className="mr-2 h-4 w-4" />
+                                    <SelectValue placeholder="Trier par..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">Tout</SelectItem>
+                                    <SelectItem value="not-delivered">Non Livré</SelectItem>
+                                    <SelectItem value="not-paid">Non Payé</SelectItem>
+                                </SelectContent>
+                            </Select>
+                             <Button variant="outline"><Printer className="mr-2 h-4 w-4"/> Imprimer</Button>
+                             <Button variant="outline"><RefreshCw className="mr-2 h-4 w-4"/> Réinitialiser</Button>
+                             <Button onClick={handleAddCustomer}><PlusCircle className="mr-2 h-4 w-4"/> Ajouter</Button>
                         </div>
                     </CardHeader>
                     <CardContent>
-                        {isLoading ? (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                                {Array.from({ length: 8 }).map((_, i) => <BreadOrderCardSkeleton key={i} />)}
-                            </div>
-                        ) : breadOrders.length === 0 ? (
-                            <div className="flex h-40 items-center justify-center">
-                                <p className="text-muted-foreground">Aucun client de pain trouvé.</p>
-                            </div>
-                        ) : (
-                             <>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                                    {activeBreadOrders.map(order => (
-                                        <BreadOrderCard
-                                            key={order.id}
-                                            order={order}
-                                            sale={order.todaysOrder?.saleId ? salesMap.get(order.todaysOrder.saleId) : undefined}
-                                            onViewSale={setViewingSale}
-                                            onEditCustomer={handleEditCustomer}
-                                            onDeleteCustomer={setCustomerToDelete}
-                                            onSetOrder={handleSetOrder}
-                                            onGenerateSale={handleGenerateSingleSale}
-                                            isProcessing={processingOrderId === order.id}
-                                            isGloballyProcessing={isProcessing}
-                                            isBreadPriceSet={isBreadPriceSet}
-                                        />
-                                    ))}
-                                </div>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+                            <Checkbox 
+                                id="select-all" 
+                                checked={isAllSelected || (isPartiallySelected ? 'indeterminate' : false)}
+                                onCheckedChange={handleMasterCheckboxChange}
+                            />
+                            <Label htmlFor="select-all">{selectedCount} / {filteredBreadOrders.length} sélectionné(s)</Label>
+                        </div>
 
-                                {inactiveBreadOrders.length > 0 && (
-                                    <>
-                                        <div className="my-8">
-                                            <h3 className="text-lg font-semibold text-muted-foreground">Clients Inactifs</h3>
-                                            <div className="mt-2 border-b"></div>
-                                        </div>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                                            {inactiveBreadOrders.map(order => (
-                                                <BreadOrderCard
-                                                    key={order.id}
-                                                    order={order}
-                                                    sale={order.todaysOrder?.saleId ? salesMap.get(order.todaysOrder.saleId) : undefined}
-                                                    onViewSale={setViewingSale}
-                                                    onEditCustomer={handleEditCustomer}
-                                                    onDeleteCustomer={setCustomerToDelete}
-                                                    onSetOrder={handleSetOrder}
-                                                    onGenerateSale={handleGenerateSingleSale}
-                                                    isProcessing={processingOrderId === order.id}
-                                                    isGloballyProcessing={isProcessing}
-                                                    isBreadPriceSet={isBreadPriceSet}
-                                                />
-                                            ))}
-                                        </div>
-                                    </>
-                                )}
-                             </>
-                        )}
+                         <div className="space-y-3">
+                            {isLoading ? (
+                                Array.from({ length: 5 }).map((_, i) => <BreadOrderRowSkeleton key={i} />)
+                            ) : filteredBreadOrders.length === 0 ? (
+                                <div className="flex h-24 items-center justify-center">
+                                    <p className="text-muted-foreground">Aucune commande pour ce jour.</p>
+                                </div>
+                            ) : (
+                                filteredBreadOrders.map(order => (
+                                    <BreadOrderRow 
+                                        key={order.id}
+                                        order={order}
+                                        isSelected={!!selectedOrders[order.id]}
+                                        onSelectionChange={(checked) => setSelectedOrders(prev => ({...prev, [order.id]: checked}))}
+                                        onUpdateStatus={handleUpdateStatus}
+                                        onEditOrder={handleSetOrder}
+                                        onEditCustomer={handleEditCustomer}
+                                        onDeleteCustomer={setCustomerToDelete}
+                                        isProcessing={isProcessing}
+                                    />
+                                ))
+                            )}
+                        </div>
                     </CardContent>
                 </Card>
             </main>
         </>
     );
 }
-
-    

@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import type { BreadOrder } from '@/lib/types';
+import type { DailyBreadOrder, BreadOrder } from '@/lib/types';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -35,7 +35,7 @@ export function SetOrderDialog({ isOpen, onOpenChange, order, date, userId }: Se
 
     const dateKey = format(date, 'yyyy-MM-dd');
     const isDefaultQuantity = parseInt(quantity, 10) === order.defaultOrderQuantity;
-    const isProcessed = !!order.todaysOrder?.saleId;
+    const isProcessed = !!order.todaysOrder?.saleId; // Retained for safety, though UI might hide this now
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -57,7 +57,7 @@ export function SetOrderDialog({ isOpen, onOpenChange, order, date, userId }: Se
         if (!firestore) return;
 
         try {
-            // If the new quantity is the default and a custom order exists (and is not processed), delete the custom order
+            // If the new quantity is the default and a custom order exists, delete the custom order
             if (isDefaultQuantity && order.todaysOrder?.id && !isProcessed) {
                 const orderRef = doc(firestore, 'users', userId, 'dailyBreadOrders', order.todaysOrder.id);
                 await deleteDocumentNonBlocking(orderRef, {});
@@ -69,13 +69,14 @@ export function SetOrderDialog({ isOpen, onOpenChange, order, date, userId }: Se
                     ? doc(firestore, 'users', userId, 'dailyBreadOrders', order.todaysOrder.id)
                     : doc(collection(firestore, 'users', userId, 'dailyBreadOrders'));
                 
-                const orderData = {
+                const orderData: Partial<DailyBreadOrder> = {
                     breadCustomerId: order.id,
                     customerName: order.name,
                     quantity: newQuantity,
                     date: dateKey,
-                    isRecurring: false, // Any manual override is not a recurring one
-                    createdAt: order.todaysOrder ? undefined : serverTimestamp(), // Keep original creation date
+                    isPaid: order.todaysOrder?.isPaid ?? false,
+                    isDelivered: order.todaysOrder?.isDelivered ?? false,
+                    createdAt: order.todaysOrder?.id ? undefined : serverTimestamp(),
                 };
                 
                 await setDocumentNonBlocking(orderRef, orderData, { merge: true });
