@@ -4,7 +4,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { collection, query, where, orderBy } from 'firebase/firestore';
+import { collection, query, where, orderBy, doc } from 'firebase/firestore';
 import { format, addDays, subDays } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import type { BreadCustomer, DailyBreadOrder, BreadOrder, CompanyProfile } from '@/lib/types';
@@ -37,11 +37,11 @@ export default function BreadPage() {
     // --- Data Fetching ---
     const customersQuery = useMemoFirebase(() => (user && firestore) ? query(collection(firestore, 'users', user.uid, 'breadCustomers'), orderBy('name', 'asc')) : null, [user, firestore]);
     const ordersQuery = useMemoFirebase(() => (user && firestore) ? query(collection(firestore, 'users', user.uid, 'dailyBreadOrders'), where('date', '==', dateKey)) : null, [user, firestore, dateKey]);
-    const companyProfileRef = useMemoFirebase(() => (user && firestore) ? collection(firestore, 'users', user.uid, 'companyProfile') : null, [user, firestore]);
-    const { data: companyProfile, isLoading: isCompanyProfileLoading } = useDoc<CompanyProfile>(companyProfileRef ? companyProfileRef.docs[0]?.ref : null);
-
+    const companyProfileRef = useMemoFirebase(() => (user && firestore) ? doc(firestore, 'users', user.uid, 'companyProfile', 'main') : null, [user, firestore]);
+    
     const { data: breadCustomers, isLoading: isLoadingCustomers } = useCollection<BreadCustomer>(customersQuery);
     const { data: dailyOrders, isLoading: isLoadingOrders } = useCollection<DailyBreadOrder>(ordersQuery);
+    const { data: companyProfile, isLoading: isCompanyProfileLoading } = useDoc<CompanyProfile>(companyProfileRef);
 
     useEffect(() => {
         if (!isUserLoading && !user) {

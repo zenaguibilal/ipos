@@ -67,7 +67,7 @@ export function SetOrderDialog({ isOpen, onOpenChange, order, date, userId }: Se
                     customerName: order.name,
                     quantity: newQuantity,
                     date: dateKey,
-                    isRecurring: !order.todaysOrder, // True if it's a new custom order for the day
+                    isRecurring: false, // Any manual override is not a recurring one
                     createdAt: order.todaysOrder ? undefined : serverTimestamp(), // Keep original creation date
                 };
                 
