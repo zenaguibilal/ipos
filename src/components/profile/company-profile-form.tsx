@@ -50,8 +50,6 @@ export function CompanyProfileForm({ user }: CompanyProfileFormProps) {
 
         setDocumentNonBlocking(companyDocRef, {
             ...formState,
-            breadPrice: formState.breadPrice ? Number(formState.breadPrice) : 0,
-            breadPurchasePrice: formState.breadPurchasePrice ? Number(formState.breadPurchasePrice) : 0,
             updatedAt: serverTimestamp()
         }, { merge: true }, {
             onSuccess: () => {
@@ -87,30 +85,6 @@ export function CompanyProfileForm({ user }: CompanyProfileFormProps) {
                                     onChange={handleInputChange} 
                                     disabled={isSaving}
                                 />
-                            </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="breadPrice">Prix Vente Pain (DA)</Label>
-                                    <Input 
-                                        id="breadPrice" 
-                                        type="number"
-                                        step="0.1"
-                                        value={formState.breadPrice || ''} 
-                                        onChange={handleInputChange} 
-                                        disabled={isSaving}
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="breadPurchasePrice">Prix Achat Pain (DA)</Label>
-                                    <Input 
-                                        id="breadPurchasePrice" 
-                                        type="number"
-                                        step="0.1"
-                                        value={formState.breadPurchasePrice || ''} 
-                                        onChange={handleInputChange} 
-                                        disabled={isSaving}
-                                    />
-                                </div>
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="address">Adresse</Label>

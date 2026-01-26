@@ -81,16 +81,6 @@ service cloud.firestore {
       match /returns/{returnId} {
         allow read, write: if isOwner(userId);
       }
-      
-      // Rules for the 'breadCustomers' subcollection.
-      match /breadCustomers/{breadCustomerId} {
-        allow read, write: if isOwner(userId);
-      }
-      
-      // Rules for the 'dailyBreadOrders' subcollection.
-      match /dailyBreadOrders/{orderId} {
-        allow read, write: if isOwner(userId);
-      }
     }
   }
 }
