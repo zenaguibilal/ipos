@@ -101,7 +101,7 @@ export default function CustomersPage() {
     };
     
     const handleExportDebts = () => {
-        const customersWithDebt = filteredCustomers.filter(c => c.outstandingBalance > 0);
+        const customersWithDebt = customersWithSalesData.filter(c => c.outstandingBalance > 0);
         if (customersWithDebt.length === 0) {
             toast.info("Aucun client avec une dette à exporter.");
             return;
