@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
@@ -151,6 +152,7 @@ export default function CustomersPage() {
         Papa.parse(file, {
             header: true,
             skipEmptyLines: true,
+            transformHeader: header => header.toLowerCase().trim(),
             complete: async (results) => {
                 if (!firestore || !user) {
                     toast.error("Erreur d'authentification.");
@@ -158,7 +160,7 @@ export default function CustomersPage() {
                     return;
                 }
 
-                const requiredHeaders = ['Nom du client', 'Dette (DA)'];
+                const requiredHeaders = ['nom du client', 'dette (da)'];
                 const headers = results.meta.fields || [];
                 const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
 
@@ -169,7 +171,7 @@ export default function CustomersPage() {
                     return;
                 }
                 
-                const customersToImport = results.data as { 'Nom du client': string; 'Dette (DA)': string; 'Téléphone'?: string }[];
+                const customersToImport = results.data as { 'nom du client': string; 'dette (da)': string; 'téléphone'?: string }[];
                 let importedCount = 0;
                 let updatedCount = 0;
                 let errorCount = 0;
@@ -183,9 +185,9 @@ export default function CustomersPage() {
                     const batch = writeBatch(firestore);
 
                     chunk.forEach((row) => {
-                        const fullName = row['Nom du client'];
-                        const debtString = row['Dette (DA)'];
-                        const phone = row['Téléphone'] || '';
+                        const fullName = row['nom du client'];
+                        const debtString = row['dette (da)'];
+                        const phone = row['téléphone'] || '';
     
                         if (!fullName || typeof fullName !== 'string' || !debtString) {
                             errorCount++;
@@ -460,3 +462,5 @@ export default function CustomersPage() {
         </>
     )
 }
+
+    
