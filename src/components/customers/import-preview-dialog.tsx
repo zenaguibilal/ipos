@@ -10,7 +10,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Loader2, UserPlus, UserCheck, AlertTriangle, CheckCircle, Trash2 } from 'lucide-react';
+import { Loader2, UserPlus, UserCheck, AlertTriangle, CheckCircle, Trash2, Search } from 'lucide-react';
 import {
     Table,
     TableBody,
@@ -50,6 +50,7 @@ interface ImportPreviewDialogProps {
 export function ImportPreviewDialog({ isOpen, onOpenChange, analysis, onConfirm, isImporting }: ImportPreviewDialogProps) {
     
     const [editableItems, setEditableItems] = useState<EditableImportItem[]>([]);
+    const [searchQuery, setSearchQuery] = useState('');
 
     useEffect(() => {
         if (analysis) {
@@ -72,6 +73,9 @@ export function ImportPreviewDialog({ isOpen, onOpenChange, analysis, onConfirm,
                 data: c,
             }));
             setEditableItems([...toAdd, ...toUpdate, ...skipped]);
+        }
+        if (!isOpen) {
+            setSearchQuery('');
         }
     }, [analysis, isOpen]);
 
@@ -98,9 +102,26 @@ export function ImportPreviewDialog({ isOpen, onOpenChange, analysis, onConfirm,
             ...analysis,
             customersToAdd: editableItems.filter(i => i.include && i.status === 'new').map(i => i.data),
             customersToUpdate: editableItems.filter(i => i.include && (i.status === 'update' || i.status === 'skipped')).map(i => i.data),
+            skippedRows: editableItems.filter(i => !i.include).map(i => i.data),
+            errorRows: analysis.errorRows,
+            totalRows: analysis.totalRows,
         };
         onConfirm(confirmedAnalysis);
     };
+
+    const filteredItems = useMemo(() => {
+        if (!searchQuery.trim()) {
+            return editableItems;
+        }
+        const lowercasedQuery = searchQuery.toLowerCase().trim();
+        return editableItems.filter(item => {
+            const { firstName, lastName } = item.data;
+            return (
+                (firstName && firstName.toLowerCase().includes(lowercasedQuery)) ||
+                (lastName && lastName.toLowerCase().includes(lowercasedQuery))
+            );
+        });
+    }, [editableItems, searchQuery]);
 
     const stats = useMemo(() => {
         if (!analysis) return { toAdd: 0, toUpdate: 0, skipped: 0, errors: 0 };
@@ -148,14 +169,27 @@ export function ImportPreviewDialog({ isOpen, onOpenChange, analysis, onConfirm,
                         </div>
                     </div>
                     
+                    <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            placeholder="Rechercher par nom ou prénom..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="pl-9 w-full"
+                        />
+                    </div>
+
                     <ScrollArea className="border rounded-lg h-[40vh]">
                         <Table>
                             <TableHeader className="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
                                 <TableRow>
                                     <TableHead className="w-12"><Checkbox 
-                                        checked={editableItems.length > 0 && editableItems.every(i => i.include)}
+                                        checked={filteredItems.length > 0 && filteredItems.every(i => i.include)}
                                         onCheckedChange={(checked) => {
-                                            setEditableItems(prev => prev.map(item => ({ ...item, include: !!checked })))
+                                            const filteredKeys = new Set(filteredItems.map(i => i.key));
+                                            setEditableItems(prev => prev.map(item => 
+                                                filteredKeys.has(item.key) ? { ...item, include: !!checked } : item
+                                            ));
                                         }}
                                     /></TableHead>
                                     <TableHead>Prénom</TableHead>
@@ -167,16 +201,16 @@ export function ImportPreviewDialog({ isOpen, onOpenChange, analysis, onConfirm,
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {editableItems.length > 0 ? editableItems.map((item) => (
+                                {filteredItems.length > 0 ? filteredItems.map((item) => (
                                     <TableRow key={item.key} className={!item.include ? 'bg-muted/50 text-muted-foreground' : ''}>
                                         <TableCell>
                                             <Checkbox checked={item.include} onCheckedChange={() => handleToggleInclude(item.key)} />
                                         </TableCell>
                                         <TableCell>
-                                            <Input value={item.data.firstName} onChange={e => handleItemChange(item.key, 'firstName', e.target.value)} className="h-8" disabled={!item.include} />
+                                            <Input value={item.data.firstName || ''} onChange={e => handleItemChange(item.key, 'firstName', e.target.value)} className="h-8" disabled={!item.include} />
                                         </TableCell>
                                         <TableCell>
-                                            <Input value={item.data.lastName} onChange={e => handleItemChange(item.key, 'lastName', e.target.value)} className="h-8" disabled={!item.include} />
+                                            <Input value={item.data.lastName || ''} onChange={e => handleItemChange(item.key, 'lastName', e.target.value)} className="h-8" disabled={!item.include} />
                                         </TableCell>
                                         <TableCell>
                                             <Input value={item.data.phone || ''} onChange={e => handleItemChange(item.key, 'phone', e.target.value)} className="h-8" disabled={!item.include} />
@@ -197,7 +231,9 @@ export function ImportPreviewDialog({ isOpen, onOpenChange, analysis, onConfirm,
                                     </TableRow>
                                 )) : (
                                     <TableRow>
-                                        <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">Aucune donnée à importer.</TableCell>
+                                        <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                                            {editableItems.length > 0 ? "Aucun client ne correspond à votre recherche." : "Aucune donnée à importer."}
+                                        </TableCell>
                                     </TableRow>
                                 )}
                             </TableBody>
