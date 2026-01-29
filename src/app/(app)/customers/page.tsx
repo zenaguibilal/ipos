@@ -213,12 +213,7 @@ export default function CustomersPage() {
                             }
                         }
     
-                        const debtAmount = parseFloat(String(debtString)?.replace(',', '.'));
-    
-                        if (isNaN(debtAmount)) { // Can't proceed if debt is specified but not a number
-                            errorCount++;
-                            return;
-                        }
+                        const debtAmount = parseFloat(String(debtString)?.replace(',', '.')) || 0;
     
                         const normalizedFullName = `${firstName.trim()} ${lastName.trim()}`.toLowerCase();
                         
