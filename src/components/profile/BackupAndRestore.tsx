@@ -90,11 +90,11 @@ export function BackupAndRestore({ user }: BackupAndRestoreProps) {
     
     const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
-        if (file && file.type === 'application/json') {
+        if (file && (file.type === 'application/json' || file.name.endsWith('.json'))) {
             setRestoreFile(file);
             setIsRestoreAlertOpen(true);
         } else {
-            toast.error("Veuillez sélectionner un fichier de sauvegarde JSON valide.");
+            toast.error("Veuillez sélectionner un fichier de sauvegarde JSON valide (`.json`).");
         }
         // Reset file input to allow selecting the same file again
         if (event.target) {
@@ -238,7 +238,7 @@ export function BackupAndRestore({ user }: BackupAndRestoreProps) {
                 type="file" 
                 ref={fileInputRef} 
                 className="hidden"
-                accept="application/json"
+                accept="application/json,.json"
                 onChange={handleFileSelect}
             />
             <CardContent className="grid sm:grid-cols-2 gap-4">
