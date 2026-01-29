@@ -42,9 +42,23 @@ export default function SalesHistoryPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
     const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
-    const [dateRange, setDateRange] = useState<DateRange | undefined>({
-        from: startOfDay(subDays(new Date(), 29)),
-        to: endOfDay(new Date()),
+    const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
+        if (typeof window === 'undefined') {
+            return { from: startOfDay(subDays(new Date(), 29)), to: endOfDay(new Date()) };
+        }
+        try {
+            const storedRange = localStorage.getItem('sales_history_date_range');
+            if (storedRange) {
+                const parsed = JSON.parse(storedRange);
+                return {
+                    from: parsed.from ? new Date(parsed.from) : undefined,
+                    to: parsed.to ? new Date(parsed.to) : undefined,
+                };
+            }
+        } catch (e) {
+            console.error(e);
+        }
+        return { from: startOfDay(subDays(new Date(), 29)), to: endOfDay(new Date()) };
     });
     const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null);
     const [saleForShare, setSaleForShare] = useState<Sale | null>(null);
@@ -74,6 +88,12 @@ export default function SalesHistoryPage() {
             router.push('/login');
         }
     }, [user, isUserLoading, router]);
+
+    useEffect(() => {
+        if (dateRange) {
+            localStorage.setItem('sales_history_date_range', JSON.stringify(dateRange));
+        }
+    }, [dateRange]);
 
     useEffect(() => {
         const savedFilter = localStorage.getItem('sales_history_status_filter') as StatusFilter;
@@ -456,7 +476,7 @@ export default function SalesHistoryPage() {
                                 </CardDescription>
                             </div>
                             <div className="flex gap-2 items-center">
-                                <DateRangePicker onUpdate={setDateRange} />
+                                <DateRangePicker date={dateRange} setDate={setDateRange} />
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
                                         <Button variant="outline">

@@ -218,10 +218,30 @@ export default function DashboardPage() {
     const firestore = useFirestore();
     const router = useRouter();
 
-    const [dateRange, setDateRange] = useState<DateRange | undefined>({
-        from: startOfDay(subDays(new Date(), 6)),
-        to: endOfDay(new Date()),
+    const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
+        if (typeof window === 'undefined') {
+            return { from: startOfDay(subDays(new Date(), 6)), to: endOfDay(new Date()) };
+        }
+        try {
+            const storedRange = localStorage.getItem('dashboard_date_range');
+            if (storedRange) {
+                const parsed = JSON.parse(storedRange);
+                return {
+                    from: parsed.from ? new Date(parsed.from) : undefined,
+                    to: parsed.to ? new Date(parsed.to) : undefined,
+                };
+            }
+        } catch (e) {
+            console.error(e);
+        }
+        return { from: startOfDay(subDays(new Date(), 6)), to: endOfDay(new Date()) };
     });
+
+    useEffect(() => {
+        if (dateRange) {
+            localStorage.setItem('dashboard_date_range', JSON.stringify(dateRange));
+        }
+    }, [dateRange]);
 
     // --- Data Fetching ---
     const salesQuery = useMemoFirebase(() => 
@@ -292,7 +312,7 @@ export default function DashboardPage() {
                         Aperçu des performances de votre commerce.
                     </p>
                 </div>
-                <DateRangePicker onUpdate={setDateRange} />
+                <DateRangePicker date={dateRange} setDate={setDateRange} />
             </div>
 
              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-6">

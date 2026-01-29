@@ -3,7 +3,7 @@
 
 import * as React from "react"
 import { CalendarIcon } from "lucide-react"
-import { addDays, format, startOfDay, subDays, startOfMonth, endOfMonth, endOfDay } from "date-fns"
+import { format, startOfDay, subDays, startOfMonth, endOfMonth, endOfDay } from "date-fns"
 import { fr } from "date-fns/locale"
 import { DateRange } from "react-day-picker"
 
@@ -24,19 +24,12 @@ import {
 } from "@/components/ui/select"
 
 interface DateRangePickerProps extends React.HTMLAttributes<HTMLDivElement> {
-  onUpdate: (range?: DateRange) => void
+  date: DateRange | undefined
+  setDate: (range?: DateRange) => void
 }
 
-export function DateRangePicker({ className, onUpdate }: DateRangePickerProps) {
-  const [date, setDate] = React.useState<DateRange | undefined>({
-    from: startOfDay(subDays(new Date(), 6)),
-    to: endOfDay(new Date()),
-  })
-  const [preset, setPreset] = React.useState<string>("last7")
-
-  React.useEffect(() => {
-    onUpdate(date)
-  }, [date, onUpdate])
+export function DateRangePicker({ className, date, setDate }: DateRangePickerProps) {
+  const [preset, setPreset] = React.useState<string>("custom")
 
   const handlePresetChange = (value: string) => {
     setPreset(value)
@@ -55,21 +48,16 @@ export function DateRangePicker({ className, onUpdate }: DateRangePickerProps) {
         setDate({ from: startOfMonth(now), to: endOfMonth(now) })
         break
       default:
-        setDate(undefined)
+        // do nothing for custom
     }
   }
 
   const handleDateChange = (newDate?: DateRange) => {
-    // When a date is selected, make sure the time is set to the end of the day for the 'to' date
     if (newDate?.to) {
         newDate.to = endOfDay(newDate.to);
     }
     setDate(newDate)
-    if (newDate) {
-      // Logic to check if the selected range matches a preset
-      // This is optional but improves UX. For simplicity, we can set to custom.
-      setPreset("custom")
-    }
+    setPreset("custom")
   }
 
   return (

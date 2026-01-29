@@ -34,10 +34,30 @@ export default function ReturnsPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedReturn, setSelectedReturn] = useState<ProductReturn | null>(null);
     const [deletingReturn, setDeletingReturn] = useState<ProductReturn | null>(null);
-    const [dateRange, setDateRange] = useState<DateRange | undefined>({
-        from: startOfDay(subDays(new Date(), 29)),
-        to: endOfDay(new Date()),
+    const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
+        if (typeof window === 'undefined') {
+            return { from: startOfDay(subDays(new Date(), 29)), to: endOfDay(new Date()) };
+        }
+        try {
+            const storedRange = localStorage.getItem('returns_date_range');
+            if (storedRange) {
+                const parsed = JSON.parse(storedRange);
+                return {
+                    from: parsed.from ? new Date(parsed.from) : undefined,
+                    to: parsed.to ? new Date(parsed.to) : undefined,
+                };
+            }
+        } catch (e) {
+            console.error(e);
+        }
+        return { from: startOfDay(subDays(new Date(), 29)), to: endOfDay(new Date()) };
     });
+
+    useEffect(() => {
+        if (dateRange) {
+            localStorage.setItem('returns_date_range', JSON.stringify(dateRange));
+        }
+    }, [dateRange]);
 
     // --- Data Fetching ---
     const returnsQuery = useMemoFirebase(() => 
@@ -149,7 +169,7 @@ export default function ReturnsPage() {
                         </p>
                     </div>
                      <div className="flex items-center gap-2">
-                        <DateRangePicker onUpdate={setDateRange} />
+                        <DateRangePicker date={dateRange} setDate={setDateRange} />
                          <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button variant="outline">

@@ -30,10 +30,30 @@ export default function StockPage() {
 
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedIntake, setSelectedIntake] = useState<StockIntake | null>(null);
-    const [dateRange, setDateRange] = useState<DateRange | undefined>({
-        from: startOfDay(subDays(new Date(), 29)),
-        to: endOfDay(new Date()),
+    const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
+        if (typeof window === 'undefined') {
+            return { from: startOfDay(subDays(new Date(), 29)), to: endOfDay(new Date()) };
+        }
+        try {
+            const storedRange = localStorage.getItem('stock_intake_date_range');
+            if (storedRange) {
+                const parsed = JSON.parse(storedRange);
+                return {
+                    from: parsed.from ? new Date(parsed.from) : undefined,
+                    to: parsed.to ? new Date(parsed.to) : undefined,
+                };
+            }
+        } catch (e) {
+            console.error(e);
+        }
+        return { from: startOfDay(subDays(new Date(), 29)), to: endOfDay(new Date()) };
     });
+
+    useEffect(() => {
+        if (dateRange) {
+            localStorage.setItem('stock_intake_date_range', JSON.stringify(dateRange));
+        }
+    }, [dateRange]);
 
     const stockIntakesQuery = useMemoFirebase(() =>
         (user && firestore) ? query(collection(firestore, 'users', user.uid, 'stockIntakes'), orderBy('createdAt', 'desc')) : null,
@@ -127,7 +147,7 @@ export default function StockPage() {
                         <p className="text-muted-foreground">Consultez l'historique des réceptions de marchandises.</p>
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
-                         <DateRangePicker onUpdate={setDateRange} />
+                         <DateRangePicker date={dateRange} setDate={setDateRange} />
                          <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button variant="outline">
