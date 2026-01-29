@@ -238,7 +238,7 @@ export function BackupAndRestore({ user }: BackupAndRestoreProps) {
                 type="file" 
                 ref={fileInputRef} 
                 className="hidden"
-                accept="application/json,.json"
+                accept=".json,application/json"
                 onChange={handleFileSelect}
             />
             <CardContent className="grid sm:grid-cols-2 gap-4">
