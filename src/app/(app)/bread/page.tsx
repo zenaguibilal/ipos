@@ -69,6 +69,18 @@ export default function BreadOrdersPage() {
     // Print Ref
     const printableRef = useRef<HTMLDivElement>(null);
 
+    useEffect(() => {
+        const savedFilter = localStorage.getItem('bread_status_filter') as StatusFilter;
+        if (savedFilter && ['all', 'not-delivered', 'not-paid'].includes(savedFilter)) {
+            setStatusFilter(savedFilter);
+        }
+    }, []);
+
+    const handleStatusFilterChange = (newFilter: StatusFilter) => {
+        setStatusFilter(newFilter);
+        localStorage.setItem('bread_status_filter', newFilter);
+    };
+
 
     // Data Fetching
     const dateString = format(selectedDate, 'yyyy-MM-dd');
@@ -392,9 +404,9 @@ export default function BreadOrdersPage() {
                                         </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent>
-                                        <DropdownMenuItem onClick={() => setStatusFilter("all")}>Tout</DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => setStatusFilter("not-delivered")}>Non Livré</DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => setStatusFilter("not-paid")}>Non Payé</DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => handleStatusFilterChange("all")}>Tout</DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => handleStatusFilterChange("not-delivered")}>Non Livré</DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => handleStatusFilterChange("not-paid")}>Non Payé</DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
                             </div>
@@ -425,9 +437,9 @@ export default function BreadOrdersPage() {
                                  )}
                             </div>
                              <div className="flex gap-2">
-                                <Button variant={statusFilter === 'all' ? 'secondary' : 'ghost'} size="sm" onClick={() => setStatusFilter('all')}>Tout</Button>
-                                <Button variant={statusFilter === 'not-delivered' ? 'secondary' : 'ghost'} size="sm" onClick={() => setStatusFilter('not-delivered')} className="flex items-center gap-1"><X className="h-4 w-4"/>Non Livré</Button>
-                                <Button variant={statusFilter === 'not-paid' ? 'secondary' : 'ghost'} size="sm" onClick={() => setStatusFilter('not-paid')} className="flex items-center gap-1"><PackageOpen className="h-4 w-4"/>Non Payé</Button>
+                                <Button variant={statusFilter === 'all' ? 'secondary' : 'ghost'} size="sm" onClick={() => handleStatusFilterChange('all')}>Tout</Button>
+                                <Button variant={statusFilter === 'not-delivered' ? 'secondary' : 'ghost'} size="sm" onClick={() => handleStatusFilterChange('not-delivered')} className="flex items-center gap-1"><X className="h-4 w-4"/>Non Livré</Button>
+                                <Button variant={statusFilter === 'not-paid' ? 'secondary' : 'ghost'} size="sm" onClick={() => handleStatusFilterChange('not-paid')} className="flex items-center gap-1"><PackageOpen className="h-4 w-4"/>Non Payé</Button>
                             </div>
                         </div>
                     </Card>
