@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { collection, query, orderBy, doc, writeBatch, serverTimestamp } from 'firebase/firestore';
+import { collection, query, orderBy, doc, writeBatch, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -58,6 +58,10 @@ export default function CustomersPage() {
         }
         return calculateAllCustomersMetrics(customers, sales, payments);
     }, [customers, sales, payments]);
+
+    const existingCustomersMap = useMemo(() => new Map(
+        customersWithSalesData.map(c => [`${c.firstName.trim()} ${c.lastName.trim()}`.toLowerCase(), c])
+    ), [customersWithSalesData]);
 
     const totalCustomers = customers?.length || 0;
 
@@ -165,14 +169,13 @@ export default function CustomersPage() {
                     return;
                 }
                 
-                const existingCustomerNames = new Set(
-                    customers?.map(c => `${c.firstName.trim()} ${c.lastName.trim()}`.toLowerCase())
-                );
-                
                 const customersToImport = results.data as { 'Nom du client': string; 'Dette (DA)': string; 'Téléphone'?: string }[];
                 let importedCount = 0;
+                let updatedCount = 0;
                 let errorCount = 0;
                 let skippedCount = 0;
+
+                const customersMapForCurrentImport = new Map(existingCustomersMap);
 
                 const chunkSize = 400; 
                 for (let i = 0; i < customersToImport.length; i += chunkSize) {
@@ -189,74 +192,116 @@ export default function CustomersPage() {
                             return;
                         }
                         
-                        const { firstName, lastName } = parseCustomerName(fullName);
-                        const normalizedFullName = `${firstName.trim()} ${lastName.trim()}`.toLowerCase();
-                        
-                        if (existingCustomerNames.has(normalizedFullName)) {
+                        const debtAmount = parseFloat(debtString.replace(',', '.'));
+                        if (isNaN(debtAmount) || debtAmount < 0) {
                             skippedCount++;
                             return;
                         }
 
-                        const debtAmount = parseFloat(debtString.replace(',', '.'));
-                        if (isNaN(debtAmount) || debtAmount <= 0) {
-                            return;
-                        }
+                        const { firstName, lastName } = parseCustomerName(fullName);
+                        const normalizedFullName = `${firstName.trim()} ${lastName.trim()}`.toLowerCase();
                         
-                        const newCustomerRef = doc(collection(firestore, 'users', user.uid, 'customers'));
-                        batch.set(newCustomerRef, {
-                            firstName,
-                            lastName,
-                            createdAt: serverTimestamp(),
-                            phone: phone,
-                        });
+                        const existingCustomer = customersMapForCurrentImport.get(normalizedFullName);
                         
-                        const newSaleRef = doc(collection(firestore, 'users', user.uid, 'sales'));
-                        batch.set(newSaleRef, {
-                            invoiceNumber: `DEBT-IMPORT-${Date.now()}-${newCustomerRef.id}`,
-                            items: [{
-                                id: 'imported-debt',
-                                name: 'Solde initial importé',
-                                price: debtAmount,
-                                purchasePrice: 0,
-                                quantity: 1,
-                            }],
-                            subtotal: debtAmount,
-                            total: debtAmount,
-                            amountPaid: 0,
-                            remainingBalance: debtAmount,
-                            paymentStatus: 'unpaid',
-                            payments: [],
-                            customerId: newCustomerRef.id,
-                            customerName: `${firstName} ${lastName}`,
-                            createdAt: serverTimestamp(),
-                        });
+                        if (existingCustomer) {
+                            // --- UPDATE EXISTING CUSTOMER ---
+                            const currentDebt = existingCustomer.outstandingBalance;
+                            const debtDifference = debtAmount - currentDebt;
+
+                            if (Math.abs(debtDifference) < 0.01) {
+                                return; // Debt is the same, do nothing.
+                            }
+
+                            if (debtDifference > 0) {
+                                // Debt has increased, create a sale for the difference
+                                const newSaleRef = doc(collection(firestore, 'users', user.uid, 'sales'));
+                                batch.set(newSaleRef, {
+                                    invoiceNumber: `DEBT-ADJ-${Date.now()}-${existingCustomer.id.slice(0,5)}`,
+                                    items: [{ id: 'debt-adjustment', name: 'Ajustement de solde (Import)', price: debtDifference, purchasePrice: 0, quantity: 1 }],
+                                    subtotal: debtDifference,
+                                    total: debtDifference,
+                                    amountPaid: 0,
+                                    remainingBalance: debtDifference,
+                                    paymentStatus: 'unpaid',
+                                    payments: [],
+                                    customerId: existingCustomer.id,
+                                    customerName: `${existingCustomer.firstName} ${existingCustomer.lastName}`,
+                                    createdAt: serverTimestamp(),
+                                });
+                            } else { // debtDifference < 0
+                                // Debt has decreased, create a payment for the difference
+                                const newPaymentRef = doc(collection(firestore, 'users', user.uid, 'payments'));
+                                batch.set(newPaymentRef, {
+                                    customerId: existingCustomer.id,
+                                    customerName: `${existingCustomer.firstName} ${existingCustomer.lastName}`,
+                                    amount: -debtDifference, // Make it a positive number
+                                    createdAt: serverTimestamp(),
+                                });
+                            }
+                            updatedCount++;
+                        } else {
+                            // --- CREATE NEW CUSTOMER ---
+                             if (debtAmount <= 0) {
+                                skippedCount++;
+                                return;
+                            }
+
+                            const newCustomerRef = doc(collection(firestore, 'users', user.uid, 'customers'));
+                            batch.set(newCustomerRef, {
+                                firstName,
+                                lastName,
+                                createdAt: serverTimestamp(),
+                                phone: phone,
+                            });
+                            
+                            const newSaleRef = doc(collection(firestore, 'users', user.uid, 'sales'));
+                            batch.set(newSaleRef, {
+                                invoiceNumber: `DEBT-IMPORT-${Date.now()}-${newCustomerRef.id.slice(0,5)}`,
+                                items: [{ id: 'imported-debt', name: 'Solde initial importé', price: debtAmount, purchasePrice: 0, quantity: 1 }],
+                                subtotal: debtAmount,
+                                total: debtAmount,
+                                amountPaid: 0,
+                                remainingBalance: debtAmount,
+                                paymentStatus: 'unpaid',
+                                payments: [],
+                                customerId: newCustomerRef.id,
+                                customerName: `${firstName} ${lastName}`,
+                                createdAt: serverTimestamp(),
+                            });
     
-                        importedCount++;
-                        existingCustomerNames.add(normalizedFullName);
+                            importedCount++;
+                            // Add to map to avoid duplicates within the same file
+                            customersMapForCurrentImport.set(normalizedFullName, {
+                                id: newCustomerRef.id,
+                                firstName,
+                                lastName,
+                                phone,
+                                createdAt: new Timestamp(Date.now() / 1000, 0),
+                                outstandingBalance: debtAmount,
+                                totalSpent: debtAmount,
+                                lastActivityDate: null,
+                                isReminderDue: false
+                            } as CustomerWithSalesData);
+                        }
                     });
                     
                     try {
                        await batch.commit();
                     } catch (err) {
                        console.error("Error during batch commit:", err);
-                       toast.error("Une erreur s'est produite lors d'un lot d'importation. Certains clients pourraient ne pas avoir été importés.");
+                       toast.error("Une erreur s'est produite lors d'un lot d'importation. Certains clients pourraient ne pas avoir été traités.");
                        setIsImporting(false);
                        if(event.target) event.target.value = '';
                        return;
                     }
                 }
 
-                if (importedCount > 0) {
-                    toast.success(`${importedCount} client(s) importé(s) avec succès.`);
-                }
-                if (skippedCount > 0) {
-                    toast.info(`${skippedCount} client(s) ont été ignorés car ils existent déjà.`);
-                }
-                if (errorCount > 0) {
-                    toast.warning(`${errorCount} ligne(s) ont été ignorées en raison de données manquantes.`);
-                }
-                if(importedCount === 0 && skippedCount === 0 && errorCount === 0) {
-                    toast.info("Aucun nouveau client avec une dette à importer n'a été trouvé dans le fichier.");
+                if (importedCount > 0) toast.success(`${importedCount} nouveau(x) client(s) importé(s) avec succès.`);
+                if (updatedCount > 0) toast.success(`${updatedCount} client(s) existant(s) mis à jour.`);
+                if (skippedCount > 0) toast.info(`${skippedCount} client(s) ont été ignorés (dette nulle ou invalide).`);
+                if (errorCount > 0) toast.warning(`${errorCount} ligne(s) ont été ignorées en raison de données manquantes.`);
+                if(importedCount === 0 && updatedCount === 0 && skippedCount === 0 && errorCount === 0) {
+                    toast.info("Aucun nouveau client ou mise à jour de dette à effectuer à partir du fichier.");
                 }
 
                 setIsImporting(false);
