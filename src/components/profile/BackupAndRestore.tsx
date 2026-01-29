@@ -91,11 +91,13 @@ export function BackupAndRestore({ user }: BackupAndRestoreProps) {
     
     const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
-        if (file && (file.type === 'application/json' || file.name.endsWith('.json'))) {
-            setRestoreFile(file);
-            setIsRestoreAlertOpen(true);
-        } else {
-            toast.error("Veuillez sélectionner un fichier de sauvegarde JSON valide (`.json`).");
+        if (file) {
+            if (file.type === 'application/json' || file.name.endsWith('.json')) {
+                setRestoreFile(file);
+                setIsRestoreAlertOpen(true);
+            } else {
+                toast.error("Veuillez sélectionner un fichier de sauvegarde JSON valide (`.json`).");
+            }
         }
         // Reset file input to allow selecting the same file again
         if (event.target) {
@@ -294,5 +296,3 @@ export function BackupAndRestore({ user }: BackupAndRestoreProps) {
         </>
     );
 }
-
-    
