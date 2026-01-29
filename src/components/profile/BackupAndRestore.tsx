@@ -384,7 +384,7 @@ export function BackupAndRestore({ user }: BackupAndRestoreProps) {
                         <AlertDialogDescription>
                              Cette action est <span className="font-bold">IRRÉVERSIBLE</span>. Toutes vos données (produits, ventes, clients, etc.) seront définitivement supprimées. Votre compte utilisateur sera conservé.
                             <br/><br/>
-                             Pour confirmer, veuillez taper <strong className="font-mono text-destructive">RESET</strong> dans le champ ci-dessous.
+                             Pour confirmer, veuillez taper <strong className="font-mono text-destructive">1995</strong> dans le champ ci-dessous.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <div className="py-2">
@@ -393,7 +393,7 @@ export function BackupAndRestore({ user }: BackupAndRestoreProps) {
                             id="reset-confirm"
                             value={resetConfirmationCode}
                             onChange={(e) => setResetConfirmationCode(e.target.value)}
-                            placeholder="Tapez RESET pour confirmer"
+                            placeholder="Tapez 1995 pour confirmer"
                             autoComplete="off"
                         />
                     </div>
@@ -402,7 +402,7 @@ export function BackupAndRestore({ user }: BackupAndRestoreProps) {
                         <AlertDialogAction 
                             onClick={executeReset} 
                             className="bg-destructive hover:bg-destructive/90"
-                            disabled={isResetting || resetConfirmationCode !== 'RESET'}
+                            disabled={isResetting || resetConfirmationCode !== '1995'}
                         >
                             {isResetting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Confirmer et réinitialiser
