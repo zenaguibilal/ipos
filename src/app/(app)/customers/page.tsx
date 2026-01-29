@@ -213,7 +213,7 @@ export default function CustomersPage() {
                             }
                         }
     
-                        const debtAmount = parseFloat(String(debtString)?.replace(',', '.')) || 0;
+                        const debtAmount = parseFloat(String(debtString || '0').replace(',', '.')) || 0;
     
                         const normalizedFullName = `${firstName.trim()} ${lastName.trim()}`.toLowerCase();
                         
