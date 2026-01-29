@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useRef } from 'react';
@@ -19,6 +18,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import type { User } from 'firebase/auth';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 interface BackupAndRestoreProps {
     user: User;
@@ -44,6 +45,8 @@ export function BackupAndRestore({ user }: BackupAndRestoreProps) {
     const [isResetAlertOpen, setIsResetAlertOpen] = useState(false);
     const [restoreFile, setRestoreFile] = useState<File | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [resetConfirmationCode, setResetConfirmationCode] = useState('');
+
 
     const handleBackup = async () => {
         if (!firestore || !user) {
@@ -292,6 +295,13 @@ export function BackupAndRestore({ user }: BackupAndRestoreProps) {
         }
     };
 
+    const handleOpenResetAlert = (open: boolean) => {
+        if (!open) {
+            setResetConfirmationCode(''); // Reset code on close
+        }
+        setIsResetAlertOpen(open);
+    }
+
     return (
         <>
             <input 
@@ -332,7 +342,7 @@ export function BackupAndRestore({ user }: BackupAndRestoreProps) {
                     <p className="text-sm text-destructive/90 mt-1 mb-4">
                         L'action ci-dessous est irréversible. Assurez-vous d'avoir une sauvegarde récente avant de continuer.
                     </p>
-                    <Button variant="destructive" onClick={() => setIsResetAlertOpen(true)} disabled={isBackingUp || isRestoring || isResetting}>
+                    <Button variant="destructive" onClick={() => handleOpenResetAlert(true)} disabled={isBackingUp || isRestoring || isResetting}>
                         {isResetting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
                         {isResetting ? 'Réinitialisation...' : 'Réinitialiser l\'application'}
                     </Button>
@@ -364,7 +374,7 @@ export function BackupAndRestore({ user }: BackupAndRestoreProps) {
                 </AlertDialogContent>
             </AlertDialog>
 
-             <AlertDialog open={isResetAlertOpen} onOpenChange={setIsResetAlertOpen}>
+             <AlertDialog open={isResetAlertOpen} onOpenChange={handleOpenResetAlert}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle className="flex items-center gap-2">
@@ -374,15 +384,25 @@ export function BackupAndRestore({ user }: BackupAndRestoreProps) {
                         <AlertDialogDescription>
                              Cette action est <span className="font-bold">IRRÉVERSIBLE</span>. Toutes vos données (produits, ventes, clients, etc.) seront définitivement supprimées. Votre compte utilisateur sera conservé.
                             <br/><br/>
-                            Il est fortement recommandé de télécharger une sauvegarde avant de continuer.
+                             Pour confirmer, veuillez taper <strong className="font-mono text-destructive">RESET</strong> dans le champ ci-dessous.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
+                    <div className="py-2">
+                        <Label htmlFor="reset-confirm" className="sr-only">Confirmation de réinitialisation</Label>
+                        <Input
+                            id="reset-confirm"
+                            value={resetConfirmationCode}
+                            onChange={(e) => setResetConfirmationCode(e.target.value)}
+                            placeholder="Tapez RESET pour confirmer"
+                            autoComplete="off"
+                        />
+                    </div>
                     <AlertDialogFooter>
                         <AlertDialogCancel>Annuler</AlertDialogCancel>
                         <AlertDialogAction 
                             onClick={executeReset} 
                             className="bg-destructive hover:bg-destructive/90"
-                            disabled={isResetting}
+                            disabled={isResetting || resetConfirmationCode !== 'RESET'}
                         >
                             {isResetting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Confirmer et réinitialiser
