@@ -165,7 +165,7 @@ export default function CustomersPage() {
                     return;
                 }
 
-                const customersToImport = results.data as { 'Nom du client': string; 'Dette (DA)': string }[];
+                const customersToImport = results.data as { 'Nom du client': string; 'Dette (DA)': string; 'Téléphone'?: string }[];
                 let importedCount = 0;
                 let errorCount = 0;
 
@@ -175,18 +175,19 @@ export default function CustomersPage() {
                     const chunk = customersToImport.slice(i, i + chunkSize);
                     const batch = writeBatch(firestore);
 
-                    for (const row of chunk) {
+                    chunk.forEach((row, rowIndex) => {
                         const fullName = row['Nom du client'];
                         const debtString = row['Dette (DA)'];
+                        const phone = row['Téléphone'] || '';
     
                         if (!fullName || typeof fullName !== 'string' || !debtString) {
                             errorCount++;
-                            continue;
+                            return; // continue to next forEach iteration
                         }
                         
                         const debtAmount = parseFloat(debtString.replace(',', '.'));
                         if (isNaN(debtAmount) || debtAmount <= 0) {
-                            continue;
+                            return; // continue to next forEach iteration
                         }
                         
                         const { firstName, lastName } = parseCustomerName(fullName);
@@ -197,13 +198,13 @@ export default function CustomersPage() {
                             firstName,
                             lastName,
                             createdAt: serverTimestamp(),
-                            phone: '', // No phone in import file
+                            phone: phone,
                         });
                         
                         // 2. Create a new sale document to represent the initial debt
                         const newSaleRef = doc(collection(firestore, 'users', user.uid, 'sales'));
                         batch.set(newSaleRef, {
-                            invoiceNumber: `DEBT-IMPORT-${Date.now()}-${i}`,
+                            invoiceNumber: `DEBT-IMPORT-${Date.now()}-${i + rowIndex}`,
                             items: [{
                                 id: 'imported-debt',
                                 name: 'Solde initial importé',
@@ -223,7 +224,7 @@ export default function CustomersPage() {
                         });
     
                         importedCount++;
-                    }
+                    });
                     
                     try {
                        await batch.commit();
