@@ -1,0 +1,262 @@
+'use client';
+
+import { useState, useRef } from 'react';
+import { useFirestore } from '@/firebase';
+import { collection, doc, getDocs, getDoc, writeBatch, Timestamp } from 'firebase/firestore';
+import { Button } from '@/components/ui/button';
+import { CardContent, CardFooter } from '@/components/ui/card';
+import { Download, Upload, Loader2, AlertTriangle } from 'lucide-react';
+import { toast } from 'sonner';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import type { User } from 'firebase/auth';
+
+interface BackupAndRestoreProps {
+    user: User;
+}
+
+const COLLECTIONS_TO_BACKUP = [
+    'products', 
+    'customers', 
+    'sales', 
+    'payments', 
+    'stockIntakes', 
+    'returns', 
+    'breadCustomers', 
+    'dailyBreadOrders'
+];
+
+export function BackupAndRestore({ user }: BackupAndRestoreProps) {
+    const firestore = useFirestore();
+    const [isBackingUp, setIsBackingUp] = useState(false);
+    const [isRestoring, setIsRestoring] = useState(false);
+    const [isRestoreAlertOpen, setIsRestoreAlertOpen] = useState(false);
+    const [restoreFile, setRestoreFile] = useState<File | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const handleBackup = async () => {
+        if (!firestore || !user) {
+            toast.error("Impossible d'accéder à la base de données.");
+            return;
+        }
+
+        setIsBackingUp(true);
+        toast.info("Préparation de la sauvegarde en cours...");
+
+        try {
+            const backupData: { [key: string]: any } = {};
+
+            for (const collectionName of COLLECTIONS_TO_BACKUP) {
+                const collectionRef = collection(firestore, 'users', user.uid, collectionName);
+                const snapshot = await getDocs(collectionRef);
+                backupData[collectionName] = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            }
+            
+            // Handle companyProfile separately as it's a single doc
+            const companyProfileRef = doc(firestore, 'users', user.uid, 'companyProfile', 'main');
+            const companyProfileSnap = await getDoc(companyProfileRef);
+            if (companyProfileSnap.exists()) {
+                backupData['companyProfile'] = { id: 'main', ...companyProfileSnap.data() };
+            }
+
+            const jsonString = JSON.stringify(backupData, null, 2);
+            const blob = new Blob([jsonString], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            const dateStr = new Date().toISOString().split('T')[0];
+            link.download = `ipos-backup-${dateStr}.json`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+
+            toast.success("Sauvegarde téléchargée avec succès !");
+        } catch (error) {
+            console.error("Erreur lors de la sauvegarde:", error);
+            toast.error("Une erreur est survenue lors de la sauvegarde.");
+        } finally {
+            setIsBackingUp(false);
+        }
+    };
+    
+    const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file && file.type === 'application/json') {
+            setRestoreFile(file);
+            setIsRestoreAlertOpen(true);
+        } else {
+            toast.error("Veuillez sélectionner un fichier de sauvegarde JSON valide.");
+        }
+        // Reset file input to allow selecting the same file again
+        if (event.target) {
+            event.target.value = '';
+        }
+    };
+
+    const isFirestoreTimestamp = (value: any): value is { seconds: number; nanoseconds: number } => {
+        return value && typeof value.seconds === 'number' && typeof value.nanoseconds === 'number';
+    };
+    
+    // Recursively find and convert Firestore Timestamps (serialized by JSON.stringify)
+    const convertTimestamps = (data: any): any => {
+        if (Array.isArray(data)) {
+            return data.map(convertTimestamps);
+        }
+        if (data !== null && typeof data === 'object') {
+            const newData: { [key: string]: any } = {};
+            for (const key in data) {
+                if (Object.prototype.hasOwnProperty.call(data, key)) {
+                    const value = data[key];
+                    if (isFirestoreTimestamp(value)) {
+                        newData[key] = new Timestamp(value.seconds, value.nanoseconds);
+                    } else {
+                        newData[key] = convertTimestamps(value);
+                    }
+                }
+            }
+            return newData;
+        }
+        return data;
+    };
+
+
+    const executeRestore = async () => {
+        if (!restoreFile || !firestore || !user) return;
+
+        setIsRestoring(true);
+        toast.info("Restauration en cours... Ne quittez pas cette page.");
+
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            try {
+                const backupData = JSON.parse(e.target?.result as string);
+                
+                // --- BATCH 1: DELETE ---
+                const deleteBatch = writeBatch(firestore);
+
+                for (const collectionName of COLLECTIONS_TO_BACKUP) {
+                    if (backupData[collectionName]) {
+                        const collectionRef = collection(firestore, 'users', user.uid, collectionName);
+                        const snapshot = await getDocs(collectionRef);
+                        snapshot.docs.forEach(doc => deleteBatch.delete(doc.ref));
+                    }
+                }
+                const companyProfileRef = doc(firestore, 'users', user.uid, 'companyProfile', 'main');
+                if(backupData['companyProfile']) {
+                    deleteBatch.delete(companyProfileRef);
+                }
+                
+                await deleteBatch.commit();
+                toast.info("Anciennes données supprimées, écriture des nouvelles données...");
+
+                // --- BATCH 2: WRITE ---
+                const writeBatchInstance = writeBatch(firestore);
+                for (const collectionName of COLLECTIONS_TO_BACKUP) {
+                    if (backupData[collectionName]) {
+                        const convertedData = convertTimestamps(backupData[collectionName]);
+                        convertedData.forEach((itemData: any) => {
+                            const { id, ...data } = itemData;
+                            const docRef = doc(firestore, 'users', user.uid, collectionName, id);
+                            writeBatchInstance.set(docRef, data);
+                        });
+                    }
+                }
+
+                if (backupData['companyProfile']) {
+                    const { id, ...data } = backupData['companyProfile'];
+                    const convertedData = convertTimestamps(data);
+                    const companyRef = doc(firestore, 'users', user.uid, 'companyProfile', 'main');
+                    writeBatchInstance.set(companyRef, convertedData);
+                }
+
+                await writeBatchInstance.commit();
+                toast.success("Restauration terminée avec succès !", {
+                    description: "L'application va maintenant se recharger."
+                });
+
+                setTimeout(() => window.location.reload(), 2000);
+
+            } catch (error) {
+                console.error("Erreur lors de la restauration:", error);
+                toast.error("Erreur lors de la restauration. Vérifiez le fichier de sauvegarde.");
+                setIsRestoring(false);
+            }
+        };
+        reader.onerror = () => {
+             toast.error("Erreur de lecture du fichier.");
+             setIsRestoring(false);
+        }
+
+        reader.readAsText(restoreFile);
+    };
+
+    return (
+        <>
+            <input 
+                type="file" 
+                ref={fileInputRef} 
+                className="hidden"
+                accept="application/json"
+                onChange={handleFileSelect}
+            />
+            <CardContent className="grid sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                    <h4 className="font-semibold">Télécharger une sauvegarde</h4>
+                    <p className="text-sm text-muted-foreground">
+                        Créez un fichier JSON contenant toutes les données de votre application (produits, ventes, etc.). Conservez ce fichier en lieu sûr.
+                    </p>
+                </div>
+                 <div className="space-y-2">
+                    <h4 className="font-semibold">Restaurer une sauvegarde</h4>
+                    <p className="text-sm text-muted-foreground">
+                        <span className="font-bold text-destructive">Attention:</span> Cette action écrasera toutes les données actuelles de l'application.
+                    </p>
+                </div>
+            </CardContent>
+            <CardFooter className="grid sm:grid-cols-2 gap-4 border-t pt-6">
+                <Button onClick={handleBackup} disabled={isBackingUp || isRestoring} className="w-full">
+                    {isBackingUp ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                    {isBackingUp ? 'Sauvegarde...' : 'Télécharger la sauvegarde'}
+                </Button>
+                <Button variant="destructive" onClick={() => fileInputRef.current?.click()} disabled={isBackingUp || isRestoring} className="w-full">
+                     {isRestoring ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+                    {isRestoring ? 'Restauration...' : 'Restaurer depuis un fichier'}
+                </Button>
+            </CardFooter>
+
+            <AlertDialog open={isRestoreAlertOpen} onOpenChange={setIsRestoreAlertOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2">
+                            <AlertTriangle className="h-6 w-6 text-destructive" />
+                            Êtes-vous absolument sûr ?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Cette action est <span className="font-bold">irréversible</span> et remplacera <span className="font-bold">toutes</span> les données actuelles de votre application par le contenu du fichier <span className="font-mono bg-muted px-1 py-0.5 rounded">{restoreFile?.name}</span>.
+                            <br/><br/>
+                            Assurez-vous d'avoir une sauvegarde récente si vous souhaitez pouvoir annuler cette opération.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel onClick={() => setRestoreFile(null)}>Annuler</AlertDialogCancel>
+                        <AlertDialogAction 
+                            onClick={executeRestore} 
+                            className="bg-destructive hover:bg-destructive/90"
+                        >
+                            Confirmer et écraser les données
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+        </>
+    );
+}

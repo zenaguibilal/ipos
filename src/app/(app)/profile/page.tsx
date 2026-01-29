@@ -4,6 +4,7 @@ import { useUser } from '@/firebase';
 import { PersonalProfileForm } from '@/components/profile/personal-profile-form';
 import { CompanyProfileForm } from '@/components/profile/company-profile-form';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { BackupAndRestore } from '@/components/profile/BackupAndRestore';
 
 export default function ProfilePage() {
     const { user, isUserLoading } = useUser();
@@ -36,6 +37,15 @@ export default function ProfilePage() {
                         </CardDescription>
                     </CardHeader>
                     <CompanyProfileForm user={user} />
+                </Card>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Sauvegarde et Restauration</CardTitle>
+                        <CardDescription>
+                            Gérez les données de votre application. Créez des sauvegardes ou restaurez à partir d'un fichier.
+                        </CardDescription>
+                    </CardHeader>
+                    <BackupAndRestore user={user} />
                 </Card>
             </div>
         </main>
