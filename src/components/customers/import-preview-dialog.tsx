@@ -35,7 +35,7 @@ export interface ImportAnalysis {
 type EditableImportItem = {
     key: string;
     include: boolean;
-    status: 'new' | 'update';
+    status: 'new' | 'update' | 'skipped';
     data: any;
 };
 
@@ -65,7 +65,13 @@ export function ImportPreviewDialog({ isOpen, onOpenChange, analysis, onConfirm,
                 status: 'update' as const,
                 data: c,
             }));
-            setEditableItems([...toAdd, ...toUpdate]);
+            const skipped = analysis.skippedRows.map((c, i) => ({
+                key: `skipped-${i}`,
+                include: false,
+                status: 'skipped' as const,
+                data: c,
+            }));
+            setEditableItems([...toAdd, ...toUpdate, ...skipped]);
         }
     }, [analysis, isOpen]);
 
@@ -91,7 +97,7 @@ export function ImportPreviewDialog({ isOpen, onOpenChange, analysis, onConfirm,
         const confirmedAnalysis: ImportAnalysis = {
             ...analysis,
             customersToAdd: editableItems.filter(i => i.include && i.status === 'new').map(i => i.data),
-            customersToUpdate: editableItems.filter(i => i.include && i.status === 'update').map(i => i.data),
+            customersToUpdate: editableItems.filter(i => i.include && (i.status === 'update' || i.status === 'skipped')).map(i => i.data),
         };
         onConfirm(confirmedAnalysis);
     };
@@ -100,8 +106,8 @@ export function ImportPreviewDialog({ isOpen, onOpenChange, analysis, onConfirm,
         if (!analysis) return { toAdd: 0, toUpdate: 0, skipped: 0, errors: 0 };
         return {
             toAdd: editableItems.filter(i => i.include && i.status === 'new').length,
-            toUpdate: editableItems.filter(i => i.include && i.status === 'update').length,
-            skipped: analysis.skippedRows.length + editableItems.filter(i => !i.include).length,
+            toUpdate: editableItems.filter(i => i.include && (i.status === 'update' || i.status === 'skipped')).length,
+            skipped: editableItems.filter(i => !i.include).length,
             errors: analysis.errorRows.length,
         };
     }, [editableItems, analysis]);
@@ -181,6 +187,7 @@ export function ImportPreviewDialog({ isOpen, onOpenChange, analysis, onConfirm,
                                         <TableCell>
                                             {item.status === 'new' && <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300">Nouveau</Badge>}
                                             {item.status === 'update' && <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300">Mise à jour</Badge>}
+                                            {item.status === 'skipped' && <Badge variant="outline" className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300">Ignoré</Badge>}
                                         </TableCell>
                                         <TableCell>
                                             <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleRemoveItem(item.key)}>

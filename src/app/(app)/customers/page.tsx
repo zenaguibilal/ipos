@@ -224,7 +224,7 @@ export default function CustomersPage() {
                         const settlementDayNeedsUpdate = settlementDay !== undefined && existingCustomer.settlementDay !== settlementDay;
 
                         if (!debtDifference && !phoneNeedsUpdate && !settlementDayNeedsUpdate) {
-                             skippedRows.push({ ...importRowData, reason: 'Données inchangées' });
+                             skippedRows.push({ ...importRowData, reason: 'Données inchangées', existingCustomer });
                              return;
                         }
                         
