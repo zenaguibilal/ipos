@@ -50,10 +50,32 @@ export default function StockPage() {
     });
 
     useEffect(() => {
+        const savedRange = localStorage.getItem('stock_intake_date_range');
+        if (savedRange) {
+            try {
+                const parsed = JSON.parse(savedRange);
+                setDateRange({
+                    from: parsed.from ? new Date(parsed.from) : undefined,
+                    to: parsed.to ? new Date(parsed.to) : undefined,
+                });
+            } catch (e) { console.error(e); }
+        }
+        const savedSearch = localStorage.getItem('stock_search_query');
+        if (savedSearch !== null) {
+            setSearchQuery(savedSearch);
+        }
+    }, []);
+
+    useEffect(() => {
         if (dateRange) {
             localStorage.setItem('stock_intake_date_range', JSON.stringify(dateRange));
         }
     }, [dateRange]);
+
+    useEffect(() => {
+        localStorage.setItem('stock_search_query', searchQuery);
+    }, [searchQuery]);
+
 
     const stockIntakesQuery = useMemoFirebase(() =>
         (user && firestore) ? query(collection(firestore, 'users', user.uid, 'stockIntakes'), orderBy('createdAt', 'desc')) : null,
@@ -255,3 +277,5 @@ export default function StockPage() {
         </>
     );
 }
+
+    

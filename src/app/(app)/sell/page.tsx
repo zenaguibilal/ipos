@@ -146,11 +146,19 @@ export default function SellPage() {
         if (savedCategory) {
             setCategoryFilter(savedCategory);
         }
+        const savedSearch = localStorage.getItem('sell_search_query');
+        if (savedSearch !== null) {
+            setSearchQuery(savedSearch);
+        }
     }, []);
 
     useEffect(() => {
         localStorage.setItem('sell_page_category_filter', categoryFilter);
     }, [categoryFilter]);
+
+    useEffect(() => {
+        localStorage.setItem('sell_search_query', searchQuery);
+    }, [searchQuery]);
 
     const products = useMemo(() => productsData || [], [productsData]);
 
@@ -273,7 +281,6 @@ export default function SellPage() {
             flash: true,
             createdAt: new Date(),
             category: 'Personnalisé',
-            barcodes: [],
             imageUrl: placeholders['Personnalisé'].url
         };
     
@@ -622,5 +629,8 @@ export default function SellPage() {
 
 
     
+
+    
+
 
     

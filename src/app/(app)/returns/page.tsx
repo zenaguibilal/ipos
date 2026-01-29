@@ -57,6 +57,20 @@ export default function ReturnsPage() {
         if (dateRange) {
             localStorage.setItem('returns_date_range', JSON.stringify(dateRange));
         }
+        const savedSearch = localStorage.getItem('returns_search_query');
+        if (savedSearch !== null) {
+            setSearchQuery(savedSearch);
+        }
+    }, []);
+
+    useEffect(() => {
+        localStorage.setItem('returns_search_query', searchQuery);
+    }, [searchQuery]);
+
+    useEffect(() => {
+        if (dateRange) {
+            localStorage.setItem('returns_date_range', JSON.stringify(dateRange));
+        }
     }, [dateRange]);
 
     // --- Data Fetching ---
@@ -267,3 +281,5 @@ export default function ReturnsPage() {
         </>
     );
 }
+
+    

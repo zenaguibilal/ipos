@@ -50,18 +50,7 @@ export default function BreadOrdersPage() {
     const router = useRouter();
 
     // Component State
-    const [selectedDate, setSelectedDate] = useState<Date>(() => {
-        if (typeof window !== 'undefined') {
-            const savedDate = localStorage.getItem('bread_selected_date');
-            if (savedDate) {
-                const parsed = new Date(savedDate);
-                if (!isNaN(parsed.valueOf())) {
-                    return parsed;
-                }
-            }
-        }
-        return new Date();
-    });
+    const [selectedDate, setSelectedDate] = useState<Date>(new Date());
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
     const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
@@ -80,9 +69,20 @@ export default function BreadOrdersPage() {
     const printableRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
+        const savedDate = localStorage.getItem('bread_selected_date');
+        if (savedDate) {
+            const parsed = new Date(savedDate);
+            if (!isNaN(parsed.valueOf())) {
+                setSelectedDate(parsed);
+            }
+        }
         const savedFilter = localStorage.getItem('bread_status_filter') as StatusFilter;
         if (savedFilter && ['all', 'not-delivered', 'not-paid'].includes(savedFilter)) {
             setStatusFilter(savedFilter);
+        }
+        const savedSearch = localStorage.getItem('bread_search_query');
+        if (savedSearch !== null) {
+            setSearchQuery(savedSearch);
         }
     }, []);
 
@@ -92,10 +92,13 @@ export default function BreadOrdersPage() {
         }
     }, [selectedDate]);
 
-    const handleStatusFilterChange = (newFilter: StatusFilter) => {
-        setStatusFilter(newFilter);
-        localStorage.setItem('bread_status_filter', newFilter);
-    };
+    useEffect(() => {
+        localStorage.setItem('bread_status_filter', statusFilter);
+    }, [statusFilter]);
+
+    useEffect(() => {
+        localStorage.setItem('bread_search_query', searchQuery);
+    }, [searchQuery]);
 
 
     // Data Fetching
@@ -420,9 +423,9 @@ export default function BreadOrdersPage() {
                                         </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent>
-                                        <DropdownMenuItem onClick={() => handleStatusFilterChange("all")}>Tout</DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => handleStatusFilterChange("not-delivered")}>Non Livré</DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => handleStatusFilterChange("not-paid")}>Non Payé</DropdownMenuItem>
+                                        <DropdownMenuItem onSelect={() => setStatusFilter("all")}>Tout</DropdownMenuItem>
+                                        <DropdownMenuItem onSelect={() => setStatusFilter("not-delivered")}>Non Livré</DropdownMenuItem>
+                                        <DropdownMenuItem onSelect={() => setStatusFilter("not-paid")}>Non Payé</DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
                             </div>
@@ -453,9 +456,9 @@ export default function BreadOrdersPage() {
                                  )}
                             </div>
                              <div className="flex gap-2">
-                                <Button variant={statusFilter === 'all' ? 'secondary' : 'ghost'} size="sm" onClick={() => handleStatusFilterChange('all')}>Tout</Button>
-                                <Button variant={statusFilter === 'not-delivered' ? 'secondary' : 'ghost'} size="sm" onClick={() => handleStatusFilterChange('not-delivered')} className="flex items-center gap-1"><X className="h-4 w-4"/>Non Livré</Button>
-                                <Button variant={statusFilter === 'not-paid' ? 'secondary' : 'ghost'} size="sm" onClick={() => handleStatusFilterChange('not-paid')} className="flex items-center gap-1"><PackageOpen className="h-4 w-4"/>Non Payé</Button>
+                                <Button variant={statusFilter === 'all' ? 'secondary' : 'ghost'} size="sm" onClick={() => setStatusFilter('all')}>Tout</Button>
+                                <Button variant={statusFilter === 'not-delivered' ? 'secondary' : 'ghost'} size="sm" onClick={() => setStatusFilter('not-delivered')} className="flex items-center gap-1"><X className="h-4 w-4"/>Non Livré</Button>
+                                <Button variant={statusFilter === 'not-paid' ? 'secondary' : 'ghost'} size="sm" onClick={() => setStatusFilter('not-paid')} className="flex items-center gap-1"><PackageOpen className="h-4 w-4"/>Non Payé</Button>
                             </div>
                         </div>
                     </Card>
@@ -556,3 +559,5 @@ export default function BreadOrdersPage() {
         </React.Suspense>
     );
 }
+
+    

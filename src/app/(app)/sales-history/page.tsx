@@ -78,7 +78,7 @@ export default function SalesHistoryPage() {
 
     const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
     const { data: payments, isLoading: isLoadingPayments } = useCollection<Payment>(paymentsQuery);
-    const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersCollectionRef);
+    const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersQuery);
     
     const companyDocRef = useMemoFirebase(() => user && firestore ? doc(firestore, 'users', user.uid, 'companyProfile', 'main') : null, [user, firestore]);
     const { data: companyProfile, isLoading: isLoadingCompany } = useDoc<CompanyProfile>(companyDocRef);
@@ -93,19 +93,28 @@ export default function SalesHistoryPage() {
         if (dateRange) {
             localStorage.setItem('sales_history_date_range', JSON.stringify(dateRange));
         }
-    }, [dateRange]);
-
-    useEffect(() => {
         const savedFilter = localStorage.getItem('sales_history_status_filter') as StatusFilter;
         if (savedFilter) {
             setStatusFilter(savedFilter);
         }
+        const savedSearch = localStorage.getItem('sales_history_search_query');
+        if (savedSearch !== null) {
+            setSearchQuery(savedSearch);
+        }
     }, []);
 
-    const handleFilterChange = (value: StatusFilter) => {
-        setStatusFilter(value);
-        localStorage.setItem('sales_history_status_filter', value);
-    };
+    useEffect(() => {
+        localStorage.setItem('sales_history_date_range', JSON.stringify(dateRange));
+    }, [dateRange]);
+    
+    useEffect(() => {
+        localStorage.setItem('sales_history_status_filter', statusFilter);
+    }, [statusFilter]);
+
+    useEffect(() => {
+        localStorage.setItem('sales_history_search_query', searchQuery);
+    }, [searchQuery]);
+
 
     const combinedTransactions = useMemo<Transaction[]>(() => {
         if (!sales && !payments) return [];
@@ -502,10 +511,10 @@ export default function SalesHistoryPage() {
                                 />
                             </div>
                             <div className="flex gap-2 rounded-lg bg-muted p-1">
-                                <Button variant={statusFilter === 'all' ? 'default' : 'ghost'} size="sm" onClick={() => handleFilterChange('all')}>Tout</Button>
-                                <Button variant={statusFilter === 'paid' ? 'default' : 'ghost'} size="sm" onClick={() => handleFilterChange('paid')}>Payé</Button>
-                                <Button variant={statusFilter === 'unpaid' ? 'default' : 'ghost'} size="sm" onClick={() => handleFilterChange('unpaid')}>Impayé/Partiel</Button>
-                                <Button variant={statusFilter === 'payments' ? 'default' : 'ghost'} size="sm" onClick={() => handleFilterChange('payments')}>Paiements</Button>
+                                <Button variant={statusFilter === 'all' ? 'default' : 'ghost'} size="sm" onClick={() => setStatusFilter('all')}>Tout</Button>
+                                <Button variant={statusFilter === 'paid' ? 'default' : 'ghost'} size="sm" onClick={() => setStatusFilter('paid')}>Payé</Button>
+                                <Button variant={statusFilter === 'unpaid' ? 'default' : 'ghost'} size="sm" onClick={() => setStatusFilter('unpaid')}>Impayé/Partiel</Button>
+                                <Button variant={statusFilter === 'payments' ? 'default' : 'ghost'} size="sm" onClick={() => setStatusFilter('payments')}>Paiements</Button>
                             </div>
                         </div>
                     </CardHeader>
@@ -609,3 +618,5 @@ export default function SalesHistoryPage() {
         </>
     );
 }
+
+    

@@ -46,12 +46,19 @@ export default function ProductsPage() {
         if (savedCategory) {
             setSelectedCategory(savedCategory);
         }
+        const savedSearch = localStorage.getItem('products_search_query');
+        if (savedSearch !== null) {
+            setSearchQuery(savedSearch);
+        }
     }, []);
 
-    const handleCategoryChange = (value: string) => {
-        setSelectedCategory(value);
-        localStorage.setItem('products_category_filter', value);
-    };
+    useEffect(() => {
+        localStorage.setItem('products_category_filter', selectedCategory);
+    }, [selectedCategory]);
+
+    useEffect(() => {
+        localStorage.setItem('products_search_query', searchQuery);
+    }, [searchQuery]);
 
     const handleAddClick = () => {
         setSelectedProduct(null);
@@ -249,7 +256,7 @@ export default function ProductsPage() {
                                     className="pl-9 w-full"
                                 />
                             </div>
-                            <Select value={selectedCategory} onValueChange={handleCategoryChange}>
+                            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
                                 <SelectTrigger className="w-full sm:w-[200px]">
                                     <SelectValue placeholder="Filtrer par catégorie" />
                                 </SelectTrigger>
@@ -292,3 +299,5 @@ export default function ProductsPage() {
         </>
     );
 }
+
+    

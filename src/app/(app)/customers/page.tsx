@@ -60,12 +60,19 @@ export default function CustomersPage() {
         if (savedSortOption) {
             setSortOption(savedSortOption);
         }
+        const savedSearch = localStorage.getItem('customers_search_query');
+        if (savedSearch !== null) {
+            setSearchQuery(savedSearch);
+        }
     }, []);
 
-    const handleSortChange = (value: string) => {
-        setSortOption(value);
-        localStorage.setItem('customers_sort_option', value);
-    };
+    useEffect(() => {
+        localStorage.setItem('customers_sort_option', sortOption);
+    }, [sortOption]);
+
+    useEffect(() => {
+        localStorage.setItem('customers_search_query', searchQuery);
+    }, [searchQuery]);
 
     const { customersWithSalesData, totalDebt, customersWithDebt } = useMemo(() => {
         if (!customers || !sales || !payments) {
@@ -472,7 +479,7 @@ export default function CustomersPage() {
                                     className="pl-9 w-full"
                                 />
                             </div>
-                            <Select value={sortOption} onValueChange={handleSortChange}>
+                            <Select value={sortOption} onValueChange={setSortOption}>
                                 <SelectTrigger className="w-full sm:w-[220px]">
                                     <ListFilter className="mr-2 h-4 w-4" />
                                     <SelectValue placeholder="Trier par..." />
@@ -516,3 +523,5 @@ export default function CustomersPage() {
         </>
     )
 }
+
+    
