@@ -1,14 +1,13 @@
-
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { collection, query, orderBy } from 'firebase/firestore';
+import { collection, query, orderBy, doc, writeBatch, serverTimestamp } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Search, PlusCircle, Users, HandCoins, UserCheck, AlertCircle, MoreHorizontal, Download, ChevronDown, ListFilter, FileText } from 'lucide-react';
+import { Search, PlusCircle, Users, HandCoins, UserCheck, AlertCircle, MoreHorizontal, Download, ChevronDown, ListFilter, FileText, FileUp, Loader2 } from 'lucide-react';
 import type { Customer, Sale, Payment, CustomerWithSalesData } from '@/lib/types';
 import { CustomerDialog } from '@/components/customers/customer-dialog';
 import { DeleteCustomerDialog } from '@/components/customers/delete-customer-dialog';
@@ -35,6 +34,8 @@ export default function CustomersPage() {
     const [customerForPayment, setCustomerForPayment] = useState<Customer | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [sortOption, setSortOption] = useState('debt_desc');
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [isImporting, setIsImporting] = useState(false);
 
     // Data fetching
     const customersQuery = useMemoFirebase(() => (user && firestore) ? query(collection(firestore, 'users', user.uid, 'customers'), orderBy('lastName', 'asc')) : null, [user, firestore]);
@@ -123,15 +124,148 @@ export default function CustomersPage() {
         toast.success("Liste des dettes clients exportée avec succès.");
     };
 
+    const handleImportClick = () => {
+        if (isImporting) return;
+        fileInputRef.current?.click();
+    };
+
+    const parseCustomerName = (fullName: string): { firstName: string, lastName: string } => {
+        if (!fullName) return { firstName: 'Inconnu', lastName: '' };
+        const parts = fullName.trim().split(' ');
+        const firstName = parts.shift() || '';
+        const lastName = parts.join(' ');
+        return { firstName, lastName: lastName || firstName };
+    }
+
+    const handleFileSelected = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        setIsImporting(true);
+        toast.info("Importation des clients en cours... Veuillez patienter.");
+
+        Papa.parse(file, {
+            header: true,
+            skipEmptyLines: true,
+            complete: async (results) => {
+                if (!firestore || !user) {
+                    toast.error("Erreur d'authentification.");
+                    setIsImporting(false);
+                    return;
+                }
+
+                const requiredHeaders = ['Nom du client', 'Dette (DA)'];
+                const headers = results.meta.fields || [];
+                const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
+
+                if (missingHeaders.length > 0) {
+                    toast.error(`Fichier CSV invalide. En-têtes manquants: ${missingHeaders.join(', ')}`);
+                    setIsImporting(false);
+                    if(event.target) event.target.value = '';
+                    return;
+                }
+
+                const customersToImport = results.data as { 'Nom du client': string; 'Dette (DA)': string }[];
+                let importedCount = 0;
+                let errorCount = 0;
+
+                // Process in chunks of 400 to avoid exceeding batch write limit
+                const chunkSize = 400; 
+                for (let i = 0; i < customersToImport.length; i += chunkSize) {
+                    const chunk = customersToImport.slice(i, i + chunkSize);
+                    const batch = writeBatch(firestore);
+
+                    for (const row of chunk) {
+                        const fullName = row['Nom du client'];
+                        const debtString = row['Dette (DA)'];
+    
+                        if (!fullName || typeof fullName !== 'string' || !debtString) {
+                            errorCount++;
+                            continue;
+                        }
+                        
+                        const debtAmount = parseFloat(debtString.replace(',', '.'));
+                        if (isNaN(debtAmount) || debtAmount <= 0) {
+                            continue;
+                        }
+                        
+                        const { firstName, lastName } = parseCustomerName(fullName);
+    
+                        // 1. Create a new customer document
+                        const newCustomerRef = doc(collection(firestore, 'users', user.uid, 'customers'));
+                        batch.set(newCustomerRef, {
+                            firstName,
+                            lastName,
+                            createdAt: serverTimestamp(),
+                            phone: '', // No phone in import file
+                        });
+                        
+                        // 2. Create a new sale document to represent the initial debt
+                        const newSaleRef = doc(collection(firestore, 'users', user.uid, 'sales'));
+                        batch.set(newSaleRef, {
+                            invoiceNumber: `DEBT-IMPORT-${Date.now()}-${i}`,
+                            items: [{
+                                id: 'imported-debt',
+                                name: 'Solde initial importé',
+                                price: debtAmount,
+                                purchasePrice: 0,
+                                quantity: 1,
+                            }],
+                            subtotal: debtAmount,
+                            total: debtAmount,
+                            amountPaid: 0,
+                            remainingBalance: debtAmount,
+                            paymentStatus: 'unpaid',
+                            payments: [],
+                            customerId: newCustomerRef.id,
+                            customerName: `${firstName} ${lastName}`,
+                            createdAt: serverTimestamp(),
+                        });
+    
+                        importedCount++;
+                    }
+                    
+                    try {
+                       await batch.commit();
+                    } catch (err) {
+                       console.error("Error during batch commit:", err);
+                       toast.error("Une erreur s'est produite lors d'un lot d'importation. Certains clients pourraient ne pas avoir été importés.");
+                       setIsImporting(false);
+                       if(event.target) event.target.value = '';
+                       return;
+                    }
+                }
+
+                if (importedCount > 0) {
+                    toast.success(`${importedCount} client(s) importé(s) avec succès.`);
+                }
+                if (errorCount > 0) {
+                    toast.warning(`${errorCount} ligne(s) ont été ignorées en raison de données manquantes.`);
+                }
+                if(importedCount === 0 && errorCount === 0) {
+                    toast.info("Aucun client avec une dette à importer n'a été trouvé dans le fichier.");
+                }
+
+                setIsImporting(false);
+                if(event.target) event.target.value = '';
+            },
+            error: (error) => {
+                console.error("CSV Parsing error:", error);
+                toast.error("Erreur lors de la lecture du fichier CSV.");
+                setIsImporting(false);
+            }
+        });
+    };
+
     const isLoading = isUserLoading || isLoadingCustomers || isLoadingSales || isLoadingPayments;
 
     if (!user && !isLoading) {
-        // This case should be handled by the useEffect redirect, but it's a good failsafe.
         return <div className="flex h-full items-center justify-center"><p>Redirection...</p></div>;
     }
 
     return (
         <>
+            <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileSelected} accept=".csv" />
             {user && <CustomerDialog
                 isOpen={isDialogOpen}
                 onOpenChange={setIsDialogOpen}
@@ -161,13 +295,18 @@ export default function CustomersPage() {
                      <div className="flex items-center gap-2">
                          <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button variant="outline">
-                                    Actions <ChevronDown className="ml-2 h-4 w-4" />
+                                <Button variant="outline" disabled={isImporting}>
+                                    {isImporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
+                                    Actions 
+                                    <ChevronDown className="ml-2 h-4 w-4" />
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={handleExportDebts}>
+                                <DropdownMenuItem onClick={handleExportDebts} disabled={isImporting}>
                                     <Download className="mr-2 h-4 w-4" /> Exporter les Dettes (CSV)
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={handleImportClick} disabled={isImporting}>
+                                    <FileUp className="mr-2 h-4 w-4" /> Importer les Dettes (CSV)
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
