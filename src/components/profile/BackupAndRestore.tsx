@@ -115,15 +115,13 @@ export function BackupAndRestore({ user }: BackupAndRestoreProps) {
             return data.map(convertTimestamps);
         }
         if (data !== null && typeof data === 'object') {
+            if (isFirestoreTimestamp(data)) {
+                return new Timestamp(data.seconds, data.nanoseconds);
+            }
             const newData: { [key: string]: any } = {};
             for (const key in data) {
                 if (Object.prototype.hasOwnProperty.call(data, key)) {
-                    const value = data[key];
-                    if (isFirestoreTimestamp(value)) {
-                        newData[key] = new Timestamp(value.seconds, value.nanoseconds);
-                    } else {
-                        newData[key] = convertTimestamps(value);
-                    }
+                    newData[key] = convertTimestamps(data[key]);
                 }
             }
             return newData;
@@ -149,7 +147,8 @@ export function BackupAndRestore({ user }: BackupAndRestoreProps) {
                 let deleteOps = 0;
                 let deleteBatch = writeBatch(firestore);
 
-                for (const collectionName of COLLECTIONS_TO_BACKUP) {
+                const collectionsToDelete = [...COLLECTIONS_TO_BACKUP];
+                for (const collectionName of collectionsToDelete) {
                     const collectionRef = collection(firestore, 'users', user.uid, collectionName);
                     const snapshot = await getDocs(collectionRef);
                     for (const docSnapshot of snapshot.docs) {
@@ -187,8 +186,9 @@ export function BackupAndRestore({ user }: BackupAndRestoreProps) {
                         writeOps = 0;
                     }
                 };
-
-                for (const collectionName of COLLECTIONS_TO_BACKUP) {
+                
+                const collectionsToRestore = [...COLLECTIONS_TO_BACKUP];
+                for (const collectionName of collectionsToRestore) {
                     if (backupData[collectionName]) {
                         const convertedData = convertTimestamps(backupData[collectionName]);
                         for (const itemData of convertedData) {
