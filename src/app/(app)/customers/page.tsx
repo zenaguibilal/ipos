@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
@@ -220,22 +219,15 @@ export default function CustomersPage() {
                     const importRowData = { firstName, lastName, phone, settlementDay, debtAmount, originalRow: row };
                     
                     if (existingCustomer) {
-                        const debtDifference = debtAmount !== null ? debtAmount - existingCustomer.outstandingBalance : null;
+                        const debtDifference = debtAmount !== null && debtAmount !== existingCustomer.outstandingBalance;
                         const phoneNeedsUpdate = phone && existingCustomer.phone !== phone;
                         const settlementDayNeedsUpdate = settlementDay !== undefined && existingCustomer.settlementDay !== settlementDay;
 
-                        // Only skip if no fields need an update
-                        if (debtDifference === null && !phoneNeedsUpdate && !settlementDayNeedsUpdate) {
+                        if (!debtDifference && !phoneNeedsUpdate && !settlementDayNeedsUpdate) {
                              skippedRows.push({ ...importRowData, reason: 'Données inchangées' });
                              return;
                         }
                         
-                        // If debt exists and is effectively unchanged, also check other fields
-                        if (debtDifference !== null && Math.abs(debtDifference) < 0.01 && !phoneNeedsUpdate && !settlementDayNeedsUpdate) {
-                            skippedRows.push({ ...importRowData, reason: 'Données inchangées' });
-                            return;
-                        }
-
                         customersToUpdate.push({ ...importRowData, existingCustomer });
 
                     } else {
@@ -262,16 +254,17 @@ export default function CustomersPage() {
         if(event.target) event.target.value = '';
     };
 
-    const executeImport = async () => {
-        if (!importAnalysis || !firestore || !user) {
+    const executeImport = async (confirmedAnalysis: ImportAnalysis) => {
+        if (!confirmedAnalysis || !firestore || !user) {
             toast.error("Aucune donnée à importer ou erreur de session.");
             return;
         }
 
         setIsImporting(true);
+        setIsImportPreviewOpen(false);
         toast.info("Importation des clients en cours... Veuillez patienter.");
 
-        const { customersToAdd, customersToUpdate } = importAnalysis;
+        const { customersToAdd, customersToUpdate } = confirmedAnalysis;
 
         let importedCount = 0;
         let updatedCount = 0;
@@ -280,7 +273,6 @@ export default function CustomersPage() {
         if (allCustomersToProcess.length === 0) {
             toast.info("Aucune action d'importation à effectuer.");
             setIsImporting(false);
-            setIsImportPreviewOpen(false);
             return;
         }
 
@@ -305,7 +297,7 @@ export default function CustomersPage() {
                         batch.update(customerRef, updatePayload);
                     }
 
-                    if (debtAmount !== null && debtDifference !== null) {
+                    if (debtAmount !== null && debtDifference !== null && Math.abs(debtDifference) > 0.01) {
                         if (debtDifference > 0) {
                             const newSaleRef = doc(collection(firestore, 'users', user.uid, 'sales'));
                             batch.set(newSaleRef, {
@@ -355,11 +347,8 @@ export default function CustomersPage() {
 
         if (importedCount > 0) toast.success(`${importedCount} nouveau(x) client(s) importé(s) avec succès.`);
         if (updatedCount > 0) toast.success(`${updatedCount} client(s) existant(s) mis à jour.`);
-        if (importAnalysis.skippedRows.length > 0) toast.info(`${importAnalysis.skippedRows.length} client(s) ont été ignorés (données inchangées).`);
-        if (importAnalysis.errorRows.length > 0) toast.warning(`${importAnalysis.errorRows.length} ligne(s) ont été ignorées en raison de données manquantes ou invalides.`);
         
         setIsImporting(false);
-        setIsImportPreviewOpen(false);
         setImportAnalysis(null);
     };
 
