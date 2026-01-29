@@ -6,7 +6,7 @@ import { useFirestore } from '@/firebase';
 import { collection, doc, getDocs, getDoc, writeBatch, Timestamp } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { CardContent, CardFooter } from '@/components/ui/card';
-import { Download, Upload, Loader2, AlertTriangle } from 'lucide-react';
+import { Download, Upload, Loader2, AlertTriangle, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   AlertDialog,
@@ -39,7 +39,9 @@ export function BackupAndRestore({ user }: BackupAndRestoreProps) {
     const firestore = useFirestore();
     const [isBackingUp, setIsBackingUp] = useState(false);
     const [isRestoring, setIsRestoring] = useState(false);
+    const [isResetting, setIsResetting] = useState(false);
     const [isRestoreAlertOpen, setIsRestoreAlertOpen] = useState(false);
+    const [isResetAlertOpen, setIsResetAlertOpen] = useState(false);
     const [restoreFile, setRestoreFile] = useState<File | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -235,13 +237,68 @@ export function BackupAndRestore({ user }: BackupAndRestoreProps) {
         reader.readAsText(restoreFile);
     };
 
+    const executeReset = async () => {
+        if (!firestore || !user) return;
+
+        setIsResetting(true);
+        toast.info("Réinitialisation en cours... Suppression de toutes les données.");
+
+        try {
+            const BATCH_LIMIT = 499;
+            let deleteOps = 0;
+            let deleteBatch = writeBatch(firestore);
+
+            const commitDeleteBatch = async () => {
+                if (deleteOps > 0) {
+                    await deleteBatch.commit();
+                    deleteBatch = writeBatch(firestore);
+                    deleteOps = 0;
+                }
+            };
+
+            for (const collectionName of COLLECTIONS_TO_BACKUP) {
+                const collectionRef = collection(firestore, 'users', user.uid, collectionName);
+                const snapshot = await getDocs(collectionRef);
+                for (const docSnapshot of snapshot.docs) {
+                    deleteBatch.delete(docSnapshot.ref);
+                    deleteOps++;
+                    if (deleteOps >= BATCH_LIMIT) {
+                        await commitDeleteBatch();
+                    }
+                }
+            }
+            
+            const companyProfileRef = doc(firestore, 'users', user.uid, 'companyProfile', 'main');
+            const companyProfileSnap = await getDoc(companyProfileRef);
+            if (companyProfileSnap.exists()) {
+                deleteBatch.delete(companyProfileRef);
+                deleteOps++;
+            }
+
+            await commitDeleteBatch();
+
+            toast.success("Réinitialisation terminée avec succès !", {
+                description: "L'application va maintenant se recharger."
+            });
+
+            setTimeout(() => window.location.reload(), 2000);
+
+        } catch (error) {
+            console.error("Erreur lors de la réinitialisation:", error);
+            toast.error("Erreur lors de la réinitialisation.", { duration: 10000 });
+        } finally {
+            setIsResetting(false);
+            setIsResetAlertOpen(false);
+        }
+    };
+
     return (
         <>
             <input 
                 type="file" 
                 ref={fileInputRef} 
                 className="hidden"
-                accept=".json,application/json"
+                accept=".json"
                 onChange={handleFileSelect}
             />
             <CardContent className="grid sm:grid-cols-2 gap-4">
@@ -259,15 +316,28 @@ export function BackupAndRestore({ user }: BackupAndRestoreProps) {
                 </div>
             </CardContent>
             <CardFooter className="grid sm:grid-cols-2 gap-4 border-t pt-6">
-                <Button onClick={handleBackup} disabled={isBackingUp || isRestoring} className="w-full">
+                <Button onClick={handleBackup} disabled={isBackingUp || isRestoring || isResetting} className="w-full">
                     {isBackingUp ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
                     {isBackingUp ? 'Sauvegarde...' : 'Télécharger la sauvegarde'}
                 </Button>
-                <Button variant="destructive" onClick={() => fileInputRef.current?.click()} disabled={isBackingUp || isRestoring} className="w-full">
+                <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isBackingUp || isRestoring || isResetting} className="w-full">
                      {isRestoring ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
                     {isRestoring ? 'Restauration...' : 'Restaurer depuis un fichier'}
                 </Button>
             </CardFooter>
+            
+            <div className="px-6 pb-6">
+                <div className="p-4 border-l-4 border-destructive bg-destructive/10 rounded-r-lg">
+                    <h4 className="font-bold text-destructive">Zone de Danger</h4>
+                    <p className="text-sm text-destructive/90 mt-1 mb-4">
+                        L'action ci-dessous est irréversible. Assurez-vous d'avoir une sauvegarde récente avant de continuer.
+                    </p>
+                    <Button variant="destructive" onClick={() => setIsResetAlertOpen(true)} disabled={isBackingUp || isRestoring || isResetting}>
+                        {isResetting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                        {isResetting ? 'Réinitialisation...' : 'Réinitialiser l\'application'}
+                    </Button>
+                </div>
+            </div>
 
             <AlertDialog open={isRestoreAlertOpen} onOpenChange={setIsRestoreAlertOpen}>
                 <AlertDialogContent>
@@ -289,6 +359,33 @@ export function BackupAndRestore({ user }: BackupAndRestoreProps) {
                             className="bg-destructive hover:bg-destructive/90"
                         >
                             Confirmer et écraser les données
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+             <AlertDialog open={isResetAlertOpen} onOpenChange={setIsResetAlertOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2">
+                            <AlertTriangle className="h-6 w-6 text-destructive" />
+                            Êtes-vous sûr de vouloir réinitialiser ?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                             Cette action est <span className="font-bold">IRRÉVERSIBLE</span>. Toutes vos données (produits, ventes, clients, etc.) seront définitivement supprimées. Votre compte utilisateur sera conservé.
+                            <br/><br/>
+                            Il est fortement recommandé de télécharger une sauvegarde avant de continuer.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Annuler</AlertDialogCancel>
+                        <AlertDialogAction 
+                            onClick={executeReset} 
+                            className="bg-destructive hover:bg-destructive/90"
+                            disabled={isResetting}
+                        >
+                            {isResetting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Confirmer et réinitialiser
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
