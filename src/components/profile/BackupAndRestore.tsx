@@ -139,35 +139,66 @@ export function BackupAndRestore({ user }: BackupAndRestoreProps) {
         reader.onload = async (e) => {
             try {
                 const backupData = JSON.parse(e.target?.result as string);
-                
-                // --- BATCH 1: DELETE ---
-                const deleteBatch = writeBatch(firestore);
+                const BATCH_LIMIT = 499;
+
+                // --- PHASE 1: DELETE ALL EXISTING DATA ---
+                toast.info("Phase 1/2 : Suppression des données actuelles...");
+                let deleteOps = 0;
+                let deleteBatch = writeBatch(firestore);
 
                 for (const collectionName of COLLECTIONS_TO_BACKUP) {
-                    if (backupData[collectionName]) {
-                        const collectionRef = collection(firestore, 'users', user.uid, collectionName);
-                        const snapshot = await getDocs(collectionRef);
-                        snapshot.docs.forEach(doc => deleteBatch.delete(doc.ref));
+                    const collectionRef = collection(firestore, 'users', user.uid, collectionName);
+                    const snapshot = await getDocs(collectionRef);
+                    for (const docSnapshot of snapshot.docs) {
+                        deleteBatch.delete(docSnapshot.ref);
+                        deleteOps++;
+                        if (deleteOps >= BATCH_LIMIT) {
+                            await deleteBatch.commit();
+                            deleteBatch = writeBatch(firestore);
+                            deleteOps = 0;
+                        }
                     }
                 }
+                
                 const companyProfileRef = doc(firestore, 'users', user.uid, 'companyProfile', 'main');
-                if(backupData['companyProfile']) {
+                const companyProfileSnap = await getDoc(companyProfileRef);
+                if (companyProfileSnap.exists()) {
                     deleteBatch.delete(companyProfileRef);
+                    deleteOps++;
+                }
+
+                if (deleteOps > 0) {
+                    await deleteBatch.commit();
                 }
                 
-                await deleteBatch.commit();
-                toast.info("Anciennes données supprimées, écriture des nouvelles données...");
+                toast.info("Phase 2/2 : Écriture des nouvelles données...");
 
-                // --- BATCH 2: WRITE ---
-                const writeBatchInstance = writeBatch(firestore);
+                // --- PHASE 2: WRITE NEW DATA FROM BACKUP ---
+                let writeOps = 0;
+                let writeBatchInstance = writeBatch(firestore);
+
+                const commitWriteBatch = async () => {
+                     if (writeOps > 0) {
+                        await writeBatchInstance.commit();
+                        writeBatchInstance = writeBatch(firestore);
+                        writeOps = 0;
+                    }
+                };
+
                 for (const collectionName of COLLECTIONS_TO_BACKUP) {
                     if (backupData[collectionName]) {
                         const convertedData = convertTimestamps(backupData[collectionName]);
-                        convertedData.forEach((itemData: any) => {
+                        for (const itemData of convertedData) {
                             const { id, ...data } = itemData;
-                            const docRef = doc(firestore, 'users', user.uid, collectionName, id);
-                            writeBatchInstance.set(docRef, data);
-                        });
+                            if (id) { // Ensure item has an ID
+                                const docRef = doc(firestore, 'users', user.uid, collectionName, id);
+                                writeBatchInstance.set(docRef, data);
+                                writeOps++;
+                                if (writeOps >= BATCH_LIMIT) {
+                                    await commitWriteBatch();
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -176,9 +207,11 @@ export function BackupAndRestore({ user }: BackupAndRestoreProps) {
                     const convertedData = convertTimestamps(data);
                     const companyRef = doc(firestore, 'users', user.uid, 'companyProfile', 'main');
                     writeBatchInstance.set(companyRef, convertedData);
+                    writeOps++;
                 }
+                
+                await commitWriteBatch(); // Commit any remaining writes
 
-                await writeBatchInstance.commit();
                 toast.success("Restauration terminée avec succès !", {
                     description: "L'application va maintenant se recharger."
                 });
@@ -187,14 +220,14 @@ export function BackupAndRestore({ user }: BackupAndRestoreProps) {
 
             } catch (error) {
                 console.error("Erreur lors de la restauration:", error);
-                toast.error("Erreur lors de la restauration. Vérifiez le fichier de sauvegarde.");
+                toast.error("Erreur lors de la restauration. Vérifiez le fichier de sauvegarde et votre connexion.", { duration: 10000 });
                 setIsRestoring(false);
             }
         };
         reader.onerror = () => {
              toast.error("Erreur de lecture du fichier.");
              setIsRestoring(false);
-        }
+        };
 
         reader.readAsText(restoreFile);
     };
