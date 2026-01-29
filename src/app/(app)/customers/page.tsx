@@ -101,13 +101,13 @@ export default function CustomersPage() {
     };
     
     const handleExportDebts = () => {
-        const customersWithDebt = customersWithSalesData.filter(c => c.outstandingBalance > 0);
-        if (customersWithDebt.length === 0) {
+        const customersWithDebtToExport = customersWithSalesData.filter(c => c.outstandingBalance > 0);
+        if (customersWithDebtToExport.length === 0) {
             toast.info("Aucun client avec une dette à exporter.");
             return;
         }
 
-        const dataToExport = customersWithDebt.map(c => ({
+        const dataToExport = customersWithDebtToExport.map(c => ({
             'Nom du client': `${c.firstName} ${c.lastName}`,
             'Dette (DA)': c.outstandingBalance.toFixed(2),
             'Téléphone': c.phone || '',
@@ -131,10 +131,10 @@ export default function CustomersPage() {
 
     const parseCustomerName = (fullName: string): { firstName: string, lastName: string } => {
         if (!fullName) return { firstName: 'Inconnu', lastName: '' };
-        const parts = fullName.trim().split(' ');
+        const parts = fullName.trim().split(/\s+/);
         const firstName = parts.shift() || '';
         const lastName = parts.join(' ');
-        return { firstName, lastName: lastName || firstName };
+        return { firstName, lastName };
     }
 
     const handleFileSelected = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -164,35 +164,44 @@ export default function CustomersPage() {
                     if(event.target) event.target.value = '';
                     return;
                 }
-
+                
+                const existingCustomerNames = new Set(
+                    customers?.map(c => `${c.firstName.trim()} ${c.lastName.trim()}`.toLowerCase())
+                );
+                
                 const customersToImport = results.data as { 'Nom du client': string; 'Dette (DA)': string; 'Téléphone'?: string }[];
                 let importedCount = 0;
                 let errorCount = 0;
+                let skippedCount = 0;
 
-                // Process in chunks of 400 to avoid exceeding batch write limit
                 const chunkSize = 400; 
                 for (let i = 0; i < customersToImport.length; i += chunkSize) {
                     const chunk = customersToImport.slice(i, i + chunkSize);
                     const batch = writeBatch(firestore);
 
-                    chunk.forEach((row, rowIndex) => {
+                    chunk.forEach((row) => {
                         const fullName = row['Nom du client'];
                         const debtString = row['Dette (DA)'];
                         const phone = row['Téléphone'] || '';
     
                         if (!fullName || typeof fullName !== 'string' || !debtString) {
                             errorCount++;
-                            return; // continue to next forEach iteration
-                        }
-                        
-                        const debtAmount = parseFloat(debtString.replace(',', '.'));
-                        if (isNaN(debtAmount) || debtAmount <= 0) {
-                            return; // continue to next forEach iteration
+                            return;
                         }
                         
                         const { firstName, lastName } = parseCustomerName(fullName);
-    
-                        // 1. Create a new customer document
+                        const normalizedFullName = `${firstName.trim()} ${lastName.trim()}`.toLowerCase();
+                        
+                        if (existingCustomerNames.has(normalizedFullName)) {
+                            skippedCount++;
+                            return;
+                        }
+
+                        const debtAmount = parseFloat(debtString.replace(',', '.'));
+                        if (isNaN(debtAmount) || debtAmount <= 0) {
+                            return;
+                        }
+                        
                         const newCustomerRef = doc(collection(firestore, 'users', user.uid, 'customers'));
                         batch.set(newCustomerRef, {
                             firstName,
@@ -201,10 +210,9 @@ export default function CustomersPage() {
                             phone: phone,
                         });
                         
-                        // 2. Create a new sale document to represent the initial debt
                         const newSaleRef = doc(collection(firestore, 'users', user.uid, 'sales'));
                         batch.set(newSaleRef, {
-                            invoiceNumber: `DEBT-IMPORT-${Date.now()}-${i + rowIndex}`,
+                            invoiceNumber: `DEBT-IMPORT-${Date.now()}-${newCustomerRef.id}`,
                             items: [{
                                 id: 'imported-debt',
                                 name: 'Solde initial importé',
@@ -224,6 +232,7 @@ export default function CustomersPage() {
                         });
     
                         importedCount++;
+                        existingCustomerNames.add(normalizedFullName);
                     });
                     
                     try {
@@ -240,11 +249,14 @@ export default function CustomersPage() {
                 if (importedCount > 0) {
                     toast.success(`${importedCount} client(s) importé(s) avec succès.`);
                 }
+                if (skippedCount > 0) {
+                    toast.info(`${skippedCount} client(s) ont été ignorés car ils existent déjà.`);
+                }
                 if (errorCount > 0) {
                     toast.warning(`${errorCount} ligne(s) ont été ignorées en raison de données manquantes.`);
                 }
-                if(importedCount === 0 && errorCount === 0) {
-                    toast.info("Aucun client avec une dette à importer n'a été trouvé dans le fichier.");
+                if(importedCount === 0 && skippedCount === 0 && errorCount === 0) {
+                    toast.info("Aucun nouveau client avec une dette à importer n'a été trouvé dans le fichier.");
                 }
 
                 setIsImporting(false);
