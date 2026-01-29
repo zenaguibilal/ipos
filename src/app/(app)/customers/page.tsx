@@ -55,6 +55,18 @@ export default function CustomersPage() {
         }
     }, [user, isUserLoading, router]);
 
+    useEffect(() => {
+        const savedSortOption = localStorage.getItem('customers_sort_option');
+        if (savedSortOption) {
+            setSortOption(savedSortOption);
+        }
+    }, []);
+
+    const handleSortChange = (value: string) => {
+        setSortOption(value);
+        localStorage.setItem('customers_sort_option', value);
+    };
+
     const { customersWithSalesData, totalDebt, customersWithDebt } = useMemo(() => {
         if (!customers || !sales || !payments) {
             return { customersWithSalesData: [], totalDebt: 0, customersWithDebt: 0 };
@@ -219,11 +231,11 @@ export default function CustomersPage() {
                     const importRowData = { firstName, lastName, phone, settlementDay, debtAmount, originalRow: row };
                     
                     if (existingCustomer) {
-                        const debtDifference = debtAmount !== null && debtAmount !== existingCustomer.outstandingBalance;
+                        const debtNeedsUpdate = debtAmount !== null;
                         const phoneNeedsUpdate = phone && existingCustomer.phone !== phone;
                         const settlementDayNeedsUpdate = settlementDay !== undefined && existingCustomer.settlementDay !== settlementDay;
 
-                        if (!debtDifference && !phoneNeedsUpdate && !settlementDayNeedsUpdate) {
+                        if (!debtNeedsUpdate && !phoneNeedsUpdate && !settlementDayNeedsUpdate) {
                              skippedRows.push({ ...importRowData, reason: 'Données inchangées', existingCustomer });
                              return;
                         }
@@ -460,7 +472,7 @@ export default function CustomersPage() {
                                     className="pl-9 w-full"
                                 />
                             </div>
-                            <Select value={sortOption} onValueChange={setSortOption}>
+                            <Select value={sortOption} onValueChange={handleSortChange}>
                                 <SelectTrigger className="w-full sm:w-[220px]">
                                     <ListFilter className="mr-2 h-4 w-4" />
                                     <SelectValue placeholder="Trier par..." />

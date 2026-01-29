@@ -41,6 +41,18 @@ export default function ProductsPage() {
         }
     }, [user, isUserLoading, router]);
 
+    useEffect(() => {
+        const savedCategory = localStorage.getItem('products_category_filter');
+        if (savedCategory) {
+            setSelectedCategory(savedCategory);
+        }
+    }, []);
+
+    const handleCategoryChange = (value: string) => {
+        setSelectedCategory(value);
+        localStorage.setItem('products_category_filter', value);
+    };
+
     const handleAddClick = () => {
         setSelectedProduct(null);
         setIsDialogOpen(true);
@@ -237,7 +249,7 @@ export default function ProductsPage() {
                                     className="pl-9 w-full"
                                 />
                             </div>
-                            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                            <Select value={selectedCategory} onValueChange={handleCategoryChange}>
                                 <SelectTrigger className="w-full sm:w-[200px]">
                                     <SelectValue placeholder="Filtrer par catégorie" />
                                 </SelectTrigger>

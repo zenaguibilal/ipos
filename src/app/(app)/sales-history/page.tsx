@@ -75,6 +75,18 @@ export default function SalesHistoryPage() {
         }
     }, [user, isUserLoading, router]);
 
+    useEffect(() => {
+        const savedFilter = localStorage.getItem('sales_history_status_filter') as StatusFilter;
+        if (savedFilter) {
+            setStatusFilter(savedFilter);
+        }
+    }, []);
+
+    const handleFilterChange = (value: StatusFilter) => {
+        setStatusFilter(value);
+        localStorage.setItem('sales_history_status_filter', value);
+    };
+
     const combinedTransactions = useMemo<Transaction[]>(() => {
         if (!sales && !payments) return [];
         
@@ -470,10 +482,10 @@ export default function SalesHistoryPage() {
                                 />
                             </div>
                             <div className="flex gap-2 rounded-lg bg-muted p-1">
-                                <Button variant={statusFilter === 'all' ? 'default' : 'ghost'} size="sm" onClick={() => setStatusFilter('all')}>Tout</Button>
-                                <Button variant={statusFilter === 'paid' ? 'default' : 'ghost'} size="sm" onClick={() => setStatusFilter('paid')}>Payé</Button>
-                                <Button variant={statusFilter === 'unpaid' ? 'default' : 'ghost'} size="sm" onClick={() => setStatusFilter('unpaid')}>Impayé/Partiel</Button>
-                                <Button variant={statusFilter === 'payments' ? 'default' : 'ghost'} size="sm" onClick={() => setStatusFilter('payments')}>Paiements</Button>
+                                <Button variant={statusFilter === 'all' ? 'default' : 'ghost'} size="sm" onClick={() => handleFilterChange('all')}>Tout</Button>
+                                <Button variant={statusFilter === 'paid' ? 'default' : 'ghost'} size="sm" onClick={() => handleFilterChange('paid')}>Payé</Button>
+                                <Button variant={statusFilter === 'unpaid' ? 'default' : 'ghost'} size="sm" onClick={() => handleFilterChange('unpaid')}>Impayé/Partiel</Button>
+                                <Button variant={statusFilter === 'payments' ? 'default' : 'ghost'} size="sm" onClick={() => handleFilterChange('payments')}>Paiements</Button>
                             </div>
                         </div>
                     </CardHeader>
