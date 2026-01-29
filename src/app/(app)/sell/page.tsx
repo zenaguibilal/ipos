@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
@@ -141,6 +140,17 @@ export default function SellPage() {
     const [customProductName, setCustomProductName] = useState('');
     const [customProductPrice, setCustomProductPrice] = useState('');
     const [isCustomProductPopoverOpen, setIsCustomProductPopoverOpen] = useState(false);
+
+    useEffect(() => {
+        const savedCategory = localStorage.getItem('sell_page_category_filter');
+        if (savedCategory) {
+            setCategoryFilter(savedCategory);
+        }
+    }, []);
+
+    useEffect(() => {
+        localStorage.setItem('sell_page_category_filter', categoryFilter);
+    }, [categoryFilter]);
 
     const products = useMemo(() => productsData || [], [productsData]);
 

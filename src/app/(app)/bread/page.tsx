@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
@@ -51,7 +50,18 @@ export default function BreadOrdersPage() {
     const router = useRouter();
 
     // Component State
-    const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+    const [selectedDate, setSelectedDate] = useState<Date>(() => {
+        if (typeof window !== 'undefined') {
+            const savedDate = localStorage.getItem('bread_selected_date');
+            if (savedDate) {
+                const parsed = new Date(savedDate);
+                if (!isNaN(parsed.valueOf())) {
+                    return parsed;
+                }
+            }
+        }
+        return new Date();
+    });
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
     const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
@@ -75,6 +85,12 @@ export default function BreadOrdersPage() {
             setStatusFilter(savedFilter);
         }
     }, []);
+
+    useEffect(() => {
+        if (selectedDate) {
+            localStorage.setItem('bread_selected_date', selectedDate.toISOString());
+        }
+    }, [selectedDate]);
 
     const handleStatusFilterChange = (newFilter: StatusFilter) => {
         setStatusFilter(newFilter);
