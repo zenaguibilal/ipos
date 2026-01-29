@@ -200,8 +200,17 @@ export default function CustomersPage() {
                         if (!firstName) firstName = '';
                         if (!lastName) lastName = '';
     
-    
-                        const debtString = hasDebt ? (row['dette actuelle (da)'] || row['dette (da)']) : '0';
+                        let debtAmount: number | null = null;
+                        if (hasDebt) {
+                            const debtStringRaw = row['dette actuelle (da)'] || row['dette (da)'];
+                            if (debtStringRaw !== null && debtStringRaw !== undefined && String(debtStringRaw).trim() !== '') {
+                                const parsedAmount = parseFloat(String(debtStringRaw).replace(',', '.'));
+                                if (!isNaN(parsedAmount)) {
+                                    debtAmount = parsedAmount;
+                                }
+                            }
+                        }
+
                         const phone = row['téléphone'] || '';
                         
                         const rawSettlementDay = row['jour de règlement'] || '';
@@ -213,19 +222,15 @@ export default function CustomersPage() {
                             }
                         }
     
-                        const debtAmount = parseFloat(String(debtString || '0').replace(',', '.')) || 0;
-    
                         const normalizedFullName = `${firstName.trim()} ${lastName.trim()}`.toLowerCase();
                         
                         const existingCustomer = customersMapForCurrentImport.get(normalizedFullName);
                         
                         if (existingCustomer) {
-                            // Logic to update existing customer
-                            const currentDebt = existingCustomer.outstandingBalance;
-                            const debtDifference = debtAmount - currentDebt;
+                            const debtDifference = debtAmount !== null ? debtAmount - existingCustomer.outstandingBalance : 0;
                             const phoneNeedsUpdate = phone && existingCustomer.phone !== phone;
                             const settlementDayNeedsUpdate = settlementDay !== undefined && existingCustomer.settlementDay !== settlementDay;
-    
+
                             if (Math.abs(debtDifference) < 0.01 && !phoneNeedsUpdate && !settlementDayNeedsUpdate) {
                                 skippedCount++;
                                 return; 
@@ -239,7 +244,7 @@ export default function CustomersPage() {
                                 batch.update(customerRef, updatePayload);
                             }
     
-                            if (hasDebt) {
+                            if (debtAmount !== null) {
                                 if (debtDifference > 0) {
                                     const newSaleRef = doc(collection(firestore, 'users', user.uid, 'sales'));
                                     batch.set(newSaleRef, {
@@ -264,7 +269,7 @@ export default function CustomersPage() {
                                 settlementDay: settlementDay,
                             });
                             
-                            if (hasDebt && debtAmount > 0) {
+                            if (debtAmount !== null && debtAmount > 0) {
                                 const newSaleRef = doc(collection(firestore, 'users', user.uid, 'sales'));
                                 batch.set(newSaleRef, {
                                     invoiceNumber: `DEBT-IMPORT-${Date.now()}-${newCustomerRef.id.slice(0,5)}`,
@@ -277,8 +282,8 @@ export default function CustomersPage() {
                             importedCount++;
                             customersMapForCurrentImport.set(normalizedFullName, {
                                 id: newCustomerRef.id, firstName, lastName, phone, createdAt: new Timestamp(Date.now() / 1000, 0),
-                                outstandingBalance: hasDebt && debtAmount > 0 ? debtAmount : 0,
-                                totalSpent: hasDebt && debtAmount > 0 ? debtAmount : 0,
+                                outstandingBalance: debtAmount !== null && debtAmount > 0 ? debtAmount : 0,
+                                totalSpent: debtAmount !== null && debtAmount > 0 ? debtAmount : 0,
                                 lastActivityDate: null, isReminderDue: false,
                                 settlementDay: settlementDay
                             } as CustomerWithSalesData);
@@ -460,5 +465,7 @@ export default function CustomersPage() {
         </>
     )
 }
+
+    
 
     
