@@ -189,14 +189,10 @@ export default function CustomersPage() {
                         const debtString = row['dette (da)'];
                         const phone = row['téléphone'] || '';
     
-                        if (!fullName || typeof fullName !== 'string' || !debtString) {
+                        const debtAmount = parseFloat(debtString?.replace(',', '.'));
+
+                        if (!fullName || typeof fullName !== 'string' || !debtString || isNaN(debtAmount) || debtAmount < 0) {
                             errorCount++;
-                            return;
-                        }
-                        
-                        const debtAmount = parseFloat(debtString.replace(',', '.'));
-                        if (isNaN(debtAmount) || debtAmount < 0) {
-                            skippedCount++;
                             return;
                         }
 
@@ -209,9 +205,18 @@ export default function CustomersPage() {
                             // --- UPDATE EXISTING CUSTOMER ---
                             const currentDebt = existingCustomer.outstandingBalance;
                             const debtDifference = debtAmount - currentDebt;
+                            const phoneNeedsUpdate = phone && existingCustomer.phone !== phone;
 
-                            if (Math.abs(debtDifference) < 0.01) {
-                                return; // Debt is the same, do nothing.
+                            // If there's no change in debt and no new phone number, skip.
+                            if (Math.abs(debtDifference) < 0.01 && !phoneNeedsUpdate) {
+                                skippedCount++;
+                                return; 
+                            }
+                            
+                            // If the phone number is different, update the customer document.
+                            if (phoneNeedsUpdate) {
+                                const customerRef = doc(firestore, 'users', user.uid, 'customers', existingCustomer.id);
+                                batch.update(customerRef, { phone: phone });
                             }
 
                             if (debtDifference > 0) {
@@ -230,7 +235,7 @@ export default function CustomersPage() {
                                     customerName: `${existingCustomer.firstName} ${existingCustomer.lastName}`,
                                     createdAt: serverTimestamp(),
                                 });
-                            } else { // debtDifference < 0
+                            } else if (debtDifference < 0) {
                                 // Debt has decreased, create a payment for the difference
                                 const newPaymentRef = doc(collection(firestore, 'users', user.uid, 'payments'));
                                 batch.set(newPaymentRef, {
@@ -300,8 +305,8 @@ export default function CustomersPage() {
 
                 if (importedCount > 0) toast.success(`${importedCount} nouveau(x) client(s) importé(s) avec succès.`);
                 if (updatedCount > 0) toast.success(`${updatedCount} client(s) existant(s) mis à jour.`);
-                if (skippedCount > 0) toast.info(`${skippedCount} client(s) ont été ignorés (dette nulle ou invalide).`);
-                if (errorCount > 0) toast.warning(`${errorCount} ligne(s) ont été ignorées en raison de données manquantes.`);
+                if (skippedCount > 0) toast.info(`${skippedCount} client(s) ont été ignorés (données inchangées ou dette nulle).`);
+                if (errorCount > 0) toast.warning(`${errorCount} ligne(s) ont été ignorées en raison de données manquantes ou invalides.`);
                 if(importedCount === 0 && updatedCount === 0 && skippedCount === 0 && errorCount === 0) {
                     toast.info("Aucun nouveau client ou mise à jour de dette à effectuer à partir du fichier.");
                 }
@@ -462,5 +467,7 @@ export default function CustomersPage() {
         </>
     )
 }
+
+    
 
     
