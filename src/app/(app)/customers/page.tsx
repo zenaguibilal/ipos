@@ -194,7 +194,15 @@ export default function CustomersPage() {
 
                         const debtString = row['dette actuelle (da)'] || row['dette (da)'];
                         const phone = row['téléphone'] || '';
-                        const settlementDay = row['jour de règlement'] || '';
+                        
+                        const rawSettlementDay = row['jour de règlement'] || '';
+                        let settlementDay: number | undefined;
+                        if (rawSettlementDay) {
+                            const parsedDay = parseInt(String(rawSettlementDay), 10);
+                            if (!isNaN(parsedDay) && parsedDay >= 1 && parsedDay <= 31) {
+                                settlementDay = parsedDay;
+                            }
+                        }
 
                         if (!firstName) {
                             errorCount++;
@@ -216,7 +224,7 @@ export default function CustomersPage() {
                             const currentDebt = existingCustomer.outstandingBalance;
                             const debtDifference = debtAmount - currentDebt;
                             const phoneNeedsUpdate = phone && existingCustomer.phone !== phone;
-                            const settlementDayNeedsUpdate = settlementDay && existingCustomer.settlementDay !== parseInt(settlementDay, 10);
+                            const settlementDayNeedsUpdate = settlementDay !== undefined && existingCustomer.settlementDay !== settlementDay;
 
                             if (Math.abs(debtDifference) < 0.01 && !phoneNeedsUpdate && !settlementDayNeedsUpdate) {
                                 skippedCount++;
@@ -227,7 +235,7 @@ export default function CustomersPage() {
                                 const customerRef = doc(firestore, 'users', user.uid, 'customers', existingCustomer.id);
                                 const updatePayload: {phone?: string; settlementDay?: number} = {};
                                 if (phoneNeedsUpdate) updatePayload.phone = phone;
-                                if (settlementDayNeedsUpdate) updatePayload.settlementDay = parseInt(settlementDay, 10);
+                                if (settlementDayNeedsUpdate) updatePayload.settlementDay = settlementDay;
                                 batch.update(customerRef, updatePayload);
                             }
 
@@ -255,7 +263,7 @@ export default function CustomersPage() {
                             const newCustomerRef = doc(collection(firestore, 'users', user.uid, 'customers'));
                             batch.set(newCustomerRef, {
                                 firstName, lastName, phone, createdAt: serverTimestamp(),
-                                settlementDay: settlementDay ? parseInt(settlementDay, 10) : undefined,
+                                settlementDay: settlementDay,
                             });
                             
                             const newSaleRef = doc(collection(firestore, 'users', user.uid, 'sales'));
@@ -269,7 +277,8 @@ export default function CustomersPage() {
                             importedCount++;
                             customersMapForCurrentImport.set(normalizedFullName, {
                                 id: newCustomerRef.id, firstName, lastName, phone, createdAt: new Timestamp(Date.now() / 1000, 0),
-                                outstandingBalance: debtAmount, totalSpent: debtAmount, lastActivityDate: null, isReminderDue: false
+                                outstandingBalance: debtAmount, totalSpent: debtAmount, lastActivityDate: null, isReminderDue: false,
+                                settlementDay: settlementDay
                             } as CustomerWithSalesData);
                         }
                     });
