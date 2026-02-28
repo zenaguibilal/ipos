@@ -9,9 +9,9 @@ import { DateRangePicker } from '@/components/dashboard/date-range-picker';
 import { DateRange } from 'react-day-picker';
 import { subDays, startOfDay, endOfDay, format, eachDayOfInterval, parse } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import type { Sale, ProductReturn, Product, Customer, Expense } from '@/lib/types';
-import { safeToDate } from '@/lib/utils';
-import { CircleDollarSign, TrendingUp, Undo2, ShoppingCart, Users, Package, Award, Archive, Receipt, Banknote } from 'lucide-react';
+import type { Sale, ProductReturn, Product, Customer, Expense, Payment } from '@/lib/types';
+import { safeToDate, calculateAllCustomersMetrics } from '@/lib/utils';
+import { CircleDollarSign, TrendingUp, Undo2, ShoppingCart, Users, Package, Award, Archive, Receipt, Banknote, AlertTriangle, PackageWarning } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 // Colors for the Pie Chart
@@ -229,6 +229,7 @@ export default function DashboardPage() {
     const products = useLiveQuery(() => db.products.toArray());
     const customers = useLiveQuery(() => db.customers.toArray());
     const expenses = useLiveQuery(() => db.expenses.toArray());
+    const payments = useLiveQuery(() => db.payments.toArray());
     
     const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
         if (typeof window === 'undefined') {
@@ -255,13 +256,19 @@ export default function DashboardPage() {
         }
     }, [dateRange]);
 
-    const inventoryValue = useMemo(() => {
-        return products?.reduce((sum, p) => sum + ((p.purchasePrice || 0) * (p.quantity || 0)), 0) || 0;
-    }, [products]);
-
-    const totalCustomers = useMemo(() => {
-        return customers?.length || 0;
-    }, [customers]);
+     const globalStats = useMemo(() => {
+        const inventoryValue = products?.reduce((sum, p) => sum + ((p.purchasePrice || 0) * (p.quantity || 0)), 0) || 0;
+        const lowStockCount = products?.filter(p => p.quantity <= p.minStockLevel).length || 0;
+        const totalCustomers = customers?.length || 0;
+        const { totalDebt } = calculateAllCustomersMetrics(customers || [], sales || [], payments || []);
+        
+        return {
+            inventoryValue,
+            lowStockCount,
+            totalCustomers,
+            totalDebt
+        };
+    }, [products, customers, sales, payments]);
 
     const {
         netRevenue,
@@ -287,7 +294,7 @@ export default function DashboardPage() {
                 <div>
                     <h1 className="text-2xl font-bold">Tableau de Bord</h1>
                     <p className="text-muted-foreground">
-                        Aperçu des performances de votre commerce.
+                        Aperçu des performances de votre commerce pour la période sélectionnée.
                     </p>
                 </div>
                 <DateRangePicker date={dateRange} setDate={setDateRange} />
@@ -420,13 +427,13 @@ export default function DashboardPage() {
                     </CardContent>
                 </Card>
             </div>
-            <div className="grid gap-6 mt-6 md:grid-cols-3">
+            <div className="grid gap-6 mt-6 md:grid-cols-2">
                 <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2"><Package className="h-5 w-5 text-muted-foreground" /> Produits les plus rentables</CardTitle>
                         <CardDescription>Top 5 des produits par bénéfice net sur la période.</CardDescription>
                     </CardHeader>
-                     <CardContent className="h-[300px]">
+                     <CardContent className="h-[350px]">
                         {topProducts.length === 0 ? (
                             <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
                                 <p>Aucune donnée de vente pour afficher les meilleurs produits.</p>
@@ -441,8 +448,8 @@ export default function DashboardPage() {
                                             cy="50%"
                                             labelLine={false}
                                             label={renderCustomizedLabel}
-                                            outerRadius={100}
-                                            innerRadius={60}
+                                            outerRadius={110}
+                                            innerRadius={70}
                                             paddingAngle={2}
                                             dataKey="totalProfit"
                                             nameKey="name"
@@ -474,7 +481,7 @@ export default function DashboardPage() {
                         <CardTitle className="flex items-center gap-2"><Award className="h-5 w-5 text-muted-foreground" /> Meilleurs clients</CardTitle>
                         <CardDescription>Top 5 des clients par total d'achats net sur la période.</CardDescription>
                     </CardHeader>
-                    <CardContent className="h-[300px]">
+                    <CardContent className="h-[350px]">
                         {topCustomers.length === 0 ? (
                             <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
                                 <p>Aucune donnée de vente pour afficher les meilleurs clients.</p>
@@ -512,17 +519,30 @@ export default function DashboardPage() {
                         )}
                     </CardContent>
                 </Card>
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Clients Totaux</CardTitle>
-                        <Users className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{totalCustomers}</div>
-                        <p className="text-xs text-muted-foreground">Nombre total de clients enregistrés</p>
-                    </CardContent>
-                </Card>
             </div>
+            
+            <div className="mt-6 pt-6 border-t">
+                <h2 className="text-xl font-bold mb-4">Aperçu Global de l'Entreprise</h2>
+                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Valeur du Stock</CardTitle><Archive className="h-4 w-4 text-muted-foreground" /></CardHeader>
+                        <CardContent><div className="text-2xl font-bold">{formatCurrency(globalStats.inventoryValue)}</div><p className="text-xs text-muted-foreground">Valeur totale des produits en stock.</p></CardContent>
+                    </Card>
+                     <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Dettes Totales Clients</CardTitle><AlertTriangle className="h-4 w-4 text-muted-foreground" /></CardHeader>
+                        <CardContent><div className="text-2xl font-bold text-destructive">{formatCurrency(globalStats.totalDebt)}</div><p className="text-xs text-muted-foreground">Montant total dû par tous les clients.</p></CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Stock Faible</CardTitle><PackageWarning className="h-4 w-4 text-muted-foreground" /></CardHeader>
+                        <CardContent><div className="text-2xl font-bold text-yellow-600">{globalStats.lowStockCount}</div><p className="text-xs text-muted-foreground">Nombre de produits en stock faible.</p></CardContent>
+                    </Card>
+                     <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Clients Totaux</CardTitle><Users className="h-4 w-4 text-muted-foreground" /></CardHeader>
+                        <CardContent><div className="text-2xl font-bold">{globalStats.totalCustomers}</div><p className="text-xs text-muted-foreground">Nombre total de clients enregistrés.</p></CardContent>
+                    </Card>
+                </div>
+            </div>
+
         </main>
     );
 }

@@ -57,6 +57,7 @@ export function calculateAllCustomersMetrics(
     let runningCustomersWithDebt = 0;
 
     const data = customers.map(customer => {
+        if (!customer.id) return null; // Should not happen with auto-increment but good for safety
         const customerSales = salesByCustomer[customer.id] || [];
         const customerPayments = paymentsByCustomer[customer.id] || [];
         
@@ -75,8 +76,8 @@ export function calculateAllCustomersMetrics(
         const validCustomerSales = customerSales.filter(s => s.createdAt);
         const validCustomerPayments = customerPayments.filter(p => p.createdAt);
 
-        const lastSaleDate = validCustomerSales.length > 0 ? Math.max(...validCustomerSales.map(s => safeToDate(s.createdAt).getTime())) : 0;
-        const lastPaymentDate = validCustomerPayments.length > 0 ? Math.max(...validCustomerPayments.map(p => safeToDate(p.createdAt).getTime())) : 0;
+        const lastSaleDate = validCustomerSales.length > 0 ? Math.max(...validCustomerSales.map(s => safeToDate(s.createdAt!).getTime())) : 0;
+        const lastPaymentDate = validCustomerPayments.length > 0 ? Math.max(...validCustomerPayments.map(p => safeToDate(p.createdAt!).getTime())) : 0;
 
         const lastActivityTimestamp = Math.max(lastSaleDate, lastPaymentDate);
         const lastActivityDate = lastActivityTimestamp > 0 ? new Date(lastActivityTimestamp) : null;
@@ -90,12 +91,13 @@ export function calculateAllCustomersMetrics(
 
         return {
             ...customer,
+            id: customer.id, // ensure id is present
             totalSpent,
             outstandingBalance: finalBalance,
             lastActivityDate,
             isReminderDue,
         } as CustomerWithSalesData;
-    });
+    }).filter((c): c is CustomerWithSalesData => c !== null);
 
     return {
         customersWithSalesData: data,
