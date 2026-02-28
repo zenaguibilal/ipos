@@ -1,10 +1,9 @@
 'use client';
 
-import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Info, Code, User, Phone, Mail, ShoppingCart, Archive, Users, FileText, Bell, BarChart3, Rocket, Zap, ShieldCheck, DatabaseZap, FileQuestion, BookUser } from 'lucide-react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
-import { Info, Code, User, Phone, Mail, ShoppingCart, Archive, Users, FileText, Bell, BarChart3, Rocket, MessageCircle } from 'lucide-react';
 
 const features = [
     { icon: ShoppingCart, text: "Gestion des Ventes et multi-paniers" },
@@ -14,6 +13,12 @@ const features = [
     { icon: BarChart3, text: "Tableau de Bord avec indicateurs de performance" },
     { icon: Bell, text: "Centre de Notifications pour les stocks et paiements" },
 ];
+
+const philosophyPoints = [
+    { icon: Zap, title: "Ultra Rapide", description: "Chaque action est instantanée car tout se passe sur votre appareil, sans latence réseau." },
+    { icon: DatabaseZap, title: "100% Hors Ligne", description: "Pas d'internet ? Pas de problème. L'application est conçue pour fonctionner sans interruption." },
+    { icon: ShieldCheck, title: "Confidentialité Totale", description: "Vos données ne quittent jamais votre appareil. Vous êtes la seule personne à y avoir accès." },
+]
 
 const TechLogo = ({ src, alt }: { src: string, alt: string }) => (
     <div className="flex flex-col items-center gap-2">
@@ -26,130 +31,105 @@ const TechLogo = ({ src, alt }: { src: string, alt: string }) => (
 
 
 export default function AboutPage() {
-    const [isContactDialogOpen, setIsContactDialogOpen] = useState(false);
-    const phoneNumber = "+213668640999";
-    const whatsappNumber = "213668640999";
-
     return (
-        <>
-            <Dialog open={isContactDialogOpen} onOpenChange={setIsContactDialogOpen}>
-                <DialogContent className="sm:max-w-md">
-                    <DialogHeader>
-                        <DialogTitle>Contacter le développeur</DialogTitle>
-                        <DialogDescription>
-                            Choisissez votre méthode de contact préférée.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="flex flex-col gap-4 py-4">
-                        <Button asChild className="w-full justify-start gap-3 py-6 text-base">
-                            <a href={`tel:${phoneNumber}`}>
-                                <Phone className="h-5 w-5" />
-                                <span>Appeler ({phoneNumber})</span>
-                            </a>
-                        </Button>
-                        <Button asChild variant="secondary" className="w-full justify-start gap-3 py-6 text-base bg-green-100 hover:bg-green-200 dark:bg-green-800/40 dark:hover:bg-green-800/70 text-green-700 dark:text-green-300">
-                            <a href={`https://wa.me/${whatsappNumber}`} target="_blank">
-                                <MessageCircle className="h-5 w-5" />
-                                <span>Message WhatsApp</span>
-                            </a>
-                        </Button>
-                    </div>
-                     <DialogFooter>
-                        <Button variant="ghost" onClick={() => setIsContactDialogOpen(false)}>Fermer</Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+        <main className="flex-1 overflow-auto p-4 sm:p-6 flex items-start justify-center">
+            <div className="w-full max-w-4xl mx-auto space-y-8">
+                
+                <Card className="flex flex-col">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-3 text-3xl">
+                            <Info className="h-8 w-8" />
+                            iPOS - Point de Vente Hors Ligne
+                        </CardTitle>
+                        <CardDescription className="text-base">
+                            Votre solution de point de vente simple, moderne, efficace et 100% hors ligne.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex-grow space-y-8 text-sm">
+                        <p>
+                            <strong>iPOS</strong> est un système de point de vente (POS) conçu pour la gestion agile des petits commerces. Développé avec des technologies modernes, il offre une expérience rapide, réactive et fonctionnelle, entièrement hors ligne. L'application place la confidentialité de vos données et la continuité de votre travail au-dessus de tout.
+                        </p>
+                    </CardContent>
+                </Card>
+                
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Notre Philosophie : 100% Hors Ligne</CardTitle>
+                        <CardDescription>Les trois piliers fondamentaux de iPOS.</CardDescription>
+                    </CardHeader>
+                     <CardContent className="grid md:grid-cols-3 gap-6 text-center">
+                        {philosophyPoints.map((point) => (
+                            <div key={point.title} className="flex flex-col items-center space-y-2 p-4 rounded-lg bg-muted/50">
+                                <div className="p-3 bg-primary/10 rounded-full">
+                                    <point.icon className="h-8 w-8 text-primary" />
+                                </div>
+                                <h3 className="text-lg font-bold">{point.title}</h3>
+                                <p className="text-muted-foreground text-sm">{point.description}</p>
+                            </div>
+                        ))}
+                    </CardContent>
+                </Card>
 
-            <main className="flex-1 overflow-auto p-4 sm:p-6 flex items-start justify-center">
-                <div className="w-full max-w-4xl mx-auto space-y-8">
-                    
-                    <Card className="flex flex-col">
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2 text-2xl">
-                                <User className="h-6 w-6" />
-                                À propos du développeur
-                            </CardTitle>
-                             <CardDescription>
-                                Créateur et mainteneur de l'application iPOS.
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="flex flex-col sm:flex-row items-center gap-6">
-                                <div className="w-28 h-28 bg-muted rounded-full flex items-center justify-center flex-shrink-0">
-                                    <Code className="w-16 h-16 text-muted-foreground" />
-                                </div>
-                                <div className="text-center sm:text-left">
-                                    <h3 className="text-3xl font-bold">zenagui bilal</h3>
-                                    <p className="text-xl text-muted-foreground">Développeur Full-Stack</p>
-                                     <p className="text-sm mt-2">
-                                        Développeur passionné avec une expertise dans la création d'applications web modernes, performantes et centrées sur l'utilisateur.
-                                    </p>
-                                </div>
-                            </div>
-                           
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-6">
-                                 <Button variant="outline" className="w-full justify-start gap-3 py-6 text-base" onClick={() => setIsContactDialogOpen(true)}>
-                                    <Phone className="h-5 w-5" />
-                                    <span>{phoneNumber}</span>
-                                </Button>
-                                 <Button asChild variant="outline" className="w-full justify-start gap-3 py-6 text-base">
-                                    <a href="mailto:zenex133@gmail.com">
-                                        <Mail className="h-5 w-5" />
-                                        <span>zenex133@gmail.com</span>
-                                    </a>
-                                </Button>
-                            </div>
-                        </CardContent>
-                    </Card>
-                    
-                    <Card className="flex flex-col">
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2 text-2xl">
-                                <Info className="h-6 w-6" />
-                                À propos d'iPOS
-                            </CardTitle>
-                            <CardDescription>
-                                Votre solution de point de vente simple, moderne, efficace et 100% hors ligne.
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="flex-grow space-y-6 text-sm">
-                            <p>
-                                <strong>iPOS</strong> est un système de point de vente (POS) conçu pour la gestion agile des petits commerces. Développé avec des technologies modernes, il offre une expérience rapide, réactive et fonctionnelle, entièrement hors ligne.
-                            </p>
-                            
-                            <div>
-                                <h4 className="font-semibold text-base mb-3">Fonctionnalités Clés :</h4>
-                                <div className="grid sm:grid-cols-2 gap-x-6 gap-y-4">
-                                {features.map((feature, index) => (
-                                        <div key={index} className="flex items-start gap-3">
-                                            <div className="bg-muted p-2 rounded-full flex-shrink-0">
-                                                <feature.icon className="h-5 w-5 text-primary" />
-                                            </div>
-                                            <span className="flex-1 pt-1">{feature.text}</span>
-                                        </div>
-                                ))}
-                                </div>
-                            </div>
-
-                             <div>
-                                <h4 className="font-semibold text-base mb-4">Technologies utilisées :</h4>
-                                <div className="flex justify-around items-center p-4 bg-muted/50 rounded-lg">
-                                    <TechLogo src="https://www.vectorlogo.zone/logos/nextjs/nextjs-icon.svg" alt="Next.js" />
-                                    <TechLogo src="https://dexie.org/assets/images/dexie-logo.svg" alt="Dexie.js" />
-                                    <TechLogo src="https://www.vectorlogo.zone/logos/tailwindcss/tailwindcss-icon.svg" alt="Tailwind CSS" />
-                                    <div className="flex flex-col items-center gap-2">
-                                         <div className="h-12 w-12 flex items-center justify-center bg-primary text-primary-foreground rounded-md">
-                                            <Rocket className="h-7 w-7"/>
-                                        </div>
-                                        <span className="text-xs text-muted-foreground">PWA</span>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Fonctionnalités Clés</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                         <div className="grid sm:grid-cols-2 gap-x-6 gap-y-4">
+                        {features.map((feature, index) => (
+                                <div key={index} className="flex items-start gap-3">
+                                    <div className="bg-muted p-2 rounded-full flex-shrink-0">
+                                        <feature.icon className="h-5 w-5 text-primary" />
                                     </div>
+                                    <span className="flex-1 pt-1">{feature.text}</span>
                                 </div>
-                            </div>
-                        </CardContent>
-                    </Card>
+                        ))}
+                        </div>
+                    </CardContent>
+                </Card>
 
-                </div>
-            </main>
-        </>
+                <Card>
+                     <CardHeader>
+                        <CardTitle>Technologies utilisées</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="flex justify-around items-center p-4 bg-muted/50 rounded-lg">
+                            <TechLogo src="https://www.vectorlogo.zone/logos/nextjs/nextjs-icon.svg" alt="Next.js" />
+                            <TechLogo src="https://dexie.org/assets/images/dexie-logo.svg" alt="Dexie.js" />
+                            <TechLogo src="https://www.vectorlogo.zone/logos/tailwindcss/tailwindcss-icon.svg" alt="Tailwind CSS" />
+                            <div className="flex flex-col items-center gap-2">
+                                <div className="h-12 w-12 flex items-center justify-center bg-primary text-primary-foreground rounded-md">
+                                    <Rocket className="h-7 w-7"/>
+                                </div>
+                                <span className="text-xs text-muted-foreground">PWA</span>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+                
+                 <Card>
+                    <CardHeader>
+                        <CardTitle>Support et Informations</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                         <p className="text-muted-foreground">
+                            Pour toute question sur le fonctionnement de l'application, la gestion de vos données, ou les bonnes pratiques (comme les sauvegardes), veuillez consulter les documents suivants.
+                        </p>
+                        <div className="grid sm:grid-cols-2 gap-4">
+                            <Button asChild variant="outline">
+                                <Link href="/terms"><FileQuestion className="mr-2 h-4 w-4"/>Conditions d'Utilisation</Link>
+                            </Button>
+                            <Button asChild variant="outline">
+                                <Link href="/privacy"><BookUser className="mr-2 h-4 w-4"/>Politique de Confidentialité</Link>
+                            </Button>
+                        </div>
+                         <p className="text-xs text-muted-foreground pt-4">
+                           Développé par zenagui bilal (zenex133@gmail.com) - 2024
+                        </p>
+                    </CardContent>
+                </Card>
+
+            </div>
+        </main>
     );
 }
