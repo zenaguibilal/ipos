@@ -6,7 +6,7 @@ import { db } from '@/lib/database';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Search, PlusCircle, Package, Layers, CircleDollarSign, AlertTriangle, MoreHorizontal, Download, ChevronDown } from 'lucide-react';
+import { Search, PlusCircle, Package, Layers, CircleDollarSign, AlertTriangle, MoreHorizontal, Download, ChevronDown, LayoutGrid, List } from 'lucide-react';
 import type { Product } from '@/lib/types';
 import { ProductDialog } from '@/components/products/product-dialog';
 import { DeleteProductDialog } from '@/components/products/delete-product-dialog';
@@ -16,25 +16,30 @@ import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ProductCard } from '@/components/products/product-card';
 import { ProductCardSkeleton } from '@/components/products/product-card-skeleton';
+import { ProductTable } from '@/components/products/product-table';
 
 export default function ProductsPage() {
-    const products = useLiveQuery(() => db.products.toArray());
+    const products = useLiveQuery(() => db.products.orderBy('name').toArray());
 
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
     const [productToDelete, setProductToDelete] = useState<Product | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('all');
+    const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
 
     useEffect(() => {
         const savedCategory = localStorage.getItem('products_category_filter');
         if (savedCategory) setSelectedCategory(savedCategory);
         const savedSearch = localStorage.getItem('products_search_query');
         if (savedSearch !== null) setSearchQuery(savedSearch);
+        const savedViewMode = localStorage.getItem('products_view_mode') as 'grid' | 'table';
+        if (savedViewMode) setViewMode(savedViewMode);
     }, []);
 
     useEffect(() => { localStorage.setItem('products_category_filter', selectedCategory); }, [selectedCategory]);
     useEffect(() => { localStorage.setItem('products_search_query', searchQuery); }, [searchQuery]);
+    useEffect(() => { localStorage.setItem('products_view_mode', viewMode); }, [viewMode]);
 
     const handleAddClick = () => {
         setSelectedProduct(null);
@@ -144,14 +149,20 @@ export default function ProductsPage() {
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                 <Input placeholder="Rechercher par nom ou code-barres..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9 w-full" />
                             </div>
-                            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                                <SelectTrigger className="w-full sm:w-[200px]"><SelectValue placeholder="Filtrer par catégorie" /></SelectTrigger>
-                                <SelectContent>
-                                    {categories.map(cat => (
-                                        <SelectItem key={cat} value={cat} className="capitalize">{cat === 'all' ? 'Toutes les catégories' : cat}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                             <div className="flex items-center gap-2">
+                                <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                                    <SelectTrigger className="w-full sm:w-[200px]"><SelectValue placeholder="Filtrer par catégorie" /></SelectTrigger>
+                                    <SelectContent>
+                                        {categories.map(cat => (
+                                            <SelectItem key={cat} value={cat} className="capitalize">{cat === 'all' ? 'Toutes les catégories' : cat}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <div className="flex rounded-md bg-muted p-1">
+                                    <Button variant={viewMode === 'grid' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('grid')}><LayoutGrid className="h-5 w-5"/></Button>
+                                    <Button variant={viewMode === 'table' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('table')}><List className="h-5 w-5"/></Button>
+                                </div>
+                            </div>
                         </div>
                     </CardHeader>
                     <CardContent>
@@ -166,11 +177,15 @@ export default function ProductsPage() {
                                 </p>
                             </div>
                         ) : (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-                                {filteredProducts.map((product) => (
-                                    <ProductCard key={product.id} product={product} onEdit={handleEditClick} onDelete={setProductToDelete} />
-                                ))}
-                            </div>
+                            viewMode === 'grid' ? (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                                    {filteredProducts.map((product) => (
+                                        <ProductCard key={product.id} product={product} onEdit={handleEditClick} onDelete={setProductToDelete} />
+                                    ))}
+                                </div>
+                            ) : (
+                                <ProductTable products={filteredProducts} onEdit={handleEditClick} onDelete={setProductToDelete} />
+                            )
                         )}
                     </CardContent>
                 </Card>
