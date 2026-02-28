@@ -1,9 +1,6 @@
 
-
-import { Timestamp } from "firebase/firestore";
-
 export interface Product {
-    id: string;
+    id?: number;
     name: string;
     category?: string;
     price: number;
@@ -12,20 +9,22 @@ export interface Product {
     minStockLevel: number;
     barcodes?: string[];
     imageUrl?: string;
-    createdAt: Timestamp | Date;
+    createdAt?: Date;
+    updatedAt?: Date;
 }
 
 export interface Customer {
-    id: string;
+    id?: number;
     firstName: string;
     lastName: string;
     phone?: string;
     settlementDay?: number;
-    createdAt: Timestamp;
+    createdAt?: Date;
+    updatedAt?: Date;
 }
 
 export interface SaleItem {
-    id: string;
+    id: number | string; // string for custom items
     name: string;
     price: number;
     purchasePrice: number;
@@ -34,6 +33,7 @@ export interface SaleItem {
 
 // Represents an item in the live shopping cart
 export interface CartItem extends Product {
+    id: number | string; // Can be a string for custom products
     cartQuantity: number;
     flash?: boolean; // For UI animation
 }
@@ -43,7 +43,7 @@ export interface Cart {
     id: string;
     name: string;
     items: CartItem[];
-    customerId: string | null;
+    customerId: number | null;
     customerName: string;
     discount: {
         type: 'fixed' | 'percentage';
@@ -57,7 +57,7 @@ export interface SalePayment {
 }
 
 export interface Sale {
-    id: string;
+    id?: number;
     invoiceNumber: string;
     items: SaleItem[];
     subtotal: number;
@@ -68,24 +68,27 @@ export interface Sale {
     remainingBalance: number;
     paymentStatus: 'paid' | 'partial' | 'unpaid';
     payments: SalePayment[];
-    customerId?: string;
+    customerId?: number;
     customerName?: string;
-    createdAt: Timestamp | Date;
+    createdAt?: Date;
+    updatedAt?: Date;
+    breadOrderDate?: string;
 }
 
 export interface Payment {
-    id: string;
-    customerId: string;
+    id?: number;
+    customerId: number;
     customerName?: string;
     amount: number;
-    createdAt: Timestamp;
+    createdAt?: Date;
+    updatedAt?: Date;
 }
 
 export interface CustomerWithSalesData extends Customer {
+    id: number; // Make id mandatory here
     totalSpent: number;
     outstandingBalance: number;
     lastActivityDate?: Date | null;
-    daysLate?: number;
     isReminderDue?: boolean;
 }
 
@@ -96,17 +99,20 @@ export interface ChartData {
   profit?: number;
 }
 
-export interface TopProduct extends Product {
+export interface TopProduct {
+    name: string;
     totalRevenue: number;
     unitsSold: number;
     totalProfit: number;
 }
 
-export interface TopCustomer extends Customer {
+export interface TopCustomer {
+    name: string;
     totalSpent: number;
 }
 
 export interface CompanyProfile {
+    id?: 1;
     companyName?: string;
     address?: string;
     city?: string;
@@ -119,28 +125,12 @@ export interface CompanyProfile {
     rcNumber?: string;
     breadPrice?: number;
     breadPurchasePrice?: number;
-}
-
-export interface PurchaseOrderItem {
-    productId: string;
-    productName: string;
-    quantity: number;
-    purchasePrice: number;
-}
-
-export interface PurchaseOrder {
-    id: string;
-    poNumber: string;
-    supplier: string;
-    items: PurchaseOrderItem[];
-    totalValue: number;
-    status: 'pending' | 'received';
-    createdAt: Timestamp;
+    updatedAt?: Date;
 }
 
 export interface StockIntakeItem {
-    id: string; // Unique ID for the item row
-    productId?: string; // ID of the product if it exists
+    id: string; // Unique ID for the item row in UI, not persisted
+    productId?: number; // ID of the product if it exists
     barcodes: string[];
     name: string;
     category?: string;
@@ -151,27 +141,23 @@ export interface StockIntakeItem {
 }
 
 export interface StockIntake {
-    id: string;
+    id?: number;
     supplier: string;
     invoiceNumber: string;
-    invoiceDate: Timestamp | Date;
+    invoiceDate: Date;
     items: {
-        productId?: string;
+        productId?: number;
         productName: string;
         quantityReceived: number;
         purchasePrice: number;
     }[];
     totalValue: number;
-    createdAt: Timestamp | Date;
-}
-
-export interface InventoryValueData {
-    name: string;
-    value: number;
+    createdAt?: Date;
+    updatedAt?: Date;
 }
 
 export interface ReturnItem {
-    productId: string | null;
+    productId: number | null;
     productName: string;
     quantity: number;
     price: number; // The price at which it was sold
@@ -180,48 +166,44 @@ export interface ReturnItem {
 }
 
 export interface ProductReturn {
-    id: string;
-    originalSaleId?: string;
+    id?: number;
+    originalSaleId?: number;
     originalInvoiceNumber: string;
     items: ReturnItem[];
     totalReturnValue: number;
     amountRefunded: number;
-    customerId?: string;
+    customerId?: number;
     customerName?: string;
-    createdAt: Timestamp | Date;
+    createdAt?: Date;
+    updatedAt?: Date;
     notes?: string;
 }
 
 export interface BreadCustomer {
-    id: string;
+    id?: number;
     name: string;
     isActive: boolean;
     defaultOrderQuantity: number;
-    createdAt: Timestamp;
+    createdAt?: Date;
+    updatedAt?: Date;
 }
 
 // Represents the order information for a customer on a given day
-export interface BreadOrder {
-    id: string; // breadCustomerId
-    name: string;
-    isActive: boolean;
-    defaultOrderQuantity: number;
-    todaysOrder?: {
-        id: string; // dailyBreadOrderId
-        quantity: number;
-        isPaid: boolean;
-        isDelivered: boolean;
-    };
+export interface BreadOrder extends BreadCustomer {
+    id: number;
+    todaysOrder?: DailyBreadOrder & { saleId?: number };
 }
 
 
 export interface DailyBreadOrder {
-    id: string;
-    breadCustomerId: string;
+    id?: number;
+    breadCustomerId: number;
     customerName: string;
     quantity: number;
     date: string; // YYYY-MM-DD
-    createdAt: Timestamp;
+    createdAt?: Date;
+    updatedAt?: Date;
+    saleId?: number;
     isPaid: boolean;
     isDelivered: boolean;
 }

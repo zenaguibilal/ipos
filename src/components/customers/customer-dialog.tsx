@@ -57,13 +57,11 @@ export function CustomerDialog({ isOpen, onOpenChange, customer, onCustomerAdded
             return;
         }
 
-        const customerData: Omit<Customer, 'id'> = {
+        const customerData = {
             firstName,
             lastName,
             phone,
             settlementDay: settlementDay ? parseInt(settlementDay) : undefined,
-            createdAt: customer?.createdAt ?? new Date(),
-            updatedAt: new Date(),
         };
 
         try {
@@ -71,7 +69,7 @@ export function CustomerDialog({ isOpen, onOpenChange, customer, onCustomerAdded
                 await dataService.update('customers', customer.id, customerData);
                 toast.success(`Client ${firstName} ${lastName} mis à jour.`);
             } else { // Adding
-                const newId = await dataService.save('customers', customerData as Customer);
+                const newId = await dataService.save('customers', customerData as Omit<Customer, "id">);
                 toast.success(`Client ${firstName} ${lastName} ajouté.`);
                 if (onCustomerAdded) {
                     const newCustomer = await db.customers.get(newId);

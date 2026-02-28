@@ -4,6 +4,7 @@ import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/database';
 import { dataService } from '@/services/data-service';
+import Link from 'next/link';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -89,7 +90,7 @@ export default function BreadOrdersPage() {
             return {
                 ...customer,
                 id: customer.id!,
-                todaysOrder: dailyOrder ? { ...dailyOrder, id: dailyOrder.id!, saleId: dailyOrder.saleId } : undefined,
+                todaysOrder: dailyOrder ? { ...dailyOrder, id: dailyOrder.id! } : undefined,
             };
         }).filter(c => c.isActive);
     }, [breadCustomers, dailyOrders]);
@@ -116,6 +117,7 @@ export default function BreadOrdersPage() {
     }, []);
 
     const toggleSelectAll = useCallback(() => {
+        if (filteredOrders.length === 0) return;
         setSelectedOrders(prev => 
             prev.size === filteredOrders.length 
                 ? new Set() 
@@ -328,7 +330,6 @@ export default function BreadOrdersPage() {
             )}
 
 
-        </main>
         
         <BreadCustomerDialog isOpen={isCustomerDialogOpen} onOpenChange={setIsCustomerDialogOpen} />
         {editingOrder && (
