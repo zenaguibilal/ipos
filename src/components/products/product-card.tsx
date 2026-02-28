@@ -9,11 +9,15 @@ import { MoreHorizontal, Edit, Trash2 } from 'lucide-react';
 import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
 import placeholderImages from '@/lib/placeholder-images.json';
+import { cn } from '@/lib/utils';
+import { Checkbox } from '../ui/checkbox';
 
 interface ProductCardProps {
     product: Product;
     onEdit: (product: Product) => void;
     onDelete: (product: Product) => void;
+    isSelected: boolean;
+    onToggleSelection: () => void;
 }
 
 type Placeholder = { url: string; width: number; height: number; hint: string };
@@ -26,13 +30,13 @@ const getPlaceholder = (category?: string): Placeholder => {
     return placeholders.default;
 };
 
-export function ProductCard({ product, onEdit, onDelete }: ProductCardProps) {
+export function ProductCard({ product, onEdit, onDelete, isSelected, onToggleSelection }: ProductCardProps) {
     const isLowStock = product.quantity <= product.minStockLevel;
     const placeholder = getPlaceholder(product.category);
     const imageUrl = product.imageUrl || placeholder.url;
 
     return (
-        <Card className="flex flex-col transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+        <Card className={cn("flex flex-col transition-all duration-300 hover:shadow-xl hover:-translate-y-1", isSelected && "ring-2 ring-primary")}>
             <CardHeader className="p-0 relative">
                 <Image
                     src={imageUrl}
@@ -47,8 +51,18 @@ export function ProductCard({ product, onEdit, onDelete }: ProductCardProps) {
                  )}
             </CardHeader>
             <CardContent className="p-4 flex-grow">
-                <CardTitle className="text-lg">{product.name}</CardTitle>
-                <p className="text-sm text-muted-foreground">{product.category || 'Non classé'}</p>
+                <div className="flex gap-2 justify-between items-start">
+                    <div className="flex-grow">
+                        <CardTitle className="text-lg leading-tight">{product.name}</CardTitle>
+                        <p className="text-sm text-muted-foreground">{product.category || 'Non classé'}</p>
+                    </div>
+                     <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={onToggleSelection}
+                        className="h-5 w-5 flex-shrink-0"
+                        aria-label={`Select ${product.name}`}
+                    />
+                </div>
             </CardContent>
             <CardFooter className="p-4 pt-0 flex justify-between items-center">
                  <div>

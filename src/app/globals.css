@@ -88,12 +88,21 @@
         print-color-adjust: exact;
     }
 
-    /* Hide everything by default */
-    body > *:not(#receipt-for-print) {
+    .print-hide {
         display: none !important;
     }
 
-    /* Only show the print container and its content */
+    /* Hide everything except the specific print area */
+    body > *:not(#receipt-for-print):not(.print-dialog-content) {
+        display: none !important;
+    }
+}
+
+/* Print container for receipts */
+#receipt-for-print {
+    display: none; /* Hidden by default */
+}
+@media print {
     #receipt-for-print {
         display: block !important;
         visibility: visible !important;
@@ -104,22 +113,17 @@
         padding: 0;
         width: 100%;
     }
-    
     #receipt-for-print * {
        visibility: visible !important;
     }
-
-    .print-hide {
-        display: none !important;
-    }
 }
+
 
 /* A4 Print Specific Styles */
 @page {
     size: a4;
-    margin: 20mm;
+    margin: 1cm;
 }
-
 .a4-receipt {
     page-break-before: always;
 }
@@ -130,12 +134,10 @@
     size: 80mm auto;
     margin: 3mm;
 }
-
 html.thermal, body.thermal {
     width: 80mm;
     background: white !important;
 }
-
 .thermal-receipt {
     page: thermal-page;
     page-break-before: always;
@@ -148,7 +150,6 @@ html.thermal, body.thermal {
     font-size: 10pt !important;
     line-height: 1.2 !important;
 }
-
 .thermal-receipt * {
     font-family: 'Courier New', Courier, monospace !important;
     color: black !important;
@@ -156,7 +157,6 @@ html.thermal, body.thermal {
     font-size: 10pt !important;
     line-height: 1.2 !important;
 }
-
 .thermal-receipt .text-lg { font-size: 12pt !important; }
 .thermal-receipt .text-base { font-size: 10pt !important; }
 .thermal-receipt .text-xs { font-size: 8pt !important; }
@@ -164,3 +164,38 @@ html.thermal, body.thermal {
 .thermal-receipt .border-dashed { border-style: dashed !important; }
 .thermal-receipt .border-black { border-color: black !important; }
 .thermal-receipt .font-bold { font-weight: 700 !important; }
+
+
+/* Barcode Label Printing Styles */
+.barcode-label {
+    break-inside: avoid;
+}
+
+@media print {
+    .print-dialog-content {
+        display: block !important;
+        position: static !important;
+        width: 100% !important;
+        max-width: none !important;
+        height: auto !important;
+        max-height: none !important;
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        transform: none !important;
+        animation: none !important;
+    }
+    .print-dialog-content #label-print-area-wrapper {
+        overflow: visible !important;
+    }
+    .print-dialog-content #label-print-area {
+        display: block !important;
+        overflow: visible !important;
+        background: transparent !important;
+        padding: 0 !important;
+    }
+    .label-sheet {
+        gap: 0 !important;
+    }
+}

@@ -8,11 +8,15 @@ import { MoreHorizontal, Edit, Trash2, AlertCircle } from 'lucide-react';
 import Image from 'next/image';
 import placeholderImages from '@/lib/placeholder-images.json';
 import { cn } from '@/lib/utils';
+import { Checkbox } from '../ui/checkbox';
 
 interface ProductTableProps {
     products: Product[];
     onEdit: (product: Product) => void;
     onDelete: (product: Product) => void;
+    selectedProducts: Set<number>;
+    onToggleProductSelection: (productId: number) => void;
+    onToggleSelectAll: () => void;
 }
 
 type Placeholder = { url: string; width: number; height: number; hint: string };
@@ -25,12 +29,20 @@ const getPlaceholder = (category?: string): Placeholder => {
     return placeholders.default;
 };
 
-export function ProductTable({ products, onEdit, onDelete }: ProductTableProps) {
+export function ProductTable({ products, onEdit, onDelete, selectedProducts, onToggleProductSelection, onToggleSelectAll }: ProductTableProps) {
     return (
         <div className="rounded-md border">
             <Table>
                 <TableHeader>
                     <TableRow>
+                        <TableHead className="w-[50px] px-4">
+                           <Checkbox
+                                checked={products.length > 0 && selectedProducts.size === products.length}
+                                onCheckedChange={onToggleSelectAll}
+                                disabled={products.length === 0}
+                                aria-label="Select all rows"
+                            />
+                        </TableHead>
                         <TableHead className="w-[80px]">Image</TableHead>
                         <TableHead>Nom du Produit</TableHead>
                         <TableHead>Catégorie</TableHead>
@@ -47,7 +59,14 @@ export function ProductTable({ products, onEdit, onDelete }: ProductTableProps) 
                         const imageUrl = product.imageUrl || placeholder.url;
 
                         return (
-                            <TableRow key={product.id}>
+                            <TableRow key={product.id} data-state={selectedProducts.has(product.id!) ? "selected" : ""}>
+                                 <TableCell className="px-4">
+                                    <Checkbox
+                                        checked={selectedProducts.has(product.id!)}
+                                        onCheckedChange={() => onToggleProductSelection(product.id!)}
+                                        aria-label={`Select row for ${product.name}`}
+                                    />
+                                </TableCell>
                                 <TableCell>
                                     <Image
                                         src={imageUrl}

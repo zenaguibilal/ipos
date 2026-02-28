@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/database';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Search, PlusCircle, Package, Layers, CircleDollarSign, AlertTriangle, MoreHorizontal, Download, ChevronDown, LayoutGrid, List } from 'lucide-react';
+import { Search, PlusCircle, Package, Layers, CircleDollarSign, AlertTriangle, MoreHorizontal, Download, ChevronDown, LayoutGrid, List, Printer } from 'lucide-react';
 import type { Product } from '@/lib/types';
 import { ProductDialog } from '@/components/products/product-dialog';
 import { DeleteProductDialog } from '@/components/products/delete-product-dialog';
@@ -17,6 +17,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ProductCard } from '@/components/products/product-card';
 import { ProductCardSkeleton } from '@/components/products/product-card-skeleton';
 import { ProductTable } from '@/components/products/product-table';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import { PrintLabelsDialog } from '@/components/products/PrintLabelsDialog';
 
 export default function ProductsPage() {
     const products = useLiveQuery(() => db.products.orderBy('name').toArray());
@@ -27,6 +30,8 @@ export default function ProductsPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('all');
     const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+    const [selectedProducts, setSelectedProducts] = useState<Set<number>>(new Set());
+    const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false);
 
     useEffect(() => {
         const savedCategory = localStorage.getItem('products_category_filter');
@@ -111,12 +116,37 @@ export default function ProductsPage() {
         toast.success("Inventaire exporté avec succès.");
     };
 
+    const toggleProductSelection = useCallback((productId: number) => {
+        setSelectedProducts(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(productId)) {
+                newSet.delete(productId);
+            } else {
+                newSet.add(productId);
+            }
+            return newSet;
+        });
+    }, []);
+
+    const toggleSelectAll = useCallback(() => {
+        if (selectedProducts.size === filteredProducts.length) {
+            setSelectedProducts(new Set());
+        } else {
+            setSelectedProducts(new Set(filteredProducts.map(p => p.id!)));
+        }
+    }, [filteredProducts, selectedProducts.size]);
+
     const isLoading = products === undefined;
 
     return (
         <>
             <ProductDialog isOpen={isDialogOpen} onOpenChange={setIsDialogOpen} product={selectedProduct} />
             <DeleteProductDialog isOpen={!!productToDelete} onOpenChange={(isOpen) => !isOpen && setProductToDelete(null)} product={productToDelete} />
+            <PrintLabelsDialog
+                isOpen={isPrintDialogOpen}
+                onOpenChange={setIsPrintDialogOpen}
+                productIds={Array.from(selectedProducts)}
+            />
 
             <main className="flex-1 overflow-auto p-4 sm:p-6">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
@@ -165,7 +195,25 @@ export default function ProductsPage() {
                             </div>
                         </div>
                     </CardHeader>
-                    <CardContent>
+                     <div className="px-6 pb-4 border-b flex items-center gap-4">
+                        <Checkbox
+                            id="select-all-header"
+                            checked={filteredProducts.length > 0 && selectedProducts.size === filteredProducts.length}
+                            onCheckedChange={toggleSelectAll}
+                            disabled={isLoading || filteredProducts.length === 0}
+                            aria-label="Select all"
+                        />
+                        <Label htmlFor="select-all-header" className="text-sm text-muted-foreground flex-grow">
+                            {selectedProducts.size} sur {filteredProducts.length} sélectionné(s)
+                        </Label>
+                        {selectedProducts.size > 0 && (
+                            <Button variant="outline" size="sm" onClick={() => setIsPrintDialogOpen(true)}>
+                                <Printer className="mr-2 h-4 w-4" />
+                                Imprimer les étiquettes
+                            </Button>
+                        )}
+                    </div>
+                    <CardContent className="pt-6">
                         {isLoading ? (
                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
                                 {Array.from({ length: 10 }).map((_, i) => <ProductCardSkeleton key={i} />)}
@@ -180,11 +228,25 @@ export default function ProductsPage() {
                             viewMode === 'grid' ? (
                                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
                                     {filteredProducts.map((product) => (
-                                        <ProductCard key={product.id} product={product} onEdit={handleEditClick} onDelete={setProductToDelete} />
+                                        <ProductCard 
+                                            key={product.id} 
+                                            product={product} 
+                                            onEdit={handleEditClick} 
+                                            onDelete={setProductToDelete}
+                                            isSelected={selectedProducts.has(product.id!)}
+                                            onToggleSelection={() => toggleProductSelection(product.id!)}
+                                        />
                                     ))}
                                 </div>
                             ) : (
-                                <ProductTable products={filteredProducts} onEdit={handleEditClick} onDelete={setProductToDelete} />
+                                <ProductTable 
+                                    products={filteredProducts} 
+                                    onEdit={handleEditClick} 
+                                    onDelete={setProductToDelete}
+                                    selectedProducts={selectedProducts}
+                                    onToggleProductSelection={toggleProductSelection}
+                                    onToggleSelectAll={toggleSelectAll}
+                                />
                             )
                         )}
                     </CardContent>
