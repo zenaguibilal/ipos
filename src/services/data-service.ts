@@ -155,7 +155,7 @@ class DataService {
           if (debtDifference > 0) {
             await db.sales.add({ invoiceNumber: `DEBT-ADJ-${Date.now()}`, items: [{ id: 'debt-adjustment', name: 'Ajustement de solde (Import)', price: debtDifference, purchasePrice: 0, quantity: 1 }], subtotal: debtDifference, total: debtDifference, amountPaid: 0, remainingBalance: debtDifference, paymentStatus: 'unpaid', payments: [], customerId });
           } else {
-            await db.payments.add({ customerId, amount: -debtDifference });
+            await db.payments.add({ customerId, amount: -debtDifference, customerName: `${existingCustomer.firstName} ${existingCustomer.lastName}` });
           }
         }
         updatedCount++;
@@ -165,7 +165,7 @@ class DataService {
         const { firstName, lastName, phone, settlementDay, debtAmount } = item;
         const newCustomerId = await db.customers.add({ firstName, lastName, phone, settlementDay } as any);
         if (debtAmount !== null && debtAmount > 0) {
-          await db.sales.add({ invoiceNumber: `DEBT-IMPORT-${Date.now()}`, items: [{ id: 'imported-debt', name: 'Solde initial importé', price: debtAmount, purchasePrice: 0, quantity: 1 }], subtotal: debtAmount, total: debtAmount, amountPaid: 0, remainingBalance: debtAmount, paymentStatus: 'unpaid', payments: [], customerId: newCustomerId });
+          await db.sales.add({ invoiceNumber: `DEBT-IMPORT-${Date.now()}`, items: [{ id: 'imported-debt', name: 'Solde initial importé', price: debtAmount, purchasePrice: 0, quantity: 1 }], subtotal: debtAmount, total: debtAmount, amountPaid: 0, remainingBalance: debtAmount, paymentStatus: 'unpaid', payments: [], customerId: newCustomerId, customerName: `${firstName} ${lastName}` });
         }
         importedCount++;
       }
