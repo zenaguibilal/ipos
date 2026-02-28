@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -6,7 +5,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Info, Code, User, Phone, Mail, ShoppingCart, Archive, Users, FileText, Bell, BarChart3, Rocket, MessageCircle } from 'lucide-react';
-import Link from 'next/link';
 
 const features = [
     { icon: ShoppingCart, text: "Gestion des Ventes et multi-paniers" },
@@ -111,12 +109,12 @@ export default function AboutPage() {
                                 À propos d'iPOS
                             </CardTitle>
                             <CardDescription>
-                                Votre solution de point de vente simple, moderne et efficace.
+                                Votre solution de point de vente simple, moderne, efficace et 100% hors ligne.
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="flex-grow space-y-6 text-sm">
                             <p>
-                                <strong>iPOS</strong> est un système de point de vente (POS) progressif conçu pour la gestion agile des petits commerces. Développé avec Next.js et Firebase, il offre une expérience rapide, réactive et fonctionnelle même hors ligne.
+                                <strong>iPOS</strong> est un système de point de vente (POS) conçu pour la gestion agile des petits commerces. Développé avec des technologies modernes, il offre une expérience rapide, réactive et fonctionnelle, entièrement hors ligne.
                             </p>
                             
                             <div>
@@ -137,7 +135,7 @@ export default function AboutPage() {
                                 <h4 className="font-semibold text-base mb-4">Technologies utilisées :</h4>
                                 <div className="flex justify-around items-center p-4 bg-muted/50 rounded-lg">
                                     <TechLogo src="https://www.vectorlogo.zone/logos/nextjs/nextjs-icon.svg" alt="Next.js" />
-                                    <TechLogo src="https://www.vectorlogo.zone/logos/firebase/firebase-icon.svg" alt="Firebase" />
+                                    <TechLogo src="https://dexie.org/assets/images/dexie-logo.svg" alt="Dexie.js" />
                                     <TechLogo src="https://www.vectorlogo.zone/logos/tailwindcss/tailwindcss-icon.svg" alt="Tailwind CSS" />
                                     <div className="flex flex-col items-center gap-2">
                                          <div className="h-12 w-12 flex items-center justify-center bg-primary text-primary-foreground rounded-md">

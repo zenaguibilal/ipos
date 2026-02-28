@@ -2,10 +2,9 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/sonner';
 import { ThemeProvider } from '@/components/layout/theme-provider';
-import { DataProvider } from '@/context/DataProvider';
 
 const APP_NAME = "iPOS";
-const APP_DEFAULT_TITLE = "iPOS - Offline";
+const APP_DEFAULT_TITLE = "iPOS - 100% Hors Ligne";
 const APP_TITLE_TEMPLATE = "%s - iPOS";
 const APP_DESCRIPTION = "Votre solution de point de vente simple, efficace et 100% hors ligne.";
 
@@ -60,7 +59,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ar" dir="rtl" suppressHydrationWarning>
+    <html lang="fr" suppressHydrationWarning>
       <head />
       <body>
         <ThemeProvider
@@ -69,9 +68,7 @@ export default function RootLayout({
             enableSystem
             disableTransitionOnChange
         >
-            <DataProvider>
-                {children}
-            </DataProvider>
+            {children}
             <Toaster richColors />
             <div id="receipt-for-print" className="hidden"></div>
         </ThemeProvider>

@@ -11,11 +11,10 @@ import {
   Package,
   Users,
   Archive,
-  Store,
-  ListChecks,
   ShoppingCart,
   History,
-  Bell
+  Bell,
+  ListChecks,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {

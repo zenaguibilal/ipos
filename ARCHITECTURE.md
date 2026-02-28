@@ -1,109 +1,104 @@
-# iPOS - Local Storage Architecture
+# iPOS - Architecture 100% Hors Ligne avec IndexedDB
 
-This document provides a detailed overview of the offline-first architecture of the iPOS application. It is designed to help understand the project structure, data flow, and key technical decisions after its refactoring away from Firebase to a purely local storage-based system.
+Ce document fournit un aperçu détaillé de l'architecture entièrement hors ligne de l'application iPOS. Il est conçu pour aider à comprendre la structure du projet, le flux de données et les décisions techniques clés après sa refactorisation vers un système basé sur IndexedDB.
 
-## 1. Technology Overview
+## 1. Vue d'ensemble de la technologie
 
-iPOS is built on a modern technology stack, chosen for its performance and development experience.
+iPOS est construit sur une pile technologique moderne, choisie pour ses performances et son expérience de développement.
 
-- **Core Framework:** [Next.js (App Router)](https://nextjs.org/) - A React framework used for its component-based architecture and file-based routing.
-- **Data Storage:** **Browser's Local Storage** - All application data (products, sales, customers, etc.) is stored in a single JSON object within the browser's `localStorage`. This ensures data persistence across page reloads and browser sessions on a single device.
-- **Data Access Layer:** A custom `DataService` (`src/services/data-service.ts`) abstracts all interactions with `localStorage`. It provides CRUD-like methods (`getAll`, `getById`, `save`, `remove`) and a subscription model to notify the UI of changes.
-- **State Management & UI Updates:** Reactivity is achieved using React's `useSyncExternalStore` hook. Custom hooks like `useData` and `useCollection` subscribe to the `DataService` and trigger re-renders when data is modified, simulating the real-time feel of the previous architecture.
-- **User Interface (UI):**
-  - **[ShadCN UI](https://ui.shadcn.com/)**: A collection of reusable UI components.
-  - **[Tailwind CSS](https://tailwindcss.com/)**: A utility-first CSS framework for rapid custom designs.
-- **Deployment & PWA:** Designed to be deployed on static hosting platforms (like Vercel or Netlify) and configured as a Progressive Web App (PWA) for desktop/mobile installation and 100% offline functionality.
+- **Framework principal :** [Next.js (App Router)](https://nextjs.org/) - Un framework React utilisé pour son architecture basée sur les composants et son routage basé sur les fichiers.
+- **Stockage de données :** **IndexedDB du navigateur** (via [Dexie.js](https://dexie.org/)) - Toutes les données de l'application (produits, ventes, clients, etc.) sont stockées dans une base de données IndexedDB structurée. Cela garantit une persistance robuste des données, des requêtes complexes et des performances élevées, le tout localement sur l'appareil de l'utilisateur.
+- **Couche d'accès aux données :**
+    - **`database.ts`** (`src/lib/database.ts`) : Ce fichier définit le schéma de la base de données IndexedDB à l'aide de Dexie. Il liste toutes les tables (`products`, `sales`, etc.) et leurs index pour des recherches rapides.
+    - **`data-service.ts`** (`src/services/data-service.ts`) : Un service qui fournit des méthodes asynchrones simples (`save`, `getAll`, `update`, etc.) pour abstraire les interactions avec la base de données Dexie.
+- **Gestion de l'état et mises à jour de l'interface utilisateur :** La réactivité est obtenue à l'aide du hook **`useLiveQuery`** de `dexie-react-hooks`. Ce hook s'abonne aux requêtes de la base de données et déclenche automatiquement de nouveaux rendus des composants React lorsque les données sous-jacentes sont modifiées, simulant une sensation de temps réel sans serveur.
+- **Interface Utilisateur (UI) :**
+  - **[ShadCN UI](https://ui.shadcn.com/)**: Une collection de composants d'interface utilisateur réutilisables.
+  - **[Tailwind CSS](https://tailwindcss.com/)**: Un framework CSS axé sur les utilitaires pour des conceptions personnalisées rapides.
+- **Déploiement et PWA :** Conçu pour être déployé sur des plateformes d'hébergement statique (comme Vercel ou Netlify) et configuré comme une Progressive Web App (PWA) pour une installation sur ordinateur/mobile et une fonctionnalité 100% hors ligne.
 
 ---
 
-## 2. Project Structure
+## 2. Structure du Projet
 
-The file structure is organized to separate concerns clearly.
+La structure des fichiers est organisée pour séparer clairement les responsabilités.
 
 ```
 /
-├── public/                 # Static files (icons, manifest.json)
+├── public/                 # Fichiers statiques (icônes, manifest.json)
 ├── src/
-│   ├── app/                # Application routes (Next.js App Router)
+│   ├── app/                # Routes de l'application (Next.js App Router)
 │   │   ├── dashboard/
 │   │   ├── products/
 │   │   ├── sell/
-│   │   ├── ... (other routes)
-│   │   └── layout.tsx      # Root layout of the application
+│   │   ├── ... (autres routes)
+│   │   └── layout.tsx      # Mise en page racine de l'application
 │   │
-│   ├── components/         # Reusable React components
-│   │   ├── ui/             # Base UI components (Button, Card, etc.)
-│   │   ├── layout/         # Layout components (Header, Sidebar)
-│   │   └── ... (feature-specific components)
+│   ├── components/         # Composants React réutilisables
+│   │   ├── ui/             # Composants d'interface de base (Button, Card, etc.)
+│   │   └── ... (composants spécifiques aux fonctionnalités)
 │   │
-│   ├── context/            # React Context providers
-│   │   └── DataProvider.tsx# Provides the DataService instance to the app
+│   ├── hooks/              # Hooks React personnalisés
+│   │   └── useCarts.ts     # Logique de gestion de plusieurs paniers (utilise l'état React)
 │   │
-│   ├── hooks/              # Custom React hooks
-│   │   ├── useData.ts      # Hook to access the DataService and its methods
-│   │   └── useCarts.ts     # Logic for managing multiple shopping carts (also uses localStorage)
+│   ├── lib/                # Fonctions utilitaires, types, et config DB
+│   │   ├── database.ts     # Définition du schéma de la base de données Dexie.js
+│   │   └── types.ts        # Définitions TypeScript pour les structures de données
 │   │
-│   ├── services/           # Core application services
-│   │   └── data-service.ts # The heart of the local data persistence logic
-│   │
-│   └── lib/                # Utility functions, types, etc.
-│       ├── types.ts        # TypeScript definitions for data structures
-│       └── utils.ts        # Helper functions
+│   ├── services/           # Services principaux de l'application
+│   │   └── data-service.ts # Le cœur de la logique de persistance des données locales
 │
-└── ... (configuration files)
+└── ... (fichiers de configuration)
 ```
 
 ---
 
-## 3. Data Management (Local Storage)
+## 3. Gestion des Données (IndexedDB avec Dexie.js)
 
-This is the core of the offline architecture.
+C'est le cœur de l'architecture hors ligne.
 
-1.  **`DataService` (`src/services/data-service.ts`):**
-    - **Single Source of Truth:** Manages all application data under a single key in `localStorage` (e.g., `iPOS_data`).
-    - **In-Memory Cache:** On initialization, it loads the entire dataset from `localStorage` into an in-memory object for fast access.
-    - **CRUD Operations:** Provides methods like `getAll`, `getById`, `save`, and `remove`.
-    - **"Transactions":** The `runTransaction` method simulates a database transaction by operating on the in-memory cache and then writing the entire state back to `localStorage` atomically. This is crucial for operations like finalizing a sale, where multiple data points (stock and sales records) must be updated together.
-    - **Subscription Model:** Implements a simple pub/sub pattern (`subscribe`, `notify`) that allows UI components to be notified of any data changes.
+1.  **`database.ts` (`src/lib/database.ts`):**
+    - **Source de vérité unique :** Ce fichier initialise une instance de Dexie, définissant la base de données `posDB`.
+    - **Schéma et Tables :** Il déclare toutes les tables de l'application (ex: `products`, `customers`).
+    - **Indexation :** Des index sont définis sur les champs fréquemment interrogés (ex: `name` pour les produits, `customerId` pour les ventes) pour garantir des recherches et des filtrages rapides et performants, même avec de grands ensembles de données.
+    - **Hooks de Cycle de Vie :** Des hooks `creating` et `updating` sont utilisés pour ajouter et mettre à jour automatiquement les champs `createdAt` et `updatedAt` sur chaque enregistrement.
 
-2.  **`DataProvider.tsx` & `useData()`:**
-    - The `DataProvider` creates a single instance of the `DataService`.
-    - Components use the `useData()` hook to get access to this service instance.
-    - To react to data changes, components use the `useSyncExternalStore` hook, which connects React's lifecycle to the `DataService`'s subscription model. This is the modern and correct way to integrate an external, mutable data source with React.
+2.  **`useLiveQuery` pour la lecture des données :**
+    - Les composants React utilisent le hook `useLiveQuery` pour lire les données de manière réactive.
+    - Exemple : `const products = useLiveQuery(() => db.products.toArray());`
+    - `useLiveQuery` s'abonne à la base de données IndexedDB. Chaque fois qu'une modification (ajout, mise à jour, suppression) se produit dans la table `products`, le hook récupère automatiquement les données à jour et déclenche un nouveau rendu du composant. Cela élimine le besoin de gérer manuellement l'état et les rechargements.
 
-3.  **Data Flow Example (Products Page):**
-    - The `ProductsPage` component calls `useData()`.
-    - It uses `useSyncExternalStore` along with `dataService.getSnapshot()` and `dataService.subscribe` to get the latest list of products.
-    - When a user adds a new product through `ProductDialog`, the dialog calls `dataService.save('products', newProduct)`.
-    - The `save` method updates the in-memory cache, writes to `localStorage`, and then calls `notify()`.
-    - The `notify()` call triggers the subscription in the `ProductsPage`, which causes `useSyncExternalStore` to re-run and get the new snapshot, leading to a UI update with the new product.
+3.  **`data-service.ts` pour l'écriture des données :**
+    - Pour maintenir une séparation claire des préoccupations, toutes les opérations d'écriture (`save`, `update`, `remove`) sont centralisées dans le `data-service`.
+    - Les composants appellent ces méthodes pour modifier les données. Par exemple, `dataService.save('products', newProduct)`.
+    - Le service exécute l'opération Dexie correspondante (ex: `db.products.add(...)`).
+    - Une fois l'écriture terminée, `useLiveQuery` dans les composants concernés détecte le changement et met à jour l'interface utilisateur automatiquement.
+
+4.  **Exemple de flux de données (Page Produits) :**
+    - Le composant `ProductsPage` utilise `useLiveQuery(() => db.products.toArray())` pour obtenir la liste des produits.
+    - Lorsqu'un utilisateur ajoute un nouveau produit via `ProductDialog`, le dialogue appelle `dataService.save('products', newProduct)`.
+    - `dataService` appelle `db.products.add(newProduct)`.
+    - `useLiveQuery` dans `ProductsPage` est notifié du changement dans la table `products`, il ré-exécute la requête et fournit la nouvelle liste de produits au composant.
+    - Le composant se met à jour pour afficher le nouveau produit.
 
 ---
 
-## 4. Key Feature Logic
+## 4. Logique des fonctionnalités clés
 
-### A. The Checkout (`/sell`)
+### A. Le Checkout (`/sell`)
 
-- **Cart State:** The `useCarts` hook manages multiple shopping carts using a separate `localStorage` key. This is a temporary, session-based state.
-- **Finalizing a Sale:**
-    - The `handleFinalizeSale` function is the most critical operation.
-    - It calls `dataService.runTransaction`.
-    - Inside the transaction callback, it performs two main actions:
-        1.  Decrements the stock for each product sold.
-        2.  Creates a new sales record.
-    - Because this happens within the `runTransaction` block, it's guaranteed that both operations succeed together, preventing data inconsistencies (e.g., selling a product without reducing its stock).
+- **État du Panier :** Le hook `useCarts` gère plusieurs paniers en utilisant `React.useState`. L'état est temporaire et **non persistant** lors du rechargement de la page, conformément aux exigences.
+- **Finalisation d'une Vente :**
+    - La fonction `handleFinalizeSale` est l'opération la plus critique.
+    - Elle appelle `db.transaction()`, une fonctionnalité puissante de Dexie.
+    - À l'intérieur du bloc de transaction, elle effectue deux actions principales de manière atomique :
+        1.  Décrémente le stock pour chaque produit vendu.
+        2.  Crée un nouvel enregistrement de vente.
+    - L'utilisation d'une transaction garantit que les deux opérations réussissent ensemble ou échouent ensemble. Cela empêche les incohérences de données (par exemple, vendre un produit sans réduire son stock).
 
-### B. Management Pages (Products, Customers)
+### B. Sauvegarde et Restauration (`/profile`)
 
-These pages follow a similar pattern:
-1.  **Display Data:** Use `useSyncExternalStore` to get and display lists of items.
-2.  **Filtering and Searching:** Client-side filtering and searching is performed on the data array retrieved from the service using `React.useMemo`.
-3.  **Creation/Modification:** Dialogs call `dataService.save()` to add or update items.
+- **Sauvegarde :** La fonction `handleBackup` récupère toutes les données de toutes les tables Dexie, les transforme en une chaîne JSON et déclenche le téléchargement d'un fichier.
+- **Restauration :** La fonction `handleRestore` lit un fichier JSON sélectionné par l'utilisateur, vide complètement toutes les tables de la base de données, puis insère en masse les données du fichier de sauvegarde. C'est une opération destructrice mais efficace pour la gestion des données locales.
 
-### C. Backup and Restore (`/profile`)
-
-- **Backup:** The `handleBackup` function calls `dataService.exportData()`, which simply stringifies the entire in-memory database and triggers a file download.
-- **Restore:** The `handleRestore` function reads a user-selected JSON file, then calls `dataService.importData()`. This method overwrites the entire in-memory database and `localStorage`, then triggers a `notify()` call to update the entire application UI. This is a destructive but effective way to manage data locally.
-
-This architecture provides a robust, fast, and fully offline experience by treating the browser's local storage as the primary database.
+Cette architecture offre une expérience robuste, rapide et entièrement hors ligne en traitant la base de données IndexedDB du navigateur comme la base de données principale.
