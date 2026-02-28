@@ -10,7 +10,7 @@ import { Timeline, TimelineItem, TimelineConnector, TimelineHeader, TimelineIcon
 import { ArrowLeft, Edit, HandCoins, Phone, CreditCard, ShoppingCart, MessageSquare, FileText } from 'lucide-react';
 import Link from 'next/link';
 import { safeToDate } from '@/lib/utils';
-import { format } from 'date-fns';
+import { format, subMonths, startOfMonth, addMonths } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import type { Customer, Sale, Payment, CompanyProfile } from '@/lib/types';
 import { CustomerDialog } from '@/components/customers/customer-dialog';
@@ -20,6 +20,7 @@ import { toast } from 'sonner';
 import dynamic from 'next/dynamic';
 import { useCustomerMetrics } from '@/hooks/use-customer-metrics';
 import type { Transaction } from '@/hooks/use-customer-metrics';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 
 const SaleDetailsDialog = dynamic(() => import('@/components/sales/sale-details-dialog').then(mod => mod.SaleDetailsDialog));
@@ -52,6 +53,32 @@ export default function CustomerDetailPage() {
     };
 
     const { totalSpent, outstandingBalance, combinedTransactions } = useCustomerMetrics(sales ?? null, payments ?? null);
+    
+    const monthlySpendingData = useMemo(() => {
+        if (!sales) return [];
+
+        const data: { [month: string]: number } = {};
+        const sixMonthsAgo = startOfMonth(subMonths(new Date(), 5));
+
+        for (let i = 0; i < 6; i++) {
+            const month = format(addMonths(sixMonthsAgo, i), 'yyyy-MM');
+            data[month] = 0;
+        }
+
+        sales.forEach(sale => {
+            const saleDate = safeToDate(sale.createdAt);
+            const month = format(saleDate, 'yyyy-MM');
+            if (data[month] !== undefined) {
+                data[month] += sale.total;
+            }
+        });
+        
+        return Object.keys(data).map(month => ({
+            name: format(new Date(month + '-01T12:00:00Z'), 'MMM', { locale: fr }),
+            'Dépenses': data[month],
+        }));
+    }, [sales]);
+
 
     const isLoading = customer === undefined || sales === undefined || payments === undefined || companyProfile === undefined;
 
@@ -154,6 +181,26 @@ export default function CustomerDetailPage() {
                                     </Button>
                                 </CardFooter>
                             )}
+                        </Card>
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Dépenses Mensuelles</CardTitle>
+                                <CardDescription>Dépenses des 6 derniers mois.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="pl-2">
+                                <ResponsiveContainer width="100%" height={200}>
+                                    <BarChart data={monthlySpendingData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                                        <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
+                                        <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value} DA`} />
+                                        <Tooltip 
+                                            cursor={{fill: 'hsl(var(--muted))'}}
+                                            contentStyle={{ backgroundColor: "hsl(var(--background))", border: "1px solid hsl(var(--border))" }}
+                                            formatter={(value: number) => [`${value.toFixed(1)} DA`, 'Dépenses']}
+                                        />
+                                        <Bar dataKey="Dépenses" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </CardContent>
                         </Card>
                     </div>
 
