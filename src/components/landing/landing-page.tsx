@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { InstallPWAButton } from "@/components/layout/install-pwa-button";
-import { ShoppingCart, Archive, Users, FileText, BarChart3, Bell, Rocket, Star, Quote, ShieldCheck, Zap, CloudOff } from 'lucide-react';
+import { ShoppingCart, Archive, Users, FileText, BarChart3, Bell, Rocket, Star, Quote, ShieldCheck, Zap, DatabaseZap } from 'lucide-react';
 import Link from "next/link";
 import { LandingHeader } from "./landing-header";
 
@@ -18,17 +18,17 @@ const features = [
 
 const testimonials = [
     {
-        quote: "iPOS a transformé la gestion de ma boutique. L'interface est intuitive et la gestion des stocks me fait gagner un temps précieux chaque jour. Le mode hors ligne est un sauveur !",
+        quote: "iPOS a complètement changé la donne pour ma boutique. Le fait que tout soit hors ligne me donne une tranquillité d'esprit incroyable. C'est rapide, fiable, et mes données restent privées.",
         name: "Amina K.",
         role: "Gérante de supérette",
     },
     {
-        quote: "La meilleure fonctionnalité pour moi est la gestion des dettes clients. C'est simple, clair et les rappels sont très efficaces. Je recommande vivement cette application.",
+        quote: "Enfin un système de caisse qui ne dépend pas d'Internet ! La gestion des dettes clients est simple et efficace. Je peux enfin travailler sans interruption, même lorsque la connexion est mauvaise.",
         name: "Karim B.",
         role: "Propriétaire d'une boulangerie",
     },
     {
-        quote: "En tant que développeur, j'apprécie la modernité de la pile technique. Mais en tant qu'utilisateur, j'aime juste le fait que 'ça marche', tout simplement. C'est rapide, fiable et beau.",
+        quote: "J'adore la simplicité et la puissance d'iPOS. L'interface est épurée, et la fonction de sauvegarde et de restauration manuelle me donne un contrôle total sur mes informations. Un outil indispensable.",
         name: "Yasmine L.",
         role: "Gérante de café",
     }
@@ -36,20 +36,20 @@ const testimonials = [
 
 const faqs = [
     {
-        question: "L'application fonctionne-t-elle sans connexion internet ?",
-        answer: "Oui ! iPOS est conçu comme une Progressive Web App (PWA). Une fois installée, vous pouvez effectuer la plupart des opérations (ventes, gestion du panier) sans connexion. Les données se synchroniseront automatiquement dès que vous serez de nouveau en ligne."
+        question: "Où sont stockées mes données ?",
+        answer: "Toutes vos données (produits, ventes, clients) sont stockées exclusivement sur votre appareil, dans la base de données de votre navigateur (IndexedDB). Personne d'autre que vous n'y a accès."
     },
     {
-        question: "Mes données sont-elles en sécurité ?",
-        answer: "Absolument. Vos données sont stockées sur Firebase de Google, une plateforme robuste et sécurisée. De plus, chaque utilisateur a son propre espace de données isolé, personne d'autre ne peut y accéder."
+        question: "Que se passe-t-il si je nettoie mon navigateur ou si mon ordinateur tombe en panne ?",
+        answer: "C'est un point crucial. Étant donné que les données sont locales, elles seront perdues si vous effacez les données de votre navigateur ou si votre appareil est endommagé. Il est impératif d'utiliser la fonction de sauvegarde régulièrement pour créer un fichier de vos données que vous pouvez conserver en lieu sûr."
     },
     {
-        question: "L'application est-elle vraiment gratuite ?",
-        answer: "Oui, l'utilisation de iPOS est gratuite. Le projet est maintenu par un développeur passionné dans le but d'offrir un outil de qualité aux petits commerçants."
+        question: "Puis-je utiliser l'application sur plusieurs appareils ?",
+        answer: "Non. Comme les données sont stockées localement, elles ne sont pas synchronisées entre différents appareils. L'application est conçue pour fonctionner sur un poste de travail principal."
     },
     {
-        question: "Puis-je l'utiliser sur mon téléphone ou ma tablette ?",
-        answer: "Oui, l'interface est entièrement responsive et conçue pour fonctionner parfaitement sur les ordinateurs de bureau, les tablettes et les smartphones."
+        question: "Dois-je payer pour utiliser iPOS ?",
+        answer: "Non, iPOS est entièrement gratuit. C'est un projet développé pour aider les petits commerçants avec un outil puissant et accessible, sans frais cachés ni abonnements."
     }
 ];
 
@@ -72,14 +72,14 @@ export function LandingPage() {
                 <div className="container px-4 md:px-6 grid lg:grid-cols-2 gap-10 items-center">
                     <div className="flex flex-col items-start space-y-6 text-left">
                         <h1 className="text-4xl md:text-5xl font-bold tracking-tighter">
-                           Votre commerce, simplifié et modernisé.
+                           Votre Commerce, Vos Données, Votre Contrôle.
                         </h1>
                         <p className="max-w-[600px] text-muted-foreground md:text-xl">
-                            iPOS est la solution de point de vente qui allie puissance et simplicité. Gérez vos ventes, stocks et clients avec une rapidité fulgurante, même hors ligne.
+                            iPOS est la solution de point de vente 100% hors ligne qui place vos données sous votre contrôle direct. Gérez vos ventes, stocks et clients en toute confidentialité, sans jamais dépendre d'une connexion internet.
                         </p>
                         <div className="flex flex-col sm:flex-row gap-4">
                             <Button asChild size="lg">
-                                <Link href="/signup">Démarrer gratuitement</Link>
+                                <Link href="/sell">Lancer l'application</Link>
                             </Button>
                              <Button asChild size="lg" variant="outline">
                                 <Link href="#features">Découvrir les fonctionnalités</Link>
@@ -130,21 +130,21 @@ export function LandingPage() {
                                 <Zap className="h-8 w-8 text-primary" />
                             </div>
                             <h3 className="text-xl font-bold">Ultra Rapide</h3>
-                            <p className="text-muted-foreground">Conçu pour la vitesse. Chaque clic, chaque action est optimisée pour ne pas vous ralentir.</p>
+                            <p className="text-muted-foreground">Chaque action est instantanée car tout se passe sur votre appareil, sans latence réseau.</p>
                         </div>
                          <div className="flex flex-col items-center space-y-2">
                              <div className="p-3 bg-primary/10 rounded-full">
-                                <CloudOff className="h-8 w-8 text-primary" />
+                                <DatabaseZap className="h-8 w-8 text-primary" />
                             </div>
-                            <h3 className="text-xl font-bold">Fonctionne Hors Ligne</h3>
-                            <p className="text-muted-foreground">Pas d'internet ? Pas de problème. Continuez à vendre et synchronisez plus tard.</p>
+                            <h3 className="text-xl font-bold">100% Hors Ligne</h3>
+                            <p className="text-muted-foreground">Pas d'internet ? Pas de problème. L'application est conçue pour fonctionner sans interruption.</p>
                         </div>
                          <div className="flex flex-col items-center space-y-2">
                              <div className="p-3 bg-primary/10 rounded-full">
                                 <ShieldCheck className="h-8 w-8 text-primary" />
                             </div>
-                            <h3 className="text-xl font-bold">Sécurisé</h3>
-                            <p className="text-muted-foreground">Vos données sont protégées et isolées grâce à la puissance de Firebase.</p>
+                            <h3 className="text-xl font-bold">Confidentialité Totale</h3>
+                            <p className="text-muted-foreground">Vos données ne quittent jamais votre appareil. Vous êtes la seule personne à y avoir accès.</p>
                         </div>
                     </div>
                 </div>
@@ -185,13 +185,13 @@ export function LandingPage() {
                             Conçu avec des technologies de pointe
                         </h2>
                         <p className="max-w-[700px] text-muted-foreground md:text-lg">
-                            iPOS s'appuie sur une pile technologique moderne pour garantir performance, sécurité et une expérience utilisateur exceptionnelle.
+                            iPOS s'appuie sur une pile technologique moderne pour garantir performance, et une expérience utilisateur exceptionnelle.
                         </p>
                     </div>
                     <div className="max-w-3xl mx-auto">
                         <div className="flex justify-around items-center p-8 bg-muted/50 rounded-lg">
                             <TechLogo src="https://www.vectorlogo.zone/logos/nextjs/nextjs-icon.svg" alt="Next.js" />
-                            <TechLogo src="https://www.vectorlogo.zone/logos/firebase/firebase-icon.svg" alt="Firebase" />
+                            <TechLogo src="https://dexie.org/assets/images/dexie-logo.svg" alt="Dexie.js" />
                             <TechLogo src="https://www.vectorlogo.zone/logos/tailwindcss/tailwindcss-icon.svg" alt="Tailwind CSS" />
                             <div className="flex flex-col items-center gap-2">
                                 <div className="h-12 w-12 flex items-center justify-center bg-primary text-primary-foreground rounded-md">
@@ -268,7 +268,8 @@ export function LandingPage() {
                         &copy; {new Date().getFullYear()} iPOS. Développé par zenagui bilal.
                     </p>
                      <div className="flex gap-4 text-sm text-muted-foreground">
-                        <Link href="#features" className="hover:text-primary">Fonctionnalités</Link>
+                        <Link href="/privacy" className="hover:text-primary">Confidentialité</Link>
+                         <Link href="/terms" className="hover:text-primary">Conditions</Link>
                         <Link href="/about" className="hover:text-primary">Contact</Link>
                     </div>
                 </div>

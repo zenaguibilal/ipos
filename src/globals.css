@@ -16,6 +16,12 @@
  
     --primary: 216 91% 47%;
     --primary-foreground: 210 20% 98%;
+
+    --chart-primary: 216 91% 47%;
+    --chart-secondary: 48 96% 51%;
+    --chart-tertiary: 10 80% 55%;
+    --chart-quaternary: 150 70% 45%;
+    --chart-quinary: 280 82% 52%;
  
     --secondary: 215 28% 90%;
     --secondary-foreground: 224 71.4% 4.1%;
@@ -37,32 +43,31 @@
   }
  
   .dark {
-    --background: 224 71.4% 4.1%;
-    --foreground: 210 20% 98%;
- 
-    --card: 224 71.4% 4.1%;
-    --card-foreground: 210 20% 98%;
- 
-    --popover: 224 71.4% 4.1%;
-    --popover-foreground: 210 20% 98%;
- 
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 240 4% 10%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
     --primary: 216 91% 57%;
     --primary-foreground: 224 71.4% 4.1%;
- 
-    --secondary: 215 28% 15%;
-    --secondary-foreground: 210 20% 98%;
- 
-    --muted: 215 28% 15%;
-    --muted-foreground: 215 25% 65%;
- 
-    --accent: 215 28% 15%;
-    --accent-foreground: 210 20% 98%;
- 
+
+    --chart-primary: 216 91% 57%;
+    --chart-secondary: 48 96% 51%;
+    --chart-tertiary: 10 70% 65%;
+    --chart-quaternary: 150 60% 55%;
+    --chart-quinary: 280 92% 62%;
+
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
     --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 20% 98%;
- 
-    --border: 215 28% 25%;
-    --input: 215 28% 25%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
     --ring: 216 91% 57%;
   }
 }
@@ -76,29 +81,19 @@
   }
 }
 
-/* Styles pour l'impression thermique */
+/* Common print styles */
 @media print {
-    @page {
-        size: 80mm auto; /* Taille du papier pour imprimante thermique */
-        margin: 0;
-    }
-
-    html, body {
-      width: 80mm;
-      background: white !important;
-    }
-
     body {
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
     }
 
-    /* Cache tous les éléments par défaut */
+    /* Hide everything by default */
     body > *:not(#receipt-for-print) {
         display: none !important;
     }
 
-    /* Affiche uniquement le conteneur d'impression et son contenu */
+    /* Only show the print container and its content */
     #receipt-for-print {
         display: block !important;
         visibility: visible !important;
@@ -107,43 +102,65 @@
         top: 0;
         margin: 0;
         padding: 0;
-        width: 80mm;
+        width: 100%;
     }
     
     #receipt-for-print * {
        visibility: visible !important;
     }
 
-
-    .thermal-receipt {
-        font-family: 'Courier New', Courier, monospace !important; /* Police à chasse fixe pour un meilleur alignement */
-        width: 100% !important;
-        padding: 3mm !important;
-        color: black !important;
-        background: white !important;
-        box-shadow: none !important;
-        border: none !important;
-        font-size: 10pt !important; /* Taille de police lisible pour les reçus */
-        line-height: 1.2 !important;
-    }
-
-    .thermal-receipt * {
-        font-family: 'Courier New', Courier, monospace !important;
-        color: black !important;
-        background: transparent !important;
-        font-size: 10pt !important;
-        line-height: 1.2 !important;
-    }
-
-    .thermal-receipt .text-lg { font-size: 12pt !important; }
-    .thermal-receipt .text-base { font-size: 10pt !important; }
-    .thermal-receipt .text-xs { font-size: 8pt !important; }
-    .thermal-receipt table { width: 100% !important; }
-    .thermal-receipt .border-dashed { border-style: dashed !important; }
-    .thermal-receipt .border-black { border-color: black !important; }
-    .thermal-receipt .font-bold { font-weight: 700 !important; }
-    
     .print-hide {
         display: none !important;
     }
 }
+
+/* A4 Print Specific Styles */
+@page {
+    size: a4;
+    margin: 20mm;
+}
+
+.a4-receipt {
+    page-break-before: always;
+}
+
+
+/* Thermal Print Specific Styles */
+@page thermal-page {
+    size: 80mm auto;
+    margin: 3mm;
+}
+
+html.thermal, body.thermal {
+    width: 80mm;
+    background: white !important;
+}
+
+.thermal-receipt {
+    page: thermal-page;
+    page-break-before: always;
+    font-family: 'Courier New', Courier, monospace !important;
+    width: 100% !important;
+    color: black !important;
+    background: white !important;
+    box-shadow: none !important;
+    border: none !important;
+    font-size: 10pt !important;
+    line-height: 1.2 !important;
+}
+
+.thermal-receipt * {
+    font-family: 'Courier New', Courier, monospace !important;
+    color: black !important;
+    background: transparent !important;
+    font-size: 10pt !important;
+    line-height: 1.2 !important;
+}
+
+.thermal-receipt .text-lg { font-size: 12pt !important; }
+.thermal-receipt .text-base { font-size: 10pt !important; }
+.thermal-receipt .text-xs { font-size: 8pt !important; }
+.thermal-receipt table { width: 100% !important; }
+.thermal-receipt .border-dashed { border-style: dashed !important; }
+.thermal-receipt .border-black { border-color: black !important; }
+.thermal-receipt .font-bold { font-weight: 700 !important; }

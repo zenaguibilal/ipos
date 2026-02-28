@@ -44,12 +44,9 @@ export function LandingHeader() {
                 </nav>
 
                 {/* Right Side */}
-                <div className="flex items-center gap-2">
-                     <Button variant="ghost" asChild>
-                        <Link href="/login">Connexion</Link>
-                    </Button>
+                <div className="flex items-center">
                     <Button asChild>
-                        <Link href="/signup">S'inscrire</Link>
+                        <Link href="/sell">Lancer l'application</Link>
                     </Button>
                 </div>
             </div>
