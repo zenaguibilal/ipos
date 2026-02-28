@@ -13,7 +13,7 @@ export default function OfflinePage() {
           <p className="text-muted-foreground">
             Veuillez vérifier votre connexion internet.
             <br />
-            Certaines pages pré-chargées могут encore être accessibles.
+            Certaines pages pré-chargées peuvent encore être accessibles.
           </p>
         </div>
       </div>
