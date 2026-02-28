@@ -1,10 +1,6 @@
-
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { useRouter } from 'next/navigation';
-import { collection, query, orderBy } from 'firebase/firestore';
+import React, { useState, useMemo, useEffect, useSyncExternalStore } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -18,28 +14,17 @@ import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ProductCard } from '@/components/products/product-card';
 import { ProductCardSkeleton } from '@/components/products/product-card-skeleton';
+import { useData } from '@/hooks/useData';
 
 export default function ProductsPage() {
-    const { user, isUserLoading } = useUser();
-    const firestore = useFirestore();
-    const router = useRouter();
+    const dataService = useData();
+    const { products } = useSyncExternalStore(dataService.subscribe, dataService.getSnapshot);
 
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
     const [productToDelete, setProductToDelete] = useState<Product | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('all');
-
-    const productsQuery = useMemoFirebase(() =>
-        (user && firestore) ? query(collection(firestore, 'users', user.uid, 'products'), orderBy('createdAt', 'desc')) : null,
-    [user, firestore]);
-    const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
-
-    useEffect(() => {
-        if (!isUserLoading && !user) {
-            router.push('/login');
-        }
-    }, [user, isUserLoading, router]);
 
     useEffect(() => {
         const savedCategory = localStorage.getItem('products_category_filter');
@@ -155,30 +140,19 @@ export default function ProductsPage() {
         toast.success("Inventaire exporté avec succès.");
     };
 
-    const isLoading = isUserLoading || isLoadingProducts;
-
-    if (!user && !isLoading) {
-        return null; // or a loading spinner, redirect is handled by useEffect
-    }
-
     return (
         <>
-            {user && (
-                <>
-                    <ProductDialog
-                        isOpen={isDialogOpen}
-                        onOpenChange={setIsDialogOpen}
-                        product={selectedProduct}
-                        userId={user.uid}
-                    />
-                    <DeleteProductDialog
-                        isOpen={!!productToDelete}
-                        onOpenChange={(isOpen) => !isOpen && setProductToDelete(null)}
-                        product={productToDelete}
-                        userId={user.uid}
-                    />
-                </>
-            )}
+            <ProductDialog
+                isOpen={isDialogOpen}
+                onOpenChange={setIsDialogOpen}
+                product={selectedProduct}
+            />
+            <DeleteProductDialog
+                isOpen={!!productToDelete}
+                onOpenChange={(isOpen) => !isOpen && setProductToDelete(null)}
+                product={productToDelete}
+            />
+
             <main className="flex-1 overflow-auto p-4 sm:p-6">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
                     <div>
@@ -271,11 +245,7 @@ export default function ProductsPage() {
                         </div>
                     </CardHeader>
                     <CardContent>
-                        {isLoading ? (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-                                {Array.from({ length: 10 }).map((_, i) => <ProductCardSkeleton key={i} />)}
-                            </div>
-                        ) : filteredProducts.length === 0 ? (
+                        {filteredProducts.length === 0 ? (
                             <div className="flex h-40 items-center justify-center rounded-md border-2 border-dashed border-border bg-card">
                                 <p className="text-muted-foreground">
                                     {products && products.length > 0 ? "Aucun produit ne correspond à vos filtres." : "Aucun produit trouvé. Commencez par en ajouter un."}
@@ -299,5 +269,3 @@ export default function ProductsPage() {
         </>
     );
 }
-
-    

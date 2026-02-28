@@ -2,11 +2,12 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/sonner';
 import { ThemeProvider } from '@/components/layout/theme-provider';
+import { DataProvider } from '@/context/DataProvider';
 
 const APP_NAME = "iPOS";
-const APP_DEFAULT_TITLE = "iPOS";
+const APP_DEFAULT_TITLE = "iPOS - Offline";
 const APP_TITLE_TEMPLATE = "%s - iPOS";
-const APP_DESCRIPTION = "Votre solution de point de vente simple et efficace.";
+const APP_DESCRIPTION = "Votre solution de point de vente simple, efficace et 100% hors ligne.";
 
 export const metadata: Metadata = {
   applicationName: APP_NAME,
@@ -20,7 +21,6 @@ export const metadata: Metadata = {
     capable: true,
     statusBarStyle: "default",
     title: APP_DEFAULT_TITLE,
-    // startUpImage: [],
   },
   formatDetection: {
     telephone: false,
@@ -60,7 +60,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="fr" suppressHydrationWarning>
+    <html lang="ar" dir="rtl" suppressHydrationWarning>
       <head />
       <body>
         <ThemeProvider
@@ -69,9 +69,10 @@ export default function RootLayout({
             enableSystem
             disableTransitionOnChange
         >
-            {children}
+            <DataProvider>
+                {children}
+            </DataProvider>
             <Toaster richColors />
-            {/* Dedicated container for printing thermal receipts */}
             <div id="receipt-for-print" className="hidden"></div>
         </ThemeProvider>
       </body>

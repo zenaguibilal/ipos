@@ -1,15 +1,13 @@
 'use client';
 
-import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import React, { useState, useMemo, useEffect, useCallback, useSyncExternalStore } from 'react';
 import { useRouter } from 'next/navigation';
-import { collection, query, orderBy, doc, runTransaction, serverTimestamp } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Search, Plus, Minus, Trash2, X, PlusCircle, UserPlus, Percent, ShoppingBasket, MoreHorizontal } from 'lucide-react';
 import type { Product, Customer, Cart, CartItem, SaleItem, SalePayment } from '@/lib/types';
-import { cn } from '@/lib/utils';
+import { cn, safeToDate } from '@/lib/utils';
 import { useCarts } from '@/hooks/useCarts';
 import { useSellHotkeys } from '@/hooks/useSellHotkeys';
 import { toast } from 'sonner';
@@ -23,6 +21,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import Image from 'next/image';
 import placeholderImages from '@/lib/placeholder-images.json';
+import { useData } from '@/hooks/useData';
+import { DB } from '@/services/initial-data';
 
 
 type Placeholder = { url: string; width: number; height: number; hint: string };
@@ -35,8 +35,6 @@ const getPlaceholder = (category?: string): Placeholder => {
     return placeholders.default;
 };
 
-
-// SellProductCard Component
 const SellProductCard = ({ product, onAddToCart }: { product: Product, onAddToCart: (product: Product) => void }) => {
     const isOutOfStock = product.quantity <= 0;
     const isLowStock = !isOutOfStock && product.quantity <= product.minStockLevel;
@@ -81,8 +79,6 @@ const SellProductCard = ({ product, onAddToCart }: { product: Product, onAddToCa
     );
 };
 
-
-// CartItemCard Component
 const CartItemCard = ({ item, onUpdateQuantity, onRemoveItem }: { item: CartItem, onUpdateQuantity: (itemId: string, newQuantity: number) => void, onRemoveItem: (itemId: string) => void }) => {
     const placeholder = getPlaceholder(item.category);
     const imageUrl = item.imageUrl || placeholder.url;
@@ -119,18 +115,13 @@ const CartItemCard = ({ item, onUpdateQuantity, onRemoveItem }: { item: CartItem
 
 
 export default function SellPage() {
-    const { user, isUserLoading } = useUser();
-    const firestore = useFirestore();
-    const router = useRouter();
+    const dataService = useData();
+    const dbState = useSyncExternalStore(dataService.subscribe, dataService.getSnapshot);
+
+    const products = useMemo(() => [...dbState.products].sort((a,b) => a.name.localeCompare(b.name)), [dbState.products]);
+    const customers = useMemo(() => [...dbState.customers].sort((a,b) => a.lastName.localeCompare(b.lastName)), [dbState.customers]);
 
     const { carts, activeCartId, addCart, removeCart, setActiveCartId, updateCart, clearCart } = useCarts();
-
-    // Data Fetching
-    const productsQuery = useMemoFirebase(() => user && firestore ? query(collection(firestore, 'users', user.uid, 'products'), orderBy('name', 'asc')) : null, [user, firestore]);
-    const customersQuery = useMemoFirebase(() => user && firestore ? query(collection(firestore, 'users', user.uid, 'customers'), orderBy('lastName', 'asc')) : null, [user, firestore]);
-
-    const { data: productsData, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
-    const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersQuery);
 
     // Component State
     const [searchQuery, setSearchQuery] = useState('');
@@ -159,8 +150,6 @@ export default function SellPage() {
     useEffect(() => {
         localStorage.setItem('sell_search_query', searchQuery);
     }, [searchQuery]);
-
-    const products = useMemo(() => productsData || [], [productsData]);
 
     // Derived State
     const activeCart = useMemo(() => carts.find(c => c.id === activeCartId), [carts, activeCartId]);
@@ -234,7 +223,7 @@ export default function SellPage() {
         updateCart({ ...activeCart, items: newItems });
         toast.success(`${product.name} ajouté au panier.`);
 
-    }, [activeCart, updateCart, products]);
+    }, [activeCart, updateCart]);
 
     const handleBarcodeScanned = useCallback((searchTerm: string) => {
         if (!searchTerm.trim() || !products) return;
@@ -242,17 +231,15 @@ export default function SellPage() {
         const term = searchTerm.trim();
         const termLowerCase = term.toLowerCase();
 
-        // Priority 1: Exact barcode match
         let product = products.find(p => p.barcodes?.includes(term));
 
-        // Priority 2: Exact name match (case-insensitive)
         if (!product) {
             product = products.find(p => p.name.toLowerCase() === termLowerCase);
         }
 
         if (product) {
             handleAddToCart(product);
-            setSearchQuery(''); // Clear input for next scan
+            setSearchQuery('');
         } else {
             toast.error(`Aucun produit trouvé pour "${term}".`);
         }
@@ -275,11 +262,11 @@ export default function SellPage() {
             name: customProductName.trim(),
             price: priceNum,
             purchasePrice: 0,
-            quantity: Infinity, // Unlimited stock for custom items
+            quantity: Infinity,
             minStockLevel: 0,
             cartQuantity: 1,
             flash: true,
-            createdAt: new Date(),
+            createdAt: new Date().toISOString(),
             category: 'Personnalisé',
             imageUrl: placeholders['Personnalisé'].url
         };
@@ -344,9 +331,8 @@ export default function SellPage() {
         updateCart({ ...activeCart, discount: { type, value: numValue } });
     }, [activeCart, updateCart]);
 
-
     const handleFinalizeSale = async (payments: SalePayment[], amountPaid: number) => {
-        if (!activeCart || activeCart.items.length === 0 || !firestore || !user) {
+        if (!activeCart || activeCart.items.length === 0) {
             toast.error("Le panier est vide ou une erreur est survenue.");
             return false;
         }
@@ -366,27 +352,22 @@ export default function SellPage() {
         }));
 
         try {
-            await runTransaction(firestore, async (transaction) => {
-                // 1. Check stock and prepare product updates
+            dataService.runTransaction((db: DB) => {
                 for (const item of saleItems) {
                     if (item.id.startsWith('custom-')) continue;
                     
-                    const productRef = doc(firestore, 'users', user.uid, 'products', item.id);
-                    const productDoc = await transaction.get(productRef);
+                    const productIndex = db.products.findIndex(p => p.id === item.id);
+                    if (productIndex === -1) throw new Error(`Produit ${item.name} non trouvé.`);
                     
-                    if (!productDoc.exists()) throw new Error(`Produit ${item.name} non trouvé.`);
-                    
-                    const currentQuantity = productDoc.data().quantity;
-                    if (currentQuantity < item.quantity) {
+                    const product = db.products[productIndex];
+                    if (product.quantity < item.quantity) {
                         throw new Error(`Stock insuffisant pour ${item.name}.`);
                     }
                     
-                    transaction.update(productRef, { quantity: currentQuantity - item.quantity });
+                    db.products[productIndex] = { ...product, quantity: product.quantity - item.quantity };
                 }
 
-                // 2. Create sale document
-                const saleRef = doc(collection(firestore, 'users', user.uid, 'sales'));
-                const newSale = {
+                const newSale: Omit<Sale, 'id' | 'createdAt'> = {
                     invoiceNumber: `INV-${Date.now()}`,
                     items: saleItems,
                     subtotal: subtotal,
@@ -399,9 +380,14 @@ export default function SellPage() {
                     payments: payments,
                     customerId: activeCart.customerId,
                     customerName: activeCart.customerName,
-                    createdAt: serverTimestamp(),
                 };
-                transaction.set(saleRef, newSale);
+                
+                // dataService.addDoc will add id and createdAt
+                db.sales.push({
+                    ...newSale,
+                    id: uuidv4(),
+                    createdAt: new Date().toISOString(),
+                });
             });
 
             toast.success("Vente enregistrée avec succès !");
@@ -428,15 +414,9 @@ export default function SellPage() {
         return [{ value: 'walk-in', label: 'Vente au comptoir', subLabel: 'Client par défaut' }, ...options];
     }, [customers]);
 
-    if (isUserLoading) return <div className="p-4">Chargement...</div>;
-    if (!user) {
-        router.push('/login');
-        return null;
-    }
 
     return (
         <div className="h-full max-h-[calc(100vh-3.5rem)] grid grid-cols-1 lg:grid-cols-5 overflow-hidden">
-            {/* Products Grid */}
             <div className="lg:col-span-3 xl:col-span-4 bg-muted/30 flex flex-col">
                 <div className="p-4 border-b space-y-4">
                      <div className="flex gap-2 items-center">
@@ -503,8 +483,8 @@ export default function SellPage() {
                     </div>
                 </div>
                 <div className="flex-grow overflow-y-auto p-4">
-                    {isLoadingProducts ? (
-                        <p>Chargement des produits...</p>
+                    {products.length === 0 ? (
+                         <div className="text-center py-16 text-muted-foreground">Aucun produit trouvé. Commencez par en ajouter depuis la page Produits.</div>
                     ) : (
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-6 gap-4">
                             {filteredProducts.map(p => <SellProductCard key={p.id} product={p} onAddToCart={handleAddToCart} />)}
@@ -513,7 +493,6 @@ export default function SellPage() {
                 </div>
             </div>
 
-            {/* Cart Panel */}
             <div className="lg:col-span-2 xl:col-span-1 bg-card border-l flex flex-col h-full">
                 <Tabs value={activeCartId} onValueChange={setActiveCartId} className="flex-grow flex flex-col">
                     <TabsList className="p-1 h-auto m-2">
@@ -528,7 +507,6 @@ export default function SellPage() {
                    
                     {carts.map(cart => (
                          <TabsContent key={cart.id} value={cart.id} className="flex-grow flex flex-col overflow-hidden m-0 mt-0">
-                           {/* Customer Selection */}
                             <div className="px-4 pb-2 border-b">
                                 <Label>Client</Label>
                                 <div className="flex gap-2 mt-1">
@@ -544,7 +522,6 @@ export default function SellPage() {
                                 </div>
                             </div>
 
-                            {/* Cart Items */}
                             {cart.items.length === 0 ? (
                                 <div className="flex-grow flex flex-col items-center justify-center text-center p-4">
                                     <ShoppingBasket className="h-16 w-16 text-muted-foreground/50"/>
@@ -564,7 +541,6 @@ export default function SellPage() {
                                 </div>
                             )}
 
-                             {/* Cart Footer */}
                              {activeCart && (
                                 <div className="p-4 mt-auto border-t bg-secondary/30 space-y-3">
                                     <div className="flex justify-between items-center text-sm">
@@ -607,15 +583,12 @@ export default function SellPage() {
                 </Tabs>
             </div>
             
-            {user && (
-                <CustomerDialog 
-                    isOpen={isCustomerDialogOpen} 
-                    onOpenChange={setIsCustomerDialogOpen} 
-                    customer={null} 
-                    userId={user.uid}
-                    onCustomerAdded={(newCustomer) => handleSetCustomer(newCustomer.id)}
-                />
-            )}
+            <CustomerDialog 
+                isOpen={isCustomerDialogOpen} 
+                onOpenChange={setIsCustomerDialogOpen} 
+                customer={null} 
+                onCustomerAdded={(newCustomer) => handleSetCustomer(newCustomer.id)}
+            />
             
             <PaymentDialog 
                 isOpen={isPaymentDialogOpen}
@@ -626,11 +599,3 @@ export default function SellPage() {
         </div>
     );
 }
-
-
-    
-
-    
-
-
-    

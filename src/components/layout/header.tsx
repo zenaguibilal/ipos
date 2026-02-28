@@ -1,14 +1,10 @@
-
 'use client';
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
-  LogOut,
   User as UserIcon,
-  History,
   Settings,
-  Bell,
   Info,
   Undo2,
   BarChart3,
@@ -18,6 +14,8 @@ import {
   Store,
   ListChecks,
   ShoppingCart,
+  History,
+  Bell
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -27,7 +25,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useAuth, useUser } from '@/firebase';
 import { Clock } from '@/components/layout/clock';
 import { ThemeToggle } from './theme-toggle';
 import {
@@ -36,7 +33,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { cn } from '@/lib/utils';
 import { AnimatedLogo } from './animated-logo';
 
 
@@ -53,17 +49,8 @@ const navLinks = [
 ];
 
 export function AppHeader() {
-  const { user } = useUser();
-  const auth = useAuth();
   const router = useRouter();
   const pathname = usePathname();
-
-  const handleSignOut = () => {
-    if (auth) {
-      auth.signOut();
-      router.push('/login');
-    }
-  };
 
   return (
     <header className="flex h-14 shrink-0 items-center gap-4 border-b bg-background px-4 sm:px-6 print-hide sticky top-0 z-10">
@@ -76,12 +63,10 @@ export function AppHeader() {
                   <span className="text-2xl">🏪</span>
                   <AnimatedLogo />
               </Link>
-              <span className="text-xs text-muted-foreground hidden lg:inline">Développé par zenagui bilal</span>
+              <span className="text-xs text-muted-foreground hidden lg:inline">100% Hors ligne</span>
           </div>
       </div>
 
-
-        {/* Central Navigation */}
         <div className="flex-1 flex justify-center">
             <TooltipProvider>
                 <nav className="hidden md:flex items-center gap-1 rounded-full border bg-card p-1">
@@ -122,17 +107,13 @@ export function AppHeader() {
                     </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                    {user && (
-                        <>
-                            <DropdownMenuItem disabled>
-                                <div className="flex flex-col">
-                                <span className="text-sm font-medium">{user.displayName || 'Utilisateur'}</span>
-                                <span className="text-xs text-muted-foreground">{user.email}</span>
-                                </div>
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                        </>
-                    )}
+                    <DropdownMenuItem disabled>
+                        <div className="flex flex-col">
+                        <span className="text-sm font-medium">Utilisateur Local</span>
+                        <span className="text-xs text-muted-foreground">Mode hors ligne</span>
+                        </div>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={() => router.push('/profile')}>
                     <Settings className="mr-2 h-4 w-4" />
                     <span>Profil & Paramètres</span>
@@ -140,11 +121,6 @@ export function AppHeader() {
                     <DropdownMenuItem onClick={() => router.push('/about')}>
                         <Info className="mr-2 h-4 w-4" />
                         <span>À propos</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive-foreground focus:bg-destructive">
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Se déconnecter
                     </DropdownMenuItem>
                 </DropdownMenuContent>
                 </DropdownMenu>

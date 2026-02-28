@@ -1,8 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useFirestore, setDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
-import { collection, serverTimestamp, doc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -11,12 +9,12 @@ import { toast } from 'sonner';
 import type { Product } from '@/lib/types';
 import { Loader2, X } from 'lucide-react';
 import { Badge } from '../ui/badge';
+import { useData } from '@/hooks/useData';
 
 interface ProductDialogProps {
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
     product: Product | null;
-    userId: string;
 }
 
 const initialFormState = {
@@ -30,8 +28,8 @@ const initialFormState = {
     imageUrl: '',
 };
 
-export function ProductDialog({ isOpen, onOpenChange, product, userId }: ProductDialogProps) {
-    const firestore = useFirestore();
+export function ProductDialog({ isOpen, onOpenChange, product }: ProductDialogProps) {
+    const dataService = useData();
     const [formState, setFormState] = useState(initialFormState);
     const [currentBarcode, setCurrentBarcode] = useState('');
     const [error, setError] = useState<string | null>(null);
@@ -94,32 +92,28 @@ export function ProductDialog({ isOpen, onOpenChange, product, userId }: Product
             return;
         }
 
-        if (!firestore) {
-            setError("Service de base de données non disponible.");
-            setIsLoading(false);
-            return;
-        }
-
-        const productData = {
-            name,
-            category,
-            price: priceNum,
-            purchasePrice: purchasePriceNum,
-            quantity: quantityNum,
-            minStockLevel: minStockNum,
-            barcodes,
-            imageUrl,
-            createdAt: product?.createdAt || serverTimestamp(),
-        };
-
         try {
-            if (product) { // Editing existing product
-                const productRef = doc(firestore, 'users', userId, 'products', product.id);
-                setDocumentNonBlocking(productRef, productData, { merge: true });
+            if (product) {
+                dataService.updateDoc('products', {
+                    ...product,
+                    ...formState,
+                    price: priceNum,
+                    purchasePrice: purchasePriceNum,
+                    quantity: quantityNum,
+                    minStockLevel: minStockNum,
+                });
                 toast.success(`Produit ${name} mis à jour.`);
-            } else { // Adding new product
-                const productsCollectionRef = collection(firestore, 'users', userId, 'products');
-                await addDocumentNonBlocking(productsCollectionRef, productData);
+            } else {
+                dataService.addDoc('products', {
+                    name,
+                    category,
+                    price: priceNum,
+                    purchasePrice: purchasePriceNum,
+                    quantity: quantityNum,
+                    minStockLevel: minStockNum,
+                    barcodes,
+                    imageUrl,
+                });
                 toast.success(`Produit ${name} ajouté.`);
             }
             onOpenChange(false);

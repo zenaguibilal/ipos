@@ -1,10 +1,7 @@
-
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { useRouter } from 'next/navigation';
-import { collection, query, orderBy } from 'firebase/firestore';
+import React, { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { useData } from '@/hooks/useData';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { DateRangePicker } from '@/components/dashboard/date-range-picker';
@@ -214,10 +211,11 @@ function calculateDashboardMetrics(
 
 
 export default function DashboardPage() {
-    const { user, isUserLoading } = useUser();
-    const firestore = useFirestore();
-    const router = useRouter();
+    const dataService = useData();
+    const dbState = useSyncExternalStore(dataService.subscribe, dataService.getSnapshot);
 
+    const { sales, returns, products, customers } = dbState;
+    
     const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
         if (typeof window === 'undefined') {
             return { from: startOfDay(subDays(new Date(), 6)), to: endOfDay(new Date()) };
@@ -243,36 +241,6 @@ export default function DashboardPage() {
         }
     }, [dateRange]);
 
-    // --- Data Fetching ---
-    const salesQuery = useMemoFirebase(() => 
-        (user && firestore) ? query(collection(firestore, 'users', user.uid, 'sales'), orderBy('createdAt', 'desc')) : null, 
-    [user, firestore]);
-    
-    const returnsQuery = useMemoFirebase(() => 
-        (user && firestore) ? query(collection(firestore, 'users', user.uid, 'returns'), orderBy('createdAt', 'desc')) : null, 
-    [user, firestore]);
-
-    const productsQuery = useMemoFirebase(() => 
-        (user && firestore) ? query(collection(firestore, 'users', user.uid, 'products')) : null, 
-    [user, firestore]);
-
-    const customersQuery = useMemoFirebase(() => 
-        (user && firestore) ? query(collection(firestore, 'users', user.uid, 'customers')) : null, 
-    [user, firestore]);
-
-    const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
-    const { data: returns, isLoading: isLoadingReturns } = useCollection<ProductReturn>(returnsQuery);
-    const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
-    const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersQuery);
-
-
-    useEffect(() => {
-        if (!isUserLoading && !user) {
-            router.push('/login');
-        }
-    }, [user, isUserLoading, router]);
-    
-    // Memoize calculations that don't depend on the date range
     const inventoryValue = useMemo(() => {
         return products?.reduce((sum, p) => sum + ((p.purchasePrice || 0) * (p.quantity || 0)), 0) || 0;
     }, [products]);
@@ -294,12 +262,6 @@ export default function DashboardPage() {
     } = useMemo(() => {
         return calculateDashboardMetrics(sales, returns, dateRange);
     }, [sales, returns, dateRange]);
-
-    const isLoading = isUserLoading || isLoadingSales || isLoadingReturns || isLoadingProducts || isLoadingCustomers;
-
-    if (isLoading || !user) {
-        return <div className="flex h-full items-center justify-center"><p>Chargement du tableau de bord...</p></div>;
-    }
     
     const formatCurrency = (value: number) => `${value.toFixed(1)} DA`;
 

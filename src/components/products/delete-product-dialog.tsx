@@ -1,8 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useFirestore, deleteDocumentNonBlocking } from '@/firebase';
-import { doc } from 'firebase/firestore';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,36 +16,32 @@ import { cn } from "@/lib/utils";
 import { toast } from 'sonner';
 import type { Product } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
+import { useData } from '@/hooks/useData';
 
 interface DeleteProductDialogProps {
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
     product: Product | null;
-    userId: string;
 }
 
-export function DeleteProductDialog({ isOpen, onOpenChange, product, userId }: DeleteProductDialogProps) {
-    const firestore = useFirestore();
+export function DeleteProductDialog({ isOpen, onOpenChange, product }: DeleteProductDialogProps) {
+    const dataService = useData();
     const [isDeleting, setIsDeleting] = useState(false);
 
     const handleDelete = async () => {
-        if (!product || !firestore) return;
+        if (!product) return;
         setIsDeleting(true);
 
-        const docRef = doc(firestore, 'users', userId, 'products', product.id);
-
-        deleteDocumentNonBlocking(docRef, {
-            onSuccess: () => {
-                toast.success(`Produit "${product.name}" supprimé.`);
-                onOpenChange(false);
-                setIsDeleting(false);
-            },
-            onError: (error) => {
-                console.error("Failed to delete product:", error);
-                toast.error("Échec de la suppression du produit.");
-                setIsDeleting(false);
-            }
-        });
+        try {
+            dataService.deleteDoc('products', product.id);
+            toast.success(`Produit "${product.name}" supprimé.`);
+            onOpenChange(false);
+        } catch (error) {
+            console.error("Failed to delete product:", error);
+            toast.error("Échec de la suppression du produit.");
+        } finally {
+            setIsDeleting(false);
+        }
     };
 
     return (

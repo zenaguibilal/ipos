@@ -1,22 +1,23 @@
-# iPOS - Point de Vente Intelligent
+# iPOS - Offline-First Point of Sale
 
-**iPOS** est un système de point de vente (POS) progressif et moderne, conçu pour la gestion agile des petits commerces. Développé avec Next.js et Firebase, il offre une expérience utilisateur rapide, réactive et fonctionnelle même hors ligne. L'application centralise les opérations critiques de vente, de gestion des stocks, et de suivi client en une seule interface intuitive.
+**iPOS** is a modern, progressive Point of Sale (POS) system designed for agile management of small businesses. This version has been refactored to be a **fully offline-first** application, relying entirely on the browser's Local Storage for data persistence.
 
-## Fonctionnalités Clés
+It offers a fast, responsive, and functional user experience that works without any internet connection. The application centralizes critical sales, inventory management, and customer tracking operations into a single intuitive interface.
 
-- **Gestion des Ventes :** Interface de caisse rapide avec gestion multi-paniers, recherche de produits, support pour scanner les codes-barres, et finalisation des transactions avec suivi des paiements (total, partiel, impayé).
-- **Gestion d'Inventaire :** Suivi en temps réel des quantités de produits, gestion des prix d'achat/vente, et alertes automatiques pour les stocks faibles afin d'éviter les ruptures.
-- **Suivi des Clients et des Dettes :** Base de données clients avec historique des achats et un système de gestion de crédit qui calcule automatiquement les soldes impayés, simplifiant le suivi et le règlement des dettes.
-- **Réception de Stock :** Module dédié à l'enregistrement des livraisons fournisseurs, mettant à jour l'inventaire et les prix d'achat de manière centralisée.
-- **Tableau de Bord Analytique :** Fournit des indicateurs de performance clés (chiffre d'affaires, bénéfice net, valeur du stock) et des visualisations pour identifier les produits et clients les plus rentables.
-- **Modules Spécialisés :** Inclut un système de gestion pour les commandes récurrentes (ex: commandes de pain quotidiennes), adaptable à des besoins spécifiques.
-- **Centre de Notifications :** Un système d'alertes proactif qui signale les stocks bas et les retards de paiement des clients, avec des actions rapides comme l'envoi de rappels.
+**This is a local, offline-only application. All data is stored exclusively in your browser. There is no cloud synchronization or user account.**
 
-iPOS est donc une solution complète qui vise à optimiser la productivité, à minimiser les erreurs et à fournir des données précieuses pour prendre des décisions commerciales éclairées.
+## Key Features
 
-## Technologies Utilisées
+- **Sales Management:** Fast checkout interface with multi-cart management, product search, and transaction finalization.
+- **Inventory Management:** Real-time tracking of product quantities, purchase/sale price management, and low stock alerts.
+- **Customer & Debt Tracking:** Customer database with purchase history and a credit management system that automatically calculates outstanding balances.
+- **Stock Intake:** Module for recording supplier deliveries, updating inventory, and purchase prices.
+- **Analytical Dashboard:** Provides key performance indicators (revenue, net profit, stock value) and visualizations.
+- **Backup & Restore:** You can download a full backup of your application data as a JSON file and restore it later.
 
-- **Framework :** Next.js (React)
-- **Base de données & Authentification :** Firebase (Firestore, Auth)
-- **Style :** Tailwind CSS & ShadCN UI
-- **PWA :** Conçu pour une installation sur bureau et mobile et une utilisation hors ligne.
+## Technologies Used
+
+- **Framework:** Next.js (React)
+- **Data Storage:** Browser's Local Storage
+- **Styling:** Tailwind CSS & ShadCN UI
+- **PWA:** Designed for desktop and mobile installation and offline use.

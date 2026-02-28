@@ -1,7 +1,3 @@
-
-
-import { Timestamp } from "firebase/firestore";
-
 export interface Product {
     id: string;
     name: string;
@@ -12,7 +8,7 @@ export interface Product {
     minStockLevel: number;
     barcodes?: string[];
     imageUrl?: string;
-    createdAt: Timestamp | Date;
+    createdAt: string; // ISO 8601 date string
 }
 
 export interface Customer {
@@ -21,7 +17,7 @@ export interface Customer {
     lastName: string;
     phone?: string;
     settlementDay?: number;
-    createdAt: Timestamp;
+    createdAt: string; // ISO 8601 date string
 }
 
 export interface SaleItem {
@@ -70,7 +66,7 @@ export interface Sale {
     payments: SalePayment[];
     customerId?: string;
     customerName?: string;
-    createdAt: Timestamp | Date;
+    createdAt: string; // ISO 8601 date string
     breadOrderDate?: string;
 }
 
@@ -79,7 +75,7 @@ export interface Payment {
     customerId: string;
     customerName?: string;
     amount: number;
-    createdAt: Timestamp;
+    createdAt: string; // ISO 8601 date string
 }
 
 export interface CustomerWithSalesData extends Customer {
@@ -136,7 +132,7 @@ export interface PurchaseOrder {
     items: PurchaseOrderItem[];
     totalValue: number;
     status: 'pending' | 'received';
-    createdAt: Timestamp;
+    createdAt: string; // ISO 8601 date string
 }
 
 export interface StockIntakeItem {
@@ -155,7 +151,7 @@ export interface StockIntake {
     id: string;
     supplier: string;
     invoiceNumber: string;
-    invoiceDate: Timestamp | Date;
+    invoiceDate: string; // ISO 8601 date string
     items: {
         productId?: string;
         productName: string;
@@ -163,7 +159,7 @@ export interface StockIntake {
         purchasePrice: number;
     }[];
     totalValue: number;
-    createdAt: Timestamp | Date;
+    createdAt: string; // ISO 8601 date string
 }
 
 export interface InventoryValueData {
@@ -189,7 +185,7 @@ export interface ProductReturn {
     amountRefunded: number;
     customerId?: string;
     customerName?: string;
-    createdAt: Timestamp | Date;
+    createdAt: string; // ISO 8601 date string
     notes?: string;
 }
 
@@ -198,7 +194,7 @@ export interface BreadCustomer {
     name: string;
     isActive: boolean;
     defaultOrderQuantity: number;
-    createdAt: Timestamp;
+    createdAt: string; // ISO 8601 date string
 }
 
 // Represents the order information for a customer on a given day
@@ -223,7 +219,7 @@ export interface DailyBreadOrder {
     customerName: string;
     quantity: number;
     date: string; // YYYY-MM-DD
-    createdAt: Timestamp;
+    createdAt: string; // ISO 8601 date string
     saleId?: string;
     isPaid: boolean;
     isDelivered: boolean;
