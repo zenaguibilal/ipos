@@ -8,7 +8,7 @@ import { dataService } from '@/services/data-service';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
-import { Search, Plus, Minus, Trash2, X, PlusCircle, UserPlus, Percent, ShoppingBasket, MoreHorizontal } from 'lucide-react';
+import { Search, Plus, Minus, Trash2, X, PlusCircle, UserPlus, Percent, ShoppingBasket, MoreHorizontal, Loader2 } from 'lucide-react';
 import type { Product, Customer, Cart, CartItem, SaleItem, SalePayment } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { useCarts } from '@/hooks/useCarts';
@@ -116,8 +116,8 @@ const CartItemCard = ({ item, onUpdateQuantity, onRemoveItem }: { item: CartItem
 
 
 export default function SellPage() {
-    const products = useLiveQuery(() => db.products.orderBy('name').toArray(), []);
-    const customers = useLiveQuery(() => db.customers.orderBy('lastName').toArray(), []);
+    const products = useLiveQuery(() => db.products.orderBy('name').toArray());
+    const customers = useLiveQuery(() => db.customers.orderBy('lastName').toArray());
     const { carts, activeCartId, addCart, removeCart, setActiveCartId, updateCart, clearCart } = useCarts();
 
     // Component State
@@ -149,7 +149,7 @@ export default function SellPage() {
     }, [searchQuery]);
 
     // Derived State
-    const activeCart = useMemo(() => carts.find(c => c.id === activeCartId), [carts, activeCartId]);
+    const activeCart = useMemo(() => carts?.find(c => c.id === activeCartId), [carts, activeCartId]);
 
     const { categories, visibleCategories, hiddenCategories } = useMemo(() => {
         if (!products) return { categories: ['all'], visibleCategories: ['all'], hiddenCategories: [] };
@@ -399,6 +399,16 @@ export default function SellPage() {
         return [{ value: 'walk-in', label: 'Vente au comptoir', subLabel: 'Client par défaut' }, ...options];
     }, [customers]);
 
+    const isLoading = products === undefined || customers === undefined || carts === undefined;
+
+    if (isLoading) {
+         return (
+            <div className="h-full max-h-[calc(100vh-3.5rem)] flex items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <p className="ml-4">Chargement de la caisse...</p>
+            </div>
+        )
+    }
 
     return (
         <div className="h-full max-h-[calc(100vh-3.5rem)] grid grid-cols-1 lg:grid-cols-5 overflow-hidden">
@@ -469,10 +479,10 @@ export default function SellPage() {
                     </div>
                 </div>
                 <div className="flex-grow overflow-y-auto p-4">
-                    {!products ? (
-                         <div className="text-center py-16 text-muted-foreground">Chargement des produits...</div>
-                    ) : products.length === 0 ? (
-                         <div className="text-center py-16 text-muted-foreground">Aucun produit trouvé. Commencez par en ajouter depuis la page Produits.</div>
+                    {filteredProducts.length === 0 ? (
+                         <div className="text-center py-16 text-muted-foreground">
+                            {products && products.length > 0 ? "Aucun produit ne correspond à vos filtres." : "Aucun produit trouvé. Commencez par en ajouter depuis la page Produits."}
+                        </div>
                     ) : (
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-6 gap-4">
                             {filteredProducts.map(p => <SellProductCard key={p.id} product={p} onAddToCart={handleAddToCart} />)}
@@ -482,18 +492,18 @@ export default function SellPage() {
             </div>
 
             <div className="lg:col-span-2 xl:col-span-1 bg-card border-l flex flex-col h-full">
-                <Tabs value={activeCartId} onValueChange={setActiveCartId} className="flex-grow flex flex-col">
+                <Tabs value={activeCartId || ''} onValueChange={setActiveCartId} className="flex-grow flex flex-col">
                     <TabsList className="p-1 h-auto m-2">
-                         {carts.map(cart => (
+                         {(carts || []).map(cart => (
                             <TabsTrigger key={cart.id} value={cart.id} className="flex-1 relative group">
                                 {cart.name} ({cart.items.length})
-                                {carts.length > 1 && <X className="h-3 w-3 absolute top-1 right-1 text-muted-foreground opacity-0 group-hover:opacity-100" onClick={(e) => { e.stopPropagation(); removeCart(cart.id); }} />}
+                                {carts && carts.length > 1 && <X className="h-3 w-3 absolute top-1 right-1 text-muted-foreground opacity-0 group-hover:opacity-100" onClick={(e) => { e.stopPropagation(); removeCart(cart.id); }} />}
                             </TabsTrigger>
                         ))}
                         <Button variant="ghost" size="icon" className="h-full" onClick={addCart}><PlusCircle className="h-4 w-4"/></Button>
                     </TabsList>
                    
-                    {carts.map(cart => (
+                    {(carts || []).map(cart => (
                          <TabsContent key={cart.id} value={cart.id} className="flex-grow flex flex-col overflow-hidden m-0 mt-0">
                             <div className="px-4 pb-2 border-b">
                                 <Label>Client</Label>
