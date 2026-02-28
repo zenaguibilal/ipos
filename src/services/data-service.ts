@@ -302,7 +302,8 @@ class DataService {
   }
 
   async resetDatabase(): Promise<void> {
-    await Promise.all(db.tables.map(table => table.clear()));
+    const tablesToClear = db.tables.filter(t => t.name !== 'carts');
+    await Promise.all(tablesToClear.map(table => table.clear()));
     await db.companyProfile.add({ id: 1, companyName: "Mon Magasin", country: "France" } as CompanyProfile);
   }
 
@@ -320,10 +321,11 @@ class DataService {
 
   async importData(json: string): Promise<void> {
     const data = JSON.parse(json);
-    return db.transaction('rw', ...db.tables, async () => {
-      await Promise.all(db.tables.map(table => table.clear()));
+    const tablesToImport = db.tables.filter(t => t.name !== 'carts');
+    return db.transaction('rw', ...tablesToImport, async () => {
+      await Promise.all(tablesToImport.map(table => table.clear()));
       for (const tableName in data) {
-        if (db.table(tableName)) {
+        if (db.table(tableName) && tableName !== 'carts') {
           const tableData = data[tableName].map((item: any) => {
             // Convert ISO strings back to Date objects
             for(const key in item) {
@@ -331,8 +333,6 @@ class DataService {
                     item[key] = new Date(item[key]);
                 }
             }
-            // Remove primary key to let Dexie auto-generate it
-            delete item.id; 
             return item;
           });
           await db.table(tableName).bulkAdd(tableData);
