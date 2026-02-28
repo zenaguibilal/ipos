@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie';
-import type { Product, Customer, Sale, Payment, StockIntake, ProductReturn, CompanyProfile, BreadCustomer, DailyBreadOrder, Cart } from './types';
+import type { Product, Customer, Sale, Payment, StockIntake, ProductReturn, CompanyProfile, BreadCustomer, DailyBreadOrder, Cart, Expense } from './types';
 
 export class PosDatabase extends Dexie {
     products!: Table<Product, number>;
@@ -12,10 +12,11 @@ export class PosDatabase extends Dexie {
     breadCustomers!: Table<BreadCustomer, number>;
     dailyBreadOrders!: Table<DailyBreadOrder, number>;
     carts!: Table<Cart, string>;
+    expenses!: Table<Expense, number>;
 
     constructor() {
         super('posDB');
-        this.version(3).stores({
+        this.version(4).stores({
             products: '++id, name, *barcodes, category',
             customers: '++id, phone, *lastName, *firstName',
             sales: '++id, &invoiceNumber, customerId, createdAt, breadOrderDate',
@@ -25,7 +26,8 @@ export class PosDatabase extends Dexie {
             companyProfile: 'id', // Singleton table
             breadCustomers: '++id, &name',
             dailyBreadOrders: '++id, &[breadCustomerId+date], date',
-            carts: '&id, name'
+            carts: '&id, name',
+            expenses: '++id, category, expenseDate'
         });
 
         // Hooks pour ajouter/mettre à jour les timestamps

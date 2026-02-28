@@ -1,3 +1,4 @@
+
 export interface Product {
     id?: number;
     name: string;
@@ -176,6 +177,18 @@ export interface ProductReturn {
     createdAt?: Date;
     updatedAt?: Date;
     notes?: string;
+}
+
+export type ExpenseCategory = 'Loyer' | 'Salaires' | 'Fournisseurs' | 'Services Publics' | 'Marketing' | 'Maintenance' | 'Autre';
+
+export interface Expense {
+    id?: number;
+    description: string;
+    category: ExpenseCategory;
+    amount: number;
+    expenseDate: Date;
+    createdAt?: Date;
+    updatedAt?: Date;
 }
 
 export interface BreadCustomer {

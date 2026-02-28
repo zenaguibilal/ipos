@@ -9,9 +9,9 @@ import { DateRangePicker } from '@/components/dashboard/date-range-picker';
 import { DateRange } from 'react-day-picker';
 import { subDays, startOfDay, endOfDay, format, eachDayOfInterval, parse } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import type { Sale, ProductReturn, Product, Customer } from '@/lib/types';
+import type { Sale, ProductReturn, Product, Customer, Expense } from '@/lib/types';
 import { safeToDate } from '@/lib/utils';
-import { CircleDollarSign, TrendingUp, Undo2, ShoppingCart, Users, Package, Award, Archive } from 'lucide-react';
+import { CircleDollarSign, TrendingUp, Undo2, ShoppingCart, Users, Package, Award, Archive, Receipt, Banknote } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 // Colors for the Pie Chart
@@ -41,12 +41,15 @@ const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, per
 function calculateDashboardMetrics(
   sales: Sale[] | undefined,
   returns: ProductReturn[] | undefined,
+  expenses: Expense[] | undefined,
   dateRange: DateRange | undefined
 ) {
-    if (!sales || !returns) {
+    if (!sales || !returns || !expenses) {
       return {
           netRevenue: 0,
-          netProfit: 0,
+          netSalesProfit: 0,
+          totalExpenses: 0,
+          trueNetProfit: 0,
           profitMargin: 0,
           totalReturnsValue: 0,
           salesCount: 0,
@@ -70,6 +73,11 @@ function calculateDashboardMetrics(
         if (!r.createdAt) return false;
         const returnDate = safeToDate(r.createdAt);
         return (!fromDate || returnDate >= fromDate) && (!toDate || returnDate <= toDate);
+    });
+
+    const filteredExpenses = expenses.filter(e => {
+        const expenseDate = safeToDate(e.expenseDate);
+        return (!fromDate || expenseDate >= fromDate) && (!toDate || expenseDate <= toDate);
     });
 
     let grossRevenue = 0;
@@ -171,10 +179,13 @@ function calculateDashboardMetrics(
             }
         }
     }
+    
+    const totalExpenses = filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
 
     const finalNetRevenue = grossRevenue - returnsValue;
-    const finalNetProfit = grossProfit - lostProfitFromReturns;
-    const finalProfitMargin = finalNetRevenue > 0 ? (finalNetProfit / finalNetRevenue) * 100 : 0;
+    const finalNetSalesProfit = grossProfit - lostProfitFromReturns;
+    const finalTrueNetProfit = finalNetSalesProfit - totalExpenses;
+    const finalProfitMargin = finalNetRevenue > 0 ? (finalNetSalesProfit / finalNetRevenue) * 100 : 0;
     
     const finalChartData = Object.keys(dailyData).sort((a, b) => new Date(a).getTime() - new Date(b).getTime()).map(dateKey => ({
         date: format(parse(dateKey, 'yyyy-MM-dd', new Date()), 'd MMM', { locale: fr }),
@@ -198,7 +209,9 @@ function calculateDashboardMetrics(
 
     return {
         netRevenue: finalNetRevenue,
-        netProfit: finalNetProfit,
+        netSalesProfit: finalNetSalesProfit,
+        totalExpenses: totalExpenses,
+        trueNetProfit: finalTrueNetProfit,
         profitMargin: finalProfitMargin,
         totalReturnsValue: returnsValue,
         salesCount: filteredSales.length,
@@ -215,6 +228,7 @@ export default function DashboardPage() {
     const returns = useLiveQuery(() => db.returns.toArray());
     const products = useLiveQuery(() => db.products.toArray());
     const customers = useLiveQuery(() => db.customers.toArray());
+    const expenses = useLiveQuery(() => db.expenses.toArray());
     
     const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
         if (typeof window === 'undefined') {
@@ -251,7 +265,9 @@ export default function DashboardPage() {
 
     const {
         netRevenue,
-        netProfit,
+        netSalesProfit,
+        totalExpenses,
+        trueNetProfit,
         profitMargin,
         totalReturnsValue,
         salesCount,
@@ -260,8 +276,8 @@ export default function DashboardPage() {
         topProducts,
         topCustomers
     } = useMemo(() => {
-        return calculateDashboardMetrics(sales, returns, dateRange);
-    }, [sales, returns, dateRange]);
+        return calculateDashboardMetrics(sales, returns, expenses, dateRange);
+    }, [sales, returns, expenses, dateRange]);
     
     const formatCurrency = (value: number) => `${value.toFixed(1)} DA`;
 
@@ -277,7 +293,7 @@ export default function DashboardPage() {
                 <DateRangePicker date={dateRange} setDate={setDateRange} />
             </div>
 
-             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-6">
+             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Chiffre d'affaires Net</CardTitle>
@@ -290,54 +306,34 @@ export default function DashboardPage() {
                 </Card>
                  <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Bénéfice Net</CardTitle>
+                        <CardTitle className="text-sm font-medium">Bénéfice sur Ventes</CardTitle>
                         <TrendingUp className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-green-600">{formatCurrency(netProfit)}</div>
+                        <div className="text-2xl font-bold text-green-600">{formatCurrency(netSalesProfit)}</div>
                          <p className="text-xs text-muted-foreground">
-                            {netRevenue > 0 ? `Marge de ${profitMargin.toFixed(1)}% sur la période` : 'Bénéfice net estimé sur la période'}
+                            {netRevenue > 0 ? `Marge de ${profitMargin.toFixed(1)}% sur la période` : 'Bénéfice net des ventes'}
                          </p>
                     </CardContent>
                 </Card>
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Valeur du stock</CardTitle>
-                        <Archive className="h-4 w-4 text-muted-foreground" />
+                        <CardTitle className="text-sm font-medium">Total Dépenses</CardTitle>
+                        <Receipt className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{formatCurrency(inventoryValue)}</div>
-                        <p className="text-xs text-muted-foreground">Valeur d'achat de l'inventaire</p>
+                        <div className="text-2xl font-bold text-destructive">{formatCurrency(totalExpenses)}</div>
+                        <p className="text-xs text-muted-foreground">Charges sur la période sélectionnée</p>
                     </CardContent>
                 </Card>
-                <Card>
+                 <Card className="bg-primary/5">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Nombre de Ventes</CardTitle>
-                        <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+                        <CardTitle className="text-sm font-medium text-primary">Bénéfice Réel</CardTitle>
+                        <Banknote className="h-4 w-4 text-primary" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{salesCount}</div>
-                        <p className="text-xs text-muted-foreground">Transactions de vente</p>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Clients Totaux</CardTitle>
-                        <Users className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{totalCustomers}</div>
-                        <p className="text-xs text-muted-foreground">Nombre total de clients enregistrés</p>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Valeur des Retours</CardTitle>
-                        <Undo2 className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-destructive">{formatCurrency(totalReturnsValue)}</div>
-                        <p className="text-xs text-muted-foreground">Valeur des articles retournés</p>
+                        <div className="text-2xl font-bold text-primary">{formatCurrency(trueNetProfit)}</div>
+                        <p className="text-xs text-muted-foreground">Bénéfice sur ventes moins les dépenses</p>
                     </CardContent>
                 </Card>
             </div>
@@ -424,8 +420,8 @@ export default function DashboardPage() {
                     </CardContent>
                 </Card>
             </div>
-            <div className="grid gap-6 mt-6 md:grid-cols-2">
-                 <Card>
+            <div className="grid gap-6 mt-6 md:grid-cols-3">
+                <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2"><Package className="h-5 w-5 text-muted-foreground" /> Produits les plus rentables</CardTitle>
                         <CardDescription>Top 5 des produits par bénéfice net sur la période.</CardDescription>
@@ -514,6 +510,16 @@ export default function DashboardPage() {
                                 </BarChart>
                             </ResponsiveContainer>
                         )}
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Clients Totaux</CardTitle>
+                        <Users className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{totalCustomers}</div>
+                        <p className="text-xs text-muted-foreground">Nombre total de clients enregistrés</p>
                     </CardContent>
                 </Card>
             </div>
