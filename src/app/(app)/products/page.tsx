@@ -1,6 +1,8 @@
 'use client';
 
-import React, { useState, useMemo, useEffect, useSyncExternalStore } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '@/lib/database';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -14,11 +16,9 @@ import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ProductCard } from '@/components/products/product-card';
 import { ProductCardSkeleton } from '@/components/products/product-card-skeleton';
-import { useData } from '@/hooks/useData';
 
 export default function ProductsPage() {
-    const dataService = useData();
-    const { products } = useSyncExternalStore(dataService.subscribe, dataService.getSnapshot);
+    const products = useLiveQuery(() => db.products.toArray());
 
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -28,22 +28,13 @@ export default function ProductsPage() {
 
     useEffect(() => {
         const savedCategory = localStorage.getItem('products_category_filter');
-        if (savedCategory) {
-            setSelectedCategory(savedCategory);
-        }
+        if (savedCategory) setSelectedCategory(savedCategory);
         const savedSearch = localStorage.getItem('products_search_query');
-        if (savedSearch !== null) {
-            setSearchQuery(savedSearch);
-        }
+        if (savedSearch !== null) setSearchQuery(savedSearch);
     }, []);
 
-    useEffect(() => {
-        localStorage.setItem('products_category_filter', selectedCategory);
-    }, [selectedCategory]);
-
-    useEffect(() => {
-        localStorage.setItem('products_search_query', searchQuery);
-    }, [searchQuery]);
+    useEffect(() => { localStorage.setItem('products_category_filter', selectedCategory); }, [selectedCategory]);
+    useEffect(() => { localStorage.setItem('products_search_query', searchQuery); }, [searchQuery]);
 
     const handleAddClick = () => {
         setSelectedProduct(null);
@@ -56,38 +47,23 @@ export default function ProductsPage() {
     };
 
     const { 
-        categories, 
-        totalInventoryValue, 
-        lowStockCount, 
-        totalProducts, 
-        totalCategories 
+        categories, totalInventoryValue, lowStockCount, 
+        totalProducts, totalCategories 
     } = useMemo(() => {
         if (!products) {
-            return {
-                categories: ['all'],
-                totalInventoryValue: 0,
-                lowStockCount: 0,
-                totalProducts: 0,
-                totalCategories: 0,
-            };
+            return { categories: ['all'], totalInventoryValue: 0, lowStockCount: 0, totalProducts: 0, totalCategories: 0 };
         }
-
         let inventoryValue = 0;
         let lowStock = 0;
         const categorySet = new Set<string>();
 
         for (const p of products) {
             inventoryValue += (p.purchasePrice || 0) * p.quantity;
-            if (p.quantity <= p.minStockLevel) {
-                lowStock++;
-            }
-            if (p.category) {
-                categorySet.add(p.category);
-            }
+            if (p.quantity <= p.minStockLevel) lowStock++;
+            if (p.category) categorySet.add(p.category);
         }
         
-        const uniqueCategories = ['all', ...Array.from(categorySet)];
-
+        const uniqueCategories = ['all', ...Array.from(categorySet).sort()];
         return {
             categories: uniqueCategories,
             totalInventoryValue: inventoryValue,
@@ -99,33 +75,23 @@ export default function ProductsPage() {
 
     const filteredProducts = useMemo(() => {
         if (!products) return [];
-
         const lowercasedQuery = searchQuery.toLowerCase();
-
         return products.filter(p => {
             const categoryMatch = selectedCategory === 'all' || p.category === selectedCategory;
-            
-            const searchMatch = !searchQuery || 
-                                p.name.toLowerCase().includes(lowercasedQuery) ||
-                                p.barcodes?.some(b => b.includes(lowercasedQuery));
-            
+            const searchMatch = !searchQuery || p.name.toLowerCase().includes(lowercasedQuery) || p.barcodes?.some(b => b.includes(lowercasedQuery));
             return categoryMatch && searchMatch;
         });
     }, [products, searchQuery, selectedCategory]);
 
      const handleExport = () => {
-        if (filteredProducts.length === 0) {
+        if (!filteredProducts || filteredProducts.length === 0) {
             toast.info("Aucun produit à exporter.");
             return;
         }
-
         const dataToExport = filteredProducts.map(p => ({
-            'Nom': p.name,
-            'Catégorie': p.category || '',
-            'Prix Achat': p.purchasePrice,
-            'Prix Vente': p.price,
-            'Quantité': p.quantity,
-            'Stock Min': p.minStockLevel,
+            'Nom': p.name, 'Catégorie': p.category || '',
+            'Prix Achat': p.purchasePrice, 'Prix Vente': p.price,
+            'Quantité': p.quantity, 'Stock Min': p.minStockLevel,
             'Codes-barres': p.barcodes?.join(', ') || '',
         }));
 
@@ -140,18 +106,12 @@ export default function ProductsPage() {
         toast.success("Inventaire exporté avec succès.");
     };
 
+    const isLoading = products === undefined;
+
     return (
         <>
-            <ProductDialog
-                isOpen={isDialogOpen}
-                onOpenChange={setIsDialogOpen}
-                product={selectedProduct}
-            />
-            <DeleteProductDialog
-                isOpen={!!productToDelete}
-                onOpenChange={(isOpen) => !isOpen && setProductToDelete(null)}
-                product={productToDelete}
-            />
+            <ProductDialog isOpen={isDialogOpen} onOpenChange={setIsDialogOpen} product={selectedProduct} />
+            <DeleteProductDialog isOpen={!!productToDelete} onOpenChange={(isOpen) => !isOpen && setProductToDelete(null)} product={productToDelete} />
 
             <main className="flex-1 overflow-auto p-4 sm:p-6">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
@@ -161,61 +121,20 @@ export default function ProductsPage() {
                     </div>
                      <div className="flex items-center gap-2">
                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="outline">
-                                    Actions <ChevronDown className="ml-2 h-4 w-4" />
-                                </Button>
-                            </DropdownMenuTrigger>
+                            <DropdownMenuTrigger asChild><Button variant="outline">Actions <ChevronDown className="ml-2 h-4 w-4" /></Button></DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={handleExport}>
-                                    <Download className="mr-2 h-4 w-4" /> Exporter en CSV
-                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={handleExport}><Download className="mr-2 h-4 w-4" /> Exporter en CSV</DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
-                        <Button onClick={handleAddClick}>
-                            <PlusCircle className="mr-2 h-4 w-4" />
-                            Ajouter un produit
-                        </Button>
+                        <Button onClick={handleAddClick}><PlusCircle className="mr-2 h-4 w-4" />Ajouter un produit</Button>
                     </div>
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Produits Totaux</CardTitle>
-                            <Package className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{totalProducts}</div>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Valeur du Stock</CardTitle>
-                            <CircleDollarSign className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{totalInventoryValue.toFixed(1)} DA</div>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Stock Faible</CardTitle>
-                            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold text-destructive">{lowStockCount}</div>
-                        </CardContent>
-                    </Card>
-                     <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Catégories</CardTitle>
-                            <Layers className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{totalCategories}</div>
-                        </CardContent>
-                    </Card>
+                    <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Produits Totaux</CardTitle><Package className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{totalProducts}</div></CardContent></Card>
+                    <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Valeur du Stock</CardTitle><CircleDollarSign className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{totalInventoryValue.toFixed(1)} DA</div></CardContent></Card>
+                    <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Stock Faible</CardTitle><AlertTriangle className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold text-destructive">{lowStockCount}</div></CardContent></Card>
+                    <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Catégories</CardTitle><Layers className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{totalCategories}</div></CardContent></Card>
                 </div>
 
                 <Card>
@@ -223,29 +142,24 @@ export default function ProductsPage() {
                         <div className="flex flex-col sm:flex-row gap-4">
                             <div className="relative flex-grow">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                <Input
-                                    placeholder="Rechercher par nom ou code-barres..."
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="pl-9 w-full"
-                                />
+                                <Input placeholder="Rechercher par nom ou code-barres..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9 w-full" />
                             </div>
                             <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                                <SelectTrigger className="w-full sm:w-[200px]">
-                                    <SelectValue placeholder="Filtrer par catégorie" />
-                                </SelectTrigger>
+                                <SelectTrigger className="w-full sm:w-[200px]"><SelectValue placeholder="Filtrer par catégorie" /></SelectTrigger>
                                 <SelectContent>
                                     {categories.map(cat => (
-                                        <SelectItem key={cat} value={cat} className="capitalize">
-                                            {cat === 'all' ? 'Toutes les catégories' : cat}
-                                        </SelectItem>
+                                        <SelectItem key={cat} value={cat} className="capitalize">{cat === 'all' ? 'Toutes les catégories' : cat}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
                         </div>
                     </CardHeader>
                     <CardContent>
-                        {filteredProducts.length === 0 ? (
+                        {isLoading ? (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                                {Array.from({ length: 10 }).map((_, i) => <ProductCardSkeleton key={i} />)}
+                            </div>
+                        ) : filteredProducts.length === 0 ? (
                             <div className="flex h-40 items-center justify-center rounded-md border-2 border-dashed border-border bg-card">
                                 <p className="text-muted-foreground">
                                     {products && products.length > 0 ? "Aucun produit ne correspond à vos filtres." : "Aucun produit trouvé. Commencez par en ajouter un."}
@@ -254,12 +168,7 @@ export default function ProductsPage() {
                         ) : (
                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
                                 {filteredProducts.map((product) => (
-                                    <ProductCard 
-                                        key={product.id}
-                                        product={product}
-                                        onEdit={handleEditClick}
-                                        onDelete={setProductToDelete}
-                                    />
+                                    <ProductCard key={product.id} product={product} onEdit={handleEditClick} onDelete={setProductToDelete} />
                                 ))}
                             </div>
                         )}

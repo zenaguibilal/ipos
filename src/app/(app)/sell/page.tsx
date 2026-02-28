@@ -1,19 +1,22 @@
 'use client';
 
-import React, { useState, useMemo, useEffect, useCallback, useSyncExternalStore } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '@/lib/database';
+import { dataService } from '@/services/data-service';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Search, Plus, Minus, Trash2, X, PlusCircle, UserPlus, Percent, ShoppingBasket, MoreHorizontal } from 'lucide-react';
 import type { Product, Customer, Cart, CartItem, SaleItem, SalePayment } from '@/lib/types';
-import { cn, safeToDate } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import { useCarts } from '@/hooks/useCarts';
 import { useSellHotkeys } from '@/hooks/useSellHotkeys';
 import { toast } from 'sonner';
 import { Combobox } from '@/components/ui/combobox';
 import { CustomerDialog } from '@/components/customers/customer-dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PaymentDialog } from '@/components/sell/PaymentDialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Label } from '@/components/ui/label';
@@ -21,8 +24,6 @@ import { v4 as uuidv4 } from 'uuid';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import Image from 'next/image';
 import placeholderImages from '@/lib/placeholder-images.json';
-import { useData } from '@/hooks/useData';
-import { DB } from '@/services/initial-data';
 
 
 type Placeholder = { url: string; width: number; height: number; hint: string };
@@ -79,7 +80,7 @@ const SellProductCard = ({ product, onAddToCart }: { product: Product, onAddToCa
     );
 };
 
-const CartItemCard = ({ item, onUpdateQuantity, onRemoveItem }: { item: CartItem, onUpdateQuantity: (itemId: string, newQuantity: number) => void, onRemoveItem: (itemId: string) => void }) => {
+const CartItemCard = ({ item, onUpdateQuantity, onRemoveItem }: { item: CartItem, onUpdateQuantity: (itemId: number | string, newQuantity: number) => void, onRemoveItem: (itemId: number | string) => void }) => {
     const placeholder = getPlaceholder(item.category);
     const imageUrl = item.imageUrl || placeholder.url;
 
@@ -115,12 +116,8 @@ const CartItemCard = ({ item, onUpdateQuantity, onRemoveItem }: { item: CartItem
 
 
 export default function SellPage() {
-    const dataService = useData();
-    const dbState = useSyncExternalStore(dataService.subscribe, dataService.getSnapshot);
-
-    const products = useMemo(() => [...dbState.products].sort((a,b) => a.name.localeCompare(b.name)), [dbState.products]);
-    const customers = useMemo(() => [...dbState.customers].sort((a,b) => a.lastName.localeCompare(b.lastName)), [dbState.customers]);
-
+    const products = useLiveQuery(() => db.products.orderBy('name').toArray(), []);
+    const customers = useLiveQuery(() => db.customers.orderBy('lastName').toArray(), []);
     const { carts, activeCartId, addCart, removeCart, setActiveCartId, updateCart, clearCart } = useCarts();
 
     // Component State
@@ -155,11 +152,12 @@ export default function SellPage() {
     const activeCart = useMemo(() => carts.find(c => c.id === activeCartId), [carts, activeCartId]);
 
     const { categories, visibleCategories, hiddenCategories } = useMemo(() => {
+        if (!products) return { categories: ['all'], visibleCategories: ['all'], hiddenCategories: [] };
         const allCats = products.reduce((acc, p) => {
             if (p.category) acc.add(p.category);
             return acc;
         }, new Set<string>());
-        const categoriesArray = ['all', ...Array.from(allCats)];
+        const categoriesArray = ['all', ...Array.from(allCats).sort()];
         const MAX_VISIBLE_CATEGORIES = 4;
         return {
             categories: categoriesArray,
@@ -169,6 +167,7 @@ export default function SellPage() {
     }, [products]);
 
     const filteredProducts = useMemo(() => {
+        if (!products) return [];
         return products.filter(p => {
             const matchesCategory = categoryFilter === 'all' || p.category === categoryFilter;
             const matchesSearch = searchQuery === '' || p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.barcodes?.some(b => b.includes(searchQuery));
@@ -203,6 +202,7 @@ export default function SellPage() {
 
     const handleAddToCart = useCallback((product: Product) => {
         if (!activeCart) return;
+        if (!product.id) return; // Should not happen with Dexie
 
         const existingItem = activeCart.items.find(item => item.id === product.id);
         const stockAvailable = existingItem ? product.quantity - existingItem.cartQuantity : product.quantity;
@@ -218,7 +218,8 @@ export default function SellPage() {
                 item.id === product.id ? { ...item, cartQuantity: item.cartQuantity + 1, flash: true } : { ...item, flash: false }
             );
         } else {
-            newItems = [...activeCart.items.map(i => ({...i, flash: false})), { ...product, cartQuantity: 1, flash: true }];
+            const productToAdd: CartItem = { ...product, id: product.id, cartQuantity: 1, flash: true };
+            newItems = [...activeCart.items.map(i => ({...i, flash: false})), productToAdd];
         }
         updateCart({ ...activeCart, items: newItems });
         toast.success(`${product.name} ajouté au panier.`);
@@ -266,9 +267,8 @@ export default function SellPage() {
             minStockLevel: 0,
             cartQuantity: 1,
             flash: true,
-            createdAt: new Date().toISOString(),
             category: 'Personnalisé',
-            imageUrl: placeholders['Personnalisé'].url
+            imageUrl: placeholders['Personnalisé'].url,
         };
     
         const newItems = [...activeCart.items.map(i => ({...i, flash: false})), customItem];
@@ -281,12 +281,10 @@ export default function SellPage() {
         setIsCustomProductPopoverOpen(false);
     };
 
-    const handleUpdateCartQuantity = useCallback((itemId: string, newQuantity: number) => {
-        if (!activeCart) return;
+    const handleUpdateCartQuantity = useCallback((itemId: number | string, newQuantity: number) => {
+        if (!activeCart || !products) return;
 
         const itemToUpdate = activeCart.items.find(i => i.id === itemId);
-        const productInStock = products.find(p => p.id === itemId);
-
         if (!itemToUpdate) return;
         
         if (newQuantity <= 0) {
@@ -295,10 +293,14 @@ export default function SellPage() {
             return;
         }
         
-        const stockLimit = productInStock ? productInStock.quantity : itemToUpdate.quantity;
-        if (newQuantity > stockLimit) {
-            toast.warning(`Stock limité à ${stockLimit} pour ${itemToUpdate.name}.`);
-            newQuantity = stockLimit;
+        // Find stock limit only if it's not a custom product
+        if (typeof itemId === 'number') {
+            const productInStock = products.find(p => p.id === itemId);
+            const stockLimit = productInStock ? productInStock.quantity : 0;
+            if (newQuantity > stockLimit) {
+                toast.warning(`Stock limité à ${stockLimit} pour ${itemToUpdate.name}.`);
+                newQuantity = stockLimit;
+            }
         }
 
         const newItems = activeCart.items.map(item =>
@@ -307,7 +309,7 @@ export default function SellPage() {
         updateCart({ ...activeCart, items: newItems });
     }, [activeCart, updateCart, products]);
 
-    const handleRemoveFromCart = useCallback((itemId: string) => {
+    const handleRemoveFromCart = useCallback((itemId: number | string) => {
         if (!activeCart) return;
         const newItems = activeCart.items.filter(i => i.id !== itemId);
         updateCart({ ...activeCart, items: newItems });
@@ -315,10 +317,18 @@ export default function SellPage() {
 
     const handleSetCustomer = useCallback((customerId: string | null) => {
         if (!activeCart) return;
-        const customer = customers?.find(c => c.id === customerId);
+        if (customerId === null) {
+            updateCart({
+                ...activeCart,
+                customerId: null,
+                customerName: 'Vente au comptoir'
+            });
+            return;
+        }
+        const customer = customers?.find(c => c.id === parseInt(customerId));
         updateCart({
             ...activeCart,
-            customerId: customerId,
+            customerId: customer?.id ?? null,
             customerName: customer ? `${customer.firstName} ${customer.lastName}` : 'Vente au comptoir'
         });
     }, [activeCart, customers, updateCart]);
@@ -352,42 +362,16 @@ export default function SellPage() {
         }));
 
         try {
-            dataService.runTransaction((db: DB) => {
-                for (const item of saleItems) {
-                    if (item.id.startsWith('custom-')) continue;
-                    
-                    const productIndex = db.products.findIndex(p => p.id === item.id);
-                    if (productIndex === -1) throw new Error(`Produit ${item.name} non trouvé.`);
-                    
-                    const product = db.products[productIndex];
-                    if (product.quantity < item.quantity) {
-                        throw new Error(`Stock insuffisant pour ${item.name}.`);
-                    }
-                    
-                    db.products[productIndex] = { ...product, quantity: product.quantity - item.quantity };
-                }
-
-                const newSale: Omit<Sale, 'id' | 'createdAt'> = {
-                    invoiceNumber: `INV-${Date.now()}`,
-                    items: saleItems,
-                    subtotal: subtotal,
-                    discountType: activeCart.discount.type,
-                    discountAmount: discountAmount,
-                    total: total,
-                    amountPaid: amountPaid,
-                    remainingBalance: total - amountPaid,
-                    paymentStatus: total - amountPaid <= 0.01 ? 'paid' : amountPaid > 0 ? 'partial' : 'unpaid',
-                    payments: payments,
-                    customerId: activeCart.customerId,
-                    customerName: activeCart.customerName,
-                };
-                
-                // dataService.addDoc will add id and createdAt
-                db.sales.push({
-                    ...newSale,
-                    id: uuidv4(),
-                    createdAt: new Date().toISOString(),
-                });
+            await dataService.finalizeSale({
+                items: saleItems,
+                subtotal,
+                discountType: activeCart.discount.type,
+                discountAmount,
+                total,
+                amountPaid,
+                payments,
+                customerId: activeCart.customerId ?? undefined,
+                customerName: activeCart.customerName,
             });
 
             toast.success("Vente enregistrée avec succès !");
@@ -406,11 +390,12 @@ export default function SellPage() {
     });
 
     const customerOptions = useMemo(() => {
-        const options = customers?.map(c => ({
-            value: c.id,
+        if (!customers) return [];
+        const options = customers.map(c => ({
+            value: String(c.id),
             label: `${c.firstName} ${c.lastName}`,
             subLabel: c.phone || undefined
-        })) || [];
+        }));
         return [{ value: 'walk-in', label: 'Vente au comptoir', subLabel: 'Client par défaut' }, ...options];
     }, [customers]);
 
@@ -423,6 +408,7 @@ export default function SellPage() {
                         <div className="relative flex-grow">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input 
+                                id="product-search-input"
                                 placeholder="Scanner ou rechercher un produit... (Enter)" 
                                 className="pl-9" 
                                 value={searchQuery} 
@@ -462,9 +448,9 @@ export default function SellPage() {
                             </PopoverContent>
                         </Popover>
                     </div>
-                     <div className="flex-shrink-0 flex gap-1 bg-muted p-1 rounded-lg">
+                     <div className="flex-shrink-0 flex gap-1 bg-muted p-1 rounded-lg overflow-x-auto">
                         {visibleCategories.map(cat => (
-                            <Button key={cat} size="sm" variant={categoryFilter === cat ? 'default' : 'ghost'} onClick={() => setCategoryFilter(cat)} className="capitalize">{cat === 'all' ? 'Tous' : cat}</Button>
+                            <Button key={cat} size="sm" variant={categoryFilter === cat ? 'default' : 'ghost'} onClick={() => setCategoryFilter(cat)} className="capitalize flex-shrink-0">{cat === 'all' ? 'Tous' : cat}</Button>
                         ))}
                         {hiddenCategories.length > 0 && (
                             <DropdownMenu>
@@ -483,7 +469,9 @@ export default function SellPage() {
                     </div>
                 </div>
                 <div className="flex-grow overflow-y-auto p-4">
-                    {products.length === 0 ? (
+                    {!products ? (
+                         <div className="text-center py-16 text-muted-foreground">Chargement des produits...</div>
+                    ) : products.length === 0 ? (
                          <div className="text-center py-16 text-muted-foreground">Aucun produit trouvé. Commencez par en ajouter depuis la page Produits.</div>
                     ) : (
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-6 gap-4">
@@ -511,8 +499,8 @@ export default function SellPage() {
                                 <Label>Client</Label>
                                 <div className="flex gap-2 mt-1">
                                     <Combobox
-                                        options={customerOptions}
-                                        value={cart.customerId || 'walk-in'}
+                                        options={customerOptions ?? []}
+                                        value={cart.customerId ? String(cart.customerId) : 'walk-in'}
                                         onSelect={(val) => handleSetCustomer(val === 'walk-in' ? null : val)}
                                         placeholder="Sélectionner un client"
                                         searchPlaceholder="Rechercher un client..."
@@ -541,7 +529,7 @@ export default function SellPage() {
                                 </div>
                             )}
 
-                             {activeCart && (
+                             {activeCart?.id === cart.id && (
                                 <div className="p-4 mt-auto border-t bg-secondary/30 space-y-3">
                                     <div className="flex justify-between items-center text-sm">
                                         <span className="text-muted-foreground">Sous-total</span>
@@ -587,7 +575,9 @@ export default function SellPage() {
                 isOpen={isCustomerDialogOpen} 
                 onOpenChange={setIsCustomerDialogOpen} 
                 customer={null} 
-                onCustomerAdded={(newCustomer) => handleSetCustomer(newCustomer.id)}
+                onCustomerAdded={(newCustomer) => {
+                    if (newCustomer.id) handleSetCustomer(String(newCustomer.id))
+                }}
             />
             
             <PaymentDialog 

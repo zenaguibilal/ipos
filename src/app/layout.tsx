@@ -4,7 +4,7 @@ import { Toaster } from '@/components/ui/sonner';
 import { ThemeProvider } from '@/components/layout/theme-provider';
 
 const APP_NAME = "iPOS";
-const APP_DEFAULT_TITLE = "iPOS - 100% Hors Ligne";
+const APP_DEFAULT_TITLE = "iPOS - Point de Vente 100% Hors Ligne";
 const APP_TITLE_TEMPLATE = "%s - iPOS";
 const APP_DESCRIPTION = "Votre solution de point de vente simple, efficace et 100% hors ligne.";
 

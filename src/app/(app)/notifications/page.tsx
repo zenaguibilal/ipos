@@ -1,10 +1,9 @@
-
 'use client';
 
-import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
-import { useRouter } from 'next/navigation';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '@/lib/database';
 import { useEffect, useMemo, useState } from 'react';
-import { collection, query, where, doc } from 'firebase/firestore';
+import { useRouter } from 'next/navigation';
 import type { Customer, Sale, Payment, CompanyProfile, CustomerWithSalesData } from '@/lib/types';
 import { getDate } from 'date-fns';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
@@ -13,9 +12,9 @@ import { HandCoins, ArrowRight, BellOff, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { AddPaymentForm } from '@/components/customers/add-payment-form';
+import { calculateAllCustomersMetrics } from '@/lib/utils';
 
 
-// Define the NotificationItem type locally
 export interface NotificationItem {
   id: string;
   type: 'payment';
@@ -23,37 +22,21 @@ export interface NotificationItem {
   messageLinkText: string;
   messageSuffix: string;
   linkHref: string;
-  relatedId: string; // customerId
+  relatedId: number; 
   actionText: string;
   action?: () => void;
   customerData?: CustomerWithSalesData;
 }
 
 export default function NotificationsPage() {
-    const { user, isUserLoading } = useUser();
-    const firestore = useFirestore();
     const router = useRouter();
-
     const [payingCustomer, setPayingCustomer] = useState<Customer | null>(null);
 
-    // --- Data Fetching ---
-    const customersCollectionRef = useMemoFirebase(() => (user && firestore) ? collection(firestore, 'users', user.uid, 'customers') : null, [user, firestore]);
-    const salesCollectionRef = useMemoFirebase(() => (user && firestore) ? collection(firestore, 'users', user.uid, 'sales') : null, [user, firestore]);
-    const paymentsCollectionRef = useMemoFirebase(() => (user && firestore) ? collection(firestore, 'users', user.uid, 'payments') : null, [user, firestore]);
-    const companyDocRef = useMemoFirebase(() => (user && firestore) ? doc(firestore, 'users', user.uid, 'companyProfile', 'main') : null, [user, firestore]);
-    
-    const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersCollectionRef);
-    const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesCollectionRef);
-    const { data: payments, isLoading: isLoadingPayments } = useCollection<Payment>(paymentsCollectionRef);
-    const { data: companyProfile, isLoading: isLoadingCompany } = useDoc<CompanyProfile>(companyDocRef);
-    
+    const customers = useLiveQuery(() => db.customers.toArray());
+    const sales = useLiveQuery(() => db.sales.toArray());
+    const payments = useLiveQuery(() => db.payments.toArray());
+    const companyProfile = useLiveQuery(() => db.companyProfile.get(1));
 
-    useEffect(() => {
-        if (!isUserLoading && !user) {
-            router.push('/login');
-        }
-    }, [user, isUserLoading, router]);
-    
     const handleWhatsAppReminder = (customer: CustomerWithSalesData) => {
         if (!customer.phone) {
             toast.error("Le numéro de téléphone de ce client n'est pas disponible.");
@@ -67,37 +50,15 @@ export default function NotificationsPage() {
         window.open(whatsappUrl, '_blank');
     };
 
-
     const { latePaymentNotifications } = useMemo(() => {
         if (!customers || !sales || !payments) {
             return { latePaymentNotifications: [] };
         }
+        
+        const { customersWithSalesData } = calculateAllCustomersMetrics(customers, sales, payments);
 
-        const today = new Date();
-        const currentDayOfMonth = getDate(today);
-
-        // Late Payment Notifications
-        const customerData: CustomerWithSalesData[] = customers.map(customer => {
-            const customerSales = sales.filter(s => s.customerId === customer.id);
-            const totalSpent = customerSales.reduce((acc, s) => acc + s.total, 0);
-            
-            const totalPaidFromSales = customerSales.reduce((acc, s) => acc + s.amountPaid, 0);
-            const totalStandalonePayments = payments.filter(p => p.customerId === customer.id).reduce((acc, p) => acc + p.amount, 0);
-            
-            const outstandingBalance = totalSpent - totalPaidFromSales - totalStandalonePayments;
-            const finalBalance = outstandingBalance < 0.01 ? 0 : outstandingBalance;
-
-            let isReminderDue = false;
-            if (customer.settlementDay && finalBalance > 0) {
-                if (currentDayOfMonth > customer.settlementDay) {
-                    isReminderDue = true;
-                }
-            }
-            return { ...customer, totalSpent, outstandingBalance: finalBalance, isReminderDue, lastActivityDate: null };
-        });
-
-        const paymentNotifications: NotificationItem[] = customerData
-            .filter(c => c.isReminderDue)
+        const paymentNotifications: NotificationItem[] = customersWithSalesData
+            .filter(c => c.isReminderDue && c.id)
             .map(c => ({
                 id: `payment-${c.id}`,
                 type: 'payment',
@@ -105,7 +66,7 @@ export default function NotificationsPage() {
                 messageLinkText: `${c.firstName} ${c.lastName}`,
                 messageSuffix: `. Solde: ${c.outstandingBalance.toFixed(2)} DA`,
                 linkHref: `/sales-history`,
-                relatedId: c.id,
+                relatedId: c.id!,
                 actionText: 'Encaisser',
                 action: () => setPayingCustomer(c as Customer),
                 customerData: c,
@@ -116,9 +77,9 @@ export default function NotificationsPage() {
         };
     }, [customers, sales, payments]);
 
-    const isLoading = isUserLoading || isLoadingCustomers || isLoadingSales || isLoadingPayments || isLoadingCompany;
+    const isLoading = customers === undefined || sales === undefined || payments === undefined || companyProfile === undefined;
 
-    if (isLoading || !user) {
+    if (isLoading) {
         return <div className="flex h-full items-center justify-center"><p>Chargement des notifications...</p></div>;
     }
 
@@ -130,55 +91,38 @@ export default function NotificationsPage() {
 
         return (
             <div className="space-y-4">
-                {notifications.map(notification => {
-
-                    return (
-                        <div 
-                            key={notification.id}
-                            className="flex items-center gap-4 rounded-lg border p-4"
-                        >
-                            <div className={cn("rounded-full p-2", iconBg)}>
-                                {icon}
-                            </div>
-                            <div className="flex-1">
-                                <p className="font-medium">
-                                    {notification.messagePrefix}
-                                    <span className="font-bold">{notification.messageLinkText}</span>
-                                    {notification.messageSuffix}
-                                </p>
-                            </div>
-                            
-                            <div className="flex items-center gap-2">
-                                {notification.type === 'payment' && notification.customerData?.phone && (
-                                    <Button variant="outline" size="sm" onClick={() => handleWhatsAppReminder(notification.customerData as CustomerWithSalesData)}>
-                                        <MessageSquare className="mr-2 h-4 w-4" />
-                                        Rappel
-                                    </Button>
-                                )}
-
-                                {notification.action && (
-                                    <Button variant="secondary" size="sm" onClick={notification.action}>
-                                        {notification.actionText}
-                                        <ArrowRight className="ml-2 h-4 w-4" />
-                                    </Button>
-                                )}
-                            </div>
+                {notifications.map(notification => (
+                    <div key={notification.id} className="flex items-center gap-4 rounded-lg border p-4">
+                        <div className={cn("rounded-full p-2", iconBg)}>{icon}</div>
+                        <div className="flex-1">
+                            <p className="font-medium">
+                                {notification.messagePrefix}
+                                <span className="font-bold">{notification.messageLinkText}</span>
+                                {notification.messageSuffix}
+                            </p>
                         </div>
-                    );
-                })}
+                        <div className="flex items-center gap-2">
+                            {notification.type === 'payment' && notification.customerData?.phone && (
+                                <Button variant="outline" size="sm" onClick={() => handleWhatsAppReminder(notification.customerData as CustomerWithSalesData)}>
+                                    <MessageSquare className="mr-2 h-4 w-4" /> Rappel
+                                </Button>
+                            )}
+                            {notification.action && (
+                                <Button variant="secondary" size="sm" onClick={notification.action}>
+                                    {notification.actionText} <ArrowRight className="ml-2 h-4 w-4" />
+                                </Button>
+                            )}
+                        </div>
+                    </div>
+                ))}
             </div>
         );
     };
 
     return (
         <>
-            {payingCustomer && user && (
-                <AddPaymentForm
-                    isOpen={!!payingCustomer}
-                    onOpenChange={() => setPayingCustomer(null)}
-                    userId={user.uid}
-                    customer={payingCustomer}
-                />
+            {payingCustomer && (
+                <AddPaymentForm isOpen={!!payingCustomer} onOpenChange={() => setPayingCustomer(null)} customer={payingCustomer} />
             )}
             <main className="flex-1 overflow-auto p-4 sm:p-6">
                 <div className="mb-6">

@@ -1,8 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useFirestore, setDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
-import { collection, serverTimestamp, doc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -10,12 +8,13 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import type { Customer } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
+import { dataService } from '@/services/data-service';
+import { db } from '@/lib/database';
 
 interface CustomerDialogProps {
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
     customer: Customer | null;
-    userId: string;
     onCustomerAdded?: (customer: Customer) => void;
 }
 
@@ -26,8 +25,7 @@ const initialFormState = {
     settlementDay: '',
 };
 
-export function CustomerDialog({ isOpen, onOpenChange, customer, userId, onCustomerAdded }: CustomerDialogProps) {
-    const firestore = useFirestore();
+export function CustomerDialog({ isOpen, onOpenChange, customer, onCustomerAdded }: CustomerDialogProps) {
     const [formState, setFormState] = useState(initialFormState);
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -59,33 +57,25 @@ export function CustomerDialog({ isOpen, onOpenChange, customer, userId, onCusto
             return;
         }
 
-        if (!firestore) {
-            setError("Service de base de données non disponible.");
-            setIsLoading(false);
-            return;
-        }
-        
-        const customerData = {
+        const customerData: Omit<Customer, 'id'> = {
             firstName,
             lastName,
             phone,
             settlementDay: settlementDay ? parseInt(settlementDay) : undefined,
-            createdAt: customer?.createdAt || serverTimestamp(),
+            createdAt: customer?.createdAt ?? new Date(),
+            updatedAt: new Date(),
         };
 
         try {
-            if (customer) { // Editing
-                const customerRef = doc(firestore, 'users', userId, 'customers', customer.id);
-                setDocumentNonBlocking(customerRef, customerData, { merge: true });
+            if (customer && customer.id) { // Editing
+                await dataService.update('customers', customer.id, customerData);
                 toast.success(`Client ${firstName} ${lastName} mis à jour.`);
             } else { // Adding
-                const customersCollectionRef = collection(firestore, 'users', userId, 'customers');
-                const newCustomerDocRef = doc(customersCollectionRef);
-                const newCustomerData = { ...customerData, id: newCustomerDocRef.id };
-                await setDocumentNonBlocking(newCustomerDocRef, newCustomerData, {});
+                const newId = await dataService.save('customers', customerData as Customer);
                 toast.success(`Client ${firstName} ${lastName} ajouté.`);
                 if (onCustomerAdded) {
-                    onCustomerAdded(newCustomerData as unknown as Customer);
+                    const newCustomer = await db.customers.get(newId);
+                    if(newCustomer) onCustomerAdded(newCustomer);
                 }
             }
             onOpenChange(false);

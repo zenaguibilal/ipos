@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import type { Product } from '@/lib/types';
 import { Loader2, X } from 'lucide-react';
 import { Badge } from '../ui/badge';
-import { useData } from '@/hooks/useData';
+import { dataService } from '@/services/data-service';
 
 interface ProductDialogProps {
     isOpen: boolean;
@@ -29,7 +29,6 @@ const initialFormState = {
 };
 
 export function ProductDialog({ isOpen, onOpenChange, product }: ProductDialogProps) {
-    const dataService = useData();
     const [formState, setFormState] = useState(initialFormState);
     const [currentBarcode, setCurrentBarcode] = useState('');
     const [error, setError] = useState<string | null>(null);
@@ -91,29 +90,24 @@ export function ProductDialog({ isOpen, onOpenChange, product }: ProductDialogPr
             setIsLoading(false);
             return;
         }
+        
+        const productData: Omit<Product, 'id'> = {
+            name,
+            category,
+            price: priceNum,
+            purchasePrice: purchasePriceNum,
+            quantity: quantityNum,
+            minStockLevel: minStockNum,
+            barcodes,
+            imageUrl,
+        };
 
         try {
-            if (product) {
-                dataService.updateDoc('products', {
-                    ...product,
-                    ...formState,
-                    price: priceNum,
-                    purchasePrice: purchasePriceNum,
-                    quantity: quantityNum,
-                    minStockLevel: minStockNum,
-                });
+            if (product && product.id) {
+                await dataService.update('products', product.id, productData);
                 toast.success(`Produit ${name} mis à jour.`);
             } else {
-                dataService.addDoc('products', {
-                    name,
-                    category,
-                    price: priceNum,
-                    purchasePrice: purchasePriceNum,
-                    quantity: quantityNum,
-                    minStockLevel: minStockNum,
-                    barcodes,
-                    imageUrl,
-                });
+                await dataService.save('products', productData);
                 toast.success(`Produit ${name} ajouté.`);
             }
             onOpenChange(false);

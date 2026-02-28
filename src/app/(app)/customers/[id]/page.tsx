@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
-import { useRouter, useParams } from 'next/navigation';
-import { doc, collection, query, where } from 'firebase/firestore';
+import React, { useState, useMemo } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '@/lib/database';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Timeline, TimelineItem, TimelineConnector, TimelineHeader, TimelineIcon, TimelineTitle, TimelineBody } from "@/components/ui/timeline";
@@ -25,33 +25,18 @@ import type { Transaction } from '@/hooks/use-customer-metrics';
 const SaleDetailsDialog = dynamic(() => import('@/components/sales/sale-details-dialog').then(mod => mod.SaleDetailsDialog));
 
 export default function CustomerDetailPage() {
-    const { user, isUserLoading } = useUser();
-    const firestore = useFirestore();
     const router = useRouter();
     const params = useParams();
-    const customerId = params.id as string;
+    const customerId = parseInt(params.id as string, 10);
 
-    // State for dialogs
     const [isEditOpen, setIsEditOpen] = useState(false);
     const [isPaymentOpen, setIsPaymentOpen] = useState(false);
     const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
 
-    // Data fetching
-    const customerRef = useMemoFirebase(() => (user && firestore && customerId) ? doc(firestore, 'users', user.uid, 'customers', customerId) : null, [user, firestore, customerId]);
-    const salesQuery = useMemoFirebase(() => (user && firestore && customerId) ? query(collection(firestore, 'users', user.uid, 'sales'), where('customerId', '==', customerId)) : null, [user, firestore, customerId]);
-    const paymentsQuery = useMemoFirebase(() => (user && firestore && customerId) ? query(collection(firestore, 'users', user.uid, 'payments'), where('customerId', '==', customerId)) : null, [user, firestore, customerId]);
-    const companyDocRef = useMemoFirebase(() => user && firestore ? doc(firestore, 'users', user.uid, 'companyProfile', 'main') : null, [user, firestore]);
-    
-    const { data: customer, isLoading: isLoadingCustomer } = useDoc<Customer>(customerRef);
-    const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
-    const { data: payments, isLoading: isLoadingPayments } = useCollection<Payment>(paymentsQuery);
-    const { data: companyProfile, isLoading: isLoadingCompany } = useDoc<CompanyProfile>(companyDocRef);
-
-    useEffect(() => {
-        if (!isUserLoading && !user) {
-            router.push('/login');
-        }
-    }, [user, isUserLoading, router]);
+    const customer = useLiveQuery(() => db.customers.get(customerId), [customerId]);
+    const sales = useLiveQuery(() => db.sales.where('customerId').equals(customerId).toArray(), [customerId]);
+    const payments = useLiveQuery(() => db.payments.where('customerId').equals(customerId).toArray(), [customerId]);
+    const companyProfile = useLiveQuery(() => db.companyProfile.get(1));
 
     const handleWhatsAppReminder = () => {
         if (!customer || !customer.phone) {
@@ -66,11 +51,11 @@ export default function CustomerDetailPage() {
         window.open(whatsappUrl, '_blank');
     };
 
-    const { totalSpent, outstandingBalance, combinedTransactions } = useCustomerMetrics(sales, payments);
+    const { totalSpent, outstandingBalance, combinedTransactions } = useCustomerMetrics(sales ?? null, payments ?? null);
 
-    const isLoading = isUserLoading || isLoadingCustomer || isLoadingSales || isLoadingPayments || isLoadingCompany;
+    const isLoading = customer === undefined || sales === undefined || payments === undefined || companyProfile === undefined;
 
-    if (isLoading || !user) {
+    if (isLoading) {
         return <div className="flex h-full items-center justify-center"><p>Chargement du profil client...</p></div>;
     }
 
@@ -90,20 +75,18 @@ export default function CustomerDetailPage() {
 
     return (
         <>
-            {customer && user && (
+            {customer && (
                  <CustomerDialog
                     isOpen={isEditOpen}
                     onOpenChange={setIsEditOpen}
                     customer={customer}
-                    userId={user.uid}
                 />
             )}
-             {customer && user && (
+             {customer && (
                 <AddPaymentForm
                     isOpen={isPaymentOpen}
                     onOpenChange={setIsPaymentOpen}
                     customer={customer}
-                    userId={user.uid}
                 />
             )}
             {selectedSale && (
@@ -126,7 +109,6 @@ export default function CustomerDetailPage() {
                 </div>
 
                 <div className="grid gap-6 lg:grid-cols-3">
-                    {/* Left Column: Customer Info & Stats */}
                     <div className="lg:col-span-1 flex flex-col gap-6">
                         <Card>
                             <CardHeader>
@@ -161,7 +143,7 @@ export default function CustomerDetailPage() {
                                 </div>
                                 <div className="flex justify-between items-center">
                                     <span className="text-muted-foreground">Client depuis</span>
-                                    <span className="font-semibold">{format(safeToDate(customer.createdAt), 'd MMM yyyy', { locale: fr })}</span>
+                                    <span className="font-semibold">{customer.createdAt ? format(safeToDate(customer.createdAt), 'd MMM yyyy', { locale: fr }) : 'N/A'}</span>
                                 </div>
                             </CardContent>
                              {outstandingBalance > 0 && customer.phone && (
@@ -175,7 +157,6 @@ export default function CustomerDetailPage() {
                         </Card>
                     </div>
 
-                    {/* Right Column: Transaction History */}
                     <div className="lg:col-span-2">
                         <Card>
                              <CardHeader>
@@ -192,9 +173,7 @@ export default function CustomerDetailPage() {
                                                     <TimelineItem key={`${tx.type}-${tx.data.id}`}>
                                                         {index < combinedTransactions.length - 1 && <TimelineConnector />}
                                                         <TimelineHeader>
-                                                            <TimelineIcon>
-                                                                <ShoppingCart className="h-5 w-5"/>
-                                                            </TimelineIcon>
+                                                            <TimelineIcon><ShoppingCart className="h-5 w-5"/></TimelineIcon>
                                                             <TimelineTitle>Vente</TimelineTitle>
                                                             <span className="text-xs text-muted-foreground ml-auto">
                                                                 {tx.data.createdAt ? format(safeToDate(tx.data.createdAt), 'd MMM yyyy, HH:mm', { locale: fr }) : ''}
@@ -232,9 +211,7 @@ export default function CustomerDetailPage() {
                                                     <TimelineItem key={`${tx.type}-${tx.data.id}`}>
                                                         {index < combinedTransactions.length - 1 && <TimelineConnector />}
                                                         <TimelineHeader>
-                                                            <TimelineIcon>
-                                                                <CreditCard className="h-5 w-5 text-green-500" />
-                                                            </TimelineIcon>
+                                                            <TimelineIcon><CreditCard className="h-5 w-5 text-green-500" /></TimelineIcon>
                                                             <TimelineTitle>Paiement</TimelineTitle>
                                                             <span className="text-xs text-muted-foreground ml-auto">
                                                                 {tx.data.createdAt ? format(safeToDate(tx.data.createdAt), 'd MMM yyyy, HH:mm', { locale: fr }) : ''}

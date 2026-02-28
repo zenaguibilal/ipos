@@ -1,9 +1,7 @@
-
 'use client';
 
 import { useState } from 'react';
-import { useFirestore, addDocumentNonBlocking } from '@/firebase';
-import { collection, serverTimestamp } from 'firebase/firestore';
+import { dataService } from '@/services/data-service';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -15,13 +13,11 @@ import { Loader2 } from 'lucide-react';
 interface AddPaymentFormProps {
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
-    userId: string;
     customer: Customer;
     onSuccess?: (amountPaid: number) => void;
 }
 
-export function AddPaymentForm({ isOpen, onOpenChange, userId, customer, onSuccess }: AddPaymentFormProps) {
-    const firestore = useFirestore();
+export function AddPaymentForm({ isOpen, onOpenChange, customer, onSuccess }: AddPaymentFormProps) {
     const [amount, setAmount] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -31,8 +27,12 @@ export function AddPaymentForm({ isOpen, onOpenChange, userId, customer, onSucce
         setError(null);
     };
 
-    const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
+        if (!customer.id) {
+             setError("ID client manquant.");
+             return;
+        }
         setError(null);
 
         const amountNumber = parseFloat(amount);
@@ -41,42 +41,28 @@ export function AddPaymentForm({ isOpen, onOpenChange, userId, customer, onSucce
             return;
         }
 
-        if (!firestore) {
-            setError("Le service de base de données n'est pas disponible.");
-            return;
-        }
-
         setIsLoading(true);
-        const paymentsCollectionRef = collection(firestore, 'users', userId, 'payments');
-        
-        addDocumentNonBlocking(paymentsCollectionRef, {
-            customerId: customer.id,
-            customerName: `${customer.firstName} ${customer.lastName}`,
-            amount: amountNumber,
-            createdAt: serverTimestamp(),
-        }, {
-            onSuccess: () => {
-                setIsLoading(false);
-                toast.success('Paiement enregistré avec succès.');
-                if (onSuccess) {
-                    onSuccess(amountNumber);
-                }
-                onOpenChange(false);
-                resetForm();
-            },
-            onError: (err) => {
-                setIsLoading(false);
-                setError("Une erreur est survenue lors de l'enregistrement du paiement.");
-                toast.error("Échec de l'enregistrement du paiement.");
-                console.error(err);
-            }
-        });
+        try {
+            await dataService.save('payments', {
+                customerId: customer.id,
+                customerName: `${customer.firstName} ${customer.lastName}`,
+                amount: amountNumber,
+            });
+            setIsLoading(false);
+            toast.success('Paiement enregistré avec succès.');
+            if (onSuccess) onSuccess(amountNumber);
+            onOpenChange(false);
+            resetForm();
+        } catch (err) {
+            setIsLoading(false);
+            setError("Une erreur est survenue lors de l'enregistrement du paiement.");
+            toast.error("Échec de l'enregistrement du paiement.");
+            console.error(err);
+        }
     };
     
     const handleOpenChange = (open: boolean) => {
-        if (!open) {
-            resetForm();
-        }
+        if (!open) resetForm();
         onOpenChange(open);
     };
 
@@ -86,24 +72,13 @@ export function AddPaymentForm({ isOpen, onOpenChange, userId, customer, onSucce
                 <form onSubmit={handleSubmit}>
                     <DialogHeader>
                         <DialogTitle>Encaisser un paiement</DialogTitle>
-                        <DialogDescription>
-                            Enregistrez un paiement pour {customer.firstName} {customer.lastName}. Ce montant sera déduit de son solde.
-                        </DialogDescription>
+                        <DialogDescription>Enregistrez un paiement pour {customer.firstName} {customer.lastName}. Ce montant sera déduit de son solde.</DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
                         {error && <p className="text-sm text-red-500 text-center">{error}</p>}
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="payment-amount" className="text-right">Montant (DA)</Label>
-                            <Input 
-                                id="payment-amount" 
-                                type="number" 
-                                value={amount} 
-                                onChange={(e) => setAmount(e.target.value)} 
-                                className="col-span-3"
-                                required 
-                                step="0.1"
-                                autoFocus
-                            />
+                            <Input id="payment-amount" type="number" value={amount} onChange={(e) => setAmount(e.target.value)} className="col-span-3" required step="0.1" autoFocus />
                         </div>
                     </div>
                     <DialogFooter>

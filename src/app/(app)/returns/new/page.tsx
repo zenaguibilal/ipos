@@ -1,10 +1,11 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { collection, doc, query, where, getDocs, runTransaction, serverTimestamp } from 'firebase/firestore';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '@/lib/database';
+import { dataService } from '@/services/data-service';
+
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -23,8 +24,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 type ReturnFormItem = SaleItem & { returnQuantity: number };
 
 export default function NewReturnPage() {
-    const { user, isUserLoading } = useUser();
-    const firestore = useFirestore();
     const router = useRouter();
     const searchParams = useSearchParams();
 
@@ -32,47 +31,38 @@ export default function NewReturnPage() {
     const [isSearching, setIsSearching] = useState(false);
     const [foundSale, setFoundSale] = useState<Sale | null>(null);
     const [itemsToReturn, setItemsToReturn] = useState<ReturnFormItem[]>([]);
-    const [itemsToRestock, setItemsToRestock] = useState<Record<string, boolean>>({});
+    const [itemsToRestock, setItemsToRestock] = useState<Record<string | number, boolean>>({});
     const [amountRefunded, setAmountRefunded] = useState('');
     const [notes, setNotes] = useState('');
     const [isSaving, setIsSaving] = useState(false);
 
-    const salesCollectionRef = useMemoFirebase(() => 
-        (user && firestore) ? collection(firestore, 'users', user.uid, 'sales') : null,
-    [user, firestore]);
-
     const searchForSale = useCallback(async (invoiceToSearch: string) => {
-        if (!invoiceToSearch.trim() || !salesCollectionRef) return;
+        if (!invoiceToSearch.trim()) return;
         
         setIsSearching(true);
         setFoundSale(null);
         setItemsToReturn([]);
         setItemsToRestock({});
 
-        const q = query(salesCollectionRef, where('invoiceNumber', '==', invoiceToSearch.trim()));
-        
         try {
-            const querySnapshot = await getDocs(q);
-            if (querySnapshot.empty) {
+            const sale = await db.sales.where('invoiceNumber').equals(invoiceToSearch.trim()).first();
+            if (!sale) {
                 toast.error(`Aucune vente trouvée avec le N° de facture: ${invoiceToSearch}`);
             } else {
-                const saleDoc = querySnapshot.docs[0];
-                const saleData = { ...saleDoc.data(), id: saleDoc.id } as Sale;
-                setFoundSale(saleData);
-                
-                const initialItems = saleData.items.map(item => ({ ...item, returnQuantity: 0 }));
+                setFoundSale(sale);
+                const initialItems = sale.items.map(item => ({ ...item, returnQuantity: 0 }));
                 setItemsToReturn(initialItems);
                 
-                const initialRestockState: Record<string, boolean> = {};
+                const initialRestockState: Record<string | number, boolean> = {};
                 initialItems.forEach(item => {
-                    if (!item.id.startsWith('custom-')) {
+                    if (!String(item.id).startsWith('custom-')) {
                         initialRestockState[item.id] = true;
                     }
                 });
                 setItemsToRestock(initialRestockState);
                 
                 setAmountRefunded('0.0');
-                toast.success(`Vente ${saleData.invoiceNumber} trouvée.`);
+                toast.success(`Vente ${sale.invoiceNumber} trouvée.`);
             }
         } catch (error) {
             console.error("Error searching for sale:", error);
@@ -80,7 +70,7 @@ export default function NewReturnPage() {
         } finally {
             setIsSearching(false);
         }
-    }, [salesCollectionRef]);
+    }, []);
 
     const handleSearchSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -89,13 +79,13 @@ export default function NewReturnPage() {
 
     useEffect(() => {
         const invoiceFromQuery = searchParams.get('invoiceNumber');
-        if (invoiceFromQuery && salesCollectionRef) {
+        if (invoiceFromQuery) {
             setInvoiceSearch(invoiceFromQuery);
             searchForSale(invoiceFromQuery);
         }
-    }, [searchParams, searchForSale, salesCollectionRef]);
+    }, [searchParams, searchForSale]);
     
-    const handleQuantityChange = (itemId: string, quantity: string) => {
+    const handleQuantityChange = (itemId: string | number, quantity: string) => {
         const numQuantity = parseInt(quantity) || 0;
         setItemsToReturn(prevItems => prevItems.map(item => {
             if (item.id === itemId) {
@@ -108,13 +98,11 @@ export default function NewReturnPage() {
     };
 
     const totalReturnValue = useMemo(() => {
-        return itemsToReturn.reduce((total, item) => {
-            return total + (item.price * item.returnQuantity);
-        }, 0);
+        return itemsToReturn.reduce((total, item) => total + (item.price * item.returnQuantity), 0);
     }, [itemsToReturn]);
 
     const handleSaveReturn = async () => {
-        if (!foundSale || !user || !firestore) return;
+        if (!foundSale) return;
         
         const returnedItems = itemsToReturn.filter(item => item.returnQuantity > 0);
         if (returnedItems.length === 0) {
@@ -130,43 +118,19 @@ export default function NewReturnPage() {
 
         setIsSaving(true);
         try {
-            await runTransaction(firestore, async (transaction) => {
-                // 1. Update stock for restocked items
-                for (const item of returnedItems) {
-                    const shouldRestock = itemsToRestock[item.id];
-                    if (shouldRestock && !item.id.startsWith('custom-')) {
-                        const productRef = doc(firestore, 'users', user.uid, 'products', item.id);
-                        const productDoc = await transaction.get(productRef);
-                        if (productDoc.exists()) {
-                            const currentQuantity = productDoc.data().quantity;
-                            transaction.update(productRef, {
-                                quantity: currentQuantity + item.returnQuantity
-                            });
-                        }
-                    }
-                }
-
-                // 2. Create the return document
-                const newReturnRef = doc(collection(firestore, 'users', user.uid, 'returns'));
-                const returnData = {
-                    originalSaleId: foundSale.id,
-                    originalInvoiceNumber: foundSale.invoiceNumber,
-                    items: returnedItems.map(item => ({
-                        productId: item.id.startsWith('custom-') ? null : item.id,
-                        productName: item.name,
-                        quantity: item.returnQuantity,
-                        price: item.price,
-                        purchasePrice: item.purchasePrice,
-                        wasRestocked: itemsToRestock[item.id] ?? false
-                    })),
-                    totalReturnValue: totalReturnValue,
-                    amountRefunded: refundAmount,
-                    customerId: foundSale.customerId,
-                    customerName: foundSale.customerName,
-                    createdAt: serverTimestamp(),
-                    notes: notes,
-                };
-                transaction.set(newReturnRef, returnData);
+            await dataService.recordReturn({
+                foundSale,
+                returnedItems: returnedItems.map(item => ({
+                    productId: String(item.id).startsWith('custom-') ? null : Number(item.id),
+                    productName: item.name,
+                    quantity: item.returnQuantity,
+                    price: item.price,
+                    purchasePrice: item.purchasePrice,
+                    wasRestocked: itemsToRestock[item.id] ?? false
+                })),
+                totalReturnValue,
+                amountRefunded: refundAmount,
+                notes
             });
             
             toast.success("Le retour a été enregistré et le stock mis à jour.");
@@ -180,22 +144,13 @@ export default function NewReturnPage() {
         }
     };
 
-
-    if (isUserLoading || !user) {
-        return <div className="flex h-full items-center justify-center"><p>Chargement...</p></div>;
-    }
-
     return (
         <main className="flex-1 overflow-auto p-4 sm:p-6">
              <div className="mb-4">
                 <Button variant="outline" size="sm" asChild>
-                    <Link href="/returns">
-                        <ArrowLeft className="mr-2 h-4 w-4" />
-                        Retour à l'historique
-                    </Link>
+                    <Link href="/returns"><ArrowLeft className="mr-2 h-4 w-4" />Retour à l'historique</Link>
                 </Button>
             </div>
-
             <div className="grid gap-6">
                 <Card>
                     <CardHeader>
@@ -204,12 +159,7 @@ export default function NewReturnPage() {
                     </CardHeader>
                     <CardContent>
                          <form onSubmit={handleSearchSubmit} className="flex gap-2">
-                            <Input
-                                placeholder="Entrez le N° de facture (ex: INV-162...)"
-                                value={invoiceSearch}
-                                onChange={(e) => setInvoiceSearch(e.target.value)}
-                                className="max-w-sm"
-                            />
+                            <Input placeholder="Entrez le N° de facture (ex: INV-162...)" value={invoiceSearch} onChange={(e) => setInvoiceSearch(e.target.value)} className="max-w-sm" />
                             <Button type="submit" disabled={isSearching || !invoiceSearch}>
                                 {isSearching ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Search className="mr-2 h-4 w-4" />}
                                 Rechercher
@@ -223,7 +173,7 @@ export default function NewReturnPage() {
                         <CardHeader>
                             <CardTitle>Étape 2: Détails du retour</CardTitle>
                             <CardDescription>
-                                Vente trouvée pour le client <span className="font-semibold">{foundSale.customerName}</span>, effectuée le <span className="font-semibold">{format(safeToDate(foundSale.createdAt), 'd MMMM yyyy à HH:mm', { locale: fr })}</span>.
+                                Vente trouvée pour le client <span className="font-semibold">{foundSale.customerName}</span>, effectuée le <span className="font-semibold">{foundSale.createdAt ? format(safeToDate(foundSale.createdAt), 'd MMMM yyyy à HH:mm', { locale: fr }) : 'N/A'}</span>.
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-6">
@@ -231,15 +181,13 @@ export default function NewReturnPage() {
                                 <Label>Articles à retourner</Label>
                                 <div className="mt-2 rounded-md border">
                                     <Table>
-                                        <TableHeader>
-                                            <TableRow>
-                                                <TableHead>Produit</TableHead>
-                                                <TableHead className="text-center">Qté Achetée</TableHead>
-                                                <TableHead className="text-right">Prix Unitaire</TableHead>
-                                                <TableHead className="w-[150px] text-center">Qté à Retourner</TableHead>
-                                                <TableHead className="w-[120px] text-center">Remettre en stock ?</TableHead>
-                                            </TableRow>
-                                        </TableHeader>
+                                        <TableHeader><TableRow>
+                                            <TableHead>Produit</TableHead>
+                                            <TableHead className="text-center">Qté Achetée</TableHead>
+                                            <TableHead className="text-right">Prix Unitaire</TableHead>
+                                            <TableHead className="w-[150px] text-center">Qté à Retourner</TableHead>
+                                            <TableHead className="w-[120px] text-center">Remettre en stock ?</TableHead>
+                                        </TableRow></TableHeader>
                                         <TableBody>
                                             {itemsToReturn.map(item => (
                                                 <TableRow key={item.id}>
@@ -247,24 +195,11 @@ export default function NewReturnPage() {
                                                     <TableCell className="text-center">{item.quantity}</TableCell>
                                                     <TableCell className="text-right">{item.price.toFixed(1)} DA</TableCell>
                                                     <TableCell>
-                                                        <Input
-                                                            type="number"
-                                                            value={item.returnQuantity}
-                                                            onChange={(e) => handleQuantityChange(item.id, e.target.value)}
-                                                            className="h-8 text-center"
-                                                            min="0"
-                                                            max={item.quantity}
-                                                        />
+                                                        <Input type="number" value={item.returnQuantity} onChange={(e) => handleQuantityChange(item.id, e.target.value)} className="h-8 text-center" min="0" max={item.quantity} />
                                                     </TableCell>
                                                      <TableCell className="text-center">
-                                                        {!item.id.startsWith('custom-') && (
-                                                            <Checkbox
-                                                                checked={itemsToRestock[item.id] ?? false}
-                                                                onCheckedChange={(checked) => {
-                                                                    setItemsToRestock(prev => ({ ...prev, [item.id]: !!checked }))
-                                                                }}
-                                                                aria-label="Remettre en stock"
-                                                            />
+                                                        {!String(item.id).startsWith('custom-') && (
+                                                            <Checkbox checked={itemsToRestock[item.id] ?? false} onCheckedChange={(checked) => setItemsToRestock(prev => ({ ...prev, [item.id]: !!checked }))} aria-label="Remettre en stock" />
                                                         )}
                                                     </TableCell>
                                                 </TableRow>
@@ -277,14 +212,7 @@ export default function NewReturnPage() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
                                 <div className="space-y-2">
                                     <Label htmlFor="amount-refunded">Montant remboursé au client (DA)</Label>
-                                    <Input
-                                        id="amount-refunded"
-                                        type="number"
-                                        value={amountRefunded}
-                                        onChange={(e) => setAmountRefunded(e.target.value)}
-                                        step="0.1"
-                                        min="0"
-                                    />
+                                    <Input id="amount-refunded" type="number" value={amountRefunded} onChange={(e) => setAmountRefunded(e.target.value)} step="0.1" min="0" />
                                 </div>
                                 <Card className="p-4 bg-muted">
                                     <div className="flex justify-between items-center">
@@ -296,12 +224,7 @@ export default function NewReturnPage() {
 
                              <div>
                                 <Label htmlFor="notes">Notes (Optionnel)</Label>
-                                <Textarea
-                                    id="notes"
-                                    value={notes}
-                                    onChange={(e) => setNotes(e.target.value)}
-                                    placeholder="Ex: Emballage endommagé, produit défectueux..."
-                                />
+                                <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Ex: Emballage endommagé, produit défectueux..." />
                             </div>
 
                             <div className="flex justify-end">

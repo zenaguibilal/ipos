@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 import { toast } from 'sonner';
 import type { Product } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
-import { useData } from '@/hooks/useData';
+import { dataService } from '@/services/data-service';
 
 interface DeleteProductDialogProps {
     isOpen: boolean;
@@ -25,15 +25,14 @@ interface DeleteProductDialogProps {
 }
 
 export function DeleteProductDialog({ isOpen, onOpenChange, product }: DeleteProductDialogProps) {
-    const dataService = useData();
     const [isDeleting, setIsDeleting] = useState(false);
 
     const handleDelete = async () => {
-        if (!product) return;
+        if (!product || !product.id) return;
         setIsDeleting(true);
 
         try {
-            dataService.deleteDoc('products', product.id);
+            await dataService.remove('products', product.id);
             toast.success(`Produit "${product.name}" supprimé.`);
             onOpenChange(false);
         } catch (error) {

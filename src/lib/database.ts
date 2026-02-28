@@ -14,14 +14,14 @@ export class PosDatabase extends Dexie {
 
     constructor() {
         super('posDB');
-        this.version(1).stores({
+        this.version(2).stores({
             products: '++id, name, *barcodes, category',
-            customers: '++id, &phone, *lastName, *firstName',
+            customers: '++id, phone, *lastName, *firstName',
             sales: '++id, &invoiceNumber, customerId, createdAt, breadOrderDate',
             payments: '++id, customerId, createdAt',
             stockIntakes: '++id, &invoiceNumber, supplier, createdAt',
             returns: '++id, originalInvoiceNumber, customerId, createdAt',
-            companyProfile: 'id', // Singleton table, id will always be 1
+            companyProfile: 'id', // Singleton table
             breadCustomers: '++id, &name',
             dailyBreadOrders: '++id, &[breadCustomerId+date], date'
         });

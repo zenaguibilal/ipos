@@ -1,8 +1,6 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { useFirestore } from '@/firebase';
-import { collection, doc, getDocs, getDoc, writeBatch, Timestamp } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { CardContent, CardFooter } from '@/components/ui/card';
 import { Download, Upload, Loader2, AlertTriangle, Trash2 } from 'lucide-react';
@@ -17,27 +15,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import type { User } from 'firebase/auth';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { dataService } from '@/services/data-service';
 
-interface BackupAndRestoreProps {
-    user: User;
-}
-
-const COLLECTIONS_TO_BACKUP = [
-    'products', 
-    'customers', 
-    'sales', 
-    'payments', 
-    'stockIntakes', 
-    'returns', 
-    'breadCustomers', 
-    'dailyBreadOrders'
-];
-
-export function BackupAndRestore({ user }: BackupAndRestoreProps) {
-    const firestore = useFirestore();
+export function BackupAndRestore() {
     const [isBackingUp, setIsBackingUp] = useState(false);
     const [isRestoring, setIsRestoring] = useState(false);
     const [isResetting, setIsResetting] = useState(false);
@@ -49,37 +31,17 @@ export function BackupAndRestore({ user }: BackupAndRestoreProps) {
 
 
     const handleBackup = async () => {
-        if (!firestore || !user) {
-            toast.error("Impossible d'accéder à la base de données.");
-            return;
-        }
-
         setIsBackingUp(true);
         toast.info("Préparation de la sauvegarde en cours...");
 
         try {
-            const backupData: { [key: string]: any } = {};
-
-            for (const collectionName of COLLECTIONS_TO_BACKUP) {
-                const collectionRef = collection(firestore, 'users', user.uid, collectionName);
-                const snapshot = await getDocs(collectionRef);
-                backupData[collectionName] = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            }
-            
-            // Handle companyProfile separately as it's a single doc
-            const companyProfileRef = doc(firestore, 'users', user.uid, 'companyProfile', 'main');
-            const companyProfileSnap = await getDoc(companyProfileRef);
-            if (companyProfileSnap.exists()) {
-                backupData['companyProfile'] = { id: 'main', ...companyProfileSnap.data() };
-            }
-
-            const jsonString = JSON.stringify(backupData, null, 2);
+            const jsonString = await dataService.exportData();
             const blob = new Blob([jsonString], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
             const dateStr = new Date().toISOString().split('T')[0];
-            link.download = `ipos-backup-${dateStr}.json`;
+            link.download = `ipos-offline-backup-${dateStr}.json`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -104,39 +66,13 @@ export function BackupAndRestore({ user }: BackupAndRestoreProps) {
                 toast.error("Veuillez sélectionner un fichier de sauvegarde JSON valide (`.json`).");
             }
         }
-        // Reset file input to allow selecting the same file again
         if (event.target) {
             event.target.value = '';
         }
     };
 
-    const isFirestoreTimestamp = (value: any): value is { seconds: number; nanoseconds: number } => {
-        return value && typeof value.seconds === 'number' && typeof value.nanoseconds === 'number';
-    };
-    
-    // Recursively find and convert Firestore Timestamps (serialized by JSON.stringify)
-    const convertTimestamps = (data: any): any => {
-        if (Array.isArray(data)) {
-            return data.map(convertTimestamps);
-        }
-        if (data !== null && typeof data === 'object') {
-            if (isFirestoreTimestamp(data)) {
-                return new Timestamp(data.seconds, data.nanoseconds);
-            }
-            const newData: { [key: string]: any } = {};
-            for (const key in data) {
-                if (Object.prototype.hasOwnProperty.call(data, key)) {
-                    newData[key] = convertTimestamps(data[key]);
-                }
-            }
-            return newData;
-        }
-        return data;
-    };
-
-
     const executeRestore = async () => {
-        if (!restoreFile || !firestore || !user) return;
+        if (!restoreFile) return;
 
         setIsRestoring(true);
         toast.info("Restauration en cours... Ne quittez pas cette page.");
@@ -144,81 +80,8 @@ export function BackupAndRestore({ user }: BackupAndRestoreProps) {
         const reader = new FileReader();
         reader.onload = async (e) => {
             try {
-                const backupData = JSON.parse(e.target?.result as string);
-                const BATCH_LIMIT = 499;
-
-                // --- PHASE 1: DELETE ALL EXISTING DATA ---
-                toast.info("Phase 1/2 : Suppression des données actuelles...");
-                let deleteOps = 0;
-                let deleteBatch = writeBatch(firestore);
-
-                const collectionsToDelete = [...COLLECTIONS_TO_BACKUP];
-                for (const collectionName of collectionsToDelete) {
-                    const collectionRef = collection(firestore, 'users', user.uid, collectionName);
-                    const snapshot = await getDocs(collectionRef);
-                    for (const docSnapshot of snapshot.docs) {
-                        deleteBatch.delete(docSnapshot.ref);
-                        deleteOps++;
-                        if (deleteOps >= BATCH_LIMIT) {
-                            await deleteBatch.commit();
-                            deleteBatch = writeBatch(firestore);
-                            deleteOps = 0;
-                        }
-                    }
-                }
-                
-                const companyProfileRef = doc(firestore, 'users', user.uid, 'companyProfile', 'main');
-                const companyProfileSnap = await getDoc(companyProfileRef);
-                if (companyProfileSnap.exists()) {
-                    deleteBatch.delete(companyProfileRef);
-                    deleteOps++;
-                }
-
-                if (deleteOps > 0) {
-                    await deleteBatch.commit();
-                }
-                
-                toast.info("Phase 2/2 : Écriture des nouvelles données...");
-
-                // --- PHASE 2: WRITE NEW DATA FROM BACKUP ---
-                let writeOps = 0;
-                let writeBatchInstance = writeBatch(firestore);
-
-                const commitWriteBatch = async () => {
-                     if (writeOps > 0) {
-                        await writeBatchInstance.commit();
-                        writeBatchInstance = writeBatch(firestore);
-                        writeOps = 0;
-                    }
-                };
-                
-                const collectionsToRestore = [...COLLECTIONS_TO_BACKUP];
-                for (const collectionName of collectionsToRestore) {
-                    if (backupData[collectionName]) {
-                        const convertedData = convertTimestamps(backupData[collectionName]);
-                        for (const itemData of convertedData) {
-                            const { id, ...data } = itemData;
-                            if (id) { // Ensure item has an ID
-                                const docRef = doc(firestore, 'users', user.uid, collectionName, id);
-                                writeBatchInstance.set(docRef, data);
-                                writeOps++;
-                                if (writeOps >= BATCH_LIMIT) {
-                                    await commitWriteBatch();
-                                }
-                            }
-                        }
-                    }
-                }
-
-                if (backupData['companyProfile']) {
-                    const { id, ...data } = backupData['companyProfile'];
-                    const convertedData = convertTimestamps(data);
-                    const companyRef = doc(firestore, 'users', user.uid, 'companyProfile', 'main');
-                    writeBatchInstance.set(companyRef, convertedData);
-                    writeOps++;
-                }
-                
-                await commitWriteBatch(); // Commit any remaining writes
+                const jsonString = e.target?.result as string;
+                await dataService.importData(jsonString);
 
                 toast.success("Restauration terminée avec succès !", {
                     description: "L'application va maintenant se recharger."
@@ -228,7 +91,7 @@ export function BackupAndRestore({ user }: BackupAndRestoreProps) {
 
             } catch (error) {
                 console.error("Erreur lors de la restauration:", error);
-                toast.error("Erreur lors de la restauration. Vérifiez le fichier de sauvegarde et votre connexion.", { duration: 10000 });
+                toast.error("Erreur lors de la restauration. Vérifiez le fichier de sauvegarde.", { duration: 10000 });
                 setIsRestoring(false);
             }
         };
@@ -241,45 +104,11 @@ export function BackupAndRestore({ user }: BackupAndRestoreProps) {
     };
 
     const executeReset = async () => {
-        if (!firestore || !user) return;
-
         setIsResetting(true);
         toast.info("Réinitialisation en cours... Suppression de toutes les données.");
 
         try {
-            const BATCH_LIMIT = 499;
-            let deleteOps = 0;
-            let deleteBatch = writeBatch(firestore);
-
-            const commitDeleteBatch = async () => {
-                if (deleteOps > 0) {
-                    await deleteBatch.commit();
-                    deleteBatch = writeBatch(firestore);
-                    deleteOps = 0;
-                }
-            };
-
-            for (const collectionName of COLLECTIONS_TO_BACKUP) {
-                const collectionRef = collection(firestore, 'users', user.uid, collectionName);
-                const snapshot = await getDocs(collectionRef);
-                for (const docSnapshot of snapshot.docs) {
-                    deleteBatch.delete(docSnapshot.ref);
-                    deleteOps++;
-                    if (deleteOps >= BATCH_LIMIT) {
-                        await commitDeleteBatch();
-                    }
-                }
-            }
-            
-            const companyProfileRef = doc(firestore, 'users', user.uid, 'companyProfile', 'main');
-            const companyProfileSnap = await getDoc(companyProfileRef);
-            if (companyProfileSnap.exists()) {
-                deleteBatch.delete(companyProfileRef);
-                deleteOps++;
-            }
-
-            await commitDeleteBatch();
-
+            await dataService.resetDatabase();
             toast.success("Réinitialisation terminée avec succès !", {
                 description: "L'application va maintenant se recharger."
             });
@@ -297,7 +126,7 @@ export function BackupAndRestore({ user }: BackupAndRestoreProps) {
 
     const handleOpenResetAlert = (open: boolean) => {
         if (!open) {
-            setResetConfirmationCode(''); // Reset code on close
+            setResetConfirmationCode('');
         }
         setIsResetAlertOpen(open);
     }
@@ -315,7 +144,7 @@ export function BackupAndRestore({ user }: BackupAndRestoreProps) {
                 <div className="space-y-2">
                     <h4 className="font-semibold">Télécharger une sauvegarde</h4>
                     <p className="text-sm text-muted-foreground">
-                        Créez un fichier JSON contenant toutes les données de votre application (produits, ventes, etc.). Conservez ce fichier en lieu sûr.
+                        Créez un fichier JSON contenant toutes les données de votre application. Conservez ce fichier en lieu sûr.
                     </p>
                 </div>
                  <div className="space-y-2">
@@ -357,9 +186,7 @@ export function BackupAndRestore({ user }: BackupAndRestoreProps) {
                             Êtes-vous absolument sûr ?
                         </AlertDialogTitle>
                         <AlertDialogDescription>
-                            Cette action est <span className="font-bold">irréversible</span> et remplacera <span className="font-bold">toutes</span> les données actuelles de votre application par le contenu du fichier <span className="font-mono bg-muted px-1 py-0.5 rounded">{restoreFile?.name}</span>.
-                            <br/><br/>
-                            Assurez-vous d'avoir une sauvegarde récente si vous souhaitez pouvoir annuler cette opération.
+                            Cette action est <span className="font-bold">irréversible</span> et remplacera <span className="font-bold">toutes</span> les données actuelles par le contenu du fichier <span className="font-mono bg-muted px-1 py-0.5 rounded">{restoreFile?.name}</span>.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -382,9 +209,9 @@ export function BackupAndRestore({ user }: BackupAndRestoreProps) {
                             Êtes-vous sûr de vouloir réinitialiser ?
                         </AlertDialogTitle>
                         <AlertDialogDescription>
-                             Cette action est <span className="font-bold">IRRÉVERSIBLE</span>. Toutes vos données (produits, ventes, clients, etc.) seront définitivement supprimées. Votre compte utilisateur sera conservé.
+                             Cette action est <span className="font-bold">IRRÉVERSIBLE</span>. Toutes vos données (produits, ventes, clients, etc.) seront définitivement supprimées.
                             <br/><br/>
-                             Pour confirmer, veuillez taper <strong className="font-mono text-destructive">1995</strong> dans le champ ci-dessous.
+                             Pour confirmer, veuillez taper <strong className="font-mono text-destructive">supprimer</strong> dans le champ ci-dessous.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <div className="py-2">
@@ -393,7 +220,7 @@ export function BackupAndRestore({ user }: BackupAndRestoreProps) {
                             id="reset-confirm"
                             value={resetConfirmationCode}
                             onChange={(e) => setResetConfirmationCode(e.target.value)}
-                            placeholder="Tapez 1995 pour confirmer"
+                            placeholder="Tapez 'supprimer' pour confirmer"
                             autoComplete="off"
                         />
                     </div>
@@ -402,7 +229,7 @@ export function BackupAndRestore({ user }: BackupAndRestoreProps) {
                         <AlertDialogAction 
                             onClick={executeReset} 
                             className="bg-destructive hover:bg-destructive/90"
-                            disabled={isResetting || resetConfirmationCode !== '1995'}
+                            disabled={isResetting || resetConfirmationCode.toLowerCase() !== 'supprimer'}
                         >
                             {isResetting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Confirmer et réinitialiser

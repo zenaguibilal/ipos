@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { useRouter } from 'next/navigation';
-import { collection, query, orderBy, doc, writeBatch, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '@/lib/database';
+import { dataService } from '@/services/data-service';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -25,10 +25,6 @@ import { CustomerCardSkeleton } from '@/components/customers/customer-card-skele
 import { ImportPreviewDialog, type ImportAnalysis } from '@/components/customers/import-preview-dialog';
 
 export default function CustomersPage() {
-    const { user, isUserLoading } = useUser();
-    const firestore = useFirestore();
-    const router = useRouter();
-
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
     const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null);
@@ -40,39 +36,19 @@ export default function CustomersPage() {
     const [isImportPreviewOpen, setIsImportPreviewOpen] = useState(false);
     const [importAnalysis, setImportAnalysis] = useState<ImportAnalysis | null>(null);
 
-    // Data fetching
-    const customersQuery = useMemoFirebase(() => (user && firestore) ? query(collection(firestore, 'users', user.uid, 'customers'), orderBy('lastName', 'asc')) : null, [user, firestore]);
-    const salesQuery = useMemoFirebase(() => (user && firestore) ? collection(firestore, 'users', user.uid, 'sales') : null, [user, firestore]);
-    const paymentsQuery = useMemoFirebase(() => (user && firestore) ? query(collection(firestore, 'users', user.uid, 'payments')) : null, [user, firestore]);
-
-    const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersQuery);
-    const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
-    const { data: payments, isLoading: isLoadingPayments } = useCollection<Payment>(paymentsQuery);
-    
-    useEffect(() => {
-        if (!isUserLoading && !user) {
-            router.push('/login');
-        }
-    }, [user, isUserLoading, router]);
+    const customers = useLiveQuery(() => db.customers.toArray());
+    const sales = useLiveQuery(() => db.sales.toArray());
+    const payments = useLiveQuery(() => db.payments.toArray());
 
     useEffect(() => {
         const savedSortOption = localStorage.getItem('customers_sort_option');
-        if (savedSortOption) {
-            setSortOption(savedSortOption);
-        }
+        if (savedSortOption) setSortOption(savedSortOption);
         const savedSearch = localStorage.getItem('customers_search_query');
-        if (savedSearch !== null) {
-            setSearchQuery(savedSearch);
-        }
+        if (savedSearch !== null) setSearchQuery(savedSearch);
     }, []);
 
-    useEffect(() => {
-        localStorage.setItem('customers_sort_option', sortOption);
-    }, [sortOption]);
-
-    useEffect(() => {
-        localStorage.setItem('customers_search_query', searchQuery);
-    }, [searchQuery]);
+    useEffect(() => { localStorage.setItem('customers_sort_option', sortOption); }, [sortOption]);
+    useEffect(() => { localStorage.setItem('customers_search_query', searchQuery); }, [searchQuery]);
 
     const { customersWithSalesData, totalDebt, customersWithDebt } = useMemo(() => {
         if (!customers || !sales || !payments) {
@@ -98,18 +74,11 @@ export default function CustomersPage() {
 
         tempCustomers.sort((a, b) => {
             switch (sortOption) {
-                case 'debt_desc':
-                    return b.outstandingBalance - a.outstandingBalance;
-                case 'spent_desc':
-                    return b.totalSpent - a.totalSpent;
-                case 'activity_desc':
-                    const timeB = b.lastActivityDate?.getTime() || 0;
-                    const timeA = a.lastActivityDate?.getTime() || 0;
-                    return timeB - timeA;
-                case 'name_asc':
-                    return a.lastName.localeCompare(b.lastName);
-                default:
-                    return 0;
+                case 'debt_desc': return b.outstandingBalance - a.outstandingBalance;
+                case 'spent_desc': return b.totalSpent - a.totalSpent;
+                case 'activity_desc': return (b.lastActivityDate?.getTime() || 0) - (a.lastActivityDate?.getTime() || 0);
+                case 'name_asc': return a.lastName.localeCompare(b.lastName);
+                default: return 0;
             }
         });
 
@@ -133,9 +102,7 @@ export default function CustomersPage() {
         }
 
         const dataToExport = customersWithSalesData.map(c => ({
-            'Prénom': c.firstName,
-            'Nom': c.lastName,
-            'Téléphone': c.phone || '',
+            'Prénom': c.firstName, 'Nom': c.lastName, 'Téléphone': c.phone || '',
             'Jour de règlement': c.settlementDay || '',
             'Client depuis le': c.createdAt ? format(safeToDate(c.createdAt), 'yyyy-MM-dd') : '',
             'Dette Actuelle (DA)': c.outstandingBalance.toFixed(2),
@@ -164,248 +131,106 @@ export default function CustomersPage() {
         if (!file) return;
 
         Papa.parse(file, {
-            header: true,
-            skipEmptyLines: true,
+            header: true, skipEmptyLines: true,
             transformHeader: header => header.toLowerCase().trim(),
             complete: (results) => {
-                if (!firestore || !user) {
-                    toast.error("Erreur d'authentification.");
-                    return;
-                }
-    
                 const headers = (results.meta.fields || []).map(h => h.toLowerCase().trim());
                 const hasFullName = headers.includes('nom du client');
                 const hasFirstAndLastName = headers.includes('prénom') && headers.includes('nom');
-                
                 if (!hasFullName && !hasFirstAndLastName) {
                     toast.error("Fichier CSV invalide. En-têtes de nom requis : ('Nom du client') ou ('Prénom' et 'Nom').");
                     if(event.target) event.target.value = '';
                     return;
                 }
-    
                 const hasDebt = headers.includes('dette (da)') || headers.includes('dette actuelle (da)');
-    
-                const customersToAdd: any[] = [];
-                const customersToUpdate: any[] = [];
-                const skippedRows: any[] = [];
-                const errorRows: any[] = [];
-                
+                const customersToAdd: any[] = []; const customersToUpdate: any[] = [];
+                const skippedRows: any[] = []; const errorRows: any[] = [];
                 const customersToImport = results.data as any[];
     
                 customersToImport.forEach((row) => {
                     let firstName, lastName;
                     if(hasFirstAndLastName) {
-                        firstName = row['prénom'];
-                        lastName = row['nom'];
+                        firstName = row['prénom']; lastName = row['nom'];
                     } else {
                         const parts = String(row['nom du client'] || '').trim().split(/\s+/);
-                        firstName = parts.shift() || '';
-                        lastName = parts.join(' ');
+                        firstName = parts.shift() || ''; lastName = parts.join(' ');
                     }
-    
-                    if (!firstName && !lastName) {
-                        errorRows.push({ ...row, reason: 'Nom manquant' });
-                        return;
-                    }
-                    if (!firstName) firstName = '';
-                    if (!lastName) lastName = '';
+                    if (!firstName && !lastName) { errorRows.push({ ...row, reason: 'Nom manquant' }); return; }
+                    if (!firstName) firstName = ''; if (!lastName) lastName = '';
     
                     let debtAmount: number | null = null;
                     if (hasDebt) {
                         const debtStringRaw = row['dette actuelle (da)'] || row['dette (da)'];
                         if (debtStringRaw !== null && debtStringRaw !== undefined && String(debtStringRaw).trim() !== '') {
                             const parsedAmount = parseFloat(String(debtStringRaw).replace(',', '.'));
-                            if (!isNaN(parsedAmount)) {
-                                debtAmount = parsedAmount;
-                            }
+                            if (!isNaN(parsedAmount)) debtAmount = parsedAmount;
                         }
                     }
-
                     const phone = row['téléphone'] || '';
-                    
-                    const rawSettlementDay = row['jour de règlement'] || '';
                     let settlementDay: number | undefined;
+                    const rawSettlementDay = row['jour de règlement'] || '';
                     if (rawSettlementDay) {
                         const parsedDay = parseInt(String(rawSettlementDay), 10);
-                        if (!isNaN(parsedDay) && parsedDay >= 1 && parsedDay <= 31) {
-                            settlementDay = parsedDay;
-                        }
+                        if (!isNaN(parsedDay) && parsedDay >= 1 && parsedDay <= 31) settlementDay = parsedDay;
                     }
-    
                     const normalizedFullName = `${firstName.trim()} ${lastName.trim()}`.toLowerCase();
                     const existingCustomer = existingCustomersMap.get(normalizedFullName);
-                    
                     const importRowData = { firstName, lastName, phone, settlementDay, debtAmount, originalRow: row };
                     
                     if (existingCustomer) {
                         const debtNeedsUpdate = debtAmount !== null;
                         const phoneNeedsUpdate = phone && existingCustomer.phone !== phone;
                         const settlementDayNeedsUpdate = settlementDay !== undefined && existingCustomer.settlementDay !== settlementDay;
-
                         if (!debtNeedsUpdate && !phoneNeedsUpdate && !settlementDayNeedsUpdate) {
                              skippedRows.push({ ...importRowData, reason: 'Données inchangées', existingCustomer });
                              return;
                         }
-                        
                         customersToUpdate.push({ ...importRowData, existingCustomer });
-
                     } else {
                         customersToAdd.push(importRowData);
                     }
                 });
     
-                setImportAnalysis({
-                    customersToAdd,
-                    customersToUpdate,
-                    skippedRows,
-                    errorRows,
-                    totalRows: customersToImport.length,
-                });
+                setImportAnalysis({ customersToAdd, customersToUpdate, skippedRows, errorRows, totalRows: customersToImport.length });
                 setIsImportPreviewOpen(true);
             },
-            error: (error) => {
-                console.error("CSV Parsing error:", error);
-                toast.error("Erreur lors de la lecture du fichier CSV.");
-            }
+            error: (error) => { console.error("CSV Parsing error:", error); toast.error("Erreur lors de la lecture du fichier CSV."); }
         });
-        
-        // Reset file input so user can select the same file again
         if(event.target) event.target.value = '';
     };
 
     const executeImport = async (confirmedAnalysis: ImportAnalysis) => {
-        if (!confirmedAnalysis || !firestore || !user) {
-            toast.error("Aucune donnée à importer ou erreur de session.");
-            return;
-        }
-
-        setIsImporting(true);
-        setIsImportPreviewOpen(false);
+        if (!confirmedAnalysis) { toast.error("Aucune donnée à importer."); return; }
+        setIsImporting(true); setIsImportPreviewOpen(false);
         toast.info("Importation des clients en cours... Veuillez patienter.");
 
-        const { customersToAdd, customersToUpdate } = confirmedAnalysis;
-
-        let importedCount = 0;
-        let updatedCount = 0;
-        
-        const allCustomersToProcess = [...customersToAdd, ...customersToUpdate];
-        if (allCustomersToProcess.length === 0) {
-            toast.info("Aucune action d'importation à effectuer.");
+        try {
+            const { importedCount, updatedCount } = await dataService.importCustomers(confirmedAnalysis);
+            if (importedCount > 0) toast.success(`${importedCount} nouveau(x) client(s) importé(s) avec succès.`);
+            if (updatedCount > 0) toast.success(`${updatedCount} client(s) existant(s) mis à jour.`);
+            if (importedCount === 0 && updatedCount === 0) toast.info("Aucune action d'importation n'a été effectuée.");
+        } catch (error: any) {
+            console.error("Error during import execution:", error);
+            toast.error(error.message || "Une erreur s'est produite lors de l'importation.");
+        } finally {
             setIsImporting(false);
-            return;
+            setImportAnalysis(null);
         }
-
-        const chunkSize = 400;
-        for (let i = 0; i < allCustomersToProcess.length; i += chunkSize) {
-            const chunk = allCustomersToProcess.slice(i, i + chunkSize);
-            const batch = writeBatch(firestore);
-
-            chunk.forEach((importData) => {
-                const { firstName, lastName, phone, settlementDay, debtAmount, existingCustomer } = importData;
-                
-                if (existingCustomer) { // Update logic
-                    const debtDifference = debtAmount !== null ? debtAmount - existingCustomer.outstandingBalance : null;
-                    const phoneNeedsUpdate = phone && existingCustomer.phone !== phone;
-                    const settlementDayNeedsUpdate = settlementDay !== undefined && existingCustomer.settlementDay !== settlementDay;
-
-                    if (phoneNeedsUpdate || settlementDayNeedsUpdate) {
-                        const customerRef = doc(firestore, 'users', user.uid, 'customers', existingCustomer.id);
-                        const updatePayload: {phone?: string; settlementDay?: number} = {};
-                        if (phoneNeedsUpdate) updatePayload.phone = phone;
-                        if (settlementDayNeedsUpdate) updatePayload.settlementDay = settlementDay;
-                        batch.update(customerRef, updatePayload);
-                    }
-
-                    if (debtAmount !== null && debtDifference !== null && Math.abs(debtDifference) > 0.01) {
-                        if (debtDifference > 0) {
-                            const newSaleRef = doc(collection(firestore, 'users', user.uid, 'sales'));
-                            batch.set(newSaleRef, {
-                                invoiceNumber: `DEBT-ADJ-${Date.now()}-${existingCustomer.id.slice(0,5)}`,
-                                items: [{ id: 'debt-adjustment', name: 'Ajustement de solde (Import)', price: debtDifference, purchasePrice: 0, quantity: 1 }],
-                                subtotal: debtDifference, total: debtDifference, amountPaid: 0, remainingBalance: debtDifference, paymentStatus: 'unpaid', payments: [],
-                                customerId: existingCustomer.id, customerName: `${existingCustomer.firstName} ${existingCustomer.lastName}`, createdAt: serverTimestamp(),
-                            });
-                        } else if (debtDifference < 0) {
-                            const newPaymentRef = doc(collection(firestore, 'users', user.uid, 'payments'));
-                            batch.set(newPaymentRef, {
-                                customerId: existingCustomer.id, customerName: `${existingCustomer.firstName} ${existingCustomer.lastName}`, amount: -debtDifference, createdAt: serverTimestamp(),
-                            });
-                        }
-                    }
-                    updatedCount++;
-                } else { // Add new customer logic
-                    const newCustomerRef = doc(collection(firestore, 'users', user.uid, 'customers'));
-                    batch.set(newCustomerRef, {
-                        firstName, lastName, phone, createdAt: serverTimestamp(),
-                        settlementDay: settlementDay,
-                    });
-                    
-                    if (debtAmount !== null && debtAmount > 0) {
-                        const newSaleRef = doc(collection(firestore, 'users', user.uid, 'sales'));
-                        batch.set(newSaleRef, {
-                            invoiceNumber: `DEBT-IMPORT-${Date.now()}-${newCustomerRef.id.slice(0,5)}`,
-                            items: [{ id: 'imported-debt', name: 'Solde initial importé', price: debtAmount, purchasePrice: 0, quantity: 1 }],
-                            subtotal: debtAmount, total: debtAmount, amountPaid: 0, remainingBalance: debtAmount, paymentStatus: 'unpaid', payments: [],
-                            customerId: newCustomerRef.id, customerName: `${firstName} ${lastName}`, createdAt: serverTimestamp(),
-                        });
-                    }
-                    importedCount++;
-                }
-            });
-            
-            try {
-               await batch.commit();
-            } catch (err) {
-               console.error("Error during batch commit:", err);
-               toast.error("Une erreur s'est produite lors d'un lot d'importation. Certains clients pourraient ne pas avoir été traités.");
-               setIsImporting(false);
-               setIsImportPreviewOpen(false);
-               return;
-            }
-        }
-
-        if (importedCount > 0) toast.success(`${importedCount} nouveau(x) client(s) importé(s) avec succès.`);
-        if (updatedCount > 0) toast.success(`${updatedCount} client(s) existant(s) mis à jour.`);
-        
-        setIsImporting(false);
-        setImportAnalysis(null);
     };
 
-    const isLoading = isUserLoading || isLoadingCustomers || isLoadingSales || isLoadingPayments;
-
-    if (!user && !isLoading) {
-        return <div className="flex h-full items-center justify-center"><p>Redirection...</p></div>;
-    }
+    const isLoading = customers === undefined || sales === undefined || payments === undefined;
 
     return (
         <>
             <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileSelected} accept=".csv" />
-            {user && <CustomerDialog
-                isOpen={isDialogOpen}
-                onOpenChange={setIsDialogOpen}
-                customer={selectedCustomer}
-                userId={user.uid}
-            />}
-             {user && <DeleteCustomerDialog
-                isOpen={!!customerToDelete}
-                onOpenChange={(isOpen) => !isOpen && setCustomerToDelete(null)}
-                customer={customerToDelete}
-                userId={user.uid}
-            />}
-            {customerForPayment && user && (
-                <AddPaymentForm
-                    isOpen={!!customerForPayment}
-                    onOpenChange={(isOpen) => !isOpen && setCustomerForPayment(null)}
-                    customer={customerForPayment}
-                    userId={user.uid}
-                />
+            <CustomerDialog isOpen={isDialogOpen} onOpenChange={setIsDialogOpen} customer={selectedCustomer} />
+            <DeleteCustomerDialog isOpen={!!customerToDelete} onOpenChange={(isOpen) => !isOpen && setCustomerToDelete(null)} customer={customerToDelete} />
+            {customerForPayment && (
+                <AddPaymentForm isOpen={!!customerForPayment} onOpenChange={(isOpen) => !isOpen && setCustomerForPayment(null)} customer={customerForPayment} />
             )}
             <ImportPreviewDialog 
-                isOpen={isImportPreviewOpen}
-                onOpenChange={setIsImportPreviewOpen}
-                analysis={importAnalysis}
-                onConfirm={executeImport}
-                isImporting={isImporting}
+                isOpen={isImportPreviewOpen} onOpenChange={setIsImportPreviewOpen}
+                analysis={importAnalysis} onConfirm={executeImport} isImporting={isImporting}
             />
             <main className="flex-1 overflow-auto p-4 sm:p-6">
                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
@@ -418,8 +243,7 @@ export default function CustomersPage() {
                             <DropdownMenuTrigger asChild>
                                 <Button variant="outline" disabled={isImporting}>
                                     {isImporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
-                                    Actions 
-                                    <ChevronDown className="ml-2 h-4 w-4" />
+                                    Actions <ChevronDown className="ml-2 h-4 w-4" />
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
@@ -432,39 +256,14 @@ export default function CustomersPage() {
                             </DropdownMenuContent>
                         </DropdownMenu>
                         <Button onClick={handleAddClick}>
-                            <PlusCircle className="mr-2 h-4 w-4" />
-                            Ajouter un client
+                            <PlusCircle className="mr-2 h-4 w-4" /> Ajouter un client
                         </Button>
                     </div>
                 </div>
                  <div className="grid gap-4 md:grid-cols-3 mb-6">
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Clients Totaux</CardTitle>
-                            <Users className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{totalCustomers}</div>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Dettes Totales</CardTitle>
-                            <AlertCircle className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold text-destructive">{totalDebt.toFixed(1)} DA</div>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Clients avec Dettes</CardTitle>
-                            <UserCheck className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{customersWithDebt}</div>
-                        </CardContent>
-                    </Card>
+                    <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Clients Totaux</CardTitle><Users className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{totalCustomers}</div></CardContent></Card>
+                    <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Dettes Totales</CardTitle><AlertCircle className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold text-destructive">{totalDebt.toFixed(1)} DA</div></CardContent></Card>
+                    <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Clients avec Dettes</CardTitle><UserCheck className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{customersWithDebt}</div></CardContent></Card>
                 </div>
 
                 <Card>
@@ -472,18 +271,10 @@ export default function CustomersPage() {
                         <div className="flex flex-col sm:flex-row gap-4">
                             <div className="relative flex-grow">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                <Input
-                                    placeholder="Rechercher par nom ou téléphone..."
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="pl-9 w-full"
-                                />
+                                <Input placeholder="Rechercher par nom ou téléphone..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9 w-full" />
                             </div>
                             <Select value={sortOption} onValueChange={setSortOption}>
-                                <SelectTrigger className="w-full sm:w-[220px]">
-                                    <ListFilter className="mr-2 h-4 w-4" />
-                                    <SelectValue placeholder="Trier par..." />
-                                </SelectTrigger>
+                                <SelectTrigger className="w-full sm:w-[220px]"><ListFilter className="mr-2 h-4 w-4" /><SelectValue placeholder="Trier par..." /></SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="debt_desc">Dette la plus élevée</SelectItem>
                                     <SelectItem value="spent_desc">Total dépensé</SelectItem>
@@ -507,9 +298,7 @@ export default function CustomersPage() {
                         ) : (
                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                                 {filteredCustomers.map((customer) => (
-                                    <CustomerCard
-                                        key={customer.id}
-                                        customer={customer}
+                                    <CustomerCard key={customer.id} customer={customer}
                                         onEdit={() => handleEditClick(customer)}
                                         onDelete={setCustomerToDelete}
                                         onAddPayment={setCustomerForPayment}
@@ -523,5 +312,3 @@ export default function CustomersPage() {
         </>
     )
 }
-
-    

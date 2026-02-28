@@ -1,18 +1,10 @@
-
 'use client';
 
 import { useState } from 'react';
-import { useFirestore } from '@/firebase';
-import { doc, collection, query, where, getDocs, writeBatch } from 'firebase/firestore';
+import { dataService } from '@/services/data-service';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -24,38 +16,17 @@ interface DeleteCustomerDialogProps {
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
     customer: BreadCustomer | null;
-    userId: string;
 }
 
-export default function DeleteCustomerDialog({ isOpen, onOpenChange, customer, userId }: DeleteCustomerDialogProps) {
-    const firestore = useFirestore();
+export default function DeleteCustomerDialog({ isOpen, onOpenChange, customer }: DeleteCustomerDialogProps) {
     const [isDeleting, setIsDeleting] = useState(false);
 
     const handleDelete = async () => {
-        if (!customer || !firestore) return;
+        if (!customer || !customer.id) return;
         setIsDeleting(true);
 
         try {
-            // 1. Find all associated daily orders
-            const dailyOrdersRef = collection(firestore, 'users', userId, 'dailyBreadOrders');
-            const q = query(dailyOrdersRef, where('breadCustomerId', '==', customer.id));
-            const querySnapshot = await getDocs(q);
-
-            // 2. Create a batch write
-            const batch = writeBatch(firestore);
-
-            // 3. Add daily orders to the batch for deletion
-            querySnapshot.forEach((doc) => {
-                batch.delete(doc.ref);
-            });
-
-            // 4. Add the customer document to the batch for deletion
-            const customerDocRef = doc(firestore, 'users', userId, 'breadCustomers', customer.id);
-            batch.delete(customerDocRef);
-
-            // 5. Commit the batch
-            await batch.commit();
-
+            await dataService.deleteBreadCustomer(customer.id);
             toast.success(`Client "${customer.name}" et ses commandes associées ont été supprimés.`);
             onOpenChange(false);
         } catch (error) {
@@ -78,10 +49,8 @@ export default function DeleteCustomerDialog({ isOpen, onOpenChange, customer, u
             <AlertDialogFooter>
               <AlertDialogCancel disabled={isDeleting}>Annuler</AlertDialogCancel>
               <AlertDialogAction
-                onClick={handleDelete}
-                disabled={isDeleting}
-                className={cn(buttonVariants({ variant: "destructive" }))}
-              >
+                onClick={handleDelete} disabled={isDeleting}
+                className={cn(buttonVariants({ variant: "destructive" }))}>
                  {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Continuer et supprimer
               </AlertDialogAction>

@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
-import { useData } from '@/hooks/useData';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '@/lib/database';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { DateRangePicker } from '@/components/dashboard/date-range-picker';
@@ -12,7 +13,6 @@ import type { Sale, ProductReturn, Product, Customer } from '@/lib/types';
 import { safeToDate } from '@/lib/utils';
 import { CircleDollarSign, TrendingUp, Undo2, ShoppingCart, Users, Package, Award, Archive } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-
 
 // Colors for the Pie Chart
 const PIE_COLORS = [
@@ -39,13 +39,10 @@ const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, per
 };
 
 function calculateDashboardMetrics(
-  sales: Sale[] | null,
-  returns: ProductReturn[] | null,
+  sales: Sale[] | undefined,
+  returns: ProductReturn[] | undefined,
   dateRange: DateRange | undefined
 ) {
-    const fromDate = dateRange?.from;
-    const toDate = dateRange?.to;
-
     if (!sales || !returns) {
       return {
           netRevenue: 0,
@@ -59,6 +56,9 @@ function calculateDashboardMetrics(
           topCustomers: [],
       };
     }
+
+    const fromDate = dateRange?.from ? startOfDay(dateRange.from) : null;
+    const toDate = dateRange?.to ? endOfDay(dateRange.to) : null;
 
     const filteredSales = sales.filter(s => {
         if (!s.createdAt) return false;
@@ -211,10 +211,10 @@ function calculateDashboardMetrics(
 
 
 export default function DashboardPage() {
-    const dataService = useData();
-    const dbState = useSyncExternalStore(dataService.subscribe, dataService.getSnapshot);
-
-    const { sales, returns, products, customers } = dbState;
+    const sales = useLiveQuery(() => db.sales.toArray());
+    const returns = useLiveQuery(() => db.returns.toArray());
+    const products = useLiveQuery(() => db.products.toArray());
+    const customers = useLiveQuery(() => db.customers.toArray());
     
     const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
         if (typeof window === 'undefined') {

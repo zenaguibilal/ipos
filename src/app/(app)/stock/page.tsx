@@ -1,11 +1,10 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '@/lib/database';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { collection, query, orderBy } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -24,28 +23,17 @@ import { StockIntakeDetailsDialog } from '@/components/stock/stock-intake-detail
 
 
 export default function StockPage() {
-    const { user, isUserLoading } = useUser();
-    const firestore = useFirestore();
-    const router = useRouter();
-
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedIntake, setSelectedIntake] = useState<StockIntake | null>(null);
     const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
-        if (typeof window === 'undefined') {
-            return { from: startOfDay(subDays(new Date(), 29)), to: endOfDay(new Date()) };
-        }
+        if (typeof window === 'undefined') return { from: startOfDay(subDays(new Date(), 29)), to: endOfDay(new Date()) };
         try {
             const storedRange = localStorage.getItem('stock_intake_date_range');
             if (storedRange) {
                 const parsed = JSON.parse(storedRange);
-                return {
-                    from: parsed.from ? new Date(parsed.from) : undefined,
-                    to: parsed.to ? new Date(parsed.to) : undefined,
-                };
+                return { from: parsed.from ? new Date(parsed.from) : undefined, to: parsed.to ? new Date(parsed.to) : undefined };
             }
-        } catch (e) {
-            console.error(e);
-        }
+        } catch (e) { console.error(e); }
         return { from: startOfDay(subDays(new Date(), 29)), to: endOfDay(new Date()) };
     });
 
@@ -54,87 +42,45 @@ export default function StockPage() {
         if (savedRange) {
             try {
                 const parsed = JSON.parse(savedRange);
-                setDateRange({
-                    from: parsed.from ? new Date(parsed.from) : undefined,
-                    to: parsed.to ? new Date(parsed.to) : undefined,
-                });
+                setDateRange({ from: parsed.from ? new Date(parsed.from) : undefined, to: parsed.to ? new Date(parsed.to) : undefined });
             } catch (e) { console.error(e); }
         }
         const savedSearch = localStorage.getItem('stock_search_query');
-        if (savedSearch !== null) {
-            setSearchQuery(savedSearch);
-        }
+        if (savedSearch !== null) setSearchQuery(savedSearch);
     }, []);
 
-    useEffect(() => {
-        if (dateRange) {
-            localStorage.setItem('stock_intake_date_range', JSON.stringify(dateRange));
-        }
-    }, [dateRange]);
+    useEffect(() => { if (dateRange) localStorage.setItem('stock_intake_date_range', JSON.stringify(dateRange)); }, [dateRange]);
+    useEffect(() => { localStorage.setItem('stock_search_query', searchQuery); }, [searchQuery]);
 
-    useEffect(() => {
-        localStorage.setItem('stock_search_query', searchQuery);
-    }, [searchQuery]);
-
-
-    const stockIntakesQuery = useMemoFirebase(() =>
-        (user && firestore) ? query(collection(firestore, 'users', user.uid, 'stockIntakes'), orderBy('createdAt', 'desc')) : null,
-    [user, firestore]);
-    
-    const { data: stockIntakes, isLoading: isLoadingIntakes } = useCollection<StockIntake>(stockIntakesQuery);
-
-     useEffect(() => {
-        if (!isUserLoading && !user) {
-            router.push('/login');
-        }
-    }, [user, isUserLoading, router]);
+    const stockIntakes = useLiveQuery(() => db.stockIntakes.orderBy('createdAt').reverse().toArray());
 
     const { filteredIntakes, totalIntakeValue, totalItemsReceived } = useMemo(() => {
-        if (!stockIntakes) {
-            return { filteredIntakes: [], totalIntakeValue: 0, totalItemsReceived: 0 };
-        }
+        if (!stockIntakes) return { filteredIntakes: [], totalIntakeValue: 0, totalItemsReceived: 0 };
+        const fromDate = dateRange?.from; const toDate = dateRange?.to;
 
-        const fromDate = dateRange?.from;
-        const toDate = dateRange?.to;
+        return stockIntakes.reduce((acc, intake) => {
+            if (!intake.createdAt) return acc;
+            const intakeDate = safeToDate(intake.createdAt);
+            const isDateInRange = (!fromDate || intakeDate >= fromDate) && (!toDate || intakeDate <= toDate);
+            const matchesSearch = !searchQuery || intake.invoiceNumber.toLowerCase().includes(searchQuery.toLowerCase()) || intake.supplier.toLowerCase().includes(searchQuery.toLowerCase());
 
-        return stockIntakes.reduce(
-            (accumulator, intake) => {
-                const intakeDate = safeToDate(intake.createdAt);
-                
-                const isDateInRange = (!fromDate || intakeDate >= fromDate) && (!toDate || intakeDate <= toDate);
-                
-                const matchesSearch = !searchQuery || 
-                                      intake.invoiceNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                                      intake.supplier.toLowerCase().includes(searchQuery.toLowerCase());
-    
-                if (isDateInRange && matchesSearch) {
-                    accumulator.filteredIntakes.push(intake);
-                    accumulator.totalIntakeValue += intake.totalValue;
-                    accumulator.totalItemsReceived += intake.items.reduce((itemAcc, item) => itemAcc + item.quantityReceived, 0);
-                }
-                
-                return accumulator;
-            },
-            { filteredIntakes: [] as StockIntake[], totalIntakeValue: 0, totalItemsReceived: 0 }
-        );
-
+            if (isDateInRange && matchesSearch) {
+                acc.filteredIntakes.push(intake);
+                acc.totalIntakeValue += intake.totalValue;
+                acc.totalItemsReceived += intake.items.reduce((itemAcc, item) => itemAcc + item.quantityReceived, 0);
+            }
+            return acc;
+        }, { filteredIntakes: [] as StockIntake[], totalIntakeValue: 0, totalItemsReceived: 0 });
     }, [stockIntakes, searchQuery, dateRange]);
     
     const handleExport = () => {
-        if (filteredIntakes.length === 0) {
-            toast.info("Aucune donnée à exporter.");
-            return;
-        }
-
+        if (filteredIntakes.length === 0) { toast.info("Aucune donnée à exporter."); return; }
         const dataToExport = filteredIntakes.flatMap(intake => 
             intake.items.map(item => ({
-                'Date Réception': format(safeToDate(intake.createdAt), 'yyyy-MM-dd'),
-                'Fournisseur': intake.supplier,
-                'N° Facture': intake.invoiceNumber,
-                'Nom Produit': item.productName,
-                'Quantité Reçue': item.quantityReceived,
-                'Prix Achat Unitaire': item.purchasePrice,
-                'Sous-total': item.quantityReceived * item.purchasePrice,
+                'Date Réception': intake.createdAt ? format(safeToDate(intake.createdAt), 'yyyy-MM-dd') : 'N/A',
+                'Fournisseur': intake.supplier, 'N° Facture': intake.invoiceNumber,
+                'Nom Produit': item.productName, 'Quantité Reçue': item.quantityReceived,
+                'Prix Achat Unitaire': item.purchasePrice, 'Sous-total': item.quantityReceived * item.purchasePrice,
             }))
         );
 
@@ -149,93 +95,35 @@ export default function StockPage() {
         toast.success("Historique des réceptions exporté avec succès.");
     };
 
-    const isLoading = isUserLoading || isLoadingIntakes;
-
-     if (!user && !isLoading) {
-        return null;
-    }
+    const isLoading = stockIntakes === undefined;
 
     return (
         <>
-            <StockIntakeDetailsDialog 
-                isOpen={!!selectedIntake}
-                onOpenChange={() => setSelectedIntake(null)}
-                intake={selectedIntake}
-            />
-             <main className="flex-1 overflow-auto p-4 sm:p-6">
+            <StockIntakeDetailsDialog isOpen={!!selectedIntake} onOpenChange={() => setSelectedIntake(null)} intake={selectedIntake} />
+            <main className="flex-1 overflow-auto p-4 sm:p-6">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
-                    <div>
-                        <h1 className="text-2xl font-bold">Réception de Stock</h1>
-                        <p className="text-muted-foreground">Consultez l'historique des réceptions de marchandises.</p>
-                    </div>
+                    <div><h1 className="text-2xl font-bold">Réception de Stock</h1><p className="text-muted-foreground">Consultez l'historique des réceptions de marchandises.</p></div>
                     <div className="flex items-center gap-2 flex-wrap">
                          <DateRangePicker date={dateRange} setDate={setDateRange} />
                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="outline">
-                                    Actions <ChevronDown className="ml-2 h-4 w-4" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={handleExport}>
-                                    <Download className="mr-2 h-4 w-4" /> Exporter en CSV
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
+                            <DropdownMenuTrigger asChild><Button variant="outline">Actions <ChevronDown className="ml-2 h-4 w-4" /></Button></DropdownMenuTrigger>
+                            <DropdownMenuContent align="end"><DropdownMenuItem onClick={handleExport}><Download className="mr-2 h-4 w-4" /> Exporter en CSV</DropdownMenuItem></DropdownMenuContent>
                         </DropdownMenu>
-                        <Button asChild>
-                            <Link href="/stock/intake">
-                                <PlusCircle className="mr-2 h-4 w-4" />
-                                Nouvelle réception
-                            </Link>
-                        </Button>
+                        <Button asChild><Link href="/stock/intake"><PlusCircle className="mr-2 h-4 w-4" />Nouvelle réception</Link></Button>
                     </div>
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-3 mb-6">
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Réceptions (filtrées)</CardTitle>
-                            <Archive className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{filteredIntakes.length}</div>
-                            <p className="text-xs text-muted-foreground">Transactions de réception sur la période</p>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Valeur Reçue (filtrée)</CardTitle>
-                            <CircleDollarSign className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{totalIntakeValue.toFixed(1)} DA</div>
-                            <p className="text-xs text-muted-foreground">Valeur d'achat des marchandises</p>
-                        </CardContent>
-                    </Card>
-                     <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Articles Reçus (filtrés)</CardTitle>
-                            <Hash className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">
-                                {totalItemsReceived}
-                            </div>
-                            <p className="text-xs text-muted-foreground">Nombre d'articles reçus</p>
-                        </CardContent>
-                    </Card>
+                    <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Réceptions (filtrées)</CardTitle><Archive className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{filteredIntakes.length}</div><p className="text-xs text-muted-foreground">Transactions de réception sur la période</p></CardContent></Card>
+                    <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Valeur Reçue (filtrée)</CardTitle><CircleDollarSign className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{totalIntakeValue.toFixed(1)} DA</div><p className="text-xs text-muted-foreground">Valeur d'achat des marchandises</p></CardContent></Card>
+                    <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Articles Reçus (filtrés)</CardTitle><Hash className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{totalItemsReceived}</div><p className="text-xs text-muted-foreground">Nombre d'articles reçus</p></CardContent></Card>
                 </div>
 
                  <Card>
                     <CardHeader>
                         <div className="relative w-full max-w-sm">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input
-                                placeholder="Rechercher par N° facture ou fournisseur..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-9 w-full"
-                            />
+                            <Input placeholder="Rechercher par N° facture ou fournisseur..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9 w-full" />
                         </div>
                     </CardHeader>
                     <CardContent>
@@ -248,26 +136,16 @@ export default function StockPage() {
                                 <div className="text-center">
                                     <FileText className="mx-auto h-12 w-12 text-muted-foreground"/>
                                     <h3 className="mt-4 text-lg font-medium">Aucune réception trouvée</h3>
-                                    <p className="mt-2 text-sm text-muted-foreground">
-                                        {stockIntakes && stockIntakes.length > 0 ? "Aucune réception ne correspond à vos filtres." : "Commencez par enregistrer votre première réception."}
-                                    </p>
+                                    <p className="mt-2 text-sm text-muted-foreground">{stockIntakes && stockIntakes.length > 0 ? "Aucune réception ne correspond à vos filtres." : "Commencez par enregistrer votre première réception."}</p>
                                      {(!stockIntakes || stockIntakes.length === 0) && (
-                                        <Button asChild className="mt-4">
-                                            <Link href="/stock/intake">
-                                                Enregistrer une réception
-                                            </Link>
-                                        </Button>
+                                        <Button asChild className="mt-4"><Link href="/stock/intake">Enregistrer une réception</Link></Button>
                                      )}
                                 </div>
                             </div>
                         ) : (
                              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                                 {filteredIntakes.map((intake) => (
-                                    <StockIntakeCard 
-                                        key={intake.id}
-                                        intake={intake}
-                                        onViewDetails={setSelectedIntake}
-                                    />
+                                    <StockIntakeCard key={intake.id} intake={intake} onViewDetails={setSelectedIntake} />
                                 ))}
                             </div>
                         )}
@@ -277,5 +155,3 @@ export default function StockPage() {
         </>
     );
 }
-
-    

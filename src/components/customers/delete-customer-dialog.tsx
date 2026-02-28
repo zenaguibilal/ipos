@@ -1,17 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { useFirestore, deleteDocumentNonBlocking } from '@/firebase';
-import { doc } from 'firebase/firestore';
+import { dataService } from '@/services/data-service';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -23,31 +16,25 @@ interface DeleteCustomerDialogProps {
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
     customer: Customer | null;
-    userId: string;
 }
 
-export function DeleteCustomerDialog({ isOpen, onOpenChange, customer, userId }: DeleteCustomerDialogProps) {
-    const firestore = useFirestore();
+export function DeleteCustomerDialog({ isOpen, onOpenChange, customer }: DeleteCustomerDialogProps) {
     const [isDeleting, setIsDeleting] = useState(false);
 
     const handleDelete = async () => {
-        if (!customer || !firestore) return;
+        if (!customer || !customer.id) return;
         setIsDeleting(true);
 
-        const docRef = doc(firestore, 'users', userId, 'customers', customer.id);
-
-        deleteDocumentNonBlocking(docRef, {
-            onSuccess: () => {
-                toast.success(`Client "${customer.firstName} ${customer.lastName}" supprimé.`);
-                onOpenChange(false);
-                setIsDeleting(false);
-            },
-            onError: (error) => {
-                console.error("Failed to delete customer:", error);
-                toast.error("Échec de la suppression du client.");
-                setIsDeleting(false);
-            }
-        });
+        try {
+            await dataService.remove('customers', customer.id);
+            toast.success(`Client "${customer.firstName} ${customer.lastName}" supprimé.`);
+            onOpenChange(false);
+        } catch (error) {
+            console.error("Failed to delete customer:", error);
+            toast.error("Échec de la suppression du client.");
+        } finally {
+            setIsDeleting(false);
+        }
     };
 
     return (
@@ -62,10 +49,8 @@ export function DeleteCustomerDialog({ isOpen, onOpenChange, customer, userId }:
             <AlertDialogFooter>
               <AlertDialogCancel disabled={isDeleting}>Annuler</AlertDialogCancel>
               <AlertDialogAction
-                onClick={handleDelete}
-                disabled={isDeleting}
-                className={cn(buttonVariants({ variant: "destructive" }))}
-              >
+                onClick={handleDelete} disabled={isDeleting}
+                className={cn(buttonVariants({ variant: "destructive" }))} >
                  {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Continuer et supprimer
               </AlertDialogAction>

@@ -32,6 +32,7 @@ export interface SaleItem {
 
 // Represents an item in the live shopping cart
 export interface CartItem extends Product {
+    id: number | string; // Can be a string for custom products
     cartQuantity: number;
     flash?: boolean; // For UI animation
 }
@@ -83,10 +84,10 @@ export interface Payment {
 }
 
 export interface CustomerWithSalesData extends Customer {
+    id: number; // Make id mandatory here
     totalSpent: number;
     outstandingBalance: number;
     lastActivityDate?: Date | null;
-    daysLate?: number;
     isReminderDue?: boolean;
 }
 
@@ -126,24 +127,6 @@ export interface CompanyProfile {
     updatedAt?: Date;
 }
 
-export interface PurchaseOrderItem {
-    productId: string;
-    productName: string;
-    quantity: number;
-    purchasePrice: number;
-}
-
-export interface PurchaseOrder {
-    id?: number;
-    poNumber: string;
-    supplier: string;
-    items: PurchaseOrderItem[];
-    totalValue: number;
-    status: 'pending' | 'received';
-    createdAt?: Date;
-    updatedAt?: Date;
-}
-
 export interface StockIntakeItem {
     id: string; // Unique ID for the item row in UI, not persisted
     productId?: number; // ID of the product if it exists
@@ -170,11 +153,6 @@ export interface StockIntake {
     totalValue: number;
     createdAt?: Date;
     updatedAt?: Date;
-}
-
-export interface InventoryValueData {
-    name: string;
-    value: number;
 }
 
 export interface ReturnItem {
@@ -210,18 +188,9 @@ export interface BreadCustomer {
 }
 
 // Represents the order information for a customer on a given day
-export interface BreadOrder {
-    id?: number; // breadCustomerId
-    name: string;
-    isActive: boolean;
-    defaultOrderQuantity: number;
-    todaysOrder?: {
-        id: number; // dailyBreadOrderId
-        quantity: number;
-        saleId?: number;
-        isPaid: boolean;
-        isDelivered: boolean;
-    };
+export interface BreadOrder extends BreadCustomer {
+    id: number;
+    todaysOrder?: DailyBreadOrder & { saleId?: number };
 }
 
 
