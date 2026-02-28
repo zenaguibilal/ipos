@@ -220,3 +220,8 @@ export interface DailyBreadOrder {
     isPaid: boolean;
     isDelivered: boolean;
 }
+
+export interface Setting {
+    id: string; // The key for the setting
+    value: any;
+}

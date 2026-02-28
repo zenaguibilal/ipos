@@ -1,13 +1,13 @@
 import { db } from '@/lib/database';
 import { toast } from 'sonner';
-import type { SaleItem, SalePayment, Sale, StockIntakeItem, Product, BreadOrder, CompanyProfile, ProductReturn, DailyBreadOrder, ReturnItem, Expense } from '@/lib/types';
+import type { SaleItem, SalePayment, Sale, StockIntakeItem, Product, BreadOrder, CompanyProfile, ProductReturn, DailyBreadOrder, ReturnItem, Expense, Setting } from '@/lib/types';
 import type { ImportAnalysis } from '@/components/customers/import-preview-dialog';
 
-type TableName = 'products' | 'customers' | 'sales' | 'payments' | 'stockIntakes' | 'returns' | 'breadCustomers' | 'dailyBreadOrders' | 'companyProfile' | 'carts' | 'expenses';
+type TableName = 'products' | 'customers' | 'sales' | 'payments' | 'stockIntakes' | 'returns' | 'breadCustomers' | 'dailyBreadOrders' | 'companyProfile' | 'carts' | 'expenses' | 'settings';
 
 class DataService {
 
-  async save<T extends { id?: number }>(table: TableName, data: Omit<T, 'id'>): Promise<number> {
+  async save<T extends { id?: number | string }>(table: TableName, data: Omit<T, 'id'>): Promise<number | string> {
     return db.table(table).add(data as T);
   }
 
@@ -15,16 +15,25 @@ class DataService {
     return db.table(table).toArray();
   }
 
-  async getById<T>(table: TableName, id: number): Promise<T | undefined> {
+  async getById<T>(table: TableName, id: number | string): Promise<T | undefined> {
     return db.table(table).get(id);
   }
 
-  async update<T>(table: TableName, id: number, newData: Partial<T>): Promise<number> {
+  async update<T>(table: TableName, id: number | string, newData: Partial<T>): Promise<number> {
     return db.table(table).update(id, newData);
   }
 
-  async remove(table: TableName, id: number): Promise<void> {
+  async remove(table: TableName, id: number | string): Promise<void> {
     await db.table(table).delete(id);
+  }
+
+  async getSetting(key: string): Promise<any> {
+    const setting = await db.settings.get(key);
+    return setting?.value;
+  }
+
+  async setSetting(key: string, value: any): Promise<string> {
+      return db.settings.put({ id: key, value });
   }
 
   async finalizeSale(saleData: {
@@ -299,7 +308,8 @@ class DataService {
 
   async exportData(): Promise<string> {
     const data: { [key: string]: any[] } = {};
-    for (const table of db.tables) {
+    const tablesToExport = db.tables.filter(t => t.name !== 'carts');
+    for (const table of tablesToExport) {
       data[table.name] = await table.toArray();
     }
     return JSON.stringify(data, (key, value) => {
