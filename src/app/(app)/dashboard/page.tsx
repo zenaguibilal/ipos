@@ -13,6 +13,7 @@ import type { Sale, ProductReturn, Product, Customer, Expense, Payment } from '@
 import { safeToDate, calculateAllCustomersMetrics } from '@/lib/utils';
 import { CircleDollarSign, TrendingUp, Undo2, ShoppingCart, Users, Package, Award, Archive, Receipt, Banknote, AlertTriangle, PackageWarning } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Skeleton } from '@/components/ui/skeleton';
 
 // Colors for the Pie Chart
 const PIE_COLORS = [
@@ -284,6 +285,7 @@ export default function DashboardPage() {
     }, [rangedSales, rangedReturns, rangedExpenses, dateRange]);
     
     const formatCurrency = (value: number) => `${value.toFixed(1)} DA`;
+    const isLoading = rangedSales === undefined || rangedReturns === undefined || rangedExpenses === undefined || allProducts === undefined;
 
     return (
         <main className="flex-1 overflow-auto p-4 sm:p-6">
@@ -297,6 +299,22 @@ export default function DashboardPage() {
                 <DateRangePicker date={dateRange} setDate={setDateRange} />
             </div>
 
+            {isLoading ? (
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
+                    {Array.from({length: 4}).map((_, i) => (
+                        <Card key={i}>
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <Skeleton className="h-4 w-3/5" />
+                                <Skeleton className="h-4 w-4" />
+                            </CardHeader>
+                            <CardContent>
+                                <Skeleton className="h-7 w-2/5" />
+                                <Skeleton className="h-3 w-4/5 mt-2" />
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
+            ) : (
              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -341,6 +359,7 @@ export default function DashboardPage() {
                     </CardContent>
                 </Card>
             </div>
+            )}
             
              <div className="grid gap-6 lg:grid-cols-5">
                 <Card className="lg:col-span-3">

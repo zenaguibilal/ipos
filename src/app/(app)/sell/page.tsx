@@ -80,7 +80,7 @@ const SellProductCard = ({ product, onAddToCart }: { product: Product, onAddToCa
     );
 };
 
-const CartItemCard = ({ item, onUpdateQuantity, onRemoveItem }: { item: CartItem, onUpdateQuantity: (itemId: number | string, newQuantity: number) => void, onRemoveItem: (itemId: number | string) => void }) => {
+const CartItemCard = React.memo(({ item, onUpdateQuantity, onRemoveItem }: { item: CartItem, onUpdateQuantity: (itemId: number | string, newQuantity: number) => void, onRemoveItem: (itemId: number | string) => void }) => {
     const placeholder = getPlaceholder(item.category);
     const imageUrl = item.imageUrl || placeholder.url;
 
@@ -112,7 +112,8 @@ const CartItemCard = ({ item, onUpdateQuantity, onRemoveItem }: { item: CartItem
             <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => onRemoveItem(item.id)}><Trash2 className="h-4 w-4" /></Button>
         </div>
     );
-};
+});
+CartItemCard.displayName = 'CartItemCard';
 
 
 export default function SellPage() {
@@ -246,7 +247,7 @@ export default function SellPage() {
         }
     }, [products, handleAddToCart]);
     
-    const handleAddCustomProduct = (e: React.FormEvent) => {
+    const handleAddCustomProduct = useCallback((e: React.FormEvent) => {
         e.preventDefault();
         if (!activeCart || !customProductName.trim() || !customProductPrice) {
             toast.error("Veuillez entrer un nom et un prix pour le produit personnalisé.");
@@ -279,7 +280,7 @@ export default function SellPage() {
         setCustomProductName('');
         setCustomProductPrice('');
         setIsCustomProductPopoverOpen(false);
-    };
+    }, [activeCart, updateCart, customProductName, customProductPrice]);
 
     const handleUpdateCartQuantity = useCallback((itemId: number | string, newQuantity: number) => {
         if (!activeCart || !products) return;

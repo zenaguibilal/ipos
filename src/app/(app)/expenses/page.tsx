@@ -21,8 +21,8 @@ import { ExpenseCard } from '@/components/expenses/ExpenseCard';
 import { useDebounce } from '@/hooks/useDebounce';
 import { Dexie } from 'dexie';
 
-const ExpenseDialog = dynamic(() => import('@/components/expenses/ExpenseDialog').then(mod => mod.ExpenseDialog), { ssr: false });
-const DeleteExpenseDialog = dynamic(() => import('@/components/expenses/DeleteExpenseDialog').then(mod => mod.DeleteExpenseDialog), { ssr: false });
+const ExpenseDialog = dynamic(() => import('@/components/expenses/ExpenseDialog'), { ssr: false });
+const DeleteExpenseDialog = dynamic(() => import('@/components/expenses/DeleteExpenseDialog'), { ssr: false });
 
 export const expenseCategories: ExpenseCategory[] = ['Loyer', 'Salaires', 'Fournisseurs', 'Services Publics', 'Marketing', 'Maintenance', 'Autre'];
 
