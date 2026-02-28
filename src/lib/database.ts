@@ -27,23 +27,21 @@ export class PosDatabase extends Dexie {
         });
 
         // Hooks pour ajouter/mettre à jour les timestamps
-        this.on('creating', (primKey, obj, table) => {
-            const now = new Date();
-            if (typeof obj.createdAt === 'undefined') {
-                obj.createdAt = now;
-            }
-            if (typeof obj.updatedAt === 'undefined') {
-                obj.updatedAt = now;
-            }
-        });
+        this.tables.forEach(table => {
+            table.hook('creating', (primKey, obj, trans) => {
+                const now = new Date();
+                if ((obj as any).createdAt === undefined) {
+                    (obj as any).createdAt = now;
+                }
+                if ((obj as any).updatedAt === undefined) {
+                    (obj as any).updatedAt = now;
+                }
+            });
 
-        this.on('updating', (modifications, primKey, obj, table) => {
-            // modifications est ce qui est passé à la méthode update.
-            // On retourne un objet avec les modifications à appliquer.
-            return {
-                ...modifications,
-                updatedAt: new Date(),
-            };
+            table.hook('updating', (modifications, primKey, obj, trans) => {
+                // In an updating hook, you can modify the modifications object to be applied.
+                (modifications as any).updatedAt = new Date();
+            });
         });
     }
 }
