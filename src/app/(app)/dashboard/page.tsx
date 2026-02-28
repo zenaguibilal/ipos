@@ -212,6 +212,8 @@ export default function DashboardPage() {
         const today = new Date();
         return { from: startOfDay(subDays(today, 6)), to: endOfDay(today) };
     });
+    const [isClient, setIsClient] = useState(false);
+    useEffect(() => { setIsClient(true) }, []);
 
     useEffect(() => {
         try {
@@ -296,7 +298,11 @@ export default function DashboardPage() {
                         Aperçu des performances de votre commerce pour la période sélectionnée.
                     </p>
                 </div>
-                <DateRangePicker date={dateRange} setDate={setDateRange} />
+                {isClient ? (
+                    <DateRangePicker date={dateRange} setDate={setDateRange} />
+                ) : (
+                    <Skeleton className="h-10 w-[260px]" />
+                )}
             </div>
 
             {isLoading ? (

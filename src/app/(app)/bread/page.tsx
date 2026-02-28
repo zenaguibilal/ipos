@@ -61,6 +61,9 @@ export default function BreadOrdersPage() {
     
     const printableRef = useRef<HTMLDivElement>(null);
 
+    const [isClient, setIsClient] = useState(false);
+    useEffect(() => { setIsClient(true) }, []);
+
     useEffect(() => {
         const savedDate = localStorage.getItem('bread_selected_date');
         if (savedDate) {
@@ -211,7 +214,11 @@ export default function BreadOrdersPage() {
                     <p className="text-muted-foreground">Gérez les commandes de pain quotidiennes.</p>
                 </div>
                  <div className="flex items-center gap-2 flex-wrap">
-                    <DatePicker date={selectedDate} setDate={setSelectedDate} />
+                    {isClient ? (
+                        <DatePicker date={selectedDate} setDate={setSelectedDate} />
+                    ) : (
+                        <Skeleton className="h-10 w-[280px]" />
+                    )}
                      <Button variant="outline" onClick={handlePrint} disabled={filteredOrders.length === 0}><Printer className="mr-2 h-4 w-4" />Imprimer la liste</Button>
                      <Button variant="outline" onClick={() => setIsResetDialogOpen(true)} disabled={isUpdating}><RefreshCw className="mr-2 h-4 w-4" />Réinitialiser</Button>
                      <Button onClick={() => setIsCustomerDialogOpen(true)} disabled={isUpdating}><PlusCircle className="mr-2 h-4 w-4" />Ajouter</Button>

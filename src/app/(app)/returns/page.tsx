@@ -21,6 +21,7 @@ import dynamic from 'next/dynamic';
 import { ReturnCard } from '@/components/returns/return-card';
 import { ReturnCardSkeleton } from '@/components/returns/return-card-skeleton';
 import { useDebounce } from '@/hooks/useDebounce';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const ReturnDetailsDialog = dynamic(() => import('@/components/returns/return-details-dialog').then(mod => mod.ReturnDetailsDialog));
 const DeleteReturnDialog = dynamic(() => import('@/components/returns/delete-return-dialog').then(mod => mod.DeleteReturnDialog));
@@ -36,6 +37,8 @@ export default function ReturnsPage() {
         const today = new Date();
         return { from: startOfDay(subDays(today, 29)), to: endOfDay(today) };
     });
+    const [isClient, setIsClient] = useState(false);
+    useEffect(() => { setIsClient(true) }, []);
 
     const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
@@ -119,7 +122,11 @@ export default function ReturnsPage() {
                         <p className="text-muted-foreground">Consultez et gérez les retours de produits.</p>
                     </div>
                      <div className="flex items-center gap-2">
-                        <DateRangePicker date={dateRange} setDate={setDateRange} />
+                        {isClient ? (
+                            <DateRangePicker date={dateRange} setDate={setDateRange} />
+                        ) : (
+                            <Skeleton className="h-10 w-[260px]" />
+                        )}
                          <DropdownMenu>
                             <DropdownMenuTrigger asChild><Button variant="outline">Actions <ChevronDown className="ml-2 h-4 w-4" /></Button></DropdownMenuTrigger>
                             <DropdownMenuContent align="end">

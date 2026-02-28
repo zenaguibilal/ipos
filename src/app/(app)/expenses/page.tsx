@@ -20,6 +20,7 @@ import { ExpenseCardSkeleton } from '@/components/expenses/ExpenseCardSkeleton';
 import { ExpenseCard } from '@/components/expenses/ExpenseCard';
 import { useDebounce } from '@/hooks/useDebounce';
 import { Dexie } from 'dexie';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const ExpenseDialog = dynamic(() => import('@/components/expenses/ExpenseDialog'), { ssr: false });
 const DeleteExpenseDialog = dynamic(() => import('@/components/expenses/DeleteExpenseDialog'), { ssr: false });
@@ -36,6 +37,8 @@ export default function ExpensesPage() {
         const now = new Date();
         return { from: startOfMonth(now), to: endOfMonth(now) };
     });
+    const [isClient, setIsClient] = useState(false);
+    useEffect(() => { setIsClient(true) }, []);
 
     const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
@@ -129,7 +132,11 @@ export default function ExpensesPage() {
                         <p className="text-muted-foreground">Suivez toutes les charges de votre commerce.</p>
                     </div>
                      <div className="flex items-center gap-2 flex-wrap">
-                        <DateRangePicker date={dateRange} setDate={setDateRange} />
+                        {isClient ? (
+                            <DateRangePicker date={dateRange} setDate={setDateRange} />
+                        ) : (
+                            <Skeleton className="h-10 w-[260px]" />
+                        )}
                          <DropdownMenu>
                             <DropdownMenuTrigger asChild><Button variant="outline">Actions <ChevronDown className="ml-2 h-4 w-4" /></Button></DropdownMenuTrigger>
                             <DropdownMenuContent align="end">

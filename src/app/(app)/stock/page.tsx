@@ -21,6 +21,7 @@ import { StockIntakeCard } from '@/components/stock/stock-intake-card';
 import { StockIntakeCardSkeleton } from '@/components/stock/stock-intake-card-skeleton';
 import { StockIntakeDetailsDialog } from '@/components/stock/stock-intake-details-dialog';
 import { useDebounce } from '@/hooks/useDebounce';
+import { Skeleton } from '@/components/ui/skeleton';
 
 
 export default function StockPage() {
@@ -30,6 +31,8 @@ export default function StockPage() {
         const today = new Date();
         return { from: startOfDay(subDays(today, 29)), to: endOfDay(today) };
     });
+    const [isClient, setIsClient] = useState(false);
+    useEffect(() => { setIsClient(true) }, []);
 
     const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
@@ -99,7 +102,11 @@ export default function StockPage() {
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
                     <div><h1 className="text-2xl font-bold">Réception de Stock</h1><p className="text-muted-foreground">Consultez l'historique des réceptions de marchandises.</p></div>
                     <div className="flex items-center gap-2 flex-wrap">
-                         <DateRangePicker date={dateRange} setDate={setDateRange} />
+                        {isClient ? (
+                            <DateRangePicker date={dateRange} setDate={setDateRange} />
+                        ) : (
+                            <Skeleton className="h-10 w-[260px]" />
+                        )}
                          <DropdownMenu>
                             <DropdownMenuTrigger asChild><Button variant="outline">Actions <ChevronDown className="ml-2 h-4 w-4" /></Button></DropdownMenuTrigger>
                             <DropdownMenuContent align="end"><DropdownMenuItem onClick={handleExport}><Download className="mr-2 h-4 w-4" /> Exporter en CSV</DropdownMenuItem></DropdownMenuContent>

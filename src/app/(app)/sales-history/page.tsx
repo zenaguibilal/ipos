@@ -45,6 +45,8 @@ export default function SalesHistoryPage() {
     const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null);
     const [saleForShare, setSaleForShare] = useState<Sale | null>(null);
     const a4ReceiptRef = useRef<HTMLDivElement>(null);
+    const [isClient, setIsClient] = useState(false);
+    useEffect(() => { setIsClient(true) }, []);
     
     const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
@@ -262,7 +264,14 @@ export default function SalesHistoryPage() {
                     <CardHeader>
                         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                             <div><CardTitle>Historique des Transactions</CardTitle><CardDescription>Consultez et exportez toutes vos transactions commerciales.</CardDescription></div>
-                            <div className="flex gap-2 items-center"><DateRangePicker date={dateRange} setDate={setDateRange} /><DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline">Actions <ChevronDown className="ml-2 h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onClick={handleExportToCSV}><Download className="mr-2 h-4 w-4" /> Exporter la vue en CSV</DropdownMenuItem></DropdownMenuContent></DropdownMenu></div>
+                            <div className="flex gap-2 items-center">
+                                {isClient ? (
+                                    <DateRangePicker date={dateRange} setDate={setDateRange} />
+                                ) : (
+                                    <Skeleton className="h-10 w-[260px]" />
+                                )}
+                                <DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline">Actions <ChevronDown className="ml-2 h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onClick={handleExportToCSV}><Download className="mr-2 h-4 w-4" /> Exporter la vue en CSV</DropdownMenuItem></DropdownMenuContent></DropdownMenu>
+                            </div>
                         </div>
                         <div className="flex flex-col sm:flex-row items-center gap-4 pt-4 border-t mt-4">
                             <div className="relative w-full sm:w-64"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Rechercher par N° facture ou client..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9 w-full" /></div>
