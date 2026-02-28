@@ -1,4 +1,3 @@
-// This is a new file
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -10,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Search, PlusCircle, Receipt, MoreHorizontal, Download, ChevronDown, ListFilter, Banknote } from 'lucide-react';
 import type { Expense, ExpenseCategory } from '@/lib/types';
 import { safeToDate } from '@/lib/utils';
-import { format, subDays, startOfDay, endOfDay, startOfMonth, endOfMonth, getMonth, getYear } from 'date-fns';
+import { format, subDays, startOfDay, endOfMonth, startOfMonth } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import Papa from 'papaparse';
 import { toast } from 'sonner';
@@ -19,6 +18,8 @@ import { DateRange } from 'react-day-picker';
 import dynamic from 'next/dynamic';
 import { ExpenseCardSkeleton } from '@/components/expenses/ExpenseCardSkeleton';
 import { ExpenseCard } from '@/components/expenses/ExpenseCard';
+import { useDebounce } from '@/hooks/useDebounce';
+import { Dexie } from 'dexie';
 
 const ExpenseDialog = dynamic(() => import('@/components/expenses/ExpenseDialog').then(mod => mod.ExpenseDialog), { ssr: false });
 const DeleteExpenseDialog = dynamic(() => import('@/components/expenses/DeleteExpenseDialog').then(mod => mod.DeleteExpenseDialog), { ssr: false });
@@ -36,7 +37,7 @@ export default function ExpensesPage() {
         return { from: startOfMonth(now), to: endOfMonth(now) };
     });
 
-    const expenses = useLiveQuery(() => db.expenses.orderBy('expenseDate').reverse().toArray());
+    const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
     useEffect(() => {
         const savedCategory = localStorage.getItem('expenses_category_filter');
@@ -49,23 +50,27 @@ export default function ExpensesPage() {
     useEffect(() => { localStorage.setItem('expenses_search_query', searchQuery); }, [searchQuery]);
     useEffect(() => { if (dateRange) localStorage.setItem('expenses_date_range', JSON.stringify(dateRange)); }, [dateRange]);
 
+    const expenses = useLiveQuery(() => {
+        const from = dateRange?.from ? startOfDay(dateRange.from) : new Date(0);
+        const to = dateRange?.to ? endOfMonth(dateRange.to) : new Date();
+
+        if (categoryFilter === 'all') {
+            return db.expenses.where('expenseDate').between(from, to, true, true).reverse().toArray();
+        } else {
+            return db.expenses.where('[category+expenseDate]').between([categoryFilter, from], [categoryFilter, to], true, true).reverse().toArray();
+        }
+    }, [dateRange, categoryFilter]);
+
     const { filteredExpenses, totalExpensesValue, expensesCount } = useMemo(() => {
         if (!expenses) return { filteredExpenses: [], totalExpensesValue: 0, expensesCount: 0 };
-        const fromDate = dateRange?.from;
-        const toDate = dateRange?.to;
-
-        const filtered = expenses.filter(e => {
-            const expenseDate = safeToDate(e.expenseDate);
-            if (fromDate && expenseDate < fromDate) return false;
-            if (toDate && expenseDate > toDate) return false;
-            const categoryMatch = categoryFilter === 'all' || e.category === categoryFilter;
-            const searchMatch = searchQuery ? e.description.toLowerCase().includes(searchQuery.toLowerCase()) : true;
-            return categoryMatch && searchMatch;
-        });
+        
+        const filtered = debouncedSearchQuery
+            ? expenses.filter(e => e.description.toLowerCase().includes(debouncedSearchQuery.toLowerCase()))
+            : expenses;
 
         const totalValue = filtered.reduce((sum, e) => sum + e.amount, 0);
         return { filteredExpenses: filtered, totalExpensesValue: totalValue, expensesCount: filtered.length };
-    }, [expenses, searchQuery, categoryFilter, dateRange]);
+    }, [expenses, debouncedSearchQuery]);
     
     const expensesByMonth = useMemo(() => {
         return filteredExpenses.reduce((acc, expense) => {

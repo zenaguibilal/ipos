@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import type { BreadOrder } from '@/lib/types';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -21,10 +22,10 @@ interface BreadOrderCardProps {
   isPriceSet: boolean;
 }
 
-export default function BreadOrderCard({
+const BreadOrderCardComponent: React.FC<BreadOrderCardProps> = ({
   order, isSelected, onSelect, onEdit, onDelete,
   onUpdateStatus, isUpdating, isPriceSet
-}: BreadOrderCardProps) {
+}) => {
 
   const quantity = order.todaysOrder?.quantity ?? order.defaultOrderQuantity;
   const isPaid = order.todaysOrder?.isPaid ?? false;
@@ -71,3 +72,5 @@ export default function BreadOrderCard({
     </Card>
   );
 }
+
+export default React.memo(BreadOrderCardComponent);

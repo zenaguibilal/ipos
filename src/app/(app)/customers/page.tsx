@@ -23,6 +23,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { CustomerCard } from '@/components/customers/customer-card';
 import { CustomerCardSkeleton } from '@/components/customers/customer-card-skeleton';
 import { ImportPreviewDialog, type ImportAnalysis } from '@/components/customers/import-preview-dialog';
+import { useDebounce } from '@/hooks/useDebounce';
 
 export default function CustomersPage() {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -35,6 +36,8 @@ export default function CustomersPage() {
     const [isImporting, setIsImporting] = useState(false);
     const [isImportPreviewOpen, setIsImportPreviewOpen] = useState(false);
     const [importAnalysis, setImportAnalysis] = useState<ImportAnalysis | null>(null);
+
+    const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
     const customers = useLiveQuery(() => db.customers.toArray());
     const sales = useLiveQuery(() => db.sales.toArray());
@@ -66,11 +69,11 @@ export default function CustomersPage() {
     const filteredCustomers = useMemo(() => {
         if (!customersWithSalesData) return [];
         
-        let tempCustomers = customersWithSalesData.filter(c =>
-            c.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            c.lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            (c.phone && c.phone.includes(searchQuery))
-        );
+        let tempCustomers = debouncedSearchQuery ? customersWithSalesData.filter(c =>
+            c.firstName.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+            c.lastName.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+            (c.phone && c.phone.includes(debouncedSearchQuery))
+        ) : customersWithSalesData;
 
         tempCustomers.sort((a, b) => {
             switch (sortOption) {
@@ -83,7 +86,7 @@ export default function CustomersPage() {
         });
 
         return tempCustomers;
-    }, [customersWithSalesData, searchQuery, sortOption]);
+    }, [customersWithSalesData, debouncedSearchQuery, sortOption]);
 
     const handleAddClick = () => {
         setSelectedCustomer(null);

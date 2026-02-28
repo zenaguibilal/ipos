@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import type { Customer, CustomerWithSalesData } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,7 +17,7 @@ interface CustomerCardProps {
     onAddPayment: (customer: Customer) => void;
 }
 
-export function CustomerCard({ customer, onEdit, onDelete, onAddPayment }: CustomerCardProps) {
+const CustomerCardComponent = ({ customer, onEdit, onDelete, onAddPayment }: CustomerCardProps) => {
     return (
         <Card className="flex flex-col transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
             <CardHeader>
@@ -90,3 +91,5 @@ export function CustomerCard({ customer, onEdit, onDelete, onAddPayment }: Custo
         </Card>
     );
 }
+
+export const CustomerCard = React.memo(CustomerCardComponent);

@@ -25,6 +25,7 @@ import html2canvas from 'html2canvas';
 import { TransactionCard } from '@/components/sales/transaction-card';
 import { TransactionCardSkeleton } from '@/components/sales/transaction-card-skeleton';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useDebounce } from '@/hooks/useDebounce';
 
 const SaleDetailsDialog = dynamic(() => import('@/components/sales/sale-details-dialog').then(mod => mod.SaleDetailsDialog));
 
@@ -38,27 +39,38 @@ export default function SalesHistoryPage() {
     const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
     const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
     const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
-        if (typeof window === 'undefined') return { from: startOfDay(subDays(new Date(), 29)), to: endOfDay(new Date()) };
-        try {
-            const storedRange = localStorage.getItem('sales_history_date_range');
-            if (storedRange) {
-                const parsed = JSON.parse(storedRange);
-                return { from: parsed.from ? new Date(parsed.from) : undefined, to: parsed.to ? new Date(parsed.to) : undefined };
-            }
-        } catch (e) { console.error(e); }
-        return { from: startOfDay(subDays(new Date(), 29)), to: endOfDay(new Date()) };
+        const today = new Date();
+        return { from: startOfDay(subDays(today, 29)), to: endOfDay(today) };
     });
     const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null);
     const [saleForShare, setSaleForShare] = useState<Sale | null>(null);
     const a4ReceiptRef = useRef<HTMLDivElement>(null);
+    
+    const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
-    const sales = useLiveQuery(() => db.sales.orderBy('createdAt').reverse().toArray());
-    const payments = useLiveQuery(() => db.payments.orderBy('createdAt').reverse().toArray());
+    const fromDate = dateRange?.from;
+    const toDate = dateRange?.to;
+
+    const sales = useLiveQuery(() => 
+        (fromDate && toDate) ? db.sales.where('createdAt').between(fromDate, toDate, true, true).reverse().toArray() : [],
+    [fromDate, toDate]);
+
+    const payments = useLiveQuery(() => 
+        (fromDate && toDate) ? db.payments.where('createdAt').between(fromDate, toDate, true, true).reverse().toArray() : [],
+    [fromDate, toDate]);
+    
     const customers = useLiveQuery(() => db.customers.toArray());
     const companyProfile = useLiveQuery(() => db.companyProfile.get(1));
 
     useEffect(() => {
-        if (dateRange) localStorage.setItem('sales_history_date_range', JSON.stringify(dateRange));
+        try {
+            const storedRange = localStorage.getItem('sales_history_date_range');
+            if (storedRange) {
+                const parsed = JSON.parse(storedRange);
+                setDateRange({ from: parsed.from ? new Date(parsed.from) : undefined, to: parsed.to ? new Date(parsed.to) : undefined });
+            }
+        } catch (e) { console.error(e); }
+        
         const savedFilter = localStorage.getItem('sales_history_status_filter') as StatusFilter;
         if (savedFilter) setStatusFilter(savedFilter);
         const savedSearch = localStorage.getItem('sales_history_search_query');
@@ -77,30 +89,26 @@ export default function SalesHistoryPage() {
     }, [sales, payments]);
 
     const { groupedTransactions, totalRevenue, totalCollected, totalProfit } = useMemo(() => {
-        const fromDate = dateRange?.from; const toDate = dateRange?.to;
         const stats = {
             groupedTransactions: {} as Record<string, { transactions: Transaction[], dailyRevenue: number, dailyCollected: number, dailyProfit: number }>,
             totalRevenue: 0, totalCollected: 0, totalProfit: 0,
         };
 
-        return combinedTransactions.reduce((acc, transaction) => {
-            const transactionDate = safeToDate(transaction.data.createdAt!);
-            if (fromDate && transactionDate < fromDate) return acc;
-            if (toDate && transactionDate > toDate) return acc;
+        const filtered = combinedTransactions.filter(transaction => {
+            const matchesSearch = debouncedSearchQuery ? (transaction.data.customerName?.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) || ('invoiceNumber' in transaction.data && transaction.data.invoiceNumber.toLowerCase().includes(debouncedSearchQuery.toLowerCase()))) : true;
+            if (!matchesSearch) return false;
 
-            const matchesSearch = searchQuery ? (transaction.data.customerName?.toLowerCase().includes(searchQuery.toLowerCase()) || ('invoiceNumber' in transaction.data && transaction.data.invoiceNumber.toLowerCase().includes(searchQuery.toLowerCase()))) : true;
-            if (!matchesSearch) return acc;
-
-            let statusMatch = false;
             switch (statusFilter) {
-                case 'all': statusMatch = true; break;
-                case 'paid': statusMatch = transaction.type === 'sale' && transaction.data.paymentStatus === 'paid'; break;
-                case 'unpaid': statusMatch = transaction.type === 'sale' && (transaction.data.paymentStatus === 'unpaid' || transaction.data.paymentStatus === 'partial'); break;
-                case 'payments': statusMatch = transaction.type === 'payment'; break;
-                default: statusMatch = true;
+                case 'all': return true;
+                case 'paid': return transaction.type === 'sale' && transaction.data.paymentStatus === 'paid';
+                case 'unpaid': return transaction.type === 'sale' && (transaction.data.paymentStatus === 'unpaid' || transaction.data.paymentStatus === 'partial');
+                case 'payments': return transaction.type === 'payment';
+                default: return true;
             }
-            if (!statusMatch) return acc;
+        });
 
+        return filtered.reduce((acc, transaction) => {
+            const transactionDate = safeToDate(transaction.data.createdAt!);
             const dateStr = format(transactionDate, 'yyyy-MM-dd');
             if (!acc.groupedTransactions[dateStr]) acc.groupedTransactions[dateStr] = { transactions: [], dailyRevenue: 0, dailyCollected: 0, dailyProfit: 0 };
             acc.groupedTransactions[dateStr].transactions.push(transaction);
@@ -121,7 +129,7 @@ export default function SalesHistoryPage() {
             }
             return acc;
         }, stats);
-    }, [combinedTransactions, searchQuery, statusFilter, dateRange]);
+    }, [combinedTransactions, debouncedSearchQuery, statusFilter]);
 
     const customersMap = useMemo(() => new Map(customers?.map(c => [c.id, c])), [customers]);
     const selectedCustomer = useMemo(() => selectedSale?.customerId ? customersMap.get(selectedSale.customerId) : null, [selectedSale, customersMap]);

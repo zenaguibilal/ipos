@@ -20,6 +20,7 @@ import Papa from 'papaparse';
 import dynamic from 'next/dynamic';
 import { ReturnCard } from '@/components/returns/return-card';
 import { ReturnCardSkeleton } from '@/components/returns/return-card-skeleton';
+import { useDebounce } from '@/hooks/useDebounce';
 
 const ReturnDetailsDialog = dynamic(() => import('@/components/returns/return-details-dialog').then(mod => mod.ReturnDetailsDialog));
 const DeleteReturnDialog = dynamic(() => import('@/components/returns/delete-return-dialog').then(mod => mod.DeleteReturnDialog));
@@ -32,19 +33,21 @@ export default function ReturnsPage() {
     const [selectedReturn, setSelectedReturn] = useState<ProductReturn | null>(null);
     const [deletingReturn, setDeletingReturn] = useState<ProductReturn | null>(null);
     const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
-        if (typeof window === 'undefined') return { from: startOfDay(subDays(new Date(), 29)), to: endOfDay(new Date()) };
+        const today = new Date();
+        return { from: startOfDay(subDays(today, 29)), to: endOfDay(today) };
+    });
+
+    const debouncedSearchQuery = useDebounce(searchQuery, 300);
+
+    useEffect(() => {
         try {
             const storedRange = localStorage.getItem('returns_date_range');
             if (storedRange) {
                 const parsed = JSON.parse(storedRange);
-                return { from: parsed.from ? new Date(parsed.from) : undefined, to: parsed.to ? new Date(parsed.to) : undefined };
+                setDateRange({ from: parsed.from ? new Date(parsed.from) : undefined, to: parsed.to ? new Date(parsed.to) : undefined });
             }
         } catch (e) { console.error(e); }
-        return { from: startOfDay(subDays(new Date(), 29)), to: endOfDay(new Date()) };
-    });
 
-    useEffect(() => {
-        if (dateRange) localStorage.setItem('returns_date_range', JSON.stringify(dateRange));
         const savedSearch = localStorage.getItem('returns_search_query');
         if (savedSearch !== null) setSearchQuery(savedSearch);
     }, []);
@@ -52,30 +55,25 @@ export default function ReturnsPage() {
     useEffect(() => { localStorage.setItem('returns_search_query', searchQuery); }, [searchQuery]);
     useEffect(() => { if (dateRange) localStorage.setItem('returns_date_range', JSON.stringify(dateRange)); }, [dateRange]);
 
-    const returns = useLiveQuery(() => db.returns.orderBy('createdAt').reverse().toArray());
+    const returns = useLiveQuery(() => {
+        const from = dateRange?.from ? startOfDay(dateRange.from) : new Date(0);
+        const to = dateRange?.to ? endOfDay(dateRange.to) : new Date();
+        return db.returns.where('createdAt').between(from, to, true, true).reverse().toArray();
+    }, [dateRange]);
 
     const { filteredReturns, totalReturnedValue, returnsCount, totalItemsReturned } = useMemo(() => {
         if (!returns) return { filteredReturns: [], totalReturnedValue: 0, returnsCount: 0, totalItemsReturned: 0 };
 
-        const fromDate = dateRange?.from;
-        const toDate = dateRange?.to;
-
-        const filtered = returns.filter(r => {
-            if (!r.createdAt) return false;
-            const returnDate = safeToDate(r.createdAt);
-            if (fromDate && returnDate < fromDate) return false;
-            if (toDate && returnDate > toDate) return false;
-            return searchQuery ? (
-                r.originalInvoiceNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                r.customerName?.toLowerCase().includes(searchQuery.toLowerCase())
-            ) : true;
-        });
+        const filtered = debouncedSearchQuery ? returns.filter(r => 
+            r.originalInvoiceNumber.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+            r.customerName?.toLowerCase().includes(debouncedSearchQuery.toLowerCase())
+        ) : returns;
 
         const totalValue = filtered.reduce((sum, r) => sum + r.totalReturnValue, 0);
         const totalItems = filtered.reduce((acc, r) => acc + r.items.reduce((itemAcc, item) => itemAcc + item.quantity, 0), 0);
 
         return { filteredReturns: filtered, totalReturnedValue: totalValue, returnsCount: filtered.length, totalItemsReturned: totalItems };
-    }, [returns, searchQuery, dateRange]);
+    }, [returns, debouncedSearchQuery]);
 
     const handleExportToCSV = () => {
         if (filteredReturns.length === 0) { toast.info("Aucun retour à exporter."); return; }

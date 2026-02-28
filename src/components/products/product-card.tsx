@@ -1,6 +1,6 @@
-
 'use client';
 
+import React from 'react';
 import type { Product } from '@/lib/types';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -30,7 +30,7 @@ const getPlaceholder = (category?: string): Placeholder => {
     return placeholders.default;
 };
 
-export function ProductCard({ product, onEdit, onDelete, isSelected, onToggleSelection }: ProductCardProps) {
+const ProductCardComponent = ({ product, onEdit, onDelete, isSelected, onToggleSelection }: ProductCardProps) => {
     const isLowStock = product.quantity <= product.minStockLevel;
     const placeholder = getPlaceholder(product.category);
     const imageUrl = product.imageUrl || placeholder.url;
@@ -88,3 +88,5 @@ export function ProductCard({ product, onEdit, onDelete, isSelected, onToggleSel
         </Card>
     );
 }
+
+export const ProductCard = React.memo(ProductCardComponent);

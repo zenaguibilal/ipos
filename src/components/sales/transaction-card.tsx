@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import type { Sale, Payment, Customer } from '@/lib/types';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,7 +20,7 @@ interface TransactionCardProps {
     onDelete: (transaction: Transaction) => void;
 }
 
-export function TransactionCard({ transaction, customerForSale, onViewDetails, onSendReceipt, onSendReminder, onDelete }: TransactionCardProps) {
+const TransactionCardComponent = ({ transaction, customerForSale, onViewDetails, onSendReceipt, onSendReminder, onDelete }: TransactionCardProps) => {
     const isSale = transaction.type === 'sale';
     const saleData = isSale ? transaction.data as Sale : null;
     const paymentData = !isSale ? transaction.data as Payment : null;
@@ -98,3 +99,5 @@ export function TransactionCard({ transaction, customerForSale, onViewDetails, o
         </Card>
     );
 }
+
+export const TransactionCard = React.memo(TransactionCardComponent);

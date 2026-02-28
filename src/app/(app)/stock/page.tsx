@@ -20,31 +20,27 @@ import { DateRange } from 'react-day-picker';
 import { StockIntakeCard } from '@/components/stock/stock-intake-card';
 import { StockIntakeCardSkeleton } from '@/components/stock/stock-intake-card-skeleton';
 import { StockIntakeDetailsDialog } from '@/components/stock/stock-intake-details-dialog';
+import { useDebounce } from '@/hooks/useDebounce';
 
 
 export default function StockPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedIntake, setSelectedIntake] = useState<StockIntake | null>(null);
     const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
-        if (typeof window === 'undefined') return { from: startOfDay(subDays(new Date(), 29)), to: endOfDay(new Date()) };
+        const today = new Date();
+        return { from: startOfDay(subDays(today, 29)), to: endOfDay(today) };
+    });
+
+    const debouncedSearchQuery = useDebounce(searchQuery, 300);
+
+    useEffect(() => {
         try {
             const storedRange = localStorage.getItem('stock_intake_date_range');
             if (storedRange) {
                 const parsed = JSON.parse(storedRange);
-                return { from: parsed.from ? new Date(parsed.from) : undefined, to: parsed.to ? new Date(parsed.to) : undefined };
+                setDateRange({ from: parsed.from ? new Date(parsed.from) : undefined, to: parsed.to ? new Date(parsed.to) : undefined });
             }
         } catch (e) { console.error(e); }
-        return { from: startOfDay(subDays(new Date(), 29)), to: endOfDay(new Date()) };
-    });
-
-    useEffect(() => {
-        const savedRange = localStorage.getItem('stock_intake_date_range');
-        if (savedRange) {
-            try {
-                const parsed = JSON.parse(savedRange);
-                setDateRange({ from: parsed.from ? new Date(parsed.from) : undefined, to: parsed.to ? new Date(parsed.to) : undefined });
-            } catch (e) { console.error(e); }
-        }
         const savedSearch = localStorage.getItem('stock_search_query');
         if (savedSearch !== null) setSearchQuery(savedSearch);
     }, []);
@@ -52,26 +48,25 @@ export default function StockPage() {
     useEffect(() => { if (dateRange) localStorage.setItem('stock_intake_date_range', JSON.stringify(dateRange)); }, [dateRange]);
     useEffect(() => { localStorage.setItem('stock_search_query', searchQuery); }, [searchQuery]);
 
-    const stockIntakes = useLiveQuery(() => db.stockIntakes.orderBy('createdAt').reverse().toArray());
+    const stockIntakes = useLiveQuery(() => {
+        const from = dateRange?.from ? startOfDay(dateRange.from) : new Date(0);
+        const to = dateRange?.to ? endOfDay(dateRange.to) : new Date();
+        return db.stockIntakes.where('createdAt').between(from, to, true, true).reverse().toArray();
+    }, [dateRange]);
 
     const { filteredIntakes, totalIntakeValue, totalItemsReceived } = useMemo(() => {
         if (!stockIntakes) return { filteredIntakes: [], totalIntakeValue: 0, totalItemsReceived: 0 };
-        const fromDate = dateRange?.from; const toDate = dateRange?.to;
+        
+        const filtered = debouncedSearchQuery ? stockIntakes.filter(intake => 
+            intake.invoiceNumber.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) || 
+            intake.supplier.toLowerCase().includes(debouncedSearchQuery.toLowerCase())
+        ) : stockIntakes;
 
-        return stockIntakes.reduce((acc, intake) => {
-            if (!intake.createdAt) return acc;
-            const intakeDate = safeToDate(intake.createdAt);
-            const isDateInRange = (!fromDate || intakeDate >= fromDate) && (!toDate || intakeDate <= toDate);
-            const matchesSearch = !searchQuery || intake.invoiceNumber.toLowerCase().includes(searchQuery.toLowerCase()) || intake.supplier.toLowerCase().includes(searchQuery.toLowerCase());
-
-            if (isDateInRange && matchesSearch) {
-                acc.filteredIntakes.push(intake);
-                acc.totalIntakeValue += intake.totalValue;
-                acc.totalItemsReceived += intake.items.reduce((itemAcc, item) => itemAcc + item.quantityReceived, 0);
-            }
-            return acc;
-        }, { filteredIntakes: [] as StockIntake[], totalIntakeValue: 0, totalItemsReceived: 0 });
-    }, [stockIntakes, searchQuery, dateRange]);
+        const totalValue = filtered.reduce((acc, intake) => acc + intake.totalValue, 0);
+        const totalItems = filtered.reduce((acc, intake) => acc + intake.items.reduce((itemAcc, item) => itemAcc + item.quantityReceived, 0), 0);
+        
+        return { filteredIntakes: filtered, totalIntakeValue: totalValue, totalItemsReceived: totalItems };
+    }, [stockIntakes, debouncedSearchQuery]);
     
     const handleExport = () => {
         if (filteredIntakes.length === 0) { toast.info("Aucune donnée à exporter."); return; }

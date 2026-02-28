@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import type { StockIntake } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,7 +14,7 @@ interface StockIntakeCardProps {
     onViewDetails: (intake: StockIntake) => void;
 }
 
-export function StockIntakeCard({ intake, onViewDetails }: StockIntakeCardProps) {
+const StockIntakeCardComponent = ({ intake, onViewDetails }: StockIntakeCardProps) => {
 
     return (
         <Card className="transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
@@ -47,3 +48,5 @@ export function StockIntakeCard({ intake, onViewDetails }: StockIntakeCardProps)
         </Card>
     );
 }
+
+export const StockIntakeCard = React.memo(StockIntakeCardComponent);

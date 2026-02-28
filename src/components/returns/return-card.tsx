@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import type { ProductReturn } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,7 +15,7 @@ interface ReturnCardProps {
     onDelete: (productReturn: ProductReturn) => void;
 }
 
-export function ReturnCard({ productReturn, onViewDetails, onDelete }: ReturnCardProps) {
+const ReturnCardComponent = ({ productReturn, onViewDetails, onDelete }: ReturnCardProps) => {
 
     return (
         <Card className="transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
@@ -66,3 +67,5 @@ export function ReturnCard({ productReturn, onViewDetails, onDelete }: ReturnCar
         </Card>
     );
 }
+
+export const ReturnCard = React.memo(ReturnCardComponent);

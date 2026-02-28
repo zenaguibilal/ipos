@@ -39,12 +39,12 @@ const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, per
 };
 
 function calculateDashboardMetrics(
-  sales: Sale[] | undefined,
-  returns: ProductReturn[] | undefined,
-  expenses: Expense[] | undefined,
+  filteredSales: Sale[] | undefined,
+  filteredReturns: ProductReturn[] | undefined,
+  filteredExpenses: Expense[] | undefined,
   dateRange: DateRange | undefined
 ) {
-    if (!sales || !returns || !expenses) {
+    if (!filteredSales || !filteredReturns || !filteredExpenses) {
       return {
           netRevenue: 0,
           netSalesProfit: 0,
@@ -60,25 +60,8 @@ function calculateDashboardMetrics(
       };
     }
 
-    const fromDate = dateRange?.from ? startOfDay(dateRange.from) : null;
-    const toDate = dateRange?.to ? endOfDay(dateRange.to) : null;
-
-    const filteredSales = sales.filter(s => {
-        if (!s.createdAt) return false;
-        const saleDate = safeToDate(s.createdAt);
-        return (!fromDate || saleDate >= fromDate) && (!toDate || saleDate <= toDate);
-    });
-
-    const filteredReturns = returns.filter(r => {
-        if (!r.createdAt) return false;
-        const returnDate = safeToDate(r.createdAt);
-        return (!fromDate || returnDate >= fromDate) && (!toDate || returnDate <= toDate);
-    });
-
-    const filteredExpenses = expenses.filter(e => {
-        const expenseDate = safeToDate(e.expenseDate);
-        return (!fromDate || expenseDate >= fromDate) && (!toDate || expenseDate <= toDate);
-    });
+    const fromDate = dateRange?.from;
+    const toDate = dateRange?.to;
 
     let grossRevenue = 0;
     let grossProfit = 0;
@@ -224,31 +207,25 @@ function calculateDashboardMetrics(
 
 
 export default function DashboardPage() {
-    const sales = useLiveQuery(() => db.sales.toArray());
-    const returns = useLiveQuery(() => db.returns.toArray());
-    const products = useLiveQuery(() => db.products.toArray());
-    const customers = useLiveQuery(() => db.customers.toArray());
-    const expenses = useLiveQuery(() => db.expenses.toArray());
-    const payments = useLiveQuery(() => db.payments.toArray());
-    
     const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
-        if (typeof window === 'undefined') {
-            return { from: startOfDay(subDays(new Date(), 6)), to: endOfDay(new Date()) };
-        }
+        const today = new Date();
+        return { from: startOfDay(subDays(today, 6)), to: endOfDay(today) };
+    });
+
+    useEffect(() => {
         try {
             const storedRange = localStorage.getItem('dashboard_date_range');
             if (storedRange) {
                 const parsed = JSON.parse(storedRange);
-                return {
+                setDateRange({
                     from: parsed.from ? new Date(parsed.from) : undefined,
                     to: parsed.to ? new Date(parsed.to) : undefined,
-                };
+                });
             }
         } catch (e) {
-            console.error(e);
+            console.error("Failed to parse date range from localStorage:", e);
         }
-        return { from: startOfDay(subDays(new Date(), 6)), to: endOfDay(new Date()) };
-    });
+    }, []);
 
     useEffect(() => {
         if (dateRange) {
@@ -256,11 +233,33 @@ export default function DashboardPage() {
         }
     }, [dateRange]);
 
-     const globalStats = useMemo(() => {
-        const inventoryValue = products?.reduce((sum, p) => sum + ((p.purchasePrice || 0) * (p.quantity || 0)), 0) || 0;
-        const lowStockCount = products?.filter(p => p.quantity <= p.minStockLevel).length || 0;
-        const totalCustomers = customers?.length || 0;
-        const { totalDebt } = calculateAllCustomersMetrics(customers || [], sales || [], payments || []);
+    const fromDate = dateRange?.from;
+    const toDate = dateRange?.to;
+
+    // Use ranged queries for performance
+    const rangedSales = useLiveQuery(() => 
+        (fromDate && toDate) ? db.sales.where('createdAt').between(fromDate, toDate, true, true).toArray() : [],
+    [fromDate, toDate]);
+
+    const rangedReturns = useLiveQuery(() => 
+        (fromDate && toDate) ? db.returns.where('createdAt').between(fromDate, toDate, true, true).toArray() : [],
+    [fromDate, toDate]);
+
+    const rangedExpenses = useLiveQuery(() => 
+        (fromDate && toDate) ? db.expenses.where('expenseDate').between(fromDate, toDate, true, true).toArray() : [],
+    [fromDate, toDate]);
+
+    // Global (non-ranged) queries for overall stats
+    const allProducts = useLiveQuery(() => db.products.toArray(), []);
+    const allCustomers = useLiveQuery(() => db.customers.toArray(), []);
+    const allSales = useLiveQuery(() => db.sales.toArray(), []);
+    const allPayments = useLiveQuery(() => db.payments.toArray(), []);
+    
+    const globalStats = useMemo(() => {
+        const inventoryValue = allProducts?.reduce((sum, p) => sum + ((p.purchasePrice || 0) * (p.quantity || 0)), 0) || 0;
+        const lowStockCount = allProducts?.filter(p => p.quantity <= p.minStockLevel).length || 0;
+        const totalCustomers = allCustomers?.length || 0;
+        const { totalDebt } = calculateAllCustomersMetrics(allCustomers || [], allSales || [], allPayments || []);
         
         return {
             inventoryValue,
@@ -268,7 +267,7 @@ export default function DashboardPage() {
             totalCustomers,
             totalDebt
         };
-    }, [products, customers, sales, payments]);
+    }, [allProducts, allCustomers, allSales, allPayments]);
 
     const {
         netRevenue,
@@ -276,15 +275,13 @@ export default function DashboardPage() {
         totalExpenses,
         trueNetProfit,
         profitMargin,
-        totalReturnsValue,
-        salesCount,
         chartData,
         recentTransactions,
         topProducts,
         topCustomers
     } = useMemo(() => {
-        return calculateDashboardMetrics(sales, returns, expenses, dateRange);
-    }, [sales, returns, expenses, dateRange]);
+        return calculateDashboardMetrics(rangedSales, rangedReturns, rangedExpenses, dateRange);
+    }, [rangedSales, rangedReturns, rangedExpenses, dateRange]);
     
     const formatCurrency = (value: number) => `${value.toFixed(1)} DA`;
 

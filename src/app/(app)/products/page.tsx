@@ -20,10 +20,9 @@ import { ProductTable } from '@/components/products/product-table';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { PrintLabelsDialog } from '@/components/products/PrintLabelsDialog';
+import { useDebounce } from '@/hooks/useDebounce';
 
 export default function ProductsPage() {
-    const products = useLiveQuery(() => db.products.orderBy('name').toArray());
-
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
     const [productToDelete, setProductToDelete] = useState<Product | null>(null);
@@ -32,6 +31,8 @@ export default function ProductsPage() {
     const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
     const [selectedProducts, setSelectedProducts] = useState<Set<number>>(new Set());
     const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false);
+
+    const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
     useEffect(() => {
         const savedCategory = localStorage.getItem('products_category_filter');
@@ -45,6 +46,13 @@ export default function ProductsPage() {
     useEffect(() => { localStorage.setItem('products_category_filter', selectedCategory); }, [selectedCategory]);
     useEffect(() => { localStorage.setItem('products_search_query', searchQuery); }, [searchQuery]);
     useEffect(() => { localStorage.setItem('products_view_mode', viewMode); }, [viewMode]);
+
+    const products = useLiveQuery(() => {
+        if (selectedCategory === 'all') {
+            return db.products.orderBy('name').toArray();
+        }
+        return db.products.where('category').equals(selectedCategory).sortBy('name');
+    }, [selectedCategory]);
 
     const handleAddClick = () => {
         setSelectedProduct(null);
@@ -85,13 +93,13 @@ export default function ProductsPage() {
 
     const filteredProducts = useMemo(() => {
         if (!products) return [];
-        const lowercasedQuery = searchQuery.toLowerCase();
-        return products.filter(p => {
-            const categoryMatch = selectedCategory === 'all' || p.category === selectedCategory;
-            const searchMatch = !searchQuery || p.name.toLowerCase().includes(lowercasedQuery) || p.barcodes?.some(b => b.includes(lowercasedQuery));
-            return categoryMatch && searchMatch;
-        });
-    }, [products, searchQuery, selectedCategory]);
+        if (!debouncedSearchQuery) return products;
+        const lowercasedQuery = debouncedSearchQuery.toLowerCase();
+        return products.filter(p =>
+            p.name.toLowerCase().includes(lowercasedQuery) || 
+            p.barcodes?.some(b => b.includes(lowercasedQuery))
+        );
+    }, [products, debouncedSearchQuery]);
 
      const handleExport = () => {
         if (!filteredProducts || filteredProducts.length === 0) {

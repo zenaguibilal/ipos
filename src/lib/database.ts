@@ -16,7 +16,7 @@ export class PosDatabase extends Dexie {
 
     constructor() {
         super('posDB');
-        this.version(4).stores({
+        this.version(5).stores({
             products: '++id, name, *barcodes, category',
             customers: '++id, phone, *lastName, *firstName',
             sales: '++id, &invoiceNumber, customerId, createdAt, breadOrderDate',
@@ -27,7 +27,7 @@ export class PosDatabase extends Dexie {
             breadCustomers: '++id, &name',
             dailyBreadOrders: '++id, &[breadCustomerId+date], date',
             carts: '&id, name',
-            expenses: '++id, category, expenseDate'
+            expenses: '++id, category, expenseDate, [category+expenseDate]'
         });
 
         // Hooks pour ajouter/mettre à jour les timestamps

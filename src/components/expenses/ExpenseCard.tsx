@@ -1,6 +1,6 @@
-// This is a new file
 'use client';
 
+import React from 'react';
 import type { Expense } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -15,7 +15,7 @@ interface ExpenseCardProps {
     onDelete: (expense: Expense) => void;
 }
 
-export function ExpenseCard({ expense, onEdit, onDelete }: ExpenseCardProps) {
+const ExpenseCardComponent = ({ expense, onEdit, onDelete }: ExpenseCardProps) => {
     return (
         <Card className="flex flex-col transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
             <CardHeader className="pb-2">
@@ -57,3 +57,5 @@ export function ExpenseCard({ expense, onEdit, onDelete }: ExpenseCardProps) {
         </Card>
     );
 }
+
+export const ExpenseCard = React.memo(ExpenseCardComponent);
