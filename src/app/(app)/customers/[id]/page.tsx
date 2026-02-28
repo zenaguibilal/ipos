@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/database';
@@ -33,6 +33,7 @@ export default function CustomerDetailPage() {
     const [isEditOpen, setIsEditOpen] = useState(false);
     const [isPaymentOpen, setIsPaymentOpen] = useState(false);
     const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
+    const [monthlySpendingData, setMonthlySpendingData] = useState<any[]>([]);
 
     const customer = useLiveQuery(() => db.customers.get(customerId), [customerId]);
     const sales = useLiveQuery(() => db.sales.where('customerId').equals(customerId).toArray(), [customerId]);
@@ -54,29 +55,30 @@ export default function CustomerDetailPage() {
 
     const { totalSpent, outstandingBalance, combinedTransactions } = useCustomerMetrics(sales ?? null, payments ?? null);
     
-    const monthlySpendingData = useMemo(() => {
-        if (!sales) return [];
+    useEffect(() => {
+        if (sales) {
+            const data: { [month: string]: number } = {};
+            const sixMonthsAgo = startOfMonth(subMonths(new Date(), 5));
 
-        const data: { [month: string]: number } = {};
-        const sixMonthsAgo = startOfMonth(subMonths(new Date(), 5));
-
-        for (let i = 0; i < 6; i++) {
-            const month = format(addMonths(sixMonthsAgo, i), 'yyyy-MM');
-            data[month] = 0;
-        }
-
-        sales.forEach(sale => {
-            const saleDate = safeToDate(sale.createdAt);
-            const month = format(saleDate, 'yyyy-MM');
-            if (data[month] !== undefined) {
-                data[month] += sale.total;
+            for (let i = 0; i < 6; i++) {
+                const month = format(addMonths(sixMonthsAgo, i), 'yyyy-MM');
+                data[month] = 0;
             }
-        });
-        
-        return Object.keys(data).map(month => ({
-            name: format(new Date(month + '-01T12:00:00Z'), 'MMM', { locale: fr }),
-            'Dépenses': data[month],
-        }));
+
+            sales.forEach(sale => {
+                const saleDate = safeToDate(sale.createdAt);
+                const month = format(saleDate, 'yyyy-MM');
+                if (data[month] !== undefined) {
+                    data[month] += sale.total;
+                }
+            });
+            
+            const chartData = Object.keys(data).map(month => ({
+                name: format(new Date(month + '-01T12:00:00Z'), 'MMM', { locale: fr }),
+                'Dépenses': data[month],
+            }));
+            setMonthlySpendingData(chartData);
+        }
     }, [sales]);
 
 
