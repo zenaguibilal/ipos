@@ -302,7 +302,7 @@ class DataService {
   }
 
   async resetDatabase(): Promise<void> {
-    const tablesToClear = db.tables.filter(t => t.name !== 'carts');
+    const tablesToClear = db.tables.filter(t => t.name !== 'carts' && t.name !== 'settings');
     await Promise.all(tablesToClear.map(table => table.clear()));
     await db.companyProfile.add({ id: 1, companyName: "Mon Magasin", country: "France" } as CompanyProfile);
   }

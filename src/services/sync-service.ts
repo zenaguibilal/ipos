@@ -1,3 +1,5 @@
+'use client';
+
 import { dataService } from './data-service';
 import { toast } from 'sonner';
 
