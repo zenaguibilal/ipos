@@ -5,10 +5,11 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/database';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Search, History, DollarSign, Receipt } from 'lucide-react';
+import { Search, History, DollarSign, Receipt, Download, ChevronDown } from 'lucide-react';
 import { DateRangePicker } from '@/components/dashboard/date-range-picker';
 import { DateRange } from 'react-day-picker';
-import { subDays, startOfDay, endOfDay } from 'date-fns';
+import { subDays, startOfDay, endOfDay, format } from 'date-fns';
+import { fr } from 'date-fns/locale';
 import { useDebounce } from '@/hooks/useDebounce';
 import { formatCurrency, safeToDate } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -16,6 +17,10 @@ import { SalesHistoryCard } from '@/components/sales/SalesHistoryCard';
 import { SaleDetailsDialog } from '@/components/sales/SaleDetailsDialog';
 import { CancelSaleDialog } from '@/components/sales/CancelSaleDialog';
 import type { Sale } from '@/lib/types';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Button } from '@/components/ui/button';
+import Papa from 'papaparse';
+import { toast } from 'sonner';
 
 
 export default function SalesHistoryPage() {
@@ -50,6 +55,39 @@ export default function SalesHistoryPage() {
         return { filteredSales: filtered, totalRevenue: total, salesCount: filtered.length };
     }, [sales, debouncedSearchQuery]);
 
+    const handleExportSales = () => {
+        if (!filteredSales || filteredSales.length === 0) {
+            toast.info("Aucune vente à exporter.");
+            return;
+        }
+
+        const dataToExport = filteredSales.flatMap(sale => 
+            sale.items.map(item => ({
+                'N° Facture': sale.invoiceNumber,
+                'Date': format(safeToDate(sale.createdAt!), 'yyyy-MM-dd HH:mm', { locale: fr }),
+                'Client': sale.customerName || 'Client de passage',
+                'Statut Paiement': sale.paymentStatus,
+                'Nom Produit': item.name,
+                'Quantité': item.quantity,
+                'Prix Unitaire': item.price,
+                'Sous-total Article': item.price * item.quantity,
+                'Total Facture': sale.total,
+                'Montant Payé': sale.amountPaid,
+                'Solde Restant': sale.remainingBalance,
+            }))
+        );
+        
+        const csv = Papa.unparse(dataToExport);
+        const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `export_ventes_${format(new Date(), 'yyyy-MM-dd')}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast.success("Historique des ventes exporté avec succès.");
+    };
+
     const isLoading = sales === undefined;
 
     return (
@@ -66,6 +104,18 @@ export default function SalesHistoryPage() {
                         ) : (
                             <Skeleton className="h-10 w-[260px]" />
                         )}
+                         <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="outline">
+                                    Actions <ChevronDown className="ml-2 h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={handleExportSales}>
+                                    <Download className="mr-2 h-4 w-4" /> Exporter en CSV
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     </div>
                 </div>
 
