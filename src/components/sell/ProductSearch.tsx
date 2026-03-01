@@ -74,7 +74,7 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
     const products = useLiveQuery(() => db.products.toArray(), []);
 
     const handleBarcodeScanned = useCallback((scannedBarcode: string) => {
-        if (!products) return;
+        if (!products || !scannedBarcode.trim()) return;
         const product = products.find(p => p.barcodes?.includes(scannedBarcode.trim()));
         if (product) {
             onProductSelect(product, 1);
@@ -84,8 +84,8 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
     
     const filteredProducts = useMemo(() => {
         if (!products) return [];
-        const lowercasedQuery = query.toLowerCase();
-        if (!lowercasedQuery) return products;
+        const lowercasedQuery = query.toLowerCase().trim();
+        if (!lowercasedQuery) return []; // Return empty if no query
         
         return products.filter(p => 
             p.name.toLowerCase().includes(lowercasedQuery) ||
@@ -120,18 +120,27 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
                             handleBarcodeScanned(e.currentTarget.value);
                         }
                     }}
+                    autoFocus
                 />
             </div>
             
             <ScrollArea className="flex-grow">
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {filteredProducts?.map(product => (
-                        <Card
+                <div className="space-y-2 pr-4">
+                    {filteredProducts.map(product => (
+                        <ListItem
                             key={product.id}
                             product={product}
-                            onClick={() => onProductSelect(product, 1)}
+                            onClick={() => {
+                                onProductSelect(product, 1);
+                                setQuery(''); // Clear search after selection
+                            }}
                         />
                     ))}
+                     {query && filteredProducts.length === 0 && (
+                        <div className="text-center text-muted-foreground py-8">
+                            <p>Aucun produit trouvé pour "{query}".</p>
+                        </div>
+                     )}
                 </div>
             </ScrollArea>
              <div className="mt-4 flex-shrink-0">
@@ -141,13 +150,12 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
     );
 }
 
-
-interface CardProps {
+interface ListItemProps {
     product: Product;
     onClick: () => void;
 }
 
-const Card = React.memo(({ product, onClick }: CardProps) => {
+const ListItem = React.memo(({ product, onClick }: ListItemProps) => {
     const isAvailable = typeof product.id === 'string' || product.quantity > 0;
     const placeholder = getPlaceholder(product.category);
 
@@ -155,26 +163,24 @@ const Card = React.memo(({ product, onClick }: CardProps) => {
         <button 
             onClick={onClick}
             disabled={!isAvailable}
-            className="relative group border rounded-lg text-left overflow-hidden transition-transform duration-150 ease-in-out active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full text-left flex items-center gap-4 p-2 rounded-lg hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
         >
             <Image
                 src={product.imageUrl || placeholder.url}
                 alt={product.name}
-                width={placeholder.width}
-                height={placeholder.height}
-                className="w-full h-24 object-cover"
+                width={40}
+                height={40}
+                className="w-10 h-10 object-cover rounded-md flex-shrink-0"
                 unoptimized
             />
-            {!isAvailable && (
-                <div className="absolute inset-0 bg-stone-700/60 flex items-center justify-center">
-                    <p className="text-white font-bold text-sm">Épuisé</p>
-                </div>
-            )}
-             <div className="p-2">
-                <p className="text-sm font-semibold truncate group-hover:text-primary">{product.name}</p>
-                <p className="text-xs text-muted-foreground">{product.price.toFixed(1)} DA</p>
+            <div className="flex-grow overflow-hidden">
+                <p className="font-semibold truncate">{product.name}</p>
+                <p className="text-sm text-muted-foreground">{product.price.toFixed(1)} DA</p>
+            </div>
+            <div className="text-sm text-muted-foreground flex-shrink-0">
+                Stock: {product.quantity}
             </div>
         </button>
     );
 });
-Card.displayName = "Card";
+ListItem.displayName = "ListItem";
