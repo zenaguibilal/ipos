@@ -5,7 +5,8 @@ import type { CustomerWithSalesData } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Edit, Trash2, FileText, Phone, User, BarChart, DollarSign } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, FileText, Phone, BarChart, DollarSign, BellRing } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import Link from 'next/link';
 
 interface CustomerCardProps {
@@ -16,7 +17,7 @@ interface CustomerCardProps {
 
 const CustomerCardComponent = ({ customer, onEdit, onDelete }: CustomerCardProps) => {
     return (
-        <Card className="flex flex-col transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+        <Card className="flex flex-col transition-all duration-300 hover:shadow-xl hover:-translate-y-1 relative">
             <CardHeader>
                 <div className="flex justify-between items-start">
                     <div className="space-y-1">
@@ -32,7 +33,7 @@ const CustomerCardComponent = ({ customer, onEdit, onDelete }: CustomerCardProps
                             </div>
                         )}
                     </div>
-                    <DropdownMenu>
+                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon" className="h-8 w-8">
                                 <MoreHorizontal className="h-5 w-5" />
@@ -56,6 +57,20 @@ const CustomerCardComponent = ({ customer, onEdit, onDelete }: CustomerCardProps
                         </DropdownMenuContent>
                     </DropdownMenu>
                 </div>
+                 {customer.isReminderDue && (
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <div className="absolute top-3 right-12 p-1 bg-destructive/20 rounded-full">
+                                    <BellRing className="h-4 w-4 text-destructive animate-pulse" />
+                                </div>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                                <p>Rappel de paiement requis</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                )}
             </CardHeader>
             <CardContent className="flex-grow space-y-3">
                  <div className="flex items-center text-sm">

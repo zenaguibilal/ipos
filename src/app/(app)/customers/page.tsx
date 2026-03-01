@@ -11,7 +11,7 @@ import { Search, PlusCircle, Users, MoreHorizontal, Download, ChevronDown, ListF
 import type { Customer, Sale, Payment, CustomerWithSalesData } from '@/lib/types';
 import { CustomerDialog } from '@/components/customers/customer-dialog';
 import { DeleteCustomerDialog } from '@/components/customers/delete-customer-dialog';
-import { format } from 'date-fns';
+import { format, differenceInDays } from 'date-fns';
 import Papa from 'papaparse';
 import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -27,7 +27,7 @@ export default function CustomersPage() {
     const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [sortOption, setSortOption] = useState('balance_desc');
-    const [debtFilter, setDebtFilter] = useState('all');
+    const [statusFilter, setStatusFilter] = useState('all');
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isImporting, setIsImporting] = useState(false);
     const [isImportPreviewOpen, setIsImportPreviewOpen] = useState(false);
@@ -42,14 +42,14 @@ export default function CustomersPage() {
     useEffect(() => {
         const savedSort = localStorage.getItem('customers_sort_option');
         if (savedSort) setSortOption(savedSort);
-        const savedDebt = localStorage.getItem('customers_debt_filter');
-        if (savedDebt) setDebtFilter(savedDebt);
+        const savedStatus = localStorage.getItem('customers_status_filter');
+        if (savedStatus) setStatusFilter(savedStatus);
         const savedSearch = localStorage.getItem('customers_search_query');
         if (savedSearch !== null) setSearchQuery(savedSearch);
     }, []);
     
     useEffect(() => { localStorage.setItem('customers_sort_option', sortOption); }, [sortOption]);
-    useEffect(() => { localStorage.setItem('customers_debt_filter', debtFilter); }, [debtFilter]);
+    useEffect(() => { localStorage.setItem('customers_status_filter', statusFilter); }, [statusFilter]);
     useEffect(() => { localStorage.setItem('customers_search_query', searchQuery); }, [searchQuery]);
 
     const { enrichedCustomers, totalCustomers, totalDebt } = useMemo(() => {
@@ -84,7 +84,11 @@ export default function CustomersPage() {
                 ? allActivities.reduce((latest, act) => act.createdAt! > latest ? act.createdAt! : latest, allActivities[0].createdAt!)
                 : null;
             
-            return { ...c, id: c.id!, totalSpent, outstandingBalance, lastActivityDate };
+            const isReminderDue = outstandingBalance > 0 && c.settlementDay && lastActivityDate
+                ? differenceInDays(new Date(), lastActivityDate) > c.settlementDay
+                : false;
+
+            return { ...c, id: c.id!, totalSpent, outstandingBalance, lastActivityDate, isReminderDue };
         });
         
         return { enrichedCustomers: customerData, totalCustomers: customers.length, totalDebt: cumulativeDebt };
@@ -103,10 +107,12 @@ export default function CustomersPage() {
             (c.phone && c.phone.includes(debouncedSearchQuery))
         ) : enrichedCustomers;
 
-        if (debtFilter === 'with_debt') {
+        if (statusFilter === 'with_debt') {
             tempCustomers = tempCustomers.filter(c => c.outstandingBalance > 0);
-        } else if (debtFilter === 'no_debt') {
+        } else if (statusFilter === 'no_debt') {
             tempCustomers = tempCustomers.filter(c => c.outstandingBalance <= 0);
+        } else if (statusFilter === 'reminder_due') {
+            tempCustomers = tempCustomers.filter(c => c.isReminderDue);
         }
         
         tempCustomers.sort((a, b) => {
@@ -120,7 +126,7 @@ export default function CustomersPage() {
         });
 
         return tempCustomers;
-    }, [enrichedCustomers, debouncedSearchQuery, sortOption, debtFilter]);
+    }, [enrichedCustomers, debouncedSearchQuery, sortOption, statusFilter]);
 
     const handleAddClick = () => {
         setSelectedCustomer(null);
@@ -301,12 +307,13 @@ export default function CustomersPage() {
                                         <SelectItem value="created_asc">Date d'ajout</SelectItem>
                                     </SelectContent>
                                 </Select>
-                                 <Select value={debtFilter} onValueChange={setDebtFilter}>
-                                    <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Filtrer par dette" /></SelectTrigger>
+                                 <Select value={statusFilter} onValueChange={setStatusFilter}>
+                                    <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Filtrer par statut" /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="all">Tous les clients</SelectItem>
                                         <SelectItem value="with_debt">Avec dette</SelectItem>
                                         <SelectItem value="no_debt">Sans dette</SelectItem>
+                                        <SelectItem value="reminder_due">Rappel requis</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>

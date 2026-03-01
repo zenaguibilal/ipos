@@ -19,6 +19,7 @@ export interface Customer {
     firstName: string;
     lastName: string;
     phone?: string;
+    settlementDay?: number;
     createdAt?: Date;
     updatedAt?: Date;
 }
@@ -89,6 +90,7 @@ export interface CustomerWithSalesData extends Customer {
     totalSpent: number;
     outstandingBalance: number;
     lastActivityDate?: Date | null;
+    isReminderDue?: boolean;
 }
 
 

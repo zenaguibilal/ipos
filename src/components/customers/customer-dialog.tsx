@@ -22,6 +22,7 @@ const initialFormState = {
     firstName: '',
     lastName: '',
     phone: '',
+    settlementDay: '',
 };
 
 export function CustomerDialog({ isOpen, onOpenChange, customer, onCustomerAdded }: CustomerDialogProps) {
@@ -35,6 +36,7 @@ export function CustomerDialog({ isOpen, onOpenChange, customer, onCustomerAdded
                 firstName: customer.firstName,
                 lastName: customer.lastName,
                 phone: customer.phone || '',
+                settlementDay: String(customer.settlementDay || ''),
             });
         } else {
             setFormState(initialFormState);
@@ -47,7 +49,7 @@ export function CustomerDialog({ isOpen, onOpenChange, customer, onCustomerAdded
         setError(null);
         setIsLoading(true);
 
-        const { firstName, lastName, phone } = formState;
+        const { firstName, lastName, phone, settlementDay } = formState;
 
         if (!firstName || !lastName) {
             setError("Le prénom et le nom sont requis.");
@@ -59,6 +61,7 @@ export function CustomerDialog({ isOpen, onOpenChange, customer, onCustomerAdded
             firstName,
             lastName,
             phone,
+            settlementDay: settlementDay ? parseInt(settlementDay, 10) : undefined,
         };
 
         try {
@@ -108,6 +111,10 @@ export function CustomerDialog({ isOpen, onOpenChange, customer, onCustomerAdded
                         <div className="space-y-2">
                             <Label htmlFor="phone">Téléphone</Label>
                             <Input id="phone" type="tel" value={formState.phone} onChange={(e) => setFormState(s => ({...s, phone: e.target.value}))} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="settlementDay">Délai de paiement (jours)</Label>
+                            <Input id="settlementDay" type="number" placeholder="Ex: 30" value={formState.settlementDay} onChange={(e) => setFormState(s => ({...s, settlementDay: e.target.value}))} />
                         </div>
                     </div>
                     <DialogFooter>
