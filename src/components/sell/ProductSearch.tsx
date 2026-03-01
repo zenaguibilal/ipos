@@ -109,9 +109,9 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
     return (
         <div className="p-4 flex flex-col h-full">
             <div className="relative mb-4">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Barcode className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input 
-                    placeholder="Rechercher par nom ou scanner un code-barres..."
+                    placeholder="Scanner un code-barres ou rechercher..."
                     className="pl-9"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
