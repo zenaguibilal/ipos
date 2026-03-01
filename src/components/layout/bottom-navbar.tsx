@@ -7,7 +7,7 @@ import {
   Package,
   Users,
   BarChart3,
-  Archive,
+  History,
   ShoppingCart,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -17,6 +17,7 @@ const navLinks = [
   { href: '/sell', label: 'Vente', icon: ShoppingCart },
   { href: '/products', label: 'Produits', icon: Package },
   { href: '/customers', label: 'Clients', icon: Users },
+  { href: '/sales-history', label: 'Historique', icon: History },
 ];
 
 export function BottomNavBar() {
@@ -24,7 +25,7 @@ export function BottomNavBar() {
 
   return (
     <div className="fixed bottom-0 left-0 z-10 w-full border-t bg-background/95 backdrop-blur-sm md:hidden print-hide">
-      <nav className="grid grid-cols-4 items-center justify-around h-16">
+      <nav className="grid grid-cols-5 items-center justify-around h-16">
         {navLinks.map(link => (
           <Link
             key={link.href}

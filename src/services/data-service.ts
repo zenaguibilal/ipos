@@ -1,3 +1,5 @@
+'use client';
+
 import { db } from '@/lib/database';
 import { toast } from 'sonner';
 import type { SaleItem, SalePayment, Sale, StockIntakeItem, Product, BreadOrder, CompanyProfile, ProductReturn, DailyBreadOrder, ReturnItem, Expense, Cart, Customer, Payment } from '@/lib/types';
@@ -222,7 +224,7 @@ class DataService {
             if (todaysOrder?.id) {
                 await db.dailyBreadOrders.update(todaysOrder.id, { isDelivered: value });
             } else {
-                await db.dailyBreadOrders.add({ breadCustomerId: order.id, customerName: order.name, date: dateString, quantity, isPaid: false, isDelivered: value } as DailyBreadOrder);
+                await db.dailyBreadOrders.add({ breadCustomerId: order.id, customerName: customer.name, date: dateString, quantity, isPaid: false, isDelivered: value } as DailyBreadOrder);
             }
         }
     });
