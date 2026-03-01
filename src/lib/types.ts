@@ -19,24 +19,6 @@ export interface Customer {
     firstName: string;
     lastName: string;
     phone?: string;
-    settlementDay?: number;
-    createdAt?: Date;
-    updatedAt?: Date;
-}
-
-export interface CustomerWithSalesData extends Customer {
-    id: number; // Make id mandatory here
-    totalSpent: number;
-    outstandingBalance: number;
-    lastActivityDate?: Date | null;
-    isReminderDue?: boolean;
-}
-
-export interface Payment {
-    id?: number;
-    customerId: number;
-    customerName?: string;
-    amount: number;
     createdAt?: Date;
     updatedAt?: Date;
 }
@@ -86,28 +68,6 @@ export interface StockIntake {
     updatedAt?: Date;
 }
 
-export interface ReturnItem {
-    productId: number | null;
-    productName: string;
-    quantity: number;
-    price: number; // The price at which it was sold
-    purchasePrice: number;
-    wasRestocked: boolean;
-}
-
-export interface ProductReturn {
-    id?: number;
-    originalInvoiceNumber: string;
-    items: ReturnItem[];
-    totalReturnValue: number;
-    amountRefunded: number;
-    customerId?: number;
-    customerName?: string;
-    createdAt?: Date;
-    updatedAt?: Date;
-    notes?: string;
-}
-
 export type ExpenseCategory = 'Loyer' | 'Salaires' | 'Fournisseurs' | 'Services Publics' | 'Marketing' | 'Maintenance' | 'Autre';
 
 export interface Expense {
@@ -132,7 +92,7 @@ export interface BreadCustomer {
 // Represents the order information for a customer on a given day
 export interface BreadOrder extends BreadCustomer {
     id: number;
-    todaysOrder?: DailyBreadOrder & { saleId?: number };
+    todaysOrder?: DailyBreadOrder;
 }
 
 

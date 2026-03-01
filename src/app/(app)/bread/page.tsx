@@ -132,7 +132,7 @@ export default function BreadOrdersPage() {
         if (!order.id) return;
         setUpdatingItems(prev => [...prev, order.id!]);
         try {
-            await dataService.handleBreadOrderStatusUpdate({ order, field, value, dateString, companyProfile });
+            await dataService.handleBreadOrderStatusUpdate({ order, field, value, dateString });
             toast.success(`Statut pour ${order.name} mis à jour.`);
         } catch (error: any) {
             console.error("Failed to update status:", error);
@@ -140,7 +140,7 @@ export default function BreadOrdersPage() {
         } finally {
             setUpdatingItems(prev => prev.filter(id => id !== order.id));
         }
-    }, [dateString, companyProfile]);
+    }, [dateString]);
 
     const handleResetDay = useCallback(async () => {
         if (!dailyOrders || dailyOrders.length === 0) {
@@ -174,8 +174,7 @@ export default function BreadOrdersPage() {
                 customers: selectedCustomers,
                 field,
                 value,
-                dateString,
-                companyProfile
+                dateString
             });
             toast.success(`${selectedOrders.size} commande(s) mise(s) à jour.`);
             setSelectedOrders(new Set());
@@ -185,7 +184,7 @@ export default function BreadOrdersPage() {
         } finally {
             setIsUpdating(false);
         }
-    }, [dateString, breadOrders, selectedOrders, companyProfile]);
+    }, [dateString, breadOrders, selectedOrders]);
 
     const handlePrint = () => {
         const printableContent = document.getElementById('receipt-for-print');
@@ -224,25 +223,8 @@ export default function BreadOrdersPage() {
                      <Button onClick={() => setIsCustomerDialogOpen(true)} disabled={isUpdating}><PlusCircle className="mr-2 h-4 w-4" />Ajouter</Button>
                 </div>
             </div>
-
-            {!isPriceSet && !isLoading && (
-                 <Card className="mb-6 border-destructive bg-destructive/10">
-                    <div className="p-4 flex items-center gap-4">
-                        <ShieldAlert className="h-8 w-8 text-destructive flex-shrink-0" />
-                        <div>
-                            <h3 className="font-bold text-destructive">Prix du pain non défini !</h3>
-                            <p className="text-sm text-destructive/80">
-                                Veuillez définir un prix de vente pour le pain dans votre profil d'entreprise pour activer le suivi financier.
-                            </p>
-                        </div>
-                        <Button asChild variant="destructive" className="ml-auto">
-                            <Link href="/profile">Définir le prix</Link>
-                        </Button>
-                    </div>
-                </Card>
-            )}
             
-            <BreadStatsCards orders={filteredOrders} breadPrice={breadPrice} isLoading={isLoading} />
+            <BreadStatsCards orders={filteredOrders} isLoading={isLoading} />
             
             <div className="my-6">
                 <Card>
@@ -286,7 +268,7 @@ export default function BreadOrdersPage() {
                                         <DropdownMenuItem onSelect={() => handleBulkUpdate('isDelivered', true)}>Marquer comme Livré</DropdownMenuItem>
                                         <DropdownMenuItem onSelect={() => handleBulkUpdate('isDelivered', false)}>Marquer comme Non Livré</DropdownMenuItem>
                                         <DropdownMenuSeparator />
-                                        <DropdownMenuItem onSelect={() => handleBulkUpdate('isPaid', true)} disabled={!isPriceSet}>Marquer comme Payé</DropdownMenuItem>
+                                        <DropdownMenuItem onSelect={() => handleBulkUpdate('isPaid', true)}>Marquer comme Payé</DropdownMenuItem>
                                         <DropdownMenuItem onSelect={() => handleBulkUpdate('isPaid', false)}>Marquer comme Non Payé</DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>

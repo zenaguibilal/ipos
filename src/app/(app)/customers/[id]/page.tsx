@@ -4,20 +4,15 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/database';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Timeline, TimelineItem, TimelineConnector, TimelineHeader, TimelineIcon, TimelineTitle, TimelineBody } from "@/components/ui/timeline";
-import { ArrowLeft, Edit, HandCoins, Phone, CreditCard } from 'lucide-react';
+import { ArrowLeft, Edit, Phone } from 'lucide-react';
 import Link from 'next/link';
 import { safeToDate } from '@/lib/utils';
-import { format, subMonths, startOfMonth, addMonths } from 'date-fns';
+import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import type { Customer, Payment, CompanyProfile } from '@/lib/types';
+import type { Customer } from '@/lib/types';
 import { CustomerDialog } from '@/components/customers/customer-dialog';
-import { AddPaymentForm } from '@/components/customers/add-payment-form';
-import { Badge } from '@/components/ui/badge';
-import { toast } from 'sonner';
-import dynamic from 'next/dynamic';
 
 
 export default function CustomerDetailPage() {
@@ -26,24 +21,10 @@ export default function CustomerDetailPage() {
     const customerId = parseInt(params.id as string, 10);
 
     const [isEditOpen, setIsEditOpen] = useState(false);
-    const [isPaymentOpen, setIsPaymentOpen] = useState(false);
 
     const customer = useLiveQuery(() => db.customers.get(customerId), [customerId]);
-    const payments = useLiveQuery(() => db.payments.where('customerId').equals(customerId).toArray(), [customerId]);
-    const companyProfile = useLiveQuery(() => db.companyProfile.get(1));
 
-    const totalPaid = useMemo(() => {
-        return payments?.reduce((acc, p) => acc + p.amount, 0) ?? 0;
-    }, [payments]);
-
-    const combinedTransactions = useMemo(() => {
-        return (payments ?? [])
-            .map(p => ({ type: 'payment', data: p }))
-            .sort((a, b) => (safeToDate(b.data.createdAt!).getTime() - safeToDate(a.data.createdAt!).getTime()));
-    }, [payments]);
-
-
-    const isLoading = customer === undefined || payments === undefined || companyProfile === undefined;
+    const isLoading = customer === undefined;
 
     if (isLoading) {
         return <div className="flex h-full items-center justify-center"><p>Chargement du profil client...</p></div>;
@@ -72,13 +53,6 @@ export default function CustomerDetailPage() {
                     customer={customer}
                 />
             )}
-             {customer && (
-                <AddPaymentForm
-                    isOpen={isPaymentOpen}
-                    onOpenChange={setIsPaymentOpen}
-                    customer={customer}
-                />
-            )}
             <main className="flex-1 overflow-auto p-4 sm:p-6">
                 <div className="mb-4">
                     <Button variant="outline" size="sm" asChild>
@@ -101,23 +75,16 @@ export default function CustomerDetailPage() {
                                 )}
                             </CardHeader>
                             <CardContent className="flex gap-2">
-                                <Button className="flex-1" onClick={() => setIsPaymentOpen(true)}>
-                                    <HandCoins className="mr-2 h-4 w-4"/> Encaisser Paiement
-                                </Button>
-                                 <Button variant="secondary" onClick={() => setIsEditOpen(true)}>
+                                 <Button variant="secondary" onClick={() => setIsEditOpen(true)} className="w-full">
                                     <Edit className="mr-2 h-4 w-4"/> Modifier
                                 </Button>
                             </CardContent>
                         </Card>
                          <Card>
                             <CardHeader>
-                                <CardTitle>Statistiques du Client</CardTitle>
+                                <CardTitle>Informations</CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-4">
-                                <div className="flex justify-between items-center">
-                                    <span className="text-muted-foreground">Total Payé</span>
-                                    <span className="font-semibold text-lg">{totalPaid.toFixed(1)} DA</span>
-                                </div>
                                 <div className="flex justify-between items-center">
                                     <span className="text-muted-foreground">Client depuis</span>
                                     <span className="font-semibold">{customer.createdAt ? format(safeToDate(customer.createdAt), 'd MMM yyyy', { locale: fr }) : 'N/A'}</span>
@@ -129,35 +96,10 @@ export default function CustomerDetailPage() {
                     <div className="lg:col-span-2">
                         <Card>
                              <CardHeader>
-                                <CardTitle>Historique des Paiements</CardTitle>
+                                <CardTitle>Activité du Client</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                {combinedTransactions.length === 0 ? (
-                                    <p className="text-muted-foreground">Aucun paiement pour ce client.</p>
-                                ) : (
-                                    <Timeline>
-                                        {combinedTransactions.map((tx, index) => (
-                                            <TimelineItem key={`${tx.type}-${tx.data.id}`}>
-                                                {index < combinedTransactions.length - 1 && <TimelineConnector />}
-                                                <TimelineHeader>
-                                                    <TimelineIcon><CreditCard className="h-5 w-5 text-green-500" /></TimelineIcon>
-                                                    <TimelineTitle>Paiement</TimelineTitle>
-                                                    <span className="text-xs text-muted-foreground ml-auto">
-                                                        {tx.data.createdAt ? format(safeToDate(tx.data.createdAt), 'd MMM yyyy, HH:mm', { locale: fr }) : ''}
-                                                    </span>
-                                                </TimelineHeader>
-                                                <TimelineBody>
-                                                    <div className="bg-muted/50 p-4 rounded-md border">
-                                                        <div className="flex justify-between items-center">
-                                                            <p>Règlement de dette</p>
-                                                            <p className="font-bold text-lg text-green-600">+{tx.data.amount.toFixed(1)} DA</p>
-                                                        </div>
-                                                    </div>
-                                                </TimelineBody>
-                                            </TimelineItem>
-                                        ))}
-                                    </Timeline>
-                                )}
+                                <p className="text-muted-foreground">L'historique des activités n'est plus disponible.</p>
                             </CardContent>
                         </Card>
                     </div>

@@ -195,7 +195,6 @@ export function ImportPreviewDialog({ isOpen, onOpenChange, analysis, onConfirm,
                                     <TableHead>Prénom</TableHead>
                                     <TableHead>Nom</TableHead>
                                     <TableHead>Téléphone</TableHead>
-                                    <TableHead>Dette (DA)</TableHead>
                                     <TableHead>Action</TableHead>
                                     <TableHead className="w-12"></TableHead>
                                 </TableRow>
@@ -216,9 +215,6 @@ export function ImportPreviewDialog({ isOpen, onOpenChange, analysis, onConfirm,
                                             <Input value={item.data.phone || ''} onChange={e => handleItemChange(item.key, 'phone', e.target.value)} className="h-8" disabled={!item.include} />
                                         </TableCell>
                                         <TableCell>
-                                            <Input type="number" value={item.data.debtAmount !== null && item.data.debtAmount !== undefined ? item.data.debtAmount : ''} onChange={e => handleItemChange(item.key, 'debtAmount', e.target.value === '' ? null : parseFloat(e.target.value))} className="h-8" disabled={!item.include} />
-                                        </TableCell>
-                                        <TableCell>
                                             {item.status === 'new' && <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300">Nouveau</Badge>}
                                             {item.status === 'update' && <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300">Mise à jour</Badge>}
                                             {item.status === 'skipped' && <Badge variant="outline" className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300">Ignoré</Badge>}
@@ -231,7 +227,7 @@ export function ImportPreviewDialog({ isOpen, onOpenChange, analysis, onConfirm,
                                     </TableRow>
                                 )) : (
                                     <TableRow>
-                                        <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                                        <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
                                             {editableItems.length > 0 ? "Aucun client ne correspond à votre recherche." : "Aucune donnée à importer."}
                                         </TableCell>
                                     </TableRow>

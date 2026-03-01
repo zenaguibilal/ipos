@@ -22,7 +22,6 @@ const initialFormState = {
     firstName: '',
     lastName: '',
     phone: '',
-    settlementDay: '',
 };
 
 export function CustomerDialog({ isOpen, onOpenChange, customer, onCustomerAdded }: CustomerDialogProps) {
@@ -36,7 +35,6 @@ export function CustomerDialog({ isOpen, onOpenChange, customer, onCustomerAdded
                 firstName: customer.firstName,
                 lastName: customer.lastName,
                 phone: customer.phone || '',
-                settlementDay: customer.settlementDay ? String(customer.settlementDay) : '',
             });
         } else {
             setFormState(initialFormState);
@@ -49,7 +47,7 @@ export function CustomerDialog({ isOpen, onOpenChange, customer, onCustomerAdded
         setError(null);
         setIsLoading(true);
 
-        const { firstName, lastName, phone, settlementDay } = formState;
+        const { firstName, lastName, phone } = formState;
 
         if (!firstName || !lastName) {
             setError("Le prénom et le nom sont requis.");
@@ -61,7 +59,6 @@ export function CustomerDialog({ isOpen, onOpenChange, customer, onCustomerAdded
             firstName,
             lastName,
             phone,
-            settlementDay: settlementDay ? parseInt(settlementDay) : undefined,
         };
 
         try {
@@ -72,7 +69,7 @@ export function CustomerDialog({ isOpen, onOpenChange, customer, onCustomerAdded
                 const newId = await dataService.save('customers', customerData as Omit<Customer, "id">);
                 toast.success(`Client ${firstName} ${lastName} ajouté.`);
                 if (onCustomerAdded) {
-                    const newCustomer = await db.customers.get(newId);
+                    const newCustomer = await db.customers.get(newId as number);
                     if(newCustomer) onCustomerAdded(newCustomer);
                 }
             }
@@ -111,11 +108,6 @@ export function CustomerDialog({ isOpen, onOpenChange, customer, onCustomerAdded
                         <div className="space-y-2">
                             <Label htmlFor="phone">Téléphone</Label>
                             <Input id="phone" type="tel" value={formState.phone} onChange={(e) => setFormState(s => ({...s, phone: e.target.value}))} />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="settlementDay">Jour de règlement</Label>
-                            <Input id="settlementDay" type="number" min="1" max="31" value={formState.settlementDay} onChange={(e) => setFormState(s => ({...s, settlementDay: e.target.value}))} />
-                            <p className="text-xs text-muted-foreground">Le jour du mois où le client paie habituellement ses dettes.</p>
                         </div>
                     </div>
                     <DialogFooter>

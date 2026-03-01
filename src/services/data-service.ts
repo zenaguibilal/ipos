@@ -1,9 +1,9 @@
 import { db } from '@/lib/database';
 import { toast } from 'sonner';
-import type { StockIntakeItem, Product, BreadOrder, CompanyProfile, ProductReturn, DailyBreadOrder, ReturnItem, Expense, Setting } from '@/lib/types';
+import type { StockIntakeItem, Product, BreadOrder, CompanyProfile, DailyBreadOrder, Expense, Setting } from '@/lib/types';
 import type { ImportAnalysis } from '@/components/customers/import-preview-dialog';
 
-type TableName = 'products' | 'customers' | 'payments' | 'stockIntakes' | 'returns' | 'breadCustomers' | 'dailyBreadOrders' | 'companyProfile' | 'expenses' | 'settings';
+type TableName = 'products' | 'customers' | 'stockIntakes' | 'breadCustomers' | 'dailyBreadOrders' | 'companyProfile' | 'expenses' | 'settings';
 
 class DataService {
 
@@ -34,48 +34,6 @@ class DataService {
 
   async setSetting(key: string, value: any): Promise<string> {
       return db.settings.put({ id: key, value });
-  }
-
-  async recordReturn(returnData: {
-    foundSale: any; // Type simplified as Sale is removed
-    returnedItems: ReturnItem[]; 
-    totalReturnValue: number; 
-    amountRefunded: number; 
-    notes: string;
-  }): Promise<void> {
-      return db.transaction('rw', db.products, db.returns, async () => {
-        for (const item of returnData.returnedItems) {
-            if (item.wasRestocked && item.productId) {
-                const product = await db.products.get(item.productId);
-                if (product) await db.products.update(item.productId, { quantity: product.quantity + item.quantity });
-            }
-        }
-        const newReturn: Omit<ProductReturn, 'id'> = {
-            originalInvoiceNumber: returnData.foundSale.invoiceNumber,
-            items: returnData.returnedItems,
-            totalReturnValue: returnData.totalReturnValue,
-            amountRefunded: returnData.amountRefunded,
-            customerId: returnData.foundSale.customerId,
-            customerName: returnData.foundSale.customerName,
-            notes: returnData.notes,
-        };
-        await db.returns.add(newReturn as ProductReturn);
-    });
-  }
-  
-  async cancelReturn(returnId: number): Promise<void> {
-      return db.transaction('rw', db.returns, db.products, async () => {
-        const returnDoc = await db.returns.get(returnId);
-        if (!returnDoc) throw new Error("Retour non trouvé.");
-        
-        for (const item of returnDoc.items) {
-            if (item.wasRestocked && item.productId) {
-                const product = await db.products.get(item.productId);
-                if (product) await db.products.update(item.productId, { quantity: Math.max(0, product.quantity - item.quantity) });
-            }
-        }
-        await db.returns.delete(returnId);
-    });
   }
 
   async recordStockIntake(intakeData: {
@@ -112,20 +70,19 @@ class DataService {
     let updatedCount = 0;
     const { customersToAdd, customersToUpdate } = analysis;
     
-    return db.transaction('rw', db.customers, db.payments, async () => {
+    return db.transaction('rw', db.customers, async () => {
       for (const item of customersToUpdate) {
-        const { existingCustomer, phone, settlementDay } = item;
+        const { existingCustomer, phone } = item;
         const customerId = existingCustomer.id;
         const updatePayload: any = {};
         if (phone && existingCustomer.phone !== phone) updatePayload.phone = phone;
-        if (settlementDay !== undefined && existingCustomer.settlementDay !== settlementDay) updatePayload.settlementDay = settlementDay;
         if (Object.keys(updatePayload).length > 0) await db.customers.update(customerId, updatePayload);
         updatedCount++;
       }
       
       for (const item of customersToAdd) {
-        const { firstName, lastName, phone, settlementDay } = item;
-        await db.customers.add({ firstName, lastName, phone, settlementDay } as any);
+        const { firstName, lastName, phone } = item;
+        await db.customers.add({ firstName, lastName, phone } as any);
         importedCount++;
       }
     }).then(() => ({ importedCount, updatedCount }));
@@ -134,39 +91,33 @@ class DataService {
   // --- Bread-specific methods ---
 
   async handleBreadOrderStatusUpdate(params: {
-      order: BreadOrder; field: 'isPaid' | 'isDelivered'; value: boolean; dateString: string; companyProfile?: CompanyProfile | null;
+      order: BreadOrder; field: 'isPaid' | 'isDelivered'; value: boolean; dateString: string;
   }) {
-      const { order, field, value, dateString, companyProfile } = params;
-      const { breadPrice } = companyProfile || {};
-      if (field === 'isPaid' && value && (!breadPrice || breadPrice <= 0)) throw new Error("Prix du pain non défini.");
-
-      return db.transaction('rw', db.dailyBreadOrders, async () => {
-        const todaysOrder = order.todaysOrder;
-        const quantity = todaysOrder?.quantity ?? order.defaultOrderQuantity;
-        
-        if (todaysOrder?.id) {
-            await db.dailyBreadOrders.update(todaysOrder.id, { [field]: value });
-        } else {
-            const newOrder: Omit<DailyBreadOrder, 'id'> = { 
-                breadCustomerId: order.id, 
-                customerName: order.name, 
-                date: dateString, 
-                quantity, 
-                isPaid: field === 'isPaid' ? value : false, 
-                isDelivered: field === 'isDelivered' ? value : false
-            };
-            await db.dailyBreadOrders.add(newOrder as DailyBreadOrder);
-        }
-    });
+      const { order, field, value, dateString } = params;
+      
+      const todaysOrder = order.todaysOrder;
+      const quantity = todaysOrder?.quantity ?? order.defaultOrderQuantity;
+      
+      if (todaysOrder?.id) {
+          return db.dailyBreadOrders.update(todaysOrder.id, { [field]: value });
+      } else {
+          const newOrder: Omit<DailyBreadOrder, 'id'> = { 
+              breadCustomerId: order.id, 
+              customerName: order.name, 
+              date: dateString, 
+              quantity, 
+              isPaid: field === 'isPaid' ? value : false, 
+              isDelivered: field === 'isDelivered' ? value : false
+          };
+          return db.dailyBreadOrders.add(newOrder as DailyBreadOrder);
+      }
   }
 
   async bulkUpdateBreadOrders(params: {
-      customers: BreadOrder[]; field: 'isPaid' | 'isDelivered'; value: boolean; dateString: string; companyProfile?: CompanyProfile | null;
+      customers: BreadOrder[]; field: 'isPaid' | 'isDelivered'; value: boolean; dateString: string;
   }) {
-      const { customers, field, value, dateString, companyProfile } = params;
-      const { breadPrice } = companyProfile || {};
-      if (field === 'isPaid' && value && (!breadPrice || breadPrice <= 0)) throw new Error("Prix du pain non défini.");
-
+      const { customers, field, value, dateString } = params;
+      
       return db.transaction('rw', db.dailyBreadOrders, async () => {
         for (const customer of customers) {
             const todaysOrder = customer.todaysOrder;

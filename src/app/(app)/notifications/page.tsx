@@ -2,27 +2,12 @@
 
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/database';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import Link from 'next/link';
-import type { Customer, Sale, Payment, CompanyProfile, CustomerWithSalesData, Product } from '@/lib/types';
+import type { Product } from '@/lib/types';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { HandCoins, ArrowRight, BellOff, MessageSquare, PackageWarning } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
-import { AddPaymentForm } from '@/components/customers/add-payment-form';
-import { calculateAllCustomersMetrics } from '@/lib/utils';
-
-export interface PaymentNotification {
-  id: string;
-  type: 'payment';
-  messagePrefix: string;
-  messageLinkText: string;
-  messageSuffix: string;
-  actionText: string;
-  action?: () => void;
-  customerData: CustomerWithSalesData;
-}
+import { ArrowRight, BellOff, PackageWarning } from 'lucide-react';
 
 export interface StockNotification {
   id: string;
@@ -33,45 +18,7 @@ export interface StockNotification {
 }
 
 export default function NotificationsPage() {
-    const [payingCustomer, setPayingCustomer] = useState<Customer | null>(null);
-
-    const customers = useLiveQuery(() => db.customers.toArray());
-    const sales = useLiveQuery(() => db.sales.toArray());
-    const payments = useLiveQuery(() => db.payments.toArray());
-    const companyProfile = useLiveQuery(() => db.companyProfile.get(1));
     const products = useLiveQuery(() => db.products.toArray());
-
-    const handleWhatsAppReminder = (customer: CustomerWithSalesData) => {
-        if (!customer.phone) {
-            toast.error("Le numéro de téléphone de ce client n'est pas disponible.");
-            return;
-        }
-
-        const companyName = companyProfile?.companyName || 'votre magasin';
-        const message = `Bonjour ${customer.firstName} ${customer.lastName}, ceci est un rappel amical concernant votre solde impayé de ${customer.outstandingBalance.toFixed(2)} DA chez ${companyName}. Merci de régler votre dette dès que possible.`;
-        
-        const whatsappUrl = `https://wa.me/${customer.phone.replace(/\s+/g, '')}?text=${encodeURIComponent(message)}`;
-        window.open(whatsappUrl, '_blank');
-    };
-
-    const latePaymentNotifications = useMemo((): PaymentNotification[] => {
-        if (!customers || !sales || !payments) return [];
-        
-        const { customersWithSalesData } = calculateAllCustomersMetrics(customers, sales, payments);
-
-        return customersWithSalesData
-            .filter(c => c.isReminderDue && c.id)
-            .map(c => ({
-                id: `payment-${c.id}`,
-                type: 'payment',
-                messagePrefix: 'Paiement en retard pour ',
-                messageLinkText: `${c.firstName} ${c.lastName}`,
-                messageSuffix: `. Solde: ${c.outstandingBalance.toFixed(2)} DA`,
-                actionText: 'Encaisser',
-                action: () => setPayingCustomer(c as Customer),
-                customerData: c,
-            }));
-    }, [customers, sales, payments]);
 
     const lowStockNotifications = useMemo((): StockNotification[] => {
         if (!products) return [];
@@ -86,19 +33,16 @@ export default function NotificationsPage() {
             }));
     }, [products]);
 
-    const isLoading = customers === undefined || sales === undefined || payments === undefined || companyProfile === undefined || products === undefined;
+    const isLoading = products === undefined;
 
-    const totalNotifications = latePaymentNotifications.length + lowStockNotifications.length;
+    const totalNotifications = lowStockNotifications.length;
 
     return (
         <>
-            {payingCustomer && (
-                <AddPaymentForm isOpen={!!payingCustomer} onOpenChange={() => setPayingCustomer(null)} customer={payingCustomer} />
-            )}
             <main className="flex-1 overflow-auto p-4 sm:p-6">
                 <div className="mb-6">
                     <h1 className="text-2xl font-bold">Centre de Notifications</h1>
-                    <p className="text-muted-foreground">Alertes importantes concernant les paiements et le stock.</p>
+                    <p className="text-muted-foreground">Alertes importantes concernant le stock.</p>
                 </div>
                 
                 {totalNotifications === 0 && !isLoading ? (
@@ -111,42 +55,6 @@ export default function NotificationsPage() {
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 gap-6">
-                        {latePaymentNotifications.length > 0 && (
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle>Alerte de Paiement ({latePaymentNotifications.length})</CardTitle>
-                                    <CardDescription>Clients qui ont dépassé leur date de règlement.</CardDescription>
-                                </CardHeader>
-                                <CardContent className="space-y-4">
-                                    {latePaymentNotifications.map(notification => (
-                                        <div key={notification.id} className="flex items-center gap-4 rounded-lg border p-4">
-                                            <div className="rounded-full p-2 bg-destructive/20">
-                                                <HandCoins className="h-5 w-5 text-destructive" />
-                                            </div>
-                                            <div className="flex-1">
-                                                <p className="font-medium">
-                                                    {notification.messagePrefix}
-                                                    <Link href={`/customers/${notification.customerData.id}`} className="font-bold hover:underline">{notification.messageLinkText}</Link>
-                                                    {notification.messageSuffix}
-                                                </p>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                {notification.customerData?.phone && (
-                                                    <Button variant="outline" size="sm" onClick={() => handleWhatsAppReminder(notification.customerData)}>
-                                                        <MessageSquare className="mr-2 h-4 w-4" /> Rappel
-                                                    </Button>
-                                                )}
-                                                {notification.action && (
-                                                    <Button variant="secondary" size="sm" onClick={notification.action}>
-                                                        {notification.actionText} <ArrowRight className="ml-2 h-4 w-4" />
-                                                    </Button>
-                                                )}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </CardContent>
-                            </Card>
-                        )}
                         {lowStockNotifications.length > 0 && (
                              <Card>
                                 <CardHeader>

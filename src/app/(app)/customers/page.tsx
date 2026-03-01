@@ -5,20 +5,16 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/database';
 import { dataService } from '@/services/data-service';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Search, PlusCircle, Users, HandCoins, UserCheck, AlertCircle, MoreHorizontal, Download, ChevronDown, ListFilter, FileText, FileUp, Loader2 } from 'lucide-react';
-import type { Customer, Sale, Payment, CustomerWithSalesData } from '@/lib/types';
+import { Search, PlusCircle, Users, MoreHorizontal, Download, ChevronDown, ListFilter, FileUp, Loader2 } from 'lucide-react';
+import type { Customer } from '@/lib/types';
 import { CustomerDialog } from '@/components/customers/customer-dialog';
 import { DeleteCustomerDialog } from '@/components/customers/delete-customer-dialog';
-import { AddPaymentForm } from '@/components/customers/add-payment-form';
-import { calculateAllCustomersMetrics, safeToDate } from '@/lib/utils';
 import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
 import Papa from 'papaparse';
 import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import Link from 'next/link';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { CustomerCard } from '@/components/customers/customer-card';
 import { CustomerCardSkeleton } from '@/components/customers/customer-card-skeleton';
@@ -29,9 +25,8 @@ export default function CustomersPage() {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
     const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null);
-    const [customerForPayment, setCustomerForPayment] = useState<Customer | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
-    const [sortOption, setSortOption] = useState('debt_desc');
+    const [sortOption, setSortOption] = useState('name_asc');
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isImporting, setIsImporting] = useState(false);
     const [isImportPreviewOpen, setIsImportPreviewOpen] = useState(false);
@@ -40,8 +35,6 @@ export default function CustomersPage() {
     const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
     const customers = useLiveQuery(() => db.customers.toArray());
-    const sales = useLiveQuery(() => db.sales.toArray());
-    const payments = useLiveQuery(() => db.payments.toArray());
 
     useEffect(() => {
         const savedSortOption = localStorage.getItem('customers_sort_option');
@@ -53,40 +46,31 @@ export default function CustomersPage() {
     useEffect(() => { localStorage.setItem('customers_sort_option', sortOption); }, [sortOption]);
     useEffect(() => { localStorage.setItem('customers_search_query', searchQuery); }, [searchQuery]);
 
-    const { customersWithSalesData, totalDebt, customersWithDebt } = useMemo(() => {
-        if (!customers || !sales || !payments) {
-            return { customersWithSalesData: [], totalDebt: 0, customersWithDebt: 0 };
-        }
-        return calculateAllCustomersMetrics(customers, sales, payments);
-    }, [customers, sales, payments]);
-
     const existingCustomersMap = useMemo(() => new Map(
-        customersWithSalesData.map(c => [`${c.firstName.trim()} ${c.lastName.trim()}`.toLowerCase(), c])
-    ), [customersWithSalesData]);
+        customers?.map(c => [`${c.firstName.trim()} ${c.lastName.trim()}`.toLowerCase(), c])
+    ), [customers]);
 
     const totalCustomers = customers?.length || 0;
 
     const filteredCustomers = useMemo(() => {
-        if (!customersWithSalesData) return [];
+        if (!customers) return [];
         
-        let tempCustomers = debouncedSearchQuery ? customersWithSalesData.filter(c =>
+        let tempCustomers = debouncedSearchQuery ? customers.filter(c =>
             c.firstName.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
             c.lastName.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
             (c.phone && c.phone.includes(debouncedSearchQuery))
-        ) : customersWithSalesData;
+        ) : customers;
 
         tempCustomers.sort((a, b) => {
             switch (sortOption) {
-                case 'debt_desc': return b.outstandingBalance - a.outstandingBalance;
-                case 'spent_desc': return b.totalSpent - a.totalSpent;
-                case 'activity_desc': return (b.lastActivityDate?.getTime() || 0) - (a.lastActivityDate?.getTime() || 0);
                 case 'name_asc': return a.lastName.localeCompare(b.lastName);
+                case 'created_asc': return (a.createdAt?.getTime() || 0) - (b.createdAt?.getTime() || 0);
                 default: return 0;
             }
         });
 
         return tempCustomers;
-    }, [customersWithSalesData, debouncedSearchQuery, sortOption]);
+    }, [customers, debouncedSearchQuery, sortOption]);
 
     const handleAddClick = () => {
         setSelectedCustomer(null);
@@ -99,18 +83,14 @@ export default function CustomersPage() {
     };
     
     const handleExportCustomers = () => {
-        if (customersWithSalesData.length === 0) {
+        if (!customers || customers.length === 0) {
             toast.info("Aucun client à exporter.");
             return;
         }
 
-        const dataToExport = customersWithSalesData.map(c => ({
+        const dataToExport = customers.map(c => ({
             'Prénom': c.firstName, 'Nom': c.lastName, 'Téléphone': c.phone || '',
-            'Jour de règlement': c.settlementDay || '',
-            'Client depuis le': c.createdAt ? format(safeToDate(c.createdAt), 'yyyy-MM-dd') : '',
-            'Dette Actuelle (DA)': c.outstandingBalance.toFixed(2),
-            'Total Dépensé (DA)': c.totalSpent.toFixed(2),
-            'Dernière Activité': c.lastActivityDate ? format(c.lastActivityDate, 'yyyy-MM-dd') : '',
+            'Client depuis le': c.createdAt ? format(c.createdAt, 'yyyy-MM-dd') : '',
         }));
         
         const csv = Papa.unparse(dataToExport);
@@ -145,7 +125,7 @@ export default function CustomersPage() {
                     if(event.target) event.target.value = '';
                     return;
                 }
-                const hasDebt = headers.includes('dette (da)') || headers.includes('dette actuelle (da)');
+
                 const customersToAdd: any[] = []; const customersToUpdate: any[] = [];
                 const skippedRows: any[] = []; const errorRows: any[] = [];
                 const customersToImport = results.data as any[];
@@ -161,30 +141,14 @@ export default function CustomersPage() {
                     if (!firstName && !lastName) { errorRows.push({ ...row, reason: 'Nom manquant' }); return; }
                     if (!firstName) firstName = ''; if (!lastName) lastName = '';
     
-                    let debtAmount: number | null = null;
-                    if (hasDebt) {
-                        const debtStringRaw = row['dette actuelle (da)'] || row['dette (da)'];
-                        if (debtStringRaw !== null && debtStringRaw !== undefined && String(debtStringRaw).trim() !== '') {
-                            const parsedAmount = parseFloat(String(debtStringRaw).replace(',', '.'));
-                            if (!isNaN(parsedAmount)) debtAmount = parsedAmount;
-                        }
-                    }
                     const phone = row['téléphone'] || '';
-                    let settlementDay: number | undefined;
-                    const rawSettlementDay = row['jour de règlement'] || '';
-                    if (rawSettlementDay) {
-                        const parsedDay = parseInt(String(rawSettlementDay), 10);
-                        if (!isNaN(parsedDay) && parsedDay >= 1 && parsedDay <= 31) settlementDay = parsedDay;
-                    }
                     const normalizedFullName = `${firstName.trim()} ${lastName.trim()}`.toLowerCase();
                     const existingCustomer = existingCustomersMap.get(normalizedFullName);
-                    const importRowData = { firstName, lastName, phone, settlementDay, debtAmount, originalRow: row };
+                    const importRowData = { firstName, lastName, phone, originalRow: row };
                     
                     if (existingCustomer) {
-                        const debtNeedsUpdate = debtAmount !== null;
                         const phoneNeedsUpdate = phone && existingCustomer.phone !== phone;
-                        const settlementDayNeedsUpdate = settlementDay !== undefined && existingCustomer.settlementDay !== settlementDay;
-                        if (!debtNeedsUpdate && !phoneNeedsUpdate && !settlementDayNeedsUpdate) {
+                        if (!phoneNeedsUpdate) {
                              skippedRows.push({ ...importRowData, reason: 'Données inchangées', existingCustomer });
                              return;
                         }
@@ -221,16 +185,13 @@ export default function CustomersPage() {
         }
     };
 
-    const isLoading = customers === undefined || sales === undefined || payments === undefined;
+    const isLoading = customers === undefined;
 
     return (
         <>
             <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileSelected} accept=".csv" />
             <CustomerDialog isOpen={isDialogOpen} onOpenChange={setIsDialogOpen} customer={selectedCustomer} />
             <DeleteCustomerDialog isOpen={!!customerToDelete} onOpenChange={(isOpen) => !isOpen && setCustomerToDelete(null)} customer={customerToDelete} />
-            {customerForPayment && (
-                <AddPaymentForm isOpen={!!customerForPayment} onOpenChange={(isOpen) => !isOpen && setCustomerForPayment(null)} customer={customerForPayment} />
-            )}
             <ImportPreviewDialog 
                 isOpen={isImportPreviewOpen} onOpenChange={setIsImportPreviewOpen}
                 analysis={importAnalysis} onConfirm={executeImport} isImporting={isImporting}
@@ -239,7 +200,7 @@ export default function CustomersPage() {
                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
                     <div>
                         <h1 className="text-2xl font-bold">Gestion des Clients</h1>
-                        <p className="text-muted-foreground">Suivez vos clients et leurs dettes.</p>
+                        <p className="text-muted-foreground">Suivez vos clients.</p>
                     </div>
                      <div className="flex items-center gap-2">
                          <DropdownMenu>
@@ -263,10 +224,8 @@ export default function CustomersPage() {
                         </Button>
                     </div>
                 </div>
-                 <div className="grid gap-4 md:grid-cols-3 mb-6">
+                 <div className="grid gap-4 md:grid-cols-1 mb-6">
                     <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Clients Totaux</CardTitle><Users className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{totalCustomers}</div></CardContent></Card>
-                    <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Dettes Totales</CardTitle><AlertCircle className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold text-destructive">{totalDebt.toFixed(1)} DA</div></CardContent></Card>
-                    <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Clients avec Dettes</CardTitle><UserCheck className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{customersWithDebt}</div></CardContent></Card>
                 </div>
 
                 <Card>
@@ -279,10 +238,8 @@ export default function CustomersPage() {
                             <Select value={sortOption} onValueChange={setSortOption}>
                                 <SelectTrigger className="w-full sm:w-[220px]"><ListFilter className="mr-2 h-4 w-4" /><SelectValue placeholder="Trier par..." /></SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="debt_desc">Dette la plus élevée</SelectItem>
-                                    <SelectItem value="spent_desc">Total dépensé</SelectItem>
-                                    <SelectItem value="activity_desc">Activité la plus récente</SelectItem>
                                     <SelectItem value="name_asc">Nom (A-Z)</SelectItem>
+                                    <SelectItem value="created_asc">Date d'ajout</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
@@ -304,7 +261,6 @@ export default function CustomersPage() {
                                     <CustomerCard key={customer.id} customer={customer}
                                         onEdit={() => handleEditClick(customer)}
                                         onDelete={setCustomerToDelete}
-                                        onAddPayment={setCustomerForPayment}
                                     />
                                 ))}
                             </div>
