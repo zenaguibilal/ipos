@@ -4,6 +4,7 @@ import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/database';
 import { dataService } from '@/services/data-service';
+import { useDebounce } from '@/hooks/useDebounce';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,6 +25,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import Image from 'next/image';
 import placeholderImages from '@/lib/placeholder-images.json';
+import { Skeleton } from '@/components/ui/skeleton';
 
 
 type Placeholder = { url: string; width: number; height: number; hint: string };
@@ -36,7 +38,43 @@ const getPlaceholder = (category?: string): Placeholder => {
     return placeholders.default;
 };
 
-const SellProductCard = ({ product, onAddToCart }: { product: Product, onAddToCart: (product: Product) => void }) => {
+// --- Skeleton Components ---
+const ProductGridSkeleton = () => (
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+        {Array.from({ length: 12 }).map((_, i) => (
+            <Card key={i}>
+                <Skeleton className="w-full h-28 object-cover" />
+                <div className="p-3 space-y-2">
+                    <Skeleton className="h-4 w-3/4" />
+                    <div className="flex justify-between">
+                        <Skeleton className="h-3 w-1/4" />
+                        <Skeleton className="h-4 w-1/2" />
+                    </div>
+                </div>
+            </Card>
+        ))}
+    </div>
+);
+
+const CartSkeleton = () => (
+    <div className="flex-grow flex flex-col">
+        <div className="px-4 pb-2 border-b"><Skeleton className="h-10 w-full" /></div>
+        <div className="flex-grow flex flex-col items-center justify-center text-center p-4">
+            <ShoppingBasket className="h-16 w-16 text-muted-foreground/20"/>
+        </div>
+        <div className="p-4 mt-auto border-t bg-secondary/30 space-y-3">
+             <div className="flex justify-between"><Skeleton className="h-4 w-1/4" /><Skeleton className="h-4 w-1/3" /></div>
+             <div className="flex justify-between"><Skeleton className="h-4 w-1/4" /><Skeleton className="h-4 w-1/3" /></div>
+             <div className="border-t my-2"></div>
+             <div className="flex justify-between"><Skeleton className="h-6 w-1/3" /><Skeleton className="h-6 w-1/2" /></div>
+             <div className="flex gap-2 pt-2"><Skeleton className="h-12 w-1/4" /><Skeleton className="h-12 w-3/4" /></div>
+        </div>
+    </div>
+);
+
+
+// --- Memoized Child Components ---
+const SellProductCard = React.memo(({ product, onAddToCart }: { product: Product, onAddToCart: (product: Product) => void }) => {
     const isOutOfStock = product.quantity <= 0;
     const isLowStock = !isOutOfStock && product.quantity <= product.minStockLevel;
 
@@ -78,7 +116,8 @@ const SellProductCard = ({ product, onAddToCart }: { product: Product, onAddToCa
             </div>
         </Card>
     );
-};
+});
+SellProductCard.displayName = 'SellProductCard';
 
 const CartItemCard = React.memo(({ item, onUpdateQuantity, onRemoveItem }: { item: CartItem, onUpdateQuantity: (itemId: number | string, newQuantity: number) => void, onRemoveItem: (itemId: number | string) => void }) => {
     const placeholder = getPlaceholder(item.category);
@@ -117,12 +156,9 @@ CartItemCard.displayName = 'CartItemCard';
 
 
 export default function SellPage() {
-    const products = useLiveQuery(() => db.products.orderBy('name').toArray());
-    const customers = useLiveQuery(() => db.customers.orderBy('lastName').toArray());
-    const { carts, activeCartId, addCart, removeCart, setActiveCartId, updateCart, clearCart } = useCarts();
-
     // Component State
     const [searchQuery, setSearchQuery] = useState('');
+    const debouncedSearchQuery = useDebounce(searchQuery, 300);
     const [categoryFilter, setCategoryFilter] = useState('all');
     const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
     const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
@@ -130,51 +166,44 @@ export default function SellPage() {
     const [customProductPrice, setCustomProductPrice] = useState('');
     const [isCustomProductPopoverOpen, setIsCustomProductPopoverOpen] = useState(false);
 
-    useEffect(() => {
-        const savedCategory = localStorage.getItem('sell_page_category_filter');
-        if (savedCategory) {
-            setCategoryFilter(savedCategory);
+    // Data fetching & Management
+    const { carts, activeCartId, addCart, removeCart, setActiveCartId, updateCart, clearCart } = useCarts();
+    const customers = useLiveQuery(() => db.customers.orderBy('lastName').toArray());
+    
+    // Efficiently query products based on filters
+    const products = useLiveQuery(async () => {
+        const lowerCaseQuery = debouncedSearchQuery.toLowerCase();
+        let collection = categoryFilter === 'all' 
+            ? db.products 
+            : db.products.where('category').equals(categoryFilter);
+        
+        if (debouncedSearchQuery) {
+            // Dexie's `filter` is a post-filter but on a smaller collection if a category is selected.
+            // It's the most pragmatic way to implement a "contains" search without full-text addons.
+            return collection.filter(p => 
+                p.name.toLowerCase().includes(lowerCaseQuery) || 
+                p.barcodes?.some(b => b.includes(lowerCaseQuery))
+            ).limit(50).toArray(); // Limit results for UI performance
         }
-        const savedSearch = localStorage.getItem('sell_search_query');
-        if (savedSearch !== null) {
-            setSearchQuery(savedSearch);
-        }
-    }, []);
-
-    useEffect(() => {
-        localStorage.setItem('sell_page_category_filter', categoryFilter);
-    }, [categoryFilter]);
-
-    useEffect(() => {
-        localStorage.setItem('sell_search_query', searchQuery);
-    }, [searchQuery]);
+        
+        return collection.limit(50).toArray(); // Limit initial and category display
+    }, [categoryFilter, debouncedSearchQuery]);
 
     // Derived State
     const activeCart = useMemo(() => carts?.find(c => c.id === activeCartId), [carts, activeCartId]);
 
     const { categories, visibleCategories, hiddenCategories } = useMemo(() => {
-        if (!products) return { categories: ['all'], visibleCategories: ['all'], hiddenCategories: [] };
-        const allCats = products.reduce((acc, p) => {
-            if (p.category) acc.add(p.category);
-            return acc;
-        }, new Set<string>());
-        const categoriesArray = ['all', ...Array.from(allCats).sort()];
-        const MAX_VISIBLE_CATEGORIES = 4;
-        return {
-            categories: categoriesArray,
-            visibleCategories: categoriesArray.slice(0, MAX_VISIBLE_CATEGORIES),
-            hiddenCategories: categoriesArray.slice(MAX_VISIBLE_CATEGORIES),
-        }
-    }, [products]);
-
-    const filteredProducts = useMemo(() => {
-        if (!products) return [];
-        return products.filter(p => {
-            const matchesCategory = categoryFilter === 'all' || p.category === categoryFilter;
-            const matchesSearch = searchQuery === '' || p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.barcodes?.some(b => b.includes(searchQuery));
-            return matchesCategory && matchesSearch;
+        // This query runs once to get all unique categories for the filter UI
+        return db.products.orderBy('category').uniqueKeys().then(cats => {
+            const categoriesArray = ['all', ...cats.filter(c => c).sort() as string[]];
+            const MAX_VISIBLE_CATEGORIES = 4;
+            return {
+                categories: categoriesArray,
+                visibleCategories: categoriesArray.slice(0, MAX_VISIBLE_CATEGORIES),
+                hiddenCategories: categoriesArray.slice(MAX_VISIBLE_CATEGORIES),
+            };
         });
-    }, [products, categoryFilter, searchQuery]);
+    }, []); // Runs only once
 
     const { subtotal, discountAmount, total } = useMemo(() => {
         if (!activeCart) return { subtotal: 0, discountAmount: 0, total: 0 };
@@ -201,51 +230,52 @@ export default function SellPage() {
         }
     }, [activeCart, updateCart]);
 
-    const handleAddToCart = useCallback((product: Product) => {
-        if (!activeCart) return;
-        if (!product.id) return; // Should not happen with Dexie
+    const handleAddToCart = useCallback(async (product: Product) => {
+        if (!activeCart || !product.id) return;
+    
+        // Re-fetch product to ensure latest stock quantity is checked
+        const freshProduct = await db.products.get(product.id);
+        if (!freshProduct) {
+            toast.error("Produit non trouvé dans la base de données.");
+            return;
+        }
 
-        const existingItem = activeCart.items.find(item => item.id === product.id);
-        const stockAvailable = existingItem ? product.quantity - existingItem.cartQuantity : product.quantity;
+        const existingItem = activeCart.items.find(item => item.id === freshProduct.id);
+        const stockAvailable = existingItem ? freshProduct.quantity - existingItem.cartQuantity : freshProduct.quantity;
 
         if (stockAvailable <= 0) {
-            toast.error(`Stock épuisé pour ${product.name}.`);
+            toast.error(`Stock épuisé pour ${freshProduct.name}.`);
             return;
         }
 
         let newItems: CartItem[];
         if (existingItem) {
             newItems = activeCart.items.map(item =>
-                item.id === product.id ? { ...item, cartQuantity: item.cartQuantity + 1, flash: true } : { ...item, flash: false }
+                item.id === freshProduct.id ? { ...item, cartQuantity: item.cartQuantity + 1, flash: true } : { ...item, flash: false }
             );
         } else {
-            const productToAdd: CartItem = { ...product, id: product.id, cartQuantity: 1, flash: true };
+            const productToAdd: CartItem = { ...freshProduct, id: freshProduct.id, cartQuantity: 1, flash: true };
             newItems = [...activeCart.items.map(i => ({...i, flash: false})), productToAdd];
         }
         updateCart({ ...activeCart, items: newItems });
-        toast.success(`${product.name} ajouté au panier.`);
+        toast.success(`${freshProduct.name} ajouté au panier.`);
 
     }, [activeCart, updateCart]);
-
-    const handleBarcodeScanned = useCallback((searchTerm: string) => {
-        if (!searchTerm.trim() || !products) return;
-
+    
+    const handleBarcodeScanned = useCallback(async (searchTerm: string) => {
+        if (!searchTerm.trim()) return;
         const term = searchTerm.trim();
-        const termLowerCase = term.toLowerCase();
-
-        let product = products.find(p => p.barcodes?.includes(term));
-
-        if (!product) {
-            product = products.find(p => p.name.toLowerCase() === termLowerCase);
-        }
-
+        
+        // Prioritize barcode search as it's indexed and faster
+        let product = await db.products.where('barcodes').equals(term).first();
+    
         if (product) {
             handleAddToCart(product);
             setSearchQuery('');
         } else {
             toast.error(`Aucun produit trouvé pour "${term}".`);
         }
-    }, [products, handleAddToCart]);
+    }, [handleAddToCart]);
     
     const handleAddCustomProduct = useCallback((e: React.FormEvent) => {
         e.preventDefault();
@@ -260,31 +290,21 @@ export default function SellPage() {
         }
     
         const customItem: CartItem = {
-            id: `custom-${uuidv4()}`,
-            name: customProductName.trim(),
-            price: priceNum,
-            purchasePrice: 0,
-            quantity: Infinity,
-            minStockLevel: 0,
-            cartQuantity: 1,
-            flash: true,
-            category: 'Personnalisé',
+            id: `custom-${uuidv4()}`, name: customProductName.trim(), price: priceNum,
+            purchasePrice: 0, quantity: Infinity, minStockLevel: 0,
+            cartQuantity: 1, flash: true, category: 'Personnalisé',
             imageUrl: placeholders['Personnalisé'].url,
         };
     
         const newItems = [...activeCart.items.map(i => ({...i, flash: false})), customItem];
         updateCart({ ...activeCart, items: newItems });
-        
         toast.success(`"${customItem.name}" ajouté au panier.`);
-        
-        setCustomProductName('');
-        setCustomProductPrice('');
-        setIsCustomProductPopoverOpen(false);
+        setCustomProductName(''); setCustomProductPrice(''); setIsCustomProductPopoverOpen(false);
     }, [activeCart, updateCart, customProductName, customProductPrice]);
 
-    const handleUpdateCartQuantity = useCallback((itemId: number | string, newQuantity: number) => {
-        if (!activeCart || !products) return;
-
+    const handleUpdateCartQuantity = useCallback(async (itemId: number | string, newQuantity: number) => {
+        if (!activeCart) return;
+    
         const itemToUpdate = activeCart.items.find(i => i.id === itemId);
         if (!itemToUpdate) return;
         
@@ -294,9 +314,8 @@ export default function SellPage() {
             return;
         }
         
-        // Find stock limit only if it's not a custom product
         if (typeof itemId === 'number') {
-            const productInStock = products.find(p => p.id === itemId);
+            const productInStock = await db.products.get(itemId);
             const stockLimit = productInStock ? productInStock.quantity : 0;
             if (newQuantity > stockLimit) {
                 toast.warning(`Stock limité à ${stockLimit} pour ${itemToUpdate.name}.`);
@@ -308,7 +327,7 @@ export default function SellPage() {
             item.id === itemId ? { ...item, cartQuantity: newQuantity } : item
         );
         updateCart({ ...activeCart, items: newItems });
-    }, [activeCart, updateCart, products]);
+    }, [activeCart, updateCart]);
 
     const handleRemoveFromCart = useCallback((itemId: number | string) => {
         if (!activeCart) return;
@@ -319,17 +338,12 @@ export default function SellPage() {
     const handleSetCustomer = useCallback((customerId: string | null) => {
         if (!activeCart) return;
         if (customerId === null) {
-            updateCart({
-                ...activeCart,
-                customerId: null,
-                customerName: 'Vente au comptoir'
-            });
+            updateCart({ ...activeCart, customerId: null, customerName: 'Vente au comptoir' });
             return;
         }
         const customer = customers?.find(c => c.id === parseInt(customerId));
         updateCart({
-            ...activeCart,
-            customerId: customer?.id ?? null,
+            ...activeCart, customerId: customer?.id ?? null,
             customerName: customer ? `${customer.firstName} ${customer.lastName}` : 'Vente au comptoir'
         });
     }, [activeCart, customers, updateCart]);
@@ -338,43 +352,29 @@ export default function SellPage() {
         if (!activeCart) return;
         const numValue = Number(value);
         if (isNaN(numValue) || numValue < 0) return;
-        
         updateCart({ ...activeCart, discount: { type, value: numValue } });
     }, [activeCart, updateCart]);
 
     const handleFinalizeSale = async (payments: SalePayment[], amountPaid: number) => {
         if (!activeCart || activeCart.items.length === 0) {
-            toast.error("Le panier est vide ou une erreur est survenue.");
+            toast.error("Le panier est vide.");
             return false;
         }
-
         const isCreditSale = total - amountPaid > 0.01;
         if (isCreditSale && !activeCart.customerId) {
             toast.error("Veuillez sélectionner un client pour une vente à crédit.");
             return false;
         }
-
         const saleItems: SaleItem[] = activeCart.items.map(item => ({
-            id: item.id,
-            name: item.name,
-            price: item.price,
-            purchasePrice: item.purchasePrice ?? 0,
-            quantity: item.cartQuantity,
+            id: item.id, name: item.name, price: item.price,
+            purchasePrice: item.purchasePrice ?? 0, quantity: item.cartQuantity,
         }));
-
         try {
             await dataService.finalizeSale({
-                items: saleItems,
-                subtotal,
-                discountType: activeCart.discount.type,
-                discountAmount,
-                total,
-                amountPaid,
-                payments,
-                customerId: activeCart.customerId ?? undefined,
-                customerName: activeCart.customerName,
+                items: saleItems, subtotal, discountType: activeCart.discount.type,
+                discountAmount, total, amountPaid, payments,
+                customerId: activeCart.customerId ?? undefined, customerName: activeCart.customerName,
             });
-
             toast.success("Vente enregistrée avec succès !");
             clearCart(activeCart.id);
             return true;
@@ -393,22 +393,32 @@ export default function SellPage() {
     const customerOptions = useMemo(() => {
         if (!customers) return [];
         const options = customers.map(c => ({
-            value: String(c.id),
-            label: `${c.firstName} ${c.lastName}`,
+            value: String(c.id), label: `${c.firstName} ${c.lastName}`,
             subLabel: c.phone || undefined
         }));
         return [{ value: 'walk-in', label: 'Vente au comptoir', subLabel: 'Client par défaut' }, ...options];
     }, [customers]);
 
-    const isLoading = products === undefined || customers === undefined || carts === undefined;
+    const isLoading = products === undefined || customers === undefined || carts === undefined || categories === undefined;
 
     if (isLoading) {
          return (
-            <div className="h-full max-h-[calc(100vh-3.5rem)] flex items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <p className="ml-4">Chargement de la caisse...</p>
+            <div className="h-full max-h-[calc(100vh-3.5rem)] grid grid-cols-1 lg:grid-cols-5 overflow-hidden">
+                <div className="lg:col-span-3 xl:col-span-4 bg-muted/30 flex flex-col">
+                    <div className="p-4 border-b space-y-4">
+                        <Skeleton className="h-10 w-full" />
+                        <Skeleton className="h-9 w-full" />
+                    </div>
+                    <div className="flex-grow overflow-y-auto p-4"><ProductGridSkeleton /></div>
+                </div>
+                <div className="lg:col-span-2 xl:col-span-1 bg-card border-l flex flex-col h-full">
+                     <div className="flex-grow flex flex-col">
+                        <div className="m-2"><Skeleton className="h-9 w-full" /></div>
+                        <CartSkeleton />
+                    </div>
+                </div>
             </div>
-        )
+        );
     }
 
     return (
@@ -424,36 +434,16 @@ export default function SellPage() {
                                 className="pl-9" 
                                 value={searchQuery} 
                                 onChange={(e) => setSearchQuery(e.target.value)} 
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter') {
-                                        e.preventDefault();
-                                        handleBarcodeScanned(searchQuery);
-                                    }
-                                }}
+                                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleBarcodeScanned(searchQuery); }}}
                             />
                         </div>
                          <Popover open={isCustomProductPopoverOpen} onOpenChange={setIsCustomProductPopoverOpen}>
-                            <PopoverTrigger asChild>
-                                <Button variant="outline" className="flex-shrink-0">
-                                    <PlusCircle className="mr-2 h-4 w-4" /> Personnalisé (Alt+A)
-                                </Button>
-                            </PopoverTrigger>
+                            <PopoverTrigger asChild><Button variant="outline" className="flex-shrink-0"><PlusCircle className="mr-2 h-4 w-4" /> Personnalisé (Alt+A)</Button></PopoverTrigger>
                             <PopoverContent className="w-80">
                                 <form onSubmit={handleAddCustomProduct} className="space-y-4">
-                                    <div className="space-y-2">
-                                        <h4 className="font-medium leading-none">Produit personnalisé</h4>
-                                        <p className="text-sm text-muted-foreground">
-                                            Pour les articles qui ne sont pas dans l'inventaire.
-                                        </p>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="custom-name">Nom du produit</Label>
-                                        <Input id="custom-name" value={customProductName} onChange={(e) => setCustomProductName(e.target.value)} autoFocus/>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="custom-price">Prix (DA)</Label>
-                                        <Input id="custom-price" type="number" value={customProductPrice} onChange={(e) => setCustomProductPrice(e.target.value)} />
-                                    </div>
+                                    <div className="space-y-2"><h4 className="font-medium leading-none">Produit personnalisé</h4><p className="text-sm text-muted-foreground">Pour les articles qui ne sont pas dans l'inventaire.</p></div>
+                                    <div className="space-y-2"><Label htmlFor="custom-name">Nom du produit</Label><Input id="custom-name" value={customProductName} onChange={(e) => setCustomProductName(e.target.value)} autoFocus/></div>
+                                    <div className="space-y-2"><Label htmlFor="custom-price">Prix (DA)</Label><Input id="custom-price" type="number" value={customProductPrice} onChange={(e) => setCustomProductPrice(e.target.value)} /></div>
                                     <Button type="submit" className="w-full">Ajouter au panier</Button>
                                 </form>
                             </PopoverContent>
@@ -465,29 +455,21 @@ export default function SellPage() {
                         ))}
                         {hiddenCategories.length > 0 && (
                             <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <Button size="sm" variant="ghost">
-                                        Plus <MoreHorizontal className="ml-1 h-4 w-4" />
-                                    </Button>
-                                </DropdownMenuTrigger>
+                                <DropdownMenuTrigger asChild><Button size="sm" variant="ghost">Plus <MoreHorizontal className="ml-1 h-4 w-4" /></Button></DropdownMenuTrigger>
                                 <DropdownMenuContent>
-                                    {hiddenCategories.map(cat => (
-                                        <DropdownMenuItem key={cat} onSelect={() => setCategoryFilter(cat)} className="capitalize">{cat}</DropdownMenuItem>
-                                    ))}
+                                    {hiddenCategories.map(cat => <DropdownMenuItem key={cat} onSelect={() => setCategoryFilter(cat)} className="capitalize">{cat}</DropdownMenuItem>)}
                                 </DropdownMenuContent>
                             </DropdownMenu>
                         )}
                     </div>
                 </div>
                 <div className="flex-grow overflow-y-auto p-4">
-                    {filteredProducts.length === 0 ? (
-                         <div className="text-center py-16 text-muted-foreground">
-                            {products && products.length > 0 ? "Aucun produit ne correspond à vos filtres." : "Aucun produit trouvé. Commencez par en ajouter depuis la page Produits."}
+                    {products && products.length > 0 ? (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+                            {products.map(p => <SellProductCard key={p.id} product={p} onAddToCart={handleAddToCart} />)}
                         </div>
                     ) : (
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-6 gap-4">
-                            {filteredProducts.map(p => <SellProductCard key={p.id} product={p} onAddToCart={handleAddToCart} />)}
-                        </div>
+                         <div className="text-center py-16 text-muted-foreground">Aucun produit ne correspond à vos filtres.</div>
                     )}
                 </div>
             </div>
@@ -495,86 +477,50 @@ export default function SellPage() {
             <div className="lg:col-span-2 xl:col-span-1 bg-card border-l flex flex-col h-full">
                 <Tabs value={activeCartId || ''} onValueChange={setActiveCartId} className="flex-grow flex flex-col">
                     <TabsList className="p-1 h-auto m-2">
-                         {(carts || []).map(cart => (
+                         {carts.map(cart => (
                             <TabsTrigger key={cart.id} value={cart.id} className="flex-1 relative group">
                                 {cart.name} ({cart.items.length})
-                                {carts && carts.length > 1 && <X className="h-3 w-3 absolute top-1 right-1 text-muted-foreground opacity-0 group-hover:opacity-100" onClick={(e) => { e.stopPropagation(); removeCart(cart.id); }} />}
+                                {carts.length > 1 && <X className="h-4 w-4 absolute top-1.5 right-1.5 text-muted-foreground opacity-0 group-hover:opacity-100 p-0.5 hover:bg-destructive/20 hover:text-destructive rounded-full" onClick={(e) => { e.stopPropagation(); removeCart(cart.id); }} />}
                             </TabsTrigger>
                         ))}
                         <Button variant="ghost" size="icon" className="h-full" onClick={addCart}><PlusCircle className="h-4 w-4"/></Button>
                     </TabsList>
                    
-                    {(carts || []).map(cart => (
+                    {carts.map(cart => (
                          <TabsContent key={cart.id} value={cart.id} className="flex-grow flex flex-col overflow-hidden m-0 mt-0">
                             <div className="px-4 pb-2 border-b">
                                 <Label>Client</Label>
                                 <div className="flex gap-2 mt-1">
-                                    <Combobox
-                                        options={customerOptions ?? []}
-                                        value={cart.customerId ? String(cart.customerId) : 'walk-in'}
-                                        onSelect={(val) => handleSetCustomer(val === 'walk-in' ? null : val)}
-                                        placeholder="Sélectionner un client"
-                                        searchPlaceholder="Rechercher un client..."
-                                        notFoundMessage="Aucun client trouvé."
-                                    />
+                                    <Combobox options={customerOptions} value={cart.customerId ? String(cart.customerId) : 'walk-in'} onSelect={(val) => handleSetCustomer(val === 'walk-in' ? null : val)} placeholder="Sélectionner un client" searchPlaceholder="Rechercher un client..." notFoundMessage="Aucun client trouvé." />
                                     <Button variant="outline" size="icon" onClick={() => setIsCustomerDialogOpen(true)}><UserPlus className="h-4 w-4"/></Button>
                                 </div>
                             </div>
-
                             {cart.items.length === 0 ? (
-                                <div className="flex-grow flex flex-col items-center justify-center text-center p-4">
-                                    <ShoppingBasket className="h-16 w-16 text-muted-foreground/50"/>
-                                    <h3 className="mt-4 font-semibold">Le panier est vide</h3>
-                                    <p className="text-sm text-muted-foreground">Ajoutez des produits pour commencer.</p>
-                                </div>
+                                <div className="flex-grow flex flex-col items-center justify-center text-center p-4"><ShoppingBasket className="h-16 w-16 text-muted-foreground/50"/><h3 className="mt-4 font-semibold">Le panier est vide</h3><p className="text-sm text-muted-foreground">Ajoutez des produits pour commencer.</p></div>
                             ) : (
                                 <div className="flex-grow overflow-y-auto px-4 divide-y">
-                                    {cart.items.map(item => (
-                                        <CartItemCard 
-                                            key={item.id} 
-                                            item={item} 
-                                            onUpdateQuantity={handleUpdateCartQuantity}
-                                            onRemoveItem={handleRemoveFromCart}
-                                        />
-                                    ))}
+                                    {cart.items.map(item => <CartItemCard key={item.id} item={item} onUpdateQuantity={handleUpdateCartQuantity} onRemoveItem={handleRemoveFromCart}/>)}
                                 </div>
                             )}
 
                              {activeCart?.id === cart.id && (
                                 <div className="p-4 mt-auto border-t bg-secondary/30 space-y-3">
-                                    <div className="flex justify-between items-center text-sm">
-                                        <span className="text-muted-foreground">Sous-total</span>
-                                        <span className="font-medium">{subtotal.toFixed(1)} DA</span>
-                                    </div>
+                                    <div className="flex justify-between items-center text-sm"><span className="text-muted-foreground">Sous-total</span><span className="font-medium">{subtotal.toFixed(1)} DA</span></div>
                                     <div className="flex justify-between items-center text-sm">
                                         <Popover>
-                                            <PopoverTrigger asChild>
-                                                <Button variant="link" className="p-0 h-auto">Remise</Button>
-                                            </PopoverTrigger>
+                                            <PopoverTrigger asChild><Button variant="link" className="p-0 h-auto">Remise</Button></PopoverTrigger>
                                             <PopoverContent className="w-60">
                                                 <div className="space-y-4">
-                                                    <div className="space-y-2">
-                                                        <Label htmlFor="discount-value">Valeur</Label>
-                                                        <Input id="discount-value" type="number" value={activeCart.discount.value} onChange={(e) => handleSetDiscount(activeCart.discount.type, parseFloat(e.target.value))} />
-                                                    </div>
-                                                    <div className="flex gap-2">
-                                                        <Button size="sm" variant={activeCart.discount.type === 'fixed' ? 'default' : 'outline'} onClick={() => handleSetDiscount('fixed', activeCart.discount.value)}>Fixe (DA)</Button>
-                                                        <Button size="sm" variant={activeCart.discount.type === 'percentage' ? 'default' : 'outline'} onClick={() => handleSetDiscount('percentage', activeCart.discount.value)}>%</Button>
-                                                    </div>
+                                                    <div className="space-y-2"><Label htmlFor="discount-value">Valeur</Label><Input id="discount-value" type="number" value={activeCart.discount.value} onChange={(e) => handleSetDiscount(activeCart.discount.type, parseFloat(e.target.value))} /></div>
+                                                    <div className="flex gap-2"><Button size="sm" variant={activeCart.discount.type === 'fixed' ? 'default' : 'outline'} onClick={() => handleSetDiscount('fixed', activeCart.discount.value)}>Fixe (DA)</Button><Button size="sm" variant={activeCart.discount.type === 'percentage' ? 'default' : 'outline'} onClick={() => handleSetDiscount('percentage', activeCart.discount.value)}>%</Button></div>
                                                 </div>
                                             </PopoverContent>
                                         </Popover>
                                         <span className="font-medium text-destructive">- {discountAmount.toFixed(1)} DA</span>
                                     </div>
                                     <div className="border-t"></div>
-                                    <div className="flex justify-between items-center text-2xl font-bold">
-                                        <span>TOTAL</span>
-                                        <span className="text-primary">{total.toFixed(1)} DA</span>
-                                    </div>
-                                    <div className="flex gap-2 pt-2">
-                                        <Button variant="outline" size="lg" className="w-1/4" onClick={() => clearCart(cart.id)}><Trash2/></Button>
-                                        <Button size="lg" className="w-3/4" onClick={() => setIsPaymentDialogOpen(true)} disabled={cart.items.length === 0}>Vente (F4)</Button>
-                                    </div>
+                                    <div className="flex justify-between items-center text-2xl font-bold"><span>TOTAL</span><span className="text-primary">{total.toFixed(1)} DA</span></div>
+                                    <div className="flex gap-2 pt-2"><Button variant="outline" size="lg" className="w-1/4" onClick={() => clearCart(cart.id)}><Trash2/></Button><Button size="lg" className="w-3/4" onClick={() => setIsPaymentDialogOpen(true)} disabled={cart.items.length === 0}>Vente (F4)</Button></div>
                                 </div>
                              )}
                          </TabsContent>
@@ -582,21 +528,10 @@ export default function SellPage() {
                 </Tabs>
             </div>
             
-            <CustomerDialog 
-                isOpen={isCustomerDialogOpen} 
-                onOpenChange={setIsCustomerDialogOpen} 
-                customer={null} 
-                onCustomerAdded={(newCustomer) => {
-                    if (newCustomer.id) handleSetCustomer(String(newCustomer.id))
-                }}
-            />
-            
-            <PaymentDialog 
-                isOpen={isPaymentDialogOpen}
-                onOpenChange={setIsPaymentDialogOpen}
-                totalAmount={total}
-                onConfirm={handleFinalizeSale}
-            />
+            <CustomerDialog isOpen={isCustomerDialogOpen} onOpenChange={setIsCustomerDialogOpen} customer={null} onCustomerAdded={(newCustomer) => { if (newCustomer.id) handleSetCustomer(String(newCustomer.id)) }} />
+            <PaymentDialog isOpen={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen} totalAmount={total} onConfirm={handleFinalizeSale}/>
         </div>
     );
 }
+
+    
