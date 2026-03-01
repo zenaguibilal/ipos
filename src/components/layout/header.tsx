@@ -32,9 +32,7 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip"
-import { AnimatedLogo } from './animated-logo';
-
+} from "@/components/ui/tooltip";
 
 const navLinks = [
   { href: '/dashboard', label: 'Tableau de bord', icon: BarChart3 },
@@ -62,7 +60,7 @@ export function AppHeader() {
                   className="flex items-center gap-2 font-semibold"
               >
                   <span className="text-2xl">🏪</span>
-                  <AnimatedLogo />
+                  <span className="text-xl font-semibold">iPOS</span>
               </Link>
               <span className="text-xs text-muted-foreground hidden lg:inline">100% Hors ligne</span>
           </div>
@@ -118,10 +116,6 @@ export function AppHeader() {
                     <DropdownMenuItem onClick={() => router.push('/profile')}>
                     <Settings className="mr-2 h-4 w-4" />
                     <span>Profil & Paramètres</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => router.push('/about')}>
-                        <Info className="mr-2 h-4 w-4" />
-                        <span>À propos</span>
                     </DropdownMenuItem>
                 </DropdownMenuContent>
                 </DropdownMenu>
