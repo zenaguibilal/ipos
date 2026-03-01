@@ -15,15 +15,16 @@ export default function SellPage() {
         setActiveCartId,
         addCart,
         removeCart,
-        updateCart,
         activeCart,
         clearCart,
         updateCartItemQuantity,
         removeCartItem,
         setCartCustomer,
+        updateCart,
+        isLoading
     } = useCarts();
 
-    if (!activeCart) {
+    if (isLoading || !activeCart) {
         return (
             <div className="flex h-full items-center justify-center">
                 <p>Chargement des paniers...</p>
@@ -53,7 +54,7 @@ export default function SellPage() {
                 <div className="mb-4">
                     <CustomerCombobox
                         customerId={activeCart.customerId}
-                        onSelectCustomer={setCartCustomer}
+                        onSelectCustomer={(customer) => setCartCustomer(customer)}
                     />
                 </div>
                 

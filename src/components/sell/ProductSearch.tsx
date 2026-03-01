@@ -148,7 +148,7 @@ interface CardProps {
 }
 
 const Card = React.memo(({ product, onClick }: CardProps) => {
-    const isAvailable = product.quantity > 0;
+    const isAvailable = typeof product.id === 'string' || product.quantity > 0;
     const placeholder = getPlaceholder(product.category);
 
     return (

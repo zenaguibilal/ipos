@@ -78,8 +78,8 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, onSaleFinalized }: P
         };
 
         try {
-            await dataService.finalizeSale(saleData);
-            setLastSale({ ...saleData, change: change > 0 ? change : 0, createdAt: new Date() });
+            const newSaleId = await dataService.finalizeSale(saleData);
+            setLastSale({ ...saleData, id: newSaleId, invoiceNumber: `INV-${Date.now()}`, change: change > 0 ? change : 0, createdAt: new Date() });
             toast.success("Vente finalisée avec succès !");
             onSaleFinalized();
             // Don't close the dialog, show receipt instead

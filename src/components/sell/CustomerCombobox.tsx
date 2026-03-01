@@ -11,7 +11,7 @@ import { useCustomerMetrics } from '@/hooks/useCustomerMetrics';
 
 interface CustomerComboboxProps {
     customerId: number | null;
-    onSelectCustomer: (customerId: number | null) => void;
+    onSelectCustomer: (customer: Customer | null) => void;
 }
 
 const WalkInCustomerOption: ComboboxOption = {
@@ -38,6 +38,7 @@ export function CustomerCombobox({ customerId, onSelectCustomer }: CustomerCombo
 
         const paymentsByCustomer = new Map<number, Payment[]>();
         payments.forEach(payment => {
+            if (!payment.customerId) return;
             const existing = paymentsByCustomer.get(payment.customerId) || [];
             paymentsByCustomer.set(payment.customerId, [...existing, payment]);
         });
@@ -66,7 +67,8 @@ export function CustomerCombobox({ customerId, onSelectCustomer }: CustomerCombo
         if (value === 'walk-in') {
             onSelectCustomer(null);
         } else {
-            onSelectCustomer(parseInt(value, 10));
+            const selectedCustomer = customers?.find(c => c.id === parseInt(value, 10));
+            onSelectCustomer(selectedCustomer || null);
         }
     };
     

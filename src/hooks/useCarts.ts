@@ -50,7 +50,7 @@ export const useCarts = () => {
     const activeCart = carts.find(c => c.id === activeCartId);
 
     const saveCart = useCallback(async (cart: Cart) => {
-        await dataService.update('carts', cart.id, cart);
+        await dataService.update('carts', cart.id as string, cart);
         mutate(CARTS_KEY, (currentCarts: Cart[] = []) => 
             currentCarts.map(c => c.id === cart.id ? cart : c), false
         );
@@ -88,14 +88,14 @@ export const useCarts = () => {
             newItems = [...cart.items];
             const existingItem = newItems[existingItemIndex];
             const newQuantity = existingItem.cartQuantity + quantity;
-            if (newQuantity > product.quantity && !String(product.id).startsWith('custom-')) {
+            if (typeof product.id === 'number' && newQuantity > product.quantity) {
                  toast.warning(`Stock limité pour ${product.name}`, { description: `Vous ne pouvez pas ajouter plus de ${product.quantity} unités.` });
                  return;
             }
             newItems[existingItemIndex] = { ...existingItem, cartQuantity: newQuantity, flash: true };
             toast.success(`${product.name} mis à jour dans le panier.`);
         } else {
-             if (quantity > product.quantity && !String(product.id).startsWith('custom-')) {
+             if (typeof product.id === 'number' && quantity > product.quantity) {
                 toast.warning(`Stock insuffisant pour ${product.name}`, { description: `Seulement ${product.quantity} unités disponibles.` });
                 return;
             }
@@ -119,7 +119,7 @@ export const useCarts = () => {
         if (itemIndex === -1) return;
         
         const item = activeCart.items[itemIndex];
-        if (newQuantity > item.quantity && !String(item.id).startsWith('custom-')) {
+        if (typeof item.id === 'number' && newQuantity > item.quantity) {
             toast.warning(`Stock limité`, { description: `Maximum ${item.quantity} unités pour ${item.name}.` });
             return;
         }
@@ -155,7 +155,7 @@ export const useCarts = () => {
     return {
         carts,
         activeCartId: activeCartId || '',
-        activeCart: activeCart || createNewCart(''),
+        activeCart: activeCart,
         setActiveCartId,
         addCart,
         removeCart,
@@ -163,12 +163,7 @@ export const useCarts = () => {
         clearCart,
         updateCartItemQuantity,
         removeCartItem,
-        setCartCustomer: async (customer: Customer | null) => {
-            if (!activeCart) return;
-            const customerId = customer ? customer.id! : null;
-            const customerName = customer ? `${customer.firstName} ${customer.lastName}` : '';
-            await saveCart({ ...activeCart, customerId, customerName });
-        },
+        setCartCustomer,
         isLoading: isLoading && carts.length === 0,
         error,
     };

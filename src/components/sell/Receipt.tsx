@@ -95,8 +95,8 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(({ sale },
                     </tr>
                 </thead>
                 <tbody>
-                    {sale.items.map((item) => (
-                        <tr key={item.id}>
+                    {sale.items.map((item, index) => (
+                        <tr key={index}>
                             <td className="py-1">{item.name}</td>
                             <td className="text-center py-1">{item.quantity}</td>
                             <td className="text-right py-1">{item.price.toFixed(1)}</td>

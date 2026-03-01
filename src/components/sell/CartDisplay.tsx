@@ -8,6 +8,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Trash2, ShoppingCart } from 'lucide-react';
 import Image from 'next/image';
 import placeholderImages from '@/lib/placeholder-images.json';
+import { cn } from '@/lib/utils';
 
 interface CartDisplayProps {
     cart: Cart;
@@ -46,7 +47,7 @@ export function CartDisplay({ cart, onQuantityChange, onRemoveItem }: CartDispla
                 <ScrollArea className="flex-grow -mr-4 pr-4">
                     <div className="space-y-3">
                         {cart.items.map(item => (
-                            <div key={item.id} className="flex items-center gap-4 bg-muted/50 p-2 rounded-lg">
+                            <div key={item.id} className={cn("flex items-center gap-4 bg-muted/50 p-2 rounded-lg", item.flash && "animate-flash")}>
                                 <Image 
                                     src={item.imageUrl || getPlaceholder(item.category).url}
                                     alt={item.name}
@@ -66,7 +67,7 @@ export function CartDisplay({ cart, onQuantityChange, onRemoveItem }: CartDispla
                                         onBlur={(e) => handleQuantityBlur(e, item)}
                                         className="w-16 h-9 text-center"
                                         min="1"
-                                        max={item.quantity}
+                                        max={typeof item.id === 'number' ? item.quantity : undefined}
                                     />
                                     <Button variant="ghost" size="icon" className="text-destructive" onClick={() => onRemoveItem(item.id)}>
                                         <Trash2 className="h-4 w-4" />
