@@ -15,6 +15,7 @@ import {
   Bell,
   ListChecks,
   Receipt,
+  Undo2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -42,6 +43,7 @@ const navLinks = [
   { href: '/stock', label: 'Stock', icon: Archive },
   { href: '/bread', label: 'Pain', icon: ListChecks },
   { href: '/expenses', label: 'Dépenses', icon: Receipt },
+  { href: '/returns', label: 'Retours', icon: Undo2 },
   { href: '/notifications', label: 'Alertes', icon: Bell },
 ];
 
