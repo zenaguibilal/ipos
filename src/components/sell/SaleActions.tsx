@@ -16,21 +16,33 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Input } from '../ui/input';
+import { Label } from '../ui/label';
+import { formatCurrency } from '@/lib/utils';
 
 interface SaleActionsProps {
     cart: Cart;
     onClearCart: () => void;
+    onSetDiscount: (discount: { type: 'fixed' | 'percentage'; value: number }) => void;
 }
 
-export function SaleActions({ cart, onClearCart }: SaleActionsProps) {
+export function SaleActions({ cart, onClearCart, onSetDiscount }: SaleActionsProps) {
     const [isPaymentOpen, setIsPaymentOpen] = useState(false);
     
     const subtotal = cart.items.reduce((acc, item) => acc + item.price * item.cartQuantity, 0);
     const totalItems = cart.items.reduce((acc, item) => acc + item.cartQuantity, 0);
+    
+    const discountValue = cart.discount.value || 0;
+    const discountType = cart.discount.type || 'fixed';
+
+    const discountAmount = discountType === 'percentage'
+        ? (subtotal * discountValue) / 100
+        : discountValue;
+    
+    const total = Math.max(0, subtotal - discountAmount);
+
 
     const handleSaleFinalized = () => {
-        // The dialog will stay open to show receipt.
-        // We clear the cart in the background.
         onClearCart();
     }
 
@@ -45,12 +57,42 @@ export function SaleActions({ cart, onClearCart }: SaleActionsProps) {
              <div className="space-y-3">
                 <div className="flex justify-between items-center text-lg font-semibold">
                     <span>Sous-total ({totalItems} articles)</span>
-                    <span>{subtotal.toFixed(1)} DA</span>
+                    <span>{formatCurrency(subtotal)}</span>
                 </div>
-                 <div className="flex justify-between items-center text-2xl font-bold text-primary">
+                
+                <div className="space-y-2">
+                    <Label>Remise</Label>
+                    <div className="flex items-center gap-2">
+                        <Input
+                            type="number"
+                            placeholder="0"
+                            value={discountValue || ''}
+                            onChange={(e) => onSetDiscount({ type: discountType, value: parseFloat(e.target.value) })}
+                            className="h-10 flex-grow"
+                        />
+                        <Button 
+                            variant={discountType === 'fixed' ? 'secondary' : 'outline'}
+                            onClick={() => onSetDiscount({ type: 'fixed', value: discountValue })}
+                        >DA</Button>
+                        <Button 
+                            variant={discountType === 'percentage' ? 'secondary' : 'outline'}
+                            onClick={() => onSetDiscount({ type: 'percentage', value: discountValue })}
+                        >%</Button>
+                    </div>
+                </div>
+
+                 {discountAmount > 0 && (
+                    <div className="flex justify-between items-center text-md text-destructive">
+                        <span>Remise</span>
+                        <span>- {formatCurrency(discountAmount)}</span>
+                    </div>
+                )}
+                 
+                 <div className="flex justify-between items-center text-2xl font-bold text-primary border-t pt-3 mt-3">
                     <span>Total</span>
-                    <span>{subtotal.toFixed(1)} DA</span>
+                    <span>{formatCurrency(total)}</span>
                 </div>
+
                  <div className="grid grid-cols-2 gap-2 pt-2">
                      <AlertDialog>
                         <AlertDialogTrigger asChild>

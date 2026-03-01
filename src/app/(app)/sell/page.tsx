@@ -21,6 +21,7 @@ export default function SellPage() {
         removeCartItem,
         setCartCustomer,
         updateCart,
+        setCartDiscount,
         isLoading
     } = useCarts();
 
@@ -68,6 +69,7 @@ export default function SellPage() {
                     <SaleActions
                         cart={activeCart}
                         onClearCart={clearCart}
+                        onSetDiscount={setCartDiscount!}
                     />
                 </footer>
             </div>

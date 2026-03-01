@@ -34,6 +34,7 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(({ sale },
         priceHeader: "Prix",
         totalHeader: "Total",
         subtotalLabel: "Sous-total:",
+        discountLabel: "Remise",
         totalLabel: "TOTAL:",
         amountPaidLabel: "Montant Payé:",
         changeLabel: "Monnaie Rendue:",
@@ -111,6 +112,15 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(({ sale },
                     <span>{receiptInfo.subtotalLabel}</span>
                     <span>{formatCurrency(sale.subtotal)}</span>
                 </div>
+                {sale.discountAmount && sale.discountAmount > 0 && (
+                     <div className="flex justify-between">
+                        <span>
+                            {receiptInfo.discountLabel}
+                            {sale.discountType === 'percentage' && sale.subtotal > 0 && ` (${Math.round((sale.discountAmount / sale.subtotal) * 100)}%)`}
+                        </span>
+                        <span className="text-black">- {formatCurrency(sale.discountAmount)}</span>
+                    </div>
+                )}
                 <div className="flex justify-between font-bold text-base mt-1">
                     <span>{receiptInfo.totalLabel}</span>
                     <span>{formatCurrency(sale.total)}</span>

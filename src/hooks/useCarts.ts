@@ -141,7 +141,7 @@ export const useCarts = () => {
 
     const clearCart = useCallback(async () => {
         if (!activeCart) return;
-        await saveCart({ ...activeCart, items: [], customerId: null, customerName: '' });
+        await saveCart({ ...activeCart, items: [], customerId: null, customerName: '', discount: { type: 'fixed', value: 0 } });
     }, [activeCart, saveCart]);
     
     const setCartCustomer = useCallback(async (customer: Customer | null) => {
@@ -149,6 +149,28 @@ export const useCarts = () => {
         const customerId = customer ? customer.id! : null;
         const customerName = customer ? `${customer.firstName} ${customer.lastName}` : '';
         await saveCart({ ...activeCart, customerId, customerName });
+    }, [activeCart, saveCart]);
+
+    const setCartDiscount = useCallback(async (discount: { type: 'fixed' | 'percentage'; value: number }) => {
+        if (!activeCart) return;
+        
+        const value = Math.max(0, discount.value || 0);
+        const subtotal = activeCart.items.reduce((acc, item) => acc + item.price * item.cartQuantity, 0);
+
+        if (discount.type === 'fixed' && value > subtotal) {
+            toast.warning("La remise fixe ne peut pas être supérieure au sous-total.");
+            await saveCart({ ...activeCart, discount: { type: 'fixed', value: subtotal } });
+            return;
+        }
+
+        if (discount.type === 'percentage' && (value < 0 || value > 100)) {
+            toast.warning("Le pourcentage de remise doit être compris entre 0 et 100.");
+            const clampedValue = Math.max(0, Math.min(100, value));
+            await saveCart({ ...activeCart, discount: { type: 'percentage', value: clampedValue } });
+            return;
+        }
+
+        await saveCart({ ...activeCart, discount: { ...discount, value } });
     }, [activeCart, saveCart]);
 
 
@@ -164,6 +186,7 @@ export const useCarts = () => {
         updateCartItemQuantity,
         removeCartItem,
         setCartCustomer,
+        setCartDiscount,
         isLoading: isLoading && carts.length === 0,
         error,
     };

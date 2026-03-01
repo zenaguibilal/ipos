@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -26,8 +26,16 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, onSaleFinalized }: P
     const receiptRef = useRef<HTMLDivElement>(null);
     const [lastSale, setLastSale] = useState<any>(null);
 
-    const subtotal = cart.items.reduce((acc, item) => acc + item.price * item.cartQuantity, 0);
-    const total = subtotal; // Placeholder for future discounts
+    const subtotal = useMemo(() => cart.items.reduce((acc, item) => acc + item.price * item.cartQuantity, 0), [cart.items]);
+    
+    const discountAmount = useMemo(() => {
+        if (!cart.discount || cart.discount.value <= 0) return 0;
+        return cart.discount.type === 'percentage'
+            ? (subtotal * cart.discount.value) / 100
+            : cart.discount.value;
+    }, [cart.discount, subtotal]);
+
+    const total = Math.max(0, subtotal - discountAmount);
     const amountPaidNum = parseFloat(amountPaid) || 0;
     const change = amountPaidNum - total;
 
@@ -70,6 +78,8 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, onSaleFinalized }: P
         const saleData = {
             items: cart.items.map(i => ({ id: i.id, name: i.name, price: i.price, purchasePrice: i.purchasePrice, quantity: i.cartQuantity })),
             subtotal,
+            discountType: cart.discount.type,
+            discountAmount: discountAmount,
             total,
             amountPaid: amountPaidNum,
             payments,

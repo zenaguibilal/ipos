@@ -68,6 +68,15 @@ export function SaleDetailsDialog({
                 </div>
                  <div className="space-y-2 rounded-lg bg-muted p-4">
                     <div className="flex justify-between text-sm"><span className="text-muted-foreground">Sous-total</span><span>{formatCurrency(sale.subtotal)}</span></div>
+                    {sale.discountAmount && sale.discountAmount > 0 && (
+                        <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">
+                                Remise
+                                {sale.discountType === 'percentage' && sale.subtotal > 0 && ` (${Math.round((sale.discountAmount / sale.subtotal) * 100)}%)`}
+                            </span>
+                            <span className="text-destructive">- {formatCurrency(sale.discountAmount)}</span>
+                        </div>
+                    )}
                     <div className="flex justify-between font-semibold text-lg"><span className="">Total</span><span>{formatCurrency(sale.total)}</span></div>
                     <div className="flex justify-between text-sm pt-2 border-t"><span className="text-muted-foreground">Montant Payé</span><span>{formatCurrency(sale.amountPaid)}</span></div>
                     <div className="flex justify-between text-sm font-semibold">
