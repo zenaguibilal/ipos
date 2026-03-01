@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Search, PlusCircle, Users, MoreHorizontal, Download, ChevronDown, ListFilter, FileUp, Loader2 } from 'lucide-react';
-import type { Customer } from '@/lib/types';
+import type { Customer, Sale, Payment, CustomerWithSalesData } from '@/lib/types';
 import { CustomerDialog } from '@/components/customers/customer-dialog';
 import { DeleteCustomerDialog } from '@/components/customers/delete-customer-dialog';
 import { format } from 'date-fns';
@@ -26,7 +26,8 @@ export default function CustomersPage() {
     const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
     const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
-    const [sortOption, setSortOption] = useState('name_asc');
+    const [sortOption, setSortOption] = useState('balance_desc');
+    const [debtFilter, setDebtFilter] = useState('all');
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isImporting, setIsImporting] = useState(false);
     const [isImportPreviewOpen, setIsImportPreviewOpen] = useState(false);
@@ -35,42 +36,91 @@ export default function CustomersPage() {
     const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
     const customers = useLiveQuery(() => db.customers.toArray());
-
+    const sales = useLiveQuery(() => db.sales.toArray());
+    const payments = useLiveQuery(() => db.payments.toArray());
+    
     useEffect(() => {
-        const savedSortOption = localStorage.getItem('customers_sort_option');
-        if (savedSortOption) setSortOption(savedSortOption);
+        const savedSort = localStorage.getItem('customers_sort_option');
+        if (savedSort) setSortOption(savedSort);
+        const savedDebt = localStorage.getItem('customers_debt_filter');
+        if (savedDebt) setDebtFilter(savedDebt);
         const savedSearch = localStorage.getItem('customers_search_query');
         if (savedSearch !== null) setSearchQuery(savedSearch);
     }, []);
-
+    
     useEffect(() => { localStorage.setItem('customers_sort_option', sortOption); }, [sortOption]);
+    useEffect(() => { localStorage.setItem('customers_debt_filter', debtFilter); }, [debtFilter]);
     useEffect(() => { localStorage.setItem('customers_search_query', searchQuery); }, [searchQuery]);
 
-    const existingCustomersMap = useMemo(() => new Map(
-        customers?.map(c => [`${c.firstName.trim()} ${c.lastName.trim()}`.toLowerCase(), c])
-    ), [customers]);
+    const { enrichedCustomers, totalCustomers, totalDebt } = useMemo(() => {
+        if (!customers || !sales || !payments) {
+            return { enrichedCustomers: [], totalCustomers: 0, totalDebt: 0 };
+        }
 
-    const totalCustomers = customers?.length || 0;
+        const salesByCustomer = new Map<number, Sale[]>();
+        sales.forEach(sale => {
+            if (!sale.customerId) return;
+            const existing = salesByCustomer.get(sale.customerId) || [];
+            salesByCustomer.set(sale.customerId, [...existing, sale]);
+        });
+
+        const paymentsByCustomer = new Map<number, Payment[]>();
+        payments.forEach(payment => {
+            const existing = paymentsByCustomer.get(payment.customerId) || [];
+            paymentsByCustomer.set(payment.customerId, [...existing, payment]);
+        });
+        
+        let cumulativeDebt = 0;
+        const customerData = customers.map((c): CustomerWithSalesData => {
+            const customerSales = salesByCustomer.get(c.id!) || [];
+            const customerPayments = paymentsByCustomer.get(c.id!) || [];
+            const totalSpent = customerSales.reduce((acc, s) => acc + s.total, 0);
+            const totalPaid = customerPayments.reduce((acc, p) => acc + p.amount, 0);
+            const outstandingBalance = totalSpent - totalPaid;
+            cumulativeDebt += outstandingBalance;
+
+            const allActivities = [...customerSales, ...customerPayments];
+            const lastActivityDate = allActivities.length > 0
+                ? allActivities.reduce((latest, act) => act.createdAt! > latest ? act.createdAt! : latest, allActivities[0].createdAt!)
+                : null;
+            
+            return { ...c, id: c.id!, totalSpent, outstandingBalance, lastActivityDate };
+        });
+        
+        return { enrichedCustomers: customerData, totalCustomers: customers.length, totalDebt: cumulativeDebt };
+    }, [customers, sales, payments]);
+
+    const existingCustomersMap = useMemo(() => new Map(
+        enrichedCustomers?.map(c => [`${c.firstName.trim()} ${c.lastName.trim()}`.toLowerCase(), c])
+    ), [enrichedCustomers]);
 
     const filteredCustomers = useMemo(() => {
-        if (!customers) return [];
+        if (!enrichedCustomers) return [];
         
-        let tempCustomers = debouncedSearchQuery ? customers.filter(c =>
+        let tempCustomers = debouncedSearchQuery ? enrichedCustomers.filter(c =>
             c.firstName.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
             c.lastName.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
             (c.phone && c.phone.includes(debouncedSearchQuery))
-        ) : customers;
+        ) : enrichedCustomers;
 
+        if (debtFilter === 'with_debt') {
+            tempCustomers = tempCustomers.filter(c => c.outstandingBalance > 0);
+        } else if (debtFilter === 'no_debt') {
+            tempCustomers = tempCustomers.filter(c => c.outstandingBalance <= 0);
+        }
+        
         tempCustomers.sort((a, b) => {
             switch (sortOption) {
                 case 'name_asc': return a.lastName.localeCompare(b.lastName);
+                case 'balance_desc': return b.outstandingBalance - a.outstandingBalance;
+                case 'last_activity_desc': return (b.lastActivityDate?.getTime() || 0) - (a.lastActivityDate?.getTime() || 0);
                 case 'created_asc': return (a.createdAt?.getTime() || 0) - (b.createdAt?.getTime() || 0);
                 default: return 0;
             }
         });
 
         return tempCustomers;
-    }, [customers, debouncedSearchQuery, sortOption]);
+    }, [enrichedCustomers, debouncedSearchQuery, sortOption, debtFilter]);
 
     const handleAddClick = () => {
         setSelectedCustomer(null);
@@ -83,13 +133,15 @@ export default function CustomersPage() {
     };
     
     const handleExportCustomers = () => {
-        if (!customers || customers.length === 0) {
+        if (!enrichedCustomers || enrichedCustomers.length === 0) {
             toast.info("Aucun client à exporter.");
             return;
         }
 
-        const dataToExport = customers.map(c => ({
+        const dataToExport = enrichedCustomers.map(c => ({
             'Prénom': c.firstName, 'Nom': c.lastName, 'Téléphone': c.phone || '',
+            'Dernière activité': c.lastActivityDate ? format(c.lastActivityDate, 'yyyy-MM-dd') : '',
+            'Solde impayé': c.outstandingBalance, 'Total dépensé': c.totalSpent,
             'Client depuis le': c.createdAt ? format(c.createdAt, 'yyyy-MM-dd') : '',
         }));
         
@@ -97,11 +149,11 @@ export default function CustomersPage() {
         const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
-        link.download = 'export_clients.csv';
+        link.download = 'export_clients_complets.csv';
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        toast.success("Liste des clients exportée avec succès.");
+        toast.success("Liste complète des clients exportée avec succès.");
     };
 
     const handleImportClick = () => {
@@ -115,10 +167,10 @@ export default function CustomersPage() {
 
         Papa.parse(file, {
             header: true, skipEmptyLines: true,
-            transformHeader: header => header.toLowerCase().trim(),
+            transformHeader: header => header.toLowerCase().trim().replace(/\s+/g, ''),
             complete: (results) => {
-                const headers = (results.meta.fields || []).map(h => h.toLowerCase().trim());
-                const hasFullName = headers.includes('nom du client');
+                const headers = (results.meta.fields || []).map(h => h.toLowerCase().trim().replace(/\s+/g, ''));
+                const hasFullName = headers.includes('nomduclient');
                 const hasFirstAndLastName = headers.includes('prénom') && headers.includes('nom');
                 if (!hasFullName && !hasFirstAndLastName) {
                     toast.error("Fichier CSV invalide. En-têtes de nom requis : ('Nom du client') ou ('Prénom' et 'Nom').");
@@ -135,20 +187,23 @@ export default function CustomersPage() {
                     if(hasFirstAndLastName) {
                         firstName = row['prénom']; lastName = row['nom'];
                     } else {
-                        const parts = String(row['nom du client'] || '').trim().split(/\s+/);
+                        const parts = String(row['nomduclient'] || '').trim().split(/\s+/);
                         firstName = parts.shift() || ''; lastName = parts.join(' ');
                     }
                     if (!firstName && !lastName) { errorRows.push({ ...row, reason: 'Nom manquant' }); return; }
                     if (!firstName) firstName = ''; if (!lastName) lastName = '';
     
                     const phone = row['téléphone'] || '';
+                    const debtAmount = row['soldeimpayé'] !== undefined ? parseFloat(String(row['soldeimpayé']).replace(',', '.')) : null;
+
                     const normalizedFullName = `${firstName.trim()} ${lastName.trim()}`.toLowerCase();
                     const existingCustomer = existingCustomersMap.get(normalizedFullName);
-                    const importRowData = { firstName, lastName, phone, originalRow: row };
+                    const importRowData = { firstName, lastName, phone, debtAmount, originalRow: row };
                     
                     if (existingCustomer) {
                         const phoneNeedsUpdate = phone && existingCustomer.phone !== phone;
-                        if (!phoneNeedsUpdate) {
+                        const debtNeedsUpdate = debtAmount !== null && Math.abs(debtAmount - existingCustomer.outstandingBalance) > 0.01;
+                        if (!phoneNeedsUpdate && !debtNeedsUpdate) {
                              skippedRows.push({ ...importRowData, reason: 'Données inchangées', existingCustomer });
                              return;
                         }
@@ -185,7 +240,7 @@ export default function CustomersPage() {
         }
     };
 
-    const isLoading = customers === undefined;
+    const isLoading = customers === undefined || sales === undefined || payments === undefined;
 
     return (
         <>
@@ -200,7 +255,7 @@ export default function CustomersPage() {
                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
                     <div>
                         <h1 className="text-2xl font-bold">Gestion des Clients</h1>
-                        <p className="text-muted-foreground">Suivez vos clients.</p>
+                        <p className="text-muted-foreground">Suivez vos clients, leurs achats et leurs dettes.</p>
                     </div>
                      <div className="flex items-center gap-2">
                          <DropdownMenu>
@@ -224,8 +279,9 @@ export default function CustomersPage() {
                         </Button>
                     </div>
                 </div>
-                 <div className="grid gap-4 md:grid-cols-1 mb-6">
+                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
                     <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Clients Totaux</CardTitle><Users className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{totalCustomers}</div></CardContent></Card>
+                    <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Dettes Totales</CardTitle><Users className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold text-destructive">{totalDebt.toFixed(1)} DA</div></CardContent></Card>
                 </div>
 
                 <Card>
@@ -235,13 +291,25 @@ export default function CustomersPage() {
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                 <Input placeholder="Rechercher par nom ou téléphone..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9 w-full" />
                             </div>
-                            <Select value={sortOption} onValueChange={setSortOption}>
-                                <SelectTrigger className="w-full sm:w-[220px]"><ListFilter className="mr-2 h-4 w-4" /><SelectValue placeholder="Trier par..." /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="name_asc">Nom (A-Z)</SelectItem>
-                                    <SelectItem value="created_asc">Date d'ajout</SelectItem>
-                                </SelectContent>
-                            </Select>
+                             <div className="flex gap-2">
+                                 <Select value={sortOption} onValueChange={setSortOption}>
+                                    <SelectTrigger className="w-full sm:w-[220px]"><ListFilter className="mr-2 h-4 w-4" /><SelectValue placeholder="Trier par..." /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="balance_desc">Solde (plus élevé)</SelectItem>
+                                        <SelectItem value="name_asc">Nom (A-Z)</SelectItem>
+                                        <SelectItem value="last_activity_desc">Dernière activité</SelectItem>
+                                        <SelectItem value="created_asc">Date d'ajout</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                 <Select value={debtFilter} onValueChange={setDebtFilter}>
+                                    <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Filtrer par dette" /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">Tous les clients</SelectItem>
+                                        <SelectItem value="with_debt">Avec dette</SelectItem>
+                                        <SelectItem value="no_debt">Sans dette</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
                         </div>
                     </CardHeader>
                     <CardContent>
@@ -252,7 +320,7 @@ export default function CustomersPage() {
                          ) : filteredCustomers.length === 0 ? (
                             <div className="flex h-40 items-center justify-center rounded-md border-2 border-dashed border-border bg-card">
                                 <p className="text-muted-foreground">
-                                    {customers && customers.length > 0 ? "Aucun client ne correspond à votre recherche." : "Aucun client trouvé. Commencez par en ajouter un."}
+                                    {customers && customers.length > 0 ? "Aucun client ne correspond à vos filtres." : "Aucun client trouvé. Commencez par en ajouter un."}
                                 </p>
                             </div>
                         ) : (

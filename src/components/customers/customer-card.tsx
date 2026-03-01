@@ -1,17 +1,17 @@
 'use client';
 
 import React from 'react';
-import type { Customer } from '@/lib/types';
+import type { CustomerWithSalesData } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Edit, Trash2, FileText, Phone } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, FileText, Phone, User, BarChart, DollarSign } from 'lucide-react';
 import Link from 'next/link';
 
 interface CustomerCardProps {
-    customer: Customer;
-    onEdit: (customer: Customer) => void;
-    onDelete: (customer: Customer) => void;
+    customer: CustomerWithSalesData;
+    onEdit: (customer: CustomerWithSalesData) => void;
+    onDelete: (customer: CustomerWithSalesData) => void;
 }
 
 const CustomerCardComponent = ({ customer, onEdit, onDelete }: CustomerCardProps) => {
@@ -57,9 +57,25 @@ const CustomerCardComponent = ({ customer, onEdit, onDelete }: CustomerCardProps
                     </DropdownMenu>
                 </div>
             </CardHeader>
-            <CardContent className="flex-grow">
-                 <p className="text-sm text-muted-foreground">Informations de base du client.</p>
+            <CardContent className="flex-grow space-y-3">
+                 <div className="flex items-center text-sm">
+                    <BarChart className="h-4 w-4 mr-2 text-muted-foreground"/>
+                    <span className="text-muted-foreground">Total dépensé:</span>
+                    <span className="font-semibold ml-auto">{customer.totalSpent.toFixed(1)} DA</span>
+                </div>
+                <div className="flex items-center text-sm">
+                    <DollarSign className="h-4 w-4 mr-2 text-muted-foreground"/>
+                    <span className="text-muted-foreground">Solde impayé:</span>
+                     <span className={`font-semibold ml-auto ${customer.outstandingBalance > 0 ? 'text-destructive' : ''}`}>{customer.outstandingBalance.toFixed(1)} DA</span>
+                </div>
             </CardContent>
+            <CardFooter className="pt-0">
+                <Button variant="outline" asChild className="w-full">
+                    <Link href={`/customers/${customer.id}`}>
+                        Voir l'historique
+                    </Link>
+                </Button>
+            </CardFooter>
         </Card>
     );
 }

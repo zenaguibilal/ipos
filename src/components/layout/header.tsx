@@ -35,6 +35,8 @@ import {
 
 const navLinks = [
   { href: '/dashboard', label: 'Tableau de bord', icon: BarChart3 },
+  { href: '/sell', label: 'Point de Vente', icon: ShoppingCart },
+  { href: '/sales-history', label: 'Sجل المبيعات', icon: History },
   { href: '/products', label: 'Produits', icon: Package },
   { href: '/customers', label: 'Clients', icon: Users },
   { href: '/stock', label: 'Stock', icon: Archive },
@@ -70,7 +72,7 @@ export function AppHeader() {
                             <TooltipTrigger asChild>
                                 <Button 
                                     asChild
-                                    variant={pathname.startsWith(link.href) ? "default" : "ghost"}
+                                    variant={pathname.startsWith(link.href) ? "secondary" : "ghost"}
                                     size="icon"
                                     className="rounded-full"
                                 >

@@ -8,14 +8,15 @@ import {
   Users,
   BarChart3,
   Archive,
+  ShoppingCart,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navLinks = [
   { href: '/dashboard', label: 'Tableau', icon: BarChart3 },
+  { href: '/sell', label: 'Vente', icon: ShoppingCart },
   { href: '/products', label: 'Produits', icon: Package },
   { href: '/customers', label: 'Clients', icon: Users },
-  { href: '/stock', label: 'Stock', icon: Archive },
 ];
 
 export function BottomNavBar() {
@@ -30,7 +31,7 @@ export function BottomNavBar() {
             href={link.href}
             className={cn(
               'flex flex-col items-center justify-center gap-1 text-muted-foreground transition-colors hover:text-primary h-full',
-              (pathname === '/' && link.href === '/dashboard') || (link.href !== '/' && pathname.startsWith(link.href)) ? 'text-primary' : ''
+              (pathname === '/' && link.href === '/dashboard') || (pathname.startsWith(link.href) && link.href !== '/') ? 'text-primary' : ''
             )}
           >
             <link.icon className="h-5 w-5" />

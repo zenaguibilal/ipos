@@ -1,7 +1,7 @@
 
 
 export interface Product {
-    id?: number;
+    id?: number | string; // Allow string for custom products
     name: string;
     category?: string;
     price: number;
@@ -21,6 +21,93 @@ export interface Customer {
     phone?: string;
     createdAt?: Date;
     updatedAt?: Date;
+}
+
+export interface SaleItem {
+    id: number | string; // string for custom items
+    name: string;
+    price: number;
+    purchasePrice: number;
+    quantity: number;
+}
+
+// Represents an item in the live shopping cart
+export interface CartItem extends Product {
+    id: number | string; // Can be a string for custom products
+    cartQuantity: number;
+    flash?: boolean; // For UI animation
+}
+
+// Represents a single shopping cart session
+export interface Cart {
+    id: string;
+    name: string;
+    items: CartItem[];
+    customerId: number | null;
+    customerName: string;
+    discount: {
+        type: 'fixed' | 'percentage';
+        value: number;
+    };
+}
+
+export interface SalePayment {
+    method: 'cash' | 'card' | 'other';
+    amount: number;
+}
+
+export interface Sale {
+    id?: number;
+    invoiceNumber: string;
+    items: SaleItem[];
+    subtotal: number;
+    discountType?: 'percentage' | 'fixed';
+    discountAmount?: number;
+    total: number;
+    amountPaid: number;
+    remainingBalance: number;
+    paymentStatus: 'paid' | 'partial' | 'unpaid';
+    payments: SalePayment[];
+    customerId?: number;
+    customerName?: string;
+    createdAt?: Date;
+    updatedAt?: Date;
+    breadOrderDate?: string;
+}
+
+export interface Payment {
+    id?: number;
+    customerId: number;
+    customerName?: string;
+    amount: number;
+    createdAt?: Date;
+    updatedAt?: Date;
+}
+
+export interface CustomerWithSalesData extends Customer {
+    id: number; // Make id mandatory here
+    totalSpent: number;
+    outstandingBalance: number;
+    lastActivityDate?: Date | null;
+}
+
+
+export interface ChartData {
+  date: string;
+  revenue: number;
+  profit?: number;
+}
+
+export interface TopProduct {
+    name: string;
+    totalRevenue: number;
+    unitsSold: number;
+    totalProfit: number;
+}
+
+export interface TopCustomer {
+    name: string;
+    totalSpent: number;
 }
 
 export interface CompanyProfile {
@@ -68,6 +155,29 @@ export interface StockIntake {
     updatedAt?: Date;
 }
 
+export interface ReturnItem {
+    productId: number | null;
+    productName: string;
+    quantity: number;
+    price: number; // The price at which it was sold
+    purchasePrice: number;
+    wasRestocked: boolean;
+}
+
+export interface ProductReturn {
+    id?: number;
+    originalSaleId?: number;
+    originalInvoiceNumber: string;
+    items: ReturnItem[];
+    totalReturnValue: number;
+    amountRefunded: number;
+    customerId?: number;
+    customerName?: string;
+    createdAt?: Date;
+    updatedAt?: Date;
+    notes?: string;
+}
+
 export type ExpenseCategory = 'Loyer' | 'Salaires' | 'Fournisseurs' | 'Services Publics' | 'Marketing' | 'Maintenance' | 'Autre';
 
 export interface Expense {
@@ -104,6 +214,7 @@ export interface DailyBreadOrder {
     date: string; // YYYY-MM-DD
     createdAt?: Date;
     updatedAt?: Date;
+    saleId?: number;
     isPaid: boolean;
     isDelivered: boolean;
 }

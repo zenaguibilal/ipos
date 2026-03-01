@@ -9,9 +9,9 @@ export default function AppLayout({
   children: React.ReactNode;
 }) {
   return (
-      <div className="flex flex-col h-screen max-h-screen">
+      <div className="flex flex-col h-screen max-h-screen bg-muted/40">
         <AppHeader />
-        <main className="flex-1 overflow-auto bg-muted/40 pb-20 md:pb-0">{children}</main>
+        <main className="flex-1 overflow-auto pb-20 md:pb-0">{children}</main>
         <BottomNavBar />
       </div>
   );

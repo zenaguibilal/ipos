@@ -1,10 +1,14 @@
 import Dexie, { type Table } from 'dexie';
-import type { Product, Customer, StockIntake, CompanyProfile, BreadCustomer, DailyBreadOrder, Expense, Setting } from './types';
+import type { Product, Customer, Sale, Payment, StockIntake, ProductReturn, Cart, CompanyProfile, BreadCustomer, DailyBreadOrder, Expense, Setting } from './types';
 
 export class PosDatabase extends Dexie {
     products!: Table<Product, number>;
     customers!: Table<Customer, number>;
+    sales!: Table<Sale, number>;
+    payments!: Table<Payment, number>;
     stockIntakes!: Table<StockIntake, number>;
+    returns!: Table<ProductReturn, number>;
+    carts!: Table<Cart, string>;
     companyProfile!: Table<CompanyProfile, number>;
     breadCustomers!: Table<BreadCustomer, number>;
     dailyBreadOrders!: Table<DailyBreadOrder, number>;
@@ -13,10 +17,14 @@ export class PosDatabase extends Dexie {
 
     constructor() {
         super('posDB');
-        this.version(8).stores({
+        this.version(11).stores({
             products: '++id, name, *barcodes, category',
             customers: '++id, phone, *lastName, *firstName',
+            sales: '++id, &invoiceNumber, createdAt, customerId, paymentStatus, breadOrderDate',
+            payments: '++id, createdAt, customerId',
             stockIntakes: '++id, &invoiceNumber, supplier, createdAt',
+            returns: '++id, createdAt, originalSaleId, customerId',
+            carts: '&id',
             companyProfile: 'id', // Singleton table
             breadCustomers: '++id, &name',
             dailyBreadOrders: '++id, &[breadCustomerId+date], date',
@@ -26,8 +34,8 @@ export class PosDatabase extends Dexie {
 
         // Hooks pour ajouter/mettre à jour les timestamps
         this.tables.forEach(table => {
-            // Do not add timestamps to settings table
-            if (table.name === 'settings') return;
+            // Do not add timestamps to settings, carts tables
+            if (['settings', 'carts'].includes(table.name)) return;
             
             table.hook('creating', (primKey, obj, trans) => {
                 const now = new Date();
@@ -41,7 +49,9 @@ export class PosDatabase extends Dexie {
 
             table.hook('updating', (modifications, primKey, obj, trans) => {
                 // In an updating hook, you can modify the modifications object to be applied.
-                (modifications as any).updatedAt = new Date();
+                if((modifications as any).updatedAt === undefined) {
+                    (modifications as any).updatedAt = new Date();
+                }
             });
         });
     }

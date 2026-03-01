@@ -16,3 +16,7 @@ export function safeToDate(date: Date | string): Date {
     }
     return new Date(date);
 }
+
+export function formatCurrency(value: number, currency = 'DA') {
+  return `${value.toFixed(1)} ${currency}`;
+}
