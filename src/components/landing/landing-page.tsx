@@ -56,8 +56,8 @@ const faqs = [
 
 const TechLogo = ({ src, alt }: { src: string, alt: string }) => (
     <div className="flex flex-col items-center gap-2">
-        <div className="h-12 w-12 flex items-center justify-center">
-            <img src={src} alt={alt} className="h-full w-auto" />
+        <div className="h-12 flex items-center justify-center">
+            <img src={src} alt={alt} className="h-full w-auto max-w-24" />
         </div>
         <span className="text-xs text-muted-foreground">{alt}</span>
     </div>
