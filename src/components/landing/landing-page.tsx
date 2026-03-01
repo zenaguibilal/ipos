@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Button } from "@/components/ui/button";
@@ -91,32 +90,57 @@ export function LandingPage() {
                         </div>
                     </div>
                      <div className="hidden lg:flex items-center justify-center">
-                        <div className="relative w-full max-w-2xl">
+                        <div className="relative w-full max-w-md">
                            <div className="absolute -top-10 -left-10 w-48 h-48 bg-primary/10 rounded-full filter blur-3xl opacity-70 animate-blob"></div>
                            <div className="absolute -bottom-10 -right-10 w-48 h-48 bg-secondary/20 rounded-full filter blur-3xl opacity-70 animate-blob" style={{ animationDelay: '2s' }}></div>
                            <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-primary/5 rounded-full filter blur-3xl opacity-50 animate-blob" style={{ animationDelay: '4s' }}></div>
-                           <Card className="transform transition-transform duration-500 hover:scale-105 shadow-2xl relative z-10 bg-card/60 backdrop-blur-sm">
-                                <CardHeader>
-                                    <CardTitle className="flex items-center justify-between">
-                                        <span>Tableau de bord</span>
-                                        <BarChart3 className="h-5 w-5 text-muted-foreground"/>
-                                    </CardTitle>
-                                </CardHeader>
-                               <CardContent className="space-y-4">
-                                   <div className="flex justify-between p-4 rounded-lg bg-green-500/10">
-                                       <span className="font-semibold">Chiffre d'affaires</span>
-                                       <span className="font-bold text-green-600">1,250.75 DA</span>
-                                   </div>
-                                    <div className="flex justify-between p-4 rounded-lg bg-yellow-500/10">
-                                       <span className="font-semibold">Produits à faible stock</span>
-                                       <span className="font-bold text-yellow-600">3</span>
-                                   </div>
-                                   <div className="flex justify-between p-4 rounded-lg bg-red-500/10">
-                                       <span className="font-semibold">Total des dettes</span>
-                                       <span className="font-bold text-red-600">8,430.00 DA</span>
-                                   </div>
-                               </CardContent>
-                           </Card>
+                           
+                           {/* Mockup Window */}
+                            <div className="relative z-10 transform transition-transform duration-500 hover:scale-105 shadow-2xl rounded-xl border bg-card/60 backdrop-blur-sm overflow-hidden">
+                                <div className="h-8 bg-muted flex items-center px-4 gap-2">
+                                    <div className="w-3 h-3 bg-red-400 rounded-full"></div>
+                                    <div className="w-3 h-3 bg-yellow-400 rounded-full"></div>
+                                    <div className="w-3 h-3 bg-green-400 rounded-full"></div>
+                                </div>
+                                <div className="grid grid-cols-5 h-[320px] bg-background/80">
+                                    {/* Mock product grid */}
+                                    <div className="col-span-3 p-4 border-r">
+                                        <div className="grid grid-cols-3 gap-2">
+                                            {Array.from({ length: 6 }).map((_, i) => (
+                                                <div key={i} className="rounded-lg bg-muted/50 p-2">
+                                                    <div className="aspect-square rounded bg-muted"></div>
+                                                    <div className="h-2 bg-muted rounded mt-2 w-3/4"></div>
+                                                    <div className="h-2 bg-muted rounded mt-1 w-1/2"></div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    {/* Mock cart */}
+                                    <div className="col-span-2 p-4 flex flex-col">
+                                        <div className="font-semibold text-sm">Panier</div>
+                                        <div className="flex-grow mt-4 space-y-3">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-8 h-8 rounded bg-muted"></div>
+                                                <div className="flex-grow space-y-1">
+                                                    <div className="h-2 bg-muted rounded w-full"></div>
+                                                    <div className="h-2 bg-muted rounded w-1/2"></div>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-8 h-8 rounded bg-muted"></div>
+                                                <div className="flex-grow space-y-1">
+                                                    <div className="h-2 bg-muted rounded w-full"></div>
+                                                    <div className="h-2 bg-muted rounded w-1/2"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="mt-auto space-y-2">
+                                            <div className="h-3 bg-muted rounded w-full"></div>
+                                            <div className="h-8 bg-primary/80 rounded w-full"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -257,6 +281,23 @@ export function LandingPage() {
                                 </CardContent>
                             </Card>
                         ))}
+                    </div>
+                </div>
+            </section>
+
+            {/* CTA Section */}
+            <section id="cta" className="w-full py-20 md:py-24 bg-muted/20">
+                <div className="container px-4 md:px-6 text-center">
+                    <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl">
+                        Prêt à prendre le contrôle ?
+                    </h2>
+                    <p className="mx-auto max-w-[600px] text-muted-foreground md:text-xl mt-4">
+                        Découvrez la rapidité et la fiabilité d'un système de caisse conçu pour l'autonomie. Lancez iPOS maintenant, sans installation ni inscription.
+                    </p>
+                    <div className="mt-8">
+                        <Button asChild size="lg">
+                            <Link href="/sell">Lancer l'application gratuitement</Link>
+                        </Button>
                     </div>
                 </div>
             </section>
