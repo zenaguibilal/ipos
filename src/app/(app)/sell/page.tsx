@@ -156,56 +156,74 @@ CartItemCard.displayName = 'CartItemCard';
 
 
 export default function SellPage() {
-    // Component State
-    const [searchQuery, setSearchQuery] = useState('');
-    const debouncedSearchQuery = useDebounce(searchQuery, 300);
+    // --- State Management ---
+    const [productSearch, setProductSearch] = useState('');
+    const debouncedProductSearch = useDebounce(productSearch, 300);
     const [categoryFilter, setCategoryFilter] = useState('all');
+    const [customerSearch, setCustomerSearch] = useState('');
+    const debouncedCustomerSearch = useDebounce(customerSearch, 300);
+    
     const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
     const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
     const [customProductName, setCustomProductName] = useState('');
     const [customProductPrice, setCustomProductPrice] = useState('');
     const [isCustomProductPopoverOpen, setIsCustomProductPopoverOpen] = useState(false);
 
-    // Data fetching & Management
+    // --- Data Fetching & Management ---
     const { carts, activeCartId, addCart, removeCart, setActiveCartId, updateCart, clearCart } = useCarts();
-    const customers = useLiveQuery(() => db.customers.orderBy('lastName').toArray());
-    
-    // Efficiently query products based on filters
-    const products = useLiveQuery(async () => {
-        const lowerCaseQuery = debouncedSearchQuery.toLowerCase();
-        let collection;
 
-        if (categoryFilter === 'all') {
-            collection = db.products;
+    // --- Dynamic, indexed queries for performance ---
+    const products = useLiveQuery(async () => {
+        const query = debouncedProductSearch.toLowerCase();
+        if (query) {
+            // Prioritize exact barcode match across all categories
+            const barcodeMatch = await db.products.where('barcodes').equals(query).first();
+            if (barcodeMatch) return [barcodeMatch];
+
+            // If no barcode match, search by name, respecting category filter
+            const collection = categoryFilter === 'all' ? db.products : db.products.where('category').equals(categoryFilter);
+            return collection.where('name').startsWithIgnoreCase(query).limit(50).toArray();
         } else {
-            collection = db.products.where('category').equals(categoryFilter);
+            // No search term, just show products from the selected category
+            const collection = categoryFilter === 'all' ? db.products : db.products.where('category').equals(categoryFilter);
+            return collection.limit(50).toArray();
         }
-        
-        if (debouncedSearchQuery) {
-            // This is the most efficient way in Dexie to do a multi-field "contains" search on indexed fields.
-            // We search by name OR barcode.
-            const byName = collection.where('name').startsWithIgnoreCase(lowerCaseQuery).toArray();
-            const byBarcode = db.products.where('barcodes').equals(lowerCaseQuery).toArray(); // Barcode search should be exact
-            
-            const [nameResults, barcodeResults] = await Promise.all([byName, byBarcode]);
-            
-            // Combine and deduplicate results
-            const allResults = [...barcodeResults, ...nameResults];
+    }, [categoryFilter, debouncedProductSearch]);
+    
+    const customerOptions = useLiveQuery(async () => {
+        const defaultOption = { value: 'walk-in', label: 'Vente au comptoir', subLabel: 'Client par défaut' };
+        let customers: Customer[];
+
+        if (!debouncedCustomerSearch.trim()) {
+            customers = await db.customers.orderBy('createdAt').reverse().limit(5).toArray();
+        } else {
+            const search = debouncedCustomerSearch.toLowerCase();
+            const byLastName = db.customers.where('lastName').startsWithIgnoreCase(search).toArray();
+            const byFirstName = db.customers.where('firstName').startsWithIgnoreCase(search).toArray();
+            const [last, first] = await Promise.all([byLastName, byFirstName]);
+            const combined = [...last, ...first];
             const uniqueIds = new Set();
-            return allResults.filter(p => {
-                if (!uniqueIds.has(p.id)) {
-                    uniqueIds.add(p.id);
+            customers = combined.filter(c => {
+                if (c.id && !uniqueIds.has(c.id)) {
+                    uniqueIds.add(c.id);
                     return true;
                 }
                 return false;
-            }).slice(0, 50);
-
+            }).slice(0, 10);
         }
-        
-        return collection.limit(50).toArray(); // Limit initial and category display
-    }, [categoryFilter, debouncedSearchQuery]);
 
-    // Derived State
+        return [
+            defaultOption,
+            ...customers.map(c => ({
+                value: String(c.id),
+                label: `${c.firstName} ${c.lastName}`,
+                subLabel: c.phone || undefined,
+            }))
+        ];
+    }, [debouncedCustomerSearch]);
+
+
+    // --- Derived State & Side Effects ---
     const activeCart = useMemo(() => carts?.find(c => c.id === activeCartId), [carts, activeCartId]);
 
     const categories = useLiveQuery(() => db.products.orderBy('category').uniqueKeys() as Promise<(string | undefined)[]>);
@@ -245,10 +263,10 @@ export default function SellPage() {
         }
     }, [activeCart, updateCart]);
 
+    // --- Event Handlers ---
     const handleAddToCart = useCallback(async (product: Product) => {
         if (!activeCart || !product.id) return;
     
-        // Re-fetch product to ensure latest stock quantity is checked
         const freshProduct = await db.products.get(product.id);
         if (!freshProduct) {
             toast.error("Produit non trouvé dans la base de données.");
@@ -280,13 +298,11 @@ export default function SellPage() {
     const handleBarcodeScanned = useCallback(async (searchTerm: string) => {
         if (!searchTerm.trim()) return;
         const term = searchTerm.trim();
-        
-        // Prioritize barcode search as it's indexed and faster
-        let product = await db.products.where('barcodes').equals(term).first();
+        const product = await db.products.where('barcodes').equals(term).first();
     
         if (product) {
             handleAddToCart(product);
-            setSearchQuery('');
+            setProductSearch('');
         } else {
             toast.error(`Aucun produit trouvé pour "${term}".`);
         }
@@ -350,18 +366,18 @@ export default function SellPage() {
         updateCart({ ...activeCart, items: newItems });
     }, [activeCart, updateCart]);
 
-    const handleSetCustomer = useCallback((customerId: string | null) => {
+    const handleSetCustomer = useCallback(async (customerId: string | null) => {
         if (!activeCart) return;
         if (customerId === null) {
             updateCart({ ...activeCart, customerId: null, customerName: 'Vente au comptoir' });
             return;
         }
-        const customer = customers?.find(c => c.id === parseInt(customerId));
+        const customer = await db.customers.get(parseInt(customerId));
         updateCart({
             ...activeCart, customerId: customer?.id ?? null,
             customerName: customer ? `${customer.firstName} ${customer.lastName}` : 'Vente au comptoir'
         });
-    }, [activeCart, customers, updateCart]);
+    }, [activeCart, updateCart]);
 
     const handleSetDiscount = useCallback((type: 'fixed' | 'percentage', value: number) => {
         if (!activeCart) return;
@@ -405,16 +421,7 @@ export default function SellPage() {
         onCustomProduct: () => setIsCustomProductPopoverOpen(true),
     });
 
-    const customerOptions = useMemo(() => {
-        if (!customers) return [];
-        const options = customers.map(c => ({
-            value: String(c.id), label: `${c.firstName} ${c.lastName}`,
-            subLabel: c.phone || undefined
-        }));
-        return [{ value: 'walk-in', label: 'Vente au comptoir', subLabel: 'Client par défaut' }, ...options];
-    }, [customers]);
-
-    const isLoading = products === undefined || customers === undefined || carts === undefined || categories === undefined;
+    const isLoading = products === undefined || customerOptions === undefined || carts === undefined || categories === undefined;
 
     if (isLoading) {
          return (
@@ -447,9 +454,9 @@ export default function SellPage() {
                                 id="product-search-input"
                                 placeholder="Scanner ou rechercher un produit... (Enter)" 
                                 className="pl-9" 
-                                value={searchQuery} 
-                                onChange={(e) => setSearchQuery(e.target.value)} 
-                                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleBarcodeScanned(searchQuery); }}}
+                                value={productSearch} 
+                                onChange={(e) => setProductSearch(e.target.value)} 
+                                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleBarcodeScanned(productSearch); }}}
                             />
                         </div>
                          <Popover open={isCustomProductPopoverOpen} onOpenChange={setIsCustomProductPopoverOpen}>
@@ -495,7 +502,15 @@ export default function SellPage() {
                          {carts.map(cart => (
                             <TabsTrigger key={cart.id} value={cart.id} className="flex-1 relative group">
                                 {cart.name} ({cart.items.length})
-                                {carts.length > 1 && <X className="h-4 w-4 absolute top-1.5 right-1.5 text-muted-foreground opacity-0 group-hover:opacity-100 p-0.5 hover:bg-destructive/20 hover:text-destructive rounded-full" onClick={(e) => { e.stopPropagation(); removeCart(cart.id); }} />}
+                                {carts.length > 1 && (
+                                     <button
+                                        onClick={(e) => { e.stopPropagation(); removeCart(cart.id); }}
+                                        className="absolute top-0.5 right-0.5 z-10 p-1 rounded-full text-muted-foreground opacity-0 group-hover:opacity-100 hover:bg-destructive/20 hover:text-destructive"
+                                        aria-label={`Supprimer ${cart.name}`}
+                                    >
+                                        <X className="h-4 w-4" />
+                                    </button>
+                                )}
                             </TabsTrigger>
                         ))}
                         <Button variant="ghost" size="icon" className="h-full" onClick={addCart}><PlusCircle className="h-4 w-4"/></Button>
@@ -506,7 +521,12 @@ export default function SellPage() {
                             <div className="px-4 pb-2 border-b">
                                 <Label>Client</Label>
                                 <div className="flex gap-2 mt-1">
-                                    <Combobox options={customerOptions} value={cart.customerId ? String(cart.customerId) : 'walk-in'} onSelect={(val) => handleSetCustomer(val === 'walk-in' ? null : val)} placeholder="Sélectionner un client" searchPlaceholder="Rechercher un client..." notFoundMessage="Aucun client trouvé." />
+                                    <Combobox 
+                                        options={customerOptions || []} 
+                                        value={cart.customerId ? String(cart.customerId) : 'walk-in'}
+                                        onSelect={(val) => handleSetCustomer(val === 'walk-in' ? null : val)}
+                                        onSearchChange={setCustomerSearch}
+                                        placeholder="Sélectionner un client" searchPlaceholder="Rechercher un client..." notFoundMessage="Aucun client trouvé." />
                                     <Button variant="outline" size="icon" onClick={() => setIsCustomerDialogOpen(true)}><UserPlus className="h-4 w-4"/></Button>
                                 </div>
                             </div>

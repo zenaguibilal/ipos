@@ -36,10 +36,11 @@ interface ComboboxProps {
     placeholder: string;
     searchPlaceholder: string;
     notFoundMessage: string;
+    onSearchChange?: (search: string) => void;
 }
 
 
-export const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(({ options, onSelect, value, placeholder, searchPlaceholder, notFoundMessage }, ref) => {
+export const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(({ options, onSelect, value, placeholder, searchPlaceholder, notFoundMessage, onSearchChange }, ref) => {
   const [open, setOpen] = React.useState(false)
   const selectedOption = React.useMemo(() => options.find(o => o.value === value), [options, value]);
   
@@ -79,7 +80,7 @@ export const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(({ op
       </PopoverTrigger>
       <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
         <Command>
-          <CommandInput placeholder={searchPlaceholder} />
+          <CommandInput placeholder={searchPlaceholder} onValueChange={onSearchChange} />
            <CommandList>
             <CommandEmpty>{notFoundMessage}</CommandEmpty>
             <CommandGroup>
