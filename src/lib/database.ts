@@ -1,33 +1,29 @@
 import Dexie, { type Table } from 'dexie';
-import type { Product, Customer, Sale, Payment, StockIntake, ProductReturn, CompanyProfile, BreadCustomer, DailyBreadOrder, Cart, Expense, Setting } from './types';
+import type { Product, Customer, Payment, StockIntake, ProductReturn, CompanyProfile, BreadCustomer, DailyBreadOrder, Expense, Setting } from './types';
 
 export class PosDatabase extends Dexie {
     products!: Table<Product, number>;
     customers!: Table<Customer, number>;
-    sales!: Table<Sale, number>;
     payments!: Table<Payment, number>;
     stockIntakes!: Table<StockIntake, number>;
     returns!: Table<ProductReturn, number>;
     companyProfile!: Table<CompanyProfile, number>;
     breadCustomers!: Table<BreadCustomer, number>;
     dailyBreadOrders!: Table<DailyBreadOrder, number>;
-    carts!: Table<Cart, string>;
     expenses!: Table<Expense, number>;
     settings!: Table<Setting, string>;
 
     constructor() {
         super('posDB');
-        this.version(6).stores({
+        this.version(7).stores({
             products: '++id, name, *barcodes, category',
             customers: '++id, phone, *lastName, *firstName',
-            sales: '++id, &invoiceNumber, customerId, createdAt, breadOrderDate',
             payments: '++id, customerId, createdAt',
             stockIntakes: '++id, &invoiceNumber, supplier, createdAt',
             returns: '++id, originalInvoiceNumber, customerId, createdAt',
             companyProfile: 'id', // Singleton table
             breadCustomers: '++id, &name',
             dailyBreadOrders: '++id, &[breadCustomerId+date], date',
-            carts: '&id, name',
             expenses: '++id, category, expenseDate, [category+expenseDate]',
             settings: '&id', // Key-value store
         });

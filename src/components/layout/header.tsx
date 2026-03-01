@@ -39,7 +39,6 @@ const navLinks = [
   { href: '/products', label: 'Produits', icon: Package },
   { href: '/customers', label: 'Clients', icon: Users },
   { href: '/stock', label: 'Stock', icon: Archive },
-  { href: '/sales-history', label: 'Historique', icon: History },
   { href: '/returns', label: 'Retours', icon: Undo2 },
   { href: '/bread', label: 'Pain', icon: ListChecks },
   { href: '/expenses', label: 'Dépenses', icon: Receipt },
