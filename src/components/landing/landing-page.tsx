@@ -6,6 +6,7 @@ import { InstallPWAButton } from "@/components/layout/install-pwa-button";
 import { ShoppingCart, Archive, Users, FileText, BarChart3, Bell, Rocket, Star, Quote, ShieldCheck, Zap, DatabaseZap } from 'lucide-react';
 import Link from "next/link";
 import { LandingHeader } from "./landing-header";
+import Image from "next/image";
 
 const features = [
     { icon: ShoppingCart, title: "Gestion des Ventes", description: "Interface de caisse rapide, support multi-paniers et suivi des paiements." },
@@ -90,63 +91,28 @@ export function LandingPage() {
                         </div>
                     </div>
                      <div className="hidden lg:flex items-center justify-center">
-                        <div className="relative w-full max-w-md">
-                           <div className="absolute -top-10 -left-10 w-48 h-48 bg-primary/10 rounded-full filter blur-3xl opacity-70 animate-blob"></div>
-                           <div className="absolute -bottom-10 -right-10 w-48 h-48 bg-secondary/20 rounded-full filter blur-3xl opacity-70 animate-blob" style={{ animationDelay: '2s' }}></div>
-                           <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-primary/5 rounded-full filter blur-3xl opacity-50 animate-blob" style={{ animationDelay: '4s' }}></div>
+                        <div className="relative w-full max-w-2xl">
+                           <div className="absolute -top-10 -left-10 w-72 h-72 bg-primary/10 rounded-full filter blur-3xl opacity-70 animate-blob"></div>
+                           <div className="absolute -bottom-10 -right-10 w-72 h-72 bg-secondary/20 rounded-full filter blur-3xl opacity-70 animate-blob" style={{ animationDelay: '2s' }}></div>
+                           <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-primary/5 rounded-full filter blur-3xl opacity-50 animate-blob" style={{ animationDelay: '4s' }}></div>
                            
-                           {/* Mockup Window */}
-                            <div className="relative z-10 transform transition-transform duration-500 hover:scale-105 shadow-2xl rounded-xl border bg-card/60 backdrop-blur-sm overflow-hidden">
-                                <div className="h-8 bg-muted flex items-center px-4 gap-2">
-                                    <div className="w-3 h-3 bg-red-400 rounded-full"></div>
-                                    <div className="w-3 h-3 bg-yellow-400 rounded-full"></div>
-                                    <div className="w-3 h-3 bg-green-400 rounded-full"></div>
-                                </div>
-                                <div className="grid grid-cols-5 h-[320px] bg-background/80">
-                                    {/* Mock product grid */}
-                                    <div className="col-span-3 p-4 border-r">
-                                        <div className="grid grid-cols-3 gap-2">
-                                            {Array.from({ length: 6 }).map((_, i) => (
-                                                <div key={i} className="rounded-lg bg-muted/50 p-2">
-                                                    <div className="aspect-square rounded bg-muted"></div>
-                                                    <div className="h-2 bg-muted rounded mt-2 w-3/4"></div>
-                                                    <div className="h-2 bg-muted rounded mt-1 w-1/2"></div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                    {/* Mock cart */}
-                                    <div className="col-span-2 p-4 flex flex-col">
-                                        <div className="font-semibold text-sm">Panier</div>
-                                        <div className="flex-grow mt-4 space-y-3">
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-8 h-8 rounded bg-muted"></div>
-                                                <div className="flex-grow space-y-1">
-                                                    <div className="h-2 bg-muted rounded w-full"></div>
-                                                    <div className="h-2 bg-muted rounded w-1/2"></div>
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-8 h-8 rounded bg-muted"></div>
-                                                <div className="flex-grow space-y-1">
-                                                    <div className="h-2 bg-muted rounded w-full"></div>
-                                                    <div className="h-2 bg-muted rounded w-1/2"></div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div className="mt-auto space-y-2">
-                                            <div className="h-3 bg-muted rounded w-full"></div>
-                                            <div className="h-8 bg-primary/80 rounded w-full"></div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                           <div className="relative z-10 transform transition-transform duration-500 hover:scale-105">
+                               <Image
+                                   src="https://picsum.photos/seed/pos-app-ui/1200/750"
+                                   width={1200}
+                                   height={750}
+                                   alt="iPOS application user interface"
+                                   className="rounded-xl shadow-2xl border bg-card/60 backdrop-blur-sm"
+                                   data-ai-hint="app screenshot"
+                                   priority
+                               />
+                           </div>
                         </div>
                     </div>
                 </div>
             </section>
 
-             {/* Why iPOS Section */}
+            {/* Why iPOS Section */}
             <section className="w-full py-20 md:py-24">
                 <div className="container px-4 md:px-6">
                     <div className="grid md:grid-cols-3 gap-8 text-center">

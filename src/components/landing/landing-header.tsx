@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useState, useEffect } from 'react';
+import { AnimatedLogo } from '../layout/animated-logo';
 
 export function LandingHeader() {
     const [isScrolled, setIsScrolled] = useState(false);
@@ -24,9 +25,9 @@ export function LandingHeader() {
             <div className="container flex h-16 items-center justify-between">
                 {/* Left Side */}
                 <div className="flex items-center">
-                    <Link href="/" className="flex items-center gap-2 font-bold text-xl">
+                    <Link href="/" className="flex items-center gap-2 font-bold">
                         <span className="text-2xl">🏪</span>
-                        <span>iPOS</span>
+                        <AnimatedLogo />
                     </Link>
                 </div>
 
