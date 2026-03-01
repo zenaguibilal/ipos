@@ -61,7 +61,7 @@ export default function LandingPage() {
                 </p>
                 <div className="mt-8 flex justify-center gap-4">
                     <Button asChild size="lg">
-                        <Link href="/sell">Commencer à Vendre</Link>
+                        <Link href="/dashboard">Accéder au Tableau de Bord</Link>
                     </Button>
                     <Button asChild size="lg" variant="outline">
                         <Link href="#features">Découvrir les Fonctionnalités</Link>
@@ -184,7 +184,7 @@ export default function LandingPage() {
                             Rejoignez des centaines de commerçants et prenez le contrôle de votre point de vente dès aujourd'hui.
                         </p>
                         <Button asChild size="lg" className="mt-8">
-                            <Link href="/sell">Lancer l'Application - C'est Gratuit !</Link>
+                            <Link href="/dashboard">Accéder à l'Application</Link>
                         </Button>
                     </div>
                 </div>

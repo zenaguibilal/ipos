@@ -4,7 +4,6 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  ShoppingCart,
   Package,
   Users,
   BarChart3,
@@ -13,7 +12,6 @@ import {
 import { cn } from '@/lib/utils';
 
 const navLinks = [
-  { href: '/sell', label: 'Caisse', icon: ShoppingCart },
   { href: '/dashboard', label: 'Tableau', icon: BarChart3 },
   { href: '/products', label: 'Produits', icon: Package },
   { href: '/customers', label: 'Clients', icon: Users },
@@ -25,14 +23,14 @@ export function BottomNavBar() {
 
   return (
     <div className="fixed bottom-0 left-0 z-10 w-full border-t bg-background/95 backdrop-blur-sm md:hidden print-hide">
-      <nav className="grid grid-cols-5 items-center justify-around h-16">
+      <nav className="grid grid-cols-4 items-center justify-around h-16">
         {navLinks.map(link => (
           <Link
             key={link.href}
             href={link.href}
             className={cn(
               'flex flex-col items-center justify-center gap-1 text-muted-foreground transition-colors hover:text-primary h-full',
-              (pathname === '/' && link.href === '/sell') || (link.href !== '/' && pathname.startsWith(link.href)) ? 'text-primary' : ''
+              (pathname === '/' && link.href === '/dashboard') || (link.href !== '/' && pathname.startsWith(link.href)) ? 'text-primary' : ''
             )}
           >
             <link.icon className="h-5 w-5" />

@@ -36,7 +36,6 @@ import {
 
 const navLinks = [
   { href: '/dashboard', label: 'Tableau de bord', icon: BarChart3 },
-  { href: '/sell', label: 'Caisse', icon: ShoppingCart },
   { href: '/products', label: 'Produits', icon: Package },
   { href: '/customers', label: 'Clients', icon: Users },
   { href: '/stock', label: 'Stock', icon: Archive },
