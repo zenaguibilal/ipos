@@ -4,6 +4,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/com
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Skeleton } from "@/components/ui/skeleton";
 import type { TopProduct, TopCustomer } from "@/lib/types";
+import { formatCurrency } from "@/lib/utils";
 
 interface SalesOverviewProps {
     topProducts: TopProduct[];
@@ -12,7 +13,6 @@ interface SalesOverviewProps {
 }
 
 export function SalesOverview({ topProducts, topCustomers, isLoading }: SalesOverviewProps) {
-    const formatCurrency = (value: number) => `${value.toFixed(1)} DA`;
 
     if (isLoading) {
         return (

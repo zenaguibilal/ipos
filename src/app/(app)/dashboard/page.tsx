@@ -12,6 +12,7 @@ import { subDays, startOfDay, endOfDay } from 'date-fns';
 import { SalesOverview } from '@/components/dashboard/SalesOverview';
 import RevenueChart from '@/components/dashboard/RevenueChart';
 import { Skeleton } from '@/components/ui/skeleton';
+import { formatCurrency } from '@/lib/utils';
 
 export default function DashboardPage() {
     const [dateRange, setDateRange] = useState<DateRange | undefined>({
@@ -23,7 +24,8 @@ export default function DashboardPage() {
 
     const sales = useLiveQuery(() => {
         if (!dateRange?.from) return [];
-        return db.sales.where('createdAt').between(dateRange.from, dateRange.to || new Date(), true, true).toArray();
+        const toDate = dateRange.to || new Date();
+        return db.sales.where('createdAt').between(dateRange.from, endOfDay(toDate), true, true).toArray();
     }, [dateRange]);
 
     const allProducts = useLiveQuery(() => db.products.toArray(), []);
@@ -31,14 +33,17 @@ export default function DashboardPage() {
     
     const { filteredStats, topProducts, topCustomers } = useMemo(() => {
         const stats = { revenue: 0, profit: 0, salesCount: 0 };
-        const productSales: { [key: string]: { unitsSold: number; totalRevenue: number; totalProfit: number; } } = {};
+        const productSales: { [key: string]: { name: string; unitsSold: number; totalRevenue: number; totalProfit: number; } } = {};
         const customerSpending: { [key: string]: number } = {};
 
         if (sales) {
             stats.salesCount = sales.length;
             sales.forEach(sale => {
                 stats.revenue += sale.total;
-                const saleProfit = sale.items.reduce((acc, item) => acc + (item.price - item.purchasePrice) * item.quantity, 0);
+                const saleProfit = sale.items.reduce((acc, item) => {
+                    const profitPerItem = (item.price - item.purchasePrice) * item.quantity;
+                    return acc + (isNaN(profitPerItem) ? 0 : profitPerItem);
+                }, 0);
                 stats.profit += saleProfit;
 
                 if (sale.customerId && sale.customerName) {
@@ -48,20 +53,19 @@ export default function DashboardPage() {
                 sale.items.forEach(item => {
                     const id = String(item.id);
                     if (!productSales[id]) {
-                        productSales[id] = { unitsSold: 0, totalRevenue: 0, totalProfit: 0 };
+                        productSales[id] = { name: item.name, unitsSold: 0, totalRevenue: 0, totalProfit: 0 };
                     }
                     productSales[id].unitsSold += item.quantity;
                     productSales[id].totalRevenue += item.price * item.quantity;
-                    productSales[id].totalProfit += (item.price - item.purchasePrice) * item.quantity;
+                    const itemProfit = (item.price - item.purchasePrice) * item.quantity;
+                    if(!isNaN(itemProfit)) {
+                        productSales[id].totalProfit += itemProfit;
+                    }
                 });
             });
         }
         
-        const topProductsData: TopProduct[] = Object.entries(productSales)
-            .map(([id, data]) => {
-                const product = allProducts?.find(p => String(p.id) === id);
-                return { name: product?.name || `Produit ${id}`, ...data };
-            })
+        const topProductsData: TopProduct[] = Object.values(productSales)
             .sort((a, b) => b.totalRevenue - a.totalRevenue).slice(0, 5);
         
         const topCustomersData: TopCustomer[] = Object.entries(customerSpending)
@@ -70,7 +74,7 @@ export default function DashboardPage() {
 
         return { filteredStats: stats, topProducts: topProductsData, topCustomers: topCustomersData };
 
-    }, [sales, allProducts]);
+    }, [sales]);
 
     const globalStats = useMemo(() => {
         const inventoryValue = allProducts?.reduce((sum, p) => sum + ((p.purchasePrice || 0) * (p.quantity || 0)), 0) || 0;
@@ -85,9 +89,6 @@ export default function DashboardPage() {
             totalProducts
         };
     }, [allProducts, allCustomers]);
-
-
-    const formatCurrency = (value: number) => `${value.toFixed(1)} DA`;
 
     const isLoading = sales === undefined || allProducts === undefined;
 

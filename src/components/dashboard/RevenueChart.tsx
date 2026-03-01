@@ -6,6 +6,7 @@ import type { Sale } from '@/lib/types';
 import { format } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Skeleton } from '../ui/skeleton';
+import { formatCurrency } from '@/lib/utils';
 
 interface RevenueChartProps {
   sales?: Sale[];
@@ -17,8 +18,8 @@ const CustomTooltip = ({ active, payload, label }: any) => {
       return (
         <div className="p-2 bg-background/80 backdrop-blur-sm border rounded-lg shadow-lg">
           <p className="font-bold">{label}</p>
-          <p className="text-primary">{`Revenu: ${payload[0].value.toFixed(1)} DA`}</p>
-          <p className="text-fuchsia-500">{`Bénéfice: ${payload[1].value.toFixed(1)} DA`}</p>
+          <p className="text-primary">{`Revenu: ${formatCurrency(payload[0].value)}`}</p>
+          <p className="text-fuchsia-500">{`Bénéfice: ${formatCurrency(payload[1].value)}`}</p>
         </div>
       );
     }
@@ -38,7 +39,10 @@ export default function RevenueChart({ sales, isLoading }: RevenueChartProps) {
         dataByDay[day] = { revenue: 0, profit: 0 };
       }
       dataByDay[day].revenue += sale.total;
-      const saleProfit = sale.items.reduce((acc, item) => acc + (item.price - item.purchasePrice) * item.quantity, 0);
+      const saleProfit = sale.items.reduce((acc, item) => {
+          const profitPerItem = (item.price - item.purchasePrice) * item.quantity;
+          return acc + (isNaN(profitPerItem) ? 0 : profitPerItem);
+      }, 0);
       dataByDay[day].profit += saleProfit;
     });
 
