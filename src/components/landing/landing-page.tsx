@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from "@/components/ui/button";
@@ -7,6 +8,8 @@ import { ShoppingCart, Archive, Users, FileText, BarChart3, Bell, Rocket, Star, 
 import Link from "next/link";
 import { LandingHeader } from "./landing-header";
 import Image from "next/image";
+
+// --- Static Data (Moved outside component for performance) ---
 
 const features = [
     { icon: ShoppingCart, title: "Gestion des Ventes", description: "Interface de caisse rapide, support multi-paniers et suivi des paiements." },
@@ -54,15 +57,23 @@ const faqs = [
     }
 ];
 
+// --- Reusable Component (Moved outside main component for performance) ---
+
 const TechLogo = ({ src, alt }: { src: string, alt: string }) => (
     <div className="flex flex-col items-center gap-2">
-        <div className="h-12 flex items-center justify-center">
-            <img src={src} alt={alt} className="h-full w-auto max-w-24" />
+        <div className="relative h-12 w-24">
+            <Image
+                src={src}
+                alt={alt}
+                fill
+                className="object-contain"
+            />
         </div>
         <span className="text-xs text-muted-foreground">{alt}</span>
     </div>
 );
 
+// --- Main Landing Page Component ---
 
 export function LandingPage() {
     return (
