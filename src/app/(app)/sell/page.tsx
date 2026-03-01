@@ -173,17 +173,33 @@ export default function SellPage() {
     // Efficiently query products based on filters
     const products = useLiveQuery(async () => {
         const lowerCaseQuery = debouncedSearchQuery.toLowerCase();
-        let collection = categoryFilter === 'all' 
-            ? db.products 
-            : db.products.where('category').equals(categoryFilter);
+        let collection;
+
+        if (categoryFilter === 'all') {
+            collection = db.products;
+        } else {
+            collection = db.products.where('category').equals(categoryFilter);
+        }
         
         if (debouncedSearchQuery) {
-            // Dexie's `filter` is a post-filter but on a smaller collection if a category is selected.
-            // It's the most pragmatic way to implement a "contains" search without full-text addons.
-            return collection.filter(p => 
-                p.name.toLowerCase().includes(lowerCaseQuery) || 
-                p.barcodes?.some(b => b.includes(lowerCaseQuery))
-            ).limit(50).toArray(); // Limit results for UI performance
+            // This is the most efficient way in Dexie to do a multi-field "contains" search on indexed fields.
+            // We search by name OR barcode.
+            const byName = collection.where('name').startsWithIgnoreCase(lowerCaseQuery).toArray();
+            const byBarcode = db.products.where('barcodes').equals(lowerCaseQuery).toArray(); // Barcode search should be exact
+            
+            const [nameResults, barcodeResults] = await Promise.all([byName, byBarcode]);
+            
+            // Combine and deduplicate results
+            const allResults = [...barcodeResults, ...nameResults];
+            const uniqueIds = new Set();
+            return allResults.filter(p => {
+                if (!uniqueIds.has(p.id)) {
+                    uniqueIds.add(p.id);
+                    return true;
+                }
+                return false;
+            }).slice(0, 50);
+
         }
         
         return collection.limit(50).toArray(); // Limit initial and category display
@@ -192,18 +208,17 @@ export default function SellPage() {
     // Derived State
     const activeCart = useMemo(() => carts?.find(c => c.id === activeCartId), [carts, activeCartId]);
 
-    const { categories, visibleCategories, hiddenCategories } = useMemo(() => {
-        // This query runs once to get all unique categories for the filter UI
-        return db.products.orderBy('category').uniqueKeys().then(cats => {
-            const categoriesArray = ['all', ...cats.filter(c => c).sort() as string[]];
-            const MAX_VISIBLE_CATEGORIES = 4;
-            return {
-                categories: categoriesArray,
-                visibleCategories: categoriesArray.slice(0, MAX_VISIBLE_CATEGORIES),
-                hiddenCategories: categoriesArray.slice(MAX_VISIBLE_CATEGORIES),
-            };
-        });
-    }, []); // Runs only once
+    const categories = useLiveQuery(() => db.products.orderBy('category').uniqueKeys() as Promise<(string | undefined)[]>);
+
+    const { visibleCategories, hiddenCategories } = useMemo(() => {
+        if (!categories) return { visibleCategories: [], hiddenCategories: [] };
+        const categoriesArray = ['all', ...categories.filter((c): c is string => !!c).sort()];
+        const MAX_VISIBLE_CATEGORIES = 4;
+        return {
+            visibleCategories: categoriesArray.slice(0, MAX_VISIBLE_CATEGORIES),
+            hiddenCategories: categoriesArray.slice(MAX_VISIBLE_CATEGORIES),
+        };
+    }, [categories]);
 
     const { subtotal, discountAmount, total } = useMemo(() => {
         if (!activeCart) return { subtotal: 0, discountAmount: 0, total: 0 };
