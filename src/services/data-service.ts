@@ -1,7 +1,7 @@
 'use client';
 
 import { db, PosDatabase } from '@/lib/database';
-import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, DailyBreadOrder, BreadCustomer, BreadOrder, Notification, InventoryLog, CustomerWithSalesData, ImportAnalysis, DashboardDateRangeData, StockIntakeItem } from '@/lib/types';
+import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, DailyBreadOrder, BreadCustomer, BreadOrder, Notification, InventoryLog, CustomerWithSalesData, ImportAnalysis, DashboardDateRangeData, StockIntakeItem, CartItem } from '@/lib/types';
 import { initialData, type DB, type CollectionName } from './initial-data';
 import Dexie from 'dexie';
 import { startOfDay, endOfDay, format } from 'date-fns';
@@ -74,7 +74,124 @@ class DataService {
         return db.carts.delete(id);
     });
   }
+
+  async addProductToCart(cartId: string, product: Product, quantity: number): Promise<void> {
+    return db.transaction('rw', db.carts, db.products, async () => {
+        const cart = await db.carts.get(cartId);
+        if (!cart) throw new Error("Panier non trouvé.");
+
+        const existingItemIndex = cart.items.findIndex(item => item.id === product.id);
+        let newItems: CartItem[];
+
+        if (existingItemIndex > -1) {
+            newItems = [...cart.items];
+            const existingItem = newItems[existingItemIndex];
+            const newQuantity = existingItem.cartQuantity + quantity;
+            if (typeof product.id === 'number') {
+                const dbProduct = await db.products.get(product.id);
+                if (dbProduct && newQuantity > dbProduct.quantity) {
+                    throw new Error(`Stock limité pour ${product.name}. Quantité disponible: ${dbProduct.quantity}.`);
+                }
+            }
+            newItems[existingItemIndex] = { ...existingItem, cartQuantity: newQuantity, flash: true };
+        } else {
+            if (typeof product.id === 'number') {
+                 const dbProduct = await db.products.get(product.id);
+                if (dbProduct && quantity > dbProduct.quantity) {
+                    throw new Error(`Stock insuffisant pour ${product.name}. Quantité disponible: ${dbProduct.quantity}.`);
+                }
+            }
+            const newItem: CartItem = { ...product, cartQuantity: quantity, flash: true };
+            newItems = [...cart.items, newItem];
+        }
+        await db.carts.update(cartId, { items: newItems });
+    });
+  }
+
+  async updateCartItemQuantity(cartId: string, itemId: string | number, newQuantity: number): Promise<{capped: boolean, maxQuantity?: number}> {
+      return db.transaction('rw', db.carts, db.products, async () => {
+        const cart = await db.carts.get(cartId);
+        if (!cart) throw new Error("Panier non trouvé.");
+
+        const itemIndex = cart.items.findIndex(item => item.id === itemId);
+        if (itemIndex === -1) return {capped: false};
+        
+        const item = cart.items[itemIndex];
+        let capped = false;
+        let maxQuantity: number | undefined = undefined;
+
+        if (typeof item.id === 'number') {
+            const dbProduct = await db.products.get(item.id);
+            if (dbProduct && newQuantity > dbProduct.quantity) {
+                newQuantity = dbProduct.quantity;
+                capped = true;
+                maxQuantity = dbProduct.quantity;
+            }
+        }
+        
+        const newItems = [...cart.items];
+        if (newQuantity <= 0) {
+            newItems.splice(itemIndex, 1);
+        } else {
+            newItems[itemIndex] = { ...item, cartQuantity: newQuantity };
+        }
+        await db.carts.update(cartId, { items: newItems });
+        return {capped, maxQuantity};
+      });
+  }
+
+  async removeCartItem(cartId: string, itemId: string | number): Promise<void> {
+    return db.transaction('rw', db.carts, async () => {
+        const cart = await db.carts.get(cartId);
+        if (!cart) return;
+        const newItems = cart.items.filter(item => item.id !== itemId);
+        await db.carts.update(cartId, { items: newItems });
+    });
+  }
   
+  async clearCart(cartId: string): Promise<void> {
+    return db.transaction('rw', db.carts, async () => {
+        await db.carts.update(cartId, { items: [], customerId: null, customerName: '', discount: { type: 'fixed', value: 0 } });
+    });
+  }
+
+  async setCartCustomer(cartId: string, customer: Customer | null): Promise<void> {
+    return db.transaction('rw', db.carts, async () => {
+        const customerId = customer ? customer.id! : null;
+        const customerName = customer ? `${customer.firstName} ${customer.lastName}` : '';
+        await db.carts.update(cartId, { customerId, customerName });
+    });
+  }
+
+  async setCartDiscount(cartId: string, discount: { type: 'fixed' | 'percentage'; value: number }): Promise<void> {
+      return db.transaction('rw', db.carts, async (tx) => {
+        const cart = await db.carts.get(cartId);
+        if (!cart) return;
+
+        let value = Math.max(0, discount.value || 0);
+        const subtotal = cart.items.reduce((acc, item) => acc + item.price * item.cartQuantity, 0);
+
+        if (discount.type === 'fixed' && value > subtotal) {
+            value = subtotal;
+        }
+
+        if (discount.type === 'percentage' && (value < 0 || value > 100)) {
+            value = Math.max(0, Math.min(100, value));
+        }
+
+        await db.carts.update(cartId, { discount: { type: discount.type, value } });
+    });
+  }
+
+  async removeFlashFromCartItems(cartId: string): Promise<void> {
+    return db.transaction('rw', db.carts, async () => {
+        const cart = await db.carts.get(cartId);
+        if (!cart || !cart.items.some(i => i.flash)) return;
+        const newItems = cart.items.map(i => ({...i, flash: false}));
+        await db.carts.update(cartId, { items: newItems });
+    });
+  }
+
   // ====================================================================
   // Products
   // ====================================================================
