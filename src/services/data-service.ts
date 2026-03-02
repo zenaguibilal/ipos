@@ -1,7 +1,7 @@
 'use client';
 
 import { db, PosDatabase } from '@/lib/database';
-import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, DailyBreadOrder, BreadCustomer, BreadOrder, Notification, InventoryLog, CustomerWithSalesData, ImportAnalysis, DashboardData, DashboardStats, TopProduct, TopCustomer } from '@/lib/types';
+import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, DailyBreadOrder, BreadCustomer, BreadOrder, Notification, InventoryLog, CustomerWithSalesData, ImportAnalysis, DashboardData, DashboardStats, TopProduct, TopCustomer, StockIntakeItem } from '@/lib/types';
 import { initialData, type DB, type CollectionName } from './initial-data';
 import Dexie from 'dexie';
 import { startOfDay, endOfDay, format } from 'date-fns';
@@ -457,28 +457,63 @@ class DataService {
   // ====================================================================
   // Stock Intake - All writes are transactional
   // ====================================================================
-   async addStockIntake(intakeData: Omit<StockIntake, 'id'>): Promise<number> {
+   async addStockIntake(
+        intakeData: Omit<StockIntake, 'id' | 'items' | 'totalValue'>,
+        items: StockIntakeItem[]
+    ): Promise<number> {
         return db.transaction('rw', db.products, db.stockIntakes, db.inventoryLogs, async () => {
-            const intakeId = await db.stockIntakes.add(intakeData as StockIntake);
+            const totalValue = items.reduce((acc, item) => acc + item.purchasePrice * item.quantity, 0);
+            
+            // Create a temporary intake record to get an ID
+            const tempIntake = { ...intakeData, totalValue, items: [] };
+            const intakeId = await db.stockIntakes.add(tempIntake as StockIntake);
 
-            for (const item of intakeData.items) {
-                if (item.productId) { // Existing product
-                    let newQuantity = 0;
-                    await db.products.where('id').equals(item.productId).modify(p => {
-                        p.quantity += item.quantityReceived;
-                        p.purchasePrice = item.purchasePrice;
-                        newQuantity = p.quantity;
-                    });
-                    await db.inventoryLogs.add({
-                        productId: item.productId,
-                        change: item.quantityReceived,
-                        newQuantity,
-                        reason: 'stock_intake',
-                        relatedId: intakeId,
-                        createdAt: new Date(),
-                    } as InventoryLog);
+            const persistedItems: StockIntake['items'] = [];
+            
+            for (const item of items) {
+                let productId: number | undefined = item.productId;
+                if (item.isNew) {
+                    const newProduct: Omit<Product, 'id'> = {
+                        name: item.name,
+                        category: item.category,
+                        price: item.price,
+                        purchasePrice: item.purchasePrice,
+                        quantity: 0,
+                        minStockLevel: 10,
+                        barcodes: item.barcodes,
+                    };
+                    productId = await db.products.add(newProduct as Product);
                 }
+
+                if (!productId) throw new Error(`Product ID missing for item ${item.name}`);
+                
+                let newQuantity = 0;
+                await db.products.where({ id: productId }).modify(p => {
+                    p.quantity += item.quantity;
+                    p.purchasePrice = item.purchasePrice;
+                    newQuantity = p.quantity;
+                });
+                
+                await db.inventoryLogs.add({
+                    productId: productId,
+                    change: item.quantity,
+                    newQuantity: newQuantity,
+                    reason: 'stock_intake',
+                    relatedId: intakeId, // We have the ID now
+                    createdAt: new Date(),
+                } as InventoryLog);
+                
+                persistedItems.push({
+                    productId: productId,
+                    productName: item.name,
+                    quantityReceived: item.quantity,
+                    purchasePrice: item.purchasePrice,
+                });
             }
+
+            // Update the intake record with the final list of items
+            await db.stockIntakes.update(intakeId, { items: persistedItems });
+            
             return intakeId;
         });
     }

@@ -59,7 +59,7 @@ export default function StockPage() {
                     <h3 className="text-xl font-semibold">Aucune réception de stock trouvée</h3>
                     <p className="text-muted-foreground mt-2">Commencez par enregistrer une nouvelle réception de stock.</p>
                      <Button className="mt-4" asChild>
-                        <Link href="/stock/intake/new"><Plus className="mr-2 h-4 w-4" /> Nouvelle Réception</Link>
+                        <Link href="/stock/intake"><Plus className="mr-2 h-4 w-4" /> Nouvelle Réception</Link>
                     </Button>
                 </div>
             );
@@ -86,7 +86,7 @@ export default function StockPage() {
                     <p className="text-muted-foreground">Recherchez et consultez toutes les réceptions de marchandises.</p>
                 </div>
                  <Button className="w-full sm:w-auto" asChild>
-                    <Link href="/stock/intake/new"><Plus className="mr-2 h-4 w-4" /> Nouvelle Réception</Link>
+                    <Link href="/stock/intake"><Plus className="mr-2 h-4 w-4" /> Nouvelle Réception</Link>
                 </Button>
             </header>
 
