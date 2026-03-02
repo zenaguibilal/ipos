@@ -490,7 +490,7 @@ class DataService {
 
         const saleId = await db.sales.add({
             ...saleData,
-            invoiceNumber: `INV-${Date.now()}`,
+            invoiceNumber: `INV-${Date.now().toString(36).toUpperCase()}`,
             paymentStatus,
             remainingBalance: remainingBalance > 0 ? remainingBalance : 0,
             totalProfit,
@@ -779,51 +779,6 @@ class DataService {
 
 
   // ====================================================================
-  // Expenses - All writes are transactional
-  // ====================================================================
-  async getExpenses(params: { category?: string; from?: Date; to?: Date }): Promise<Expense[]> {
-    const { category, from, to } = params;
-
-    let collection;
-
-    // Build the query based on provided filters
-    if (category && from && to) {
-        collection = db.expenses.where('[category+expenseDate]').between([category, from], [category, to], true, true);
-    } else if (category) {
-        collection = db.expenses.where('category').equals(category);
-    } else if (from && to) {
-        collection = db.expenses.where('expenseDate').between(from, to, true, true);
-    } else {
-        collection = db.expenses.toCollection();
-    }
-    
-    // Sort by most recent
-    return collection.reverse().toArray();
-  }
-
-  async getExpenseCategories(): Promise<string[]> {
-    return db.expenses.orderBy('category').uniqueKeys() as Promise<string[]>;
-  }
-
-  async addExpense(expense: Omit<Expense, 'id'>): Promise<number> {
-    return db.transaction('rw', db.expenses, () => {
-      return db.expenses.add(expense as Expense);
-    });
-  }
-
-  async updateExpense(id: number, expense: Partial<Omit<Expense, 'id'>>): Promise<number> {
-    return db.transaction('rw', db.expenses, () => {
-      return db.expenses.update(id, expense);
-    });
-  }
-
-  async deleteExpense(id: number): Promise<void> {
-    return db.transaction('rw', db.expenses, () => {
-        return db.expenses.delete(id);
-    });
-  }
-
-  // ====================================================================
   // Bread Module - All writes are transactional
   // ====================================================================
   async addBreadCustomer(customer: Omit<BreadCustomer, 'id' | 'createdAt' | 'updatedAt' | 'isActive'>): Promise<number> {
@@ -950,11 +905,13 @@ class DataService {
               purchasePrice: profile.breadPurchasePrice || 0,
               quantity: order.quantity
           };
-
-          const saleData: Omit<Sale, 'id' | 'invoiceNumber'> = {
+          
+          const saleData: Omit<Sale, 'id'> = {
+              invoiceNumber: `INV-${Date.now().toString(36).toUpperCase()}-${order.id}`,
               items: [saleItem],
               subtotal: total,
               total,
+              totalProfit: total - (saleItem.purchasePrice * saleItem.quantity),
               amountPaid: 0,
               remainingBalance: total,
               paymentStatus: 'unpaid',
