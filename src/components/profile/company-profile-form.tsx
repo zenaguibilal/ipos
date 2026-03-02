@@ -96,6 +96,23 @@ export function CompanyProfileForm() {
                             </div>
                         </div>
                         <div className="space-y-4 border-t pt-6">
+                            <h4 className="font-medium text-muted-foreground">Paramètres de Synchronisation</h4>
+                            <div className="space-y-2">
+                                <Label htmlFor="syncUrl">URL du script Google Apps</Label>
+                                <Input 
+                                    id="syncUrl" 
+                                    type="url" 
+                                    value={formState.syncUrl || ''} 
+                                    onChange={handleInputChange} 
+                                    disabled={isSaving} 
+                                    placeholder="https://script.google.com/macros/s/..." 
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                    Collez ici l'URL de déploiement de votre script Google Apps pour activer la synchronisation.
+                                </p>
+                            </div>
+                        </div>
+                        <div className="space-y-4 border-t pt-6">
                             <h4 className="font-medium text-muted-foreground">Informations Légales</h4>
                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div className="space-y-2"><Label htmlFor="vatNumber">N° TVA / NIF</Label><Input id="vatNumber" value={formState.vatNumber || ''} onChange={handleInputChange} disabled={isSaving} /></div>

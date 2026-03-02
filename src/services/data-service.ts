@@ -1008,7 +1008,7 @@ class DataService {
 
 
   // ====================================================================
-  // Backup & Restore - Handled in large transactions
+  // Backup, Restore, Sync - Handled in large transactions
   // ====================================================================
   async exportData(): Promise<string> {
     const data: Partial<DB> = {};
@@ -1070,6 +1070,40 @@ class DataService {
         });
     }
 
+  async syncDataToGoogleSheet(): Promise<void> {
+    const profile = await this.getCompanyProfile();
+    if (!profile?.syncUrl) {
+      throw new Error("L'URL de synchronisation n'est pas configurée.");
+    }
+    
+    const dataToSync = await this.exportData();
+
+    // The Google Apps Script needs to be deployed to return the correct CORS headers
+    // and handle the POST request.
+    const response = await fetch(profile.syncUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ data: dataToSync }), // Wrap it for easier parsing in GAS
+    });
+
+    if (!response.ok) {
+        let errorBody = 'Réponse invalide du serveur.';
+        try {
+            const errorJson = await response.json();
+            errorBody = errorJson.error || errorBody;
+        } catch(e) {
+            errorBody = response.statusText;
+        }
+        throw new Error(`Erreur du serveur : ${response.status} - ${errorBody}`);
+    }
+    
+    // Update the last sync date on successful fetch.
+    return db.transaction('rw', db.companyProfile, () => {
+        return db.companyProfile.update(1, { lastSyncDate: new Date() });
+    });
+  }
 }
 
 export const dataService = new DataService();

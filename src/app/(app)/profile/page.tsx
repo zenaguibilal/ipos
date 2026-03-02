@@ -4,7 +4,8 @@ import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/ca
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CompanyProfileForm } from "@/components/profile/company-profile-form";
 import { BackupAndRestore } from "@/components/profile/BackupAndRestore";
-import { User, Database } from 'lucide-react';
+import { SyncData } from "@/components/profile/SyncData";
+import { User, Database, RefreshCw } from 'lucide-react';
 
 export default function ProfilePage() {
     return (
@@ -15,7 +16,7 @@ export default function ProfilePage() {
             </header>
 
             <Tabs defaultValue="profile" className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
+                <TabsList className="grid w-full grid-cols-3">
                     <TabsTrigger value="profile">
                         <User className="mr-2 h-4 w-4" />
                         Profil de l'entreprise
@@ -23,6 +24,10 @@ export default function ProfilePage() {
                     <TabsTrigger value="data">
                         <Database className="mr-2 h-4 w-4" />
                         Sauvegarde & Restauration
+                    </TabsTrigger>
+                    <TabsTrigger value="sync">
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                        Synchronisation
                     </TabsTrigger>
                 </TabsList>
                 <TabsContent value="profile">
@@ -45,6 +50,17 @@ export default function ProfilePage() {
                             </CardDescription>
                         </CardHeader>
                         <BackupAndRestore />
+                    </Card>
+                </TabsContent>
+                <TabsContent value="sync">
+                     <Card>
+                        <CardHeader>
+                            <CardTitle>Synchronisation des Données</CardTitle>
+                            <CardDescription>
+                                Synchronisez manuellement les données de votre application avec une feuille de calcul Google Sheet via un script Google Apps.
+                            </CardDescription>
+                        </CardHeader>
+                        <SyncData />
                     </Card>
                 </TabsContent>
             </Tabs>

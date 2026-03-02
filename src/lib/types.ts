@@ -115,6 +115,8 @@ export interface CompanyProfile {
     rcNumber?: string;
     breadPrice?: number;
     breadPurchasePrice?: number;
+    syncUrl?: string;
+    lastSyncDate?: Date;
     updatedAt?: Date;
 }
 
