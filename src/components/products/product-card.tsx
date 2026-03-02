@@ -9,7 +9,7 @@ import { MoreHorizontal, Edit, Trash2 } from 'lucide-react';
 import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
 import placeholderImages from '@/lib/placeholder-images.json';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 import { Checkbox } from '../ui/checkbox';
 
 interface ProductCardProps {
@@ -66,7 +66,7 @@ const ProductCardComponent = ({ product, onEdit, onDelete, isSelected, onToggleS
             </CardContent>
             <CardFooter className="p-4 pt-0 flex justify-between items-center">
                  <div>
-                    <p className="text-lg font-bold text-primary">{product.price.toFixed(1)} DA</p>
+                    <p className="text-lg font-bold text-primary">{formatCurrency(product.price)}</p>
                     <p className="text-xs font-semibold">Stock: {product.quantity}</p>
                 </div>
                 <DropdownMenu>

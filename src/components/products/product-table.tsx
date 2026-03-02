@@ -7,7 +7,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { MoreHorizontal, Edit, Trash2, AlertCircle } from 'lucide-react';
 import Image from 'next/image';
 import placeholderImages from '@/lib/placeholder-images.json';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 import { Checkbox } from '../ui/checkbox';
 
 interface ProductTableProps {
@@ -85,8 +85,8 @@ export function ProductTable({ products, onEdit, onDelete, selectedProducts, onT
                                         {product.quantity}
                                     </div>
                                 </TableCell>
-                                <TableCell className="text-right">{product.purchasePrice.toFixed(1)} DA</TableCell>
-                                <TableCell className="text-right font-bold text-primary">{product.price.toFixed(1)} DA</TableCell>
+                                <TableCell className="text-right">{formatCurrency(product.purchasePrice)}</TableCell>
+                                <TableCell className="text-right font-bold text-primary">{formatCurrency(product.price)}</TableCell>
                                 <TableCell className="text-right">
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>

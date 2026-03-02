@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { FileText } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { safeToDate } from '@/lib/utils';
+import { safeToDate, formatCurrency } from '@/lib/utils';
 
 interface StockIntakeCardProps {
     intake: StockIntake;
@@ -42,7 +42,7 @@ const StockIntakeCardComponent = ({ intake, onViewDetails }: StockIntakeCardProp
             <CardFooter className="bg-muted p-4 rounded-b-lg">
                 <div className="flex justify-between items-center w-full">
                     <span className="font-semibold">Valeur Totale</span>
-                    <span className="text-lg font-bold text-primary">{intake.totalValue.toFixed(1)} DA</span>
+                    <span className="text-lg font-bold text-primary">{formatCurrency(intake.totalValue)}</span>
                 </div>
             </CardFooter>
         </Card>

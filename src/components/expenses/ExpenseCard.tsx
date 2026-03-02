@@ -8,6 +8,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { MoreHorizontal, Edit, Trash2, Banknote, Calendar, Tag } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { formatCurrency } from '@/lib/utils';
 
 interface ExpenseCardProps {
     expense: Expense;
@@ -51,7 +52,7 @@ const ExpenseCardComponent = ({ expense, onEdit, onDelete }: ExpenseCardProps) =
             <CardFooter className="p-4 pt-0">
                  <div className="flex justify-between items-center bg-destructive/10 text-destructive p-3 rounded-lg w-full">
                     <span className="font-semibold flex items-center gap-2"><Banknote className="h-4 w-4"/> Montant</span>
-                    <span className="text-xl font-bold">{expense.amount.toFixed(1)} DA</span>
+                    <span className="text-xl font-bold">{formatCurrency(expense.amount)}</span>
                 </div>
             </CardFooter>
         </Card>

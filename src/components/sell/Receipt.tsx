@@ -6,7 +6,7 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/database';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, formatNumber } from '@/lib/utils';
 import QRCode from 'qrcode';
 import { useEffect, useState } from 'react';
 
@@ -107,8 +107,8 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(({ sale },
                         <tr key={index}>
                             <td className="py-1">{item.name}</td>
                             <td className="text-center py-1">{item.quantity}</td>
-                            <td className="text-right py-1">{item.price.toFixed(1)}</td>
-                            <td className="text-right py-1">{(item.price * item.quantity).toFixed(1)}</td>
+                            <td className="text-right py-1">{formatNumber(item.price)}</td>
+                            <td className="text-right py-1">{formatNumber(item.price * item.quantity)}</td>
                         </tr>
                     ))}
                 </tbody>

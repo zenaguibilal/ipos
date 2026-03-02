@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -19,6 +18,7 @@ import {
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import type { StockIntake } from '@/lib/types';
+import { formatCurrency } from '@/lib/utils';
 
 export function StockIntakeDetailsDialog({
     isOpen,
@@ -58,7 +58,7 @@ export function StockIntakeDetailsDialog({
                                         {item.quantityReceived}
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        {item.purchasePrice.toFixed(1)} DA
+                                        {formatCurrency(item.purchasePrice)}
                                     </TableCell>
                                 </TableRow>
                             ))}
