@@ -19,6 +19,7 @@ export interface Customer {
     lastName: string;
     phone?: string;
     settlementDay?: number;
+    creditLimit?: number;
     totalSpent: number;
     outstandingBalance: number;
     lastActivityDate?: Date;

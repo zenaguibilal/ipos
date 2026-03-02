@@ -1,7 +1,7 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { BarChart, DollarSign, Hourglass } from 'lucide-react';
+import { DollarSign, Hourglass, ShieldCheck } from 'lucide-react';
 import type { Customer } from '@/lib/types';
 import { formatCurrency } from '@/lib/utils';
 
@@ -16,7 +16,7 @@ export function CustomerMetrics({ customer }: CustomerMetricsProps) {
             <CardHeader>
                 <CardTitle>Statistiques du Client</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-4">
                 <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
                     <div className="flex items-center gap-4">
                         <div className="p-3 rounded-full bg-primary/10">
@@ -25,6 +25,19 @@ export function CustomerMetrics({ customer }: CustomerMetricsProps) {
                         <div>
                             <p className="text-sm text-muted-foreground">Total Dépensé</p>
                             <p className="text-2xl font-bold">{formatCurrency(customer.totalSpent)}</p>
+                        </div>
+                    </div>
+                </div>
+                 <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                    <div className="flex items-center gap-4">
+                        <div className="p-3 rounded-full bg-primary/10">
+                            <ShieldCheck className="h-6 w-6 text-primary" />
+                        </div>
+                        <div>
+                            <p className="text-sm text-muted-foreground">Limite de Crédit</p>
+                            <p className="text-2xl font-bold">
+                                {typeof customer.creditLimit === 'number' ? formatCurrency(customer.creditLimit) : 'Aucune'}
+                            </p>
                         </div>
                     </div>
                 </div>

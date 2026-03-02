@@ -21,6 +21,7 @@ const initialFormState = {
     lastName: '',
     phone: '',
     settlementDay: '',
+    creditLimit: '',
 };
 
 export function CustomerDialog({ isOpen, onOpenChange, customer }: CustomerDialogProps) {
@@ -35,6 +36,7 @@ export function CustomerDialog({ isOpen, onOpenChange, customer }: CustomerDialo
                 lastName: customer.lastName,
                 phone: customer.phone || '',
                 settlementDay: String(customer.settlementDay || ''),
+                creditLimit: String(customer.creditLimit || ''),
             });
         } else {
             setFormState(initialFormState);
@@ -47,7 +49,7 @@ export function CustomerDialog({ isOpen, onOpenChange, customer }: CustomerDialo
         setError(null);
         setIsLoading(true);
 
-        const { firstName, lastName, phone, settlementDay } = formState;
+        const { firstName, lastName, phone, settlementDay, creditLimit } = formState;
 
         if (!firstName || !lastName) {
             setError("Le prénom et le nom sont requis.");
@@ -60,6 +62,7 @@ export function CustomerDialog({ isOpen, onOpenChange, customer }: CustomerDialo
             lastName,
             phone,
             settlementDay: settlementDay ? parseInt(settlementDay, 10) : undefined,
+            creditLimit: creditLimit ? parseFloat(creditLimit) : undefined,
         };
 
         try {
@@ -106,9 +109,15 @@ export function CustomerDialog({ isOpen, onOpenChange, customer }: CustomerDialo
                             <Label htmlFor="phone">Téléphone</Label>
                             <Input id="phone" type="tel" value={formState.phone} onChange={(e) => setFormState(s => ({...s, phone: e.target.value}))} />
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="settlementDay">Délai de paiement (jours)</Label>
-                            <Input id="settlementDay" type="number" placeholder="Ex: 30" value={formState.settlementDay} onChange={(e) => setFormState(s => ({...s, settlementDay: e.target.value}))} />
+                         <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="settlementDay">Délai de paiement (jours)</Label>
+                                <Input id="settlementDay" type="number" placeholder="Ex: 30" value={formState.settlementDay} onChange={(e) => setFormState(s => ({...s, settlementDay: e.target.value}))} />
+                            </div>
+                             <div className="space-y-2">
+                                <Label htmlFor="creditLimit">Limite de crédit (DA)</Label>
+                                <Input id="creditLimit" type="number" placeholder="Ex: 10000" value={formState.creditLimit} onChange={(e) => setFormState(s => ({...s, creditLimit: e.target.value}))} />
+                            </div>
                         </div>
                     </div>
                     <DialogFooter>

@@ -5,7 +5,7 @@ import type { CustomerWithSalesData } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Edit, Trash2, FileText, Phone, BarChart, DollarSign, BellRing } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, FileText, Phone, DollarSign, BellRing, ShieldCheck } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import Link from 'next/link';
 import { formatCurrency } from '@/lib/utils';
@@ -75,9 +75,9 @@ const CustomerCardComponent = ({ customer, onEdit, onDelete }: CustomerCardProps
             </CardHeader>
             <CardContent className="flex-grow space-y-3">
                  <div className="flex items-center text-sm">
-                    <BarChart className="h-4 w-4 mr-2 text-muted-foreground"/>
-                    <span className="text-muted-foreground">Total dépensé:</span>
-                    <span className="font-semibold ml-auto">{formatCurrency(customer.totalSpent)}</span>
+                    <ShieldCheck className="h-4 w-4 mr-2 text-muted-foreground"/>
+                    <span className="text-muted-foreground">Limite crédit:</span>
+                     <span className="font-semibold ml-auto">{typeof customer.creditLimit === 'number' ? formatCurrency(customer.creditLimit) : 'N/A'}</span>
                 </div>
                 <div className="flex items-center text-sm">
                     <DollarSign className="h-4 w-4 mr-2 text-muted-foreground"/>

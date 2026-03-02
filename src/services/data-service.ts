@@ -202,7 +202,11 @@ class DataService {
   async addCustomer(customer: Omit<Customer, 'id' | 'totalSpent' | 'outstandingBalance' | 'lastActivityDate' | 'searchName'>): Promise<number> {
     return db.transaction('rw', db.customers, () => {
         const customerToAdd: Omit<Customer, 'id'> = {
-            ...customer,
+            firstName: customer.firstName,
+            lastName: customer.lastName,
+            phone: customer.phone,
+            settlementDay: customer.settlementDay,
+            creditLimit: customer.creditLimit,
             totalSpent: 0,
             outstandingBalance: 0,
         };
@@ -347,6 +351,20 @@ class DataService {
         const remainingBalance = total - amountPaid;
         const paymentStatus = amountPaid >= total ? 'paid' : amountPaid > 0 ? 'partial' : 'unpaid';
 
+        if (customerId) {
+            const customer = await db.customers.get(customerId);
+            if (!customer) throw new Error(`Client avec ID ${customerId} non trouvé.`);
+
+            const newCreditAmount = remainingBalance > 0 ? remainingBalance : 0;
+            
+            // Check credit limit if it exists
+            if (newCreditAmount > 0 && typeof customer.creditLimit === 'number' && customer.creditLimit >= 0) {
+                if ((customer.outstandingBalance + newCreditAmount) > customer.creditLimit) {
+                    throw new Error(`Limite de crédit (${customer.creditLimit.toFixed(1)} DA) dépassée pour ${customer.firstName} ${customer.lastName}. Solde actuel: ${customer.outstandingBalance.toFixed(1)} DA.`);
+                }
+            }
+        }
+
         const saleId = await db.sales.add({
             ...saleData,
             invoiceNumber: `INV-${Date.now()}`,
@@ -386,9 +404,10 @@ class DataService {
         }
 
         if (customerId) {
+            const newCreditAmount = remainingBalance > 0 ? remainingBalance : 0;
             await db.customers.where('id').equals(customerId).modify(c => {
                 c.totalSpent = (c.totalSpent || 0) + total;
-                c.outstandingBalance = (c.outstandingBalance || 0) + (remainingBalance > 0 ? remainingBalance : 0);
+                c.outstandingBalance = (c.outstandingBalance || 0) + newCreditAmount;
                 c.lastActivityDate = new Date();
             });
         }
