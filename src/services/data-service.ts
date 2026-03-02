@@ -312,6 +312,10 @@ class DataService {
     
     return salesArray;
   }
+  
+  async getSaleByInvoiceNumber(invoiceNumber: string): Promise<Sale | undefined> {
+    return db.sales.where('invoiceNumber').equals(invoiceNumber).first();
+  }
 
   async addSale(saleData: Omit<Sale, 'id' | 'invoiceNumber' | 'paymentStatus' | 'remainingBalance'>): Promise<number> {
     return db.transaction('rw', db.sales, db.products, db.customers, db.notifications, db.inventoryLogs, async () => {
@@ -572,6 +576,7 @@ class DataService {
               await db.customers.where('id').equals(customerId).modify(c => {
                   c.outstandingBalance -= balanceEffect;
                    if (c.outstandingBalance < 0) c.outstandingBalance = 0;
+                   c.lastActivityDate = new Date();
               });
           }
 

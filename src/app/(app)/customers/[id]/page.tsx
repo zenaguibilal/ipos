@@ -28,7 +28,8 @@ export default function CustomerDetailPage() {
         if (!customerId) return [];
         const sales = await db.sales.where({ customerId }).toArray();
         const payments = await db.payments.where({ customerId }).toArray();
-        const combined = [...sales, ...payments];
+        const returns = await db.returns.where({ customerId }).toArray();
+        const combined = [...sales, ...payments, ...returns];
         return combined.sort((a, b) => (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0));
     }, [customerId], []);
 
@@ -80,7 +81,7 @@ export default function CustomerDetailPage() {
                      <Card>
                         <CardHeader>
                             <CardTitle>Historique d'activité</CardTitle>
-                            <CardDescription>Liste chronologique des ventes et des paiements.</CardDescription>
+                            <CardDescription>Liste chronologique des ventes, paiements et retours.</CardDescription>
                         </CardHeader>
                         <CardContent>
                             <CustomerActivity activity={activity} />
