@@ -1079,24 +1079,39 @@ class DataService {
     const dataToSync = await this.exportData();
 
     // The Google Apps Script needs to be deployed to return the correct CORS headers
-    // and handle the POST request.
+    // and handle the POST request. Using 'text/plain' helps avoid CORS pre-flight requests.
     const response = await fetch(profile.syncUrl, {
       method: 'POST',
+      mode: 'cors',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'text/plain',
       },
-      body: JSON.stringify({ data: dataToSync }), // Wrap it for easier parsing in GAS
+      body: dataToSync,
     });
 
     if (!response.ok) {
-        let errorBody = 'Réponse invalide du serveur.';
+        let errorBody = `Status: ${response.status} - ${response.statusText}`;
         try {
+            // Try to parse as JSON first, as the script might return a structured error
             const errorJson = await response.json();
-            errorBody = errorJson.error || errorBody;
-        } catch(e) {
-            errorBody = response.statusText;
+            if (errorJson.error) {
+                 errorBody = errorJson.error;
+            }
+        } catch (e) {
+            // If not JSON, it might be plain text or HTML from Google
+            try {
+                const textError = await response.text();
+                // Avoid showing a full HTML page in the toast
+                if (textError && !textError.toLowerCase().includes('<html')) { 
+                    errorBody = textError.substring(0, 200); // Limit length for clarity
+                } else if (textError) {
+                    errorBody = "Le serveur Google a retourné une erreur inattendue (probablement une page HTML)."
+                }
+            } catch (textErr) {
+                // Ignore if reading as text also fails, stick with the status code.
+            }
         }
-        throw new Error(`Erreur du serveur : ${response.status} - ${errorBody}`);
+        throw new Error(`Erreur de synchronisation: ${errorBody}`);
     }
     
     // Update the last sync date on successful fetch.
