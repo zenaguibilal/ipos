@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie';
-import type { Product, Customer, Sale, Payment, StockIntake, ProductReturn, Cart, CompanyProfile, BreadCustomer, DailyBreadOrder, Expense, Setting } from './types';
+import type { Product, Customer, Sale, Payment, StockIntake, ProductReturn, Cart, CompanyProfile, BreadCustomer, DailyBreadOrder, Expense, Setting, Notification, InventoryLog } from './types';
 
 export class PosDatabase extends Dexie {
     products!: Table<Product, number>;
@@ -14,12 +14,14 @@ export class PosDatabase extends Dexie {
     dailyBreadOrders!: Table<DailyBreadOrder, number>;
     expenses!: Table<Expense, number>;
     settings!: Table<Setting, string>;
+    notifications!: Table<Notification, number>;
+    inventoryLogs!: Table<InventoryLog, number>;
 
     constructor() {
         super('posDB');
-        this.version(15).stores({
-            products: '++id, name, *barcodes, category, [category+name]',
-            customers: '++id, createdAt, [lastName+firstName], outstandingBalance, lastActivityDate',
+        this.version(19).stores({
+            products: '++id, name, *barcodes, category, price, quantity, [category+name]',
+            customers: '++id, createdAt, [lastName+firstName], phone, outstandingBalance, lastActivityDate',
             sales: '++id, &invoiceNumber, createdAt, customerId, customerName, paymentStatus, breadOrderDate',
             payments: '++id, createdAt, customerId',
             stockIntakes: '++id, &invoiceNumber, supplier, createdAt',
@@ -30,11 +32,12 @@ export class PosDatabase extends Dexie {
             dailyBreadOrders: '++id, &[breadCustomerId+date], date',
             expenses: '++id, category, expenseDate, [category+expenseDate]',
             settings: '&id', // Key-value store for UI state and preferences
+            notifications: '++id, createdAt, isRead, type, [type+isRead]',
+            inventoryLogs: '++id, productId, createdAt, reason',
         });
 
-        // Hooks pour ajouter/mettre à jour les timestamps
+        // Hooks to add/update timestamps
         this.tables.forEach(table => {
-            // Do not add timestamps to settings, carts tables
             if (['settings', 'carts'].includes(table.name)) return;
             
             table.hook('creating', (primKey, obj, trans) => {
@@ -42,13 +45,12 @@ export class PosDatabase extends Dexie {
                 if ((obj as any).createdAt === undefined) {
                     (obj as any).createdAt = now;
                 }
-                if ((obj as any).updatedAt === undefined) {
+                if ((obj as any).updatedAt === undefined && table.name !== 'inventoryLogs') {
                     (obj as any).updatedAt = now;
                 }
             });
 
             table.hook('updating', (modifications, primKey, obj, trans) => {
-                // In an updating hook, you can modify the modifications object to be applied.
                 if((modifications as any).updatedAt === undefined) {
                     (modifications as any).updatedAt = new Date();
                 }

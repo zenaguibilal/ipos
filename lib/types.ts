@@ -1,6 +1,5 @@
-
 export interface Product {
-    id?: number;
+    id?: number | string; // string for custom products
     name: string;
     category?: string;
     price: number;
@@ -19,6 +18,9 @@ export interface Customer {
     lastName: string;
     phone?: string;
     settlementDay?: number;
+    totalSpent: number;
+    outstandingBalance: number;
+    lastActivityDate?: Date;
     createdAt?: Date;
     updatedAt?: Date;
 }
@@ -40,7 +42,7 @@ export interface CartItem extends Product {
 
 // Represents a single shopping cart session
 export interface Cart {
-    id: string;
+    id:string;
     name: string;
     items: CartItem[];
     customerId: number | null;
@@ -86,9 +88,6 @@ export interface Payment {
 
 export interface CustomerWithSalesData extends Customer {
     id: number; // Make id mandatory here
-    totalSpent: number;
-    outstandingBalance: number;
-    lastActivityDate?: Date | null;
     isReminderDue?: boolean;
 }
 
@@ -100,6 +99,7 @@ export interface ChartData {
 }
 
 export interface TopProduct {
+    id: number;
     name: string;
     totalRevenue: number;
     unitsSold: number;
@@ -107,6 +107,7 @@ export interface TopProduct {
 }
 
 export interface TopCustomer {
+    id: number;
     name: string;
     totalSpent: number;
 }
@@ -206,4 +207,64 @@ export interface DailyBreadOrder {
     saleId?: number;
     isPaid: boolean;
     isDelivered: boolean;
+}
+
+export type ExpenseCategory = 'Loyer' | 'Salaires' | 'Fournisseurs' | 'Services Publics' | 'Marketing' | 'Maintenance' | 'Autre';
+
+export interface Expense {
+    id?: number;
+    description: string;
+    category: ExpenseCategory;
+    amount: number;
+    expenseDate: Date;
+    createdAt?: Date;
+    updatedAt?: Date;
+}
+
+export interface Setting {
+    id: string; // The key for the setting
+    value: any;
+}
+
+export interface Notification {
+    id?: number;
+    type: 'low-stock' | 'unpaid-invoice' | 'info';
+    message: string;
+    isRead: boolean;
+    createdAt: Date;
+    relatedId?: number | string; // e.g., product.id or customer.id
+}
+
+export type InventoryLogReason = 'sale' | 'return' | 'stock_intake' | 'cancellation' | 'manual_adjustment';
+
+export interface InventoryLog {
+    id?: number;
+    productId: number;
+    change: number; // e.g., -2 for sale, +50 for stock intake
+    newQuantity: number;
+    reason: InventoryLogReason;
+    relatedId?: number | string; // ID of the sale, return, intake, etc.
+    createdAt: Date;
+}
+
+export interface DashboardStats {
+    totalRevenue: number;
+    totalProfit: number;
+    salesCount: number;
+    inventoryValue: number;
+}
+
+export interface DashboardData {
+    stats: DashboardStats;
+    sales: Sale[];
+    topProducts: TopProduct[];
+    topCustomers: TopCustomer[];
+}
+
+export interface ImportAnalysis {
+    customersToAdd: any[];
+    customersToUpdate: any[];
+    skippedRows: any[];
+    errorRows: any[];
+    totalRows: number;
 }
