@@ -882,9 +882,6 @@ class DataService {
       let totalRevenue = 0;
       let totalProfit = 0;
       
-      const productSales: { [id: number]: { unitsSold: number, totalRevenue: number, totalProfit: number } } = {};
-      const customerSpend: { [id: number]: { name: string, totalSpent: number } } = {};
-
       for (const sale of sales) {
           totalRevenue += sale.total;
           let saleProfit = 0;
@@ -893,24 +890,8 @@ class DataService {
               const profitPerItem = (item.price - item.purchasePrice) * item.quantity;
               const validProfit = isNaN(profitPerItem) ? 0 : profitPerItem;
               saleProfit += validProfit;
-              
-              if (typeof item.id === 'number') {
-                  if (!productSales[item.id]) {
-                      productSales[item.id] = { unitsSold: 0, totalRevenue: 0, totalProfit: 0 };
-                  }
-                  productSales[item.id].unitsSold += item.quantity;
-                  productSales[item.id].totalRevenue += item.price * item.quantity;
-                  productSales[item.id].totalProfit += validProfit;
-              }
           }
           totalProfit += saleProfit;
-
-          if (sale.customerId) {
-              if (!customerSpend[sale.customerId]) {
-                  customerSpend[sale.customerId] = { name: sale.customerName || 'N/A', totalSpent: 0 };
-              }
-              customerSpend[sale.customerId].totalSpent += sale.total;
-          }
       }
 
       const inventoryValue = allProducts.reduce((acc, p) => {
@@ -925,34 +906,9 @@ class DataService {
           inventoryValue
       };
 
-      // 2. Calculate Top Products
-      const topProducts: TopProduct[] = Object.entries(productSales)
-          .map(([productId, data]) => {
-              const product = allProducts.find(p => p.id === Number(productId));
-              return {
-                  id: Number(productId),
-                  name: product?.name || 'Produit Supprimé',
-                  ...data,
-              };
-          })
-          .sort((a, b) => b.totalRevenue - a.totalRevenue)
-          .slice(0, 5);
-      
-      // 3. Calculate Top Customers
-      const topCustomers: TopCustomer[] = Object.entries(customerSpend)
-          .map(([customerId, data]) => ({
-              id: Number(customerId),
-              name: data.name,
-              totalSpent: data.totalSpent,
-          }))
-          .sort((a, b) => b.totalSpent - a.totalSpent)
-          .slice(0, 5);
-
       return {
           stats,
           sales,
-          topProducts,
-          topCustomers,
       };
   }
 
