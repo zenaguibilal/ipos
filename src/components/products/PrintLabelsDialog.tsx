@@ -21,7 +21,7 @@ export function PrintLabelsDialog({ isOpen, onOpenChange, productIds }: PrintLab
   const products = useLiveQuery(
     () => {
         if (!productIds || productIds.length === 0) {
-            return [];
+            return null;
         }
         return dataService.getProductsByIds(productIds);
     }, 
