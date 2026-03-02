@@ -17,10 +17,10 @@ export class PosDatabase extends Dexie {
 
     constructor() {
         super('posDB');
-        this.version(12).stores({
+        this.version(13).stores({
             products: '++id, name, *barcodes, category',
-            customers: '++id, phone, *lastName, *firstName',
-            sales: '++id, &invoiceNumber, createdAt, customerId, paymentStatus, breadOrderDate',
+            customers: '++id, createdAt, phone, lastName, firstName',
+            sales: '++id, &invoiceNumber, createdAt, customerId, customerName, paymentStatus, breadOrderDate',
             payments: '++id, createdAt, customerId',
             stockIntakes: '++id, &invoiceNumber, supplier, createdAt',
             returns: '++id, createdAt, originalSaleId, customerId',

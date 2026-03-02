@@ -10,7 +10,9 @@ type TableName = 'products' | 'customers' | 'sales' | 'payments' | 'stockIntakes
 class DataService {
 
   async save<T extends { id?: number | string }>(table: TableName, data: Omit<T, 'id'>): Promise<number | string> {
-    return db.table(table).add(data as T);
+    return db.transaction('rw', db.table(table), async () => {
+        return db.table(table).add(data as T);
+    });
   }
 
   async getAll<T>(table: TableName): Promise<T[]> {
@@ -22,11 +24,15 @@ class DataService {
   }
 
   async update<T>(table: TableName, id: number | string, newData: Partial<T>): Promise<number> {
-    return db.table(table).update(id, newData);
+    return db.transaction('rw', db.table(table), async () => {
+        return db.table(table).update(id, newData);
+    });
   }
 
   async remove(table: TableName, id: number | string): Promise<void> {
-    await db.table(table).delete(id);
+    return db.transaction('rw', db.table(table), async () => {
+        return db.table(table).delete(id);
+    });
   }
   
   async getSetting(key: string): Promise<any> {
@@ -35,7 +41,9 @@ class DataService {
   }
 
   async setSetting(key: string, value: any): Promise<string> {
-      return db.settings.put({ id: key, value });
+    return db.transaction('rw', db.settings, async () => {
+        return db.settings.put({ id: key, value });
+    });
   }
 
   async finalizeSale(saleData: {
