@@ -8,6 +8,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { MoreHorizontal, Edit, Trash2, FileText, Phone, BarChart, DollarSign, BellRing } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import Link from 'next/link';
+import { formatCurrency } from '@/lib/utils';
 
 interface CustomerCardProps {
     customer: CustomerWithSalesData;
@@ -76,12 +77,12 @@ const CustomerCardComponent = ({ customer, onEdit, onDelete }: CustomerCardProps
                  <div className="flex items-center text-sm">
                     <BarChart className="h-4 w-4 mr-2 text-muted-foreground"/>
                     <span className="text-muted-foreground">Total dépensé:</span>
-                    <span className="font-semibold ml-auto">{customer.totalSpent.toFixed(1)} DA</span>
+                    <span className="font-semibold ml-auto">{formatCurrency(customer.totalSpent)}</span>
                 </div>
                 <div className="flex items-center text-sm">
                     <DollarSign className="h-4 w-4 mr-2 text-muted-foreground"/>
                     <span className="text-muted-foreground">Solde impayé:</span>
-                     <span className={`font-semibold ml-auto ${customer.outstandingBalance > 0 ? 'text-destructive' : ''}`}>{customer.outstandingBalance.toFixed(1)} DA</span>
+                     <span className={`font-semibold ml-auto ${customer.outstandingBalance > 0 ? 'text-destructive' : ''}`}>{formatCurrency(customer.outstandingBalance)}</span>
                 </div>
             </CardContent>
             <CardFooter className="pt-0">

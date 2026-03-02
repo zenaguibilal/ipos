@@ -1,7 +1,7 @@
 'use client';
 
 import { db, PosDatabase } from '@/lib/database';
-import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, DailyBreadOrder, BreadCustomer, BreadOrder, Notification, InventoryLog } from '@/lib/types';
+import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, DailyBreadOrder, BreadCustomer, BreadOrder, Notification, InventoryLog, CustomerWithSalesData } from '@/lib/types';
 import { initialData, type DB, type CollectionName } from './initial-data';
 import Dexie from 'dexie';
 
@@ -177,6 +177,43 @@ class DataService {
         await db.payments.where({ customerId: id }).delete();
         await db.customers.delete(id);
     });
+  }
+
+  async getCustomersForDisplay(params: { query?: string }): Promise<CustomerWithSalesData[]> {
+    const { query } = params;
+    
+    let customers: Customer[];
+
+    if (query) {
+      const lowerQuery = query.toLowerCase();
+      customers = await db.customers.filter(c => 
+        c.firstName.toLowerCase().includes(lowerQuery) || 
+        c.lastName.toLowerCase().includes(lowerQuery) ||
+        (c.phone && c.phone.includes(lowerQuery)) ||
+        false
+      ).toArray();
+    } else {
+      customers = await db.customers.toArray();
+    }
+
+    const customersWithData = customers.map(customer => {
+        let isReminderDue = false;
+        if (customer.outstandingBalance > 0 && customer.settlementDay && customer.lastActivityDate) {
+            const dueDate = new Date(customer.lastActivityDate);
+            dueDate.setDate(dueDate.getDate() + customer.settlementDay);
+            if (new Date() > dueDate) {
+                isReminderDue = true;
+            }
+        }
+
+        return {
+            ...customer,
+            id: customer.id!,
+            isReminderDue
+        };
+    });
+    
+    return customersWithData;
   }
   
   // ====================================================================

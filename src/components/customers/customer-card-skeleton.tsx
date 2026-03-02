@@ -15,12 +15,11 @@ export function CustomerCardSkeleton() {
                 </div>
             </CardHeader>
             <CardContent className="space-y-4">
-                <Skeleton className="h-14 w-full" />
                 <Skeleton className="h-5 w-full" />
                 <Skeleton className="h-5 w-full" />
             </CardContent>
             <CardFooter className="pt-0">
-                 <Skeleton className="h-8 w-full" />
+                 <Skeleton className="h-10 w-full" />
             </CardFooter>
         </Card>
     );
