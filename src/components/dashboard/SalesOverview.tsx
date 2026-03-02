@@ -12,7 +12,7 @@ interface SalesOverviewProps {
     isLoading: boolean;
 }
 
-export function SalesOverview({ topProducts, topCustomers, isLoading }: SalesOverviewProps) {
+export default function SalesOverview({ topProducts, topCustomers, isLoading }: SalesOverviewProps) {
 
     if (isLoading) {
         return (

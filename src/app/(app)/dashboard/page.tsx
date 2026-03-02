@@ -9,7 +9,7 @@ import { Users, Package, DollarSign, Archive, TrendingUp, PackageWarning, HandCo
 import { DateRangePicker } from '@/components/dashboard/date-range-picker';
 import { DateRange } from 'react-day-picker';
 import { subDays, startOfDay, endOfDay } from 'date-fns';
-import { SalesOverview } from '@/components/dashboard/SalesOverview';
+import SalesOverview from '@/components/dashboard/SalesOverview';
 import RevenueChart from '@/components/dashboard/RevenueChart';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatCurrency } from '@/lib/utils';
