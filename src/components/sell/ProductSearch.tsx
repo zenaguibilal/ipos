@@ -6,11 +6,11 @@ import { db } from '@/lib/database';
 import type { Product } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Search, Barcode, PackagePlus } from 'lucide-react';
+import { Barcode, PackagePlus } from 'lucide-react';
 import Image from 'next/image';
 import placeholderImages from '@/lib/placeholder-images.json';
 import { Button } from '../ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Label } from '../ui/label';
 
 interface ProductSearchProps {
@@ -47,11 +47,14 @@ const CustomProductDialog = ({ onAdd }: { onAdd: (name: string, price: number) =
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Ajouter un produit personnalisé</DialogTitle>
+              <DialogDescription>
+                Créez un article temporaire qui ne sera pas sauvegardé dans votre inventaire.
+              </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
                 <Label htmlFor="custom-name">Nom du produit</Label>
-                <Input id="custom-name" value={name} onChange={(e) => setName(e.target.value)} />
+                <Input id="custom-name" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="custom-price">Prix</Label>
@@ -107,12 +110,12 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
     };
 
     return (
-        <div className="p-4 flex flex-col h-full">
+        <div className="p-4 flex flex-col h-full bg-background">
             <div className="relative mb-4">
-                <Barcode className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Barcode className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input 
                     placeholder="Scanner un code-barres ou rechercher..."
-                    className="pl-9"
+                    className="pl-10 h-12 text-base"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     onKeyDown={(e) => {
@@ -124,8 +127,8 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
                 />
             </div>
             
-            <ScrollArea className="flex-grow">
-                <div className="space-y-2 pr-4">
+            <ScrollArea className="flex-grow -mx-4">
+                <div className="space-y-1 px-4">
                     {filteredProducts.map(product => (
                         <ListItem
                             key={product.id}

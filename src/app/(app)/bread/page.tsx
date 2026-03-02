@@ -1,4 +1,7 @@
-// Placeholder for the bread management page
+'use client';
+
+// This is a placeholder for the bread management page.
+// It will be built in a future step.
 export default function BreadPage() {
     return (
         <div className="p-4 sm:p-6">

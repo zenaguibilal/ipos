@@ -1,7 +1,5 @@
-
-
 export interface Product {
-    id?: number;
+    id?: number | string; // string for custom products
     name: string;
     category?: string;
     price: number;

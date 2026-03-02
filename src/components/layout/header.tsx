@@ -5,7 +5,6 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
   User as UserIcon,
   Settings,
-  Info,
   BarChart3,
   Package,
   Users,
@@ -33,26 +32,31 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '@/lib/database';
+import { Badge } from '../ui/badge';
 
 const navLinks = [
   { href: '/dashboard', label: 'Tableau de bord', icon: BarChart3 },
   { href: '/sell', label: 'Point de Vente', icon: ShoppingCart },
-  { href: '/sales-history', label: 'Historique des Ventes', icon: History },
+  { href: '/sales-history', label: 'Historique', icon: History },
   { href: '/products', label: 'Produits', icon: Package },
   { href: '/customers', label: 'Clients', icon: Users },
   { href: '/stock', label: 'Stock', icon: Archive },
   { href: '/bread', label: 'Pain', icon: ListChecks },
   { href: '/expenses', label: 'Dépenses', icon: Receipt },
   { href: '/returns', label: 'Retours', icon: Undo2 },
-  { href: '/notifications', label: 'Alertes', icon: Bell },
+  { href: '/notifications', label: 'Alertes', icon: Bell, isNotification: true },
 ];
 
 export function AppHeader() {
   const router = useRouter();
   const pathname = usePathname();
+  const unreadCount = useLiveQuery(() => db.notifications.where({ isRead: false }).count());
+
 
   return (
-    <header className="flex h-14 shrink-0 items-center gap-4 border-b bg-background px-4 sm:px-6 print-hide sticky top-0 z-10">
+    <header className="flex h-14 shrink-0 items-center gap-4 border-b bg-background px-4 sm:px-6 print-hide sticky top-0 z-20">
       <div className="flex-1 flex justify-start">
          <div className="flex items-baseline gap-2">
               <Link
@@ -60,9 +64,8 @@ export function AppHeader() {
                   className="flex items-center gap-2 font-semibold"
               >
                   <span className="text-2xl">🏪</span>
-                  <span className="text-xl font-semibold">iPOS</span>
+                  <span className="hidden sm:inline-block text-xl font-semibold">iPOS</span>
               </Link>
-              <span className="text-xs text-muted-foreground hidden lg:inline">100% Hors ligne</span>
           </div>
       </div>
 
@@ -70,17 +73,20 @@ export function AppHeader() {
             <TooltipProvider>
                 <nav className="hidden md:flex items-center gap-1 rounded-full border bg-card p-1">
                     {navLinks.map(link => (
-                        <Tooltip key={link.href}>
+                        <Tooltip key={link.href} delayDuration={0}>
                             <TooltipTrigger asChild>
                                 <Button 
                                     asChild
                                     variant={pathname.startsWith(link.href) ? "secondary" : "ghost"}
                                     size="icon"
-                                    className="rounded-full"
+                                    className="rounded-full relative"
                                 >
                                     <Link href={link.href}>
                                         <link.icon className="h-5 w-5" />
                                         <span className="sr-only">{link.label}</span>
+                                        {link.isNotification && unreadCount && unreadCount > 0 && (
+                                            <Badge className="absolute -top-1 -right-1 h-4 w-4 justify-center p-0 text-xs" variant="destructive">{unreadCount}</Badge>
+                                        )}
                                     </Link>
                                 </Button>
                             </TooltipTrigger>

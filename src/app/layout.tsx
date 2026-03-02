@@ -2,11 +2,14 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/sonner';
 import { ThemeProvider } from '@/components/layout/theme-provider';
+import { Inter } from 'next/font/google';
 
 const APP_NAME = "iPOS";
 const APP_DEFAULT_TITLE = "iPOS - Point de Vente 100% Hors Ligne";
 const APP_TITLE_TEMPLATE = "%s - iPOS";
 const APP_DESCRIPTION = "Votre solution de point de vente simple, efficace et 100% hors ligne.";
+
+const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   applicationName: APP_NAME,
@@ -49,7 +52,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "hsl(var(--background))",
+  themeColor: [{ media: '(prefers-color-scheme: light)', color: 'white' }, { media: '(prefers-color-scheme: dark)', color: 'black' }],
 };
 
 
@@ -61,7 +64,7 @@ export default function RootLayout({
   return (
     <html lang="fr" suppressHydrationWarning>
       <head />
-      <body>
+      <body className={inter.className}>
         <ThemeProvider
             attribute="class"
             defaultTheme="system"

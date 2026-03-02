@@ -1,4 +1,7 @@
-// Placeholder for the sales history page
+'use client';
+
+// This is a placeholder for the sales history page.
+// It will be built in a future step.
 export default function SalesHistoryPage() {
     return (
         <div className="p-4 sm:p-6">

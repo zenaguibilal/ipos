@@ -1,4 +1,7 @@
-// Placeholder for the user profile & settings page
+'use client';
+
+// This is a placeholder for the user profile & settings page.
+// It will be built in a future step.
 export default function ProfilePage() {
     return (
         <div className="p-4 sm:p-6">

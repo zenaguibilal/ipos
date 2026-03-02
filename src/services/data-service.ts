@@ -2,7 +2,6 @@
 
 import { db, PosDatabase } from '@/lib/database';
 import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, DailyBreadOrder, BreadCustomer, BreadOrder, Notification } from '@/lib/types';
-import { toast } from 'sonner';
 import { initialData, type DB, type CollectionName } from './initial-data';
 
 type TableName = keyof Pick<PosDatabase, 
@@ -14,7 +13,7 @@ type TableName = keyof Pick<PosDatabase,
 class DataService {
   
   // ====================================================================
-  // Generic Read/Write Methods
+  // Generic Read/Write Methods (Read methods don't need transactions)
   // ====================================================================
   
   async getAll<T>(table: TableName): Promise<T[]> {
@@ -26,7 +25,7 @@ class DataService {
   }
   
   // ====================================================================
-  // Settings
+  // Settings - All writes are transactional
   // ====================================================================
   
   async getSetting(id: string): Promise<Setting | undefined> {
@@ -40,7 +39,7 @@ class DataService {
   }
 
   // ====================================================================
-  // Company Profile
+  // Company Profile - All writes are transactional
   // ====================================================================
 
   async getCompanyProfile(): Promise<CompanyProfile | undefined> {
@@ -48,17 +47,14 @@ class DataService {
   }
   
   async updateCompanyProfile(profileData: Partial<Omit<CompanyProfile, 'id'>>): Promise<number> {
-    return db.transaction('rw', db.companyProfile, async () => {
-        const dataToSave: CompanyProfile = {
-            id: 1,
-            ...profileData
-        };
-        return await db.companyProfile.put(dataToSave);
+    return db.transaction('rw', db.companyProfile, () => {
+        const dataToSave: CompanyProfile = { id: 1, ...profileData };
+        return db.companyProfile.put(dataToSave);
     });
   }
   
   // ====================================================================
-  // Carts
+  // Carts - All writes are transactional
   // ====================================================================
   
   async getCart(id: string): Promise<Cart | undefined> {
@@ -78,17 +74,17 @@ class DataService {
   }
   
   // ====================================================================
-  // Products
+  // Products - All writes are transactional
   // ====================================================================
   async addProduct(product: Omit<Product, 'id'>): Promise<number> {
-      return db.transaction('rw', db.products, async () => {
-          return await db.products.add(product as Product);
+      return db.transaction('rw', db.products, () => {
+          return db.products.add(product as Product);
       });
   }
 
   async updateProduct(id: number, product: Omit<Product, 'id'>): Promise<number> {
-      return db.transaction('rw', db.products, async () => {
-          return await db.products.update(id, product);
+      return db.transaction('rw', db.products, () => {
+          return db.products.update(id, product);
       });
   }
 
@@ -99,23 +95,23 @@ class DataService {
   }
 
   // ====================================================================
-  // Customers
+  // Customers - All writes are transactional
   // ====================================================================
   async addCustomer(customer: Omit<Customer, 'id' | 'totalSpent' | 'outstandingBalance' | 'lastActivityDate'>): Promise<number> {
-    const customerToAdd: Omit<Customer, 'id'> = {
-        ...customer,
-        totalSpent: 0,
-        outstandingBalance: 0,
-        lastActivityDate: new Date(),
-    };
-    return db.transaction('rw', db.customers, async () => {
-        return await db.customers.add(customerToAdd as Customer);
+    return db.transaction('rw', db.customers, () => {
+        const customerToAdd: Omit<Customer, 'id'> = {
+            ...customer,
+            totalSpent: 0,
+            outstandingBalance: 0,
+            lastActivityDate: new Date(),
+        };
+        return db.customers.add(customerToAdd as Customer);
     });
   }
 
   async updateCustomer(id: number, customer: Partial<Omit<Customer, 'id'>>): Promise<number> {
-      return db.transaction('rw', db.customers, async () => {
-          return await db.customers.update(id, customer);
+      return db.transaction('rw', db.customers, () => {
+          return db.customers.update(id, customer);
       });
   }
 
@@ -131,10 +127,10 @@ class DataService {
   }
   
   // ====================================================================
-  // Sales
+  // Sales - Complex logic is handled atomically
   // ====================================================================
   async addSale(saleData: Omit<Sale, 'id' | 'invoiceNumber' | 'paymentStatus' | 'remainingBalance'>): Promise<number> {
-    return db.transaction('rw', db.sales, db.products, db.customers, db.notifications, async (tx) => {
+    return db.transaction('rw', db.sales, db.products, db.customers, db.notifications, async () => {
         const { items, customerId, total, amountPaid } = saleData;
 
         // 1. Update product stock and check for low stock
@@ -149,26 +145,25 @@ class DataService {
             const newQuantity = product.quantity - item.quantity;
             await db.products.update(item.id, { quantity: newQuantity });
             
-            // Check for low stock notification
-            const existingNotification = await db.notifications.where({ type: 'low-stock', relatedId: product.id, isRead: false }).first();
-            if (newQuantity <= product.minStockLevel && product.quantity > product.minStockLevel && !existingNotification) {
-                await db.notifications.add({
-                    type: 'low-stock',
-                    message: `Le stock pour ${product.name} est bas (${newQuantity} restants).`,
-                    isRead: false,
-                    createdAt: new Date(),
-                    relatedId: product.id,
-                });
+            const isAlreadyNotified = await db.notifications.where({ type: 'low-stock', relatedId: product.id, isRead: false }).first();
+            if (newQuantity <= product.minStockLevel && !isAlreadyNotified) {
+                if (product.quantity > product.minStockLevel) { // Trigger only when crossing the threshold
+                    await db.notifications.add({
+                        type: 'low-stock',
+                        message: `Le stock pour ${product.name} est bas (${newQuantity} restants).`,
+                        isRead: false,
+                        createdAt: new Date(),
+                        relatedId: product.id,
+                    });
+                }
             }
         }
         
-        // 2. Determine payment status & remaining balance
         const remainingBalance = total - amountPaid;
         let paymentStatus: 'paid' | 'partial' | 'unpaid' = 'unpaid';
         if (amountPaid >= total) paymentStatus = 'paid';
         else if (amountPaid > 0) paymentStatus = 'partial';
 
-        // 3. Create sale record
         const saleId = await db.sales.add({
             ...saleData,
             invoiceNumber: `INV-${Date.now()}`,
@@ -176,7 +171,6 @@ class DataService {
             remainingBalance: remainingBalance > 0 ? remainingBalance : 0,
         } as Sale);
 
-        // 4. Update customer balance if applicable
         if (customerId) {
             await db.customers.where('id').equals(customerId).modify(c => {
                 c.totalSpent = (c.totalSpent || 0) + total;
@@ -194,7 +188,6 @@ class DataService {
         const sale = await db.sales.get(saleId);
         if (!sale) throw new Error("Vente non trouvée.");
 
-        // 1. Restore product stock
         for (const item of sale.items) {
             if(typeof item.id !== 'number') continue;
             await db.products.where('id').equals(item.id).modify(p => {
@@ -202,7 +195,6 @@ class DataService {
             });
         }
 
-        // 2. Adjust customer balance
         if (sale.customerId) {
             const saleBalanceEffect = sale.total - sale.amountPaid;
             await db.customers.where('id').equals(sale.customerId).modify(c => {
@@ -211,13 +203,12 @@ class DataService {
             });
         }
         
-        // 3. Delete the sale
         await db.sales.delete(saleId);
     });
   }
   
   // ====================================================================
-  // Payments
+  // Payments - All writes are transactional
   // ====================================================================
   async addPayment(paymentData: Omit<Payment, 'id'>): Promise<number> {
       return db.transaction('rw', db.payments, db.customers, async () => {
@@ -232,7 +223,7 @@ class DataService {
   }
 
   // ====================================================================
-  // Stock Intake
+  // Stock Intake - All writes are transactional
   // ====================================================================
    async addStockIntake(intakeData: Omit<StockIntake, 'id'>): Promise<number> {
         return db.transaction('rw', db.products, db.stockIntakes, async () => {
@@ -251,14 +242,13 @@ class DataService {
     }
 
   // ====================================================================
-  // Returns
+  // Returns - Complex logic is handled atomically
   // ====================================================================
   async addReturn(returnData: Omit<ProductReturn, 'id'>): Promise<number> {
       return db.transaction('rw', db.returns, db.products, db.customers, async () => {
           const returnId = await db.returns.add(returnData as ProductReturn);
           const { items, customerId, totalReturnValue, amountRefunded } = returnData;
 
-          // 1. Update stock for restocked items
           for (const item of items) {
               if (item.productId && item.wasRestocked) {
                   await db.products.where('id').equals(item.productId).modify(p => {
@@ -267,7 +257,6 @@ class DataService {
               }
           }
 
-          // 2. Update customer balance
           if (customerId) {
               const balanceEffect = totalReturnValue - amountRefunded;
               await db.customers.where('id').equals(customerId).modify(c => {
@@ -285,7 +274,6 @@ class DataService {
         const pr = await db.returns.get(returnId);
         if (!pr) throw new Error("Retour non trouvé.");
         
-        // 1. Revert stock changes
         for (const item of pr.items) {
           if (item.productId && item.wasRestocked) {
             await db.products.where('id').equals(item.productId).modify(p => {
@@ -294,7 +282,6 @@ class DataService {
           }
         }
         
-        // 2. Revert customer balance
         if (pr.customerId) {
           const balanceEffect = pr.totalReturnValue - pr.amountRefunded;
            await db.customers.where('id').equals(pr.customerId).modify(c => {
@@ -302,22 +289,21 @@ class DataService {
             });
         }
 
-        // 3. Delete the return record
         await db.returns.delete(returnId);
     });
   }
 
   // ====================================================================
-  // Expenses
+  // Expenses - All writes are transactional
   // ====================================================================
   async addExpense(expense: Omit<Expense, 'id'>): Promise<number> {
-    return db.transaction('rw', db.expenses, async () => {
+    return db.transaction('rw', db.expenses, () => {
       return db.expenses.add(expense as Expense);
     });
   }
 
   async updateExpense(id: number, expense: Partial<Omit<Expense, 'id'>>): Promise<number> {
-    return db.transaction('rw', db.expenses, async () => {
+    return db.transaction('rw', db.expenses, () => {
       return db.expenses.update(id, expense);
     });
   }
@@ -329,7 +315,7 @@ class DataService {
   }
 
   // ====================================================================
-  // Bread Module
+  // Bread Module - All writes are transactional
   // ====================================================================
   async addBreadCustomer(customer: Omit<BreadCustomer, 'id'>): Promise<number> {
     return db.transaction('rw', db.breadCustomers, () => {
@@ -338,9 +324,8 @@ class DataService {
   }
 
   async deleteBreadCustomer(customerId: number): Promise<void> {
-    return db.transaction('rw', db.breadCustomers, db.dailyBreadOrders, db.sales, async () => {
+    return db.transaction('rw', db.breadCustomers, db.dailyBreadOrders, async () => {
       await db.dailyBreadOrders.where({ breadCustomerId: customerId }).delete();
-      // Also delete sales associated with this bread customer if any logic connects them
       await db.breadCustomers.delete(customerId);
     });
   }
@@ -365,7 +350,7 @@ class DataService {
   }
 
   // ====================================================================
-  // Notifications
+  // Notifications - All writes are transactional
   // ====================================================================
 
   async markNotificationAsRead(notificationId: number): Promise<number> {
@@ -374,22 +359,22 @@ class DataService {
     });
   }
 
-  async clearAllNotifications(): Promise<void> {
+  async clearReadNotifications(): Promise<void> {
     return db.transaction('rw', db.notifications, () => {
-        return db.notifications.clear();
+        return db.notifications.where({ isRead: true }).delete();
     });
   }
 
 
   // ====================================================================
-  // Backup & Restore
+  // Backup & Restore - Handled in large transactions
   // ====================================================================
   async exportData(): Promise<string> {
     const data: Partial<DB> = {};
     const tables: CollectionName[] = [
         'products', 'customers', 'sales', 'payments', 
         'stockIntakes', 'returns', 'breadCustomers', 
-        'dailyBreadOrders', 'expenses', 'notifications'
+        'dailyBreadOrders', 'expenses', 'notifications', 'settings'
     ];
 
     await db.transaction('r', db.tables, async () => {
@@ -403,11 +388,12 @@ class DataService {
   }
 
   async importData(jsonString: string): Promise<void> {
-      const data: DB = JSON.parse(jsonString);
-      const tables: CollectionName[] = [
+      const data: Partial<DB> = JSON.parse(jsonString);
+      const tables: (CollectionName | 'companyProfile')[] = [
         'products', 'customers', 'sales', 'payments', 
         'stockIntakes', 'returns', 'breadCustomers', 
-        'dailyBreadOrders', 'expenses', 'notifications'
+        'dailyBreadOrders', 'expenses', 'notifications', 'settings',
+        'companyProfile'
     ];
 
       return db.transaction('rw', ...db.tables, async () => {
@@ -415,16 +401,17 @@ class DataService {
           for (const tableName of tables) {
               await db.table(tableName).clear();
           }
-          await db.companyProfile.clear();
 
           // Import new data
           for (const tableName of tables) {
-              if (data[tableName]) {
-                  await db.table(tableName).bulkAdd(data[tableName] as any[]);
+              const tableData = data[tableName];
+              if (tableData) {
+                  if (tableName === 'companyProfile' && !Array.isArray(tableData)) {
+                     await db.companyProfile.add(tableData as CompanyProfile);
+                  } else if (Array.isArray(tableData)) {
+                     await db.table(tableName).bulkAdd(tableData);
+                  }
               }
-          }
-          if (data.companyProfile) {
-              await db.companyProfile.add(data.companyProfile);
           }
       });
   }
@@ -434,7 +421,6 @@ class DataService {
             for (const table of db.tables) {
                 await table.clear();
             }
-            // Re-initialize with default data if necessary
             await db.companyProfile.add(initialData.companyProfile);
         });
     }
