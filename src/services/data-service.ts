@@ -1,7 +1,7 @@
 'use client';
 
 import { db, PosDatabase } from '@/lib/database';
-import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, DailyBreadOrder, BreadCustomer, BreadOrder } from '@/lib/types';
+import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, DailyBreadOrder, BreadCustomer, BreadOrder, Notification } from '@/lib/types';
 import { toast } from 'sonner';
 import { initialData, type DB, type CollectionName } from './initial-data';
 
@@ -101,7 +101,7 @@ class DataService {
   // ====================================================================
   // Customers
   // ====================================================================
-  async addCustomer(customer: Omit<Customer, 'id' | 'totalSpent' | 'outstandingBalance'>): Promise<number> {
+  async addCustomer(customer: Omit<Customer, 'id' | 'totalSpent' | 'outstandingBalance' | 'lastActivityDate'>): Promise<number> {
     const customerToAdd: Omit<Customer, 'id'> = {
         ...customer,
         totalSpent: 0,
@@ -150,7 +150,8 @@ class DataService {
             await db.products.update(item.id, { quantity: newQuantity });
             
             // Check for low stock notification
-            if (newQuantity <= product.minStockLevel && product.quantity > product.minStockLevel) {
+            const existingNotification = await db.notifications.where({ type: 'low-stock', relatedId: product.id, isRead: false }).first();
+            if (newQuantity <= product.minStockLevel && product.quantity > product.minStockLevel && !existingNotification) {
                 await db.notifications.add({
                     type: 'low-stock',
                     message: `Le stock pour ${product.name} est bas (${newQuantity} restants).`,
@@ -362,6 +363,23 @@ class DataService {
       }
     });
   }
+
+  // ====================================================================
+  // Notifications
+  // ====================================================================
+
+  async markNotificationAsRead(notificationId: number): Promise<number> {
+    return db.transaction('rw', db.notifications, () => {
+        return db.notifications.update(notificationId, { isRead: true });
+    });
+  }
+
+  async clearAllNotifications(): Promise<void> {
+    return db.transaction('rw', db.notifications, () => {
+        return db.notifications.clear();
+    });
+  }
+
 
   // ====================================================================
   // Backup & Restore
