@@ -140,7 +140,13 @@ class DataService {
   }
 
   async getProductsByIds(ids: number[]): Promise<Product[]> {
-    if (!ids || ids.length === 0) return [];
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return [];
+    }
+    // Defensive check to ensure all IDs are valid numbers.
+    if (ids.some(id => typeof id !== 'number' || !isFinite(id))) {
+        return []; // Return empty if any ID is invalid to prevent Dexie errors.
+    }
     return db.products.where('id').anyOf(ids).toArray();
   }
 
