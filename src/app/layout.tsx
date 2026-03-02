@@ -1,13 +1,12 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/sonner';
-import { ThemeProvider } from '@/components/layout/theme-provider';
 import { Inter } from 'next/font/google';
 
 const APP_NAME = "iPOS";
-const APP_DEFAULT_TITLE = "iPOS - Point de Vente 100% Hors Ligne";
+const APP_DEFAULT_TITLE = "iPOS - Point de Vente de Luxe";
 const APP_TITLE_TEMPLATE = "%s - iPOS";
-const APP_DESCRIPTION = "Votre solution de point de vente simple, efficace et 100% hors ligne.";
+const APP_DESCRIPTION = "Votre solution de point de vente élégante, puissante et intuitive.";
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -52,7 +51,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: [{ media: '(prefers-color-scheme: light)', color: 'white' }, { media: '(prefers-color-scheme: dark)', color: 'black' }],
+  themeColor: '#1a120c',
 };
 
 
@@ -62,19 +61,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="fr" suppressHydrationWarning>
+    <html lang="fr" suppressHydrationWarning className="dark">
       <head />
       <body className={inter.className}>
-        <ThemeProvider
-            attribute="class"
-            defaultTheme="system"
-            enableSystem
-            disableTransitionOnChange
-        >
-            {children}
-            <Toaster richColors />
-            <div id="receipt-for-print" className="hidden"></div>
-        </ThemeProvider>
+        {children}
+        <Toaster richColors />
+        <div id="receipt-for-print" className="hidden"></div>
       </body>
     </html>
   );

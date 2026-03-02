@@ -26,12 +26,12 @@ export function LandingHeader() {
     <header
       className={cn(
         'sticky top-0 z-50 w-full transition-all duration-300',
-        hasScrolled ? 'bg-background/80 backdrop-blur-sm border-b' : 'bg-transparent'
+        hasScrolled ? 'border-b border-white/5 bg-background/80 backdrop-blur-lg' : 'bg-transparent'
       )}
     >
       <div className="container flex h-16 items-center justify-between">
         <Link href="/" className="flex items-center gap-2 font-semibold">
-          <span className="text-2xl">🏪</span>
+          <span className="text-2xl">💎</span>
           <span className="text-xl font-bold">iPOS</span>
         </Link>
         <nav className="hidden md:flex items-center gap-6">
