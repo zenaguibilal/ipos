@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import type { CompanyProfile, Sale, SaleItem } from '@/lib/types';
+import type { CompanyProfile, Sale } from '@/lib/types';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -14,39 +14,42 @@ interface ReceiptProps {
   sale: Sale & { change?: number };
 }
 
+// Helper function to generate receipt strings, making the component cleaner
+const getReceiptInfo = (companyProfile?: CompanyProfile) => ({
+    title: "REÇU DE VENTE",
+    shopName: companyProfile?.companyName || "iPOS Store",
+    address: companyProfile?.address || "",
+    city: `${companyProfile?.zipCode || ''} ${companyProfile?.city || ''}`.trim(),
+    phone: `Tél: ${companyProfile?.phone || ''}`,
+    rc: `RC: ${companyProfile?.rcNumber || ''}`,
+    nif: `NIF: ${companyProfile?.vatNumber || ''}`,
+    invoiceLabel: "Facture N°:",
+    dateLabel: "Date:",
+    customerLabel: "Client:",
+    itemHeader: "Article",
+    qtyHeader: "Qté",
+    priceHeader: "Prix",
+    totalHeader: "Total",
+    subtotalLabel: "Sous-total:",
+    discountLabel: "Remise",
+    totalLabel: "TOTAL:",
+    amountPaidLabel: "Montant Payé:",
+    changeLabel: "Monnaie Rendue:",
+    creditLabel: "Solde Restant (Crédit):",
+    thankYou: "Merci de votre visite !",
+});
+
 export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(({ sale }, ref) => {
     const companyProfile = useLiveQuery(() => db.companyProfile.get(1));
     const [qrCodeUrl, setQrCodeUrl] = useState('');
-
-    const receiptInfo = {
-        title: "REÇU DE VENTE",
-        shopName: companyProfile?.companyName || "iPOS Store",
-        address: companyProfile?.address || "",
-        city: `${companyProfile?.zipCode || ''} ${companyProfile?.city || ''}`,
-        phone: `Tél: ${companyProfile?.phone || ''}`,
-        rc: `RC: ${companyProfile?.rcNumber || ''}`,
-        nif: `NIF: ${companyProfile?.vatNumber || ''}`,
-        invoiceLabel: "Facture N°:",
-        dateLabel: "Date:",
-        customerLabel: "Client:",
-        itemHeader: "Article",
-        qtyHeader: "Qté",
-        priceHeader: "Prix",
-        totalHeader: "Total",
-        subtotalLabel: "Sous-total:",
-        discountLabel: "Remise",
-        totalLabel: "TOTAL:",
-        amountPaidLabel: "Montant Payé:",
-        changeLabel: "Monnaie Rendue:",
-        creditLabel: "Solde Restant (Crédit):",
-        thankYou: "Merci de votre visite !",
-    };
     
+    const receiptInfo = getReceiptInfo(companyProfile);
+
     useEffect(() => {
-        if (!sale) return;
+        if (!sale?.createdAt) return;
         const details = [
             `Facture: ${sale.invoiceNumber}`,
-            `Date: ${format(sale.createdAt!, 'Pp', { locale: fr })}`,
+            `Date: ${format(sale.createdAt, 'Pp', { locale: fr })}`,
             `Total: ${formatCurrency(sale.total)}`
         ].join('\n');
         
@@ -55,13 +58,17 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(({ sale },
             .catch(err => console.error("QR Code generation failed:", err));
 
     }, [sale]);
+    
+    if (!sale?.createdAt) {
+        return <div ref={ref}>Génération du reçu...</div>;
+    }
 
     return (
         <div ref={ref} className="p-4 bg-white text-black text-sm font-mono">
             <div className="text-center mb-4">
                 <h2 className="text-lg font-bold">{receiptInfo.shopName}</h2>
                 {receiptInfo.address && <p>{receiptInfo.address}</p>}
-                {receiptInfo.city.trim() && <p>{receiptInfo.city}</p>}
+                {receiptInfo.city && <p>{receiptInfo.city}</p>}
                 {receiptInfo.phone.replace('Tél: ', '') && <p>{receiptInfo.phone}</p>}
                 <div className="flex justify-center gap-4 text-xs">
                     {receiptInfo.rc.replace('RC: ', '') && <p>{receiptInfo.rc}</p>}
@@ -76,7 +83,7 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(({ sale },
                 </div>
                 <div className="flex justify-between">
                     <span>{receiptInfo.dateLabel}</span>
-                    <span>{format(sale.createdAt!, 'Pp', { locale: fr })}</span>
+                    <span>{format(sale.createdAt, 'Pp', { locale: fr })}</span>
                 </div>
                  {sale.customerName && (
                     <div className="flex justify-between">
@@ -140,7 +147,7 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(({ sale },
                 ) : (
                     <div className="flex justify-between">
                         <span>{receiptInfo.changeLabel}</span>
-                        <span>{formatCurrency(sale.amountPaid - sale.total)}</span>
+                        <span>{formatCurrency(sale.change ?? 0)}</span>
                     </div>
                 )}
             </div>
