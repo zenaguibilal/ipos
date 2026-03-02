@@ -178,6 +178,10 @@ class DataService {
 
   async deleteCustomer(id: number): Promise<void> {
     return db.transaction('rw', db.customers, db.sales, db.payments, async () => {
+        const customer = await db.customers.get(id);
+        if (customer && customer.outstandingBalance > 0) {
+            throw new Error("Impossible de supprimer un client avec un solde impayé.");
+        }
         const salesCount = await db.sales.where({ customerId: id }).count();
         if (salesCount > 0) {
             throw new Error("Impossible de supprimer un client avec un historique de ventes.");

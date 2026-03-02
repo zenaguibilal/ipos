@@ -90,5 +90,5 @@ export default function SalesOverview({ topProducts, topCustomers, isLoading }: 
                 </div>
             </CardContent>
         </Card>
-    )
+    );
 }

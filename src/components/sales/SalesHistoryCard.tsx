@@ -33,7 +33,7 @@ const SalesHistoryCardComponent = ({ sale, onViewDetails, onCancelSale }: SalesH
                 <div className="flex justify-between items-start">
                     <div>
                         <CardTitle className="text-base font-mono">{sale.invoiceNumber}</CardTitle>
-                        <CardDescription className="text-xs">{format(safeToDate(sale.createdAt), 'd MMM yyyy, HH:mm', { locale: fr })}</CardDescription>
+                        <CardDescription className="text-xs">{format(safeToDate(sale.createdAt!), 'd MMM yyyy, HH:mm', { locale: fr })}</CardDescription>
                     </div>
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -52,8 +52,8 @@ const SalesHistoryCardComponent = ({ sale, onViewDetails, onCancelSale }: SalesH
                     </DropdownMenu>
                 </div>
             </CardHeader>
-            <CardContent className="space-y-2 flex-grow">
-                 <div className="flex justify-between items-center text-sm">
+            <CardContent className="space-y-2 flex-grow text-sm">
+                 <div className="flex justify-between items-center">
                     <span className="text-muted-foreground">Client</span>
                     <span className="font-semibold truncate">{sale.customerName || 'Client de passage'}</span>
                 </div>

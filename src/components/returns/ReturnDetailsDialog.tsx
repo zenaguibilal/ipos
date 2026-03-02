@@ -41,7 +41,7 @@ export function ReturnDetailsDialog({
                     <DialogDescription>
                         Basé sur la facture n°: <span className="font-mono font-semibold">{productReturn.originalInvoiceNumber}</span>
                         <br />
-                        Date du retour: {format(safeToDate(productReturn.createdAt), 'd MMMM yyyy HH:mm', { locale: fr })}
+                        Date du retour: {format(safeToDate(productReturn.createdAt!), 'd MMMM yyyy HH:mm', { locale: fr })}
                     </DialogDescription>
                 </DialogHeader>
                 <div className="max-h-[60vh] overflow-y-auto my-4">

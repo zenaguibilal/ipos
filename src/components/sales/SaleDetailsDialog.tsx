@@ -41,7 +41,7 @@ export function SaleDetailsDialog({
                     <DialogDescription>
                         Facture n°: <span className="font-mono font-semibold">{sale.invoiceNumber}</span>
                         <br />
-                        Date: {format(safeToDate(sale.createdAt), 'd MMMM yyyy HH:mm', { locale: fr })}
+                        Date: {format(safeToDate(sale.createdAt!), 'd MMMM yyyy HH:mm', { locale: fr })}
                     </DialogDescription>
                 </DialogHeader>
                 <div className="max-h-[60vh] overflow-y-auto my-4">
@@ -69,12 +69,12 @@ export function SaleDetailsDialog({
                  <div className="space-y-2 rounded-lg bg-muted p-4">
                     <div className="flex justify-between text-sm"><span className="text-muted-foreground">Sous-total</span><span>{formatCurrency(sale.subtotal)}</span></div>
                     {sale.discountAmount && sale.discountAmount > 0 && (
-                        <div className="flex justify-between text-sm">
+                        <div className="flex justify-between text-sm text-destructive">
                             <span className="text-muted-foreground">
                                 Remise
                                 {sale.discountType === 'percentage' && sale.subtotal > 0 && ` (${Math.round((sale.discountAmount / sale.subtotal) * 100)}%)`}
                             </span>
-                            <span className="text-destructive">- {formatCurrency(sale.discountAmount)}</span>
+                            <span>- {formatCurrency(sale.discountAmount)}</span>
                         </div>
                     )}
                     <div className="flex justify-between font-semibold text-lg"><span className="">Total</span><span>{formatCurrency(sale.total)}</span></div>
