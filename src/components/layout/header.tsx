@@ -12,6 +12,7 @@ import {
   History,
   Undo2,
   Archive,
+  Cookie,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -36,6 +37,7 @@ const navLinks = [
   { href: '/products', label: 'Produits', icon: Package },
   { href: '/stock', label: 'Stock', icon: Archive },
   { href: '/customers', label: 'Clients', icon: Users },
+  { href: '/bread', label: 'Pain', icon: Cookie },
   { href: '/sales-history', label: 'Ventes', icon: History },
   { href: '/returns', label: 'Retours', icon: Undo2 },
 ];
