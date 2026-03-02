@@ -1,7 +1,7 @@
 'use client';
 
 import { db, PosDatabase } from '@/lib/database';
-import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, DailyBreadOrder, BreadCustomer, BreadOrder, Notification, InventoryLog, CustomerWithSalesData, DashboardData, TopProduct, TopCustomer } from '@/lib/types';
+import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, DailyBreadOrder, BreadCustomer, BreadOrder, Notification, InventoryLog, CustomerWithSalesData, DashboardData, TopProduct, TopCustomer, ImportAnalysis } from '@/lib/types';
 import { initialData, type DB, type CollectionName } from './initial-data';
 import Dexie from 'dexie';
 import { startOfDay, endOfDay } from 'date-fns';
@@ -240,6 +240,81 @@ class DataService {
       });
   }
   
+  async analyzeCustomerImport(records: Record<string, any>[]): Promise<ImportAnalysis> {
+    const customersToAdd: any[] = [];
+    const customersToUpdate: any[] = [];
+    const errorRows: any[] = [];
+
+    const allCustomers = await db.customers.toArray();
+    const customerMapByName = new Map(allCustomers.map(c => [`${c.firstName.toLowerCase()} ${c.lastName.toLowerCase()}`, c]));
+    const customerMapByPhone = new Map(allCustomers.filter(c => c.phone).map(c => [c.phone!, c]));
+
+    for (const record of records) {
+      const firstName = record.firstName || record.prénom;
+      const lastName = record.lastName || record.nom;
+      const phone = record.phone || record.téléphone;
+      
+      const cleanedPhone = phone ? String(phone).replace(/\s/g, '') : '';
+
+      if (!firstName || !lastName) {
+        errorRows.push(record);
+        continue;
+      }
+      
+      const fullName = `${String(firstName).trim().toLowerCase()} ${String(lastName).trim().toLowerCase()}`;
+      let existingCustomer = customerMapByName.get(fullName) || (cleanedPhone ? customerMapByPhone.get(cleanedPhone) : undefined);
+      
+      const customerData = { firstName: String(firstName).trim(), lastName: String(lastName).trim(), phone: cleanedPhone };
+
+      if (existingCustomer) {
+        customersToUpdate.push({ ...customerData, id: existingCustomer.id });
+      } else {
+        customersToAdd.push(customerData);
+      }
+    }
+
+    return { 
+        customersToAdd, 
+        customersToUpdate, 
+        errorRows, 
+        skippedRows: [],
+        totalRows: records.length 
+    };
+  }
+
+  async processCustomerImport(analysis: { toAdd: Omit<Customer, 'id'>[], toUpdate: Customer[] }): Promise<{ added: number; updated: number; }> {
+    return db.transaction('rw', db.customers, async () => {
+        let addedCount = 0;
+        let updatedCount = 0;
+
+        // Add new customers
+        if (analysis.toAdd.length > 0) {
+            const customersToCreate = analysis.toAdd.map(c => ({
+                ...c,
+                totalSpent: 0,
+                outstandingBalance: 0,
+                lastActivityDate: new Date()
+            }));
+            await db.customers.bulkAdd(customersToCreate as Customer[]);
+            addedCount = customersToCreate.length;
+        }
+
+        // Update existing customers
+        if (analysis.toUpdate.length > 0) {
+            const updates = analysis.toUpdate.map(c => db.customers.update(c.id!, {
+                firstName: c.firstName,
+                lastName: c.lastName,
+                phone: c.phone
+            }));
+            await Promise.all(updates);
+            updatedCount = updates.length;
+        }
+        
+        return { added: addedCount, updated: updatedCount };
+    });
+  }
+
+
   // ====================================================================
   // Sales - Complex logic is handled atomically
   // ====================================================================

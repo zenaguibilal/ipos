@@ -23,27 +23,21 @@ import { Badge } from '../ui/badge';
 import { Input } from '../ui/input';
 import { Checkbox } from '../ui/checkbox';
 import { ScrollArea } from '../ui/scroll-area';
-
-export interface ImportAnalysis {
-    customersToAdd: any[];
-    customersToUpdate: any[];
-    skippedRows: any[];
-    errorRows: any[];
-    totalRows: number;
-}
+import type { ImportAnalysis } from '@/lib/types';
 
 type EditableImportItem = {
     key: string;
     include: boolean;
-    status: 'new' | 'update' | 'skipped';
+    status: 'new' | 'update' | 'error';
     data: any;
+    originalData: any;
 };
 
 interface ImportPreviewDialogProps {
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
     analysis: ImportAnalysis | null;
-    onConfirm: (confirmedAnalysis: ImportAnalysis) => void;
+    onConfirm: (confirmedAnalysis: { toAdd: any[], toUpdate: any[] }) => void;
     isImporting: boolean;
 }
 
@@ -59,20 +53,23 @@ export function ImportPreviewDialog({ isOpen, onOpenChange, analysis, onConfirm,
                 include: true,
                 status: 'new' as const,
                 data: c,
+                originalData: c,
             }));
             const toUpdate = analysis.customersToUpdate.map((c, i) => ({
                 key: `update-${i}`,
                 include: true,
                 status: 'update' as const,
                 data: c,
+                originalData: c,
             }));
-            const skipped = analysis.skippedRows.map((c, i) => ({
-                key: `skipped-${i}`,
+             const inError = analysis.errorRows.map((c, i) => ({
+                key: `error-${i}`,
                 include: false,
-                status: 'skipped' as const,
+                status: 'error' as const,
                 data: c,
+                originalData: c,
             }));
-            setEditableItems([...toAdd, ...toUpdate, ...skipped]);
+            setEditableItems([...toAdd, ...toUpdate, ...inError]);
         }
         if (!isOpen) {
             setSearchQuery('');
@@ -90,6 +87,13 @@ export function ImportPreviewDialog({ isOpen, onOpenChange, analysis, onConfirm,
             item.key === key ? { ...item, include: !item.include } : item
         ));
     };
+    
+    const handleToggleAll = (checked: boolean) => {
+        const filteredKeys = new Set(filteredItems.map(i => i.key));
+        setEditableItems(prev => prev.map(item => 
+            filteredKeys.has(item.key) ? { ...item, include: checked } : item
+        ));
+    };
 
     const handleRemoveItem = (key: string) => {
         setEditableItems(prev => prev.filter(item => item.key !== key));
@@ -98,13 +102,9 @@ export function ImportPreviewDialog({ isOpen, onOpenChange, analysis, onConfirm,
     const handleConfirmImport = () => {
         if (!analysis) return;
 
-        const confirmedAnalysis: ImportAnalysis = {
-            ...analysis,
-            customersToAdd: editableItems.filter(i => i.include && i.status === 'new').map(i => i.data),
-            customersToUpdate: editableItems.filter(i => i.include && (i.status === 'update' || i.status === 'skipped')).map(i => i.data),
-            skippedRows: editableItems.filter(i => !i.include).map(i => i.data),
-            errorRows: analysis.errorRows,
-            totalRows: analysis.totalRows,
+        const confirmedAnalysis = {
+            toAdd: editableItems.filter(i => i.include && i.status === 'new').map(i => i.data),
+            toUpdate: editableItems.filter(i => i.include && i.status === 'update').map(i => i.data),
         };
         onConfirm(confirmedAnalysis);
     };
@@ -117,8 +117,8 @@ export function ImportPreviewDialog({ isOpen, onOpenChange, analysis, onConfirm,
         return editableItems.filter(item => {
             const { firstName, lastName } = item.data;
             return (
-                (firstName && firstName.toLowerCase().includes(lowercasedQuery)) ||
-                (lastName && lastName.toLowerCase().includes(lowercasedQuery))
+                (firstName && String(firstName).toLowerCase().includes(lowercasedQuery)) ||
+                (lastName && String(lastName).toLowerCase().includes(lowercasedQuery))
             );
         });
     }, [editableItems, searchQuery]);
@@ -127,9 +127,9 @@ export function ImportPreviewDialog({ isOpen, onOpenChange, analysis, onConfirm,
         if (!analysis) return { toAdd: 0, toUpdate: 0, skipped: 0, errors: 0 };
         return {
             toAdd: editableItems.filter(i => i.include && i.status === 'new').length,
-            toUpdate: editableItems.filter(i => i.include && (i.status === 'update' || i.status === 'skipped')).length,
-            skipped: editableItems.filter(i => !i.include).length,
-            errors: analysis.errorRows.length,
+            toUpdate: editableItems.filter(i => i.include && i.status === 'update').length,
+            skipped: editableItems.filter(i => !i.include && i.status !== 'error').length,
+            errors: editableItems.filter(i => i.status === 'error').length,
         };
     }, [editableItems, analysis]);
 
@@ -137,15 +137,15 @@ export function ImportPreviewDialog({ isOpen, onOpenChange, analysis, onConfirm,
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-4xl">
+            <DialogContent className="max-w-4xl h-[90vh] flex flex-col">
                 <DialogHeader>
                     <DialogTitle>Aperçu et modification de l'importation</DialogTitle>
                     <DialogDescription>
-                        Vérifiez, modifiez ou excluez des lignes avant de finaliser l'importation.
+                        Vérifiez, modifiez ou excluez des lignes avant de finaliser l'importation. Les lignes en erreur sont exclues par défaut.
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="space-y-4 py-4">
+                <div className="space-y-4 py-4 flex-grow flex flex-col min-h-0">
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-center">
                         <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
                             <UserPlus className="mx-auto h-6 w-6 text-blue-600 dark:text-blue-400" />
@@ -179,18 +179,13 @@ export function ImportPreviewDialog({ isOpen, onOpenChange, analysis, onConfirm,
                         />
                     </div>
 
-                    <ScrollArea className="border rounded-lg h-[40vh]">
+                    <ScrollArea className="border rounded-lg flex-grow">
                         <Table>
                             <TableHeader className="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
                                 <TableRow>
                                     <TableHead className="w-12"><Checkbox 
                                         checked={filteredItems.length > 0 && filteredItems.every(i => i.include)}
-                                        onCheckedChange={(checked) => {
-                                            const filteredKeys = new Set(filteredItems.map(i => i.key));
-                                            setEditableItems(prev => prev.map(item => 
-                                                filteredKeys.has(item.key) ? { ...item, include: !!checked } : item
-                                            ));
-                                        }}
+                                        onCheckedChange={(checked) => handleToggleAll(!!checked)}
                                     /></TableHead>
                                     <TableHead>Prénom</TableHead>
                                     <TableHead>Nom</TableHead>
@@ -203,7 +198,7 @@ export function ImportPreviewDialog({ isOpen, onOpenChange, analysis, onConfirm,
                                 {filteredItems.length > 0 ? filteredItems.map((item) => (
                                     <TableRow key={item.key} className={!item.include ? 'bg-muted/50 text-muted-foreground' : ''}>
                                         <TableCell>
-                                            <Checkbox checked={item.include} onCheckedChange={() => handleToggleInclude(item.key)} />
+                                            <Checkbox checked={item.include} onCheckedChange={() => handleToggleInclude(item.key)} disabled={item.status === 'error'}/>
                                         </TableCell>
                                         <TableCell>
                                             <Input value={item.data.firstName || ''} onChange={e => handleItemChange(item.key, 'firstName', e.target.value)} className="h-8" disabled={!item.include} />
@@ -217,7 +212,7 @@ export function ImportPreviewDialog({ isOpen, onOpenChange, analysis, onConfirm,
                                         <TableCell>
                                             {item.status === 'new' && <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300">Nouveau</Badge>}
                                             {item.status === 'update' && <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300">Mise à jour</Badge>}
-                                            {item.status === 'skipped' && <Badge variant="outline" className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300">Ignoré</Badge>}
+                                            {item.status === 'error' && <Badge variant="destructive">Erreur</Badge>}
                                         </TableCell>
                                         <TableCell>
                                             <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleRemoveItem(item.key)}>
@@ -235,15 +230,6 @@ export function ImportPreviewDialog({ isOpen, onOpenChange, analysis, onConfirm,
                             </TableBody>
                         </Table>
                     </ScrollArea>
-                    { analysis.errorRows.length > 0 && (
-                        <div className="pt-2">
-                             <h4 className="font-semibold text-destructive">Lignes avec Erreurs (ignorées)</h4>
-                             <p className="text-xs text-muted-foreground">Ces lignes ont été ignorées car le nom est manquant.</p>
-                             <ScrollArea className="border rounded-lg h-24 mt-2">
-                                <pre className="p-2 text-xs">{JSON.stringify(analysis.errorRows, null, 2)}</pre>
-                            </ScrollArea>
-                        </div>
-                    )}
                 </div>
 
                 <DialogFooter>

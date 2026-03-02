@@ -260,3 +260,11 @@ export interface DashboardData {
     topProducts: TopProduct[];
     topCustomers: TopCustomer[];
 }
+
+export interface ImportAnalysis {
+    customersToAdd: any[];
+    customersToUpdate: any[];
+    skippedRows: any[];
+    errorRows: any[];
+    totalRows: number;
+}
