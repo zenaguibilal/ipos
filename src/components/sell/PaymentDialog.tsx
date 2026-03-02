@@ -11,6 +11,8 @@ import { Loader2 } from 'lucide-react';
 import { dataService } from '@/services/data-service';
 import { formatCurrency } from '@/lib/utils';
 import { Receipt } from './Receipt';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '@/lib/database';
 
 interface PaymentDialogProps {
     isOpen: boolean;
@@ -26,6 +28,12 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, onSaleFinalized }: P
     const receiptRef = useRef<HTMLDivElement>(null);
     const [lastSale, setLastSale] = useState<any>(null);
 
+    // Fetch customer data for balance display
+    const customer = useLiveQuery(() => 
+        cart.customerId ? db.customers.get(cart.customerId) : Promise.resolve(undefined), 
+        [cart.customerId]
+    );
+
     const subtotal = useMemo(() => cart.items.reduce((acc, item) => acc + item.price * item.cartQuantity, 0), [cart.items]);
     
     const discountAmount = useMemo(() => {
@@ -38,6 +46,9 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, onSaleFinalized }: P
     const total = Math.max(0, subtotal - discountAmount);
     const amountPaidNum = parseFloat(amountPaid) || 0;
     const change = amountPaidNum - total;
+    const debtFromThisSale = change < 0 ? Math.abs(change) : 0;
+    const newTotalOutstandingBalance = (customer?.outstandingBalance ?? 0) + debtFromThisSale;
+
 
     useEffect(() => {
         if (isOpen) {
@@ -117,7 +128,7 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, onSaleFinalized }: P
                                 Confirmez le montant payé pour terminer la transaction.
                             </DialogDescription>
                         </DialogHeader>
-                        <div className="grid gap-6 py-4">
+                        <div className="grid gap-4 py-4">
                              <div className="text-center py-4 bg-muted rounded-lg">
                                 <Label>TOTAL À PAYER</Label>
                                 <p className="text-4xl font-bold text-primary">{formatCurrency(total)}</p>
@@ -139,10 +150,13 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, onSaleFinalized }: P
                                     <p className="text-2xl font-bold text-green-600">{formatCurrency(change)}</p>
                                 </div>
                             )}
-                             {change < 0 && cart.customerId && (
-                                <div className="text-center py-2 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg">
-                                    <Label>SOLDE RESTANT (CRÉDIT)</Label>
-                                    <p className="text-2xl font-bold text-yellow-700">{formatCurrency(Math.abs(change))}</p>
+                             {debtFromThisSale > 0 && customer && (
+                                <div className="text-center py-2 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg space-y-1">
+                                    <Label>NOUVEAU SOLDE CLIENT</Label>
+                                    <p className="text-2xl font-bold text-yellow-700">{formatCurrency(newTotalOutstandingBalance)}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                        (Solde actuel: {formatCurrency(customer.outstandingBalance)} + Crédit: {formatCurrency(debtFromThisSale)})
+                                    </p>
                                 </div>
                             )}
                         </div>
