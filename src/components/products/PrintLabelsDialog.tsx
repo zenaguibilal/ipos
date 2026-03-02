@@ -18,7 +18,7 @@ interface PrintLabelsDialogProps {
 }
 
 export function PrintLabelsDialog({ isOpen, onOpenChange, productIds }: PrintLabelsDialogProps) {
-  const products = useLiveQuery(() => db.products.where('id').anyOf(productIds).toArray(), [productIds]);
+  const products = useLiveQuery(() => (productIds && productIds.length > 0 ? db.products.where('id').anyOf(productIds).toArray() : []), [productIds]);
   const [labelQuantities, setLabelQuantities] = useState<Record<number, number>>({});
 
   useEffect(() => {
