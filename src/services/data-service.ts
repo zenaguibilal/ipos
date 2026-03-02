@@ -2,7 +2,7 @@
 'use client';
 
 import { db, PosDatabase } from '@/lib/database';
-import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, DailyBreadOrder, BreadCustomer, BreadOrder, Notification, InventoryLog, CustomerWithSalesData, ImportAnalysis, DashboardDateRangeData, StockIntakeItem, CartItem } from '@/lib/types';
+import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, DailyBreadOrder, BreadCustomer, BreadOrder, Notification, InventoryLog, CustomerWithSalesData, ImportAnalysis, DashboardData, StockIntakeItem, CartItem, TopProduct, TopCustomer } from '@/lib/types';
 import { initialData, type DB, type CollectionName } from './initial-data';
 import Dexie from 'dexie';
 import { startOfDay, endOfDay, format } from 'date-fns';
@@ -993,20 +993,68 @@ class DataService {
   // ====================================================================
   // Dashboard - Read-only, no transaction needed
   // ====================================================================
-  async getSalesDashboardData(params: { from: Date, to: Date }): Promise<DashboardDateRangeData> {
-      const { from, to } = params;
+  async getDashboardData(params: { from: Date; to: Date }): Promise<DashboardData> {
+    const { from, to } = params;
 
-      const sales = await db.sales.where('createdAt').between(from, to).reverse().toArray();
+    const sales = await db.sales.where('createdAt').between(from, to).reverse().toArray();
 
-      const totalRevenue = sales.reduce((acc, sale) => acc + sale.total, 0);
-      const totalProfit = sales.reduce((acc, sale) => acc + (sale.totalProfit || 0), 0);
-      
-      return {
-          totalRevenue,
-          totalProfit,
-          salesCount: sales.length,
-          sales,
-      };
+    let totalRevenue = 0;
+    let totalProfit = 0;
+    const salesCount = sales.length;
+
+    const productStats = new Map<number, { name: string; totalRevenue: number; unitsSold: number; totalProfit: number }>();
+    const customerStats = new Map<number, { name: string; totalSpent: number }>();
+
+    for (const sale of sales) {
+        totalRevenue += sale.total;
+        totalProfit += sale.totalProfit || 0;
+
+        if (sale.customerId && sale.customerName) {
+            const current = customerStats.get(sale.customerId) || { name: sale.customerName, totalSpent: 0 };
+            current.totalSpent += sale.total;
+            customerStats.set(sale.customerId, current);
+        }
+
+        for (const item of sale.items) {
+            if (typeof item.id === 'number') {
+                const current = productStats.get(item.id) || {
+                    name: item.name,
+                    totalRevenue: 0,
+                    unitsSold: 0,
+                    totalProfit: 0,
+                };
+                current.unitsSold += item.quantity;
+                current.totalRevenue += item.price * item.quantity;
+                const profit = (item.price - item.purchasePrice) * item.quantity;
+                current.totalProfit += isNaN(profit) ? 0 : profit;
+                productStats.set(item.id, current);
+            }
+        }
+    }
+
+    const topProducts: TopProduct[] = Array.from(productStats.entries())
+        .map(([id, stats]) => ({ id, ...stats }))
+        .sort((a, b) => b.totalRevenue - a.totalRevenue)
+        .slice(0, 5);
+
+    const topCustomers: TopCustomer[] = Array.from(customerStats.entries())
+        .map(([id, stats]) => ({ id, ...stats }))
+        .sort((a, b) => b.totalSpent - a.totalSpent)
+        .slice(0, 5);
+        
+    const inventoryValue = await this.getInventoryValue();
+
+    return {
+        stats: {
+            totalRevenue,
+            totalProfit,
+            salesCount,
+            inventoryValue,
+        },
+        sales,
+        topProducts,
+        topCustomers,
+    };
   }
 
   async getInventoryValue(): Promise<number> {

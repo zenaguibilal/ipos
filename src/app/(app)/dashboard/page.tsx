@@ -8,6 +8,8 @@ import { DateRangePicker } from '@/components/dashboard/date-range-picker';
 import StatsCards from '@/components/dashboard/StatsCards';
 import RevenueChart from '@/components/dashboard/RevenueChart';
 import SalesOverview from '@/components/dashboard/SalesOverview';
+import TopProducts from '@/components/dashboard/TopProducts';
+import TopCustomers from '@/components/dashboard/TopCustomers';
 import { DateRange } from 'react-day-picker';
 import { subDays, startOfDay, endOfDay } from 'date-fns';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -23,18 +25,12 @@ export default function DashboardPage() {
         to: endOfDay(new Date()),
     });
 
-    const salesData = useLiveQuery(
+    const dashboardData = useLiveQuery(
         () => {
             if (!dateRange?.from) return undefined;
-            return dataService.getSalesDashboardData({ from: dateRange.from, to: dateRange.to || dateRange.from });
+            return dataService.getDashboardData({ from: dateRange.from, to: dateRange.to || dateRange.from });
         },
         [dateRange],
-        undefined
-    );
-
-    const inventoryValue = useLiveQuery(
-        () => dataService.getInventoryValue(),
-        [],
         undefined
     );
 
@@ -44,7 +40,7 @@ export default function DashboardPage() {
         []
     );
 
-    const isLoading = salesData === undefined || unreadAlerts === undefined || inventoryValue === undefined;
+    const isLoading = dashboardData === undefined || unreadAlerts === undefined;
     
     const handleDismissAlert = async (id: number) => {
         try {
@@ -56,13 +52,7 @@ export default function DashboardPage() {
         }
     };
 
-    const statsForCards = salesData && inventoryValue !== undefined ? {
-        totalRevenue: salesData.totalRevenue,
-        totalProfit: salesData.totalProfit,
-        salesCount: salesData.salesCount,
-        inventoryValue: inventoryValue
-    } : undefined;
-
+    const statsForCards = dashboardData?.stats;
 
     return (
         <div className="p-4 sm:p-6 space-y-6">
@@ -100,13 +90,21 @@ export default function DashboardPage() {
 
             <StatsCards stats={statsForCards} isLoading={isLoading} />
 
-            <div className="grid lg:grid-cols-5 gap-6">
-                <div className="lg:col-span-3">
-                    <RevenueChart sales={salesData?.sales} isLoading={isLoading} />
-                </div>
+            <div className="grid lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2">
+                    <RevenueChart sales={dashboardData?.sales} isLoading={isLoading} />
+                </div>
+                <div className="lg:col-span-1 space-y-6">
                     <SalesOverview 
-                        sales={salesData?.sales ?? []} 
+                        sales={dashboardData?.sales ?? []} 
+                        isLoading={isLoading}
+                    />
+                     <TopProducts
+                        products={dashboardData?.topProducts ?? []}
+                        isLoading={isLoading}
+                    />
+                    <TopCustomers
+                        customers={dashboardData?.topCustomers ?? []}
                         isLoading={isLoading}
                     />
                 </div>

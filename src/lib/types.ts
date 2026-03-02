@@ -101,6 +101,20 @@ export interface ChartData {
   profit?: number;
 }
 
+export interface TopProduct {
+    id: number;
+    name: string;
+    totalRevenue: number;
+    unitsSold: number;
+    totalProfit: number;
+}
+
+export interface TopCustomer {
+    id: number;
+    name: string;
+    totalSpent: number;
+}
+
 export interface CompanyProfile {
     id?: 1;
     companyName?: string;
@@ -238,11 +252,18 @@ export interface InventoryLog {
     createdAt: Date;
 }
 
-export interface DashboardDateRangeData {
+export interface DashboardStats {
     totalRevenue: number;
     totalProfit: number;
     salesCount: number;
+    inventoryValue: number;
+}
+
+export interface DashboardData {
+    stats: DashboardStats;
     sales: Sale[];
+    topProducts: TopProduct[];
+    topCustomers: TopCustomer[];
 }
 
 export interface ImportAnalysis {
