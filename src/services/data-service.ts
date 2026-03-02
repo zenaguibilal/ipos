@@ -457,9 +457,9 @@ class DataService {
     return db.sales.where('invoiceNumber').equals(invoiceNumber).first();
   }
 
-  async addSale(saleData: Omit<Sale, 'id' | 'invoiceNumber' | 'paymentStatus' | 'remainingBalance'>): Promise<number> {
+  async addSale(saleData: Omit<Sale, 'id' | 'invoiceNumber' | 'paymentStatus' | 'remainingBalance' | 'totalProfit'>): Promise<number> {
     return db.transaction('rw', db.sales, db.products, db.customers, db.notifications, db.inventoryLogs, async () => {
-        const { items, customerId, total, amountPaid, totalProfit } = saleData;
+        const { items, customerId, total, amountPaid } = saleData;
 
         for (const item of items) {
             if (typeof item.id !== 'number') continue;
@@ -483,6 +483,11 @@ class DataService {
                 }
             }
         }
+
+        const totalProfit = items.reduce((acc, item) => {
+            const profit = (item.price - item.purchasePrice) * item.quantity;
+            return acc + (isNaN(profit) ? 0 : profit);
+        }, 0);
 
         const saleId = await db.sales.add({
             ...saleData,
@@ -880,8 +885,11 @@ class DataService {
       const customersMap = new Map(allBreadCustomers.map(c => [c.id!, c]));
 
       let salesCount = 0;
+      
+      const invoiceNumberBase = Date.now().toString(36).toUpperCase();
 
-      for (const order of ordersToProcess) {
+      for (let i = 0; i < ordersToProcess.length; i++) {
+          const order = ordersToProcess[i];
           const customer = customersMap.get(order.breadCustomerId);
           if (!customer) continue;
 
@@ -894,11 +902,15 @@ class DataService {
               quantity: order.quantity
           };
           
+          const totalProfit = (saleItem.price - saleItem.purchasePrice) * saleItem.quantity;
+          const invoiceNumber = `INV-${invoiceNumberBase}-${i}`;
+
           const saleData: Omit<Sale, 'id'| 'invoiceNumber'> = {
+              invoiceNumber,
               items: [saleItem],
               subtotal: total,
               total,
-              totalProfit: total - (saleItem.purchasePrice * saleItem.quantity),
+              totalProfit,
               amountPaid: total,
               remainingBalance: 0,
               paymentStatus: 'paid',
@@ -907,7 +919,7 @@ class DataService {
               breadOrderDate: dateString,
           };
           
-          const saleId = await this.addSale(saleData);
+          const saleId = await db.sales.add(saleData as Sale);
           await db.dailyBreadOrders.update(order.id!, { isPaid: true, saleId: saleId });
           salesCount++;
       }

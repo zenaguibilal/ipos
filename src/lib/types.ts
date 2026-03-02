@@ -68,7 +68,7 @@ export interface Sale {
     discountType?: 'percentage' | 'fixed';
     discountAmount?: number;
     total: number;
-    totalProfit?: number;
+    totalProfit: number;
     amountPaid: number;
     remainingBalance: number;
     paymentStatus: 'paid' | 'partial' | 'unpaid';
