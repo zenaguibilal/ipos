@@ -1,9 +1,10 @@
 'use client';
 
 import { db, PosDatabase } from '@/lib/database';
-import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, DailyBreadOrder, BreadCustomer, BreadOrder, Notification, InventoryLog, CustomerWithSalesData } from '@/lib/types';
+import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, DailyBreadOrder, BreadCustomer, BreadOrder, Notification, InventoryLog, CustomerWithSalesData, DashboardData, TopProduct, TopCustomer } from '@/lib/types';
 import { initialData, type DB, type CollectionName } from './initial-data';
 import Dexie from 'dexie';
+import { startOfDay, endOfDay } from 'date-fns';
 
 type TableName = keyof Pick<PosDatabase, 
     'products' | 'customers' | 'sales' | 'payments' | 
@@ -503,6 +504,93 @@ class DataService {
     return db.transaction('rw', db.notifications, () => {
         return db.notifications.where({ isRead: true }).delete();
     });
+  }
+
+  // ====================================================================
+  // Dashboard Data Aggregation
+  // ====================================================================
+
+  async getDashboardData(range?: { from: Date; to: Date }): Promise<DashboardData> {
+      return db.transaction('r', db.sales, db.products, db.customers, async () => {
+        
+        let sales: Sale[];
+        if (range?.from && range?.to) {
+            sales = await db.sales.where('createdAt').between(startOfDay(range.from), endOfDay(range.to), true, true).toArray();
+        } else {
+            sales = await db.sales.toArray();
+        }
+
+        let totalRevenue = 0;
+        let totalProfit = 0;
+        const productSales: { [id: number]: { unitsSold: number, totalRevenue: number, totalProfit: number } } = {};
+        const customerSales: { [id: number]: number } = {};
+
+        sales.forEach(sale => {
+            totalRevenue += sale.total;
+            
+            let saleProfit = 0;
+            sale.items.forEach(item => {
+                const profitPerItem = (item.price - item.purchasePrice) * item.quantity;
+                if (!isNaN(profitPerItem)) {
+                    saleProfit += profitPerItem;
+                }
+                
+                if (typeof item.id === 'number') {
+                    if (!productSales[item.id]) {
+                        productSales[item.id] = { unitsSold: 0, totalRevenue: 0, totalProfit: 0 };
+                    }
+                    productSales[item.id].unitsSold += item.quantity;
+                    productSales[item.id].totalRevenue += item.price * item.quantity;
+                    if (!isNaN(profitPerItem)) {
+                        productSales[item.id].totalProfit += profitPerItem;
+                    }
+                }
+            });
+            totalProfit += saleProfit;
+
+            if (sale.customerId) {
+                if (!customerSales[sale.customerId]) {
+                    customerSales[sale.customerId] = 0;
+                }
+                customerSales[sale.customerId] += sale.total;
+            }
+        });
+
+        const allProducts = await db.products.toArray();
+        const inventoryValue = allProducts.reduce((acc, p) => acc + (p.purchasePrice * p.quantity), 0);
+        
+        const topProductIds = Object.keys(productSales).map(Number)
+            .sort((a, b) => productSales[b].totalRevenue - productSales[a].totalRevenue)
+            .slice(0, 5);
+
+        const topProducts: TopProduct[] = (await db.products.bulkGet(topProductIds)).map(p => ({
+            id: p!.id as number,
+            name: p!.name,
+            ...productSales[p!.id as number],
+        })).filter(Boolean);
+        
+        const topCustomerIds = Object.keys(customerSales).map(Number)
+            .sort((a,b) => customerSales[b] - customerSales[a])
+            .slice(0, 5);
+        
+        const topCustomers: TopCustomer[] = (await db.customers.bulkGet(topCustomerIds)).map(c => ({
+            id: c!.id as number,
+            name: `${c!.firstName} ${c!.lastName}`,
+            totalSpent: customerSales[c!.id as number],
+        })).filter(Boolean);
+
+        return {
+            stats: {
+                totalRevenue,
+                totalProfit,
+                salesCount: sales.length,
+                inventoryValue,
+            },
+            sales,
+            topProducts,
+            topCustomers,
+        };
+      });
   }
 
 

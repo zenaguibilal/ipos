@@ -99,6 +99,7 @@ export interface ChartData {
 }
 
 export interface TopProduct {
+    id: number;
     name: string;
     totalRevenue: number;
     unitsSold: number;
@@ -106,6 +107,7 @@ export interface TopProduct {
 }
 
 export interface TopCustomer {
+    id: number;
     name: string;
     totalSpent: number;
 }
@@ -243,4 +245,18 @@ export interface InventoryLog {
     reason: InventoryLogReason;
     relatedId?: number | string; // ID of the sale, return, intake, etc.
     createdAt: Date;
+}
+
+export interface DashboardStats {
+    totalRevenue: number;
+    totalProfit: number;
+    salesCount: number;
+    inventoryValue: number;
+}
+
+export interface DashboardData {
+    stats: DashboardStats;
+    sales: Sale[];
+    topProducts: TopProduct[];
+    topCustomers: TopCustomer[];
 }

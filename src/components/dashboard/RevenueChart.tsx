@@ -7,6 +7,7 @@ import { format } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatCurrency } from '@/lib/utils';
+import { fr } from 'date-fns/locale';
 
 interface RevenueChartProps {
   sales?: Sale[];
@@ -18,8 +19,8 @@ const CustomTooltip = ({ active, payload, label }: any) => {
       return (
         <div className="p-2 bg-background/80 backdrop-blur-sm border rounded-lg shadow-lg">
           <p className="font-bold">{label}</p>
-          <p className="text-primary">{`Revenu: ${formatCurrency(payload[0].value)}`}</p>
-          <p className="text-fuchsia-500">{`Bénéfice: ${formatCurrency(payload[1].value)}`}</p>
+          <p className="text-[hsl(var(--chart-primary))]">{`Revenu: ${formatCurrency(payload[0].value)}`}</p>
+          <p className="text-[hsl(var(--chart-quinary))]">{`Bénéfice: ${formatCurrency(payload[1].value)}`}</p>
         </div>
       );
     }
@@ -34,7 +35,7 @@ export default function RevenueChart({ sales, isLoading }: RevenueChartProps) {
     const dataByDay: { [key: string]: { revenue: number, profit: number } } = {};
 
     sales.forEach(sale => {
-      const day = format(sale.createdAt!, 'd MMM');
+      const day = format(sale.createdAt!, 'd MMM', { locale: fr });
       if (!dataByDay[day]) {
         dataByDay[day] = { revenue: 0, profit: 0 };
       }
@@ -52,7 +53,10 @@ export default function RevenueChart({ sales, isLoading }: RevenueChartProps) {
   if (isLoading) {
     return (
         <Card>
-            <CardHeader><CardTitle>Analyse des Revenus</CardTitle><CardDescription>Aperçu des revenus et bénéfices sur la période sélectionnée.</CardDescription></CardHeader>
+            <CardHeader>
+                <Skeleton className="h-6 w-3/4 mb-2" />
+                <Skeleton className="h-4 w-1/2" />
+            </CardHeader>
             <CardContent>
                 <Skeleton className="h-[350px] w-full" />
             </CardContent>
