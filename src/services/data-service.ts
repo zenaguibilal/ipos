@@ -454,7 +454,7 @@ class DataService {
     return db.sales.where('invoiceNumber').equals(invoiceNumber).first();
   }
 
-  async addSale(saleData: Omit<Sale, 'id' | 'invoiceNumber' | 'paymentStatus' | 'remainingBalance'>): Promise<number> {
+  async addSale(saleData: Omit<Sale, 'id' | 'invoiceNumber' | 'paymentStatus' | 'remainingBalance' | 'totalProfit'>): Promise<number> {
     return db.transaction('rw', db.sales, db.products, db.customers, db.notifications, db.inventoryLogs, async () => {
         const { items, customerId, total, amountPaid } = saleData;
 
@@ -464,6 +464,12 @@ class DataService {
             if (!product) throw new Error(`Produit avec ID ${item.id} non trouvé.`);
             if (product.quantity < item.quantity) throw new Error(`Stock insuffisant pour ${product.name}.`);
         }
+
+        const costOfGoodsSold = items.reduce((acc, item) => {
+            const cost = item.purchasePrice * item.quantity;
+            return acc + (isNaN(cost) ? 0 : cost);
+        }, 0);
+        const totalProfit = total - costOfGoodsSold;
         
         const remainingBalance = total - amountPaid;
         const paymentStatus = amountPaid >= total ? 'paid' : amountPaid > 0 ? 'partial' : 'unpaid';
@@ -487,6 +493,7 @@ class DataService {
             invoiceNumber: `INV-${Date.now()}`,
             paymentStatus,
             remainingBalance: remainingBalance > 0 ? remainingBalance : 0,
+            totalProfit,
         } as Sale);
 
         for (const item of items) {
@@ -994,20 +1001,19 @@ class DataService {
 
       const sales = await db.sales.where('createdAt').between(from, to).reverse().toArray();
 
-      let totalRevenue = 0;
-      let totalProfit = 0;
+      const totalRevenue = sales.reduce((acc, sale) => acc + sale.total, 0);
       
-      for (const sale of sales) {
-          totalRevenue += sale.total;
-          let saleProfit = 0;
-
-          for (const item of sale.items) {
-              const profitPerItem = (item.price - item.purchasePrice) * item.quantity;
-              const validProfit = isNaN(profitPerItem) ? 0 : profitPerItem;
-              saleProfit += validProfit;
+      const totalProfit = sales.reduce((acc, sale) => {
+          if (sale.totalProfit !== undefined) {
+              return acc + sale.totalProfit;
           }
-          totalProfit += saleProfit;
-      }
+          // Fallback for old data
+          const saleCost = sale.items.reduce((costAcc, item) => {
+              const cost = item.purchasePrice * item.quantity;
+              return costAcc + (isNaN(cost) ? 0 : cost);
+          }, 0);
+          return acc + (sale.total - saleCost);
+      }, 0);
       
       return {
           totalRevenue,

@@ -40,11 +40,17 @@ export default function RevenueChart({ sales, isLoading }: RevenueChartProps) {
         dataByDay[day] = { revenue: 0, profit: 0 };
       }
       dataByDay[day].revenue += sale.total;
-      const saleProfit = sale.items.reduce((acc, item) => {
-          const profitPerItem = (item.price - item.purchasePrice) * item.quantity;
-          return acc + (isNaN(profitPerItem) ? 0 : profitPerItem);
-      }, 0);
-      dataByDay[day].profit += saleProfit;
+      
+      if(sale.totalProfit !== undefined) {
+        dataByDay[day].profit += sale.totalProfit;
+      } else {
+        // Fallback for old data without pre-calculated profit
+        const saleCost = sale.items.reduce((costAcc, item) => {
+            const cost = item.purchasePrice * item.quantity;
+            return costAcc + (isNaN(cost) ? 0 : cost);
+        }, 0);
+        dataByDay[day].profit += (sale.total - saleCost);
+      }
     });
 
     return Object.entries(dataByDay).map(([date, values]) => ({ date, ...values }));
