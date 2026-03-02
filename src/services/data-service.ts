@@ -5,6 +5,7 @@ import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer
 import { initialData, type DB, type CollectionName } from './initial-data';
 import Dexie from 'dexie';
 import { startOfDay, endOfDay } from 'date-fns';
+import { safeToDate } from '@/lib/utils';
 
 type TableName = keyof Pick<PosDatabase, 
     'products' | 'customers' | 'sales' | 'payments' | 
@@ -143,11 +144,11 @@ class DataService {
     if (!Array.isArray(ids) || ids.length === 0) {
       return [];
     }
-    // Defensive check to ensure all IDs are valid numbers.
-    if (ids.some(id => typeof id !== 'number' || !isFinite(id))) {
-        return []; // Return empty if any ID is invalid to prevent Dexie errors.
+    const validIds = ids.filter(id => typeof id === 'number' && isFinite(id));
+    if (validIds.length === 0) {
+        return [];
     }
-    return db.products.where('id').anyOf(ids).toArray();
+    return db.products.where('id').anyOf(validIds).toArray();
   }
 
   async getProductCategories(): Promise<string[]> {
@@ -221,6 +222,22 @@ class DataService {
     });
     
     return customersWithData;
+  }
+  
+  async getCustomerDetails(customerId: number): Promise<{ customer: Customer; activity: (Sale | Payment)[] } | null> {
+      return db.transaction('r', db.customers, db.sales, db.payments, async () => {
+          const customer = await db.customers.get(customerId);
+          if (!customer) return null;
+
+          const sales = await db.sales.where({ customerId }).toArray();
+          const payments = await db.payments.where({ customerId }).toArray();
+
+          const activity = [...sales, ...payments].sort((a, b) => 
+              (safeToDate(b.createdAt!).getTime()) - (safeToDate(a.createdAt!).getTime())
+          );
+
+          return { customer, activity };
+      });
   }
   
   // ====================================================================
