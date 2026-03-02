@@ -416,6 +416,29 @@ class DataService {
     });
   }
   
+  async getStockIntakes(params: { query?: string; from?: Date; to?: Date }): Promise<StockIntake[]> {
+    const { query, from, to } = params;
+    
+    let collection;
+    if (from && to) {
+        collection = db.stockIntakes.where('createdAt').between(from, to, true, true);
+    } else {
+        collection = db.stockIntakes.toCollection();
+    }
+
+    let intakesArray = await collection.reverse().toArray();
+
+    if (query) {
+        const lowerQuery = query.toLowerCase();
+        intakesArray = intakesArray.filter(intake => 
+            intake.invoiceNumber.toLowerCase().includes(lowerQuery) ||
+            intake.supplier.toLowerCase().includes(lowerQuery)
+        );
+    }
+    
+    return intakesArray;
+  }
+  
   // ====================================================================
   // Payments - All writes are transactional
   // ====================================================================
@@ -463,6 +486,29 @@ class DataService {
   // ====================================================================
   // Returns - Complex logic is handled atomically
   // ====================================================================
+  async getReturns(params: { query?: string; from?: Date; to?: Date }): Promise<ProductReturn[]> {
+    const { query, from, to } = params;
+    
+    let collection;
+    if (from && to) {
+        collection = db.returns.where('createdAt').between(from, to, true, true);
+    } else {
+        collection = db.returns.toCollection();
+    }
+
+    let returnsArray = await collection.reverse().toArray();
+
+    if (query) {
+        const lowerQuery = query.toLowerCase();
+        returnsArray = returnsArray.filter(pr => 
+            pr.originalInvoiceNumber.toLowerCase().includes(lowerQuery) ||
+            (pr.customerName && pr.customerName.toLowerCase().includes(lowerQuery))
+        );
+    }
+    
+    return returnsArray;
+  }
+  
   async addReturn(returnData: Omit<ProductReturn, 'id'>): Promise<number> {
       return db.transaction('rw', db.returns, db.products, db.customers, db.inventoryLogs, async () => {
           const returnId = await db.returns.add(returnData as ProductReturn);

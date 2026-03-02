@@ -11,6 +11,7 @@ import {
   ShoppingCart,
   History,
   Undo2,
+  Archive,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -32,9 +33,10 @@ import {
 const navLinks = [
   { href: '/dashboard', label: 'Tableau de bord', icon: BarChart3 },
   { href: '/sell', label: 'Point de Vente', icon: ShoppingCart },
-  { href: '/sales-history', label: 'Historique', icon: History },
   { href: '/products', label: 'Produits', icon: Package },
+  { href: '/stock', label: 'Stock', icon: Archive },
   { href: '/customers', label: 'Clients', icon: Users },
+  { href: '/sales-history', label: 'Ventes', icon: History },
   { href: '/returns', label: 'Retours', icon: Undo2 },
 ];
 

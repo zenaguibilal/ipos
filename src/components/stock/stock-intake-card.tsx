@@ -32,7 +32,7 @@ const StockIntakeCardComponent = ({ intake, onViewDetails }: StockIntakeCardProp
             <CardContent className="space-y-2">
                  <div className="flex justify-between items-center text-sm">
                     <span className="text-muted-foreground">Date Réception</span>
-                    <span className="font-semibold">{format(safeToDate(intake.createdAt), 'd MMM yyyy', { locale: fr })}</span>
+                    <span className="font-semibold">{format(safeToDate(intake.createdAt!), 'd MMM yyyy', { locale: fr })}</span>
                 </div>
                 <div className="flex justify-between items-center text-sm">
                     <span className="text-muted-foreground">Articles</span>
