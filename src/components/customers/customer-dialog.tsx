@@ -66,13 +66,13 @@ export function CustomerDialog({ isOpen, onOpenChange, customer, onCustomerAdded
 
         try {
             if (customer && customer.id) { // Editing
-                await dataService.update('customers', customer.id, customerData);
+                await dataService.updateCustomer(customer.id, customerData);
                 toast.success(`Client ${firstName} ${lastName} mis à jour.`);
             } else { // Adding
-                const newId = await dataService.save('customers', customerData as Omit<Customer, "id">);
+                const newId = await dataService.addCustomer(customerData);
                 toast.success(`Client ${firstName} ${lastName} ajouté.`);
                 if (onCustomerAdded) {
-                    const newCustomer = await db.customers.get(newId as number);
+                    const newCustomer = await dataService.getById<Customer>('customers', newId);
                     if(newCustomer) onCustomerAdded(newCustomer);
                 }
             }

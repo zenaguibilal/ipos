@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Search, PlusCircle, Users, MoreHorizontal, Download, ChevronDown, ListFilter, FileUp, Loader2 } from 'lucide-react';
-import type { Customer, Sale, Payment, CustomerWithSalesData } from '@/lib/types';
+import type { Customer, CustomerWithSalesData } from '@/lib/types';
 import { CustomerDialog } from '@/components/customers/customer-dialog';
 import { DeleteCustomerDialog } from '@/components/customers/delete-customer-dialog';
 import { format, differenceInDays } from 'date-fns';
@@ -20,79 +20,55 @@ import { CustomerCard } from '@/components/customers/customer-card';
 import { CustomerCardSkeleton } from '@/components/customers/customer-card-skeleton';
 import { ImportPreviewDialog, type ImportAnalysis } from '@/components/customers/import-preview-dialog';
 import { useDebounce } from '@/hooks/useDebounce';
+import useSWR from 'swr';
+
 
 export default function CustomersPage() {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
     const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null);
-    const [searchQuery, setSearchQuery] = useState('');
-    const [sortOption, setSortOption] = useState('balance_desc');
-    const [statusFilter, setStatusFilter] = useState('all');
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isImporting, setIsImporting] = useState(false);
     const [isImportPreviewOpen, setIsImportPreviewOpen] = useState(false);
     const [importAnalysis, setImportAnalysis] = useState<ImportAnalysis | null>(null);
 
-    const debouncedSearchQuery = useDebounce(searchQuery, 300);
+    const { data: searchQuery, mutate: setSearchQuery } = useSWR('customers_search_query', async () => (await dataService.getSetting('customers_search_query'))?.value || '', { revalidateOnFocus: false });
+    const { data: sortOption, mutate: setSortOption } = useSWR('customers_sort_option', async () => (await dataService.getSetting('customers_sort_option'))?.value || 'balance_desc', { revalidateOnFocus: false });
+    const { data: statusFilter, mutate: setStatusFilter } = useSWR('customers_status_filter', async () => (await dataService.getSetting('customers_status_filter'))?.value || 'all', { revalidateOnFocus: false });
+
+    const handleSearchChange = (value: string) => {
+        setSearchQuery(value, false);
+        dataService.setSetting('customers_search_query', value);
+    };
+    const handleSortChange = (value: string) => {
+        setSortOption(value, false);
+        dataService.setSetting('customers_sort_option', value);
+    };
+    const handleStatusChange = (value: string) => {
+        setStatusFilter(value, false);
+        dataService.setSetting('customers_status_filter', value);
+    };
+
+    const debouncedSearchQuery = useDebounce(searchQuery || '', 300);
 
     const customers = useLiveQuery(() => db.customers.toArray());
-    const sales = useLiveQuery(() => db.sales.toArray());
-    const payments = useLiveQuery(() => db.payments.toArray());
     
-    useEffect(() => {
-        const savedSort = localStorage.getItem('customers_sort_option');
-        if (savedSort) setSortOption(savedSort);
-        const savedStatus = localStorage.getItem('customers_status_filter');
-        if (savedStatus) setStatusFilter(savedStatus);
-        const savedSearch = localStorage.getItem('customers_search_query');
-        if (savedSearch !== null) setSearchQuery(savedSearch);
-    }, []);
-    
-    useEffect(() => { localStorage.setItem('customers_sort_option', sortOption); }, [sortOption]);
-    useEffect(() => { localStorage.setItem('customers_status_filter', statusFilter); }, [statusFilter]);
-    useEffect(() => { localStorage.setItem('customers_search_query', searchQuery); }, [searchQuery]);
-
     const { enrichedCustomers, totalCustomers, totalDebt } = useMemo(() => {
-        if (!customers || !sales || !payments) {
+        if (!customers) {
             return { enrichedCustomers: [], totalCustomers: 0, totalDebt: 0 };
         }
-
-        const salesByCustomer = new Map<number, Sale[]>();
-        sales.forEach(sale => {
-            if (!sale.customerId) return;
-            const existing = salesByCustomer.get(sale.customerId) || [];
-            salesByCustomer.set(sale.customerId, [...existing, sale]);
-        });
-
-        const paymentsByCustomer = new Map<number, Payment[]>();
-        payments.forEach(payment => {
-            const existing = paymentsByCustomer.get(payment.customerId) || [];
-            paymentsByCustomer.set(payment.customerId, [...existing, payment]);
-        });
         
         let cumulativeDebt = 0;
-        const customerData = customers.map((c): CustomerWithSalesData => {
-            const customerSales = salesByCustomer.get(c.id!) || [];
-            const customerPayments = paymentsByCustomer.get(c.id!) || [];
-            const totalSpent = customerSales.reduce((acc, s) => acc + s.total, 0);
-            const totalPaid = customerPayments.reduce((acc, p) => acc + p.amount, 0);
-            const outstandingBalance = totalSpent - totalPaid;
-            cumulativeDebt += outstandingBalance;
-
-            const allActivities = [...customerSales, ...customerPayments];
-            const lastActivityDate = allActivities.length > 0
-                ? allActivities.reduce((latest, act) => act.createdAt! > latest ? act.createdAt! : latest, allActivities[0].createdAt!)
-                : null;
-            
-            const isReminderDue = outstandingBalance > 0 && c.settlementDay && lastActivityDate
-                ? differenceInDays(new Date(), lastActivityDate) > c.settlementDay
+        const customerData: CustomerWithSalesData[] = customers.map((c) => {
+            cumulativeDebt += c.outstandingBalance;
+            const isReminderDue = c.outstandingBalance > 0 && c.settlementDay && c.lastActivityDate
+                ? differenceInDays(new Date(), c.lastActivityDate) > c.settlementDay
                 : false;
-
-            return { ...c, id: c.id!, totalSpent, outstandingBalance, lastActivityDate, isReminderDue };
+            return { ...c, id: c.id!, isReminderDue };
         });
         
         return { enrichedCustomers: customerData, totalCustomers: customers.length, totalDebt: cumulativeDebt };
-    }, [customers, sales, payments]);
+    }, [customers]);
 
     const existingCustomersMap = useMemo(() => new Map(
         enrichedCustomers?.map(c => [`${c.firstName.trim()} ${c.lastName.trim()}`.toLowerCase(), c])
@@ -204,16 +180,10 @@ export default function CustomersPage() {
 
                     const normalizedFullName = `${firstName.trim()} ${lastName.trim()}`.toLowerCase();
                     const existingCustomer = existingCustomersMap.get(normalizedFullName);
-                    const importRowData = { firstName, lastName, phone, debtAmount, originalRow: row };
+                    const importRowData = { firstName, lastName, phone, debtAmount: debtAmount ?? 0, originalRow: row };
                     
                     if (existingCustomer) {
-                        const phoneNeedsUpdate = phone && existingCustomer.phone !== phone;
-                        const debtNeedsUpdate = debtAmount !== null && Math.abs(debtAmount - existingCustomer.outstandingBalance) > 0.01;
-                        if (!phoneNeedsUpdate && !debtNeedsUpdate) {
-                             skippedRows.push({ ...importRowData, reason: 'Données inchangées', existingCustomer });
-                             return;
-                        }
-                        customersToUpdate.push({ ...importRowData, existingCustomer });
+                         customersToUpdate.push({ ...importRowData, existingCustomer });
                     } else {
                         customersToAdd.push(importRowData);
                     }
@@ -246,7 +216,7 @@ export default function CustomersPage() {
         }
     };
 
-    const isLoading = customers === undefined || sales === undefined || payments === undefined;
+    const isLoading = customers === undefined || searchQuery === undefined || sortOption === undefined || statusFilter === undefined;
 
     return (
         <>
@@ -295,10 +265,10 @@ export default function CustomersPage() {
                         <div className="flex flex-col sm:flex-row gap-4">
                             <div className="relative flex-grow">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                <Input placeholder="Rechercher par nom ou téléphone..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9 w-full" />
+                                <Input placeholder="Rechercher par nom ou téléphone..." value={searchQuery || ''} onChange={(e) => handleSearchChange(e.target.value)} className="pl-9 w-full" />
                             </div>
                              <div className="flex gap-2">
-                                 <Select value={sortOption} onValueChange={setSortOption}>
+                                 <Select value={sortOption} onValueChange={handleSortChange}>
                                     <SelectTrigger className="w-full sm:w-[220px]"><ListFilter className="mr-2 h-4 w-4" /><SelectValue placeholder="Trier par..." /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="balance_desc">Solde (plus élevé)</SelectItem>
@@ -307,7 +277,7 @@ export default function CustomersPage() {
                                         <SelectItem value="created_asc">Date d'ajout</SelectItem>
                                     </SelectContent>
                                 </Select>
-                                 <Select value={statusFilter} onValueChange={setStatusFilter}>
+                                 <Select value={statusFilter} onValueChange={handleStatusChange}>
                                     <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Filtrer par statut" /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="all">Tous les clients</SelectItem>

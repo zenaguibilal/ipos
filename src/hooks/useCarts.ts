@@ -8,6 +8,8 @@ import type { Cart, Product, CartItem, Customer } from '@/lib/types';
 import { toast } from 'sonner';
 
 const CARTS_KEY = 'all-carts';
+const ACTIVE_CART_ID_KEY = 'active_cart_id';
+
 
 const createNewCart = (name: string): Cart => ({
   id: uuidv4(),
@@ -20,37 +22,44 @@ const createNewCart = (name: string): Cart => ({
 
 export const useCarts = () => {
     const { mutate } = useSWRConfig();
-    const { data: carts = [], error, isLoading } = useSWR(CARTS_KEY, () => dataService.getAll<Cart>('carts'));
-    const [activeCartId, setActiveCartId] = useState<string | null>(null);
+    const { data: carts = [], error, isLoading: isLoadingCarts } = useSWR(CARTS_KEY, () => dataService.getAll<Cart>('carts'));
+    const { data: activeCartIdSetting, isLoading: isLoadingActiveId } = useSWR(ACTIVE_CART_ID_KEY, () => dataService.getSetting(ACTIVE_CART_ID_KEY));
+    
+    const activeCartId = activeCartIdSetting?.value;
+
+    const setActiveCartId = useCallback((id: string) => {
+        mutate(ACTIVE_CART_ID_KEY, { id: ACTIVE_CART_ID_KEY, value: id }, false);
+        dataService.setSetting(ACTIVE_CART_ID_KEY, id);
+    }, [mutate]);
 
     useEffect(() => {
         const initializeCarts = async () => {
+            if (isLoadingCarts || isLoadingActiveId) return;
+
             const storedCarts = await dataService.getAll<Cart>('carts');
-            const lastActiveId = localStorage.getItem('active_cart_id');
-            
+            const storedActiveId = (await dataService.getSetting(ACTIVE_CART_ID_KEY))?.value;
+
             if (storedCarts.length > 0) {
                  mutate(CARTS_KEY, storedCarts, false);
-                 setActiveCartId(lastActiveId && storedCarts.some(c => c.id === lastActiveId) ? lastActiveId : storedCarts[0].id);
+                 if (storedActiveId && storedCarts.some(c => c.id === storedActiveId)) {
+                     setActiveCartId(storedActiveId);
+                 } else {
+                     setActiveCartId(storedCarts[0].id);
+                 }
             } else {
                 const newCart = createNewCart('Panier 1');
-                await dataService.save('carts', newCart);
+                await dataService.saveCart(newCart);
                 mutate(CARTS_KEY, [newCart], false);
                 setActiveCartId(newCart.id);
             }
         };
         initializeCarts();
-    }, [mutate]);
-    
-    useEffect(() => {
-        if (activeCartId) {
-            localStorage.setItem('active_cart_id', activeCartId);
-        }
-    }, [activeCartId]);
+    }, [mutate, setActiveCartId, isLoadingCarts, isLoadingActiveId]);
 
     const activeCart = carts.find(c => c.id === activeCartId);
 
     const saveCart = useCallback(async (cart: Cart) => {
-        await dataService.update('carts', cart.id as string, cart);
+        await dataService.saveCart(cart);
         mutate(CARTS_KEY, (currentCarts: Cart[] = []) => 
             currentCarts.map(c => c.id === cart.id ? cart : c), false
         );
@@ -58,24 +67,24 @@ export const useCarts = () => {
 
     const addCart = useCallback(async () => {
         const newCart = createNewCart(`Panier ${carts.length + 1}`);
-        await dataService.save('carts', newCart);
+        await dataService.saveCart(newCart);
         mutate(CARTS_KEY, [...carts, newCart], false);
         setActiveCartId(newCart.id);
-    }, [carts, mutate]);
+    }, [carts, mutate, setActiveCartId]);
 
     const removeCart = useCallback(async (cartId: string) => {
         if (carts.length <= 1) {
             toast.error("Vous ne pouvez pas supprimer le dernier panier.");
             return;
         }
-        await dataService.remove('carts', cartId);
+        await dataService.deleteCart(cartId);
         const newCarts = carts.filter(c => c.id !== cartId);
         mutate(CARTS_KEY, newCarts, false);
 
         if (activeCartId === cartId) {
-            setActiveCartId(newCarts[0]?.id || null);
+            setActiveCartId(newCarts[0]?.id || '');
         }
-    }, [carts, activeCartId, mutate]);
+    }, [carts, activeCartId, mutate, setActiveCartId]);
     
     const updateCart = useCallback(async (cartId: string, { product, quantity }: { product: Product; quantity: number }) => {
         const cart = carts.find(c => c.id === cartId);
@@ -187,7 +196,7 @@ export const useCarts = () => {
         removeCartItem,
         setCartCustomer,
         setCartDiscount,
-        isLoading: isLoading && carts.length === 0,
+        isLoading: isLoadingCarts || isLoadingActiveId,
         error,
     };
 };

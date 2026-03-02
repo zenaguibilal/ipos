@@ -32,7 +32,7 @@ export default function DeleteExpenseDialog({ isOpen, onOpenChange, expense }: D
         setIsDeleting(true);
 
         try {
-            await dataService.remove('expenses', expense.id);
+            await dataService.deleteExpense(expense.id);
             toast.success(`Dépense "${expense.description}" supprimée.`);
             onOpenChange(false);
         } catch (error) {

@@ -11,9 +11,9 @@ import { Loader2 } from 'lucide-react';
 import { dataService } from '@/services/data-service';
 import { format } from 'date-fns';
 import { DatePicker } from '../ui/date-picker';
-import { expenseCategories } from '@/app/(app)/expenses/page';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
+const expenseCategories: ExpenseCategory[] = ['Loyer', 'Salaires', 'Fournisseurs', 'Services Publics', 'Marketing', 'Maintenance', 'Autre'];
 
 interface ExpenseDialogProps {
     isOpen: boolean;
@@ -41,7 +41,7 @@ export default function ExpenseDialog({ isOpen, onOpenChange, expense }: Expense
                 amount: expense.amount,
                 expenseDate: new Date(expense.expenseDate),
             });
-        } else {
+        } else if (!expense && isOpen) {
             setFormState({ ...initialFormState, expenseDate: new Date() });
         }
     }, [expense, isOpen]);
@@ -85,10 +85,10 @@ export default function ExpenseDialog({ isOpen, onOpenChange, expense }: Expense
 
         try {
             if (expense && expense.id) { // Editing
-                await dataService.update('expenses', expense.id, expenseData);
+                await dataService.updateExpense(expense.id, expenseData);
                 toast.success(`Dépense modifiée.`);
             } else { // Adding
-                await dataService.save('expenses', expenseData);
+                await dataService.addExpense(expenseData);
                 toast.success(`Dépense ajoutée.`);
             }
             onOpenChange(false);

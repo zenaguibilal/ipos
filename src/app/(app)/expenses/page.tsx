@@ -2,7 +2,9 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
+import useSWR from 'swr';
 import { db } from '@/lib/database';
+import { dataService } from '@/services/data-service';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -19,7 +21,6 @@ import dynamic from 'next/dynamic';
 import { ExpenseCardSkeleton } from '@/components/expenses/ExpenseCardSkeleton';
 import { ExpenseCard } from '@/components/expenses/ExpenseCard';
 import { useDebounce } from '@/hooks/useDebounce';
-import { Dexie } from 'dexie';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const ExpenseDialog = dynamic(() => import('@/components/expenses/ExpenseDialog'), { ssr: false });
@@ -31,33 +32,31 @@ export default function ExpensesPage() {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
     const [expenseToDelete, setExpenseToDelete] = useState<Expense | null>(null);
-    const [searchQuery, setSearchQuery] = useState('');
-    const [categoryFilter, setCategoryFilter] = useState('all');
-    const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
-        const now = new Date();
-        return { from: startOfMonth(now), to: endOfMonth(now) };
-    });
     const [isClient, setIsClient] = useState(false);
     useEffect(() => { setIsClient(true) }, []);
 
-    const debouncedSearchQuery = useDebounce(searchQuery, 300);
+    const { data: searchQuery, mutate: setSearchQuery } = useSWR('expenses_search_query', async () => (await dataService.getSetting('expenses_search_query'))?.value || '', { revalidateOnFocus: false });
+    const { data: categoryFilter, mutate: setCategoryFilter } = useSWR('expenses_category_filter', async () => (await dataService.getSetting('expenses_category_filter'))?.value || 'all', { revalidateOnFocus: false });
+    const { data: dateRange, mutate: setDateRange } = useSWR('expenses_date_range', async () => {
+        const setting = await dataService.getSetting('expenses_date_range');
+        if (setting?.value) {
+            return { from: new Date(setting.value.from), to: new Date(setting.value.to) };
+        }
+        const now = new Date();
+        return { from: startOfMonth(now), to: endOfMonth(now) };
+    }, { revalidateOnFocus: false });
 
-    useEffect(() => {
-        const savedCategory = localStorage.getItem('expenses_category_filter');
-        if (savedCategory) setCategoryFilter(savedCategory);
-        const savedSearch = localStorage.getItem('expenses_search_query');
-        if (savedSearch !== null) setSearchQuery(savedSearch);
-    }, []);
+    const handleSearchChange = (value: string) => { setSearchQuery(value, false); dataService.setSetting('expenses_search_query', value); };
+    const handleCategoryChange = (value: string) => { setCategoryFilter(value, false); dataService.setSetting('expenses_category_filter', value); };
+    const handleDateChange = (range?: DateRange) => { setDateRange(range, false); dataService.setSetting('expenses_date_range', range); };
 
-    useEffect(() => { localStorage.setItem('expenses_category_filter', categoryFilter); }, [categoryFilter]);
-    useEffect(() => { localStorage.setItem('expenses_search_query', searchQuery); }, [searchQuery]);
-    useEffect(() => { if (dateRange) localStorage.setItem('expenses_date_range', JSON.stringify(dateRange)); }, [dateRange]);
+    const debouncedSearchQuery = useDebounce(searchQuery || '', 300);
 
     const expenses = useLiveQuery(() => {
         const from = dateRange?.from ? startOfDay(dateRange.from) : new Date(0);
         const to = dateRange?.to ? endOfMonth(dateRange.to) : new Date();
 
-        if (categoryFilter === 'all') {
+        if (categoryFilter === 'all' || !categoryFilter) {
             return db.expenses.where('expenseDate').between(from, to, true, true).reverse().toArray();
         } else {
             return db.expenses.where('[category+expenseDate]').between([categoryFilter, from], [categoryFilter, to], true, true).reverse().toArray();
@@ -118,7 +117,7 @@ export default function ExpensesPage() {
         toast.success("Liste des dépenses exportée avec succès.");
     };
 
-    const isLoading = expenses === undefined;
+    const isLoading = expenses === undefined || !isClient;
 
     return (
         <>
@@ -132,8 +131,8 @@ export default function ExpensesPage() {
                         <p className="text-muted-foreground">Suivez toutes les charges de votre commerce.</p>
                     </div>
                      <div className="flex items-center gap-2 flex-wrap">
-                        {isClient ? (
-                            <DateRangePicker date={dateRange} setDate={setDateRange} />
+                        {!isLoading ? (
+                            <DateRangePicker date={dateRange} setDate={handleDateChange} />
                         ) : (
                             <Skeleton className="h-10 w-[260px]" />
                         )}
@@ -159,9 +158,9 @@ export default function ExpensesPage() {
                         <div className="flex flex-col sm:flex-row gap-4">
                             <div className="relative flex-grow">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                <Input placeholder="Rechercher par description..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9 w-full" />
+                                <Input placeholder="Rechercher par description..." value={searchQuery || ''} onChange={(e) => handleSearchChange(e.target.value)} className="pl-9 w-full" />
                             </div>
-                             <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-[200px]">
+                             <select value={categoryFilter || 'all'} onChange={(e) => handleCategoryChange(e.target.value)} className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-[200px]">
                                 <option value="all">Toutes les catégories</option>
                                 {expenseCategories.map(cat => (
                                     <option key={cat} value={cat}>{cat}</option>

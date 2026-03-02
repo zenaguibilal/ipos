@@ -26,7 +26,7 @@ export function DeleteCustomerDialog({ isOpen, onOpenChange, customer }: DeleteC
         setIsDeleting(true);
 
         try {
-            await dataService.remove('customers', customer.id);
+            await dataService.deleteCustomer(customer.id);
             toast.success(`Client "${customer.firstName} ${customer.lastName}" supprimé.`);
             onOpenChange(false);
         } catch (error) {

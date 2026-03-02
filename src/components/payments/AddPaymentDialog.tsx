@@ -42,7 +42,7 @@ export function AddPaymentDialog({ isOpen, onOpenChange, customer, outstandingBa
         customerName: `${customer.firstName} ${customer.lastName}`,
         amount: paymentAmount,
       };
-      await dataService.save('payments', paymentData);
+      await dataService.addPayment(paymentData);
 
       toast.success(`Paiement de ${formatCurrency(paymentAmount)} enregistré pour ${customer.firstName} ${customer.lastName}.`);
       onOpenChange(false);

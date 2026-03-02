@@ -32,7 +32,7 @@ export function CancelSaleDialog({ isOpen, onOpenChange, sale }: CancelSaleDialo
         setIsCancelling(true);
 
         try {
-            await dataService.cancelSale(sale.id);
+            await dataService.deleteSale(sale.id);
             toast.success(`Vente #${sale.invoiceNumber} annulée.`);
             onOpenChange(false);
         } catch (error: any) {
@@ -50,7 +50,7 @@ export function CancelSaleDialog({ isOpen, onOpenChange, sale }: CancelSaleDialo
               <AlertDialogTitle>Annuler la vente #{sale?.invoiceNumber} ?</AlertDialogTitle>
               <AlertDialogDescription>
                 Cette action est irréversible. Les produits de cette vente seront
-                réintégrés au stock.
+                réintégrés au stock et le solde du client sera mis à jour.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

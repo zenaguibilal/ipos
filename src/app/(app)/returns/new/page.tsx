@@ -52,7 +52,7 @@ export default function NewReturnPage() {
             if (sale) {
                 setFoundSale(sale);
                 const returnable: ReturnableItem[] = sale.items.map(item => ({
-                    productId: item.id as number,
+                    productId: typeof item.id === 'number' ? item.id : null,
                     productName: item.name,
                     quantity: 0,
                     price: item.price,
@@ -73,7 +73,7 @@ export default function NewReturnPage() {
         }
     };
     
-    const handleItemChange = (productId: number | string, field: keyof ReturnableItem, value: any) => {
+    const handleItemChange = (productId: number | string | null, field: keyof ReturnableItem, value: any) => {
         setReturnedItems(prev => prev.map(item => {
             if (item.productId === productId) {
                 if (field === 'quantity') {
@@ -98,7 +98,7 @@ export default function NewReturnPage() {
         setIsSaving(true);
         
         try {
-            await dataService.recordReturn({
+            await dataService.addReturn({
                 foundSale,
                 returnedItems: returnedItems.filter(i => i.quantity > 0),
                 totalReturnValue,
@@ -174,7 +174,7 @@ export default function NewReturnPage() {
                                         </TableRow></TableHeader>
                                         <TableBody>
                                             {returnedItems.map(item => (
-                                                <TableRow key={item.productId}>
+                                                <TableRow key={String(item.productId)}>
                                                     <TableCell className="font-medium">{item.productName}</TableCell>
                                                     <TableCell className="text-center">{item.maxQuantity}</TableCell>
                                                     <TableCell className="text-center">

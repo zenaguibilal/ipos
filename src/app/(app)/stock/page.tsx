@@ -3,7 +3,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/database';
-import { useRouter } from 'next/navigation';
+import { dataService } from '@/services/data-service';
+import useSWR from 'swr';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -25,31 +26,25 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 
 export default function StockPage() {
-    const [searchQuery, setSearchQuery] = useState('');
     const [selectedIntake, setSelectedIntake] = useState<StockIntake | null>(null);
-    const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
+    const [isClient, setIsClient] = useState(false);
+    
+    const { data: searchQuery, mutate: setSearchQuery } = useSWR('stock_search_query', async () => (await dataService.getSetting('stock_search_query'))?.value || '', { revalidateOnFocus: false });
+    const { data: dateRange, mutate: setDateRange } = useSWR('stock_date_range', async () => {
+        const setting = await dataService.getSetting('stock_date_range');
+        if (setting?.value) {
+            return { from: new Date(setting.value.from), to: new Date(setting.value.to) };
+        }
         const today = new Date();
         return { from: startOfDay(subDays(today, 29)), to: endOfDay(today) };
-    });
-    const [isClient, setIsClient] = useState(false);
+    }, { revalidateOnFocus: false });
+
     useEffect(() => { setIsClient(true) }, []);
 
-    const debouncedSearchQuery = useDebounce(searchQuery, 300);
+    const handleSearchChange = (value: string) => { setSearchQuery(value, false); dataService.setSetting('stock_search_query', value); };
+    const handleDateChange = (range?: DateRange) => { setDateRange(range, false); dataService.setSetting('stock_date_range', range); };
 
-    useEffect(() => {
-        try {
-            const storedRange = localStorage.getItem('stock_intake_date_range');
-            if (storedRange) {
-                const parsed = JSON.parse(storedRange);
-                setDateRange({ from: parsed.from ? new Date(parsed.from) : undefined, to: parsed.to ? new Date(parsed.to) : undefined });
-            }
-        } catch (e) { console.error(e); }
-        const savedSearch = localStorage.getItem('stock_search_query');
-        if (savedSearch !== null) setSearchQuery(savedSearch);
-    }, []);
-
-    useEffect(() => { if (dateRange) localStorage.setItem('stock_intake_date_range', JSON.stringify(dateRange)); }, [dateRange]);
-    useEffect(() => { localStorage.setItem('stock_search_query', searchQuery); }, [searchQuery]);
+    const debouncedSearchQuery = useDebounce(searchQuery || '', 300);
 
     const stockIntakes = useLiveQuery(() => {
         const from = dateRange?.from ? startOfDay(dateRange.from) : new Date(0);
@@ -93,7 +88,7 @@ export default function StockPage() {
         toast.success("Historique des réceptions exporté avec succès.");
     };
 
-    const isLoading = stockIntakes === undefined;
+    const isLoading = stockIntakes === undefined || searchQuery === undefined || dateRange === undefined;
 
     return (
         <>
@@ -102,8 +97,8 @@ export default function StockPage() {
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
                     <div><h1 className="text-2xl font-bold">Réception de Stock</h1><p className="text-muted-foreground">Consultez l'historique des réceptions de marchandises.</p></div>
                     <div className="flex items-center gap-2 flex-wrap">
-                        {isClient ? (
-                            <DateRangePicker date={dateRange} setDate={setDateRange} />
+                        {isClient && !isLoading ? (
+                            <DateRangePicker date={dateRange} setDate={handleDateChange} />
                         ) : (
                             <Skeleton className="h-10 w-[260px]" />
                         )}
@@ -125,7 +120,7 @@ export default function StockPage() {
                     <CardHeader>
                         <div className="relative w-full max-w-sm">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input placeholder="Rechercher par N° facture ou fournisseur..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9 w-full" />
+                            <Input placeholder="Rechercher par N° facture ou fournisseur..." value={searchQuery || ''} onChange={(e) => handleSearchChange(e.target.value)} className="pl-9 w-full" />
                         </div>
                     </CardHeader>
                     <CardContent>

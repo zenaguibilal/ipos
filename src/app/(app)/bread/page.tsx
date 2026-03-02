@@ -4,6 +4,7 @@ import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/database';
 import { dataService } from '@/services/data-service';
+import useSWR from 'swr';
 import Link from 'next/link';
 
 import { Button } from '@/components/ui/button';
@@ -42,13 +43,9 @@ import BreadCustomerDialog from '@/components/bread/BreadCustomerDialog';
 import EditOrderDialog from '@/components/bread/EditOrderDialog';
 import DeleteCustomerDialog from '@/components/bread/DeleteCustomerDialog';
 
-
 type StatusFilter = "all" | "not-delivered" | "not-paid";
 
 export default function BreadOrdersPage() {
-    const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-    const [searchQuery, setSearchQuery] = useState('');
-    const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
     const [selectedOrders, setSelectedOrders] = useState<Set<number>>(new Set());
 
     const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
@@ -64,24 +61,15 @@ export default function BreadOrdersPage() {
     const [isClient, setIsClient] = useState(false);
     useEffect(() => { setIsClient(true) }, []);
 
-    useEffect(() => {
-        const savedDate = localStorage.getItem('bread_selected_date');
-        if (savedDate) {
-            const parsed = new Date(savedDate);
-            if (!isNaN(parsed.valueOf())) setSelectedDate(parsed);
-        }
-        const savedFilter = localStorage.getItem('bread_status_filter') as StatusFilter;
-        if (savedFilter && ['all', 'not-delivered', 'not-paid'].includes(savedFilter)) setStatusFilter(savedFilter);
-        
-        const savedSearch = localStorage.getItem('bread_search_query');
-        if (savedSearch !== null) setSearchQuery(savedSearch);
-    }, []);
-
-    useEffect(() => { localStorage.setItem('bread_selected_date', selectedDate.toISOString()); }, [selectedDate]);
-    useEffect(() => { localStorage.setItem('bread_status_filter', statusFilter); }, [statusFilter]);
-    useEffect(() => { localStorage.setItem('bread_search_query', searchQuery); }, [searchQuery]);
-
-    const dateString = format(selectedDate, 'yyyy-MM-dd');
+    const { data: selectedDate, mutate: setSelectedDate } = useSWR('bread_selected_date', async () => new Date((await dataService.getSetting('bread_selected_date'))?.value || new Date()), { revalidateOnFocus: false });
+    const { data: searchQuery, mutate: setSearchQuery } = useSWR('bread_search_query', async () => (await dataService.getSetting('bread_search_query'))?.value || '', { revalidateOnFocus: false });
+    const { data: statusFilter, mutate: setStatusFilter } = useSWR('bread_status_filter', async () => (await dataService.getSetting('bread_status_filter'))?.value || 'all', { revalidateOnFocus: false });
+    
+    const handleDateChange = (date?: Date) => { if(date) { setSelectedDate(date, false); dataService.setSetting('bread_selected_date', date.toISOString()); }};
+    const handleSearchChange = (value: string) => { setSearchQuery(value, false); dataService.setSetting('bread_search_query', value); };
+    const handleStatusChange = (value: StatusFilter) => { setStatusFilter(value, false); dataService.setSetting('bread_status_filter', value); };
+    
+    const dateString = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : '';
     const breadCustomers = useLiveQuery(() => db.breadCustomers.orderBy('name').toArray());
     const dailyOrders = useLiveQuery(() => db.dailyBreadOrders.where('date').equals(dateString).toArray(), [dateString]);
     const companyProfile = useLiveQuery(() => db.companyProfile.get(1));
@@ -99,6 +87,7 @@ export default function BreadOrdersPage() {
     }, [breadCustomers, dailyOrders]);
 
     const filteredOrders = useMemo(() => {
+        if (!searchQuery) return breadOrders;
         return breadOrders.filter(order => {
             const nameMatch = order.name.toLowerCase().includes(searchQuery.toLowerCase());
             if (!nameMatch) return false;
@@ -201,7 +190,7 @@ export default function BreadOrdersPage() {
         setTimeout(() => { window.print(); }, 100);
     };
 
-    const isLoading = breadCustomers === undefined || dailyOrders === undefined || companyProfile === undefined;
+    const isLoading = breadCustomers === undefined || dailyOrders === undefined || companyProfile === undefined || !isClient || !selectedDate;
     const breadPrice = companyProfile?.breadPrice ?? 0;
     const isPriceSet = breadPrice > 0;
 
@@ -213,8 +202,8 @@ export default function BreadOrdersPage() {
                     <p className="text-muted-foreground">Gérez les commandes de pain quotidiennes.</p>
                 </div>
                  <div className="flex items-center gap-2 flex-wrap">
-                    {isClient ? (
-                        <DatePicker date={selectedDate} setDate={setSelectedDate} />
+                    {!isLoading && selectedDate ? (
+                        <DatePicker date={selectedDate} setDate={handleDateChange} />
                     ) : (
                         <Skeleton className="h-10 w-[280px]" />
                     )}
@@ -232,7 +221,7 @@ export default function BreadOrdersPage() {
                         <div className="flex flex-col md:flex-row gap-4 justify-between">
                             <div className="relative flex-grow">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                <Input placeholder="Rechercher par nom..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9 w-full" />
+                                <Input placeholder="Rechercher par nom..." value={searchQuery || ''} onChange={(e) => handleSearchChange(e.target.value)} className="pl-9 w-full" />
                             </div>
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
@@ -242,9 +231,9 @@ export default function BreadOrdersPage() {
                                     </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent>
-                                    <DropdownMenuItem onSelect={() => setStatusFilter("all")}>Tout</DropdownMenuItem>
-                                    <DropdownMenuItem onSelect={() => setStatusFilter("not-delivered")}>Non Livré</DropdownMenuItem>
-                                    <DropdownMenuItem onSelect={() => setStatusFilter("not-paid")}>Non Payé</DropdownMenuItem>
+                                    <DropdownMenuItem onSelect={() => handleStatusChange("all")}>Tout</DropdownMenuItem>
+                                    <DropdownMenuItem onSelect={() => handleStatusChange("not-delivered")}>Non Livré</DropdownMenuItem>
+                                    <DropdownMenuItem onSelect={() => handleStatusChange("not-paid")}>Non Payé</DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>
                         </div>
@@ -275,9 +264,9 @@ export default function BreadOrdersPage() {
                              )}
                         </div>
                          <div className="flex gap-2">
-                            <Button variant={statusFilter === 'all' ? 'secondary' : 'ghost'} size="sm" onClick={() => setStatusFilter('all')}>Tout</Button>
-                            <Button variant={statusFilter === 'not-delivered' ? 'secondary' : 'ghost'} size="sm" onClick={() => setStatusFilter('not-delivered')} className="flex items-center gap-1"><X className="h-4 w-4"/>Non Livré</Button>
-                            <Button variant={statusFilter === 'not-paid' ? 'secondary' : 'ghost'} size="sm" onClick={() => setStatusFilter('not-paid')} className="flex items-center gap-1"><PackageOpen className="h-4 w-4"/>Non Payé</Button>
+                            <Button variant={statusFilter === 'all' ? 'secondary' : 'ghost'} size="sm" onClick={() => handleStatusChange('all')}>Tout</Button>
+                            <Button variant={statusFilter === 'not-delivered' ? 'secondary' : 'ghost'} size="sm" onClick={() => handleStatusChange('not-delivered')} className="flex items-center gap-1"><X className="h-4 w-4"/>Non Livré</Button>
+                            <Button variant={statusFilter === 'not-paid' ? 'secondary' : 'ghost'} size="sm" onClick={() => handleStatusChange('not-paid')} className="flex items-center gap-1"><PackageOpen className="h-4 w-4"/>Non Payé</Button>
                         </div>
                     </div>
                 </Card>
@@ -341,7 +330,7 @@ export default function BreadOrdersPage() {
                 <AlertDialogHeader>
                     <AlertDialogTitle>Réinitialiser les commandes du jour ?</AlertDialogTitle>
                     <AlertDialogDescription>
-                        Cette action supprimera toutes les modifications (quantités, statuts de paiement et de livraison) pour le <span className="font-bold">{format(selectedDate, 'd MMMM yyyy', { locale: fr })}</span>. Les commandes reviendront à leur quantité par défaut.
+                        Cette action supprimera toutes les modifications (quantités, statuts de paiement et de livraison) pour le <span className="font-bold">{selectedDate ? format(selectedDate, 'd MMMM yyyy', { locale: fr }) : ''}</span>. Les commandes reviendront à leur quantité par défaut.
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -355,7 +344,7 @@ export default function BreadOrdersPage() {
         </AlertDialog>
 
         <div className="hidden">
-            <PrintableBreadList ref={printableRef} orders={filteredOrders} date={selectedDate} companyProfile={companyProfile ?? null} />
+            {selectedDate && <PrintableBreadList ref={printableRef} orders={filteredOrders} date={selectedDate} companyProfile={companyProfile ?? null} />}
         </div>
     </main>
     );

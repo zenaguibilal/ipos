@@ -20,9 +20,16 @@ export interface Customer {
     lastName: string;
     phone?: string;
     settlementDay?: number;
+    
+    // Aggregated data for performance
+    totalSpent: number;
+    outstandingBalance: number;
+    lastActivityDate?: Date;
+
     createdAt?: Date;
     updatedAt?: Date;
 }
+
 
 export interface SaleItem {
     id: number | string; // string for custom items
@@ -87,9 +94,6 @@ export interface Payment {
 
 export interface CustomerWithSalesData extends Customer {
     id: number; // Make id mandatory here
-    totalSpent: number;
-    outstandingBalance: number;
-    lastActivityDate?: Date | null;
     isReminderDue?: boolean;
 }
 

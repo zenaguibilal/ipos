@@ -35,7 +35,7 @@ export function ProductDialog({ isOpen, onOpenChange, product }: ProductDialogPr
     const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
-        if (product) {
+        if (product && isOpen) {
             setFormState({
                 name: product.name,
                 category: product.category || '',
@@ -46,7 +46,7 @@ export function ProductDialog({ isOpen, onOpenChange, product }: ProductDialogPr
                 barcodes: product.barcodes || [],
                 imageUrl: product.imageUrl || '',
             });
-        } else {
+        } else if (!product && isOpen) {
             setFormState(initialFormState);
         }
     }, [product, isOpen]);
@@ -91,7 +91,7 @@ export function ProductDialog({ isOpen, onOpenChange, product }: ProductDialogPr
             return;
         }
         
-        const productData: Omit<Product, 'id'> = {
+        const productData = {
             name,
             category,
             price: priceNum,
@@ -104,10 +104,10 @@ export function ProductDialog({ isOpen, onOpenChange, product }: ProductDialogPr
 
         try {
             if (product && product.id) {
-                await dataService.update('products', product.id, productData);
+                await dataService.updateProduct(product.id as number, productData);
                 toast.success(`Produit ${name} mis à jour.`);
             } else {
-                await dataService.save('products', productData);
+                await dataService.addProduct(productData);
                 toast.success(`Produit ${name} ajouté.`);
             }
             onOpenChange(false);

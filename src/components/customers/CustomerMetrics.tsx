@@ -2,18 +2,15 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, DollarSign, Hourglass } from 'lucide-react';
-import type { CustomerWithSalesData } from '@/lib/types';
+import type { Customer } from '@/lib/types';
 import { formatCurrency } from '@/lib/utils';
 
 
 interface CustomerMetricsProps {
-    metrics: {
-        totalSpent: number;
-        outstandingBalance: number;
-    }
+    customer: Customer;
 }
 
-export function CustomerMetrics({ metrics }: CustomerMetricsProps) {
+export function CustomerMetrics({ customer }: CustomerMetricsProps) {
     return (
         <Card>
             <CardHeader>
@@ -27,7 +24,7 @@ export function CustomerMetrics({ metrics }: CustomerMetricsProps) {
                         </div>
                         <div>
                             <p className="text-sm text-muted-foreground">Total Dépensé</p>
-                            <p className="text-2xl font-bold">{formatCurrency(metrics.totalSpent)}</p>
+                            <p className="text-2xl font-bold">{formatCurrency(customer.totalSpent)}</p>
                         </div>
                     </div>
                 </div>
@@ -38,7 +35,7 @@ export function CustomerMetrics({ metrics }: CustomerMetricsProps) {
                         </div>
                         <div>
                             <p className="text-sm text-destructive/80">Solde Impayé</p>
-                            <p className="text-2xl font-bold text-destructive">{formatCurrency(metrics.outstandingBalance)}</p>
+                            <p className="text-2xl font-bold text-destructive">{formatCurrency(customer.outstandingBalance)}</p>
                         </div>
                     </div>
                 </div>

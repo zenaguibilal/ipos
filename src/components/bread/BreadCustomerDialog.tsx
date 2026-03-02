@@ -33,7 +33,7 @@ export default function BreadCustomerDialog({ isOpen, onOpenChange }: BreadCusto
         defaultOrderQuantity: parseInt(quantity),
         isActive: true,
       };
-      await dataService.save('breadCustomers', customerData);
+      await dataService.addBreadCustomer(customerData);
 
       toast.success(`Client "${name}" ajouté avec succès.`);
       onOpenChange(false);

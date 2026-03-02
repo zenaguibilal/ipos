@@ -11,6 +11,8 @@ import { toast } from 'sonner';
 import type { CompanyProfile } from '@/lib/types';
 import { Skeleton } from '../ui/skeleton';
 import { Loader2 } from 'lucide-react';
+import { dataService } from '@/services/data-service';
+
 
 export function CompanyProfileForm() {
     const companyProfile = useLiveQuery(() => db.companyProfile.get(1));
@@ -38,16 +40,14 @@ export function CompanyProfileForm() {
         setIsSaving(true);
         setError(null);
 
-        const dataToSave: CompanyProfile = {
+        const dataToSave: Partial<CompanyProfile> = {
             ...formState,
-            id: 1, // Ensure ID is always 1 for the singleton
             breadPrice: formState.breadPrice ? Number(formState.breadPrice) : undefined,
             breadPurchasePrice: formState.breadPurchasePrice ? Number(formState.breadPurchasePrice) : undefined,
-            updatedAt: new Date()
         };
 
         try {
-            await db.companyProfile.put(dataToSave);
+            await dataService.updateCompanyProfile(dataToSave);
             toast.success('Profil de l\'entreprise mis à jour avec succès.');
         } catch (err) {
             setError("Une erreur est survenue lors de la mise à jour du profil.");

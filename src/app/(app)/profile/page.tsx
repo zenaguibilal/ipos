@@ -3,7 +3,6 @@
 import { CompanyProfileForm } from '@/components/profile/company-profile-form';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { BackupAndRestore } from '@/components/profile/BackupAndRestore';
-import { GoogleSync } from '@/components/profile/GoogleSync';
 
 export default function ProfilePage() {
     return (
@@ -17,15 +16,6 @@ export default function ProfilePage() {
                         </CardDescription>
                     </CardHeader>
                     <CompanyProfileForm />
-                </Card>
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Synchronisation Google Sheets</CardTitle>
-                        <CardDescription>
-                            Sauvegardez vos données sur une feuille de calcul Google Sheets via un Web App.
-                        </CardDescription>
-                    </CardHeader>
-                    <GoogleSync />
                 </Card>
                 <Card>
                     <CardHeader>

@@ -28,11 +28,11 @@ export function DeleteProductDialog({ isOpen, onOpenChange, product }: DeletePro
     const [isDeleting, setIsDeleting] = useState(false);
 
     const handleDelete = async () => {
-        if (!product || !product.id) return;
+        if (!product || !product.id || typeof product.id !== 'number') return;
         setIsDeleting(true);
 
         try {
-            await dataService.remove('products', product.id);
+            await dataService.deleteProduct(product.id as number);
             toast.success(`Produit "${product.name}" supprimé.`);
             onOpenChange(false);
         } catch (error) {

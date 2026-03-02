@@ -32,7 +32,7 @@ export function CancelReturnDialog({ isOpen, onOpenChange, productReturn }: Canc
         setIsCancelling(true);
 
         try {
-            await dataService.cancelReturn(productReturn.id);
+            await dataService.deleteReturn(productReturn.id);
             toast.success(`Retour sur facture #${productReturn.originalInvoiceNumber} annulé.`);
             onOpenChange(false);
         } catch (error: any) {
@@ -49,7 +49,7 @@ export function CancelReturnDialog({ isOpen, onOpenChange, productReturn }: Canc
             <AlertDialogHeader>
               <AlertDialogTitle>Annuler le retour sur facture #{productReturn?.originalInvoiceNumber} ?</AlertDialogTitle>
               <AlertDialogDescription>
-                Cette action est irréversible. Les produits de ce retour qui ont été réintégrés au stock seront déduits à nouveau.
+                Cette action est irréversible. Le stock et le solde client seront mis à jour en conséquence.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

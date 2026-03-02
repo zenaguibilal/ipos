@@ -16,7 +16,6 @@ import { CustomerDialog } from '@/components/customers/customer-dialog';
 import { CustomerMetrics } from '@/components/customers/CustomerMetrics';
 import { CustomerActivity } from '@/components/customers/CustomerActivity';
 import { AddPaymentDialog } from '@/components/payments/AddPaymentDialog';
-import { useCustomerMetrics } from '@/hooks/useCustomerMetrics';
 
 
 export default function CustomerDetailPage() {
@@ -30,8 +29,6 @@ export default function CustomerDetailPage() {
     const customer = useLiveQuery(() => db.customers.get(customerId), [customerId]);
     const sales = useLiveQuery(() => db.sales.where('customerId').equals(customerId).reverse().toArray(), [customerId]);
     const payments = useLiveQuery(() => db.payments.where('customerId').equals(customerId).reverse().toArray(), [customerId]);
-
-    const metrics = useCustomerMetrics(customerId, sales, payments);
 
     const combinedActivity = useMemo(() => {
         if (!sales || !payments) return [];
@@ -68,12 +65,12 @@ export default function CustomerDetailPage() {
                     customer={customer}
                 />
             )}
-             {customer && metrics && (
+             {customer && (
                 <AddPaymentDialog
                     isOpen={isPaymentOpen}
                     onOpenChange={setIsPaymentOpen}
                     customer={customer}
-                    outstandingBalance={metrics.outstandingBalance}
+                    outstandingBalance={customer.outstandingBalance}
                 />
              )}
             <main className="flex-1 overflow-auto p-4 sm:p-6">
@@ -124,11 +121,11 @@ export default function CustomerDetailPage() {
                                 </div>
                                  <div className="flex justify-between items-center">
                                     <span className="text-muted-foreground">Dernière activité</span>
-                                    <span className="font-semibold">{metrics.lastActivityDate ? format(safeToDate(metrics.lastActivityDate), 'd MMM yyyy', { locale: fr }) : 'Aucune'}</span>
+                                    <span className="font-semibold">{customer.lastActivityDate ? format(safeToDate(customer.lastActivityDate), 'd MMM yyyy', { locale: fr }) : 'Aucune'}</span>
                                 </div>
                             </CardContent>
                         </Card>
-                        {metrics && <CustomerMetrics metrics={metrics} />}
+                        <CustomerMetrics customer={customer} />
                     </div>
 
                     <div className="lg:col-span-2">

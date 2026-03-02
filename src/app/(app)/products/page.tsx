@@ -1,8 +1,10 @@
 'use client';
 
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/database';
+import { dataService } from '@/services/data-service';
+import useSWR from 'swr';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -26,26 +28,18 @@ export default function ProductsPage() {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
     const [productToDelete, setProductToDelete] = useState<Product | null>(null);
-    const [searchQuery, setSearchQuery] = useState('');
-    const [selectedCategory, setSelectedCategory] = useState('all');
-    const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
     const [selectedProducts, setSelectedProducts] = useState<Set<number>>(new Set());
     const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false);
 
-    const debouncedSearchQuery = useDebounce(searchQuery, 300);
+    const { data: searchQuery, mutate: setSearchQuery } = useSWR('products_search_query', async () => (await dataService.getSetting('products_search_query'))?.value || '', { revalidateOnFocus: false });
+    const { data: selectedCategory, mutate: setSelectedCategory } = useSWR('products_category_filter', async () => (await dataService.getSetting('products_category_filter'))?.value || 'all', { revalidateOnFocus: false });
+    const { data: viewMode, mutate: setViewMode } = useSWR('products_view_mode', async () => (await dataService.getSetting('products_view_mode'))?.value || 'grid', { revalidateOnFocus: false });
 
-    useEffect(() => {
-        const savedCategory = localStorage.getItem('products_category_filter');
-        if (savedCategory) setSelectedCategory(savedCategory);
-        const savedSearch = localStorage.getItem('products_search_query');
-        if (savedSearch !== null) setSearchQuery(savedSearch);
-        const savedViewMode = localStorage.getItem('products_view_mode') as 'grid' | 'table';
-        if (savedViewMode) setViewMode(savedViewMode);
-    }, []);
-
-    useEffect(() => { localStorage.setItem('products_category_filter', selectedCategory); }, [selectedCategory]);
-    useEffect(() => { localStorage.setItem('products_search_query', searchQuery); }, [searchQuery]);
-    useEffect(() => { localStorage.setItem('products_view_mode', viewMode); }, [viewMode]);
+    const handleSearchChange = (value: string) => { setSearchQuery(value, false); dataService.setSetting('products_search_query', value); };
+    const handleCategoryChange = (value: string) => { setSelectedCategory(value, false); dataService.setSetting('products_category_filter', value); };
+    const handleViewModeChange = (value: 'grid' | 'table') => { setViewMode(value, false); dataService.setSetting('products_view_mode', value); };
+    
+    const debouncedSearchQuery = useDebounce(searchQuery || '', 300);
 
     const products = useLiveQuery(() => {
         if (selectedCategory === 'all') {
@@ -140,11 +134,11 @@ export default function ProductsPage() {
         if (selectedProducts.size === filteredProducts.length) {
             setSelectedProducts(new Set());
         } else {
-            setSelectedProducts(new Set(filteredProducts.map(p => p.id!)));
+            setSelectedProducts(new Set(filteredProducts.map(p => p.id as number)));
         }
     }, [filteredProducts, selectedProducts.size]);
 
-    const isLoading = products === undefined;
+    const isLoading = products === undefined || searchQuery === undefined || selectedCategory === undefined || viewMode === undefined;
 
     return (
         <>
@@ -185,10 +179,10 @@ export default function ProductsPage() {
                         <div className="flex flex-col sm:flex-row gap-4">
                             <div className="relative flex-grow">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                <Input placeholder="Rechercher par nom ou code-barres..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9 w-full" />
+                                <Input placeholder="Rechercher par nom ou code-barres..." value={searchQuery || ''} onChange={(e) => handleSearchChange(e.target.value)} className="pl-9 w-full" />
                             </div>
                              <div className="flex items-center gap-2">
-                                <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                                <Select value={selectedCategory} onValueChange={handleCategoryChange}>
                                     <SelectTrigger className="w-full sm:w-[200px]"><SelectValue placeholder="Filtrer par catégorie" /></SelectTrigger>
                                     <SelectContent>
                                         {categories.map(cat => (
@@ -197,8 +191,8 @@ export default function ProductsPage() {
                                     </SelectContent>
                                 </Select>
                                 <div className="flex rounded-md bg-muted p-1">
-                                    <Button variant={viewMode === 'grid' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('grid')}><LayoutGrid className="h-5 w-5"/></Button>
-                                    <Button variant={viewMode === 'table' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('table')}><List className="h-5 w-5"/></Button>
+                                    <Button variant={viewMode === 'grid' ? 'secondary' : 'ghost'} size="icon" onClick={() => handleViewModeChange('grid')}><LayoutGrid className="h-5 w-5"/></Button>
+                                    <Button variant={viewMode === 'table' ? 'secondary' : 'ghost'} size="icon" onClick={() => handleViewModeChange('table')}><List className="h-5 w-5"/></Button>
                                 </div>
                             </div>
                         </div>
@@ -241,8 +235,8 @@ export default function ProductsPage() {
                                             product={product} 
                                             onEdit={handleEditClick} 
                                             onDelete={setProductToDelete}
-                                            isSelected={selectedProducts.has(product.id!)}
-                                            onToggleSelection={() => toggleProductSelection(product.id!)}
+                                            isSelected={selectedProducts.has(product.id as number)}
+                                            onToggleSelection={() => toggleProductSelection(product.id as number)}
                                         />
                                     ))}
                                 </div>

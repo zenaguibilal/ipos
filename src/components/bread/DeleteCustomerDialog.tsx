@@ -43,7 +43,7 @@ export default function DeleteCustomerDialog({ isOpen, onOpenChange, customer }:
             <AlertDialogHeader>
               <AlertDialogTitle>Êtes-vous absolument sûr ?</AlertDialogTitle>
               <AlertDialogDescription>
-                Cette action est irréversible. Le client "{customer?.name}" et <span className="font-bold">toutes ses commandes de pain associées</span> seront définitivement supprimés.
+                Cette action est irréversible. Le client "{customer?.name}" et <span className="font-bold">toutes ses commandes de pain et ventes associées</span> seront définitivement supprimés.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
