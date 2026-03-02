@@ -235,15 +235,10 @@ export interface InventoryLog {
     createdAt: Date;
 }
 
-export interface DashboardStats {
+export interface DashboardDateRangeData {
     totalRevenue: number;
     totalProfit: number;
     salesCount: number;
-    inventoryValue: number;
-}
-
-export interface DashboardData {
-    stats: DashboardStats;
     sales: Sale[];
 }
 

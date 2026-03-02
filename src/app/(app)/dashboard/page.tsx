@@ -23,12 +23,18 @@ export default function DashboardPage() {
         to: endOfDay(new Date()),
     });
 
-    const dashboardData = useLiveQuery(
+    const salesData = useLiveQuery(
         () => {
             if (!dateRange?.from) return undefined;
-            return dataService.getDashboardData({ from: dateRange.from, to: dateRange.to || dateRange.from });
+            return dataService.getSalesDashboardData({ from: dateRange.from, to: dateRange.to || dateRange.from });
         },
         [dateRange],
+        undefined
+    );
+
+    const inventoryValue = useLiveQuery(
+        () => dataService.getInventoryValue(),
+        [],
         undefined
     );
 
@@ -38,7 +44,7 @@ export default function DashboardPage() {
         []
     );
 
-    const isLoading = dashboardData === undefined || unreadAlerts === undefined;
+    const isLoading = salesData === undefined || unreadAlerts === undefined || inventoryValue === undefined;
     
     const handleDismissAlert = async (id: number) => {
         try {
@@ -49,6 +55,13 @@ export default function DashboardPage() {
             toast.error("Impossible de marquer l'alerte comme lue.");
         }
     };
+
+    const statsForCards = salesData && inventoryValue !== undefined ? {
+        totalRevenue: salesData.totalRevenue,
+        totalProfit: salesData.totalProfit,
+        salesCount: salesData.salesCount,
+        inventoryValue: inventoryValue
+    } : undefined;
 
 
     return (
@@ -85,15 +98,15 @@ export default function DashboardPage() {
                 <DateRangePicker date={dateRange} setDate={setDateRange} />
             </header>
 
-            <StatsCards stats={dashboardData?.stats} isLoading={isLoading} />
+            <StatsCards stats={statsForCards} isLoading={isLoading} />
 
             <div className="grid lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2">
-                    <RevenueChart sales={dashboardData?.sales} isLoading={isLoading} />
+                    <RevenueChart sales={salesData?.sales} isLoading={isLoading} />
                 </div>
                 <div>
                     <SalesOverview 
-                        sales={dashboardData?.sales ?? []} 
+                        sales={salesData?.sales ?? []} 
                         isLoading={isLoading}
                     />
                 </div>

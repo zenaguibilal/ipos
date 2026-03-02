@@ -1,7 +1,7 @@
 'use client';
 
 import { db, PosDatabase } from '@/lib/database';
-import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, DailyBreadOrder, BreadCustomer, BreadOrder, Notification, InventoryLog, CustomerWithSalesData, ImportAnalysis, DashboardData, DashboardStats, StockIntakeItem } from '@/lib/types';
+import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, DailyBreadOrder, BreadCustomer, BreadOrder, Notification, InventoryLog, CustomerWithSalesData, ImportAnalysis, DashboardDateRangeData, StockIntakeItem } from '@/lib/types';
 import { initialData, type DB, type CollectionName } from './initial-data';
 import Dexie from 'dexie';
 import { startOfDay, endOfDay, format } from 'date-fns';
@@ -872,13 +872,11 @@ class DataService {
   // ====================================================================
   // Dashboard - Read-only, no transaction needed
   // ====================================================================
-  async getDashboardData(params: { from: Date, to: Date }): Promise<DashboardData> {
+  async getSalesDashboardData(params: { from: Date, to: Date }): Promise<DashboardDateRangeData> {
       const { from, to } = params;
 
       const sales = await db.sales.where('createdAt').between(from, to).reverse().toArray();
-      const allProducts = await db.products.toArray();
 
-      // 1. Calculate stats
       let totalRevenue = 0;
       let totalProfit = 0;
       
@@ -893,23 +891,22 @@ class DataService {
           }
           totalProfit += saleProfit;
       }
+      
+      return {
+          totalRevenue,
+          totalProfit,
+          salesCount: sales.length,
+          sales,
+      };
+  }
 
+  async getInventoryValue(): Promise<number> {
+      const allProducts = await db.products.toArray();
       const inventoryValue = allProducts.reduce((acc, p) => {
           const value = p.purchasePrice * p.quantity;
           return acc + (isNaN(value) ? 0 : value);
       }, 0);
-      
-      const stats: DashboardStats = {
-          totalRevenue,
-          totalProfit,
-          salesCount: sales.length,
-          inventoryValue
-      };
-
-      return {
-          stats,
-          sales,
-      };
+      return inventoryValue;
   }
 
 

@@ -2,12 +2,16 @@
 
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton";
-import type { DashboardStats } from "@/lib/types";
 import { formatCurrency } from "@/lib/utils";
 import { DollarSign, ShoppingBag, BarChart, Archive } from "lucide-react";
 
 interface StatsCardsProps {
-    stats?: DashboardStats;
+    stats?: {
+      totalRevenue: number;
+      totalProfit: number;
+      salesCount: number;
+      inventoryValue: number;
+    };
     isLoading: boolean;
 }
 
