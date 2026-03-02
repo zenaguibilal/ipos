@@ -1,7 +1,7 @@
 'use client';
 
 import { db, PosDatabase } from '@/lib/database';
-import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, DailyBreadOrder, BreadCustomer, BreadOrder, Notification, InventoryLog } from '@/lib/types';
+import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, DailyBreadOrder, BreadCustomer, BreadOrder, Notification, InventoryLog, CustomerWithSalesData, ImportAnalysis } from '@/lib/types';
 import { initialData, type DB, type CollectionName } from './initial-data';
 import Dexie from 'dexie';
 import { startOfDay, endOfDay } from 'date-fns';
@@ -151,15 +151,48 @@ class DataService {
   }
 
   // ====================================================================
-  // Customers - All writes are transactional
+  // Customers
   // ====================================================================
+  async getCustomers(params: { query?: string }): Promise<CustomerWithSalesData[]> {
+    const { query } = params;
+    let customers: Customer[];
+
+    if (query) {
+        // Since we can't do a compound startsWith, we do separate indexed queries and merge.
+        const byLastName = db.customers.where('lastName').startsWithIgnoreCase(query).toArray();
+        const byFirstName = db.customers.where('firstName').startsWithIgnoreCase(query).toArray();
+        const byPhone = db.customers.where('phone').startsWith(query).toArray();
+
+        const [last, first, phone] = await Promise.all([byLastName, byFirstName, byPhone]);
+
+        const combined = new Map<number, Customer>();
+        [...last, ...first, ...phone].forEach(c => c.id && combined.set(c.id, c));
+        customers = Array.from(combined.values()).sort((a, b) => a.lastName.localeCompare(b.lastName));
+    } else {
+        customers = await db.customers.orderBy('[lastName+firstName]').toArray();
+    }
+    
+    const customersWithSalesData: CustomerWithSalesData[] = customers.map(c => {
+        let isReminderDue = false;
+        if(c.outstandingBalance > 0 && c.settlementDay && c.lastActivityDate) {
+            const dueDate = new Date(c.lastActivityDate);
+            dueDate.setDate(dueDate.getDate() + c.settlementDay);
+            if (new Date() > dueDate) {
+                isReminderDue = true;
+            }
+        }
+        return { ...c, id: c.id!, isReminderDue };
+    });
+
+    return customersWithSalesData;
+  }
+
   async addCustomer(customer: Omit<Customer, 'id' | 'totalSpent' | 'outstandingBalance' | 'lastActivityDate'>): Promise<number> {
     return db.transaction('rw', db.customers, () => {
         const customerToAdd: Omit<Customer, 'id'> = {
             ...customer,
             totalSpent: 0,
             outstandingBalance: 0,
-            lastActivityDate: new Date(),
         };
         return db.customers.add(customerToAdd as Customer);
     });
@@ -172,11 +205,81 @@ class DataService {
   }
 
   async deleteCustomer(id: number): Promise<void> {
-    return db.transaction('rw', db.customers, () => {
+    return db.transaction('rw', db.customers, db.sales, async () => {
+        const salesCount = await db.sales.where({ customerId: id }).count();
+        if (salesCount > 0) {
+            throw new Error("Suppression impossible : ce client est associé à des ventes. Pour préserver l'intégrité des données, il ne peut pas être supprimé.");
+        }
         return db.customers.delete(id);
     });
   }
+
+  async analyzeCustomerImport(data: any[]): Promise<ImportAnalysis> {
+    const allCustomers = await db.customers.toArray();
+    const customerMapByName: Map<string, Customer> = new Map(allCustomers.map(c => [`${c.firstName.toLowerCase()} ${c.lastName.toLowerCase()}`, c]));
+    const customerMapByPhone: Map<string, Customer> = new Map(allCustomers.filter(c => c.phone).map(c => [c.phone!, c]));
+
+    const analysis: ImportAnalysis = {
+        customersToAdd: [],
+        customersToUpdate: [],
+        skippedRows: [],
+        errorRows: [],
+        totalRows: data.length
+    };
+
+    for (const row of data) {
+        const firstName = row.firstName || row.prenom || row.Prénom;
+        const lastName = row.lastName || row.nom || row.Nom;
+        const phone = row.phone || row.telephone || row.Téléphone;
+
+        if (!firstName || !lastName) {
+            analysis.errorRows.push({ ...row, error: "Prénom ou Nom manquant" });
+            continue;
+        }
+        
+        const fullName = `${String(firstName).toLowerCase()} ${String(lastName).toLowerCase()}`;
+        let existingCustomer = customerMapByName.get(fullName) || (phone ? customerMapByPhone.get(phone) : undefined);
+
+        if (existingCustomer) {
+            analysis.customersToUpdate.push({
+                ...existingCustomer,
+                // Update fields if they are present in the CSV
+                firstName: firstName || existingCustomer.firstName,
+                lastName: lastName || existingCustomer.lastName,
+                phone: phone || existingCustomer.phone,
+            });
+        } else {
+            analysis.customersToAdd.push({
+                firstName,
+                lastName,
+                phone: phone || '',
+            });
+        }
+    }
+    return analysis;
+  }
   
+  async processCustomerImport(toAdd: any[], toUpdate: any[]): Promise<void> {
+    return db.transaction('rw', db.customers, async () => {
+      if (toAdd.length > 0) {
+        const customersToAdd = toAdd.map(c => ({
+          ...c,
+          totalSpent: 0,
+          outstandingBalance: 0,
+        }));
+        await db.customers.bulkAdd(customersToAdd);
+      }
+      if (toUpdate.length > 0) {
+        const updates = toUpdate.map(c => db.customers.update(c.id, {
+            firstName: c.firstName,
+            lastName: c.lastName,
+            phone: c.phone
+        }));
+        await Promise.all(updates);
+      }
+    });
+  }
+
   // ====================================================================
   // Sales - Complex logic is handled atomically
   // ====================================================================
