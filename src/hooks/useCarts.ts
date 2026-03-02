@@ -46,10 +46,6 @@ export const useCarts = () => {
 
     const activeCart = carts?.find(c => c.id === activeCartId);
 
-    const saveCart = useCallback(async (cart: Cart) => {
-        await dataService.saveCart(cart);
-    }, []);
-
     const addCart = useCallback(async () => {
         if(!carts) return;
         const newCart = createNewCart(`Panier ${carts.length + 1}`);
@@ -73,11 +69,10 @@ export const useCarts = () => {
         }
     }, [carts, activeCartId, setActiveCartId]);
     
-    const updateCart = useCallback(async (cartId: string, { product, quantity }: { product: Product; quantity: number }) => {
-        if(!carts) return;
-        const cart = carts.find(c => c.id === cartId);
-        if (!cart) return;
+    const addProductToCart = useCallback(async (product: Product, quantity: number) => {
+        if(!activeCart) return;
 
+        const cart = activeCart;
         const existingItemIndex = cart.items.findIndex(item => item.id === product.id);
         let newItems: CartItem[];
 
@@ -100,15 +95,18 @@ export const useCarts = () => {
             newItems = [...cart.items, newItem];
             toast.success(`${product.name} ajouté au panier.`);
         }
-        await saveCart({ ...cart, items: newItems });
+        await dataService.saveCart({ ...cart, items: newItems });
         
         // Remove flash effect after animation
-        setTimeout(() => {
-            const finalItems = newItems.map(item => ({ ...item, flash: false }));
-            saveCart({ ...cart, items: finalItems });
+        setTimeout(async () => {
+            const currentCart = await dataService.getCart(cart.id);
+            if (currentCart) {
+                const finalItems = currentCart.items.map(item => ({ ...item, flash: false }));
+                await dataService.saveCart({ ...currentCart, items: finalItems });
+            }
         }, 700);
 
-    }, [carts, saveCart]);
+    }, [activeCart]);
     
     const updateCartItemQuantity = useCallback(async (itemId: string | number, newQuantity: number) => {
         if (!activeCart) return;
@@ -118,6 +116,10 @@ export const useCarts = () => {
         const item = activeCart.items[itemIndex];
         if (typeof item.id === 'number' && newQuantity > item.quantity) {
             toast.warning(`Stock limité`, { description: `Maximum ${item.quantity} unités pour ${item.name}.` });
+            // Revert to max quantity
+            const newItems = [...activeCart.items];
+            newItems[itemIndex] = { ...item, cartQuantity: item.quantity };
+            await dataService.saveCart({ ...activeCart, items: newItems });
             return;
         }
 
@@ -127,26 +129,26 @@ export const useCarts = () => {
         } else {
             newItems[itemIndex] = { ...item, cartQuantity: newQuantity };
         }
-        await saveCart({ ...activeCart, items: newItems });
-    }, [activeCart, saveCart]);
+        await dataService.saveCart({ ...activeCart, items: newItems });
+    }, [activeCart]);
 
     const removeCartItem = useCallback(async (itemId: string | number) => {
         if (!activeCart) return;
         const newItems = activeCart.items.filter(item => item.id !== itemId);
-        await saveCart({ ...activeCart, items: newItems });
-    }, [activeCart, saveCart]);
+        await dataService.saveCart({ ...activeCart, items: newItems });
+    }, [activeCart]);
 
     const clearCart = useCallback(async () => {
         if (!activeCart) return;
-        await saveCart({ ...activeCart, items: [], customerId: null, customerName: '', discount: { type: 'fixed', value: 0 } });
-    }, [activeCart, saveCart]);
+        await dataService.saveCart({ ...activeCart, items: [], customerId: null, customerName: '', discount: { type: 'fixed', value: 0 } });
+    }, [activeCart]);
     
     const setCartCustomer = useCallback(async (customer: Customer | null) => {
         if (!activeCart) return;
         const customerId = customer ? customer.id! : null;
         const customerName = customer ? `${customer.firstName} ${customer.lastName}` : '';
-        await saveCart({ ...activeCart, customerId, customerName });
-    }, [activeCart, saveCart]);
+        await dataService.saveCart({ ...activeCart, customerId, customerName });
+    }, [activeCart]);
 
     const setCartDiscount = useCallback(async (discount: { type: 'fixed' | 'percentage'; value: number }) => {
         if (!activeCart) return;
@@ -156,19 +158,19 @@ export const useCarts = () => {
 
         if (discount.type === 'fixed' && value > subtotal) {
             toast.warning("La remise fixe ne peut pas être supérieure au sous-total.");
-            await saveCart({ ...activeCart, discount: { type: 'fixed', value: subtotal } });
+            await dataService.saveCart({ ...activeCart, discount: { type: 'fixed', value: subtotal } });
             return;
         }
 
         if (discount.type === 'percentage' && (value < 0 || value > 100)) {
             toast.warning("Le pourcentage de remise doit être compris entre 0 et 100.");
             const clampedValue = Math.max(0, Math.min(100, value));
-            await saveCart({ ...activeCart, discount: { type: 'percentage', value: clampedValue } });
+            await dataService.saveCart({ ...activeCart, discount: { type: 'percentage', value: clampedValue } });
             return;
         }
 
-        await saveCart({ ...activeCart, discount: { ...discount, value } });
-    }, [activeCart, saveCart]);
+        await dataService.saveCart({ ...activeCart, discount: { ...discount, value } });
+    }, [activeCart]);
 
 
     return {
@@ -178,7 +180,7 @@ export const useCarts = () => {
         setActiveCartId,
         addCart,
         removeCart,
-        updateCart,
+        addProductToCart,
         clearCart,
         updateCartItemQuantity,
         removeCartItem,

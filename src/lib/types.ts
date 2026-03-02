@@ -1,5 +1,4 @@
 
-
 export interface Product {
     id?: number;
     name: string;
@@ -20,6 +19,9 @@ export interface Customer {
     lastName: string;
     phone?: string;
     settlementDay?: number;
+    totalSpent: number;
+    outstandingBalance: number;
+    lastActivityDate?: Date;
     createdAt?: Date;
     updatedAt?: Date;
 }
@@ -87,9 +89,6 @@ export interface Payment {
 
 export interface CustomerWithSalesData extends Customer {
     id: number; // Make id mandatory here
-    totalSpent: number;
-    outstandingBalance: number;
-    lastActivityDate?: Date | null;
     isReminderDue?: boolean;
 }
 
@@ -224,4 +223,13 @@ export interface Expense {
 export interface Setting {
     id: string; // The key for the setting
     value: any;
+}
+
+export interface Notification {
+    id?: number;
+    type: 'low-stock' | 'unpaid-invoice' | 'info';
+    message: string;
+    isRead: boolean;
+    createdAt: Date;
+    relatedId?: number | string; // e.g., product.id or customer.id
 }
