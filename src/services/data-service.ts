@@ -513,6 +513,30 @@ class DataService {
   // ====================================================================
   // Expenses - All writes are transactional
   // ====================================================================
+  async getExpenses(params: { category?: string; from?: Date; to?: Date }): Promise<Expense[]> {
+    const { category, from, to } = params;
+
+    let collection;
+
+    // Build the query based on provided filters
+    if (category && from && to) {
+        collection = db.expenses.where('[category+expenseDate]').between([category, from], [category, to], true, true);
+    } else if (category) {
+        collection = db.expenses.where('category').equals(category);
+    } else if (from && to) {
+        collection = db.expenses.where('expenseDate').between(from, to, true, true);
+    } else {
+        collection = db.expenses.toCollection();
+    }
+    
+    // Sort by most recent
+    return collection.reverse().toArray();
+  }
+
+  async getExpenseCategories(): Promise<string[]> {
+    return db.expenses.orderBy('category').uniqueKeys() as Promise<string[]>;
+  }
+
   async addExpense(expense: Omit<Expense, 'id'>): Promise<number> {
     return db.transaction('rw', db.expenses, () => {
       return db.expenses.add(expense as Expense);
