@@ -1,7 +1,6 @@
 'use client';
 
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '@/lib/database';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { CardContent, CardFooter } from '@/components/ui/card';
@@ -15,7 +14,7 @@ import { dataService } from '@/services/data-service';
 
 
 export function CompanyProfileForm() {
-    const companyProfile = useLiveQuery(() => db.companyProfile.get(1));
+    const companyProfile = useLiveQuery(() => dataService.getCompanyProfile());
 
     const [formState, setFormState] = useState<Partial<CompanyProfile>>({});
     const [isSaving, setIsSaving] = useState(false);

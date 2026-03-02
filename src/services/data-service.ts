@@ -206,6 +206,13 @@ class DataService {
 
   async deleteCustomer(id: number): Promise<void> {
     return db.transaction('rw', db.customers, db.sales, async () => {
+        const customer = await db.customers.get(id);
+        if (!customer) return;
+
+        if (customer.outstandingBalance > 0) {
+            throw new Error("Suppression impossible : ce client a un solde impayé.");
+        }
+
         const salesCount = await db.sales.where({ customerId: id }).count();
         if (salesCount > 0) {
             throw new Error("Suppression impossible : ce client est associé à des ventes. Pour préserver l'intégrité des données, il ne peut pas être supprimé.");
@@ -346,6 +353,45 @@ class DataService {
         return saleId;
     });
   }
+
+  async deleteSale(id: number): Promise<void> {
+    return db.transaction('rw', db.sales, db.products, db.customers, db.inventoryLogs, async () => {
+        const sale = await db.sales.get(id);
+        if (!sale) throw new Error("Vente non trouvée.");
+
+        // Re-stock products
+        for (const item of sale.items) {
+            if (typeof item.id === 'number') {
+                let newQuantity = 0;
+                 await db.products.where({ id: item.id }).modify(p => {
+                    p.quantity += item.quantity;
+                    newQuantity = p.quantity;
+                });
+                await db.inventoryLogs.add({
+                    productId: item.id,
+                    change: item.quantity,
+                    newQuantity,
+                    reason: 'cancellation',
+                    relatedId: `sale-${id}`,
+                    createdAt: new Date()
+                } as InventoryLog);
+            }
+        }
+
+        // Adjust customer balance
+        if (sale.customerId) {
+            const balanceToRestore = sale.total - sale.amountPaid;
+            if (balanceToRestore > 0) { // If it was a credit sale
+                await db.customers.where({ id: sale.customerId }).modify(c => {
+                    c.outstandingBalance -= balanceToRestore;
+                    if (c.outstandingBalance < 0) c.outstandingBalance = 0;
+                });
+            }
+        }
+
+        await db.sales.delete(id);
+    });
+  }
   
   // ====================================================================
   // Payments - All writes are transactional
@@ -428,6 +474,41 @@ class DataService {
           return returnId;
       });
   }
+
+    async deleteReturn(id: number): Promise<void> {
+        return db.transaction('rw', db.returns, db.products, db.customers, db.inventoryLogs, async () => {
+            const productReturn = await db.returns.get(id);
+            if (!productReturn) throw new Error("Retour non trouvé.");
+
+            for (const item of productReturn.items) {
+                if (item.productId && item.wasRestocked) {
+                    let newQuantity = 0;
+                    await db.products.where('id').equals(item.productId).modify(p => {
+                        p.quantity -= item.quantity;
+                        newQuantity = p.quantity;
+                    });
+                     await db.inventoryLogs.add({
+                        productId: item.productId,
+                        change: -item.quantity,
+                        newQuantity,
+                        reason: 'cancellation', // Or a new 'return_cancellation' reason
+                        relatedId: `return-${id}`,
+                        createdAt: new Date(),
+                    } as InventoryLog);
+                }
+            }
+
+            if (productReturn.customerId) {
+                const balanceEffect = productReturn.totalReturnValue - productReturn.amountRefunded;
+                 await db.customers.where('id').equals(productReturn.customerId).modify(c => {
+                    c.outstandingBalance += balanceEffect;
+                });
+            }
+            
+            await db.returns.delete(id);
+        });
+    }
+
 
   // ====================================================================
   // Expenses - All writes are transactional
@@ -600,7 +681,7 @@ class DataService {
         'dailyBreadOrders', 'expenses', 'notifications', 'settings', 'inventoryLogs'
     ];
 
-    await db.transaction('r', db.tables, async () => {
+    await db.transaction('r', ...db.tables, async () => {
         for (const tableName of tables) {
             data[tableName] = await db.table(tableName).toArray();
         }
@@ -621,15 +702,17 @@ class DataService {
 
       return db.transaction('rw', ...db.tables, async () => {
           for (const tableName of tables) {
-              await db.table(tableName).clear();
+              if (db.table(tableName)) {
+                await db.table(tableName).clear();
+              }
           }
 
           for (const tableName of tables) {
-              const tableData = data[tableName];
+              const tableData = data[tableName as keyof DB];
               if (tableData) {
                   if (tableName === 'companyProfile' && !Array.isArray(tableData)) {
-                     await db.companyProfile.add(tableData as CompanyProfile);
-                  } else if (Array.isArray(tableData)) {
+                     await db.companyProfile.put(tableData as CompanyProfile);
+                  } else if (Array.isArray(tableData) && db.table(tableName)) {
                      await db.table(tableName).bulkAdd(tableData);
                   }
               }
@@ -642,7 +725,9 @@ class DataService {
             for (const table of db.tables) {
                 await table.clear();
             }
-            await db.companyProfile.add(initialData.companyProfile);
+            if (initialData.companyProfile) {
+                await db.companyProfile.put(initialData.companyProfile);
+            }
         });
     }
 

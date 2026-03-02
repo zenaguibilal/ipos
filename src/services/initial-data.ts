@@ -19,7 +19,7 @@ export interface DB {
 export type CollectionName = Exclude<keyof DB, 'companyProfile'>;
 
 
-export const initialData: DB = {
+export const initialData: Partial<DB> = {
     products: [],
     customers: [],
     sales: [],
