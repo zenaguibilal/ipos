@@ -8,12 +8,8 @@ import {
   BarChart3,
   Package,
   Users,
-  Archive,
   ShoppingCart,
   History,
-  Bell,
-  ListChecks,
-  Receipt,
   Undo2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -32,9 +28,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '@/lib/database';
-import { Badge } from '../ui/badge';
 
 const navLinks = [
   { href: '/dashboard', label: 'Tableau de bord', icon: BarChart3 },
@@ -42,17 +35,12 @@ const navLinks = [
   { href: '/sales-history', label: 'Historique', icon: History },
   { href: '/products', label: 'Produits', icon: Package },
   { href: '/customers', label: 'Clients', icon: Users },
-  { href: '/stock', label: 'Stock', icon: Archive },
-  { href: '/bread', label: 'Pain', icon: ListChecks },
-  { href: '/expenses', label: 'Dépenses', icon: Receipt },
   { href: '/returns', label: 'Retours', icon: Undo2 },
-  { href: '/notifications', label: 'Alertes', icon: Bell, isNotification: true },
 ];
 
 export function AppHeader() {
   const router = useRouter();
   const pathname = usePathname();
-  const unreadCount = useLiveQuery(() => db.notifications.where({ isRead: false }).count());
 
 
   return (
@@ -84,9 +72,6 @@ export function AppHeader() {
                                     <Link href={link.href}>
                                         <link.icon className="h-5 w-5" />
                                         <span className="sr-only">{link.label}</span>
-                                        {link.isNotification && unreadCount && unreadCount > 0 && (
-                                            <Badge className="absolute -top-1 -right-1 h-4 w-4 justify-center p-0 text-xs" variant="destructive">{unreadCount}</Badge>
-                                        )}
                                     </Link>
                                 </Button>
                             </TooltipTrigger>

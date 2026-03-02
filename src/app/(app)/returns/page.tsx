@@ -11,8 +11,6 @@ import { Search, Undo2 } from 'lucide-react';
 import { useDebounce } from '@/hooks/useDebounce';
 import type { ProductReturn } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Button } from '@/components/ui/button';
-import Link from 'next/link';
 
 export default function ReturnsPage() {
     const [searchQuery, setSearchQuery] = useState('');
@@ -63,11 +61,6 @@ export default function ReturnsPage() {
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
                     </div>
-                     <Button asChild>
-                        <Link href="/returns/new">
-                            <Undo2 className="mr-2 h-4 w-4" /> Nouveau Retour
-                        </Link>
-                    </Button>
                 </div>
 
                 <div className="flex-grow overflow-y-auto -mx-4 px-4 pb-4">
