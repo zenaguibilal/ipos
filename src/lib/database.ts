@@ -19,9 +19,9 @@ export class PosDatabase extends Dexie {
 
     constructor() {
         super('posDB');
-        this.version(20).stores({
+        this.version(21).stores({
             products: '++id, name, *barcodes, category, price, quantity, [category+name]',
-            customers: '++id, createdAt, lastName, firstName, [lastName+firstName], phone, outstandingBalance, lastActivityDate',
+            customers: '++id, searchName, createdAt, lastName, firstName, [lastName+firstName], phone, outstandingBalance, lastActivityDate',
             sales: '++id, &invoiceNumber, createdAt, customerId, customerName, paymentStatus, breadOrderDate',
             payments: '++id, createdAt, customerId',
             stockIntakes: '++id, &invoiceNumber, supplier, createdAt',
@@ -34,6 +34,10 @@ export class PosDatabase extends Dexie {
             settings: '&id', // Key-value store for UI state and preferences
             notifications: '++id, createdAt, isRead, type, [type+isRead]',
             inventoryLogs: '++id, productId, createdAt, reason',
+        }).upgrade(tx => {
+            return tx.table('customers').toCollection().modify(customer => {
+                customer.searchName = `${customer.firstName.toLowerCase()} ${customer.lastName.toLowerCase()}`;
+            });
         });
 
         // Hooks to add/update timestamps
@@ -55,6 +59,23 @@ export class PosDatabase extends Dexie {
                     (modifications as any).updatedAt = new Date();
                 }
             });
+        });
+
+        // Hooks to auto-generate searchName for customers
+        this.customers.hook('creating', (primKey, obj) => {
+            if(typeof obj.firstName === 'string' && typeof obj.lastName === 'string') {
+                obj.searchName = `${obj.firstName.toLowerCase()} ${obj.lastName.toLowerCase()}`;
+            }
+        });
+
+        this.customers.hook('updating', (modifications, primKey, obj) => {
+            if (Object.hasOwn(modifications, 'firstName') || Object.hasOwn(modifications, 'lastName')) {
+                const newFirstName = Object.hasOwn(modifications, 'firstName') ? (modifications as any).firstName : obj.firstName;
+                const newLastName = Object.hasOwn(modifications, 'lastName') ? (modifications as any).lastName : obj.lastName;
+                if (typeof newFirstName === 'string' && typeof newLastName === 'string') {
+                    (modifications as any).searchName = `${newFirstName.toLowerCase()} ${newLastName.toLowerCase()}`;
+                }
+            }
         });
     }
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { db, PosDatabase } from '@/lib/database';
-import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, DailyBreadOrder, BreadCustomer, BreadOrder, Notification, InventoryLog, CustomerWithSalesData, ImportAnalysis, DashboardData, DashboardStats, TopProduct, TopCustomer, StockIntakeItem } from '@/lib/types';
+import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, DailyBreadOrder, BreadCustomer, BreadOrder, Notification, InventoryLog, CustomerWithSalesData, ImportAnalysis, DashboardData, DashboardStats, StockIntakeItem } from '@/lib/types';
 import { initialData, type DB, type CollectionName } from './initial-data';
 import Dexie from 'dexie';
 import { startOfDay, endOfDay, format } from 'date-fns';
@@ -158,15 +158,14 @@ class DataService {
     let customers: Customer[];
 
     if (query) {
-        // Since we can't do a compound startsWith, we do separate indexed queries and merge.
-        const byLastName = db.customers.where('lastName').startsWithIgnoreCase(query).toArray();
-        const byFirstName = db.customers.where('firstName').startsWithIgnoreCase(query).toArray();
-        const byPhone = db.customers.where('phone').startsWith(query).toArray();
+        const lowerQuery = query.toLowerCase();
+        const bySearchName = db.customers.where('searchName').startsWith(lowerQuery).toArray();
+        const byPhone = db.customers.where('phone').startsWith(query).toArray(); // phone search can remain case-sensitive or as is
 
-        const [last, first, phone] = await Promise.all([byLastName, byFirstName, byPhone]);
+        const [nameMatches, phoneMatches] = await Promise.all([bySearchName, byPhone]);
 
         const combined = new Map<number, Customer>();
-        [...last, ...first, ...phone].forEach(c => c.id && combined.set(c.id, c));
+        [...nameMatches, ...phoneMatches].forEach(c => c.id && combined.set(c.id, c));
         customers = Array.from(combined.values()).sort((a, b) => a.lastName.localeCompare(b.lastName) || a.firstName.localeCompare(b.firstName));
     } else {
         customers = await db.customers.orderBy('[lastName+firstName]').toArray();
@@ -187,7 +186,7 @@ class DataService {
     return customersWithSalesData;
   }
 
-  async addCustomer(customer: Omit<Customer, 'id' | 'totalSpent' | 'outstandingBalance' | 'lastActivityDate'>): Promise<number> {
+  async addCustomer(customer: Omit<Customer, 'id' | 'totalSpent' | 'outstandingBalance' | 'lastActivityDate' | 'searchName'>): Promise<number> {
     return db.transaction('rw', db.customers, () => {
         const customerToAdd: Omit<Customer, 'id'> = {
             ...customer,
@@ -198,7 +197,7 @@ class DataService {
     });
   }
 
-  async updateCustomer(id: number, customer: Partial<Omit<Customer, 'id'>>): Promise<number> {
+  async updateCustomer(id: number, customer: Partial<Omit<Customer, 'id' | 'searchName'>>): Promise<number> {
       return db.transaction('rw', db.customers, () => {
           return db.customers.update(id, customer);
       });

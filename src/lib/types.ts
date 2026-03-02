@@ -14,6 +14,7 @@ export interface Product {
 
 export interface Customer {
     id?: number;
+    searchName?: string; // For optimized searching
     firstName: string;
     lastName: string;
     phone?: string;
