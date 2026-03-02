@@ -23,7 +23,7 @@ iPOS est construit sur une pile technologique moderne, choisie pour ses performa
 
 La structure des fichiers est organisée pour séparer clairement les responsabilités.
 
-` + "```" + `
+```
 /
 ├── public/                 # Fichiers statiques (icônes, manifest.json)
 ├── src/
@@ -49,7 +49,7 @@ La structure des fichiers est organisée pour séparer clairement les responsabi
 │   │   └── data-service.ts # Le cœur de la logique de persistance des données locales
 │
 └── ... (fichiers de configuration)
-` + "```" + `
+```
 
 ---
 

@@ -1,7 +1,7 @@
 
 
 export interface Product {
-    id?: number | string; // Allow string for custom products
+    id?: number;
     name: string;
     category?: string;
     price: number;
@@ -20,16 +20,9 @@ export interface Customer {
     lastName: string;
     phone?: string;
     settlementDay?: number;
-    
-    // Aggregated data for performance
-    totalSpent: number;
-    outstandingBalance: number;
-    lastActivityDate?: Date;
-
     createdAt?: Date;
     updatedAt?: Date;
 }
-
 
 export interface SaleItem {
     id: number | string; // string for custom items
@@ -94,6 +87,9 @@ export interface Payment {
 
 export interface CustomerWithSalesData extends Customer {
     id: number; // Make id mandatory here
+    totalSpent: number;
+    outstandingBalance: number;
+    lastActivityDate?: Date | null;
     isReminderDue?: boolean;
 }
 
@@ -184,18 +180,6 @@ export interface ProductReturn {
     notes?: string;
 }
 
-export type ExpenseCategory = 'Loyer' | 'Salaires' | 'Fournisseurs' | 'Services Publics' | 'Marketing' | 'Maintenance' | 'Autre';
-
-export interface Expense {
-    id?: number;
-    description: string;
-    category: ExpenseCategory;
-    amount: number;
-    expenseDate: Date;
-    createdAt?: Date;
-    updatedAt?: Date;
-}
-
 export interface BreadCustomer {
     id?: number;
     name: string;
@@ -208,7 +192,7 @@ export interface BreadCustomer {
 // Represents the order information for a customer on a given day
 export interface BreadOrder extends BreadCustomer {
     id: number;
-    todaysOrder?: DailyBreadOrder;
+    todaysOrder?: DailyBreadOrder & { saleId?: number };
 }
 
 
@@ -223,6 +207,18 @@ export interface DailyBreadOrder {
     saleId?: number;
     isPaid: boolean;
     isDelivered: boolean;
+}
+
+export type ExpenseCategory = 'Loyer' | 'Salaires' | 'Fournisseurs' | 'Services Publics' | 'Marketing' | 'Maintenance' | 'Autre';
+
+export interface Expense {
+    id?: number;
+    description: string;
+    category: ExpenseCategory;
+    amount: number;
+    expenseDate: Date;
+    createdAt?: Date;
+    updatedAt?: Date;
 }
 
 export interface Setting {

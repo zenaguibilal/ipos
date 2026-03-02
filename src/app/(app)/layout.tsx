@@ -1,7 +1,16 @@
+import { AppHeader } from '@/components/layout/header';
+import { BottomNavBar } from '@/components/layout/bottom-navbar';
+
 export default function AppLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return <main className="h-screen">{children}</main>;
+  return (
+    <div className="flex h-screen flex-col">
+      <AppHeader />
+      <main className="flex-1 overflow-y-auto pb-16 md:pb-0">{children}</main>
+      <BottomNavBar />
+    </div>
+  );
 }
