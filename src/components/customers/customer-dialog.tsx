@@ -9,13 +9,11 @@ import { toast } from 'sonner';
 import type { Customer } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
 import { dataService } from '@/services/data-service';
-import { db } from '@/lib/database';
 
 interface CustomerDialogProps {
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
     customer: Customer | null;
-    onCustomerAdded?: (customer: Customer) => void;
 }
 
 const initialFormState = {
@@ -25,7 +23,7 @@ const initialFormState = {
     settlementDay: '',
 };
 
-export function CustomerDialog({ isOpen, onOpenChange, customer, onCustomerAdded }: CustomerDialogProps) {
+export function CustomerDialog({ isOpen, onOpenChange, customer }: CustomerDialogProps) {
     const [formState, setFormState] = useState(initialFormState);
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -69,12 +67,8 @@ export function CustomerDialog({ isOpen, onOpenChange, customer, onCustomerAdded
                 await dataService.updateCustomer(customer.id, customerData);
                 toast.success(`Client ${firstName} ${lastName} mis à jour.`);
             } else { // Adding
-                const newId = await dataService.addCustomer(customerData);
+                await dataService.addCustomer(customerData);
                 toast.success(`Client ${firstName} ${lastName} ajouté.`);
-                if (onCustomerAdded) {
-                    const newCustomer = await dataService.getById<Customer>('customers', newId);
-                    if(newCustomer) onCustomerAdded(newCustomer);
-                }
             }
             onOpenChange(false);
         } catch (err) {

@@ -167,7 +167,7 @@ class DataService {
 
         const combined = new Map<number, Customer>();
         [...last, ...first, ...phone].forEach(c => c.id && combined.set(c.id, c));
-        customers = Array.from(combined.values()).sort((a, b) => a.lastName.localeCompare(b.lastName));
+        customers = Array.from(combined.values()).sort((a, b) => a.lastName.localeCompare(b.lastName) || a.firstName.localeCompare(b.firstName));
     } else {
         customers = await db.customers.orderBy('[lastName+firstName]').toArray();
     }
