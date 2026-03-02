@@ -5,9 +5,6 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Skeleton } from "@/components/ui/skeleton";
 import type { TopProduct, TopCustomer } from "@/lib/types";
 import { formatCurrency } from "@/lib/utils";
-import Link from "next/link";
-import { Button } from "../ui/button";
-import { ArrowUpRight } from "lucide-react";
 
 interface SalesOverviewProps {
     topProducts: TopProduct[];
@@ -79,9 +76,6 @@ export default function SalesOverview({ topProducts, topCustomers, isLoading }: 
                                     <div key={customer.id} className="flex items-center">
                                         <p className="text-sm font-medium leading-none truncate">{customer.name}</p>
                                         <div className="ml-auto font-medium">{formatCurrency(customer.totalSpent)}</div>
-                                        <Button variant="ghost" size="icon" className="h-6 w-6 ml-1" asChild>
-                                            <Link href={`/customers/${customer.id}`}><ArrowUpRight className="h-4 w-4" /></Link>
-                                        </Button>
                                     </div>
                                 ))}
                             </div>

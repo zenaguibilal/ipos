@@ -1,7 +1,7 @@
 'use client';
 
 import { db, PosDatabase } from '@/lib/database';
-import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, DailyBreadOrder, BreadCustomer, BreadOrder, Notification, InventoryLog, CustomerWithSalesData, ImportAnalysis } from '@/lib/types';
+import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, DailyBreadOrder, BreadCustomer, BreadOrder, Notification, InventoryLog, CustomerWithSalesData, ImportAnalysis, DashboardData, DashboardStats, TopProduct, TopCustomer } from '@/lib/types';
 import { initialData, type DB, type CollectionName } from './initial-data';
 import Dexie from 'dexie';
 import { startOfDay, endOfDay } from 'date-fns';
@@ -499,6 +499,93 @@ class DataService {
     return db.transaction('rw', db.notifications, () => {
         return db.notifications.where({ isRead: true }).delete();
     });
+  }
+
+  // ====================================================================
+  // Dashboard - Read-only, no transaction needed
+  // ====================================================================
+  async getDashboardData(params: { from: Date, to: Date }): Promise<DashboardData> {
+      const { from, to } = params;
+
+      const sales = await db.sales.where('createdAt').between(from, to).toArray();
+      const allProducts = await db.products.toArray();
+
+      // 1. Calculate stats
+      let totalRevenue = 0;
+      let totalProfit = 0;
+      
+      const productSales: { [id: number]: { unitsSold: number, totalRevenue: number, totalProfit: number } } = {};
+      const customerSpend: { [id: number]: { name: string, totalSpent: number } } = {};
+
+      for (const sale of sales) {
+          totalRevenue += sale.total;
+          let saleProfit = 0;
+
+          for (const item of sale.items) {
+              const profitPerItem = (item.price - item.purchasePrice) * item.quantity;
+              const validProfit = isNaN(profitPerItem) ? 0 : profitPerItem;
+              saleProfit += validProfit;
+              
+              if (typeof item.id === 'number') {
+                  if (!productSales[item.id]) {
+                      productSales[item.id] = { unitsSold: 0, totalRevenue: 0, totalProfit: 0 };
+                  }
+                  productSales[item.id].unitsSold += item.quantity;
+                  productSales[item.id].totalRevenue += item.price * item.quantity;
+                  productSales[item.id].totalProfit += validProfit;
+              }
+          }
+          totalProfit += saleProfit;
+
+          if (sale.customerId) {
+              if (!customerSpend[sale.customerId]) {
+                  customerSpend[sale.customerId] = { name: sale.customerName || 'N/A', totalSpent: 0 };
+              }
+              customerSpend[sale.customerId].totalSpent += sale.total;
+          }
+      }
+
+      const inventoryValue = allProducts.reduce((acc, p) => {
+          const value = p.purchasePrice * p.quantity;
+          return acc + (isNaN(value) ? 0 : value);
+      }, 0);
+      
+      const stats: DashboardStats = {
+          totalRevenue,
+          totalProfit,
+          salesCount: sales.length,
+          inventoryValue
+      };
+
+      // 2. Calculate Top Products
+      const topProducts: TopProduct[] = Object.entries(productSales)
+          .map(([productId, data]) => {
+              const product = allProducts.find(p => p.id === Number(productId));
+              return {
+                  id: Number(productId),
+                  name: product?.name || 'Produit Supprimé',
+                  ...data,
+              };
+          })
+          .sort((a, b) => b.totalRevenue - a.totalRevenue)
+          .slice(0, 5);
+      
+      // 3. Calculate Top Customers
+      const topCustomers: TopCustomer[] = Object.entries(customerSpend)
+          .map(([customerId, data]) => ({
+              id: Number(customerId),
+              name: data.name,
+              totalSpent: data.totalSpent,
+          }))
+          .sort((a, b) => b.totalSpent - a.totalSpent)
+          .slice(0, 5);
+
+      return {
+          stats,
+          sales,
+          topProducts,
+          topCustomers,
+      };
   }
 
 
