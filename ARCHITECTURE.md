@@ -1,4 +1,4 @@
-# iPOS - Architecture 100% Hors Ligne avec IndexedDB
+# iPOS - Architecture 100% Hors Ligne
 
 Ce document fournit un aperçu détaillé de l'architecture entièrement hors ligne de l'application iPOS. Il est conçu pour aider à comprendre la structure du projet, le flux de données et les décisions techniques clés après sa refactorisation vers un système basé sur IndexedDB.
 
