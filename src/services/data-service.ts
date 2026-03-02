@@ -290,6 +290,29 @@ class DataService {
   // ====================================================================
   // Sales - Complex logic is handled atomically
   // ====================================================================
+  async getSales(params: { query?: string; from?: Date; to?: Date }): Promise<Sale[]> {
+    const { query, from, to } = params;
+    
+    let collection;
+    if (from && to) {
+        collection = db.sales.where('createdAt').between(from, to, true, true);
+    } else {
+        collection = db.sales.toCollection();
+    }
+
+    let salesArray = await collection.reverse().toArray();
+
+    if (query) {
+        const lowerQuery = query.toLowerCase();
+        salesArray = salesArray.filter(sale => 
+            sale.invoiceNumber.toLowerCase().includes(lowerQuery) ||
+            (sale.customerName && sale.customerName.toLowerCase().includes(lowerQuery))
+        );
+    }
+    
+    return salesArray;
+  }
+
   async addSale(saleData: Omit<Sale, 'id' | 'invoiceNumber' | 'paymentStatus' | 'remainingBalance'>): Promise<number> {
     return db.transaction('rw', db.sales, db.products, db.customers, db.notifications, db.inventoryLogs, async () => {
         const { items, customerId, total, amountPaid } = saleData;
