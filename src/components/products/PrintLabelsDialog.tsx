@@ -20,14 +20,12 @@ interface PrintLabelsDialogProps {
 export function PrintLabelsDialog({ isOpen, onOpenChange, productIds }: PrintLabelsDialogProps) {
   const products = useLiveQuery(
     () => {
-        // More robust guard: if no IDs, return an empty array directly.
-        // This prevents the dataService from being called with invalid input and satisfies useLiveQuery.
         if (!productIds || productIds.length === 0) {
             return [];
         }
         return dataService.getProductsByIds(productIds);
     }, 
-    [productIds]
+    [JSON.stringify(productIds)] // Stabilize dependency to prevent unnecessary re-renders
   );
   
   const [labelQuantities, setLabelQuantities] = useState<Record<number, number>>({});
