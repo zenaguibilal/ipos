@@ -205,7 +205,7 @@ class DataService {
   }
 
   async deleteCustomer(id: number): Promise<void> {
-    return db.transaction('rw', db.customers, db.sales, async () => {
+    return db.transaction('rw', db.customers, db.sales, db.payments, db.returns, async () => {
         const customer = await db.customers.get(id);
         if (!customer) return;
 
@@ -214,9 +214,13 @@ class DataService {
         }
 
         const salesCount = await db.sales.where({ customerId: id }).count();
-        if (salesCount > 0) {
-            throw new Error("Suppression impossible : ce client est associé à des ventes. Pour préserver l'intégrité des données, il ne peut pas être supprimé.");
+        const paymentsCount = await db.payments.where({ customerId: id }).count();
+        const returnsCount = await db.returns.where({ customerId: id }).count();
+
+        if (salesCount > 0 || paymentsCount > 0 || returnsCount > 0) {
+            throw new Error("Suppression impossible : ce client a un historique de transactions (ventes, paiements ou retours).");
         }
+
         return db.customers.delete(id);
     });
   }
