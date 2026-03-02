@@ -19,7 +19,7 @@ export class PosDatabase extends Dexie {
 
     constructor() {
         super('posDB');
-        this.version(21).stores({
+        this.version(22).stores({
             products: '++id, name, *barcodes, category, price, quantity, [category+name]',
             customers: '++id, searchName, createdAt, lastName, firstName, [lastName+firstName], phone, outstandingBalance, lastActivityDate',
             sales: '++id, &invoiceNumber, createdAt, customerId, customerName, paymentStatus, breadOrderDate',
@@ -35,8 +35,11 @@ export class PosDatabase extends Dexie {
             notifications: '++id, createdAt, isRead, type, [type+isRead]',
             inventoryLogs: '++id, productId, createdAt, reason',
         }).upgrade(tx => {
+             // This upgrade function is for version 21, but Dexie requires it to be present in the latest version definition if it exists.
             return tx.table('customers').toCollection().modify(customer => {
-                customer.searchName = `${customer.firstName.toLowerCase()} ${customer.lastName.toLowerCase()}`;
+                if (customer.firstName && customer.lastName) {
+                   customer.searchName = `${customer.firstName.toLowerCase()} ${customer.lastName.toLowerCase()}`;
+                }
             });
         });
 

@@ -58,9 +58,11 @@ export default function NewReturnPage() {
         }
     };
 
-    const handleItemChange = (productId: number | null, field: 'returnQuantity' | 'wasRestocked', value: any) => {
+    const handleItemChange = (productId: number | string | null, field: 'returnQuantity' | 'wasRestocked', value: any) => {
         setReturnItems(items => items.map(item => {
-            if (item.productId === productId) {
+            const key = item.productId ?? item.productName;
+            const changedKey = productId ?? (returnItems.find(i => i.productName === value)?.productName); // A bit tricky for productName based matching
+            if (key === changedKey) {
                 if(field === 'returnQuantity') {
                     const newQty = Math.max(0, Math.min(item.originalQuantity, Number(value)));
                     return { ...item, [field]: newQty };

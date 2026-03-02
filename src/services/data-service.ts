@@ -1,3 +1,4 @@
+
 'use client';
 
 import { db, PosDatabase } from '@/lib/database';
@@ -5,6 +6,7 @@ import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer
 import { initialData, type DB, type CollectionName } from './initial-data';
 import Dexie from 'dexie';
 import { startOfDay, endOfDay, format } from 'date-fns';
+import { formatCurrency } from '@/lib/utils';
 
 type TableName = keyof Pick<PosDatabase, 
     'products' | 'customers' | 'sales' | 'payments' | 
@@ -455,9 +457,9 @@ class DataService {
     return db.sales.where('invoiceNumber').equals(invoiceNumber).first();
   }
 
-  async addSale(saleData: Omit<Sale, 'id' | 'invoiceNumber' | 'paymentStatus' | 'remainingBalance' | 'totalProfit'>): Promise<number> {
+  async addSale(saleData: Omit<Sale, 'id' | 'invoiceNumber' | 'paymentStatus' | 'remainingBalance'>): Promise<number> {
     return db.transaction('rw', db.sales, db.products, db.customers, db.notifications, db.inventoryLogs, async () => {
-        const { items, customerId, total, amountPaid } = saleData;
+        const { items, customerId, total, amountPaid, totalProfit } = saleData;
 
         for (const item of items) {
             if (typeof item.id !== 'number') continue;
@@ -465,12 +467,6 @@ class DataService {
             if (!product) throw new Error(`Produit avec ID ${item.id} non trouvé.`);
             if (product.quantity < item.quantity) throw new Error(`Stock insuffisant pour ${product.name}.`);
         }
-
-        const costOfGoodsSold = items.reduce((acc, item) => {
-            const cost = item.purchasePrice * item.quantity;
-            return acc + (isNaN(cost) ? 0 : cost);
-        }, 0);
-        const totalProfit = total - costOfGoodsSold;
         
         const remainingBalance = total - amountPaid;
         const paymentStatus = amountPaid >= total ? 'paid' : amountPaid > 0 ? 'partial' : 'unpaid';
@@ -481,7 +477,6 @@ class DataService {
 
             const newCreditAmount = remainingBalance > 0 ? remainingBalance : 0;
             
-            // Check credit limit if it exists
             if (newCreditAmount > 0 && typeof customer.creditLimit === 'number' && customer.creditLimit >= 0) {
                 if ((customer.outstandingBalance + newCreditAmount) > customer.creditLimit) {
                     throw new Error(`Limite de crédit (${formatCurrency(customer.creditLimit)}) dépassée pour ${customer.firstName} ${customer.lastName}. Solde actuel: ${formatCurrency(customer.outstandingBalance)}.`);
@@ -546,7 +541,6 @@ class DataService {
         const sale = await db.sales.get(id);
         if (!sale) throw new Error("Vente non trouvée.");
 
-        // Re-stock products
         for (const item of sale.items) {
             if (typeof item.id === 'number') {
                 let newQuantity = 0;
@@ -565,10 +559,9 @@ class DataService {
             }
         }
 
-        // Adjust customer balance
         if (sale.customerId) {
             const balanceToRestore = sale.total - sale.amountPaid;
-            if (balanceToRestore > 0) { // If it was a credit sale
+            if (balanceToRestore > 0) { 
                 await db.customers.where({ id: sale.customerId }).modify(c => {
                     c.outstandingBalance -= balanceToRestore;
                     if (c.outstandingBalance < 0) c.outstandingBalance = 0;
@@ -872,7 +865,7 @@ class DataService {
   }
 
   async finalizeBreadSales(breadCustomerIds: number[], dateString: string): Promise<{ count: number }> {
-    return db.transaction('rw', db.sales, db.dailyBreadOrders, db.companyProfile, async () => {
+    return db.transaction('rw', db.sales, db.dailyBreadOrders, db.companyProfile, db.products, db.inventoryLogs, async () => {
       const profile = await db.companyProfile.get(1);
       if (!profile?.breadPrice || profile.breadPrice <= 0) {
         throw new Error("Le prix du pain n'est pas configuré. Veuillez le définir dans les paramètres.");
