@@ -144,11 +144,7 @@ class DataService {
     if (!Array.isArray(ids) || ids.length === 0) {
       return [];
     }
-    const validIds = ids.filter(id => typeof id === 'number' && isFinite(id));
-    if (validIds.length === 0) {
-        return [];
-    }
-    return db.products.where('id').anyOf(validIds).toArray();
+    return db.products.where('id').anyOf(ids).toArray();
   }
 
   async getProductCategories(): Promise<string[]> {
