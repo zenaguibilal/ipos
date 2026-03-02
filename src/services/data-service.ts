@@ -3,6 +3,7 @@
 import { db, PosDatabase } from '@/lib/database';
 import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, DailyBreadOrder, BreadCustomer, BreadOrder, Notification, InventoryLog } from '@/lib/types';
 import { initialData, type DB, type CollectionName } from './initial-data';
+import Dexie from 'dexie';
 
 type TableName = keyof Pick<PosDatabase, 
     'products' | 'customers' | 'sales' | 'payments' | 
@@ -74,7 +75,7 @@ class DataService {
   }
   
   // ====================================================================
-  // Products - All writes are transactional
+  // Products
   // ====================================================================
   async addProduct(product: Omit<Product, 'id'>): Promise<number> {
       return db.transaction('rw', db.products, db.inventoryLogs, async () => {
@@ -115,6 +116,35 @@ class DataService {
       return db.transaction('rw', db.products, () => {
           return db.products.delete(id);
       });
+  }
+
+  async getProducts(params: { query?: string; category?: string; }): Promise<Product[]> {
+    const { query, category } = params;
+
+    let collection = db.products.toCollection();
+
+    if (category) {
+      collection = db.products.where('category').equals(category);
+    }
+    
+    if (query) {
+      const lowerQuery = query.toLowerCase();
+      return collection.filter(p => 
+        p.name.toLowerCase().includes(lowerQuery) || 
+        p.barcodes?.some(b => b.includes(lowerQuery))
+      ).toArray();
+    }
+    
+    return collection.toArray();
+  }
+
+  async getProductsByIds(ids: number[]): Promise<Product[]> {
+    if (!ids || ids.length === 0) return [];
+    return db.products.where('id').anyOf(ids).toArray();
+  }
+
+  async getProductCategories(): Promise<string[]> {
+    return db.products.orderBy('category').uniqueKeys().then(keys => keys.filter(k => k) as string[]);
   }
 
   // ====================================================================
@@ -189,7 +219,6 @@ class DataService {
                 createdAt: new Date()
             } as InventoryLog);
 
-            // Low stock notification
             const product = await db.products.get(item.id);
             if (product && newQuantity <= product.minStockLevel) {
                 const isAlreadyNotified = await db.notifications.where({ type: 'low-stock', relatedId: product.id, isRead: false }).first();
@@ -278,7 +307,7 @@ class DataService {
                     let newQuantity = 0;
                     await db.products.where('id').equals(item.productId).modify(p => {
                         p.quantity += item.quantityReceived;
-                        p.purchasePrice = item.purchasePrice; // Update purchase price
+                        p.purchasePrice = item.purchasePrice;
                         newQuantity = p.quantity;
                     });
                     await db.inventoryLogs.add({
@@ -471,12 +500,10 @@ class DataService {
     ];
 
       return db.transaction('rw', ...db.tables, async () => {
-          // Clear existing data
           for (const tableName of tables) {
               await db.table(tableName).clear();
           }
 
-          // Import new data
           for (const tableName of tables) {
               const tableData = data[tableName];
               if (tableData) {

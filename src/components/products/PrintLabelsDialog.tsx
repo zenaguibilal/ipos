@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '@/lib/database';
+import { dataService } from '@/services/data-service';
 import type { Product } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -18,14 +18,16 @@ interface PrintLabelsDialogProps {
 }
 
 export function PrintLabelsDialog({ isOpen, onOpenChange, productIds }: PrintLabelsDialogProps) {
-  const products = useLiveQuery(() => (productIds && productIds.length > 0 ? db.products.where('id').anyOf(productIds).toArray() : []), [productIds]);
+  const products = useLiveQuery(() => dataService.getProductsByIds(productIds), [productIds]);
   const [labelQuantities, setLabelQuantities] = useState<Record<number, number>>({});
 
   useEffect(() => {
     if (isOpen && products) {
       const initialQuantities: Record<number, number> = {};
       products.forEach(p => {
-        initialQuantities[p.id!] = 1;
+        if(typeof p.id === 'number') {
+            initialQuantities[p.id] = 1;
+        }
       });
       setLabelQuantities(initialQuantities);
     }
@@ -39,10 +41,11 @@ export function PrintLabelsDialog({ isOpen, onOpenChange, productIds }: PrintLab
   const labelsToPrint = useMemo(() => {
     if (!products) return [];
     const labels: React.ReactElement[] = [];
-    // Sort products to maintain a consistent order
+    
     const sortedProducts = [...products].sort((a,b) => a.name.localeCompare(b.name));
     sortedProducts.forEach(product => {
-      const quantity = labelQuantities[product.id!] || 0;
+      if (typeof product.id !== 'number') return;
+      const quantity = labelQuantities[product.id] || 0;
       for (let i = 0; i < quantity; i++) {
         labels.push(<BarcodeLabel key={`${product.id}-${i}`} product={product} />);
       }
@@ -75,8 +78,8 @@ export function PrintLabelsDialog({ isOpen, onOpenChange, productIds }: PrintLab
                                 id={`qty-${product.id}`}
                                 type="number"
                                 min="0"
-                                value={labelQuantities[product.id!] ?? 0}
-                                onChange={(e) => handleQuantityChange(product.id!, e.target.value)}
+                                value={labelQuantities[product.id as number] ?? 0}
+                                onChange={(e) => handleQuantityChange(product.id as number, e.target.value)}
                                 className="w-20 h-8 text-center"
                             />
                         </div>
@@ -91,7 +94,7 @@ export function PrintLabelsDialog({ isOpen, onOpenChange, productIds }: PrintLab
             </div>
         </div>
 
-        <DialogFooter className="print-hide">
+        <DialogFooter className="print-hide pt-4">
           <Button variant="outline" onClick={() => onOpenChange(false)}>Fermer</Button>
           <Button onClick={handlePrint} disabled={labelsToPrint.length === 0}>
             <Printer className="mr-2 h-4 w-4" />
