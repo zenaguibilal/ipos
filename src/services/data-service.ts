@@ -978,7 +978,7 @@ class DataService {
   // ====================================================================
 
   async getUnreadLowStockAlerts(): Promise<Notification[]> {
-    return db.notifications.where({ isRead: false, type: 'low-stock' }).orderBy('createdAt').reverse().toArray();
+    return db.notifications.orderBy('createdAt').reverse().filter(n => n.type === 'low-stock' && n.isRead === false).toArray();
   }
 
   async markNotificationAsRead(notificationId: number): Promise<number> {
