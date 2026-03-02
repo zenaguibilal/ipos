@@ -1,15 +1,13 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import useSWR, { useSWRConfig } from 'swr';
+import { useEffect, useCallback } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { v4 as uuidv4 } from 'uuid';
 import { dataService } from '@/services/data-service';
 import type { Cart, Product, CartItem, Customer } from '@/lib/types';
 import { toast } from 'sonner';
 
-const CARTS_KEY = 'all-carts';
 const ACTIVE_CART_ID_KEY = 'active_cart_id';
-
 
 const createNewCart = (name: string): Cart => ({
   id: uuidv4(),
@@ -21,72 +19,62 @@ const createNewCart = (name: string): Cart => ({
 });
 
 export const useCarts = () => {
-    const { mutate } = useSWRConfig();
-    const { data: carts = [], error, isLoading: isLoadingCarts } = useSWR(CARTS_KEY, () => dataService.getAll<Cart>('carts'));
-    const { data: activeCartIdSetting, isLoading: isLoadingActiveId } = useSWR(ACTIVE_CART_ID_KEY, () => dataService.getSetting(ACTIVE_CART_ID_KEY));
+    const carts = useLiveQuery(() => dataService.getAll<Cart>('carts'));
+    const activeCartIdSetting = useLiveQuery(() => dataService.getSetting(ACTIVE_CART_ID_KEY));
     
     const activeCartId = activeCartIdSetting?.value;
-
-    const setActiveCartId = useCallback((id: string) => {
-        mutate(ACTIVE_CART_ID_KEY, { id: ACTIVE_CART_ID_KEY, value: id }, false);
-        dataService.setSetting(ACTIVE_CART_ID_KEY, id);
-    }, [mutate]);
+    const isLoading = carts === undefined || activeCartIdSetting === undefined;
 
     useEffect(() => {
         const initializeCarts = async () => {
-            if (isLoadingCarts || isLoadingActiveId) return;
+            if (isLoading) return;
 
-            const storedCarts = await dataService.getAll<Cart>('carts');
-            const storedActiveId = (await dataService.getSetting(ACTIVE_CART_ID_KEY))?.value;
-
-            if (storedCarts.length > 0) {
-                 mutate(CARTS_KEY, storedCarts, false);
-                 if (storedActiveId && storedCarts.some(c => c.id === storedActiveId)) {
-                     setActiveCartId(storedActiveId);
-                 } else {
-                     setActiveCartId(storedCarts[0].id);
-                 }
-            } else {
+            if (!carts || carts.length === 0) {
                 const newCart = createNewCart('Panier 1');
                 await dataService.saveCart(newCart);
-                mutate(CARTS_KEY, [newCart], false);
-                setActiveCartId(newCart.id);
+                await dataService.setSetting(ACTIVE_CART_ID_KEY, newCart.id);
+            } else if (!activeCartId || !carts.some(c => c.id === activeCartId)) {
+                await dataService.setSetting(ACTIVE_CART_ID_KEY, carts[0].id);
             }
         };
         initializeCarts();
-    }, [mutate, setActiveCartId, isLoadingCarts, isLoadingActiveId]);
+    }, [carts, activeCartId, isLoading]);
 
-    const activeCart = carts.find(c => c.id === activeCartId);
+    const setActiveCartId = useCallback(async (id: string) => {
+        await dataService.setSetting(ACTIVE_CART_ID_KEY, id);
+    }, []);
+
+    const activeCart = carts?.find(c => c.id === activeCartId);
 
     const saveCart = useCallback(async (cart: Cart) => {
         await dataService.saveCart(cart);
-        mutate(CARTS_KEY, (currentCarts: Cart[] = []) => 
-            currentCarts.map(c => c.id === cart.id ? cart : c), false
-        );
-    }, [mutate]);
+    }, []);
 
     const addCart = useCallback(async () => {
+        if(!carts) return;
         const newCart = createNewCart(`Panier ${carts.length + 1}`);
         await dataService.saveCart(newCart);
-        mutate(CARTS_KEY, [...carts, newCart], false);
-        setActiveCartId(newCart.id);
-    }, [carts, mutate, setActiveCartId]);
+        await setActiveCartId(newCart.id);
+    }, [carts, setActiveCartId]);
 
     const removeCart = useCallback(async (cartId: string) => {
-        if (carts.length <= 1) {
+        if (!carts || carts.length <= 1) {
             toast.error("Vous ne pouvez pas supprimer le dernier panier.");
             return;
         }
-        await dataService.deleteCart(cartId);
+        
+        const currentActiveId = activeCartId;
         const newCarts = carts.filter(c => c.id !== cartId);
-        mutate(CARTS_KEY, newCarts, false);
 
-        if (activeCartId === cartId) {
-            setActiveCartId(newCarts[0]?.id || '');
+        await dataService.deleteCart(cartId);
+
+        if (currentActiveId === cartId) {
+            await setActiveCartId(newCarts[0]?.id || '');
         }
-    }, [carts, activeCartId, mutate, setActiveCartId]);
+    }, [carts, activeCartId, setActiveCartId]);
     
     const updateCart = useCallback(async (cartId: string, { product, quantity }: { product: Product; quantity: number }) => {
+        if(!carts) return;
         const cart = carts.find(c => c.id === cartId);
         if (!cart) return;
 
@@ -184,9 +172,9 @@ export const useCarts = () => {
 
 
     return {
-        carts,
+        carts: carts ?? [],
         activeCartId: activeCartId || '',
-        activeCart: activeCart,
+        activeCart,
         setActiveCartId,
         addCart,
         removeCart,
@@ -196,7 +184,7 @@ export const useCarts = () => {
         removeCartItem,
         setCartCustomer,
         setCartDiscount,
-        isLoading: isLoadingCarts || isLoadingActiveId,
-        error,
+        isLoading,
+        error: null,
     };
 };

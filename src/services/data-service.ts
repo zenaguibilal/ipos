@@ -24,65 +24,91 @@ class DataService {
   }
 
   async setSetting(id: string, value: any): Promise<string> {
-    return db.settings.put({ id, value });
+    return db.transaction('rw', db.settings, () => {
+      return db.settings.put({ id, value });
+    });
   }
 
   // Company Profile
   async updateCompanyProfile(profileData: Partial<CompanyProfile>): Promise<number> {
-    const dataToSave: CompanyProfile = {
-      ...profileData,
-      id: 1, // Singleton
-      updatedAt: new Date()
-    };
-    return db.companyProfile.put(dataToSave);
+    return db.transaction('rw', db.companyProfile, async () => {
+      const dataToSave: CompanyProfile = {
+        ...profileData,
+        id: 1, // Singleton
+        updatedAt: new Date()
+      };
+      return db.companyProfile.put(dataToSave);
+    });
   }
 
   // Cart
   async saveCart(cart: Cart): Promise<string> {
-    return db.carts.put(cart);
+     return db.transaction('rw', db.carts, () => {
+      return db.carts.put(cart);
+    });
   }
 
   async deleteCart(cartId: string): Promise<void> {
-    return db.carts.delete(cartId);
+    return db.transaction('rw', db.carts, () => {
+      return db.carts.delete(cartId);
+    });
   }
 
   // Product
   async addProduct(productData: Omit<Product, 'id'>): Promise<number> {
-    return db.products.add(productData as Product);
+    return db.transaction('rw', db.products, () => {
+      return db.products.add(productData as Product);
+    });
   }
   async updateProduct(id: number, productData: Partial<Product>): Promise<number> {
-    return db.products.update(id, productData);
+     return db.transaction('rw', db.products, () => {
+      return db.products.update(id, productData);
+    });
   }
   async deleteProduct(id: number): Promise<void> {
-    return db.products.delete(id);
+     return db.transaction('rw', db.products, () => {
+      return db.products.delete(id);
+    });
   }
 
   // Customer
   async addCustomer(customerData: Omit<Customer, 'id' | 'totalSpent' | 'outstandingBalance'>): Promise<number> {
-    const newCustomer: Omit<Customer, 'id'> = {
-      ...customerData,
-      totalSpent: 0,
-      outstandingBalance: 0,
-      lastActivityDate: new Date(),
-    };
-    return db.customers.add(newCustomer as Customer);
+    return db.transaction('rw', db.customers, () => {
+      const newCustomer: Omit<Customer, 'id'> = {
+        ...customerData,
+        totalSpent: 0,
+        outstandingBalance: 0,
+        lastActivityDate: new Date(),
+      };
+      return db.customers.add(newCustomer as Customer);
+    });
   }
   async updateCustomer(id: number, customerData: Partial<Customer>): Promise<number> {
-    return db.customers.update(id, customerData);
+    return db.transaction('rw', db.customers, () => {
+      return db.customers.update(id, customerData);
+    });
   }
   async deleteCustomer(id: number): Promise<void> {
-    return db.customers.delete(id);
+    return db.transaction('rw', db.customers, () => {
+      return db.customers.delete(id);
+    });
   }
   
   // Expense
   async addExpense(expenseData: Omit<Expense, 'id'>): Promise<number> {
-    return db.expenses.add(expenseData as Expense);
+     return db.transaction('rw', db.expenses, () => {
+      return db.expenses.add(expenseData as Expense);
+    });
   }
   async updateExpense(id: number, expenseData: Partial<Expense>): Promise<number> {
-    return db.expenses.update(id, expenseData);
+    return db.transaction('rw', db.expenses, () => {
+      return db.expenses.update(id, expenseData);
+    });
   }
   async deleteExpense(id: number): Promise<void> {
-    return db.expenses.delete(id);
+    return db.transaction('rw', db.expenses, () => {
+      return db.expenses.delete(id);
+    });
   }
 
   // Main Transactional Methods
@@ -108,6 +134,7 @@ class DataService {
     items: SaleItem[]; subtotal: number; discountType?: 'fixed' | 'percentage';
     discountAmount?: number; total: number; amountPaid: number;
     payments: SalePayment[]; customerId?: number; customerName?: string;
+    breadOrderDate?: string;
   }): Promise<number> {
     return db.transaction('rw', db.products, db.sales, db.customers, async () => {
       // 1. Update product stock
@@ -319,12 +346,12 @@ class DataService {
       order: BreadOrder; field: 'isPaid' | 'isDelivered'; value: boolean; dateString: string;
   }) {
       const { order, field, value, dateString } = params;
-      const companyProfile = await this.getById<CompanyProfile>('companyProfile', 1);
-      const { breadPrice, breadPurchasePrice } = companyProfile || {};
+      
+      return db.transaction('rw', db.dailyBreadOrders, db.sales, db.customers, db.companyProfile, async () => {
+        const companyProfile = await this.getById<CompanyProfile>('companyProfile', 1);
+        const { breadPrice, breadPurchasePrice } = companyProfile || {};
+        if (field === 'isPaid' && value && (!breadPrice || breadPrice <= 0)) throw new Error("Prix du pain non défini dans les paramètres.");
 
-      if (field === 'isPaid' && value && (!breadPrice || breadPrice <= 0)) throw new Error("Prix du pain non défini dans les paramètres.");
-
-      return db.transaction('rw', db.dailyBreadOrders, db.sales, db.customers, async () => {
         const todaysOrder = order.todaysOrder;
         
         if (field === 'isPaid') {
@@ -364,13 +391,20 @@ class DataService {
       customers: BreadOrder[]; field: 'isPaid' | 'isDelivered'; value: boolean; dateString: string;
   }) {
       const { customers, field, value, dateString } = params;
-      const companyProfile = await this.getById<CompanyProfile>('companyProfile', 1);
-      const { breadPrice, breadPurchasePrice } = companyProfile || {};
-      if (field === 'isPaid' && value && (!breadPrice || breadPrice <= 0)) throw new Error("Prix du pain non défini.");
+      
+      return db.transaction('rw', db.dailyBreadOrders, db.sales, db.customers, db.companyProfile, async () => {
+        const companyProfile = await this.getById<CompanyProfile>('companyProfile', 1);
+        const { breadPrice } = companyProfile || {};
+        if (field === 'isPaid' && value && (!breadPrice || breadPrice <= 0)) throw new Error("Prix du pain non défini.");
 
-      return db.transaction('rw', db.dailyBreadOrders, db.sales, db.customers, async () => {
         for (const customer of customers) {
-            await this.handleBreadOrderStatusUpdate({ order: customer, field, value, dateString });
+            // Re-wrapping in a try-catch to allow the bulk operation to continue if one customer fails.
+            try {
+                await this.handleBreadOrderStatusUpdate({ order: customer, field, value, dateString });
+            } catch(e) {
+                console.error(`Failed to update bread order for ${customer.name}:`, e);
+                toast.error(`Échec de la mise à jour pour ${customer.name}.`);
+            }
         }
     });
   }
@@ -383,26 +417,28 @@ class DataService {
       for(const saleId of saleIds) {
           await this.deleteSale(saleId);
       }
-      // Deleting the sale also adjusts customer balance, so we don't need to do it twice.
-      // After sales are deleted (and balances reverted), we can just delete the daily orders.
       const orderIds = ordersToDelete.map(o => o.id!);
       if (orderIds.length > 0) await db.dailyBreadOrders.bulkDelete(orderIds);
     });
   }
 
   async updateDailyBreadOrderQuantity(order: BreadOrder, quantity: number, dateString: string) {
-      if (order.todaysOrder?.id) {
-          if (order.todaysOrder.isPaid) throw new Error("Impossible de modifier une commande déjà payée.");
-          return db.dailyBreadOrders.update(order.todaysOrder.id, { quantity });
-      }
-      return db.dailyBreadOrders.add({
-          breadCustomerId: order.id, customerName: order.name, quantity, date: dateString,
-          isPaid: false, isDelivered: false,
-      } as DailyBreadOrder);
+      return db.transaction('rw', db.dailyBreadOrders, async () => {
+        if (order.todaysOrder?.id) {
+            if (order.todaysOrder.isPaid) throw new Error("Impossible de modifier une commande déjà payée.");
+            return db.dailyBreadOrders.update(order.todaysOrder.id, { quantity });
+        }
+        return db.dailyBreadOrders.add({
+            breadCustomerId: order.id, customerName: order.name, quantity, date: dateString,
+            isPaid: false, isDelivered: false,
+        } as DailyBreadOrder);
+      });
   }
   
   async addBreadCustomer(customerData: Omit<BreadCustomer, 'id'>): Promise<number> {
-    return db.breadCustomers.add(customerData as BreadCustomer);
+    return db.transaction('rw', db.breadCustomers, () => {
+      return db.breadCustomers.add(customerData as BreadCustomer);
+    });
   }
 
   async deleteBreadCustomer(customerId: number): Promise<void> {
@@ -422,9 +458,10 @@ class DataService {
   }
 
   async resetDatabase(): Promise<void> {
-    const tablesToClear = db.tables; // Clear all tables, including settings
-    await Promise.all(tablesToClear.map(table => table.clear()));
-    await db.companyProfile.add({ id: 1, companyName: "Mon Magasin", country: "France" } as CompanyProfile);
+    return db.transaction('rw', ...db.tables, async () => {
+      await Promise.all(db.tables.map(table => table.clear()));
+      await db.companyProfile.add({ id: 1, companyName: "Mon Magasin", country: "France" } as CompanyProfile);
+    });
   }
 
   async exportData(): Promise<string> {
@@ -453,9 +490,7 @@ class DataService {
                     item[key] = new Date(item[key]);
                 }
             }
-            // Dexie handles id for auto-incrementing tables. For other tables (like carts, settings) we keep the id.
             if(db.table(tableName).schema.primKey.auto) {
-                // If importing into a table with '++id', we MUST not provide an id.
                 if (item.id) delete item.id;
             }
             return item;
