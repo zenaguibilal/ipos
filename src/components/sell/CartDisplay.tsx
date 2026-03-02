@@ -30,13 +30,6 @@ const getPlaceholder = (category?: string): Placeholder => {
 
 export function CartDisplay({ cart, onQuantityChange, onRemoveItem }: CartDisplayProps) {
     
-    const handleQuantityBlur = (e: React.FocusEvent<HTMLInputElement>, item: CartItem) => {
-        const newQuantity = parseInt(e.target.value, 10);
-        if (isNaN(newQuantity) || newQuantity <= 0) {
-            onQuantityChange(item.id, item.cartQuantity); // Revert to old quantity
-        }
-    };
-
     return (
         <div className="flex-grow flex flex-col min-h-0">
             {cart.items.length === 0 ? (
@@ -66,7 +59,6 @@ export function CartDisplay({ cart, onQuantityChange, onRemoveItem }: CartDispla
                                         type="number"
                                         value={item.cartQuantity}
                                         onChange={(e) => onQuantityChange(item.id, parseInt(e.target.value, 10) || 0)}
-                                        onBlur={(e) => handleQuantityBlur(e, item)}
                                         className="w-16 h-9 text-center"
                                         min="1"
                                         max={typeof item.id === 'number' ? item.quantity : undefined}
