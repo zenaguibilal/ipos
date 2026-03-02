@@ -4,18 +4,18 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   Package,
-  Users,
-  BarChart3,
+  Users2,
   History,
   ShoppingCart,
+  LayoutDashboard,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navLinks = [
-  { href: '/dashboard', label: 'Tableau', icon: BarChart3 },
+  { href: '/dashboard', label: 'Tableau', icon: LayoutDashboard },
   { href: '/sell', label: 'Vente', icon: ShoppingCart },
   { href: '/products', label: 'Produits', icon: Package },
-  { href: '/customers', label: 'Clients', icon: Users },
+  { href: '/customers', label: 'Clients', icon: Users2 },
   { href: '/sales-history', label: 'Historique', icon: History },
 ];
 

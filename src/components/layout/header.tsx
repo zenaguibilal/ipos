@@ -13,6 +13,26 @@ import {
   Undo2,
   Archive,
   Cookie,
+  FileBox,
+  Truck,
+  Building,
+  Bell,
+  LineChart,
+  Home,
+  Menu,
+  X,
+  CreditCard,
+  PackageSearch,
+  UserPlus,
+  ArrowRightLeft,
+  BookUser,
+  LayoutDashboard,
+  Wallet,
+  Receipt,
+  CandlestickChart,
+  Users2,
+  Box,
+  AreaChart
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -32,14 +52,15 @@ import {
 } from "@/components/ui/tooltip";
 
 const navLinks = [
-  { href: '/dashboard', label: 'Tableau de bord', icon: BarChart3 },
+  { href: '/dashboard', label: 'Tableau de bord', icon: LayoutDashboard },
   { href: '/sell', label: 'Point de Vente', icon: ShoppingCart },
   { href: '/products', label: 'Produits', icon: Package },
   { href: '/stock', label: 'Stock', icon: Archive },
-  { href: '/customers', label: 'Clients', icon: Users },
+  { href: '/customers', label: 'Clients', icon: Users2 },
   { href: '/bread', label: 'Pain', icon: Cookie },
   { href: '/sales-history', label: 'Ventes', icon: History },
   { href: '/returns', label: 'Retours', icon: Undo2 },
+  { href: '/expenses', label: 'Dépenses', icon: Wallet },
 ];
 
 export function AppHeader() {

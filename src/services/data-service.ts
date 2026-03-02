@@ -264,7 +264,8 @@ class DataService {
   }
 
   async getProductCategories(): Promise<string[]> {
-    return db.products.orderBy('category').uniqueKeys().then(keys => keys.filter(k => k) as string[]);
+    const keys = await db.products.orderBy('category').uniqueKeys();
+    return keys.filter(k => k) as string[];
   }
 
   // ====================================================================
@@ -483,7 +484,7 @@ class DataService {
             // Check credit limit if it exists
             if (newCreditAmount > 0 && typeof customer.creditLimit === 'number' && customer.creditLimit >= 0) {
                 if ((customer.outstandingBalance + newCreditAmount) > customer.creditLimit) {
-                    throw new Error(`Limite de crédit (${customer.creditLimit.toFixed(1)} DA) dépassée pour ${customer.firstName} ${customer.lastName}. Solde actuel: ${customer.outstandingBalance.toFixed(1)} DA.`);
+                    throw new Error(`Limite de crédit (${formatCurrency(customer.creditLimit)}) dépassée pour ${customer.firstName} ${customer.lastName}. Solde actuel: ${formatCurrency(customer.outstandingBalance)}.`);
                 }
             }
         }
@@ -627,9 +628,7 @@ class DataService {
         return db.transaction('rw', db.products, db.stockIntakes, db.inventoryLogs, async () => {
             const totalValue = items.reduce((acc, item) => acc + item.purchasePrice * item.quantity, 0);
             
-            // Create a temporary intake record to get an ID
-            const tempIntake = { ...intakeData, totalValue, items: [] };
-            const intakeId = await db.stockIntakes.add(tempIntake as StockIntake);
+            const intakeId = await db.stockIntakes.add({ ...intakeData, totalValue, items: [] } as StockIntake);
 
             const persistedItems: StockIntake['items'] = [];
             
@@ -662,7 +661,7 @@ class DataService {
                     change: item.quantity,
                     newQuantity: newQuantity,
                     reason: 'stock_intake',
-                    relatedId: intakeId, // We have the ID now
+                    relatedId: intakeId,
                     createdAt: new Date(),
                 } as InventoryLog);
                 
@@ -674,7 +673,6 @@ class DataService {
                 });
             }
 
-            // Update the intake record with the final list of items
             await db.stockIntakes.update(intakeId, { items: persistedItems });
             
             return intakeId;
@@ -790,7 +788,6 @@ class DataService {
 
   async deleteBreadCustomer(customerId: number): Promise<void> {
     return db.transaction('rw', db.breadCustomers, db.dailyBreadOrders, db.sales, async () => {
-      // Find associated bread orders to find associated sales
       const orders = await db.dailyBreadOrders.where({ breadCustomerId: customerId }).toArray();
       const saleIdsToDelete = orders.map(o => o.saleId).filter((id): id is number => !!id);
 
@@ -809,7 +806,6 @@ class DataService {
     const sales = await db.sales.where('breadOrderDate').equals(dateString).toArray();
 
     const ordersMap = new Map(todaysOrders.map(o => [o.breadCustomerId, o]));
-    const salesMap = new Map(sales.map(s => [s.id, s]));
 
     const result: BreadOrder[] = customers.map(customer => {
       const todaysOrder = ordersMap.get(customer.id!);
@@ -836,7 +832,6 @@ class DataService {
       const existingOrder = await db.dailyBreadOrders.where('[breadCustomerId+date]').equals([order.id, dateString]).first();
       if (existingOrder) {
         if(newQuantity === order.defaultOrderQuantity) {
-            // If quantity is reset to default, delete the specific daily entry to revert to default
             return db.dailyBreadOrders.delete(existingOrder.id!);
         }
         return db.dailyBreadOrders.update(existingOrder.id!, { quantity: newQuantity });
@@ -885,10 +880,10 @@ class DataService {
       
       const ordersToProcess = await db.dailyBreadOrders
         .where('date').equals(dateString)
-        .and(order => breadCustomerIds.includes(order.breadCustomerId) && !order.isPaid)
+        .and(order => breadCustomerIds.includes(order.breadCustomerId) && !order.saleId)
         .toArray();
 
-      const allBreadCustomers = await db.breadCustomers.toArray();
+      const allBreadCustomers = await db.breadCustomers.where('id').anyOf(ordersToProcess.map(o => o.breadCustomerId)).toArray();
       const customersMap = new Map(allBreadCustomers.map(c => [c.id!, c]));
 
       let salesCount = 0;
@@ -906,21 +901,20 @@ class DataService {
               quantity: order.quantity
           };
           
-          const saleData: Omit<Sale, 'id'> = {
-              invoiceNumber: `INV-${Date.now().toString(36).toUpperCase()}-${order.id}`,
+          const saleData: Omit<Sale, 'id'| 'invoiceNumber'> = {
               items: [saleItem],
               subtotal: total,
               total,
               totalProfit: total - (saleItem.purchasePrice * saleItem.quantity),
-              amountPaid: 0,
-              remainingBalance: total,
-              paymentStatus: 'unpaid',
-              payments: [],
+              amountPaid: total,
+              remainingBalance: 0,
+              paymentStatus: 'paid',
+              payments: [{ method: 'cash', amount: total }],
               customerName: customer.name,
               breadOrderDate: dateString,
           };
           
-          const saleId = await db.sales.add(saleData as Sale);
+          const saleId = await this.addSale(saleData);
           await db.dailyBreadOrders.update(order.id!, { isPaid: true, saleId: saleId });
           salesCount++;
       }
@@ -929,13 +923,54 @@ class DataService {
     });
   }
 
+  // ====================================================================
+  // Expenses
+  // ====================================================================
+  async getExpenses(params: { category?: string; from?: Date; to?: Date }): Promise<Expense[]> {
+    const { category, from, to } = params;
+    let collection;
+
+    if(category && from && to) {
+        collection = db.expenses.where('[category+expenseDate]').between([category, from], [category, to]);
+    } else if (category) {
+        collection = db.expenses.where({ category });
+    } else if (from && to) {
+        collection = db.expenses.where('expenseDate').between(from, to);
+    } else {
+        collection = db.expenses.toCollection();
+    }
+    
+    return collection.reverse().toArray();
+  }
+  
+  async getExpenseCategories(): Promise<string[]> {
+    const keys = await db.expenses.orderBy('category').uniqueKeys();
+    return keys.filter(k => k) as string[];
+  }
+
+  async addExpense(expense: Omit<Expense, 'id'>): Promise<number> {
+      return db.transaction('rw', db.expenses, () => db.expenses.add(expense as Expense));
+  }
+
+  async updateExpense(id: number, expenseData: Partial<Omit<Expense, 'id'>>): Promise<number> {
+      return db.transaction('rw', db.expenses, () => db.expenses.update(id, expenseData));
+  }
+
+  async deleteExpense(id: number): Promise<void> {
+      return db.transaction('rw', db.expenses, () => db.expenses.delete(id));
+  }
+
 
   // ====================================================================
   // Notifications - All writes are transactional
   // ====================================================================
 
   async getUnreadLowStockAlerts(): Promise<Notification[]> {
-    return db.notifications.orderBy('createdAt').reverse().filter(n => n.type === 'low-stock' && n.isRead === false).toArray();
+    return db.notifications
+        .orderBy('createdAt')
+        .reverse()
+        .filter(n => n.type === 'low-stock' && !n.isRead)
+        .toArray();
   }
 
   async markNotificationAsRead(notificationId: number): Promise<number> {
@@ -959,18 +994,7 @@ class DataService {
       const sales = await db.sales.where('createdAt').between(from, to).reverse().toArray();
 
       const totalRevenue = sales.reduce((acc, sale) => acc + sale.total, 0);
-      
-      const totalProfit = sales.reduce((acc, sale) => {
-          if (sale.totalProfit !== undefined) {
-              return acc + sale.totalProfit;
-          }
-          // Fallback for old data
-          const saleCost = sale.items.reduce((costAcc, item) => {
-              const cost = item.purchasePrice * item.quantity;
-              return costAcc + (isNaN(cost) ? 0 : cost);
-          }, 0);
-          return acc + (sale.total - saleCost);
-      }, 0);
+      const totalProfit = sales.reduce((acc, sale) => acc + (sale.totalProfit || 0), 0);
       
       return {
           totalRevenue,
@@ -1022,18 +1046,20 @@ class DataService {
 
       return db.transaction('rw', ...db.tables, async () => {
           for (const tableName of tables) {
-              if (db.table(tableName)) {
-                await db.table(tableName).clear();
+              const table = db.table(tableName);
+              if (table) {
+                await table.clear();
               }
           }
 
           for (const tableName of tables) {
               const tableData = data[tableName as keyof DB];
               if (tableData) {
+                  const table = db.table(tableName);
                   if (tableName === 'companyProfile' && !Array.isArray(tableData)) {
                      await db.companyProfile.put(tableData as CompanyProfile);
-                  } else if (Array.isArray(tableData) && db.table(tableName)) {
-                     await db.table(tableName).bulkAdd(tableData);
+                  } else if (Array.isArray(tableData) && table) {
+                     await table.bulkAdd(tableData);
                   }
               }
           }
