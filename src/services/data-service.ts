@@ -1,11 +1,10 @@
 'use client';
 
 import { db, PosDatabase } from '@/lib/database';
-import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, DailyBreadOrder, BreadCustomer, BreadOrder, Notification, InventoryLog, CustomerWithSalesData, DashboardData, TopProduct, TopCustomer, ImportAnalysis } from '@/lib/types';
+import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, DailyBreadOrder, BreadCustomer, BreadOrder, Notification, InventoryLog } from '@/lib/types';
 import { initialData, type DB, type CollectionName } from './initial-data';
 import Dexie from 'dexie';
 import { startOfDay, endOfDay } from 'date-fns';
-import { safeToDate } from '@/lib/utils';
 
 type TableName = keyof Pick<PosDatabase, 
     'products' | 'customers' | 'sales' | 'payments' | 
@@ -173,148 +172,11 @@ class DataService {
   }
 
   async deleteCustomer(id: number): Promise<void> {
-    return db.transaction('rw', db.customers, db.sales, db.payments, async () => {
-        const customer = await db.customers.get(id);
-        if (customer && customer.outstandingBalance > 0) {
-            throw new Error("Impossible de supprimer un client avec un solde impayé.");
-        }
-        const salesCount = await db.sales.where({ customerId: id }).count();
-        if (salesCount > 0) {
-            throw new Error("Impossible de supprimer un client avec un historique de ventes.");
-        }
-        await db.payments.where({ customerId: id }).delete();
-        await db.customers.delete(id);
+    return db.transaction('rw', db.customers, () => {
+        return db.customers.delete(id);
     });
-  }
-
-  async getCustomersForDisplay(params: { query?: string }): Promise<CustomerWithSalesData[]> {
-    const { query } = params;
-    
-    let customers: Customer[];
-
-    if (query) {
-      const lowerQuery = query.toLowerCase();
-      customers = await db.customers.filter(c => 
-        c.firstName.toLowerCase().includes(lowerQuery) || 
-        c.lastName.toLowerCase().includes(lowerQuery) ||
-        (c.phone && c.phone.includes(lowerQuery)) ||
-        false
-      ).toArray();
-    } else {
-      customers = await db.customers.toArray();
-    }
-
-    const customersWithData = customers.map(customer => {
-        let isReminderDue = false;
-        if (customer.outstandingBalance > 0 && customer.settlementDay && customer.lastActivityDate) {
-            const dueDate = new Date(customer.lastActivityDate);
-            dueDate.setDate(dueDate.getDate() + customer.settlementDay);
-            if (new Date() > dueDate) {
-                isReminderDue = true;
-            }
-        }
-
-        return {
-            ...customer,
-            id: customer.id!,
-            isReminderDue
-        };
-    });
-    
-    return customersWithData;
   }
   
-  async getCustomerDetails(customerId: number): Promise<{ customer: Customer; activity: (Sale | Payment)[] } | null> {
-      return db.transaction('r', db.customers, db.sales, db.payments, async () => {
-          const customer = await db.customers.get(customerId);
-          if (!customer) return null;
-
-          const sales = await db.sales.where({ customerId }).toArray();
-          const payments = await db.payments.where({ customerId }).toArray();
-
-          const activity = [...sales, ...payments].sort((a, b) => 
-              (safeToDate(b.createdAt!).getTime()) - (safeToDate(a.createdAt!).getTime())
-          );
-
-          return { customer, activity };
-      });
-  }
-  
-  async analyzeCustomerImport(records: Record<string, any>[]): Promise<ImportAnalysis> {
-    const customersToAdd: any[] = [];
-    const customersToUpdate: any[] = [];
-    const errorRows: any[] = [];
-
-    const allCustomers = await db.customers.toArray();
-    const customerMapByName = new Map(allCustomers.map(c => [`${c.firstName.toLowerCase()} ${c.lastName.toLowerCase()}`, c]));
-    const customerMapByPhone = new Map(allCustomers.filter(c => c.phone).map(c => [c.phone!, c]));
-
-    for (const record of records) {
-      const firstName = record.firstName || record.prénom;
-      const lastName = record.lastName || record.nom;
-      const phone = record.phone || record.téléphone;
-      
-      const cleanedPhone = phone ? String(phone).replace(/\s/g, '') : '';
-
-      if (!firstName || !lastName) {
-        errorRows.push(record);
-        continue;
-      }
-      
-      const fullName = `${String(firstName).trim().toLowerCase()} ${String(lastName).trim().toLowerCase()}`;
-      let existingCustomer = customerMapByName.get(fullName) || (cleanedPhone ? customerMapByPhone.get(cleanedPhone) : undefined);
-      
-      const customerData = { firstName: String(firstName).trim(), lastName: String(lastName).trim(), phone: cleanedPhone };
-
-      if (existingCustomer) {
-        customersToUpdate.push({ ...customerData, id: existingCustomer.id });
-      } else {
-        customersToAdd.push(customerData);
-      }
-    }
-
-    return { 
-        customersToAdd, 
-        customersToUpdate, 
-        errorRows, 
-        skippedRows: [],
-        totalRows: records.length 
-    };
-  }
-
-  async processCustomerImport(analysis: { toAdd: Omit<Customer, 'id'>[], toUpdate: Customer[] }): Promise<{ added: number; updated: number; }> {
-    return db.transaction('rw', db.customers, async () => {
-        let addedCount = 0;
-        let updatedCount = 0;
-
-        // Add new customers
-        if (analysis.toAdd.length > 0) {
-            const customersToCreate = analysis.toAdd.map(c => ({
-                ...c,
-                totalSpent: 0,
-                outstandingBalance: 0,
-                lastActivityDate: new Date()
-            }));
-            await db.customers.bulkAdd(customersToCreate as Customer[]);
-            addedCount = customersToCreate.length;
-        }
-
-        // Update existing customers
-        if (analysis.toUpdate.length > 0) {
-            const updates = analysis.toUpdate.map(c => db.customers.update(c.id!, {
-                firstName: c.firstName,
-                lastName: c.lastName,
-                phone: c.phone
-            }));
-            await Promise.all(updates);
-            updatedCount = updates.length;
-        }
-        
-        return { added: addedCount, updated: updatedCount };
-    });
-  }
-
-
   // ====================================================================
   // Sales - Complex logic is handled atomically
   // ====================================================================
@@ -379,40 +241,6 @@ class DataService {
         }
         
         return saleId;
-    });
-  }
-
-  async deleteSale(saleId: number): Promise<void> {
-    return db.transaction('rw', db.sales, db.products, db.customers, db.inventoryLogs, async () => {
-        const sale = await db.sales.get(saleId);
-        if (!sale) throw new Error("Vente non trouvée.");
-
-        for (const item of sale.items) {
-            if(typeof item.id !== 'number') continue;
-            let newQuantity = 0;
-            await db.products.where('id').equals(item.id).modify(p => {
-                p.quantity += item.quantity;
-                newQuantity = p.quantity;
-            });
-             await db.inventoryLogs.add({
-                productId: item.id,
-                change: item.quantity,
-                newQuantity,
-                reason: 'cancellation',
-                relatedId: saleId,
-                createdAt: new Date()
-            } as InventoryLog);
-        }
-
-        if (sale.customerId) {
-            const saleBalanceEffect = sale.total - sale.amountPaid;
-            await db.customers.where('id').equals(sale.customerId).modify(c => {
-                c.totalSpent -= sale.total;
-                c.outstandingBalance -= saleBalanceEffect > 0 ? saleBalanceEffect : 0;
-            });
-        }
-        
-        await db.sales.delete(saleId);
     });
   }
   
@@ -497,40 +325,6 @@ class DataService {
           return returnId;
       });
   }
-  
-  async deleteReturn(returnId: number): Promise<void> {
-     return db.transaction('rw', db.returns, db.products, db.customers, db.inventoryLogs, async () => {
-        const pr = await db.returns.get(returnId);
-        if (!pr) throw new Error("Retour non trouvé.");
-        
-        for (const item of pr.items) {
-          if (item.productId && item.wasRestocked) {
-            let newQuantity = 0;
-            await db.products.where('id').equals(item.productId).modify(p => {
-              p.quantity -= item.quantity;
-              newQuantity = p.quantity;
-            });
-             await db.inventoryLogs.add({
-                productId: item.productId,
-                change: -item.quantity,
-                newQuantity,
-                reason: 'cancellation',
-                relatedId: `ret-${returnId}`,
-                createdAt: new Date(),
-            } as InventoryLog);
-          }
-        }
-        
-        if (pr.customerId) {
-          const balanceEffect = pr.totalReturnValue - pr.amountRefunded;
-           await db.customers.where('id').equals(pr.customerId).modify(c => {
-                c.outstandingBalance += balanceEffect;
-            });
-        }
-
-        await db.returns.delete(returnId);
-    });
-  }
 
   // ====================================================================
   // Expenses - All writes are transactional
@@ -602,93 +396,6 @@ class DataService {
     return db.transaction('rw', db.notifications, () => {
         return db.notifications.where({ isRead: true }).delete();
     });
-  }
-
-  // ====================================================================
-  // Dashboard Data Aggregation
-  // ====================================================================
-
-  async getDashboardData(range?: { from: Date; to: Date }): Promise<DashboardData> {
-      return db.transaction('r', db.sales, db.products, db.customers, async () => {
-        
-        let sales: Sale[];
-        if (range?.from && range?.to) {
-            sales = await db.sales.where('createdAt').between(startOfDay(range.from), endOfDay(range.to), true, true).toArray();
-        } else {
-            sales = await db.sales.toArray();
-        }
-
-        let totalRevenue = 0;
-        let totalProfit = 0;
-        const productSales: { [id: number]: { unitsSold: number, totalRevenue: number, totalProfit: number } } = {};
-        const customerSales: { [id: number]: number } = {};
-
-        sales.forEach(sale => {
-            totalRevenue += sale.total;
-            
-            let saleProfit = 0;
-            sale.items.forEach(item => {
-                const profitPerItem = (item.price - item.purchasePrice) * item.quantity;
-                if (!isNaN(profitPerItem)) {
-                    saleProfit += profitPerItem;
-                }
-                
-                if (typeof item.id === 'number') {
-                    if (!productSales[item.id]) {
-                        productSales[item.id] = { unitsSold: 0, totalRevenue: 0, totalProfit: 0 };
-                    }
-                    productSales[item.id].unitsSold += item.quantity;
-                    productSales[item.id].totalRevenue += item.price * item.quantity;
-                    if (!isNaN(profitPerItem)) {
-                        productSales[item.id].totalProfit += profitPerItem;
-                    }
-                }
-            });
-            totalProfit += saleProfit;
-
-            if (sale.customerId) {
-                if (!customerSales[sale.customerId]) {
-                    customerSales[sale.customerId] = 0;
-                }
-                customerSales[sale.customerId] += sale.total;
-            }
-        });
-
-        const allProducts = await db.products.toArray();
-        const inventoryValue = allProducts.reduce((acc, p) => acc + (p.purchasePrice * p.quantity), 0);
-        
-        const topProductIds = Object.keys(productSales).map(Number)
-            .sort((a, b) => productSales[b].totalRevenue - productSales[a].totalRevenue)
-            .slice(0, 5);
-
-        const topProducts: TopProduct[] = (await db.products.bulkGet(topProductIds)).map(p => ({
-            id: p!.id as number,
-            name: p!.name,
-            ...productSales[p!.id as number],
-        })).filter(Boolean);
-        
-        const topCustomerIds = Object.keys(customerSales).map(Number)
-            .sort((a,b) => customerSales[b] - customerSales[a])
-            .slice(0, 5);
-        
-        const topCustomers: TopCustomer[] = (await db.customers.bulkGet(topCustomerIds)).map(c => ({
-            id: c!.id as number,
-            name: `${c!.firstName} ${c!.lastName}`,
-            totalSpent: customerSales[c!.id as number],
-        })).filter(Boolean);
-
-        return {
-            stats: {
-                totalRevenue,
-                totalProfit,
-                salesCount: sales.length,
-                inventoryValue,
-            },
-            sales,
-            topProducts,
-            topCustomers,
-        };
-      });
   }
 
 
