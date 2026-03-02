@@ -153,6 +153,19 @@ class DataService {
   // ====================================================================
   // Customers
   // ====================================================================
+  async getCustomerById(id: number): Promise<Customer | undefined> {
+      return this.getById<Customer>('customers', id);
+  }
+
+  async getCustomerActivity(customerId: number): Promise<(Sale | Payment | ProductReturn)[]> {
+    if (!customerId) return [];
+    const sales = await db.sales.where({ customerId }).toArray();
+    const payments = await db.payments.where({ customerId }).toArray();
+    const returns = await db.returns.where({ customerId }).toArray();
+    const combined = [...sales, ...payments, ...returns];
+    return combined.sort((a, b) => (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0));
+  }
+
   async getCustomers(params: { query?: string }): Promise<CustomerWithSalesData[]> {
     const { query } = params;
     let customers: Customer[];

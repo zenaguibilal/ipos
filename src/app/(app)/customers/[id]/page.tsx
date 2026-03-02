@@ -2,7 +2,7 @@
 
 import { useParams } from 'next/navigation';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '@/lib/database';
+import { dataService } from '@/services/data-service';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, HandCoins } from 'lucide-react';
@@ -28,18 +28,14 @@ export default function CustomerDetailPage() {
     const [isReturnDetailsOpen, setIsReturnDetailsOpen] = useState(false);
 
     const customer = useLiveQuery(
-        () => db.customers.get(customerId),
+        () => dataService.getCustomerById(customerId),
         [customerId]
     );
 
-    const activity = useLiveQuery(async () => {
-        if (!customerId) return [];
-        const sales = await db.sales.where({ customerId }).toArray();
-        const payments = await db.payments.where({ customerId }).toArray();
-        const returns = await db.returns.where({ customerId }).toArray();
-        const combined = [...sales, ...payments, ...returns];
-        return combined.sort((a, b) => (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0));
-    }, [customerId], []);
+    const activity = useLiveQuery(
+        () => dataService.getCustomerActivity(customerId), 
+        [customerId], []
+    );
 
 
     const isLoading = customer === undefined || activity === undefined;
