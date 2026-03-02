@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie';
-import type { Product, Customer, Sale, Payment, StockIntake, ProductReturn, Cart, CompanyProfile, BreadCustomer, DailyBreadOrder, Expense, Setting, Notification } from './types';
+import type { Product, Customer, Sale, Payment, StockIntake, ProductReturn, Cart, CompanyProfile, BreadCustomer, DailyBreadOrder, Expense, Setting, Notification, InventoryLog } from './types';
 
 export class PosDatabase extends Dexie {
     products!: Table<Product, number>;
@@ -15,10 +15,11 @@ export class PosDatabase extends Dexie {
     expenses!: Table<Expense, number>;
     settings!: Table<Setting, string>;
     notifications!: Table<Notification, number>;
+    inventoryLogs!: Table<InventoryLog, number>;
 
     constructor() {
         super('posDB');
-        this.version(16).stores({
+        this.version(17).stores({
             products: '++id, name, *barcodes, category, [category+name]',
             customers: '++id, createdAt, [lastName+firstName], outstandingBalance, lastActivityDate',
             sales: '++id, &invoiceNumber, createdAt, customerId, customerName, paymentStatus, breadOrderDate',
@@ -32,19 +33,20 @@ export class PosDatabase extends Dexie {
             expenses: '++id, category, expenseDate, [category+expenseDate]',
             settings: '&id', // Key-value store for UI state and preferences
             notifications: '++id, createdAt, isRead, type, [type+isRead]',
+            inventoryLogs: '++id, productId, createdAt, reason',
         });
 
         // Hooks pour ajouter/mettre à jour les timestamps
         this.tables.forEach(table => {
-            // Do not add timestamps to settings, carts, or notifications tables
-            if (['settings', 'carts', 'notifications'].includes(table.name)) return;
+            // Do not add timestamps to settings, carts tables
+            if (['settings', 'carts'].includes(table.name)) return;
             
             table.hook('creating', (primKey, obj, trans) => {
                 const now = new Date();
                 if ((obj as any).createdAt === undefined) {
                     (obj as any).createdAt = now;
                 }
-                if ((obj as any).updatedAt === undefined) {
+                if ((obj as any).updatedAt === undefined && table.name !== 'inventoryLogs') {
                     (obj as any).updatedAt = now;
                 }
             });

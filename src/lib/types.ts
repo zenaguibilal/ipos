@@ -42,7 +42,7 @@ export interface CartItem extends Product {
 
 // Represents a single shopping cart session
 export interface Cart {
-    id: string;
+    id:string;
     name: string;
     items: CartItem[];
     customerId: number | null;
@@ -231,4 +231,16 @@ export interface Notification {
     isRead: boolean;
     createdAt: Date;
     relatedId?: number | string; // e.g., product.id or customer.id
+}
+
+export type InventoryLogReason = 'sale' | 'return' | 'stock_intake' | 'cancellation' | 'manual_adjustment';
+
+export interface InventoryLog {
+    id?: number;
+    productId: number;
+    change: number; // e.g., -2 for sale, +50 for stock intake
+    newQuantity: number;
+    reason: InventoryLogReason;
+    relatedId?: number | string; // ID of the sale, return, intake, etc.
+    createdAt: Date;
 }

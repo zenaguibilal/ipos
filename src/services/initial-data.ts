@@ -1,4 +1,4 @@
-import type { Product, Customer, Sale, Payment, StockIntake, ProductReturn, BreadCustomer, DailyBreadOrder, CompanyProfile, Expense, Notification, Setting } from "@/lib/types";
+import type { Product, Customer, Sale, Payment, StockIntake, ProductReturn, BreadCustomer, DailyBreadOrder, CompanyProfile, Expense, Notification, Setting, InventoryLog } from "@/lib/types";
 
 export interface DB {
     products: Product[];
@@ -12,6 +12,7 @@ export interface DB {
     expenses: Expense[];
     notifications: Notification[];
     settings: Setting[];
+    inventoryLogs: InventoryLog[];
     companyProfile: CompanyProfile;
 }
 
@@ -30,6 +31,7 @@ export const initialData: DB = {
     expenses: [],
     notifications: [],
     settings: [],
+    inventoryLogs: [],
     companyProfile: {
         id: 1,
         companyName: "Mon Magasin",

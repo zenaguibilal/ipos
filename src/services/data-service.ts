@@ -1,13 +1,13 @@
 'use client';
 
 import { db, PosDatabase } from '@/lib/database';
-import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, DailyBreadOrder, BreadCustomer, BreadOrder, Notification } from '@/lib/types';
+import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, DailyBreadOrder, BreadCustomer, BreadOrder, Notification, InventoryLog } from '@/lib/types';
 import { initialData, type DB, type CollectionName } from './initial-data';
 
 type TableName = keyof Pick<PosDatabase, 
     'products' | 'customers' | 'sales' | 'payments' | 
     'stockIntakes' | 'returns' | 'breadCustomers' | 'dailyBreadOrders' | 
-    'companyProfile' | 'carts' | 'expenses' | 'settings' | 'notifications'
+    'companyProfile' | 'carts' | 'expenses' | 'settings' | 'notifications' | 'inventoryLogs'
 >;
 
 class DataService {
@@ -77,14 +77,37 @@ class DataService {
   // Products - All writes are transactional
   // ====================================================================
   async addProduct(product: Omit<Product, 'id'>): Promise<number> {
-      return db.transaction('rw', db.products, () => {
-          return db.products.add(product as Product);
+      return db.transaction('rw', db.products, db.inventoryLogs, async () => {
+          const newId = await db.products.add(product as Product);
+          await db.inventoryLogs.add({
+              productId: newId,
+              change: product.quantity,
+              newQuantity: product.quantity,
+              reason: 'stock_intake',
+              relatedId: `init-${newId}`,
+              createdAt: new Date(),
+          } as InventoryLog);
+          return newId;
       });
   }
 
-  async updateProduct(id: number, product: Omit<Product, 'id'>): Promise<number> {
-      return db.transaction('rw', db.products, () => {
-          return db.products.update(id, product);
+  async updateProduct(id: number, productData: Omit<Product, 'id'>): Promise<number> {
+      return db.transaction('rw', db.products, db.inventoryLogs, async () => {
+        const oldProduct = await db.products.get(id);
+        if (!oldProduct) throw new Error("Produit non trouvé pour la mise à jour.");
+
+        const result = await db.products.update(id, productData);
+
+        if (oldProduct.quantity !== productData.quantity) {
+             await db.inventoryLogs.add({
+                productId: id,
+                change: productData.quantity - oldProduct.quantity,
+                newQuantity: productData.quantity,
+                reason: 'manual_adjustment',
+                createdAt: new Date(),
+             } as InventoryLog);
+        }
+        return result;
       });
   }
 
@@ -130,24 +153,47 @@ class DataService {
   // Sales - Complex logic is handled atomically
   // ====================================================================
   async addSale(saleData: Omit<Sale, 'id' | 'invoiceNumber' | 'paymentStatus' | 'remainingBalance'>): Promise<number> {
-    return db.transaction('rw', db.sales, db.products, db.customers, db.notifications, async () => {
+    return db.transaction('rw', db.sales, db.products, db.customers, db.notifications, db.inventoryLogs, async () => {
         const { items, customerId, total, amountPaid } = saleData;
 
-        // 1. Update product stock and check for low stock
         for (const item of items) {
-            if (typeof item.id !== 'number') continue; // Skip custom items
-
+            if (typeof item.id !== 'number') continue;
             const product = await db.products.get(item.id);
             if (!product) throw new Error(`Produit avec ID ${item.id} non trouvé.`);
-            if (product.quantity < item.quantity) {
-                throw new Error(`Stock insuffisant pour ${product.name}.`);
-            }
-            const newQuantity = product.quantity - item.quantity;
-            await db.products.update(item.id, { quantity: newQuantity });
-            
-            const isAlreadyNotified = await db.notifications.where({ type: 'low-stock', relatedId: product.id, isRead: false }).first();
-            if (newQuantity <= product.minStockLevel && !isAlreadyNotified) {
-                if (product.quantity > product.minStockLevel) { // Trigger only when crossing the threshold
+            if (product.quantity < item.quantity) throw new Error(`Stock insuffisant pour ${product.name}.`);
+        }
+        
+        const remainingBalance = total - amountPaid;
+        const paymentStatus = amountPaid >= total ? 'paid' : amountPaid > 0 ? 'partial' : 'unpaid';
+
+        const saleId = await db.sales.add({
+            ...saleData,
+            invoiceNumber: `INV-${Date.now()}`,
+            paymentStatus,
+            remainingBalance: remainingBalance > 0 ? remainingBalance : 0,
+        } as Sale);
+
+        for (const item of items) {
+            if (typeof item.id !== 'number') continue;
+            let newQuantity = 0;
+            await db.products.where({id: item.id}).modify(p => {
+                p.quantity -= item.quantity;
+                newQuantity = p.quantity;
+            });
+            await db.inventoryLogs.add({
+                productId: item.id,
+                change: -item.quantity,
+                newQuantity,
+                reason: 'sale',
+                relatedId: saleId,
+                createdAt: new Date()
+            } as InventoryLog);
+
+            // Low stock notification
+            const product = await db.products.get(item.id);
+            if (product && newQuantity <= product.minStockLevel) {
+                const isAlreadyNotified = await db.notifications.where({ type: 'low-stock', relatedId: product.id, isRead: false }).first();
+                if (!isAlreadyNotified) {
                     await db.notifications.add({
                         type: 'low-stock',
                         message: `Le stock pour ${product.name} est bas (${newQuantity} restants).`,
@@ -158,18 +204,6 @@ class DataService {
                 }
             }
         }
-        
-        const remainingBalance = total - amountPaid;
-        let paymentStatus: 'paid' | 'partial' | 'unpaid' = 'unpaid';
-        if (amountPaid >= total) paymentStatus = 'paid';
-        else if (amountPaid > 0) paymentStatus = 'partial';
-
-        const saleId = await db.sales.add({
-            ...saleData,
-            invoiceNumber: `INV-${Date.now()}`,
-            paymentStatus,
-            remainingBalance: remainingBalance > 0 ? remainingBalance : 0,
-        } as Sale);
 
         if (customerId) {
             await db.customers.where('id').equals(customerId).modify(c => {
@@ -184,15 +218,25 @@ class DataService {
   }
 
   async deleteSale(saleId: number): Promise<void> {
-    return db.transaction('rw', db.sales, db.products, db.customers, async () => {
+    return db.transaction('rw', db.sales, db.products, db.customers, db.inventoryLogs, async () => {
         const sale = await db.sales.get(saleId);
         if (!sale) throw new Error("Vente non trouvée.");
 
         for (const item of sale.items) {
             if(typeof item.id !== 'number') continue;
+            let newQuantity = 0;
             await db.products.where('id').equals(item.id).modify(p => {
                 p.quantity += item.quantity;
+                newQuantity = p.quantity;
             });
+             await db.inventoryLogs.add({
+                productId: item.id,
+                change: item.quantity,
+                newQuantity,
+                reason: 'cancellation',
+                relatedId: saleId,
+                createdAt: new Date()
+            } as InventoryLog);
         }
 
         if (sale.customerId) {
@@ -226,15 +270,25 @@ class DataService {
   // Stock Intake - All writes are transactional
   // ====================================================================
    async addStockIntake(intakeData: Omit<StockIntake, 'id'>): Promise<number> {
-        return db.transaction('rw', db.products, db.stockIntakes, async () => {
+        return db.transaction('rw', db.products, db.stockIntakes, db.inventoryLogs, async () => {
             const intakeId = await db.stockIntakes.add(intakeData as StockIntake);
 
             for (const item of intakeData.items) {
                 if (item.productId) { // Existing product
+                    let newQuantity = 0;
                     await db.products.where('id').equals(item.productId).modify(p => {
                         p.quantity += item.quantityReceived;
                         p.purchasePrice = item.purchasePrice; // Update purchase price
+                        newQuantity = p.quantity;
                     });
+                    await db.inventoryLogs.add({
+                        productId: item.productId,
+                        change: item.quantityReceived,
+                        newQuantity,
+                        reason: 'stock_intake',
+                        relatedId: intakeId,
+                        createdAt: new Date(),
+                    } as InventoryLog);
                 }
             }
             return intakeId;
@@ -245,15 +299,25 @@ class DataService {
   // Returns - Complex logic is handled atomically
   // ====================================================================
   async addReturn(returnData: Omit<ProductReturn, 'id'>): Promise<number> {
-      return db.transaction('rw', db.returns, db.products, db.customers, async () => {
+      return db.transaction('rw', db.returns, db.products, db.customers, db.inventoryLogs, async () => {
           const returnId = await db.returns.add(returnData as ProductReturn);
           const { items, customerId, totalReturnValue, amountRefunded } = returnData;
 
           for (const item of items) {
               if (item.productId && item.wasRestocked) {
+                  let newQuantity = 0;
                   await db.products.where('id').equals(item.productId).modify(p => {
                       p.quantity += item.quantity;
+                      newQuantity = p.quantity;
                   });
+                   await db.inventoryLogs.add({
+                        productId: item.productId,
+                        change: item.quantity,
+                        newQuantity,
+                        reason: 'return',
+                        relatedId: returnId,
+                        createdAt: new Date(),
+                    } as InventoryLog);
               }
           }
 
@@ -270,15 +334,25 @@ class DataService {
   }
   
   async deleteReturn(returnId: number): Promise<void> {
-     return db.transaction('rw', db.returns, db.products, db.customers, async () => {
+     return db.transaction('rw', db.returns, db.products, db.customers, db.inventoryLogs, async () => {
         const pr = await db.returns.get(returnId);
         if (!pr) throw new Error("Retour non trouvé.");
         
         for (const item of pr.items) {
           if (item.productId && item.wasRestocked) {
+            let newQuantity = 0;
             await db.products.where('id').equals(item.productId).modify(p => {
               p.quantity -= item.quantity;
+              newQuantity = p.quantity;
             });
+             await db.inventoryLogs.add({
+                productId: item.productId,
+                change: -item.quantity,
+                newQuantity,
+                reason: 'cancellation',
+                relatedId: `ret-${returnId}`,
+                createdAt: new Date(),
+            } as InventoryLog);
           }
         }
         
@@ -374,7 +448,7 @@ class DataService {
     const tables: CollectionName[] = [
         'products', 'customers', 'sales', 'payments', 
         'stockIntakes', 'returns', 'breadCustomers', 
-        'dailyBreadOrders', 'expenses', 'notifications', 'settings'
+        'dailyBreadOrders', 'expenses', 'notifications', 'settings', 'inventoryLogs'
     ];
 
     await db.transaction('r', db.tables, async () => {
@@ -392,7 +466,7 @@ class DataService {
       const tables: (CollectionName | 'companyProfile')[] = [
         'products', 'customers', 'sales', 'payments', 
         'stockIntakes', 'returns', 'breadCustomers', 
-        'dailyBreadOrders', 'expenses', 'notifications', 'settings',
+        'dailyBreadOrders', 'expenses', 'notifications', 'settings', 'inventoryLogs',
         'companyProfile'
     ];
 
