@@ -70,8 +70,8 @@ export default function DashboardPage() {
             {unreadAlerts && unreadAlerts.length > 0 && (
                 <div className="space-y-3">
                     {unreadAlerts.map(alert => (
-                         <div key={alert.id} className="relative">
-                            <Alert variant="destructive">
+                         <div key={alert.id!} className="relative luxury-glass border-destructive/30">
+                            <Alert variant="destructive" className="border-0 bg-transparent shadow-none">
                                 <AlertTriangle className="h-4 w-4" />
                                 <AlertTitle>Alerte de Stock Faible</AlertTitle>
                                 <AlertDescription>{alert.message}</AlertDescription>
@@ -79,7 +79,7 @@ export default function DashboardPage() {
                             <Button 
                                 variant="ghost" 
                                 size="icon" 
-                                className="absolute top-1/2 right-2 -translate-y-1/2 h-8 w-8"
+                                className="absolute top-1/2 right-2 -translate-y-1/2 h-8 w-8 text-destructive/70 hover:text-destructive hover:bg-destructive/10"
                                 onClick={() => handleDismissAlert(alert.id!)}
                                 aria-label="Masquer l'alerte"
                             >
@@ -100,11 +100,11 @@ export default function DashboardPage() {
 
             <StatsCards stats={statsForCards} isLoading={isLoading} />
 
-            <div className="grid lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2">
+            <div className="grid lg:grid-cols-5 gap-6">
+                <div className="lg:col-span-3">
                     <RevenueChart sales={salesData?.sales} isLoading={isLoading} />
                 </div>
-                <div>
+                <div className="lg:col-span-2">
                     <SalesOverview 
                         sales={salesData?.sales ?? []} 
                         isLoading={isLoading}

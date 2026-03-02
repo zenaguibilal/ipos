@@ -30,19 +30,8 @@ export default function SalesOverview({ sales, isLoading }: SalesOverviewProps) 
                 <Skeleton className="h-4 w-48" />
             </CardHeader>
             <CardContent>
-                <div className="space-y-8">
-                    {[...Array(5)].map((_, i) => (
-                        <div key={i} className="flex items-center">
-                            <div className="space-y-1 flex-grow">
-                                <Skeleton className="h-4 w-[100px]" />
-                                <Skeleton className="h-3 w-[150px]" />
-                            </div>
-                            <div className="ml-auto text-right">
-                                <Skeleton className="h-5 w-[60px] mb-1" />
-                                <Skeleton className="h-3 w-[80px]" />
-                            </div>
-                        </div>
-                    ))}
+                <div className="space-y-4">
+                    {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
                 </div>
             </CardContent>
         </Card>
@@ -54,29 +43,29 @@ export default function SalesOverview({ sales, isLoading }: SalesOverviewProps) 
       <CardHeader>
         <CardTitle>Ventes Récentes</CardTitle>
         <CardDescription>
-          Les {recentSales.length > 0 ? recentSales.length : 'dernières'} transactions de la période.
+          Les {recentSales.length > 0 ? recentSales.length : ''} dernières transactions de la période.
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex-grow">
         {recentSales.length > 0 ? (
-            <div className="space-y-6">
+            <div className="space-y-2">
             {recentSales.map((sale) => (
-              <div key={sale.id} className="flex items-start">
-                <div className="space-y-1 flex-grow">
+              <div key={sale.id} className="flex items-center p-3 rounded-lg transition-colors hover:bg-primary/5">
+                <div className="flex-grow space-y-1">
                   <p className="text-sm font-medium leading-none">{sale.customerName || 'Client de passage'}</p>
-                  <p className="text-sm text-muted-foreground">
-                    Facture {sale.invoiceNumber}
+                  <p className="text-xs text-muted-foreground">
+                    #{sale.invoiceNumber}
                   </p>
                 </div>
                 <div className="ml-auto font-medium text-right">
-                    <p>{formatCurrency(sale.total)}</p>
+                    <p className="font-bold text-primary">{formatCurrency(sale.total)}</p>
                     <p className="text-xs text-muted-foreground font-normal">{formatDistanceToNow(safeToDate(sale.createdAt!), { addSuffix: true, locale: fr })}</p>
                 </div>
               </div>
             ))}
           </div>
         ) : (
-            <div className="flex h-[200px] w-full flex-col items-center justify-center text-center rounded-lg border-2 border-dashed">
+            <div className="flex h-full w-full flex-col items-center justify-center text-center rounded-lg border-2 border-dashed border-primary/20">
                 <p className="text-muted-foreground">Aucune vente dans cette période.</p>
             </div>
         )}

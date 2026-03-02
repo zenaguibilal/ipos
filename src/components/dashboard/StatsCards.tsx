@@ -1,9 +1,9 @@
 'use client';
 
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency } from "@/lib/utils";
 import { DollarSign, ShoppingBag, BarChart, Archive } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface StatsCardsProps {
     stats?: {
@@ -15,35 +15,35 @@ interface StatsCardsProps {
     isLoading: boolean;
 }
 
-const StatCard = ({ title, value, icon: Icon, isLoading, format = true }: { title: string, value?: number, icon: React.ElementType, isLoading: boolean, format?: boolean }) => {
+const StatCard = ({ title, value, icon: Icon, isLoading, format = true, isPrimary = false }: { title: string, value?: number, icon: React.ElementType, isLoading: boolean, format?: boolean, isPrimary?: boolean }) => {
     return (
-        <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{title}</CardTitle>
-                <Icon className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
+        <div className={cn("luxury-glass p-6 rounded-3xl transition-all duration-300 hover:shadow-primary/20 hover:-translate-y-1", isPrimary && "bg-primary/10 shadow-primary/10")}>
+            <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-muted-foreground">{title}</span>
+                <Icon className="h-5 w-5 text-primary" />
+            </div>
+            <div className="mt-2">
                 {isLoading || value === undefined ? (
                      <Skeleton className="h-8 w-3/4" />
                 ) : (
-                    <div className="text-2xl font-bold">
+                    <p className="text-3xl font-bold">
                         {format ? formatCurrency(value) : value}
-                    </div>
+                    </p>
                 )}
-            </CardContent>
-        </Card>
+            </div>
+        </div>
     )
 }
 
-
 export default function StatsCards({ stats, isLoading }: StatsCardsProps) {
     return (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
             <StatCard 
                 title="Revenu Total" 
                 value={stats?.totalRevenue} 
                 icon={DollarSign}
                 isLoading={isLoading}
+                isPrimary={true}
             />
             <StatCard 
                 title="Bénéfice Net" 

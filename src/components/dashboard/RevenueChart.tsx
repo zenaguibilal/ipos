@@ -17,15 +17,15 @@ interface RevenueChartProps {
 const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="p-2 bg-background/80 backdrop-blur-sm border rounded-lg shadow-lg">
-          <p className="font-bold">{label}</p>
+        <div className="luxury-glass p-3 rounded-2xl">
+          <p className="font-bold text-lg">{label}</p>
           <p className="text-[hsl(var(--chart-primary))]">{`Revenu: ${formatCurrency(payload[0].value)}`}</p>
           <p className="text-[hsl(var(--chart-quinary))]">{`Bénéfice: ${formatCurrency(payload[1].value)}`}</p>
         </div>
       );
     }
     return null;
-  };
+};
   
 
 export default function RevenueChart({ sales, isLoading }: RevenueChartProps) {
@@ -71,7 +71,7 @@ export default function RevenueChart({ sales, isLoading }: RevenueChartProps) {
   }
 
   return (
-    <Card>
+    <Card className="h-full">
       <CardHeader>
         <CardTitle>Analyse des Revenus</CardTitle>
         <CardDescription>Aperçu des revenus et bénéfices sur la période sélectionnée.</CardDescription>
@@ -79,17 +79,27 @@ export default function RevenueChart({ sales, isLoading }: RevenueChartProps) {
       <CardContent>
         <ResponsiveContainer width="100%" height={350}>
           {chartData.length > 0 ? (
-            <BarChart data={chartData}>
-               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" stroke="hsl(var(--foreground))" fontSize={12} tickLine={false} axisLine={false} />
-              <YAxis stroke="hsl(var(--foreground))" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value} DA`} />
-              <Tooltip content={<CustomTooltip />} />
-              <Legend />
-              <Bar dataKey="revenue" name="Revenu" fill="hsl(var(--chart-primary))" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="profit" name="Bénéfice" fill="hsl(var(--chart-quinary))" radius={[4, 4, 0, 0]} />
+            <BarChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+               <defs>
+                 <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                   <stop offset="5%" stopColor="hsl(var(--chart-primary))" stopOpacity={0.8}/>
+                   <stop offset="95%" stopColor="hsl(var(--chart-primary))" stopOpacity={0.2}/>
+                 </linearGradient>
+                 <linearGradient id="colorProfit" x1="0" y1="0" x2="0" y2="1">
+                   <stop offset="5%" stopColor="hsl(var(--chart-quinary))" stopOpacity={0.7}/>
+                   <stop offset="95%" stopColor="hsl(var(--chart-quinary))" stopOpacity={0.1}/>
+                 </linearGradient>
+               </defs>
+               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border) / 0.1)" />
+              <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
+              <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value} DA`} />
+              <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--accent) / 0.3)' }} />
+              <Legend wrapperStyle={{ paddingTop: '20px' }} />
+              <Bar dataKey="revenue" name="Revenu" fill="url(#colorRevenue)" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="profit" name="Bénéfice" fill="url(#colorProfit)" radius={[4, 4, 0, 0]} />
             </BarChart>
           ) : (
-             <div className="flex h-[350px] w-full flex-col items-center justify-center rounded-lg border-2 border-dashed">
+             <div className="flex h-[350px] w-full flex-col items-center justify-center rounded-lg border-2 border-dashed border-primary/20">
                 <p className="text-muted-foreground">Aucune donnée de vente pour cette période.</p>
             </div>
           )}
