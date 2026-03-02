@@ -1,15 +1,14 @@
 'use client';
 
 import { db, PosDatabase } from '@/lib/database';
-import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, DailyBreadOrder, BreadCustomer, SaleItem, SalePayment } from '@/lib/types';
+import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, DailyBreadOrder, BreadCustomer, BreadOrder } from '@/lib/types';
 import { toast } from 'sonner';
 import { initialData, type DB, type CollectionName } from './initial-data';
-import Dexie from 'dexie';
 
 type TableName = keyof Pick<PosDatabase, 
     'products' | 'customers' | 'sales' | 'payments' | 
     'stockIntakes' | 'returns' | 'breadCustomers' | 'dailyBreadOrders' | 
-    'companyProfile' | 'carts' | 'expenses' | 'settings'
+    'companyProfile' | 'carts' | 'expenses' | 'settings' | 'notifications'
 >;
 
 class DataService {
@@ -25,19 +24,7 @@ class DataService {
   async getById<T>(table: TableName, id: number | string): Promise<T | undefined> {
     return db.table(table).get(id);
   }
-
-  private async saveData<T>(table: TableName, data: T): Promise<number | string> {
-      return db.transaction('rw', db.table(table), () => {
-          return db.table(table).put(data);
-      });
-  }
-
-  private async deleteData(table: TableName, id: number | string): Promise<void> {
-      return db.transaction('rw', db.table(table), () => {
-          return db.table(table).delete(id);
-      });
-  }
-
+  
   // ====================================================================
   // Settings
   // ====================================================================
@@ -47,7 +34,9 @@ class DataService {
   }
 
   async setSetting(id: string, value: any): Promise<string> {
-    return this.saveData<Setting>('settings', { id, value });
+    return db.transaction('rw', db.settings, () => {
+        return db.settings.put({ id, value });
+    });
   }
 
   // ====================================================================
@@ -77,11 +66,15 @@ class DataService {
   }
 
   async saveCart(cart: Cart): Promise<string> {
-    return this.saveData<Cart>('carts', cart);
+    return db.transaction('rw', db.carts, () => {
+        return db.carts.put(cart);
+    });
   }
 
   async deleteCart(id: string): Promise<void> {
-    return this.deleteData('carts', id);
+    return db.transaction('rw', db.carts, () => {
+        return db.carts.delete(id);
+    });
   }
   
   // ====================================================================
@@ -100,7 +93,9 @@ class DataService {
   }
 
   async deleteProduct(id: number): Promise<void> {
-      return this.deleteData('products', id);
+      return db.transaction('rw', db.products, () => {
+          return db.products.delete(id);
+      });
   }
 
   // ====================================================================
@@ -139,10 +134,10 @@ class DataService {
   // Sales
   // ====================================================================
   async addSale(saleData: Omit<Sale, 'id' | 'invoiceNumber' | 'paymentStatus' | 'remainingBalance'>): Promise<number> {
-    return db.transaction('rw', db.sales, db.products, db.customers, async (tx) => {
+    return db.transaction('rw', db.sales, db.products, db.customers, db.notifications, async (tx) => {
         const { items, customerId, total, amountPaid } = saleData;
 
-        // 1. Update product stock
+        // 1. Update product stock and check for low stock
         for (const item of items) {
             if (typeof item.id !== 'number') continue; // Skip custom items
 
@@ -151,7 +146,19 @@ class DataService {
             if (product.quantity < item.quantity) {
                 throw new Error(`Stock insuffisant pour ${product.name}.`);
             }
-            await db.products.update(item.id, { quantity: product.quantity - item.quantity });
+            const newQuantity = product.quantity - item.quantity;
+            await db.products.update(item.id, { quantity: newQuantity });
+            
+            // Check for low stock notification
+            if (newQuantity <= product.minStockLevel && product.quantity > product.minStockLevel) {
+                await db.notifications.add({
+                    type: 'low-stock',
+                    message: `Le stock pour ${product.name} est bas (${newQuantity} restants).`,
+                    isRead: false,
+                    createdAt: new Date(),
+                    relatedId: product.id,
+                });
+            }
         }
         
         // 2. Determine payment status & remaining balance
@@ -172,7 +179,7 @@ class DataService {
         if (customerId) {
             await db.customers.where('id').equals(customerId).modify(c => {
                 c.totalSpent = (c.totalSpent || 0) + total;
-                c.outstandingBalance = (c.outstandingBalance || 0) + remainingBalance;
+                c.outstandingBalance = (c.outstandingBalance || 0) + (remainingBalance > 0 ? remainingBalance : 0);
                 c.lastActivityDate = new Date();
             });
         }
@@ -216,6 +223,7 @@ class DataService {
           const id = await db.payments.add(paymentData as Payment);
           await db.customers.where('id').equals(paymentData.customerId).modify(c => {
               c.outstandingBalance -= paymentData.amount;
+              if (c.outstandingBalance < 0) c.outstandingBalance = 0;
               c.lastActivityDate = new Date();
           });
           return id;
@@ -263,6 +271,7 @@ class DataService {
               const balanceEffect = totalReturnValue - amountRefunded;
               await db.customers.where('id').equals(customerId).modify(c => {
                   c.outstandingBalance -= balanceEffect;
+                   if (c.outstandingBalance < 0) c.outstandingBalance = 0;
               });
           }
 
@@ -313,7 +322,9 @@ class DataService {
   }
 
   async deleteExpense(id: number): Promise<void> {
-    return this.deleteData('expenses', id);
+    return db.transaction('rw', db.expenses, () => {
+        return db.expenses.delete(id);
+    });
   }
 
   // ====================================================================
@@ -360,7 +371,7 @@ class DataService {
     const tables: CollectionName[] = [
         'products', 'customers', 'sales', 'payments', 
         'stockIntakes', 'returns', 'breadCustomers', 
-        'dailyBreadOrders', 'expenses'
+        'dailyBreadOrders', 'expenses', 'notifications'
     ];
 
     await db.transaction('r', db.tables, async () => {
@@ -378,7 +389,7 @@ class DataService {
       const tables: CollectionName[] = [
         'products', 'customers', 'sales', 'payments', 
         'stockIntakes', 'returns', 'breadCustomers', 
-        'dailyBreadOrders', 'expenses'
+        'dailyBreadOrders', 'expenses', 'notifications'
     ];
 
       return db.transaction('rw', ...db.tables, async () => {
