@@ -19,7 +19,12 @@ interface PrintLabelsDialogProps {
 
 export function PrintLabelsDialog({ isOpen, onOpenChange, productIds }: PrintLabelsDialogProps) {
   const products = useLiveQuery(
-    () => dataService.getProductsByIds(productIds), 
+    () => {
+        if (!productIds || productIds.length === 0) {
+            return [];
+        }
+        return dataService.getProductsByIds(productIds);
+    }, 
     [productIds]
   );
   const [labelQuantities, setLabelQuantities] = useState<Record<number, number>>({});
