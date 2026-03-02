@@ -1,88 +1,86 @@
 'use client';
 
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card"
-import { ScrollArea } from "@/components/ui/scroll-area"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { TopProduct, TopCustomer } from "@/lib/types";
-import { formatCurrency } from "@/lib/utils";
+import type { Sale } from "@/lib/types";
+import { formatCurrency, safeToDate } from "@/lib/utils";
+import { formatDistanceToNow } from 'date-fns';
+import { fr } from 'date-fns/locale';
 
 interface SalesOverviewProps {
-    topProducts: TopProduct[];
-    topCustomers: TopCustomer[];
+    sales: Sale[];
     isLoading: boolean;
 }
 
-export default function SalesOverview({ topProducts, topCustomers, isLoading }: SalesOverviewProps) {
+export default function SalesOverview({ sales, isLoading }: SalesOverviewProps) {
 
-    if (isLoading) {
-        return (
-            <Card>
-                <CardHeader>
-                     <Skeleton className="h-6 w-3/4 mb-2" />
-                    <Skeleton className="h-4 w-1/2" />
-                </CardHeader>
-                <CardContent className="grid gap-6">
-                     <div>
-                        <Skeleton className="h-5 w-32 mb-4" />
-                        <div className="space-y-4">
-                            <Skeleton className="h-10 w-full" />
-                            <Skeleton className="h-10 w-full" />
-                            <Skeleton className="h-10 w-full" />
-                        </div>
-                    </div>
-                    <div>
-                        <Skeleton className="h-5 w-32 mb-4" />
-                        <div className="space-y-4">
-                            <Skeleton className="h-10 w-full" />
-                            <Skeleton className="h-10 w-full" />
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
-        )
-    }
+  const recentSales = sales.slice(0, 5);
 
+  if (isLoading) {
     return (
-        <Card className="h-full flex flex-col">
+        <Card>
             <CardHeader>
-                <CardTitle>Aperçu des Ventes</CardTitle>
-                <CardDescription>Produits et clients les plus performants.</CardDescription>
+                <Skeleton className="h-6 w-32 mb-2" />
+                <Skeleton className="h-4 w-48" />
             </CardHeader>
-            <CardContent className="grid gap-8 flex-grow">
-                <div>
-                    <h3 className="text-sm font-semibold mb-2 text-muted-foreground">Meilleurs Produits</h3>
-                    <ScrollArea className="h-48">
-                        {topProducts.length > 0 ? (
-                            <div className="space-y-4">
-                                {topProducts.map((product) => (
-                                    <div key={product.id} className="flex items-center">
-                                        <div className="flex-1">
-                                            <p className="text-sm font-medium leading-none truncate">{product.name}</p>
-                                            <p className="text-xs text-muted-foreground">{product.unitsSold} unités vendues</p>
-                                        </div>
-                                        <div className="ml-auto font-medium text-primary">{formatCurrency(product.totalRevenue)}</div>
-                                    </div>
-                                ))}
+            <CardContent>
+                <div className="space-y-8">
+                    {[...Array(5)].map((_, i) => (
+                        <div key={i} className="flex items-center">
+                            <div className="space-y-1 flex-grow">
+                                <Skeleton className="h-4 w-[100px]" />
+                                <Skeleton className="h-3 w-[150px]" />
                             </div>
-                        ) : <p className="text-sm text-muted-foreground pt-4">Aucun produit vendu dans cette période.</p>}
-                    </ScrollArea>
-                </div>
-                <div>
-                    <h3 className="text-sm font-semibold mb-2 text-muted-foreground">Meilleurs Clients</h3>
-                    <ScrollArea className="h-32">
-                         {topCustomers.length > 0 ? (
-                             <div className="space-y-4">
-                                {topCustomers.map((customer) => (
-                                    <div key={customer.id} className="flex items-center">
-                                        <p className="text-sm font-medium leading-none truncate">{customer.name}</p>
-                                        <div className="ml-auto font-medium">{formatCurrency(customer.totalSpent)}</div>
-                                    </div>
-                                ))}
+                            <div className="ml-auto text-right">
+                                <Skeleton className="h-5 w-[60px] mb-1" />
+                                <Skeleton className="h-3 w-[80px]" />
                             </div>
-                         ) : <p className="text-sm text-muted-foreground pt-4">Aucune vente associée à des clients.</p>}
-                    </ScrollArea>
+                        </div>
+                    ))}
                 </div>
             </CardContent>
         </Card>
-    );
+    )
+  }
+
+  return (
+    <Card className="h-full flex flex-col">
+      <CardHeader>
+        <CardTitle>Ventes Récentes</CardTitle>
+        <CardDescription>
+          Les {recentSales.length > 0 ? recentSales.length : 'dernières'} transactions de la période.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {recentSales.length > 0 ? (
+            <div className="space-y-6">
+            {recentSales.map((sale) => (
+              <div key={sale.id} className="flex items-start">
+                <div className="space-y-1 flex-grow">
+                  <p className="text-sm font-medium leading-none">{sale.customerName || 'Client de passage'}</p>
+                  <p className="text-sm text-muted-foreground">
+                    Facture {sale.invoiceNumber}
+                  </p>
+                </div>
+                <div className="ml-auto font-medium text-right">
+                    <p>{formatCurrency(sale.total)}</p>
+                    <p className="text-xs text-muted-foreground font-normal">{formatDistanceToNow(safeToDate(sale.createdAt!), { addSuffix: true, locale: fr })}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+            <div className="flex h-[200px] w-full flex-col items-center justify-center text-center rounded-lg border-2 border-dashed">
+                <p className="text-muted-foreground">Aucune vente dans cette période.</p>
+            </div>
+        )}
+      </CardContent>
+    </Card>
+  );
 }

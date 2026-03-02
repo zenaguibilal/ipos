@@ -853,6 +853,10 @@ class DataService {
   // Notifications - All writes are transactional
   // ====================================================================
 
+  async getUnreadLowStockAlerts(): Promise<Notification[]> {
+    return db.notifications.where({ isRead: false, type: 'low-stock' }).orderBy('createdAt').reverse().toArray();
+  }
+
   async markNotificationAsRead(notificationId: number): Promise<number> {
     return db.transaction('rw', db.notifications, () => {
         return db.notifications.update(notificationId, { isRead: true });
@@ -871,7 +875,7 @@ class DataService {
   async getDashboardData(params: { from: Date, to: Date }): Promise<DashboardData> {
       const { from, to } = params;
 
-      const sales = await db.sales.where('createdAt').between(from, to).toArray();
+      const sales = await db.sales.where('createdAt').between(from, to).reverse().toArray();
       const allProducts = await db.products.toArray();
 
       // 1. Calculate stats
