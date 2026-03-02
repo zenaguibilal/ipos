@@ -24,7 +24,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Clock } from '@/components/layout/clock';
-import { ThemeToggle } from './theme-toggle';
 import {
   Tooltip,
   TooltipContent,
@@ -50,14 +49,14 @@ export function AppHeader() {
 
 
   return (
-    <header className="flex h-14 shrink-0 items-center gap-4 border-b bg-background px-4 sm:px-6 print-hide sticky top-0 z-20">
+    <header className="flex h-16 items-center gap-4 bg-background/80 px-4 sm:px-6 print-hide sticky top-0 z-30 border-b border-primary/10 backdrop-blur-xl">
       <div className="flex-1 flex justify-start">
          <div className="flex items-baseline gap-2">
               <Link
                   href="/dashboard"
                   className="flex items-center gap-2 font-semibold"
               >
-                  <span className="text-2xl">🏪</span>
+                  <span className="text-2xl">💎</span>
                   <span className="hidden sm:inline-block text-xl font-semibold">iPOS</span>
               </Link>
           </div>
@@ -65,7 +64,7 @@ export function AppHeader() {
 
         <div className="flex-1 flex justify-center">
             <TooltipProvider>
-                <nav className="hidden md:flex items-center gap-1 rounded-full border bg-card p-1">
+                <nav className="hidden md:flex items-center gap-1 rounded-full border border-primary/10 bg-black/20 p-1">
                     {navLinks.map(link => (
                         <Tooltip key={link.href} delayDuration={0}>
                             <TooltipTrigger asChild>
@@ -94,7 +93,6 @@ export function AppHeader() {
         <div className="flex-1 flex justify-end">
             <div className="flex items-center gap-2 sm:gap-4">
                 <Clock />
-                <ThemeToggle />
                 <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                     <Button variant="secondary" size="icon" className="rounded-full">

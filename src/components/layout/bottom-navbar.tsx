@@ -23,7 +23,7 @@ export function BottomNavBar() {
   const pathname = usePathname();
 
   return (
-    <div className="fixed bottom-0 left-0 z-10 w-full border-t bg-background/95 backdrop-blur-sm md:hidden print-hide">
+    <div className="fixed bottom-0 left-0 z-30 w-full border-t border-primary/10 bg-background/80 backdrop-blur-xl md:hidden print-hide">
       <nav className="grid grid-cols-5 items-center justify-around h-16">
         {navLinks.map(link => (
           <Link
