@@ -18,11 +18,11 @@ interface ReceiptProps {
 const getReceiptInfo = (companyProfile?: CompanyProfile) => ({
     title: "REÇU DE VENTE",
     shopName: companyProfile?.companyName || "iPOS Store",
-    address: companyProfile?.address || "",
-    city: `${companyProfile?.zipCode || ''} ${companyProfile?.city || ''}`.trim(),
-    phone: `Tél: ${companyProfile?.phone || ''}`,
-    rc: `RC: ${companyProfile?.rcNumber || ''}`,
-    nif: `NIF: ${companyProfile?.vatNumber || ''}`,
+    address: companyProfile?.address,
+    city: [companyProfile?.zipCode, companyProfile?.city].filter(Boolean).join(' '),
+    phone: companyProfile?.phone ? `Tél: ${companyProfile.phone}` : undefined,
+    rc: companyProfile?.rcNumber ? `RC: ${companyProfile.rcNumber}` : undefined,
+    nif: companyProfile?.vatNumber ? `NIF: ${companyProfile.vatNumber}` : undefined,
     invoiceLabel: "Facture N°:",
     dateLabel: "Date:",
     customerLabel: "Client:",
@@ -69,10 +69,10 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(({ sale },
                 <h2 className="text-lg font-bold">{receiptInfo.shopName}</h2>
                 {receiptInfo.address && <p>{receiptInfo.address}</p>}
                 {receiptInfo.city && <p>{receiptInfo.city}</p>}
-                {receiptInfo.phone.replace('Tél: ', '') && <p>{receiptInfo.phone}</p>}
+                {receiptInfo.phone && <p>{receiptInfo.phone}</p>}
                 <div className="flex justify-center gap-4 text-xs">
-                    {receiptInfo.rc.replace('RC: ', '') && <p>{receiptInfo.rc}</p>}
-                    {receiptInfo.nif.replace('NIF: ', '') && <p>{receiptInfo.nif}</p>}
+                    {receiptInfo.rc && <p>{receiptInfo.rc}</p>}
+                    {receiptInfo.nif && <p>{receiptInfo.nif}</p>}
                 </div>
             </div>
 
