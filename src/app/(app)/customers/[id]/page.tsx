@@ -12,12 +12,20 @@ import { CustomerMetrics } from '@/components/customers/CustomerMetrics';
 import { CustomerActivity } from '@/components/customers/CustomerActivity';
 import { useState } from 'react';
 import { AddPaymentDialog } from '@/components/payments/AddPaymentDialog';
+import { SaleDetailsDialog } from '@/components/sales/SaleDetailsDialog';
+import { ReturnDetailsDialog } from '@/components/returns/ReturnDetailsDialog';
+import type { Sale, ProductReturn } from '@/lib/types';
+
 
 export default function CustomerDetailPage() {
     const params = useParams();
     const customerId = Number(params.id);
 
     const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+    const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
+    const [isSaleDetailsOpen, setIsSaleDetailsOpen] = useState(false);
+    const [selectedReturn, setSelectedReturn] = useState<ProductReturn | null>(null);
+    const [isReturnDetailsOpen, setIsReturnDetailsOpen] = useState(false);
 
     const customer = useLiveQuery(
         () => db.customers.get(customerId),
@@ -35,6 +43,16 @@ export default function CustomerDetailPage() {
 
 
     const isLoading = customer === undefined || activity === undefined;
+
+    const handleSaleClick = (sale: Sale) => {
+        setSelectedSale(sale);
+        setIsSaleDetailsOpen(true);
+    };
+
+    const handleReturnClick = (pr: ProductReturn) => {
+        setSelectedReturn(pr);
+        setIsReturnDetailsOpen(true);
+    };
 
     if (isLoading) {
         return (
@@ -81,10 +99,16 @@ export default function CustomerDetailPage() {
                      <Card>
                         <CardHeader>
                             <CardTitle>Historique d'activité</CardTitle>
-                            <CardDescription>Liste chronologique des ventes, paiements et retours.</CardDescription>
+                            <CardDescription>
+                                Liste chronologique des transactions. Cliquez sur une vente ou un retour pour voir les détails.
+                            </CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <CustomerActivity activity={activity} />
+                            <CustomerActivity 
+                                activity={activity} 
+                                onSaleClick={handleSaleClick}
+                                onReturnClick={handleReturnClick}
+                            />
                         </CardContent>
                     </Card>
                 </div>
@@ -106,6 +130,17 @@ export default function CustomerDetailPage() {
                 onOpenChange={setIsPaymentDialogOpen}
                 customer={customer}
                 outstandingBalance={customer.outstandingBalance}
+            />
+
+            <SaleDetailsDialog
+                isOpen={isSaleDetailsOpen}
+                onOpenChange={setIsSaleDetailsOpen}
+                sale={selectedSale}
+            />
+            <ReturnDetailsDialog
+                isOpen={isReturnDetailsOpen}
+                onOpenChange={setIsReturnDetailsOpen}
+                productReturn={selectedReturn}
             />
         </div>
     );

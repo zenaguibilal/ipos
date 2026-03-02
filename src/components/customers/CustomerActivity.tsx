@@ -12,13 +12,15 @@ type ActivityItem = Sale | Payment | ProductReturn;
 
 interface CustomerActivityProps {
   activity: ActivityItem[];
+  onSaleClick: (sale: Sale) => void;
+  onReturnClick: (pr: ProductReturn) => void;
 }
 
 const isSale = (item: ActivityItem): item is Sale => 'invoiceNumber' in item;
 const isPayment = (item: ActivityItem): item is Payment => 'amount' in item && !('invoiceNumber' in item);
 const isReturn = (item: ActivityItem): item is ProductReturn => 'originalInvoiceNumber' in item;
 
-export function CustomerActivity({ activity }: CustomerActivityProps) {
+export function CustomerActivity({ activity, onSaleClick, onReturnClick }: CustomerActivityProps) {
   if (activity.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-60 text-center rounded-lg border-2 border-dashed">
@@ -50,7 +52,10 @@ export function CustomerActivity({ activity }: CustomerActivityProps) {
                  <span className="text-sm text-muted-foreground ml-auto">{formattedDate}</span>
               </TimelineHeader>
               <TimelineBody>
-                <div className="p-4 bg-muted/50 rounded-lg">
+                <div 
+                  className="p-4 bg-muted/50 rounded-lg hover:bg-muted transition-colors cursor-pointer"
+                  onClick={() => onSaleClick(item)}
+                >
                     <div className="flex justify-between items-center mb-2">
                         <span className="font-semibold text-lg">{formatCurrency(item.total)}</span>
                          <span className={`px-2 py-1 text-xs rounded-full font-semibold ${
@@ -80,7 +85,10 @@ export function CustomerActivity({ activity }: CustomerActivityProps) {
                  <span className="text-sm text-muted-foreground ml-auto">{formattedDate}</span>
               </TimelineHeader>
                <TimelineBody>
-                <div className="p-4 bg-orange-100/50 rounded-lg">
+                <div 
+                  className="p-4 bg-orange-100/50 rounded-lg hover:bg-orange-100/80 transition-colors cursor-pointer"
+                  onClick={() => onReturnClick(item)}
+                >
                      <p className="font-semibold text-lg text-orange-700">- {formatCurrency(item.totalReturnValue)}</p>
                      <p className="text-sm text-muted-foreground">{item.items.length} article(s) retourné(s). Remboursé: {formatCurrency(item.amountRefunded)}</p>
                 </div>
