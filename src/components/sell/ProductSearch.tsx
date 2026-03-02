@@ -12,6 +12,7 @@ import placeholderImages from '@/lib/placeholder-images.json';
 import { Button } from '../ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Label } from '../ui/label';
+import { formatCurrency } from '@/lib/utils';
 
 interface ProductSearchProps {
     onProductSelect: (product: Product, quantity: number) => void;
@@ -88,7 +89,7 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
     const filteredProducts = useMemo(() => {
         if (!products) return [];
         const lowercasedQuery = query.toLowerCase().trim();
-        if (!lowercasedQuery) return []; // Return empty if no query
+        if (!lowercasedQuery) return products.slice(0, 50); // Show first 50 products if no query
         
         return products.filter(p => 
             p.name.toLowerCase().includes(lowercasedQuery) ||
@@ -178,7 +179,7 @@ const ListItem = React.memo(({ product, onClick }: ListItemProps) => {
             />
             <div className="flex-grow overflow-hidden">
                 <p className="font-semibold truncate">{product.name}</p>
-                <p className="text-sm text-muted-foreground">{product.price.toFixed(1)} DA</p>
+                <p className="text-sm text-muted-foreground">{formatCurrency(product.price)}</p>
             </div>
             <div className="text-sm text-muted-foreground flex-shrink-0">
                 Stock: {product.quantity}

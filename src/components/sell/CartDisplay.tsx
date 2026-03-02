@@ -9,6 +9,8 @@ import { Trash2, ShoppingCart } from 'lucide-react';
 import Image from 'next/image';
 import placeholderImages from '@/lib/placeholder-images.json';
 import { cn } from '@/lib/utils';
+import { formatCurrency } from '@/lib/utils';
+
 
 interface CartDisplayProps {
     cart: Cart;
@@ -57,7 +59,7 @@ export function CartDisplay({ cart, onQuantityChange, onRemoveItem }: CartDispla
                                 />
                                 <div className="flex-grow">
                                     <p className="font-semibold">{item.name}</p>
-                                    <p className="text-sm text-muted-foreground">{item.price.toFixed(1)} DA</p>
+                                    <p className="text-sm text-muted-foreground">{formatCurrency(item.price)}</p>
                                 </div>
                                 <div className="flex items-center gap-2">
                                      <Input
