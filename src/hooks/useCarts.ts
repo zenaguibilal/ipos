@@ -26,19 +26,29 @@ export const useCarts = () => {
     const isLoading = carts === undefined || activeCartIdSetting === undefined;
 
     useEffect(() => {
-        const initializeCarts = async () => {
-            if (isLoading) return;
+        // We only want to run this logic after the initial query for carts has completed.
+        if (carts === undefined) {
+            return;
+        }
 
-            if (!carts || carts.length === 0) {
+        const initializeCarts = async () => {
+            const currentActiveId = activeCartIdSetting?.value;
+
+            // If there are no carts at all, create the very first one and set it as active.
+            if (carts.length === 0) {
                 const newCart = createNewCart('Panier 1');
                 await dataService.saveCart(newCart);
                 await dataService.setSetting(ACTIVE_CART_ID_KEY, newCart.id);
-            } else if (!activeCartId || !carts.some(c => c.id === activeCartId)) {
+            } 
+            // If there are carts, but the active one is missing or invalid, reset to the first available cart.
+            else if (!currentActiveId || !carts.some(c => c.id === currentActiveId)) {
                 await dataService.setSetting(ACTIVE_CART_ID_KEY, carts[0].id);
             }
         };
+
         initializeCarts();
-    }, [carts, activeCartId, isLoading]);
+    // We depend on the raw query results. When they change (from undefined to a value), this effect runs.
+    }, [carts, activeCartIdSetting]);
 
     const setActiveCartId = useCallback(async (id: string) => {
         await dataService.setSetting(ACTIVE_CART_ID_KEY, id);
