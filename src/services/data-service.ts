@@ -1,4 +1,3 @@
-
 'use client';
 
 import { db, PosDatabase } from '@/lib/database';
@@ -245,21 +244,38 @@ class DataService {
     });
   }
 
-  async getProducts(params: { query?: string; category?: string; }): Promise<Product[]> {
-    const { query, category } = params;
+  async getProducts(params: { query?: string; category?: string; stockStatus?: 'all' | 'in_stock' | 'low_stock' | 'out_of_stock' }): Promise<Product[]> {
+    const { query, category, stockStatus = 'all' } = params;
 
-    let collection = db.products.toCollection();
+    let collection;
 
     if (category) {
       collection = db.products.where('category').equals(category);
+    } else {
+      collection = db.products.toCollection();
+    }
+
+    if (stockStatus !== 'all') {
+        collection = collection.filter(p => {
+            switch (stockStatus) {
+                case 'in_stock':
+                    return p.quantity > p.minStockLevel;
+                case 'low_stock':
+                    return p.quantity > 0 && p.quantity <= p.minStockLevel;
+                case 'out_of_stock':
+                    return p.quantity <= 0;
+                default:
+                    return true;
+            }
+        });
     }
     
     if (query) {
       const lowerQuery = query.toLowerCase();
-      return collection.filter(p => 
+      collection = collection.filter(p => 
         p.name.toLowerCase().includes(lowerQuery) || 
         p.barcodes?.some(b => b.includes(lowerQuery))
-      ).toArray();
+      );
     }
     
     return collection.toArray();

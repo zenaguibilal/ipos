@@ -7,7 +7,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import type { Product } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, LayoutGrid, List, Printer, Trash2 } from 'lucide-react';
+import { Plus, Search, LayoutGrid, List, Printer, Trash2, PackageCheck, PackageX, AlertTriangle, Archive } from 'lucide-react';
 import { ProductCard } from '@/components/products/product-card';
 import { ProductTable } from '@/components/products/product-table';
 import { ProductCardSkeleton } from '@/components/products/product-card-skeleton';
@@ -27,10 +27,20 @@ import { Checkbox } from '@/components/ui/checkbox';
 
 
 type ViewMode = 'grid' | 'list';
+type StockStatus = 'all' | 'in_stock' | 'low_stock' | 'out_of_stock';
+
+const stockStatusOptions: { value: StockStatus, label: string, icon: React.ElementType }[] = [
+    { value: 'all', label: 'Tous les statuts', icon: Archive },
+    { value: 'in_stock', label: 'En Stock', icon: PackageCheck },
+    { value: 'low_stock', label: 'Stock Faible', icon: AlertTriangle },
+    { value: 'out_of_stock', label: 'En Rupture', icon: PackageX },
+];
+
 
 export default function ProductsPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
+    const [stockStatus, setStockStatus] = useState<StockStatus>('all');
     const [viewMode, setViewMode] = useState<ViewMode>('grid');
 
     const [isProductDialogOpen, setIsProductDialogOpen] = useState(false);
@@ -46,9 +56,10 @@ export default function ProductsPage() {
     const products = useLiveQuery(
         () => dataService.getProducts({ 
             query: debouncedSearchQuery, 
-            category: selectedCategory === 'all' ? undefined : selectedCategory 
+            category: selectedCategory === 'all' ? undefined : selectedCategory,
+            stockStatus: stockStatus,
         }),
-        [debouncedSearchQuery, selectedCategory],
+        [debouncedSearchQuery, selectedCategory, stockStatus],
         []
     );
     
@@ -59,7 +70,7 @@ export default function ProductsPage() {
     useEffect(() => {
         // Clear selection when filters change
         setSelectedProducts(new Set());
-    }, [debouncedSearchQuery, selectedCategory]);
+    }, [debouncedSearchQuery, selectedCategory, stockStatus]);
 
     const handleEditProduct = (product: Product) => {
         setSelectedProduct(product);
@@ -147,6 +158,8 @@ export default function ProductsPage() {
         );
     }
 
+    const currentStockStatusOption = stockStatusOptions.find(o => o.value === stockStatus)!;
+
     return (
         <div className="p-4 sm:p-6 space-y-6">
             <header className="flex flex-col sm:flex-row gap-4 justify-between items-center">
@@ -189,6 +202,29 @@ export default function ProductsPage() {
                                 checked={selectedCategory === cat}
                                 onCheckedChange={() => setSelectedCategory(cat)}
                             >{cat}</DropdownMenuCheckboxItem>
+                         ))}
+                    </DropdownMenuContent>
+                </DropdownMenu>
+
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="outline" className="w-full sm:w-auto">
+                            <currentStockStatusOption.icon className="mr-2 h-4 w-4" />
+                            {currentStockStatusOption.label}
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                        <DropdownMenuLabel>Statut du Stock</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        {stockStatusOptions.map(option => (
+                             <DropdownMenuCheckboxItem
+                                key={option.value}
+                                checked={stockStatus === option.value}
+                                onCheckedChange={() => setStockStatus(option.value)}
+                            >
+                                <option.icon className="mr-2 h-4 w-4" />
+                                {option.label}
+                            </DropdownMenuCheckboxItem>
                          ))}
                     </DropdownMenuContent>
                 </DropdownMenu>
