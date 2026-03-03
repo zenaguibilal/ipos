@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -64,6 +63,14 @@ export default function DashboardPage() {
     return (
         <div className="p-4 sm:p-6 space-y-6">
             
+            <header className="flex flex-col sm:flex-row gap-4 justify-between items-center">
+                <div>
+                    <h1 className="text-2xl font-bold">Tableau de Bord</h1>
+                    <p className="text-muted-foreground">Aperçu des performances de votre activité.</p>
+                </div>
+                <DateRangePicker date={dateRange} setDate={setDateRange} />
+            </header>
+            
             {unreadAlerts && unreadAlerts.length > 0 && (
                 <div className="space-y-3">
                     {unreadAlerts.map(alert => (
@@ -87,14 +94,6 @@ export default function DashboardPage() {
                 </div>
             )}
 
-            <header className="flex flex-col sm:flex-row gap-4 justify-between items-center">
-                <div>
-                    <h1 className="text-2xl font-bold">Tableau de Bord</h1>
-                    <p className="text-muted-foreground">Aperçu des performances de votre activité.</p>
-                </div>
-                <DateRangePicker date={dateRange} setDate={setDateRange} />
-            </header>
-
             <StatsCards stats={statsForCards} isLoading={isLoading} />
 
             <div className="grid lg:grid-cols-3 gap-6">
@@ -102,10 +101,6 @@ export default function DashboardPage() {
                     <RevenueChart sales={dashboardData?.sales} isLoading={isLoading} />
                 </div>
                 <div className="lg:col-span-1 space-y-6">
-                    <ExpenseSummary
-                        expenses={dashboardData?.expenses}
-                        isLoading={isLoading}
-                    />
                     <GlobalActivity 
                         activity={globalActivity ?? []} 
                         isLoading={isLoading}
@@ -116,6 +111,10 @@ export default function DashboardPage() {
                     />
                     <TopCustomers
                         customers={dashboardData?.topCustomers ?? []}
+                        isLoading={isLoading}
+                    />
+                    <ExpenseSummary
+                        expenses={dashboardData?.expenses}
                         isLoading={isLoading}
                     />
                 </div>
