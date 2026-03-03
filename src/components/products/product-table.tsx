@@ -4,7 +4,7 @@ import type { Product } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Edit, Trash2, AlertCircle } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, AlertCircle, PackageX } from 'lucide-react';
 import Image from 'next/image';
 import placeholderImages from '@/lib/placeholder-images.json';
 import { cn, formatCurrency } from '@/lib/utils';
@@ -54,7 +54,6 @@ export function ProductTable({ products, onEdit, onDelete, selectedProducts, onT
                 </TableHeader>
                 <TableBody>
                     {products.map(product => {
-                        const isLowStock = product.quantity <= product.minStockLevel;
                         const placeholder = getPlaceholder(product.category);
                         const imageUrl = product.imageUrl || placeholder.url;
 
@@ -79,11 +78,20 @@ export function ProductTable({ products, onEdit, onDelete, selectedProducts, onT
                                 </TableCell>
                                 <TableCell className="font-medium">{product.name}</TableCell>
                                 <TableCell>{product.category || 'N/A'}</TableCell>
-                                <TableCell className={cn("text-center font-semibold", isLowStock && "text-destructive")}>
-                                    <div className="flex items-center justify-center gap-2">
-                                        {isLowStock && <AlertCircle className="h-4 w-4" />}
-                                        {product.quantity}
-                                    </div>
+                                <TableCell className="text-center font-semibold">
+                                    {product.quantity <= 0 ? (
+                                        <div className="flex items-center justify-center gap-1 text-destructive">
+                                            <PackageX className="h-4 w-4" />
+                                            <span>{product.quantity}</span>
+                                        </div>
+                                    ) : product.quantity <= product.minStockLevel ? (
+                                        <div className="flex items-center justify-center gap-1 text-yellow-600 dark:text-yellow-500">
+                                            <AlertCircle className="h-4 w-4" />
+                                            <span>{product.quantity}</span>
+                                        </div>
+                                    ) : (
+                                        <span>{product.quantity}</span>
+                                    )}
                                 </TableCell>
                                 <TableCell className="text-right">{formatCurrency(product.purchasePrice)}</TableCell>
                                 <TableCell className="text-right font-bold text-primary">{formatCurrency(product.price)}</TableCell>

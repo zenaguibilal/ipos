@@ -31,7 +31,6 @@ const getPlaceholder = (category?: string): Placeholder => {
 };
 
 const ProductCardComponent = ({ product, onEdit, onDelete, isSelected, onToggleSelection }: ProductCardProps) => {
-    const isLowStock = product.quantity <= product.minStockLevel;
     const placeholder = getPlaceholder(product.category);
     const imageUrl = product.imageUrl || placeholder.url;
 
@@ -46,9 +45,11 @@ const ProductCardComponent = ({ product, onEdit, onDelete, isSelected, onToggleS
                     className="rounded-t-lg object-cover aspect-[4/3]"
                     data-ai-hint={product.imageUrl ? product.name.split(' ').slice(0, 2).join(' ') : placeholder.hint}
                 />
-                 {isLowStock && (
-                     <Badge variant="destructive" className="absolute top-2 right-2">Stock Faible</Badge>
-                 )}
+                 {product.quantity <= 0 ? (
+                    <Badge variant="destructive" className="absolute top-2 right-2">En Rupture</Badge>
+                ) : product.quantity <= product.minStockLevel ? (
+                    <Badge variant="outline" className="absolute top-2 right-2 border-yellow-500 text-yellow-500 bg-yellow-500/10">Stock Faible</Badge>
+                ) : null}
             </CardHeader>
             <CardContent className="p-4 flex-grow">
                 <div className="flex gap-2 justify-between items-start">
