@@ -10,6 +10,7 @@ import Image from 'next/image';
 import placeholderImages from '@/lib/placeholder-images.json';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/utils';
+import { Card, CardContent } from '../ui/card';
 
 
 interface CartDisplayProps {
@@ -31,10 +32,10 @@ const getPlaceholder = (category?: string): Placeholder => {
 export function CartDisplay({ cart, onQuantityChange, onRemoveItem }: CartDisplayProps) {
     
     return (
-        <div className="flex-grow flex flex-col min-h-0">
+        <CardContent className="p-4 sm:p-6 flex-grow flex flex-col min-h-0">
             {cart.items.length === 0 ? (
-                <div className="flex-grow flex flex-col items-center justify-center text-center text-muted-foreground p-8 border-2 border-dashed rounded-lg">
-                    <ShoppingCart className="h-16 w-16 mb-4" />
+                <div className="flex-grow flex flex-col items-center justify-center text-center text-muted-foreground luxury-glass p-8">
+                    <ShoppingCart className="h-16 w-16 mb-4 text-primary/70" />
                     <h3 className="text-lg font-semibold">Le panier est vide</h3>
                     <p className="text-sm">Recherchez un produit pour commencer.</p>
                 </div>
@@ -42,7 +43,10 @@ export function CartDisplay({ cart, onQuantityChange, onRemoveItem }: CartDispla
                 <ScrollArea className="flex-grow -mr-4 pr-4">
                     <div className="space-y-3">
                         {cart.items.map(item => (
-                            <div key={item.id} className={cn("flex items-center gap-4 bg-muted/50 p-2 rounded-lg", item.flash && "animate-flash")}>
+                            <div key={item.id} className={cn(
+                                "flex items-center gap-4 bg-background/50 border border-white/5 p-2 rounded-xl transition-all duration-300", 
+                                item.flash && "animate-flash ring-2 ring-primary/50"
+                            )}>
                                 <Image 
                                     src={item.imageUrl || getPlaceholder(item.category).url}
                                     alt={item.name}
@@ -63,7 +67,7 @@ export function CartDisplay({ cart, onQuantityChange, onRemoveItem }: CartDispla
                                         min="1"
                                         max={typeof item.id === 'number' ? item.quantity : undefined}
                                     />
-                                    <Button variant="ghost" size="icon" className="text-destructive" onClick={() => onRemoveItem(item.id)}>
+                                    <Button variant="ghost" size="icon" className="text-destructive/70 hover:text-destructive hover:bg-destructive/10" onClick={() => onRemoveItem(item.id)}>
                                         <Trash2 className="h-4 w-4" />
                                     </Button>
                                 </div>
@@ -72,6 +76,6 @@ export function CartDisplay({ cart, onQuantityChange, onRemoveItem }: CartDispla
                     </div>
                 </ScrollArea>
             )}
-        </div>
+        </CardContent>
     );
 }

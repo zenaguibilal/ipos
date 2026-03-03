@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import type { Cart, SalePayment } from '@/lib/types';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Printer } from 'lucide-react';
 import { dataService } from '@/services/data-service';
 import { formatCurrency } from '@/lib/utils';
 import { Receipt } from './Receipt';
@@ -28,7 +28,6 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, onSaleFinalized }: P
     const receiptRef = useRef<HTMLDivElement>(null);
     const [lastSale, setLastSale] = useState<any>(null);
 
-    // Fetch customer data for balance display
     const customer = useLiveQuery(() => 
         cart.customerId ? db.customers.get(cart.customerId) : Promise.resolve(undefined), 
         [cart.customerId]
@@ -68,7 +67,6 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, onSaleFinalized }: P
     
         const receiptClone = receiptElement.cloneNode(true) as HTMLDivElement;
         
-        // Add appropriate class for styling
         document.documentElement.classList.toggle('thermal', thermal);
         receiptClone.classList.add(thermal ? 'thermal-receipt' : 'a4-receipt');
         
@@ -100,10 +98,10 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, onSaleFinalized }: P
 
         try {
             const newSaleId = await dataService.addSale(saleData);
-            setLastSale({ ...saleData, id: newSaleId, invoiceNumber: `INV-${Date.now()}`, change: change > 0 ? change : 0, createdAt: new Date() });
+            const saleFromDb = await dataService.getById('sales', newSaleId);
+            setLastSale({ ...saleFromDb, change: change > 0 ? change : 0 });
             toast.success("Vente finalisée avec succès !");
             onSaleFinalized();
-            // Don't close the dialog, show receipt instead
         } catch (error: any) {
             console.error("Failed to finalize sale:", error);
             toast.error(error.message || "Erreur lors de la finalisation de la vente.");
@@ -129,7 +127,7 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, onSaleFinalized }: P
                             </DialogDescription>
                         </DialogHeader>
                         <div className="grid gap-4 py-4">
-                             <div className="text-center py-4 bg-muted rounded-lg">
+                             <div className="text-center py-4 luxury-glass">
                                 <Label>TOTAL À PAYER</Label>
                                 <p className="text-4xl font-bold text-primary">{formatCurrency(total)}</p>
                             </div>
@@ -145,15 +143,15 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, onSaleFinalized }: P
                                 />
                             </div>
                             {change >= 0 && (
-                                <div className="text-center py-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                                <div className="text-center py-2 luxury-glass border-green-500/20">
                                     <Label>MONNAIE À RENDRE</Label>
-                                    <p className="text-2xl font-bold text-green-600">{formatCurrency(change)}</p>
+                                    <p className="text-2xl font-bold text-green-400">{formatCurrency(change)}</p>
                                 </div>
                             )}
                              {debtFromThisSale > 0 && customer && (
-                                <div className="text-center py-2 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg space-y-1">
+                                <div className="text-center py-2 luxury-glass border-amber-500/20 space-y-1">
                                     <Label>NOUVEAU SOLDE CLIENT</Label>
-                                    <p className="text-2xl font-bold text-yellow-700">{formatCurrency(newTotalOutstandingBalance)}</p>
+                                    <p className="text-2xl font-bold text-amber-400">{formatCurrency(newTotalOutstandingBalance)}</p>
                                     <p className="text-xs text-muted-foreground">
                                         (Solde actuel: {formatCurrency(customer.outstandingBalance)} + Crédit: {formatCurrency(debtFromThisSale)})
                                     </p>
@@ -178,13 +176,17 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, onSaleFinalized }: P
                                 Imprimez le reçu pour le client ou fermez pour commencer une nouvelle vente.
                             </DialogDescription>
                         </DialogHeader>
-                        <div className="py-4 max-h-[50vh] overflow-y-auto">
+                        <div className="py-4 my-4 max-h-[50vh] overflow-y-auto bg-gray-100 rounded-lg">
                             <Receipt sale={lastSale} ref={receiptRef} />
                         </div>
-                        <DialogFooter className="justify-between">
+                        <DialogFooter className="sm:justify-between flex-col sm:flex-row gap-2">
                             <div className="flex gap-2">
-                                <Button variant="outline" onClick={() => handlePrint(true)}>Imprimante thermique</Button>
-                                <Button variant="outline" onClick={() => handlePrint(false)}>Imprimante A4</Button>
+                                <Button variant="outline" onClick={() => handlePrint(true)}>
+                                    <Printer className="mr-2 h-4 w-4"/> Thermique
+                                </Button>
+                                <Button variant="outline" onClick={() => handlePrint(false)}>
+                                    <Printer className="mr-2 h-4 w-4"/> A4
+                                </Button>
                             </div>
                             <Button onClick={closeAndReset}>Fermer</Button>
                         </DialogFooter>

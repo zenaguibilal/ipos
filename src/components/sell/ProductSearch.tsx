@@ -13,6 +13,7 @@ import { Button } from '../ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Label } from '../ui/label';
 import { formatCurrency } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 
 interface ProductSearchProps {
     onProductSelect: (product: Product, quantity: number) => void;
@@ -111,7 +112,7 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
     };
 
     return (
-        <div className="p-4 flex flex-col h-full bg-background">
+        <div className="p-4 flex flex-col h-full bg-transparent">
             <div className="relative mb-4">
                 <Barcode className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input 
@@ -130,7 +131,7 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
             
             <ScrollArea className="flex-grow -mx-4">
                 <div className="space-y-1 px-4">
-                    {filteredProducts.map(product => (
+                    {filteredProducts.map((product, index) => (
                         <ListItem
                             key={product.id}
                             product={product}
@@ -138,6 +139,7 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
                                 onProductSelect(product, 1);
                                 setQuery(''); // Clear search after selection
                             }}
+                            isLast={index === filteredProducts.length - 1}
                         />
                     ))}
                      {query && filteredProducts.length === 0 && (
@@ -157,9 +159,10 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
 interface ListItemProps {
     product: Product;
     onClick: () => void;
+    isLast: boolean;
 }
 
-const ListItem = React.memo(({ product, onClick }: ListItemProps) => {
+const ListItem = React.memo(({ product, onClick, isLast }: ListItemProps) => {
     const isAvailable = typeof product.id === 'string' || product.quantity > 0;
     const placeholder = getPlaceholder(product.category);
 
@@ -167,7 +170,10 @@ const ListItem = React.memo(({ product, onClick }: ListItemProps) => {
         <button 
             onClick={onClick}
             disabled={!isAvailable}
-            className="w-full text-left flex items-center gap-4 p-2 rounded-lg hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+            className={cn(
+                "w-full text-left flex items-center gap-4 p-2 rounded-lg hover:bg-primary/10 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed",
+                !isLast && "border-b border-white/5"
+            )}
         >
             <Image
                 src={product.imageUrl || placeholder.url}

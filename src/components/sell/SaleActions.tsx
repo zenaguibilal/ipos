@@ -19,6 +19,7 @@ import {
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { formatCurrency } from '@/lib/utils';
+import { Separator } from '../ui/separator';
 
 interface SaleActionsProps {
     cart: Cart;
@@ -54,10 +55,10 @@ export function SaleActions({ cart, onClearCart, onSetDiscount }: SaleActionsPro
                 cart={cart}
                 onSaleFinalized={handleSaleFinalized}
             />
-             <div className="space-y-3">
-                <div className="flex justify-between items-center text-lg font-semibold">
-                    <span>Sous-total ({totalItems} articles)</span>
-                    <span>{formatCurrency(subtotal)}</span>
+             <div className="space-y-4">
+                <div className="flex justify-between items-center text-lg">
+                    <span className="text-muted-foreground">Sous-total ({totalItems} articles)</span>
+                    <span className="font-semibold">{formatCurrency(subtotal)}</span>
                 </div>
                 
                 <div className="space-y-2">
@@ -71,11 +72,11 @@ export function SaleActions({ cart, onClearCart, onSetDiscount }: SaleActionsPro
                             className="h-10 flex-grow"
                         />
                         <Button 
-                            variant={discountType === 'fixed' ? 'secondary' : 'outline'}
+                            variant={discountType === 'fixed' ? 'secondary' : 'ghost'}
                             onClick={() => onSetDiscount({ type: 'fixed', value: discountValue })}
                         >DA</Button>
                         <Button 
-                            variant={discountType === 'percentage' ? 'secondary' : 'outline'}
+                            variant={discountType === 'percentage' ? 'secondary' : 'ghost'}
                             onClick={() => onSetDiscount({ type: 'percentage', value: discountValue })}
                         >%</Button>
                     </div>
@@ -83,17 +84,21 @@ export function SaleActions({ cart, onClearCart, onSetDiscount }: SaleActionsPro
 
                  {discountAmount > 0 && (
                     <div className="flex justify-between items-center text-md text-destructive">
-                        <span>Remise</span>
+                        <span>Remise appliquée</span>
                         <span>- {formatCurrency(discountAmount)}</span>
                     </div>
                 )}
                  
-                 <div className="flex justify-between items-center text-2xl font-bold text-primary border-t pt-3 mt-3">
-                    <span>Total</span>
-                    <span>{formatCurrency(total)}</span>
-                </div>
+                 <Separator className="my-4 bg-white/10" />
 
-                 <div className="grid grid-cols-2 gap-2 pt-2">
+                 <div className="luxury-glass p-4">
+                    <div className="flex justify-between items-center text-2xl font-bold text-primary">
+                        <span>Total</span>
+                        <span>{formatCurrency(total)}</span>
+                    </div>
+                 </div>
+
+                 <div className="grid grid-cols-2 gap-4 pt-2">
                      <AlertDialog>
                         <AlertDialogTrigger asChild>
                             <Button variant="destructive" size="lg" disabled={cart.items.length === 0}>

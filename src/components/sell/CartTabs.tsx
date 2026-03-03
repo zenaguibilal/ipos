@@ -33,16 +33,16 @@ export function CartTabs({ carts, activeCartId, onTabChange, onAddCart, onRemove
     };
 
     return (
-        <div className="flex items-center gap-2">
+        <div className="luxury-glass p-2 flex items-center gap-2">
             <ScrollArea className="w-full whitespace-nowrap">
-                 <div className="flex items-center gap-1 pb-2">
+                 <div className="flex items-center gap-1 pb-1">
                     {carts.map(cart => (
                         <div key={cart.id} className="relative inline-flex">
                             <Button
                                 variant={activeCartId === cart.id ? 'secondary' : 'ghost'}
                                 size="sm"
                                 onClick={() => onTabChange(cart.id)}
-                                className={cn("pr-8", cart.items.length > 0 && activeCartId !== cart.id && "font-bold text-primary")}
+                                className={cn("pr-8 h-9", cart.items.length > 0 && activeCartId !== cart.id && "font-bold text-primary")}
                             >
                                 {cart.name}
                             </Button>
@@ -53,6 +53,7 @@ export function CartTabs({ carts, activeCartId, onTabChange, onAddCart, onRemove
                                             variant="ghost"
                                             size="icon"
                                             className="absolute top-1/2 right-0 -translate-y-1/2 h-7 w-7 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                                            onClick={(e) => e.stopPropagation()}
                                         >
                                             <X className="h-3.5 w-3.5" />
                                         </Button>
@@ -78,7 +79,7 @@ export function CartTabs({ carts, activeCartId, onTabChange, onAddCart, onRemove
                 </div>
                  <ScrollBar orientation="horizontal" />
             </ScrollArea>
-             <Button variant="outline" size="icon" onClick={onAddCart} className="flex-shrink-0">
+             <Button variant="outline" size="icon" onClick={onAddCart} className="flex-shrink-0 h-9 w-9">
                 <Plus className="h-4 w-4" />
             </Button>
         </div>
