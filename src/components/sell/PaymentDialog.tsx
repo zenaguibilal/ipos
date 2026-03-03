@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import type { Cart, SalePayment } from '@/lib/types';
-import { Loader2, Printer } from 'lucide-react';
+import { Loader2, Printer, CreditCard, Banknote, Landmark } from 'lucide-react';
 import { dataService } from '@/services/data-service';
 import { formatCurrency } from '@/lib/utils';
 import { Receipt } from './Receipt';
@@ -53,6 +53,7 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, onSaleFinalized }: P
         if (isOpen) {
             setAmountPaid(String(total));
             setLastSale(null);
+            setPaymentMethod('cash');
         }
     }, [isOpen, total]);
 
@@ -107,12 +108,14 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, onSaleFinalized }: P
             toast.error(error.message || "Erreur lors de la finalisation de la vente.");
             setIsLoading(false);
         } finally {
-            setIsLoading(false);
+            // Keep loading true on success to show receipt screen
+            // setIsLoading(false) will be handled by closing the dialog
         }
     };
     
     const closeAndReset = () => {
         onOpenChange(false);
+        setIsLoading(false);
     }
 
     return (
@@ -126,7 +129,7 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, onSaleFinalized }: P
                                 Confirmez le montant payé pour terminer la transaction.
                             </DialogDescription>
                         </DialogHeader>
-                        <div className="grid gap-4 py-4">
+                        <div className="grid gap-6 py-4">
                              <div className="text-center py-4 luxury-glass">
                                 <Label>TOTAL À PAYER</Label>
                                 <p className="text-4xl font-bold text-primary">{formatCurrency(total)}</p>
@@ -142,6 +145,40 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, onSaleFinalized }: P
                                     autoFocus
                                 />
                             </div>
+
+                             <div className="space-y-2">
+                                <Label>Méthode de Paiement</Label>
+                                <div className="grid grid-cols-3 gap-2">
+                                    <Button
+                                        type="button"
+                                        variant={paymentMethod === 'cash' ? 'secondary' : 'outline'}
+                                        onClick={() => setPaymentMethod('cash')}
+                                        className="h-12"
+                                    >
+                                        <Banknote className="mr-2 h-5 w-5"/>
+                                        Espèces
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        variant={paymentMethod === 'card' ? 'secondary' : 'outline'}
+                                        onClick={() => setPaymentMethod('card')}
+                                        className="h-12"
+                                    >
+                                        <CreditCard className="mr-2 h-5 w-5"/>
+                                        Carte
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        variant={paymentMethod === 'other' ? 'secondary' : 'outline'}
+                                        onClick={() => setPaymentMethod('other')}
+                                        className="h-12"
+                                    >
+                                        <Landmark className="mr-2 h-5 w-5"/>
+                                        Autre
+                                    </Button>
+                                </div>
+                            </div>
+
                             {change >= 0 && (
                                 <div className="text-center py-2 luxury-glass border-green-500/20">
                                     <Label>MONNAIE À RENDRE</Label>
@@ -176,7 +213,7 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, onSaleFinalized }: P
                                 Imprimez le reçu pour le client ou fermez pour commencer une nouvelle vente.
                             </DialogDescription>
                         </DialogHeader>
-                        <div className="py-4 my-4 max-h-[50vh] overflow-y-auto bg-gray-100 rounded-lg">
+                        <div className="py-4 my-4 max-h-[50vh] overflow-y-auto bg-gray-100 dark:bg-gray-800 rounded-lg">
                             <Receipt sale={lastSale} ref={receiptRef} />
                         </div>
                         <DialogFooter className="sm:justify-between flex-col sm:flex-row gap-2">

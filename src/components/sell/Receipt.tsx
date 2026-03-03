@@ -14,6 +14,12 @@ interface ReceiptProps {
   sale: Sale & { change?: number };
 }
 
+const paymentMethodLabels = {
+    cash: 'Espèces',
+    card: 'Carte Bancaire',
+    other: 'Autre'
+};
+
 // Helper function to generate receipt strings, making the component cleaner
 const getReceiptInfo = (companyProfile?: CompanyProfile) => ({
     title: "REÇU DE VENTE",
@@ -33,6 +39,7 @@ const getReceiptInfo = (companyProfile?: CompanyProfile) => ({
     subtotalLabel: "Sous-total:",
     discountLabel: "Remise",
     totalLabel: "TOTAL:",
+    paymentMethodLabel: "Méthode de paiement:",
     amountPaidLabel: "Montant Payé:",
     changeLabel: "Monnaie Rendue:",
     creditLabel: "Solde Restant (Crédit):",
@@ -135,6 +142,10 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(({ sale },
             </div>
             
              <div className="border-t border-dashed border-black mt-2 pt-2">
+                 <div className="flex justify-between">
+                    <span>{receiptInfo.paymentMethodLabel}</span>
+                    <span>{paymentMethodLabels[sale.payments[0]?.method || 'other']}</span>
+                </div>
                 <div className="flex justify-between">
                     <span>{receiptInfo.amountPaidLabel}</span>
                     <span>{formatCurrency(sale.amountPaid)}</span>
