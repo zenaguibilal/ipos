@@ -1,3 +1,4 @@
+
 export interface Product {
     id?: number | string; // string for custom products
     name: string;
@@ -14,12 +15,10 @@ export interface Product {
 
 export interface Customer {
     id?: number;
-    searchName?: string; // For optimized searching
     firstName: string;
     lastName: string;
     phone?: string;
     settlementDay?: number;
-    creditLimit?: number;
     totalSpent: number;
     outstandingBalance: number;
     lastActivityDate?: Date;
@@ -68,7 +67,6 @@ export interface Sale {
     discountType?: 'percentage' | 'fixed';
     discountAmount?: number;
     total: number;
-    totalProfit: number;
     amountPaid: number;
     remainingBalance: number;
     paymentStatus: 'paid' | 'partial' | 'unpaid';
@@ -129,8 +127,6 @@ export interface CompanyProfile {
     rcNumber?: string;
     breadPrice?: number;
     breadPurchasePrice?: number;
-    syncUrl?: string;
-    lastSyncDate?: Date;
     updatedAt?: Date;
 }
 

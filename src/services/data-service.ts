@@ -6,7 +6,6 @@ import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer
 import { initialData, type DB, type CollectionName } from './initial-data';
 import Dexie from 'dexie';
 import { startOfDay, endOfDay, format } from 'date-fns';
-import { formatCurrency } from '@/lib/utils';
 
 type TableName = keyof Pick<PosDatabase, 
     'products' | 'customers' | 'sales' | 'payments' | 
@@ -292,14 +291,11 @@ class DataService {
 
     if (query) {
         const lowerQuery = query.toLowerCase();
-        const bySearchName = db.customers.where('searchName').startsWith(lowerQuery).toArray();
-        const byPhone = db.customers.where('phone').startsWith(query).toArray(); // phone search can remain case-sensitive or as is
-
-        const [nameMatches, phoneMatches] = await Promise.all([bySearchName, byPhone]);
-
-        const combined = new Map<number, Customer>();
-        [...nameMatches, ...phoneMatches].forEach(c => c.id && combined.set(c.id, c));
-        customers = Array.from(combined.values()).sort((a, b) => a.lastName.localeCompare(b.lastName) || a.firstName.localeCompare(b.firstName));
+        customers = await db.customers.filter(c => 
+            c.firstName.toLowerCase().includes(lowerQuery) ||
+            c.lastName.toLowerCase().includes(lowerQuery) ||
+            c.phone?.includes(lowerQuery)
+        ).toArray();
     } else {
         customers = await db.customers.orderBy('[lastName+firstName]').toArray();
     }
@@ -319,14 +315,13 @@ class DataService {
     return customersWithSalesData;
   }
 
-  async addCustomer(customer: Omit<Customer, 'id' | 'totalSpent' | 'outstandingBalance' | 'lastActivityDate' | 'searchName'>): Promise<number> {
+  async addCustomer(customer: Omit<Customer, 'id' | 'totalSpent' | 'outstandingBalance' | 'lastActivityDate'>): Promise<number> {
     return db.transaction('rw', db.customers, () => {
         const customerToAdd: Omit<Customer, 'id'> = {
             firstName: customer.firstName,
             lastName: customer.lastName,
             phone: customer.phone,
             settlementDay: customer.settlementDay,
-            creditLimit: customer.creditLimit,
             totalSpent: 0,
             outstandingBalance: 0,
         };
@@ -334,7 +329,7 @@ class DataService {
     });
   }
 
-  async updateCustomer(id: number, customer: Partial<Omit<Customer, 'id' | 'searchName'>>): Promise<number> {
+  async updateCustomer(id: number, customer: Partial<Omit<Customer, 'id'>>): Promise<number> {
       return db.transaction('rw', db.customers, () => {
           return db.customers.update(id, customer);
       });
@@ -457,7 +452,7 @@ class DataService {
     return db.sales.where('invoiceNumber').equals(invoiceNumber).first();
   }
 
-  async addSale(saleData: Omit<Sale, 'id' | 'invoiceNumber' | 'paymentStatus' | 'remainingBalance' | 'totalProfit'>): Promise<number> {
+  async addSale(saleData: Omit<Sale, 'id' | 'invoiceNumber' | 'paymentStatus' | 'remainingBalance'>): Promise<number> {
     return db.transaction('rw', db.sales, db.products, db.customers, db.notifications, db.inventoryLogs, async () => {
         const { items, customerId, total, amountPaid } = saleData;
 
@@ -467,34 +462,12 @@ class DataService {
             if (!product) throw new Error(`Produit avec ID ${item.id} non trouvé.`);
             if (product.quantity < item.quantity) throw new Error(`Stock insuffisant pour ${product.name}.`);
         }
-        
-        const remainingBalance = total - amountPaid;
-        const paymentStatus = amountPaid >= total ? 'paid' : amountPaid > 0 ? 'partial' : 'unpaid';
-
-        if (customerId) {
-            const customer = await db.customers.get(customerId);
-            if (!customer) throw new Error(`Client avec ID ${customerId} non trouvé.`);
-
-            const newCreditAmount = remainingBalance > 0 ? remainingBalance : 0;
-            
-            if (newCreditAmount > 0 && typeof customer.creditLimit === 'number' && customer.creditLimit >= 0) {
-                if ((customer.outstandingBalance + newCreditAmount) > customer.creditLimit) {
-                    throw new Error(`Limite de crédit (${formatCurrency(customer.creditLimit)}) dépassée pour ${customer.firstName} ${customer.lastName}. Solde actuel: ${formatCurrency(customer.outstandingBalance)}.`);
-                }
-            }
-        }
-
-        const totalProfit = items.reduce((acc, item) => {
-            const profit = (item.price - item.purchasePrice) * item.quantity;
-            return acc + (isNaN(profit) ? 0 : profit);
-        }, 0);
 
         const saleId = await db.sales.add({
             ...saleData,
             invoiceNumber: `INV-${Date.now().toString(36).toUpperCase()}`,
-            paymentStatus,
-            remainingBalance: remainingBalance > 0 ? remainingBalance : 0,
-            totalProfit,
+            paymentStatus: amountPaid >= total ? 'paid' : amountPaid > 0 ? 'partial' : 'unpaid',
+            remainingBalance: total - amountPaid > 0 ? total - amountPaid : 0,
         } as Sale);
 
         for (const item of items) {
@@ -529,10 +502,14 @@ class DataService {
         }
 
         if (customerId) {
-            const newCreditAmount = remainingBalance > 0 ? remainingBalance : 0;
+            const balanceToAdd = total - amountPaid;
+            if (balanceToAdd > 0) {
+                await db.customers.where('id').equals(customerId).modify(c => {
+                    c.outstandingBalance = (c.outstandingBalance || 0) + balanceToAdd;
+                });
+            }
             await db.customers.where('id').equals(customerId).modify(c => {
                 c.totalSpent = (c.totalSpent || 0) + total;
-                c.outstandingBalance = (c.outstandingBalance || 0) + newCreditAmount;
                 c.lastActivityDate = new Date();
             });
         }
@@ -894,23 +871,16 @@ class DataService {
           if (!customer) continue;
 
           const total = profile.breadPrice * order.quantity;
-          const saleItem = {
-              id: 'bread-product',
-              name: 'Pain',
-              price: profile.breadPrice,
-              purchasePrice: profile.breadPurchasePrice || 0,
-              quantity: order.quantity
-          };
-          
-          const totalProfit = (saleItem.price - saleItem.purchasePrice) * saleItem.quantity;
-          const invoiceNumber = `INV-${invoiceNumberBase}-${i}`;
-
-          const saleData: Omit<Sale, 'id'| 'invoiceNumber'> = {
-              invoiceNumber,
-              items: [saleItem],
+          const saleData = {
+              items: [{
+                  id: 'bread-product',
+                  name: 'Pain',
+                  price: profile.breadPrice,
+                  purchasePrice: profile.breadPurchasePrice || 0,
+                  quantity: order.quantity
+              }],
               subtotal: total,
               total,
-              totalProfit,
               amountPaid: total,
               remainingBalance: 0,
               paymentStatus: 'paid',
@@ -1007,7 +977,12 @@ class DataService {
 
     for (const sale of sales) {
         totalRevenue += sale.total;
-        totalProfit += sale.totalProfit || 0;
+        
+        const saleProfit = sale.items.reduce((profitAcc, item) => {
+            const profit = (item.price - item.purchasePrice) * item.quantity;
+            return profitAcc + (isNaN(profit) ? 0 : profit);
+        }, 0);
+        totalProfit += saleProfit;
 
         if (sale.customerId && sale.customerName) {
             const current = customerStats.get(sale.customerId) || { name: sale.customerName, totalSpent: 0 };
@@ -1130,55 +1105,37 @@ class DataService {
         });
     }
 
-  async syncDataToGoogleSheet(): Promise<void> {
-    const profile = await this.getCompanyProfile();
-    if (!profile?.syncUrl) {
-      throw new Error("L'URL de synchronisation n'est pas configurée.");
-    }
-    
-    const dataToSync = await this.exportData();
-
-    // The Google Apps Script needs to be deployed to return the correct CORS headers
-    // and handle the POST request. Using 'text/plain' helps avoid CORS pre-flight requests.
-    const response = await fetch(profile.syncUrl, {
-      method: 'POST',
-      mode: 'cors',
-      headers: {
-        'Content-Type': 'text/plain',
-      },
-      body: dataToSync,
-    });
-
-    if (!response.ok) {
-        let errorBody = `Status: ${response.status} - ${response.statusText}`;
-        try {
-            // Try to parse as JSON first, as the script might return a structured error
-            const errorJson = await response.json();
-            if (errorJson.error) {
-                 errorBody = errorJson.error;
-            }
-        } catch (e) {
-            // If not JSON, it might be plain text or HTML from Google
-            try {
-                const textError = await response.text();
-                // Avoid showing a full HTML page in the toast
-                if (textError && !textError.toLowerCase().includes('<html')) { 
-                    errorBody = textError.substring(0, 200); // Limit length for clarity
-                } else if (textError) {
-                    errorBody = "Le serveur Google a retourné une erreur inattendue (probablement une page HTML)."
-                }
-            } catch (textErr) {
-                // Ignore if reading as text also fails, stick with the status code.
-            }
+    async syncDataToGoogleSheet(): Promise<void> {
+        const profile = await this.getCompanyProfile();
+        if (!profile) { // This check should be against the profile itself
+            throw new Error("Profil d'entreprise non trouvé.");
         }
-        throw new Error(`Erreur de synchronisation: ${errorBody}`);
+        
+        // This is a placeholder for the sync URL, which should be stored in the company profile
+        const syncUrl = "YOUR_GOOGLE_APPS_SCRIPT_URL_HERE"; 
+        if (!syncUrl || syncUrl === "YOUR_GOOGLE_APPS_SCRIPT_URL_HERE") {
+            throw new Error("L'URL de synchronisation n'est pas configurée dans le profil de l'entreprise.");
+        }
+        
+        const dataToSync = await this.exportData();
+
+        const response = await fetch(syncUrl, {
+            method: 'POST',
+            mode: 'no-cors', // Using no-cors as Google Scripts can be tricky with CORS
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: dataToSync,
+        });
+
+        // no-cors means we can't inspect the response, so we optimistically assume it worked.
+        // A more robust solution would require a proper backend or a Google Script that correctly handles CORS pre-flight requests.
+        if (response.type === 'opaque') {
+             await db.companyProfile.update(1, { updatedAt: new Date() }); // Just updating a timestamp for now
+        } else if (!response.ok) {
+            throw new Error(`Erreur de synchronisation: ${response.statusText}`);
+        }
     }
-    
-    // Update the last sync date on successful fetch.
-    return db.transaction('rw', db.companyProfile, () => {
-        return db.companyProfile.update(1, { lastSyncDate: new Date() });
-    });
-  }
 }
 
 export const dataService = new DataService();
