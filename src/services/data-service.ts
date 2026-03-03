@@ -244,8 +244,13 @@ class DataService {
     });
   }
 
-  async getProducts(params: { query?: string; category?: string; stockStatus?: 'all' | 'in_stock' | 'low_stock' | 'out_of_stock' }): Promise<Product[]> {
-    const { query, category, stockStatus = 'all' } = params;
+  async getProducts(params: { 
+    query?: string; 
+    category?: string; 
+    stockStatus?: 'all' | 'in_stock' | 'low_stock' | 'out_of_stock';
+    sortBy?: string;
+  }): Promise<Product[]> {
+    const { query, category, stockStatus = 'all', sortBy = 'name_asc' } = params;
 
     let collection;
 
@@ -255,8 +260,10 @@ class DataService {
       collection = db.products.toCollection();
     }
 
+    let productsArray = await collection.toArray();
+
     if (stockStatus !== 'all') {
-        collection = collection.filter(p => {
+        productsArray = productsArray.filter(p => {
             switch (stockStatus) {
                 case 'in_stock':
                     return p.quantity > p.minStockLevel;
@@ -272,13 +279,42 @@ class DataService {
     
     if (query) {
       const lowerQuery = query.toLowerCase();
-      collection = collection.filter(p => 
+      productsArray = productsArray.filter(p => 
         p.name.toLowerCase().includes(lowerQuery) || 
         p.barcodes?.some(b => b.includes(lowerQuery))
       );
     }
     
-    return collection.toArray();
+    // Sorting
+    const [sortField, sortOrder] = sortBy.split('_');
+
+    productsArray.sort((a, b) => {
+        const valA = (a as any)[sortField];
+        const valB = (b as any)[sortField];
+
+        if (valA === undefined || valA === null) return 1;
+        if (valB === undefined || valB === null) return -1;
+        
+        if (valA instanceof Date && valB instanceof Date) {
+            return valA.getTime() - valB.getTime();
+        }
+
+        if (typeof valA === 'string' && typeof valB === 'string') {
+            return valA.localeCompare(valB);
+        }
+
+        if (typeof valA === 'number' && typeof valB === 'number') {
+            return valA - valB;
+        }
+        
+        return 0;
+    });
+
+    if (sortOrder === 'desc') {
+        productsArray.reverse();
+    }
+
+    return productsArray;
   }
 
   async getProductsByIds(ids: number[]): Promise<Product[]> {

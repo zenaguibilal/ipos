@@ -7,7 +7,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import type { Product } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, LayoutGrid, List, Printer, Trash2, PackageCheck, PackageX, AlertTriangle, Archive } from 'lucide-react';
+import { Plus, Search, LayoutGrid, List, Printer, Trash2, PackageCheck, PackageX, AlertTriangle, Archive, SortAsc } from 'lucide-react';
 import { ProductCard } from '@/components/products/product-card';
 import { ProductTable } from '@/components/products/product-table';
 import { ProductCardSkeleton } from '@/components/products/product-card-skeleton';
@@ -23,6 +23,8 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu";
 import { Checkbox } from '@/components/ui/checkbox';
 
@@ -37,12 +39,24 @@ const stockStatusOptions: { value: StockStatus, label: string, icon: React.Eleme
     { value: 'out_of_stock', label: 'En Rupture', icon: PackageX },
 ];
 
+const sortOptions: { [key: string]: string } = {
+    'name_asc': 'Nom (A-Z)',
+    'name_desc': 'Nom (Z-A)',
+    'price_desc': 'Prix (décroissant)',
+    'price_asc': 'Prix (croissant)',
+    'quantity_desc': 'Stock (décroissant)',
+    'quantity_asc': 'Stock (croissant)',
+    'createdAt_desc': 'Plus récents',
+    'createdAt_asc': 'Plus anciens',
+};
+
 
 export default function ProductsPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
     const [stockStatus, setStockStatus] = useState<StockStatus>('all');
     const [viewMode, setViewMode] = useState<ViewMode>('grid');
+    const [sortBy, setSortBy] = useState('createdAt_desc');
 
     const [isProductDialogOpen, setIsProductDialogOpen] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -59,8 +73,9 @@ export default function ProductsPage() {
             query: debouncedSearchQuery, 
             category: selectedCategory === 'all' ? undefined : selectedCategory,
             stockStatus: stockStatus,
+            sortBy: sortBy,
         }),
-        [debouncedSearchQuery, selectedCategory, stockStatus],
+        [debouncedSearchQuery, selectedCategory, stockStatus, sortBy],
         []
     );
     
@@ -232,6 +247,25 @@ export default function ProductsPage() {
                          ))}
                     </DropdownMenuContent>
                 </DropdownMenu>
+                
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="outline" className="w-full sm:w-auto">
+                            <SortAsc className="mr-2 h-4 w-4" />
+                            Trier par: {sortOptions[sortBy]}
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                        <DropdownMenuLabel>Trier les produits par</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuRadioGroup value={sortBy} onValueChange={setSortBy}>
+                            {Object.entries(sortOptions).map(([key, value]) => (
+                                <DropdownMenuRadioItem key={key} value={key}>{value}</DropdownMenuRadioItem>
+                            ))}
+                        </DropdownMenuRadioGroup>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+
 
                 <div className="flex items-center gap-1 rounded-md bg-muted p-1">
                     <Button variant={viewMode === 'grid' ? 'secondary': 'ghost'} size="icon" onClick={() => setViewMode('grid')}>
