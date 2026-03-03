@@ -13,6 +13,7 @@ import { ProductTable } from '@/components/products/product-table';
 import { ProductCardSkeleton } from '@/components/products/product-card-skeleton';
 import { ProductDialog } from '@/components/products/product-dialog';
 import { DeleteProductDialog } from '@/components/products/delete-product-dialog';
+import { DeleteMultipleProductsDialog } from '@/components/products/DeleteMultipleProductsDialog';
 import { PrintLabelsDialog } from '@/components/products/PrintLabelsDialog';
 import {
   DropdownMenu,
@@ -33,6 +34,7 @@ export default function ProductsPage() {
 
     const [isProductDialogOpen, setIsProductDialogOpen] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
     const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false);
 
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -81,10 +83,11 @@ export default function ProductsPage() {
     };
     
     const handleToggleSelectAll = () => {
+        if (!products) return;
         if (selectedProducts.size === products.length) {
             setSelectedProducts(new Set());
         } else {
-            setSelectedProducts(new Set(products.map(p => p.id as number)));
+            setSelectedProducts(new Set(products.map(p => p.id as number).filter(id => typeof id === 'number')));
         }
     }
     
@@ -101,7 +104,7 @@ export default function ProductsPage() {
             ) : <div className="p-4"><ProductCardSkeleton /></div>;
         }
 
-        if (products.length === 0) {
+        if (!products || products.length === 0) {
             return (
                 <div className="text-center py-16">
                     <h3 className="text-xl font-semibold">Aucun produit trouvé</h3>
@@ -117,13 +120,14 @@ export default function ProductsPage() {
             return (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                     {products.map(p => (
+                       p.id && typeof p.id === 'number' &&
                         <ProductCard 
                             key={p.id} 
                             product={p} 
                             onEdit={handleEditProduct} 
                             onDelete={handleDeleteProduct}
-                            isSelected={selectedProducts.has(p.id as number)}
-                            onToggleSelection={() => handleToggleSelection(p.id as number)}
+                            isSelected={selectedProducts.has(p.id)}
+                            onToggleSelection={() => handleToggleSelection(p.id!)}
                         />
                     ))}
                 </div>
@@ -155,7 +159,7 @@ export default function ProductsPage() {
                             <Button variant="outline" onClick={() => setIsPrintDialogOpen(true)}>
                                 <Printer className="mr-2 h-4 w-4" /> Imprimer ({selectedProducts.size})
                             </Button>
-                            <Button variant="destructive" disabled>
+                            <Button variant="destructive" onClick={() => setIsBulkDeleteDialogOpen(true)}>
                                 <Trash2 className="mr-2 h-4 w-4" /> Supprimer ({selectedProducts.size})
                             </Button>
                         </>
@@ -188,7 +192,7 @@ export default function ProductsPage() {
                             checked={selectedCategory === 'all'}
                             onCheckedChange={() => setSelectedCategory('all')}
                         >Toutes</DropdownMenuCheckboxItem>
-                         {categories.map(cat => (
+                         {categories && categories.map(cat => (
                              <DropdownMenuCheckboxItem
                                 key={cat}
                                 checked={selectedCategory === cat}
@@ -226,6 +230,12 @@ export default function ProductsPage() {
                 isOpen={isPrintDialogOpen}
                 onOpenChange={setIsPrintDialogOpen}
                 productIds={Array.from(selectedProducts)}
+            />
+             <DeleteMultipleProductsDialog
+                isOpen={isBulkDeleteDialogOpen}
+                onOpenChange={setIsBulkDeleteDialogOpen}
+                productIds={Array.from(selectedProducts)}
+                onSuccess={() => setSelectedProducts(new Set())}
             />
         </div>
     );

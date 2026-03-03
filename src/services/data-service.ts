@@ -232,9 +232,17 @@ class DataService {
   }
 
   async deleteProduct(id: number): Promise<void> {
-      return db.transaction('rw', db.products, () => {
+      return db.transaction('rw', db.products, db.inventoryLogs, async () => {
+          await db.inventoryLogs.where({ productId: id }).delete();
           return db.products.delete(id);
       });
+  }
+
+  async deleteProducts(ids: number[]): Promise<void> {
+    return db.transaction('rw', db.products, db.inventoryLogs, async () => {
+        await db.inventoryLogs.where('productId').anyOf(ids).delete();
+        return db.products.bulkDelete(ids);
+    });
   }
 
   async getProducts(params: { query?: string; category?: string; }): Promise<Product[]> {
