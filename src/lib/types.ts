@@ -275,3 +275,13 @@ export interface ImportAnalysis {
     errorRows: any[];
     totalRows: number;
 }
+
+export interface GlobalActivityItem {
+    type: 'sale' | 'stock_intake' | 'return' | 'customer';
+    date: Date;
+    id: number | string;
+    description: string;
+    details: string;
+    amount?: number;
+    amountClass?: string;
+}

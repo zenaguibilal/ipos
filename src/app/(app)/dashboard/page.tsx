@@ -7,7 +7,7 @@ import { dataService } from '@/services/data-service';
 import { DateRangePicker } from '@/components/dashboard/date-range-picker';
 import StatsCards from '@/components/dashboard/StatsCards';
 import RevenueChart from '@/components/dashboard/RevenueChart';
-import SalesOverview from '@/components/dashboard/SalesOverview';
+import GlobalActivity from '@/components/dashboard/GlobalActivity';
 import TopProducts from '@/components/dashboard/TopProducts';
 import TopCustomers from '@/components/dashboard/TopCustomers';
 import ExpenseSummary from '@/components/dashboard/ExpenseSummary';
@@ -41,7 +41,13 @@ export default function DashboardPage() {
         []
     );
 
-    const isLoading = dashboardData === undefined || unreadAlerts === undefined;
+    const globalActivity = useLiveQuery(
+        () => dataService.getGlobalActivity(10),
+        [],
+        []
+    );
+
+    const isLoading = dashboardData === undefined || unreadAlerts === undefined || globalActivity === undefined;
     
     const handleDismissAlert = async (id: number) => {
         try {
@@ -100,8 +106,8 @@ export default function DashboardPage() {
                         expenses={dashboardData?.expenses}
                         isLoading={isLoading}
                     />
-                    <SalesOverview 
-                        sales={dashboardData?.sales ?? []} 
+                    <GlobalActivity 
+                        activity={globalActivity ?? []} 
                         isLoading={isLoading}
                     />
                      <TopProducts

@@ -2,7 +2,7 @@
 'use client';
 
 import { db, PosDatabase } from '@/lib/database';
-import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, DailyBreadOrder, BreadCustomer, BreadOrder, Notification, InventoryLog, CustomerWithSalesData, ImportAnalysis, DashboardData, StockIntakeItem, CartItem, TopProduct, TopCustomer } from '@/lib/types';
+import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, DailyBreadOrder, BreadCustomer, BreadOrder, Notification, InventoryLog, CustomerWithSalesData, ImportAnalysis, DashboardData, StockIntakeItem, CartItem, TopProduct, TopCustomer, GlobalActivityItem } from '@/lib/types';
 import { initialData, type DB, type CollectionName } from './initial-data';
 import Dexie from 'dexie';
 import { startOfDay, endOfDay, format } from 'date-fns';
@@ -1058,6 +1058,57 @@ class DataService {
           return acc + (isNaN(value) ? 0 : value);
       }, 0);
       return inventoryValue;
+  }
+
+  async getGlobalActivity(limit: number = 10): Promise<GlobalActivityItem[]> {
+    const sales = await db.sales.orderBy('createdAt').reverse().limit(limit).toArray();
+    const intakes = await db.stockIntakes.orderBy('createdAt').reverse().limit(limit).toArray();
+    const returns = await db.returns.orderBy('createdAt').reverse().limit(limit).toArray();
+    const customers = await db.customers.orderBy('createdAt').reverse().limit(limit).toArray();
+
+    const activity: GlobalActivityItem[] = [];
+
+    sales.forEach(s => activity.push({
+        type: 'sale',
+        date: s.createdAt!,
+        id: s.id!,
+        description: `Vente #${s.invoiceNumber}`,
+        details: s.customerName || 'Client de passage',
+        amount: s.total,
+        amountClass: 'text-primary'
+    }));
+
+    intakes.forEach(i => activity.push({
+        type: 'stock_intake',
+        date: i.createdAt!,
+        id: i.id!,
+        description: `Réception de ${i.supplier}`,
+        details: `${i.items.length} article(s)`,
+        amount: i.totalValue,
+        amountClass: 'text-[hsl(var(--chart-quaternary))]'
+    }));
+    
+    returns.forEach(r => activity.push({
+        type: 'return',
+        date: r.createdAt!,
+        id: r.id!,
+        description: `Retour sur facture #${r.originalInvoiceNumber}`,
+        details: `${r.items.length} article(s) retourné(s)`,
+        amount: r.totalReturnValue,
+        amountClass: 'text-destructive'
+    }));
+
+    customers.forEach(c => activity.push({
+        type: 'customer',
+        date: c.createdAt!,
+        id: c.id!,
+        description: `Nouveau client`,
+        details: `${c.firstName} ${c.lastName}`,
+    }));
+
+    return activity
+        .sort((a,b) => b.date.getTime() - a.date.getTime())
+        .slice(0, limit);
   }
 
 
