@@ -17,8 +17,10 @@ export interface Customer {
     id?: number;
     firstName: string;
     lastName: string;
+    searchName?: string;
     phone?: string;
     settlementDay?: number;
+    creditLimit?: number;
     totalSpent: number;
     outstandingBalance: number;
     lastActivityDate?: Date;
@@ -125,6 +127,8 @@ export interface CompanyProfile {
     website?: string;
     vatNumber?: string;
     rcNumber?: string;
+    syncUrl?: string;
+    lastSyncDate?: string;
     breadPrice?: number;
     breadPurchasePrice?: number;
     updatedAt?: Date;
@@ -253,11 +257,13 @@ export interface DashboardStats {
     totalProfit: number;
     salesCount: number;
     inventoryValue: number;
+    totalExpenses: number;
 }
 
 export interface DashboardData {
     stats: DashboardStats;
     sales: Sale[];
+    expenses: Expense[];
     topProducts: TopProduct[];
     topCustomers: TopCustomer[];
 }

@@ -10,6 +10,7 @@ import RevenueChart from '@/components/dashboard/RevenueChart';
 import SalesOverview from '@/components/dashboard/SalesOverview';
 import TopProducts from '@/components/dashboard/TopProducts';
 import TopCustomers from '@/components/dashboard/TopCustomers';
+import ExpenseSummary from '@/components/dashboard/ExpenseSummary';
 import { DateRange } from 'react-day-picker';
 import { subDays, startOfDay, endOfDay } from 'date-fns';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -95,6 +96,10 @@ export default function DashboardPage() {
                     <RevenueChart sales={dashboardData?.sales} isLoading={isLoading} />
                 </div>
                 <div className="lg:col-span-1 space-y-6">
+                    <ExpenseSummary
+                        expenses={dashboardData?.expenses}
+                        isLoading={isLoading}
+                    />
                     <SalesOverview 
                         sales={dashboardData?.sales ?? []} 
                         isLoading={isLoading}

@@ -291,13 +291,9 @@ class DataService {
 
     if (query) {
         const lowerQuery = query.toLowerCase();
-        customers = await db.customers.filter(c => 
-            c.firstName.toLowerCase().includes(lowerQuery) ||
-            c.lastName.toLowerCase().includes(lowerQuery) ||
-            c.phone?.includes(lowerQuery)
-        ).toArray();
+        customers = await db.customers.where('searchName').startsWith(lowerQuery).toArray();
     } else {
-        customers = await db.customers.orderBy('[lastName+firstName]').toArray();
+        customers = await db.customers.orderBy('lastName').toArray();
     }
     
     const customersWithSalesData: CustomerWithSalesData[] = customers.map(c => {
@@ -322,6 +318,7 @@ class DataService {
             lastName: customer.lastName,
             phone: customer.phone,
             settlementDay: customer.settlementDay,
+            creditLimit: customer.creditLimit,
             totalSpent: 0,
             outstandingBalance: 0,
         };
@@ -456,11 +453,26 @@ class DataService {
     return db.transaction('rw', db.sales, db.products, db.customers, db.notifications, db.inventoryLogs, async () => {
         const { items, customerId, total, amountPaid } = saleData;
 
+        // Check stock
         for (const item of items) {
             if (typeof item.id !== 'number') continue;
             const product = await db.products.get(item.id);
             if (!product) throw new Error(`Produit avec ID ${item.id} non trouvé.`);
             if (product.quantity < item.quantity) throw new Error(`Stock insuffisant pour ${product.name}.`);
+        }
+
+        // Check customer credit limit
+        if (customerId) {
+            const customer = await db.customers.get(customerId);
+            if (customer && typeof customer.creditLimit === 'number') {
+                const balanceToAdd = total - amountPaid;
+                if (balanceToAdd > 0) {
+                    const futureBalance = customer.outstandingBalance + balanceToAdd;
+                    if (futureBalance > customer.creditLimit) {
+                         throw new Error(`Limite de crédit dépassée pour ${customer.firstName} ${customer.lastName}. Limite: ${customer.creditLimit}, Solde actuel: ${customer.outstandingBalance}, Nouveau solde serait: ${futureBalance}`);
+                    }
+                }
+            }
         }
 
         const saleId = await db.sales.add({
@@ -470,6 +482,7 @@ class DataService {
             remainingBalance: total - amountPaid > 0 ? total - amountPaid : 0,
         } as Sale);
 
+        // Update stock and logs
         for (const item of items) {
             if (typeof item.id !== 'number') continue;
             let newQuantity = 0;
@@ -501,6 +514,7 @@ class DataService {
             }
         }
 
+        // Update customer balance
         if (customerId) {
             const balanceToAdd = total - amountPaid;
             if (balanceToAdd > 0) {
@@ -966,11 +980,14 @@ class DataService {
   async getDashboardData(params: { from: Date; to: Date }): Promise<DashboardData> {
     const { from, to } = params;
 
-    const sales = await db.sales.where('createdAt').between(from, to).reverse().toArray();
+    const sales = await db.sales.where('createdAt').between(from, to, true, true).reverse().toArray();
+    const expenses = await db.expenses.where('expenseDate').between(from, to, true, true).toArray();
 
     let totalRevenue = 0;
     let totalProfit = 0;
     const salesCount = sales.length;
+
+    const totalExpenses = expenses.reduce((acc, exp) => acc + exp.amount, 0);
 
     const productStats = new Map<number, { name: string; totalRevenue: number; unitsSold: number; totalProfit: number }>();
     const customerStats = new Map<number, { name: string; totalSpent: number }>();
@@ -1025,8 +1042,10 @@ class DataService {
             totalProfit,
             salesCount,
             inventoryValue,
+            totalExpenses,
         },
         sales,
+        expenses,
         topProducts,
         topCustomers,
     };
@@ -1057,7 +1076,9 @@ class DataService {
         for (const tableName of tables) {
             data[tableName] = await db.table(tableName).toArray();
         }
-        data.companyProfile = await db.companyProfile.get(1);
+        // Special handling for singleton companyProfile
+        const profile = await db.companyProfile.get(1);
+        if(profile) data.companyProfile = profile;
     });
     
     return JSON.stringify(data, null, 2);
@@ -1107,33 +1128,32 @@ class DataService {
 
     async syncDataToGoogleSheet(): Promise<void> {
         const profile = await this.getCompanyProfile();
-        if (!profile) { // This check should be against the profile itself
-            throw new Error("Profil d'entreprise non trouvé.");
-        }
-        
-        // This is a placeholder for the sync URL, which should be stored in the company profile
-        const syncUrl = "YOUR_GOOGLE_APPS_SCRIPT_URL_HERE"; 
-        if (!syncUrl || syncUrl === "YOUR_GOOGLE_APPS_SCRIPT_URL_HERE") {
+        if (!profile?.syncUrl) {
             throw new Error("L'URL de synchronisation n'est pas configurée dans le profil de l'entreprise.");
         }
         
         const dataToSync = await this.exportData();
 
-        const response = await fetch(syncUrl, {
-            method: 'POST',
-            mode: 'no-cors', // Using no-cors as Google Scripts can be tricky with CORS
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: dataToSync,
-        });
+        try {
+            const response = await fetch(profile.syncUrl, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: {
+                    'Content-Type': 'text/plain', // Use text/plain to avoid preflight
+                },
+                body: dataToSync,
+            });
 
-        // no-cors means we can't inspect the response, so we optimistically assume it worked.
-        // A more robust solution would require a proper backend or a Google Script that correctly handles CORS pre-flight requests.
-        if (response.type === 'opaque') {
-             await db.companyProfile.update(1, { updatedAt: new Date() }); // Just updating a timestamp for now
-        } else if (!response.ok) {
-            throw new Error(`Erreur de synchronisation: ${response.statusText}`);
+            if (response.type === 'opaque' || response.ok) {
+                 await db.companyProfile.update(1, { lastSyncDate: new Date().toISOString() });
+            } else {
+                 throw new Error(`Le serveur a répondu avec le statut : ${response.status}`);
+            }
+        } catch (error) {
+             if (error instanceof TypeError) { // Likely a network error or CORS issue not caught by no-cors
+                throw new Error("Erreur réseau ou de configuration CORS. Vérifiez l'URL et votre connexion.");
+             }
+            throw error;
         }
     }
 }
