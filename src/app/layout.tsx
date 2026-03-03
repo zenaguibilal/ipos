@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/sonner';
 import { Inter } from 'next/font/google';
+import { ThemeProvider } from '@/components/layout/theme-provider';
 
 const APP_NAME = "iPOS";
 const APP_DEFAULT_TITLE = "iPOS - Point de Vente de Luxe";
@@ -51,7 +52,10 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#1a120c',
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#fdfaf6' },
+    { media: '(prefers-color-scheme: dark)', color: '#1a120c' },
+  ],
 };
 
 
@@ -61,12 +65,19 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="fr" suppressHydrationWarning className="dark">
+    <html lang="fr" suppressHydrationWarning>
       <head />
       <body className={inter.className}>
-        {children}
-        <Toaster richColors />
-        <div id="receipt-for-print" className="hidden"></div>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="dark"
+          enableSystem
+          disableTransitionOnChange
+        >
+          {children}
+          <Toaster richColors />
+          <div id="receipt-for-print" className="hidden"></div>
+        </ThemeProvider>
       </body>
     </html>
   );
