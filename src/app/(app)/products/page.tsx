@@ -23,6 +23,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Checkbox } from '@/components/ui/checkbox';
 
 
 type ViewMode = 'grid' | 'list';
@@ -154,16 +155,6 @@ export default function ProductsPage() {
                     <p className="text-muted-foreground">Recherchez, filtrez et gérez votre inventaire.</p>
                 </div>
                  <div className="flex gap-2 w-full sm:w-auto">
-                    {selectedProducts.size > 0 && (
-                        <>
-                            <Button variant="outline" onClick={() => setIsPrintDialogOpen(true)}>
-                                <Printer className="mr-2 h-4 w-4" /> Imprimer ({selectedProducts.size})
-                            </Button>
-                            <Button variant="destructive" onClick={() => setIsBulkDeleteDialogOpen(true)}>
-                                <Trash2 className="mr-2 h-4 w-4" /> Supprimer ({selectedProducts.size})
-                            </Button>
-                        </>
-                    )}
                     <Button className="w-full sm:w-auto" onClick={() => { setSelectedProduct(null); setIsProductDialogOpen(true); }}>
                         <Plus className="mr-2 h-4 w-4" /> Ajouter
                     </Button>
@@ -210,6 +201,30 @@ export default function ProductsPage() {
                         <List className="h-5 w-5"/>
                     </Button>
                 </div>
+            </div>
+
+             <div className="flex flex-col sm:flex-row gap-2 justify-between items-center bg-card border rounded-lg p-3">
+                <div className="flex items-center gap-3">
+                    <Checkbox
+                        id="select-all"
+                        checked={!isLoading && products && products.length > 0 && selectedProducts.size === products.length}
+                        onCheckedChange={handleToggleSelectAll}
+                        disabled={isLoading || !products || products.length === 0}
+                    />
+                    <label htmlFor="select-all" className="text-sm font-medium">
+                        {selectedProducts.size > 0 ? `${selectedProducts.size} sélectionné(s)` : "Tout sélectionner"}
+                    </label>
+                </div>
+                {selectedProducts.size > 0 && (
+                    <div className="flex gap-2">
+                        <Button variant="outline" onClick={() => setIsPrintDialogOpen(true)}>
+                            <Printer className="mr-2 h-4 w-4" /> Imprimer
+                        </Button>
+                        <Button variant="destructive" onClick={() => setIsBulkDeleteDialogOpen(true)}>
+                            <Trash2 className="mr-2 h-4 w-4" /> Supprimer
+                        </Button>
+                    </div>
+                )}
             </div>
             
             <div>
