@@ -1,10 +1,12 @@
+
 'use client';
 
 import { db, PosDatabase } from '@/lib/database';
-import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, DailyBreadOrder, BreadCustomer, BreadOrder, Notification, InventoryLog, CustomerWithSalesData, ImportAnalysis, DashboardData, StockIntakeItem, CartItem, TopProduct, TopCustomer, GlobalActivityItem } from '@/lib/types';
+import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, DailyBreadOrder, BreadCustomer, BreadOrder, Notification, InventoryLog, CustomerWithSalesData, ImportAnalysis, DashboardData, StockIntakeItem, CartItem, TopProduct, TopCustomer, GlobalActivityItem, ProductImportAnalysis } from '@/lib/types';
 import { initialData, type DB, type CollectionName } from './initial-data';
 import Dexie from 'dexie';
 import { startOfDay, endOfDay, format } from 'date-fns';
+import Papa from 'papaparse';
 
 type TableName = keyof Pick<PosDatabase, 
     'products' | 'customers' | 'sales' | 'payments' | 
@@ -476,6 +478,87 @@ class DataService {
         }));
         await Promise.all(updates);
       }
+    });
+  }
+
+  async analyzeProductImport(data: any[]): Promise<ProductImportAnalysis> {
+    const allProducts = await db.products.toArray();
+    const productMapByBarcode: Map<string, Product> = new Map();
+    allProducts.forEach(p => {
+        p.barcodes?.forEach(b => {
+            productMapByBarcode.set(b, p);
+        });
+    });
+    const productMapByName: Map<string, Product> = new Map(allProducts.map(p => [p.name.toLowerCase(), p]));
+
+    const analysis: ProductImportAnalysis = {
+        productsToAdd: [],
+        productsToUpdate: [],
+        skippedRows: [],
+        errorRows: [],
+        totalRows: data.length
+    };
+
+    for (const row of data) {
+        const name = row.name || row.nom || row['nom du produit'];
+        const category = row.category || row.catégorie;
+        const purchasePrice = parseFloat(row.purchasePrice || row.prix_achat);
+        const price = parseFloat(row.price || row.prix_vente);
+        const quantity = parseInt(row.quantity || row.quantité, 10);
+        const minStockLevel = parseInt(row.minStockLevel || row.stock_minimum, 10);
+        let barcodes = row.barcodes || row.codes_barres || row.code_barres;
+
+        if (!name || isNaN(price)) {
+            analysis.errorRows.push({ ...row, error: "Nom ou Prix de vente manquant/invalide" });
+            continue;
+        }
+
+        if (barcodes && typeof barcodes === 'string') {
+            barcodes = barcodes.split(',').map(b => b.trim()).filter(Boolean);
+        } else if (!Array.isArray(barcodes)) {
+            barcodes = [];
+        }
+
+        let existingProduct: Product | undefined = undefined;
+        if (barcodes.length > 0) {
+            for (const bc of barcodes) {
+                if (productMapByBarcode.has(bc)) {
+                    existingProduct = productMapByBarcode.get(bc);
+                    break;
+                }
+            }
+        }
+        if (!existingProduct) {
+            existingProduct = productMapByName.get(name.toLowerCase());
+        }
+
+        const productData = {
+            name,
+            category: category || '',
+            price,
+            purchasePrice: isNaN(purchasePrice) ? 0 : purchasePrice,
+            quantity: isNaN(quantity) ? 0 : quantity,
+            minStockLevel: isNaN(minStockLevel) ? 10 : minStockLevel,
+            barcodes,
+        };
+
+        if (existingProduct) {
+            analysis.productsToUpdate.push({ ...existingProduct, ...productData });
+        } else {
+            analysis.productsToAdd.push(productData);
+        }
+    }
+    return analysis;
+  }
+
+  async processProductImport(toAdd: Product[], toUpdate: Product[]): Promise<void> {
+    return db.transaction('rw', db.products, db.inventoryLogs, async () => {
+        if (toAdd.length > 0) {
+            await db.products.bulkAdd(toAdd);
+        }
+        if (toUpdate.length > 0) {
+            await db.products.bulkPut(toUpdate);
+        }
     });
   }
 
@@ -1175,6 +1258,27 @@ class DataService {
   // ====================================================================
   // Backup, Restore, Sync - Handled in large transactions
   // ====================================================================
+  
+  async exportProductsToCSV(): Promise<string> {
+    const products = await db.products.orderBy('name').toArray();
+    const dataForCSV = products.map(p => ({
+        id: typeof p.id === 'number' ? p.id : '',
+        name: p.name,
+        category: p.category,
+        price: p.price,
+        purchasePrice: p.purchasePrice,
+        quantity: p.quantity,
+        minStockLevel: p.minStockLevel,
+        barcodes: p.barcodes?.join(','),
+        imageUrl: p.imageUrl,
+    }));
+
+    return Papa.unparse(dataForCSV, {
+        header: true,
+        columns: ['id', 'name', 'category', 'price', 'purchasePrice', 'quantity', 'minStockLevel', 'barcodes', 'imageUrl']
+    });
+  }
+
   async exportData(): Promise<string> {
     const data: Partial<DB> = {};
     const tables: CollectionName[] = [

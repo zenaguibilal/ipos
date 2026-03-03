@@ -276,6 +276,14 @@ export interface ImportAnalysis {
     totalRows: number;
 }
 
+export interface ProductImportAnalysis {
+    productsToAdd: any[];
+    productsToUpdate: any[];
+    skippedRows: any[];
+    errorRows: any[];
+    totalRows: number;
+}
+
 export interface GlobalActivityItem {
     type: 'sale' | 'stock_intake' | 'return' | 'customer';
     date: Date;

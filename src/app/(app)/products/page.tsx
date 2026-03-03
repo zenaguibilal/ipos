@@ -1,13 +1,14 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { dataService } from '@/services/data-service';
 import { useDebounce } from '@/hooks/useDebounce';
-import type { Product } from '@/lib/types';
+import type { Product, ProductImportAnalysis } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, LayoutGrid, List, Printer, Trash2, PackageCheck, PackageX, AlertTriangle, Archive, SortAsc } from 'lucide-react';
+import { Plus, Search, LayoutGrid, List, Printer, Trash2, PackageCheck, PackageX, AlertTriangle, Archive, SortAsc, FileDown, FileUp } from 'lucide-react';
 import { ProductCard } from '@/components/products/product-card';
 import { ProductTable } from '@/components/products/product-table';
 import { ProductCardSkeleton } from '@/components/products/product-card-skeleton';
@@ -16,6 +17,7 @@ import { ProductDialog } from '@/components/products/product-dialog';
 import { DeleteProductDialog } from '@/components/products/delete-product-dialog';
 import { DeleteMultipleProductsDialog } from '@/components/products/DeleteMultipleProductsDialog';
 import { PrintLabelsDialog } from '@/components/products/PrintLabelsDialog';
+import { ProductImportPreviewDialog } from '@/components/products/ProductImportPreviewDialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,6 +29,8 @@ import {
   DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu";
 import { Checkbox } from '@/components/ui/checkbox';
+import { toast } from 'sonner';
+import Papa from 'papaparse';
 
 
 type ViewMode = 'grid' | 'list';
@@ -65,6 +69,10 @@ export default function ProductsPage() {
 
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
     const [selectedProducts, setSelectedProducts] = useState<Set<number>>(new Set());
+    
+    const [isProductImportPreviewOpen, setIsProductImportPreviewOpen] = useState(false);
+    const [productImportAnalysis, setProductImportAnalysis] = useState<ProductImportAnalysis | null>(null);
+    const [isImporting, setIsImporting] = useState(false);
 
     const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
@@ -118,6 +126,60 @@ export default function ProductsPage() {
             setSelectedProducts(new Set(products.map(p => p.id as number).filter(id => typeof id === 'number')));
         }
     }
+
+    const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            Papa.parse(file, {
+                header: true,
+                skipEmptyLines: true,
+                complete: async (results) => {
+                    const analysis = await dataService.analyzeProductImport(results.data);
+                    setProductImportAnalysis(analysis);
+                    setIsProductImportPreviewOpen(true);
+                },
+                error: (error) => {
+                    toast.error("Erreur lors de l'analyse du fichier CSV.", { description: error.message });
+                }
+            });
+        }
+        if (e.target) e.target.value = '';
+    };
+
+    const handleConfirmImport = async (confirmedData: { toAdd: any[], toUpdate: any[] }) => {
+        setIsImporting(true);
+        try {
+            await dataService.processProductImport(confirmedData.toAdd, confirmedData.toUpdate);
+            toast.success("Importation des produits terminée avec succès !");
+            setIsProductImportPreviewOpen(false);
+            setProductImportAnalysis(null);
+        } catch (error) {
+            console.error("Product import failed:", error);
+            toast.error("Une erreur est survenue lors de l'importation.");
+        } finally {
+            setIsImporting(false);
+        }
+    };
+    
+    const handleExport = async () => {
+        toast.info("Préparation de l'exportation des produits...");
+        try {
+            const csvString = await dataService.exportProductsToCSV();
+            const blob = new Blob([`\uFEFF${csvString}`], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", `export-produits-${new Date().toISOString().split('T')[0]}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            toast.success("Exportation terminée avec succès.");
+        } catch (error) {
+            toast.error("Erreur lors de l'exportation des produits.");
+            console.error(error);
+        }
+    };
     
     const renderSkeletons = () => (
         [...Array(8)].map((_, i) => <ProductCardSkeleton key={i} />)
@@ -187,6 +249,15 @@ export default function ProductsPage() {
                     <p className="text-muted-foreground">Recherchez, filtrez et gérez votre inventaire.</p>
                 </div>
                  <div className="flex gap-2 w-full sm:w-auto">
+                    <Button onClick={handleExport} variant="outline" className="w-full sm:w-auto">
+                        <FileUp className="mr-2 h-4 w-4" /> Exporter
+                    </Button>
+                    <Button asChild variant="outline" className="w-full sm:w-auto">
+                        <label htmlFor="csv-importer">
+                            <FileDown className="mr-2 h-4 w-4" /> Importer
+                            <input type="file" id="csv-importer" accept=".csv" className="sr-only" onChange={handleFileSelected} />
+                        </label>
+                    </Button>
                     <Button className="w-full sm:w-auto" onClick={() => { setSelectedProduct(null); setIsProductDialogOpen(true); }}>
                         <Plus className="mr-2 h-4 w-4" /> Ajouter
                     </Button>
@@ -325,6 +396,13 @@ export default function ProductsPage() {
                 onOpenChange={setIsBulkDeleteDialogOpen}
                 productIds={Array.from(selectedProducts)}
                 onSuccess={() => setSelectedProducts(new Set())}
+            />
+             <ProductImportPreviewDialog
+                isOpen={isProductImportPreviewOpen}
+                onOpenChange={setIsProductImportPreviewOpen}
+                analysis={productImportAnalysis}
+                onConfirm={handleConfirmImport}
+                isImporting={isImporting}
             />
         </div>
     );
