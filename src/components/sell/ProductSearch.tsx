@@ -3,9 +3,10 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/database';
+import { dataService } from '@/services/data-service';
 import type { Product } from '@/lib/types';
 import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Barcode, PackagePlus } from 'lucide-react';
 import Image from 'next/image';
 import placeholderImages from '@/lib/placeholder-images.json';
@@ -75,8 +76,10 @@ const CustomProductDialog = ({ onAdd }: { onAdd: (name: string, price: number) =
 
 export function ProductSearch({ onProductSelect }: ProductSearchProps) {
     const [query, setQuery] = useState('');
+    const [selectedCategory, setSelectedCategory] = useState('all');
     
     const products = useLiveQuery(() => db.products.toArray(), []);
+    const categories = useLiveQuery(() => dataService.getProductCategories(), [], []);
 
     const handleBarcodeScanned = useCallback((scannedBarcode: string) => {
         if (!products || !scannedBarcode.trim()) return;
@@ -89,14 +92,22 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
     
     const filteredProducts = useMemo(() => {
         if (!products) return [];
-        const lowercasedQuery = query.toLowerCase().trim();
-        if (!lowercasedQuery) return products.slice(0, 50); // Show first 50 products if no query
         
-        return products.filter(p => 
+        let categoryFiltered = products;
+        if (selectedCategory !== 'all') {
+            categoryFiltered = products.filter(p => p.category === selectedCategory);
+        }
+
+        const lowercasedQuery = query.toLowerCase().trim();
+        if (!lowercasedQuery) {
+            return categoryFiltered;
+        }
+        
+        return categoryFiltered.filter(p => 
             p.name.toLowerCase().includes(lowercasedQuery) ||
             p.barcodes?.some(b => b.includes(lowercasedQuery))
         );
-    }, [query, products]);
+    }, [query, products, selectedCategory]);
 
     const addCustomProduct = (name: string, price: number) => {
         const customProduct: Product = {
@@ -129,7 +140,32 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
                 />
             </div>
             
-            <ScrollArea className="flex-grow -mx-4">
+            <ScrollArea className="w-full whitespace-nowrap -mx-2 px-2">
+                <div className="flex space-x-2 pb-2">
+                    <Button 
+                        variant={selectedCategory === 'all' ? 'secondary' : 'ghost'}
+                        size="sm"
+                        onClick={() => setSelectedCategory('all')}
+                        className="rounded-full"
+                    >
+                        Toutes
+                    </Button>
+                    {categories?.map(cat => (
+                        <Button 
+                            key={cat}
+                            variant={selectedCategory === cat ? 'secondary' : 'ghost'}
+                            size="sm"
+                            onClick={() => setSelectedCategory(cat)}
+                            className="rounded-full"
+                        >
+                            {cat}
+                        </Button>
+                    ))}
+                </div>
+                <ScrollBar orientation="horizontal" />
+            </ScrollArea>
+
+            <ScrollArea className="flex-grow -mx-4 mt-2">
                 <div className="space-y-1 px-4">
                     {filteredProducts.map((product, index) => (
                         <ListItem
@@ -142,9 +178,9 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
                             isLast={index === filteredProducts.length - 1}
                         />
                     ))}
-                     {query && filteredProducts.length === 0 && (
+                     {filteredProducts.length === 0 && (
                         <div className="text-center text-muted-foreground py-8">
-                            <p>Aucun produit trouvé pour "{query}".</p>
+                            <p>Aucun produit trouvé pour votre recherche.</p>
                         </div>
                      )}
                 </div>
