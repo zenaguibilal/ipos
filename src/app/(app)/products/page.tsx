@@ -11,6 +11,7 @@ import { Plus, Search, LayoutGrid, List, Printer, Trash2, PackageCheck, PackageX
 import { ProductCard } from '@/components/products/product-card';
 import { ProductTable } from '@/components/products/product-table';
 import { ProductCardSkeleton } from '@/components/products/product-card-skeleton';
+import { ProductTableSkeleton } from '@/components/products/product-table-skeleton';
 import { ProductDialog } from '@/components/products/product-dialog';
 import { DeleteProductDialog } from '@/components/products/delete-product-dialog';
 import { DeleteMultipleProductsDialog } from '@/components/products/DeleteMultipleProductsDialog';
@@ -109,11 +110,14 @@ export default function ProductsPage() {
 
     const renderContent = () => {
         if (isLoading) {
-            return viewMode === 'grid' ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                    {renderSkeletons()}
-                </div>
-            ) : <div className="p-4"><ProductCardSkeleton /></div>;
+            if (viewMode === 'grid') {
+                return (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                        {renderSkeletons()}
+                    </div>
+                )
+            }
+            return <ProductTableSkeleton />;
         }
 
         if (!products || products.length === 0) {
