@@ -67,7 +67,7 @@ export default function DashboardPage() {
             {unreadAlerts && unreadAlerts.length > 0 && (
                 <div className="space-y-3">
                     {unreadAlerts.map(alert => (
-                         <div key={alert.id!} className="relative luxury-glass border-destructive/30">
+                         <div key={alert.id!} className="relative luxury-glass-destructive">
                             <Alert variant="destructive" className="border-0 bg-transparent shadow-none">
                                 <AlertTriangle className="h-4 w-4" />
                                 <AlertTitle>Alerte de Stock Faible</AlertTitle>
