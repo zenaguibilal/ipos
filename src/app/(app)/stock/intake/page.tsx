@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -23,9 +23,15 @@ export default function NewStockIntakePage() {
     const router = useRouter();
     const [supplier, setSupplier] = useState('');
     const [invoiceNumber, setInvoiceNumber] = useState('');
-    const [invoiceDate, setInvoiceDate] = useState<Date | undefined>(new Date());
+    const [invoiceDate, setInvoiceDate] = useState<Date | undefined>();
     const [items, setItems] = useState<StockIntakeItem[]>([]);
     const [isSaving, setIsSaving] = useState(false);
+    const [isMounted, setIsMounted] = useState(false);
+
+    useEffect(() => {
+        setInvoiceDate(new Date());
+        setIsMounted(true);
+    }, []);
 
     const products = useLiveQuery(() => dataService.getAll<Product>('products'), []);
 
@@ -136,7 +142,7 @@ export default function NewStockIntakePage() {
                         <p className="text-muted-foreground">Enregistrez les marchandises reçues de vos fournisseurs.</p>
                      </div>
                 </div>
-                <Button onClick={handleSave} disabled={isSaving}>
+                <Button onClick={handleSave} disabled={isSaving || !isMounted}>
                     {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                     {isSaving ? 'Enregistrement...' : 'Enregistrer la réception'}
                 </Button>

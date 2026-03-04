@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { dataService } from '@/services/data-service';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -8,7 +8,7 @@ import type { Sale } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
 import { DateRangePicker } from '@/components/dashboard/date-range-picker';
-import { DateRange } from 'react-day-picker';
+import type { DateRange } from 'react-day-picker';
 import { subDays, startOfDay, endOfDay } from 'date-fns';
 import { SalesHistoryCard } from '@/components/sales/SalesHistoryCard';
 import { SaleDetailsDialog } from '@/components/sales/SaleDetailsDialog';
@@ -18,10 +18,16 @@ import { Skeleton } from '@/components/ui/skeleton';
 export default function SalesHistoryPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const debouncedSearchQuery = useDebounce(searchQuery, 300);
-    const [dateRange, setDateRange] = useState<DateRange | undefined>({
-        from: startOfDay(subDays(new Date(), 29)),
-        to: endOfDay(new Date()),
-    });
+    const [dateRange, setDateRange] = useState<DateRange | undefined>();
+    const [isMounted, setIsMounted] = useState(false);
+
+    useEffect(() => {
+        setDateRange({
+            from: startOfDay(subDays(new Date(), 29)),
+            to: endOfDay(new Date()),
+        });
+        setIsMounted(true);
+    }, []);
     
     const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
@@ -37,7 +43,7 @@ export default function SalesHistoryPage() {
         []
     );
 
-    const isLoading = sales === undefined;
+    const isLoading = sales === undefined || !isMounted;
 
     const handleViewDetails = (sale: Sale) => {
         setSelectedSale(sale);

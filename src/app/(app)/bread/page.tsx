@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { dataService } from '@/services/data-service';
 import { useReactToPrint } from 'react-to-print';
@@ -23,8 +23,14 @@ import { PrintableBreadList } from '@/components/bread/PrintableBreadList';
 import { toast } from 'sonner';
 
 export default function BreadPage() {
-    const [date, setDate] = useState(new Date());
-    const dateString = useMemo(() => format(date, 'yyyy-MM-dd'), [date]);
+    const [date, setDate] = useState<Date>();
+    const [isMounted, setIsMounted] = useState(false);
+    useEffect(() => {
+        setDate(new Date());
+        setIsMounted(true);
+    }, []);
+
+    const dateString = useMemo(() => date ? format(date, 'yyyy-MM-dd') : '', [date]);
 
     const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
     const [isEditOrderOpen, setIsEditOrderOpen] = useState(false);
@@ -36,9 +42,9 @@ export default function BreadPage() {
     const [isFinalizing, setIsFinalizing] = useState(false);
 
     const companyProfile = useLiveQuery<CompanyProfile | undefined>(() => dataService.getCompanyProfile());
-    const orders = useLiveQuery(() => dataService.getBreadOrdersForDate(date), [dateString], []);
+    const orders = useLiveQuery(() => date ? dataService.getBreadOrdersForDate(date) : [], [dateString], []);
     
-    const isLoading = orders === undefined || companyProfile === undefined;
+    const isLoading = orders === undefined || companyProfile === undefined || !isMounted;
     const isPriceSet = !!companyProfile?.breadPrice && companyProfile.breadPrice > 0;
 
     const printRef = useRef<HTMLDivElement>(null);
@@ -145,7 +151,7 @@ export default function BreadPage() {
                     <Button className="w-full sm:w-auto" onClick={() => setIsCustomerDialogOpen(true)}>
                         <Plus className="mr-2 h-4 w-4" /> Ajouter Client
                     </Button>
-                     <Button variant="outline" className="w-full sm:w-auto" onClick={handlePrint}>
+                     <Button variant="outline" className="w-full sm:w-auto" onClick={handlePrint} disabled={!date}>
                         <Printer className="mr-2 h-4 w-4" /> Imprimer Liste
                     </Button>
                 </div>
@@ -153,11 +159,11 @@ export default function BreadPage() {
             
             <div className="flex flex-col sm:flex-row gap-2 justify-between items-center bg-card border rounded-lg p-3">
                 <div className="flex items-center gap-2">
-                    <Button variant="outline" size="icon" onClick={() => setDate(d => subDays(d, 1))}>
+                    <Button variant="outline" size="icon" onClick={() => setDate(d => d ? subDays(d, 1) : subDays(new Date(), 1))} disabled={!date}>
                         <ChevronLeft className="h-4 w-4" />
                     </Button>
                     <DatePicker date={date} setDate={(d) => setDate(d || new Date())} />
-                    <Button variant="outline" size="icon" onClick={() => setDate(d => addDays(d, 1))}>
+                    <Button variant="outline" size="icon" onClick={() => setDate(d => d ? addDays(d, 1) : addDays(new Date(), 1))} disabled={!date}>
                         <ChevronRight className="h-4 w-4" />
                     </Button>
                 </div>
@@ -192,12 +198,12 @@ export default function BreadPage() {
             <div>{renderContent()}</div>
             
             <div style={{ display: 'none' }}>
-                <PrintableBreadList ref={printRef} orders={orders || []} date={date} companyProfile={companyProfile || null} />
+                {date && <PrintableBreadList ref={printRef} orders={orders || []} date={date} companyProfile={companyProfile || null} />}
             </div>
 
             <BreadCustomerDialog isOpen={isCustomerDialogOpen} onOpenChange={setIsCustomerDialogOpen} />
 
-            {selectedOrder && (
+            {selectedOrder && dateString && (
                 <>
                     <EditOrderDialog 
                         isOpen={isEditOrderOpen} 
