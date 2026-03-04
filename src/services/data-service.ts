@@ -46,8 +46,9 @@ class DataService {
   // Company Profile - All writes are transactional
   // ====================================================================
 
-  async getCompanyProfile(): Promise<CompanyProfile | undefined> {
-    return this.getById<CompanyProfile>('companyProfile', 1);
+  async getCompanyProfile(): Promise<CompanyProfile | null> {
+    const profile = await this.getById<CompanyProfile>('companyProfile', 1);
+    return profile ?? null;
   }
   
   async updateCompanyProfile(profileData: Partial<Omit<CompanyProfile, 'id'>>): Promise<number> {
@@ -500,7 +501,7 @@ class DataService {
     };
 
     for (const row of data) {
-        const name = row.name || row.nom || row['nom du produit'];
+        const name = row.name || row.nom || ['nom du produit'];
         const category = row.category || row.catégorie;
         const purchasePrice = parseFloat(row.purchasePrice || row.prix_achat);
         const price = parseFloat(row.price || row.prix_vente);

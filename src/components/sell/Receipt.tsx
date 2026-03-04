@@ -5,7 +5,7 @@ import type { CompanyProfile, Sale } from '@/lib/types';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '@/lib/database';
+import { dataService } from '@/services/data-service';
 import { formatCurrency, formatNumber } from '@/lib/utils';
 import QRCode from 'qrcode';
 import { useEffect, useState } from 'react';
@@ -47,10 +47,10 @@ const getReceiptInfo = (companyProfile?: CompanyProfile) => ({
 });
 
 export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(({ sale }, ref) => {
-    const companyProfile = useLiveQuery(() => db.companyProfile.get(1));
+    const companyProfile = useLiveQuery(() => dataService.getCompanyProfile());
     const [qrCodeUrl, setQrCodeUrl] = useState('');
     
-    const receiptInfo = getReceiptInfo(companyProfile);
+    const receiptInfo = getReceiptInfo(companyProfile ?? undefined);
 
     useEffect(() => {
         if (!sale?.createdAt) return;

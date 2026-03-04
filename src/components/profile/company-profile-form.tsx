@@ -14,6 +14,7 @@ import { dataService } from '@/services/data-service';
 
 
 export function CompanyProfileForm() {
+    const [isMounted, setIsMounted] = useState(false);
     const companyProfile = useLiveQuery(() => dataService.getCompanyProfile());
 
     const [formState, setFormState] = useState<Partial<CompanyProfile>>({});
@@ -21,12 +22,18 @@ export function CompanyProfileForm() {
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        if (companyProfile) {
-            setFormState(companyProfile);
-        } else if (companyProfile === null) { // It has been loaded but doesn't exist
-            setFormState({ companyName: "Mon Magasin", country: "France" });
+        setIsMounted(true);
+    }, []);
+
+    useEffect(() => {
+        if (isMounted) {
+            if (companyProfile) {
+                setFormState(companyProfile);
+            } else if (companyProfile === null) { 
+                setFormState({ companyName: "Mon Magasin", country: "Algérie" });
+            }
         }
-    }, [companyProfile]);
+    }, [companyProfile, isMounted]);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { id, value } = e.target;
@@ -57,7 +64,7 @@ export function CompanyProfileForm() {
         }
     };
 
-    const isLoading = companyProfile === undefined;
+    const isLoading = !isMounted || companyProfile === undefined;
 
     return (
         <form onSubmit={handleUpdateProfile}>
