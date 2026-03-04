@@ -3,160 +3,273 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+================================================================================
+  1. PREMIUM ORANGE GLASS THEME
+================================================================================
+*/
 @layer base {
-  :root {
-    /* Light Theme */
-    --background: 30 50% 98%; /* Warm white */
-    --foreground: 28 30% 15%; /* Dark brown */
-    --card: 30 40% 95%;
-    --card-foreground: 28 30% 15%;
-    --popover: 30 50% 98%;
-    --popover-foreground: 28 30% 15%;
-    --primary: 34 90% 55%;
-    --primary-foreground: 30 50% 98%;
-    --secondary: 34 80% 92%;
-    --secondary-foreground: 34 90% 40%;
-    --muted: 30 30% 90%;
-    --muted-foreground: 28 20% 45%;
-    --accent: 34 80% 88%;
-    --accent-foreground: 34 90% 35%;
-    --destructive: 0 70% 55%;
-    --destructive-foreground: 30 50% 98%;
-    --border: 30 30% 88%;
-    --input: 30 30% 92%;
-    --ring: 34 90% 55%;
-    --radius: 1.5rem;
+    :root, .dark {
+        /* Base Palette & Background */
+        --theme-bg-color: #0a0a0f;
+        --theme-orange-glow: rgba(255,100,20,0.12);
 
-    --chart-primary: 34 90% 55%;
-    --chart-secondary: 28 70% 60%;
-    --chart-tertiary: 10 60% 55%;
-    --chart-quaternary: 150 50% 45%;
-    --chart-quinary: 280 70% 52%;
-  }
- 
-  .dark {
-    /* Dark Theme (Royal Amber) */
-    --background: 28 20% 6%;
-    --foreground: 30 25% 90%;
-    --card: 28 20% 8%;
-    --card-foreground: 30 25% 90%;
-    --popover: 28 20% 6%;
-    --popover-foreground: 30 25% 90%;
-    --primary: 34 100% 65%;
-    --primary-foreground: 28 30% 10%;
-    --secondary: 30 15% 20%;
-    --secondary-foreground: 30 25% 90%;
-    --muted: 30 15% 20%;
-    --muted-foreground: 30 20% 65%;
-    --accent: 30 15% 25%;
-    --accent-foreground: 30 25% 95%;
-    --destructive: 0 70% 55%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 34 100% 65%;
-    --input: 30 15% 20%;
-    --ring: 34 100% 75%;
+        /* Typography */
+        --theme-text-color: #ffffff;
+        --theme-text-muted-color: rgba(255,255,255,0.45);
+        --font-title-color: #ff9040;
+        --font-title-shadow: 0 0 12px rgba(255,130,40,0.4);
+        --font-numbers-color: #ffb060;
+        --font-weight-body: 300;
+        --font-weight-heading: 400;
+        --font-weight-numbers: 600;
 
-    --chart-primary: 34 100% 65%;
-    --chart-secondary: 28 80% 70%;
-    --chart-tertiary: 10 70% 65%;
-    --chart-quaternary: 150 60% 55%;
-    --chart-quinary: 280 92% 62%;
-  }
-}
- 
-@layer base {
-  * {
-    @apply border-border/20;
-  }
-  body {
-    @apply bg-background text-foreground;
-    transition: background-color 0.3s, color 0.3s;
-  }
+        /* Glass Panels */
+        --glass-bg-color: rgba(255, 110, 20, 0.07);
+        --glass-border-color: rgba(255, 140, 50, 0.22);
+        --glass-radius: 14px;
+        --glass-shadow: 0 8px 32px rgba(255, 90, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.06);
 
-  .dark body {
-    background: linear-gradient(160deg, hsl(20, 36%, 8%) 0%, hsl(30, 43%, 5%) 100%);
-    background-size: 200% 200%;
-    animation: warm-gradient 15s ease infinite;
-    position: relative;
-  }
-  
-  .dark body::after {
-    content: '';
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    width: 100vw;
-    height: 100vh;
-    background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMCIgaGVpZ2h0PSIzMCI+PHJlY3Qgd2lkdGg9IjMwIiBoZWlnaHQ9IjMwIiBmaWxsPSJub25lIi8+PHJlY3QgeD0iMTQiIHk9IjE0IiB3aWR0aD0iMSIgaGVpZ2h0PSIxIiBmaWxsPSJoc2woMzAgMjAlIDY1JCAvIDAuMDUpIi8+PC9zdmc+');
-    z-index: -1;
-    pointer-events: none;
-  }
+        /* Buttons */
+        --btn-bg-gradient: linear-gradient(135deg,rgba(255,120,30,0.28),rgba(200,60,0,0.15));
+        --btn-border-color: rgba(255,150,60,0.35);
+        --btn-radius: 10px;
+        --btn-text-shadow: 0 0 10px rgba(255,160,60,0.6);
+        --btn-hover-shadow: 0 0 20px rgba(255, 120, 30, 0.5);
+
+        /* Inputs */
+        --input-bg-color: rgba(255, 255, 255, 0.03);
+        --input-border-color: rgba(255, 130, 40, 0.28);
+        --input-radius: 10px;
+        --input-focus-border-color: rgba(255,160,60,0.75);
+        --input-focus-shadow: 0 0 12px rgba(255,120,30,0.3);
+
+        /* Tables & Lists */
+        --table-header-bg: rgba(255,110,20,0.15);
+        --table-row-hover-bg: rgba(255,110,20,0.08);
+        --table-border-color: rgba(255,130,40,0.1);
+        
+        /* Modals & Overlays */
+        --overlay-bg: rgba(0,0,0,0.65);
+
+        /* Shadcn Variables (for compatibility) */
+        --radius: 14px;
+        --background: 0 0% 5%;
+        --foreground: 0 0% 100%;
+        --card: 26 81% 53%; /* not used, overridden by .luxury-glass */
+        --card-foreground: 0 0% 100%;
+        --popover: 26 81% 53%;
+        --popover-foreground: 0 0% 100%;
+        --primary: 30 100% 72%;
+        --primary-foreground: 0 0% 100%;
+        --secondary: 26 81% 53%;
+        --secondary-foreground: 0 0% 100%;
+        --muted: 26 81% 53% / 0.1;
+        --muted-foreground: 0 0% 100% / 0.45;
+        --accent: 26 81% 53% / 0.1;
+        --accent-foreground: 0 0% 100%;
+        --destructive: 0 84% 60%;
+        --destructive-foreground: 0 0% 100%;
+        --border: 28 100% 63%;
+        --input: 28 100% 63%;
+        --ring: 28 100% 63%;
+    }
 }
 
+/*
+================================================================================
+  2. BASE & TYPOGRAPHY
+================================================================================
+*/
+@layer base {
+    body {
+        background-color: var(--theme-bg-color);
+        background-image: radial-gradient(ellipse at 10% 90%, var(--theme-orange-glow), transparent 60%);
+        background-repeat: no-repeat;
+        background-attachment: fixed;
+        color: var(--theme-text-color);
+        font-weight: var(--font-weight-body);
+    }
+
+    h1, h2, h3, h4, h5, .card-title, .dialog-title, .alert-dialog-title {
+        color: var(--font-title-color) !important;
+        letter-spacing: 0.04em;
+        text-shadow: var(--font-title-shadow);
+        font-weight: var(--font-weight-heading);
+    }
+    
+    p, span, div, label, th, td {
+        font-weight: var(--font-weight-body);
+    }
+    
+    .text-muted-foreground {
+        color: var(--theme-text-muted-color) !important;
+    }
+    
+    /* Price / Important Numbers styling */
+    .text-primary, [class*="text-3xl"], [class*="text-2xl"], .font-bold {
+        color: var(--font-numbers-color) !important;
+        font-weight: var(--font-weight-numbers);
+    }
+    .text-destructive {
+       color: #ff5555 !important;
+    }
+}
+
+/*
+================================================================================
+  3. COMPONENT STYLES
+================================================================================
+*/
 @layer components {
-  /* This style should apply to both themes, using the CSS variables */
-  .luxury-glass {
-    @apply rounded-3xl border shadow-xl transition-all duration-300;
-  }
 
-  /* Specific styles for dark mode glass */
-  .dark .luxury-glass {
-    background-color: hsl(var(--card) / 0.7);
-    border-color: hsl(var(--border) / 0.15);
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
-    box-shadow:
-      inset 0 1px 1px hsl(var(--primary) / 0.05),
-      0px 0px 0px 1px hsl(var(--primary) / 0.1),
-      0px 8px 16px -4px hsl(0 0% 0% / 0.3),
-      0px 24px 48px -12px hsl(0 0% 0% / 0.4);
-  }
+    /* --- Universal Transitions --- */
+    *, *::before, *::after {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    /* --- Glass Panels (Base for Cards, Popovers, etc.) --- */
+    .luxury-glass {
+        background-color: var(--glass-bg-color);
+        backdrop-filter: blur(24px) saturate(200%);
+        -webkit-backdrop-filter: blur(24px) saturate(200%);
+        border: 1px solid var(--glass-border-color);
+        border-radius: var(--glass-radius);
+        box-shadow: var(--glass-shadow);
+    }
+    
+    .luxury-glass-destructive {
+        background-color: rgba(255, 20, 20, 0.1);
+        border-color: rgba(255, 50, 50, 0.25);
+        box-shadow: 0 8px 32px rgba(255, 20, 20, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    }
 
-  /* Specific styles for light mode glass */
-  :not(.dark) .luxury-glass {
-    background-color: hsl(var(--card) / 0.75);
-    border-color: hsl(var(--border) / 0.8);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    box-shadow: 0px 8px 32px hsl(var(--primary) / 0.1);
-  }
-  
-  .luxury-glass-destructive {
-    @apply rounded-3xl border shadow-xl transition-all duration-300;
-    background-color: hsl(var(--destructive) / 0.05);
-    border-color: hsl(var(--destructive) / 0.2);
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
-    box-shadow:
-      inset 0 1px 1px hsl(var(--destructive) / 0.1),
-      0px 0px 0px 1px hsl(var(--destructive) / 0.15),
-      0px 8px 16px -4px hsl(0 0% 0% / 0.3);
-  }
+    /* --- Buttons --- */
+    .btn, .button, [role="button"], .badge {
+        color: var(--theme-text-color) !important;
+        font-weight: 400;
+        border-radius: var(--btn-radius);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        text-shadow: var(--btn-text-shadow);
+        border: 1px solid transparent;
+    }
+    
+    .btn:hover, .button:hover, [role="button"]:hover {
+       transform: scale(1.02);
+    }
+
+    .btn-primary, .bg-primary, .data-\[state\=checked\]\:bg-primary {
+        background: var(--btn-bg-gradient) !important;
+        border-color: var(--btn-border-color) !important;
+    }
+    .btn-primary:hover, .bg-primary:hover {
+        box-shadow: var(--btn-hover-shadow);
+    }
+    
+    .btn-secondary, .btn-ghost, .btn-outline {
+        background: rgba(255, 110, 20, 0.1) !important;
+        border-color: rgba(255, 140, 50, 0.2) !important;
+        color: rgba(255,255,255,0.8) !important;
+    }
+    .btn-secondary:hover, .btn-ghost:hover, .btn-outline:hover {
+        background: rgba(255, 110, 20, 0.2) !important;
+        border-color: rgba(255, 140, 50, 0.4) !important;
+    }
+
+    .btn-destructive, .bg-destructive {
+        background: linear-gradient(135deg, rgba(255, 50, 50, 0.2), rgba(200, 0, 0, 0.15)) !important;
+        border-color: rgba(255, 80, 80, 0.3) !important;
+    }
+    .btn-destructive:hover, .bg-destructive:hover {
+        box-shadow: 0 0 20px rgba(255, 50, 50, 0.4);
+    }
+    
+    /* --- Input Fields, Select, etc. --- */
+    .input, .textarea, .select-trigger, .command-input {
+        background: var(--input-bg-color) !important;
+        border: 1px solid var(--input-border-color) !important;
+        color: var(--theme-text-color) !important;
+        border-radius: var(--input-radius) !important;
+    }
+    .input:focus-visible, .textarea:focus-visible, .select-trigger[data-state=open] {
+        border: 1px solid var(--input-focus-border-color) !important;
+        box-shadow: var(--input-focus-shadow) !important;
+        outline: none !important;
+        ring: 0 !important;
+        ring-offset-width: 0 !important;
+    }
+    ::placeholder {
+        color: var(--theme-text-muted-color);
+        opacity: 1;
+    }
+    
+    /* --- Modals & Popups Overlays --- */
+    .dialog-overlay, .alert-dialog-overlay, .sheet-overlay, .popover-overlay {
+        background-color: var(--overlay-bg) !important;
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
+    }
+    .dialog-content, .alert-dialog-content {
+        border: 1px solid rgba(255,150,60,0.3) !important;
+    }
+    
+    /* --- Tables & Lists --- */
+    thead tr, .table-header {
+        background-color: var(--table-header-bg);
+    }
+    tbody tr:hover {
+        background-color: var(--table-row-hover-bg) !important;
+    }
+    tr, .border-b, .border-t, .separator {
+        border-color: var(--table-border-color) !important;
+    }
+
+    /* --- Navigation --- */
+    header, .fixed.bottom-0 {
+        background: rgba(255, 90, 10, 0.06);
+        backdrop-filter: blur(24px);
+        -webkit-backdrop-filter: blur(24px);
+        border-color: var(--table-border-color) !important;
+    }
+
+    /* Active Nav Item */
+    nav button[aria-haspopup="menu"] ~ div button[data-state="active"] /* Top Nav */,
+    nav button[variant="secondary"] /* Sidebar */ {
+       border-left: 3px solid var(--font-title-color) !important;
+       background: rgba(255, 110, 20, 0.2) !important;
+    }
+    nav button[variant="secondary"] svg, nav button[data-state="active"] svg {
+        color: var(--font-title-color) !important;
+        filter: drop-shadow(0 0 8px var(--font-title-color));
+    }
 }
 
-/* Custom Scrollbar */
+/*
+================================================================================
+  4. SCROLLBAR
+================================================================================
+*/
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 4px;
+  height: 4px;
 }
 ::-webkit-scrollbar-track {
-  background: hsl(var(--background) / 0.5);
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: hsl(var(--primary) / 0.3);
-  border-radius: 10px;
-  border: 2px solid transparent;
-  background-clip: content-box;
+  background: rgba(255,120,40,0.4);
+  border-radius: 999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--primary) / 0.5);
-  background-clip: content-box;
+  background: rgba(255,120,40,0.6);
 }
 
-
-/* Common print styles */
+/*
+================================================================================
+  5. PRINT STYLES (PRESERVED)
+================================================================================
+*/
 @media print {
     body {
         -webkit-print-color-adjust: exact;
@@ -168,15 +281,13 @@
         display: none !important;
     }
 
-    /* Hide everything except the specific print area */
     body > *:not(#receipt-for-print):not(.print-dialog-content) {
         display: none !important;
     }
 }
 
-/* Print container for receipts */
 #receipt-for-print {
-    display: none; /* Hidden by default */
+    display: none;
 }
 @media print {
     #receipt-for-print {
@@ -194,8 +305,6 @@
     }
 }
 
-
-/* A4 Print Specific Styles */
 @page {
     size: a4;
     margin: 1cm;
@@ -204,8 +313,6 @@
     page-break-before: always;
 }
 
-
-/* Thermal Print Specific Styles */
 @page thermal-page {
     size: 80mm auto;
     margin: 3mm;
@@ -241,8 +348,6 @@ html.thermal, body.thermal {
 .thermal-receipt .border-black { border-color: black !important; }
 .thermal-receipt .font-bold { font-weight: 700 !important; }
 
-
-/* Barcode Label Printing Styles */
 .barcode-label {
     break-inside: avoid;
 }
