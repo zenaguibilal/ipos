@@ -140,6 +140,8 @@
     
     .luxury-glass-destructive {
         background-color: rgba(255, 20, 20, 0.1);
+        backdrop-filter: blur(24px) saturate(200%);
+        -webkit-backdrop-filter: blur(24px) saturate(200%);
         border-color: rgba(255, 50, 50, 0.25);
         box-shadow: 0 8px 32px rgba(255, 20, 20, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.06);
     }
@@ -167,12 +169,22 @@
         box-shadow: var(--btn-hover-shadow);
     }
     
-    .btn-secondary, .btn-ghost, .btn-outline {
+    .bg-secondary, .data-\[state\=active\]\:.bg-background {
+        background: rgba(255, 110, 20, 0.15) !important;
+        border-color: rgba(255, 140, 50, 0.3) !important;
+    }
+    
+    .bg-secondary:hover {
+        background: rgba(255, 110, 20, 0.25) !important;
+        border-color: rgba(255, 140, 50, 0.5) !important;
+    }
+
+    .btn-ghost, .btn-outline {
         background: rgba(255, 110, 20, 0.1) !important;
         border-color: rgba(255, 140, 50, 0.2) !important;
         color: rgba(255,255,255,0.8) !important;
     }
-    .btn-secondary:hover, .btn-ghost:hover, .btn-outline:hover {
+    .btn-ghost:hover, .btn-outline:hover {
         background: rgba(255, 110, 20, 0.2) !important;
         border-color: rgba(255, 140, 50, 0.4) !important;
     }
@@ -186,13 +198,13 @@
     }
     
     /* --- Input Fields, Select, etc. --- */
-    .input, .textarea, .select-trigger, .command-input {
+    .input, .textarea, .select-trigger, .command-input, input, textarea {
         background: var(--input-bg-color) !important;
         border: 1px solid var(--input-border-color) !important;
         color: var(--theme-text-color) !important;
         border-radius: var(--input-radius) !important;
     }
-    .input:focus-visible, .textarea:focus-visible, .select-trigger[data-state=open] {
+    .input:focus-visible, .textarea:focus-visible, .select-trigger[data-state=open], input:focus, textarea:focus {
         border: 1px solid var(--input-focus-border-color) !important;
         box-shadow: var(--input-focus-shadow) !important;
         outline: none !important;
@@ -205,7 +217,7 @@
     }
     
     /* --- Modals & Popups Overlays --- */
-    .dialog-overlay, .alert-dialog-overlay, .sheet-overlay, .popover-overlay {
+    .dialog-overlay, .alert-dialog-overlay, .sheet-overlay, .popover-overlay, .drawer-overlay {
         background-color: var(--overlay-bg) !important;
         backdrop-filter: blur(6px);
         -webkit-backdrop-filter: blur(6px);
@@ -216,12 +228,12 @@
     
     /* --- Tables & Lists --- */
     thead tr, .table-header {
-        background-color: var(--table-header-bg);
+        background-color: var(--table-header-bg) !important;
     }
     tbody tr:hover {
         background-color: var(--table-row-hover-bg) !important;
     }
-    tr, .border-b, .border-t, .separator {
+    tr, .border-b, .border-t, .separator, [class*="border-"], table {
         border-color: var(--table-border-color) !important;
     }
 
@@ -234,12 +246,20 @@
     }
 
     /* Active Nav Item */
-    nav button[aria-haspopup="menu"] ~ div button[data-state="active"] /* Top Nav */,
-    nav button[variant="secondary"] /* Sidebar */ {
-       border-left: 3px solid var(--font-title-color) !important;
+    nav button[aria-haspopup="menu"] ~ div button[data-state="active"],
+    nav a[class*="text-primary"] {
        background: rgba(255, 110, 20, 0.2) !important;
+       border: 1px solid var(--glass-border-color) !important;
     }
-    nav button[variant="secondary"] svg, nav button[data-state="active"] svg {
+    nav a[class*="text-primary"] svg {
+        color: var(--font-title-color) !important;
+        filter: drop-shadow(0 0 8px var(--font-title-color));
+    }
+    nav button[variant="secondary"] {
+        border-left: 3px solid var(--font-title-color) !important;
+        background: rgba(255, 110, 20, 0.2) !important;
+    }
+    nav button[variant="secondary"] svg {
         color: var(--font-title-color) !important;
         filter: drop-shadow(0 0 8px var(--font-title-color));
     }
