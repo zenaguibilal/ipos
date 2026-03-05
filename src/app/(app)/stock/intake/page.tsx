@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Plus, Trash2, Save } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Save, ChevronsUpDown } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
@@ -14,10 +14,21 @@ import { v4 as uuidv4 } from 'uuid';
 import { toast } from 'sonner';
 import { dataService } from '@/services/data-service';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Combobox } from '@/components/ui/combobox';
 import { formatCurrency } from '@/lib/utils';
 import { Loader2 } from 'lucide-react';
-
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 export default function NewStockIntakePage() {
     const router = useRouter();
@@ -27,6 +38,8 @@ export default function NewStockIntakePage() {
     const [items, setItems] = useState<StockIntakeItem[]>([]);
     const [isSaving, setIsSaving] = useState(false);
     const [isMounted, setIsMounted] = useState(false);
+    const [comboboxOpen, setComboboxOpen] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
 
     useEffect(() => {
         setInvoiceDate(new Date());
@@ -35,11 +48,15 @@ export default function NewStockIntakePage() {
 
     const products = useLiveQuery(() => dataService.getAll<Product>('products'), []);
 
-    const productOptions = products?.map(p => ({
-        value: String(p.id!),
-        label: p.name,
-        subLabel: `Stock: ${p.quantity} | Prix Achat: ${formatCurrency(p.purchasePrice)}`
-    })) || [];
+    const filteredProducts = useMemo(() => {
+        if (!products) return [];
+        if (!searchQuery) return products;
+        const lowerQuery = searchQuery.toLowerCase();
+        return products.filter(p => 
+            p.name.toLowerCase().includes(lowerQuery) ||
+            (p.barcodes && p.barcodes.some(b => b.includes(lowerQuery)))
+        );
+    }, [products, searchQuery]);
 
     const handleAddProduct = (productId: string) => {
         const product = products?.find(p => String(p.id!) === productId);
@@ -61,20 +78,18 @@ export default function NewStockIntakePage() {
         }
     };
     
-    const handleAddNewItem = () => {
-         setItems(prev => [
-            ...prev,
-            {
-                id: uuidv4(),
-                name: '',
-                barcodes: [],
-                category: '',
-                quantity: 1,
-                purchasePrice: 0,
-                price: 0,
-                isNew: true,
-            }
-        ]);
+    const handleAddNewItem = (name: string = '') => {
+        const newItem: StockIntakeItem = {
+            id: uuidv4(),
+            name: name,
+            barcodes: [],
+            category: '',
+            quantity: 1,
+            purchasePrice: 0,
+            price: 0,
+            isNew: true,
+        };
+        setItems(prev => [...prev, newItem]);
     };
 
     const handleItemChange = (id: string, field: keyof StockIntakeItem, value: any) => {
@@ -168,19 +183,68 @@ export default function NewStockIntakePage() {
              <Card>
                 <CardContent className="p-6 space-y-4">
                     <h3 className="font-semibold text-lg">Articles Reçus</h3>
-                    <div className="grid sm:grid-cols-2 gap-4">
-                        <Combobox
-                            options={productOptions}
-                            onSelect={handleAddProduct}
-                            value=""
-                            placeholder="Rechercher un produit existant..."
-                            searchPlaceholder="Rechercher..."
-                            notFoundMessage="Aucun produit trouvé."
-                        />
-                         <Button variant="outline" onClick={handleAddNewItem}>
-                            <Plus className="mr-2 h-4 w-4" />
-                            Ajouter un nouvel article
-                        </Button>
+                    <div>
+                       <Popover open={comboboxOpen} onOpenChange={setComboboxOpen}>
+                            <PopoverTrigger asChild>
+                                <Button
+                                    variant="outline"
+                                    role="combobox"
+                                    aria-expanded={comboboxOpen}
+                                    className="w-full justify-between"
+                                >
+                                    Rechercher un produit ou en créer un nouveau...
+                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
+                                <Command>
+                                    <CommandInput 
+                                        placeholder="Rechercher par nom ou code-barres..." 
+                                        onValueChange={setSearchQuery} 
+                                    />
+                                    <CommandList>
+                                        <CommandEmpty>
+                                            <div className="text-center p-4 text-sm">
+                                                Aucun produit trouvé.
+                                                {searchQuery && (
+                                                <Button 
+                                                    variant="link" 
+                                                    className="mt-1"
+                                                    onClick={() => {
+                                                        handleAddNewItem(searchQuery);
+                                                        setComboboxOpen(false);
+                                                        setSearchQuery('');
+                                                    }}>
+                                                    <Plus className="mr-2 h-4 w-4" />
+                                                    Créer le produit "{searchQuery}"
+                                                </Button>
+                                                )}
+                                            </div>
+                                        </CommandEmpty>
+                                        <CommandGroup>
+                                            {filteredProducts?.map((product) => (
+                                                <CommandItem
+                                                    key={product.id}
+                                                    value={String(product.id)}
+                                                    onSelect={(currentValue) => {
+                                                        handleAddProduct(currentValue);
+                                                        setComboboxOpen(false);
+                                                        setSearchQuery('');
+                                                    }}
+                                                >
+                                                    <div>
+                                                        <p>{product.name}</p>
+                                                        <p className="text-xs text-muted-foreground">
+                                                            Stock: {product.quantity} | Prix Achat: {formatCurrency(product.purchasePrice)}
+                                                        </p>
+                                                    </div>
+                                                </CommandItem>
+                                            ))}
+                                        </CommandGroup>
+                                    </CommandList>
+                                </Command>
+                            </PopoverContent>
+                        </Popover>
                     </div>
                      <div className="overflow-x-auto">
                         <table className="w-full">
