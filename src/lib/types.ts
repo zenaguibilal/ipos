@@ -258,6 +258,7 @@ export interface CostingItem extends SaleItem {
     allocatedDeliveryCost: number;
     finalCostPerUnit: number;
     totalFinalCost: number;
+    productId?: number;
 }
 
 export interface DashboardStats {

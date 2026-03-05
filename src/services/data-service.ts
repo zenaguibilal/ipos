@@ -2,7 +2,7 @@
 'use client';
 
 import { db, PosDatabase } from '@/lib/database';
-import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, DailyBreadOrder, BreadCustomer, BreadOrder, Notification, InventoryLog, CustomerWithSalesData, ImportAnalysis, DashboardData, StockIntakeItem, CartItem, TopProduct, TopCustomer, GlobalActivityItem, ProductImportAnalysis, ZakatData } from '@/lib/types';
+import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, DailyBreadOrder, BreadCustomer, BreadOrder, Notification, InventoryLog, CustomerWithSalesData, ImportAnalysis, DashboardData, StockIntakeItem, CartItem, TopProduct, TopCustomer, GlobalActivityItem, ProductImportAnalysis, ZakatData, CostingItem } from '@/lib/types';
 import { initialData, type DB, type CollectionName } from './initial-data';
 import Dexie from 'dexie';
 import { startOfDay, endOfDay, format } from 'date-fns';
@@ -810,6 +810,20 @@ class DataService {
             await db.stockIntakes.update(intakeId, { items: persistedItems });
             
             return intakeId;
+        });
+    }
+
+    async applyNewPurchasePrices(costingItems: CostingItem[]): Promise<void> {
+        return db.transaction('rw', db.products, async () => {
+            const updates: Promise<any>[] = [];
+            for (const item of costingItems) {
+                if (item.productId && typeof item.productId === 'number') {
+                    updates.push(
+                        db.products.update(item.productId, { purchasePrice: item.finalCostPerUnit })
+                    );
+                }
+            }
+            await Promise.all(updates);
         });
     }
 

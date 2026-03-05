@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { dataService } from '@/services/data-service';
 import type { StockIntake, CostingItem } from '@/lib/types';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -12,13 +12,16 @@ import { formatCurrency } from '@/lib/utils';
 import { Combobox, ComboboxOption } from '@/components/ui/combobox';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { Package, Truck, Wallet } from 'lucide-react';
+import { Package, Truck, Wallet, Check, Loader2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 
 export default function CostingPage() {
     const [selectedIntakeId, setSelectedIntakeId] = useState<string | null>(null);
     const [deliveryCost, setDeliveryCost] = useState('');
     const [isMounted, setIsMounted] = useState(false);
+    const [isApplyingCosts, setIsApplyingCosts] = useState(false);
 
     useEffect(() => {
         setIsMounted(true);
@@ -69,7 +72,8 @@ export default function CostingPage() {
                 totalPurchasePrice,
                 allocatedDeliveryCost,
                 finalCostPerUnit,
-                totalFinalCost
+                totalFinalCost,
+                productId: item.productId
             } as CostingItem;
         });
 
@@ -77,6 +81,23 @@ export default function CostingPage() {
     }, [selectedIntake, deliveryCost]);
     
     const totalFinalCostValue = totalPurchaseValue + (parseFloat(deliveryCost) || 0);
+
+    const handleApplyCosts = async () => {
+        if (costingResults.length === 0) {
+            toast.error("Aucun coût à appliquer.");
+            return;
+        }
+        setIsApplyingCosts(true);
+        try {
+            await dataService.applyNewPurchasePrices(costingResults);
+            toast.success("Les nouveaux coûts d'achat ont été appliqués avec succès !");
+        } catch (error) {
+            toast.error("Erreur lors de l'application des nouveaux coûts.");
+            console.error(error);
+        } finally {
+            setIsApplyingCosts(false);
+        }
+    };
 
     const isLoading = intakes === undefined || (selectedIntakeId && selectedIntake === undefined) || !isMounted;
 
@@ -199,6 +220,18 @@ export default function CostingPage() {
                                 </Table>
                             </div>
                         </CardContent>
+                        <CardFooter className="border-t pt-6 flex items-center justify-between">
+                            <div>
+                                <h4 className="font-semibold">Appliquer les coûts</h4>
+                                <p className="text-sm text-muted-foreground mt-1">
+                                    Mettre à jour le prix d'achat de ces produits avec le "Coût Final U." calculé.
+                                </p>
+                            </div>
+                            <Button onClick={handleApplyCosts} disabled={isApplyingCosts || costingResults.length === 0}>
+                                {isApplyingCosts ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
+                                Appliquer les coûts
+                            </Button>
+                        </CardFooter>
                     </Card>
                 </>
             )}
