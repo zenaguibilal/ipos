@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { dataService } from '@/services/data-service';
-import type { Sale, CostingItem } from '@/lib/types';
+import type { StockIntake, CostingItem } from '@/lib/types';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,7 +16,7 @@ import { Package, Truck, Wallet } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function CostingPage() {
-    const [selectedSaleId, setSelectedSaleId] = useState<string | null>(null);
+    const [selectedIntakeId, setSelectedIntakeId] = useState<string | null>(null);
     const [deliveryCost, setDeliveryCost] = useState('');
     const [isMounted, setIsMounted] = useState(false);
 
@@ -24,60 +24,61 @@ export default function CostingPage() {
         setIsMounted(true);
     }, []);
 
-    const sales = useLiveQuery(() => dataService.getSales({}), [], []);
+    const intakes = useLiveQuery(() => dataService.getStockIntakes({}), [], []);
 
-    const selectedSale = useLiveQuery(() => {
-        if (!selectedSaleId) return undefined;
-        return dataService.getById<Sale>('sales', parseInt(selectedSaleId));
-    }, [selectedSaleId]);
+    const selectedIntake = useLiveQuery(() => {
+        if (!selectedIntakeId) return undefined;
+        return dataService.getById<StockIntake>('stockIntakes', parseInt(selectedIntakeId));
+    }, [selectedIntakeId]);
 
-    const saleOptions = useMemo<ComboboxOption[]>(() => {
-        if (!sales) return [];
-        return sales.map(s => ({
-            value: String(s.id!),
-            label: `${s.invoiceNumber}`,
-            subLabel: `${s.customerName || 'N/A'} - ${format(s.createdAt!, 'd MMM yyyy', { locale: fr })}`
+    const intakeOptions = useMemo<ComboboxOption[]>(() => {
+        if (!intakes) return [];
+        return intakes.map(i => ({
+            value: String(i.id!),
+            label: `${i.invoiceNumber}`,
+            subLabel: `${i.supplier} - ${format(i.invoiceDate, 'd MMM yyyy', { locale: fr })}`
         }));
-    }, [sales]);
+    }, [intakes]);
 
     const { costingResults, totalPurchaseValue } = useMemo(() => {
-        if (!selectedSale) {
+        if (!selectedIntake) {
             return { costingResults: [], totalPurchaseValue: 0 };
         }
 
-        const saleTotalPurchaseValue = selectedSale.items.reduce((acc, item) => {
-            const purchasePrice = item.purchasePrice || 0;
-            return acc + (purchasePrice * item.quantity);
-        }, 0);
-
+        const intakeTotalPurchaseValue = selectedIntake.totalValue;
         const delivery = parseFloat(deliveryCost) || 0;
 
-        const results: CostingItem[] = selectedSale.items.map(item => {
+        const results = selectedIntake.items.map((item, index) => {
             const purchasePrice = item.purchasePrice || 0;
-            const totalPurchasePrice = purchasePrice * item.quantity;
+            const quantity = item.quantityReceived || 0;
+            const totalPurchasePrice = purchasePrice * quantity;
             
-            const allocatedDeliveryCost = saleTotalPurchaseValue > 0
-                ? (totalPurchasePrice / saleTotalPurchaseValue) * delivery
+            const allocatedDeliveryCost = intakeTotalPurchaseValue > 0
+                ? (totalPurchasePrice / intakeTotalPurchaseValue) * delivery
                 : 0;
             
-            const finalCostPerUnit = purchasePrice + (item.quantity > 0 ? allocatedDeliveryCost / item.quantity : 0);
-            const totalFinalCost = finalCostPerUnit * item.quantity;
+            const finalCostPerUnit = purchasePrice + (quantity > 0 ? allocatedDeliveryCost / quantity : 0);
+            const totalFinalCost = finalCostPerUnit * quantity;
 
             return {
-                ...item,
+                id: item.productId || `item-${index}`,
+                name: item.productName,
+                price: 0, // Not used, but needed for type compatibility
+                purchasePrice: purchasePrice,
+                quantity: quantity,
                 totalPurchasePrice,
                 allocatedDeliveryCost,
                 finalCostPerUnit,
                 totalFinalCost
-            };
+            } as CostingItem;
         });
 
-        return { costingResults: results, totalPurchaseValue: saleTotalPurchaseValue };
-    }, [selectedSale, deliveryCost]);
+        return { costingResults: results, totalPurchaseValue: intakeTotalPurchaseValue };
+    }, [selectedIntake, deliveryCost]);
     
     const totalFinalCostValue = totalPurchaseValue + (parseFloat(deliveryCost) || 0);
 
-    const isLoading = sales === undefined || (selectedSaleId && selectedSale === undefined) || !isMounted;
+    const isLoading = intakes === undefined || (selectedIntakeId && selectedIntake === undefined) || !isMounted;
 
     if (isLoading && isMounted) {
         return (
@@ -98,25 +99,25 @@ export default function CostingPage() {
     return (
         <div className="p-4 sm:p-6 space-y-6">
             <header>
-                <h1 className="text-2xl font-bold">Calcul des Coûts par Facture</h1>
-                <p className="text-muted-foreground">Calculez le coût final de chaque produit en incluant les frais de transport.</p>
+                <h1 className="text-2xl font-bold">Calcul des Coûts par Réception</h1>
+                <p className="text-muted-foreground">Calculez le coût final de chaque produit d'une réception en incluant les frais de transport.</p>
             </header>
 
             <Card>
                 <CardHeader>
                     <CardTitle>1. Sélection & Frais</CardTitle>
-                    <CardDescription>Choisissez une facture et entrez les frais de transport associés.</CardDescription>
+                    <CardDescription>Choisissez une réception de stock et entrez les frais de transport associés.</CardDescription>
                 </CardHeader>
                 <CardContent className="grid md:grid-cols-2 gap-6">
                     <div className="space-y-2">
-                        <Label>Facture</Label>
+                        <Label>Réception</Label>
                         <Combobox
-                            options={saleOptions}
-                            value={selectedSaleId || ''}
-                            onSelect={(value) => setSelectedSaleId(value)}
-                            placeholder="Sélectionner une facture..."
-                            searchPlaceholder="Rechercher par N° de facture..."
-                            notFoundMessage="Aucune facture trouvée."
+                            options={intakeOptions}
+                            value={selectedIntakeId || ''}
+                            onSelect={(value) => setSelectedIntakeId(value)}
+                            placeholder="Sélectionner une réception..."
+                            searchPlaceholder="Rechercher par N° ou fournisseur..."
+                            notFoundMessage="Aucune réception trouvée."
                         />
                     </div>
                     <div className="space-y-2">
@@ -127,13 +128,13 @@ export default function CostingPage() {
                             value={deliveryCost}
                             onChange={(e) => setDeliveryCost(e.target.value)}
                             placeholder="0"
-                            disabled={!selectedSaleId}
+                            disabled={!selectedIntakeId}
                         />
                     </div>
                 </CardContent>
             </Card>
 
-            {selectedSale && (
+            {selectedIntake && (
                 <>
                     <div className="grid gap-4 md:grid-cols-3">
                         <Card>
@@ -168,7 +169,7 @@ export default function CostingPage() {
                     <Card>
                         <CardHeader>
                             <CardTitle>2. Répartition des Coûts</CardTitle>
-                            <CardDescription>Détail du coût final pour chaque produit de la facture sélectionnée.</CardDescription>
+                            <CardDescription>Détail du coût final pour chaque produit de la réception sélectionnée.</CardDescription>
                         </CardHeader>
                         <CardContent>
                             <div className="overflow-x-auto">
@@ -178,18 +179,18 @@ export default function CostingPage() {
                                             <TableHead>Produit</TableHead>
                                             <TableHead className="text-right">Prix d'Achat U.</TableHead>
                                             <TableHead className="text-center">Qté</TableHead>
-                                            <TableHead className="text-right">Part Transport</TableHead>
+                                            <TableHead className="text-right">Part Transport U.</TableHead>
                                             <TableHead className="text-right font-bold">Coût Final U.</TableHead>
                                             <TableHead className="text-right font-bold">Coût Final Total</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {costingResults.map(item => (
-                                            <TableRow key={item.id}>
+                                            <TableRow key={String(item.id)}>
                                                 <TableCell className="font-medium">{item.name}</TableCell>
                                                 <TableCell className="text-right">{formatCurrency(item.purchasePrice)}</TableCell>
                                                 <TableCell className="text-center">{item.quantity}</TableCell>
-                                                <TableCell className="text-right text-muted-foreground">{formatCurrency(item.allocatedDeliveryCost / item.quantity)}</TableCell>
+                                                <TableCell className="text-right text-muted-foreground">{formatCurrency(item.allocatedDeliveryCost / (item.quantity || 1))}</TableCell>
                                                 <TableCell className="text-right font-bold">{formatCurrency(item.finalCostPerUnit)}</TableCell>
                                                 <TableCell className="text-right font-bold text-primary">{formatCurrency(item.totalFinalCost)}</TableCell>
                                             </TableRow>
