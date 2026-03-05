@@ -253,6 +253,13 @@ export interface InventoryLog {
     createdAt: Date;
 }
 
+export interface CostingItem extends SaleItem {
+    totalPurchasePrice: number;
+    allocatedDeliveryCost: number;
+    finalCostPerUnit: number;
+    totalFinalCost: number;
+}
+
 export interface DashboardStats {
     totalRevenue: number;
     totalProfit: number;

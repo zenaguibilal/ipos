@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -16,6 +15,7 @@ import {
   Wallet,
   LayoutDashboard,
   HandHeart,
+  Calculator,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -45,6 +45,7 @@ const navLinks = [
   { href: '/returns', label: 'Retours', icon: Undo2 },
   { href: '/expenses', label: 'Dépenses', icon: Wallet },
   { href: '/zakat', label: 'Zakat', icon: HandHeart },
+  { href: '/costing', label: 'Calcul des Coûts', icon: Calculator },
 ];
 
 export function AppHeader() {
