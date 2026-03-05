@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -14,6 +15,7 @@ import {
   Cookie,
   Wallet,
   LayoutDashboard,
+  HandHeart,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -42,6 +44,7 @@ const navLinks = [
   { href: '/sales-history', label: 'Ventes', icon: History },
   { href: '/returns', label: 'Retours', icon: Undo2 },
   { href: '/expenses', label: 'Dépenses', icon: Wallet },
+  { href: '/zakat', label: 'Zakat', icon: HandHeart },
 ];
 
 export function AppHeader() {

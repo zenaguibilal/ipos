@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -50,6 +51,7 @@ export function CompanyProfileForm() {
             ...formState,
             breadPrice: formState.breadPrice ? Number(formState.breadPrice) : undefined,
             breadPurchasePrice: formState.breadPurchasePrice ? Number(formState.breadPurchasePrice) : undefined,
+            goldPricePerGram: formState.goldPricePerGram ? Number(formState.goldPricePerGram) : undefined,
         };
 
         try {
@@ -98,8 +100,26 @@ export function CompanyProfileForm() {
                         <div className="space-y-4 border-t pt-6">
                             <h4 className="font-medium text-muted-foreground">Paramètres Spécifiques</h4>
                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div className="space-y-2"><Label htmlFor="breadPrice">Prix de vente du pain (DA)</Label><Input id="breadPrice" type="number" value={formState.breadPrice || ''} onChange={handleInputChange} disabled={isSaving} /></div>
-                                <div className="space-y-2"><Label htmlFor="breadPurchasePrice">Prix d'achat du pain (DA)</Label><Input id="breadPurchasePrice" type="number" value={formState.breadPurchasePrice || ''} onChange={handleInputChange} disabled={isSaving} /></div>
+                                <div className="space-y-2"><Label htmlFor="breadPrice">Prix de vente du pain (DA)</Label><Input id="breadPrice" type="number" step="0.01" value={formState.breadPrice || ''} onChange={handleInputChange} disabled={isSaving} /></div>
+                                <div className="space-y-2"><Label htmlFor="breadPurchasePrice">Prix d'achat du pain (DA)</Label><Input id="breadPurchasePrice" type="number" step="0.01" value={formState.breadPurchasePrice || ''} onChange={handleInputChange} disabled={isSaving} /></div>
+                            </div>
+                        </div>
+                        <div className="space-y-4 border-t pt-6">
+                            <h4 className="font-medium text-muted-foreground">Paramètres de la Zakat</h4>
+                            <div className="space-y-2">
+                                <Label htmlFor="goldPricePerGram">Prix de l'or par gramme (DA) pour le Nisab</Label>
+                                <Input 
+                                    id="goldPricePerGram" 
+                                    type="number"
+                                    step="0.01"
+                                    value={formState.goldPricePerGram || ''} 
+                                    onChange={handleInputChange} 
+                                    disabled={isSaving} 
+                                    placeholder="Ex: 12000" 
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                    Le Nisab est calculé sur la base de 85 grammes d'or.
+                                </p>
                             </div>
                         </div>
                         <div className="space-y-4 border-t pt-6">

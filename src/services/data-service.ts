@@ -2,7 +2,7 @@
 'use client';
 
 import { db, PosDatabase } from '@/lib/database';
-import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, DailyBreadOrder, BreadCustomer, BreadOrder, Notification, InventoryLog, CustomerWithSalesData, ImportAnalysis, DashboardData, StockIntakeItem, CartItem, TopProduct, TopCustomer, GlobalActivityItem, ProductImportAnalysis } from '@/lib/types';
+import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, DailyBreadOrder, BreadCustomer, BreadOrder, Notification, InventoryLog, CustomerWithSalesData, ImportAnalysis, DashboardData, StockIntakeItem, CartItem, TopProduct, TopCustomer, GlobalActivityItem, ProductImportAnalysis, ZakatData } from '@/lib/types';
 import { initialData, type DB, type CollectionName } from './initial-data';
 import Dexie from 'dexie';
 import { startOfDay, endOfDay, format } from 'date-fns';
@@ -52,8 +52,9 @@ class DataService {
   }
   
   async updateCompanyProfile(profileData: Partial<Omit<CompanyProfile, 'id'>>): Promise<number> {
-    return db.transaction('rw', db.companyProfile, () => {
-        const dataToSave: CompanyProfile = { id: 1, ...profileData };
+    return db.transaction('rw', db.companyProfile, async () => {
+        const currentProfile = await db.companyProfile.get(1);
+        const dataToSave: CompanyProfile = { id: 1, ...currentProfile, ...profileData };
         return db.companyProfile.put(dataToSave);
     });
   }
@@ -660,10 +661,10 @@ class DataService {
 
         // Update customer balance
         if (customerId) {
-            const balanceToAdd = total - amountPaid;
-            if (balanceToAdd > 0) {
+            const balanceToRestore = total - amountPaid;
+            if (balanceToRestore !== 0) { // Can be negative (overpayment) or positive (credit)
                 await db.customers.where('id').equals(customerId).modify(c => {
-                    c.outstandingBalance = (c.outstandingBalance || 0) + balanceToAdd;
+                    c.outstandingBalance += balanceToRestore;
                 });
             }
             await db.customers.where('id').equals(customerId).modify(c => {
@@ -1116,6 +1117,16 @@ class DataService {
     return db.transaction('rw', db.notifications, () => {
         return db.notifications.where({ isRead: true }).delete();
     });
+  }
+
+  // ====================================================================
+  // Zakat
+  // ====================================================================
+  async getZakatData(): Promise<ZakatData> {
+      const inventoryValue = await this.getInventoryValue();
+      const customers = await db.customers.toArray();
+      const totalReceivables = customers.reduce((acc, c) => acc + c.outstandingBalance, 0);
+      return { inventoryValue, totalReceivables };
   }
 
   // ====================================================================

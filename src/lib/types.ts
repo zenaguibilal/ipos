@@ -131,6 +131,7 @@ export interface CompanyProfile {
     lastSyncDate?: string;
     breadPrice?: number;
     breadPurchasePrice?: number;
+    goldPricePerGram?: number;
     updatedAt?: Date;
 }
 
@@ -292,4 +293,9 @@ export interface GlobalActivityItem {
     details: string;
     amount?: number;
     amountClass?: string;
+}
+
+export interface ZakatData {
+    inventoryValue: number;
+    totalReceivables: number;
 }
