@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie';
-import type { Product, Customer, Sale, Payment, StockIntake, ProductReturn, Cart, CompanyProfile, BreadCustomer, DailyBreadOrder, Expense, Setting, Notification, InventoryLog } from './types';
+import type { Product, Customer, Sale, Payment, StockIntake, ProductReturn, Cart, CompanyProfile, BreadCustomer, DailyBreadOrder, Expense, Setting, Notification, InventoryLog, Draft } from './types';
 
 export class PosDatabase extends Dexie {
     products!: Table<Product, number>;
@@ -9,6 +9,7 @@ export class PosDatabase extends Dexie {
     stockIntakes!: Table<StockIntake, number>;
     returns!: Table<ProductReturn, number>;
     carts!: Table<Cart, string>;
+    drafts!: Table<Draft, number>;
     companyProfile!: Table<CompanyProfile, number>;
     breadCustomers!: Table<BreadCustomer, number>;
     dailyBreadOrders!: Table<DailyBreadOrder, number>;
@@ -19,14 +20,15 @@ export class PosDatabase extends Dexie {
 
     constructor() {
         super('posDB');
-        this.version(22).stores({
+        this.version(23).stores({
             products: '++id, name, *barcodes, category, price, quantity, [category+name]',
             customers: '++id, searchName, createdAt, lastName, firstName, [lastName+firstName], phone, outstandingBalance, lastActivityDate',
-            sales: '++id, &invoiceNumber, createdAt, customerId, customerName, paymentStatus, breadOrderDate',
+            sales: '++id, &invoiceNumber, createdAt, customerId, customerName, paymentStatus, breadOrderDate, dueDate',
             payments: '++id, createdAt, customerId',
             stockIntakes: '++id, &invoiceNumber, supplier, createdAt',
             returns: '++id, createdAt, originalSaleId, customerId',
             carts: '&id',
+            drafts: '++id, date',
             companyProfile: 'id', // Singleton table
             breadCustomers: '++id, &name',
             dailyBreadOrders: '++id, &[breadCustomerId+date], date',
@@ -35,9 +37,10 @@ export class PosDatabase extends Dexie {
             notifications: '++id, createdAt, isRead, type, [type+isRead]',
             inventoryLogs: '++id, productId, createdAt, reason',
         }).upgrade(tx => {
-             // This upgrade function is for version 21, but Dexie requires it to be present in the latest version definition if it exists.
+            // Dexie upgrade functions are declarative of the target version structure.
+            // This is for version 22, ensuring searchName is populated. It runs if the client db version is < 22.
             return tx.table('customers').toCollection().modify(customer => {
-                if (customer.firstName && customer.lastName) {
+                if (customer.firstName && customer.lastName && !customer.searchName) {
                    customer.searchName = `${customer.firstName.toLowerCase()} ${customer.lastName.toLowerCase()}`;
                 }
             });
@@ -63,7 +66,7 @@ export class PosDatabase extends Dexie {
                 }
             });
         });
-
+        
         // Hooks to auto-generate searchName for customers
         this.customers.hook('creating', (primKey, obj) => {
             if(typeof obj.firstName === 'string' && typeof obj.lastName === 'string') {

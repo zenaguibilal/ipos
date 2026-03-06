@@ -78,6 +78,7 @@ export interface Sale {
     createdAt?: Date;
     updatedAt?: Date;
     breadOrderDate?: string;
+    dueDate?: Date;
 }
 
 export interface Payment {
@@ -88,6 +89,17 @@ export interface Payment {
     createdAt?: Date;
     updatedAt?: Date;
 }
+
+export interface Draft {
+  id?: number;
+  date: Date;
+  customerId: number | null;
+  customerName: string;
+  items: CartItem[];
+  total: number;
+  notes?: string;
+}
+
 
 export interface CustomerWithSalesData extends Customer {
     id: number; // Make id mandatory here
