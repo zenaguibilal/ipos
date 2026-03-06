@@ -11,6 +11,7 @@ import { Loader2 } from 'lucide-react';
 import type { Customer, Payment } from '@/lib/types';
 import { formatCurrency } from '@/lib/utils';
 import { Textarea } from '../ui/textarea';
+import { DatePicker } from '../ui/date-picker';
 
 interface AddPaymentDialogProps {
   isOpen: boolean;
@@ -21,12 +22,14 @@ interface AddPaymentDialogProps {
 
 export function AddPaymentDialog({ isOpen, onOpenChange, customer, outstandingBalance }: AddPaymentDialogProps) {
   const [amount, setAmount] = useState('');
+  const [paymentDate, setPaymentDate] = useState<Date | undefined>();
   const [notes, setNotes] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
       setAmount(String(outstandingBalance > 0 ? outstandingBalance : ''));
+      setPaymentDate(new Date());
       setNotes('');
     }
   }, [isOpen, outstandingBalance]);
@@ -41,13 +44,18 @@ export function AddPaymentDialog({ isOpen, onOpenChange, customer, outstandingBa
         toast.error('Le montant du paiement ne peut pas dépasser le solde impayé.');
         return;
     }
+    if (!paymentDate) {
+        toast.error('Veuillez sélectionner une date de paiement.');
+        return;
+    }
     
     setIsLoading(true);
     try {
-      const paymentData: Omit<Payment, 'id'> = {
+      const paymentData: Omit<Payment, 'id' | 'createdAt' | 'updatedAt'> = {
         customerId: customer.id!,
         customerName: `${customer.firstName} ${customer.lastName}`,
         amount: paymentAmount,
+        paymentDate: paymentDate,
         notes: notes || undefined,
       };
       await dataService.addPayment(paymentData);
@@ -73,17 +81,23 @@ export function AddPaymentDialog({ isOpen, onOpenChange, customer, outstandingBa
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label htmlFor="payment-amount">Montant du paiement (DA)</Label>
-            <Input 
-                id="payment-amount" 
-                type="number"
-                value={amount} 
-                onChange={(e) => setAmount(e.target.value)} 
-                placeholder="0.00"
-                className="text-lg"
-                autoFocus
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="payment-amount">Montant (DA)</Label>
+              <Input 
+                  id="payment-amount" 
+                  type="number"
+                  value={amount} 
+                  onChange={(e) => setAmount(e.target.value)} 
+                  placeholder="0.00"
+                  className="text-lg"
+                  autoFocus
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Date du paiement</Label>
+              <DatePicker date={paymentDate} setDate={setPaymentDate} />
+            </div>
           </div>
            <div className="space-y-2">
             <Label htmlFor="payment-notes">Notes (facultatif)</Label>

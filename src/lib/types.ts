@@ -102,6 +102,7 @@ export interface Payment {
     customerId: number;
     customerName?: string;
     amount: number;
+    paymentDate: Date;
     notes?: string;
     createdAt?: Date;
     updatedAt?: Date;
@@ -124,7 +125,7 @@ export interface Draft {
 
 export interface CustomerWithSalesData extends Customer {
     id: number; // Make id mandatory here
-    isReminderDue?: boolean;
+    debtStatus: 'ok' | 'due_soon' | 'overdue' | 'none';
     isOverLimit?: boolean;
 }
 

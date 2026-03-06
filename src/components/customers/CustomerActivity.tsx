@@ -17,8 +17,13 @@ interface CustomerActivityProps {
 }
 
 const isSale = (item: ActivityItem): item is Sale => 'invoiceNumber' in item;
-const isPayment = (item: ActivityItem): item is Payment => 'amount' in item && !('invoiceNumber' in item);
+const isPayment = (item: ActivityItem): item is Payment => 'paymentDate' in item;
 const isReturn = (item: ActivityItem): item is ProductReturn => 'originalInvoiceNumber' in item;
+
+const getActivityDate = (item: ActivityItem): Date => {
+  if (isPayment(item)) return safeToDate(item.paymentDate);
+  return safeToDate(item.createdAt!);
+};
 
 export function CustomerActivity({ activity, onSaleClick, onReturnClick }: CustomerActivityProps) {
   if (activity.length === 0) {
@@ -35,8 +40,8 @@ export function CustomerActivity({ activity, onSaleClick, onReturnClick }: Custo
     <Timeline>
       {activity.map((item, index) => {
         const isLast = index === activity.length - 1;
-        const createdAt = safeToDate(item.createdAt!);
-        const formattedDate = format(createdAt, 'd MMM yyyy, HH:mm', { locale: fr });
+        const activityDate = getActivityDate(item);
+        const formattedDate = format(activityDate, 'd MMM yyyy, HH:mm', { locale: fr });
         
         if (isSale(item)) {
            const Icon = item.breadOrderDate ? Truck : ShoppingBag;
@@ -109,7 +114,7 @@ export function CustomerActivity({ activity, onSaleClick, onReturnClick }: Custo
                <TimelineBody>
                 <div className="p-4 bg-green-100/50 dark:bg-green-900/30 rounded-lg">
                      <p className="font-semibold text-lg text-green-700 dark:text-green-300">{formatCurrency(item.amount)}</p>
-                     <p className="text-sm text-muted-foreground">Paiement enregistré.</p>
+                     <p className="text-sm text-muted-foreground">{item.notes || 'Paiement enregistré.'}</p>
                 </div>
               </TimelineBody>
             </TimelineItem>

@@ -351,45 +351,89 @@ class DataService {
     const payments = await db.payments.where({ customerId }).toArray();
     const returns = await db.returns.where({ customerId }).toArray();
     const combined = [...sales, ...payments, ...returns];
-    return combined.sort((a, b) => (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0));
+    
+    const getActivityDate = (item: Sale | Payment | ProductReturn): Date => {
+        if ('paymentDate' in item) return item.paymentDate;
+        return item.createdAt!;
+    };
+
+    return combined.sort((a, b) => getActivityDate(b).getTime() - getActivityDate(a).getTime());
   }
 
-  async getCustomers(params: { query?: string; status?: CustomerFilterStatus }): Promise<CustomerWithSalesData[]> {
-    const { query, status = 'all' } = params;
+  async getCustomers(params: { query?: string; status?: CustomerFilterStatus, sortBy?: string }): Promise<CustomerWithSalesData[]> {
+    const { query, status = 'all', sortBy = 'lastName_asc' } = params;
     let customers: Customer[];
 
     if (query) {
         const lowerQuery = query.toLowerCase();
-        customers = await db.customers.where('searchName').startsWith(lowerQuery).toArray();
+        customers = await db.customers.filter(c => 
+            (c.searchName?.toLowerCase().includes(lowerQuery) ?? false) ||
+            (c.phone?.includes(lowerQuery) ?? false)
+        ).toArray();
     } else {
-        customers = await db.customers.orderBy('lastName').toArray();
+        customers = await db.customers.toArray();
     }
 
     const today = new Date();
 
-    const customerWithData = customers.map(c => {
-        let isReminderDue = false;
+    const customerWithData: CustomerWithSalesData[] = customers.map(c => {
+        let debtStatus: CustomerWithSalesData['debtStatus'] = 'none';
         if (c.outstandingBalance > 0 && c.settlementDay && c.lastActivityDate) {
             const dueDate = new Date(c.lastActivityDate);
             dueDate.setDate(dueDate.getDate() + c.settlementDay);
-            if (today > dueDate) isReminderDue = true;
-        }
+            const daysDiff = (dueDate.getTime() - today.getTime()) / (1000 * 3600 * 24);
 
-        const isOverLimit = c.creditLimit ? c.outstandingBalance > c.creditLimit : false;
-        return { ...c, id: c.id!, isReminderDue, isOverLimit };
+            if (daysDiff < 0) debtStatus = 'overdue';
+            else if (daysDiff <= 7) debtStatus = 'due_soon';
+            else debtStatus = 'ok';
+        } else if (c.outstandingBalance > 0) {
+            debtStatus = 'ok';
+        }
+        
+        const isOverLimit = c.creditLimit != null ? c.outstandingBalance > c.creditLimit : false;
+        
+        return { ...c, id: c.id!, debtStatus, isOverLimit };
     });
     
+    let filteredCustomers = customerWithData;
     switch (status) {
       case 'has_debt':
-        return customerWithData.filter(c => c.outstandingBalance > 0);
+        filteredCustomers = customerWithData.filter(c => c.outstandingBalance > 0);
+        break;
       case 'overdue':
-        return customerWithData.filter(c => c.isReminderDue);
+        filteredCustomers = customerWithData.filter(c => c.debtStatus === 'overdue');
+        break;
       case 'over_limit':
-        return customerWithData.filter(c => c.isOverLimit);
+        filteredCustomers = customerWithData.filter(c => c.isOverLimit);
+        break;
       case 'all':
       default:
-        return customerWithData;
+        // no filter
     }
+    
+    const [sortField, sortOrder] = sortBy.split('_');
+
+    filteredCustomers.sort((a, b) => {
+        let valA = (a as any)[sortField];
+        let valB = (b as any)[sortField];
+        
+        if (valA === undefined || valA === null) return 1;
+        if (valB === undefined || valB === null) return -1;
+        
+        if (['lastActivityDate', 'createdAt'].includes(sortField)) {
+            valA = new Date(valA).getTime();
+            valB = new Date(valB).getTime();
+        }
+
+        if (typeof valA === 'string') return valA.localeCompare(valB);
+        if (valA < valB) return -1;
+        if (valA > valB) return 1;
+        return 0;
+    });
+
+    if (sortOrder === 'desc') filteredCustomers.reverse();
+
+    return filteredCustomers;
   }
 
   async addCustomer(customer: Omit<Customer, 'id' | 'totalSpent' | 'outstandingBalance' | 'lastActivityDate'>): Promise<number> {
@@ -665,9 +709,13 @@ class DataService {
     return intakesArray;
   }
   
-  async addPayment(paymentData: Omit<Payment, 'id'>): Promise<number> {
+  async addPayment(paymentData: Omit<Payment, 'id' | 'createdAt' | 'updatedAt'>): Promise<number> {
       return db.transaction('rw', db.payments, db.customers, async () => {
-          const id = await db.payments.add(paymentData as Payment);
+          const dataToSave: Payment = {
+            ...paymentData,
+            paymentDate: paymentData.paymentDate || new Date(),
+          };
+          const id = await db.payments.add(dataToSave as Payment);
           await db.customers.where('id').equals(paymentData.customerId).modify(c => {
               c.outstandingBalance = Math.max(0, c.outstandingBalance - paymentData.amount);
               c.lastActivityDate = new Date();
@@ -976,6 +1024,8 @@ class DataService {
                 firstName: c.firstName,
                 lastName: c.lastName,
                 phone: c.phone || '',
+                address: c.address || '',
+                settlementDay: c.settlementDay ? parseInt(c.settlementDay, 10) : undefined,
                 creditLimit: c.creditLimit ? parseFloat(c.creditLimit) : undefined,
                 totalSpent: 0,
                 outstandingBalance: c.outstandingBalance ? parseFloat(c.outstandingBalance) : 0,
@@ -987,10 +1037,30 @@ class DataService {
                     firstName: c.firstName,
                     lastName: c.lastName,
                     phone: c.phone,
+                    address: c.address,
+                    settlementDay: c.settlementDay ? parseInt(c.settlementDay, 10) : undefined,
                     creditLimit: c.creditLimit ? parseFloat(c.creditLimit) : undefined,
                 });
             }
         });
+    }
+
+     async exportCustomersToCSV(): Promise<string> {
+        const customers = await db.customers.orderBy('lastName').toArray();
+        const data = customers.map(c => ({
+            id: c.id,
+            firstName: c.firstName,
+            lastName: c.lastName,
+            phone: c.phone,
+            address: c.address,
+            outstandingBalance: c.outstandingBalance,
+            creditLimit: c.creditLimit,
+            settlementDay: c.settlementDay,
+            totalSpent: c.totalSpent,
+            lastActivityDate: c.lastActivityDate ? format(c.lastActivityDate, 'yyyy-MM-dd') : '',
+            createdAt: c.createdAt ? format(c.createdAt, 'yyyy-MM-dd') : '',
+        }));
+        return Papa.unparse(data);
     }
 
     async analyzeProductImport(data: any[]): Promise<ProductImportAnalysis> {

@@ -5,18 +5,54 @@ import type { CustomerWithSalesData } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Edit, Trash2, FileText, Phone, DollarSign, BellRing, ShieldCheck, Home } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, FileText, Phone, DollarSign, BellRing, ShieldCheck, Home, Calendar, Hourglass } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import Link from 'next/link';
 import { formatCurrency } from '@/lib/utils';
 import { Progress } from '../ui/progress';
 import { cn } from '@/lib/utils';
+import { format, formatDistanceToNow } from 'date-fns';
+import { fr } from 'date-fns/locale';
 
 interface CustomerCardProps {
     customer: CustomerWithSalesData;
     onEdit: (customer: CustomerWithSalesData) => void;
     onDelete: (customer: CustomerWithSalesData) => void;
 }
+
+const DebtStatusIcon = ({ status }: { status: CustomerWithSalesData['debtStatus']}) => {
+    switch (status) {
+        case 'overdue':
+            return (
+                <TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <div className="absolute top-3 right-12 p-1 bg-destructive/20 rounded-full">
+                                <BellRing className="h-4 w-4 text-destructive animate-pulse" />
+                            </div>
+                        </TooltipTrigger>
+                        <TooltipContent><p>Paiement en retard</p></TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
+            );
+        case 'due_soon':
+             return (
+                <TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <div className="absolute top-3 right-12 p-1 bg-yellow-500/20 rounded-full">
+                                <Hourglass className="h-4 w-4 text-yellow-500" />
+                            </div>
+                        </TooltipTrigger>
+                        <TooltipContent><p>Échéance proche</p></TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
+            );
+        default:
+            return null;
+    }
+};
+
 
 const CustomerCardComponent = ({ customer, onEdit, onDelete }: CustomerCardProps) => {
     
@@ -71,20 +107,7 @@ const CustomerCardComponent = ({ customer, onEdit, onDelete }: CustomerCardProps
                         </DropdownMenuContent>
                     </DropdownMenu>
                 </div>
-                 {customer.isReminderDue && (
-                    <TooltipProvider>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <div className="absolute top-3 right-12 p-1 bg-destructive/20 rounded-full">
-                                    <BellRing className="h-4 w-4 text-destructive animate-pulse" />
-                                </div>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                                <p>Rappel de paiement requis</p>
-                            </TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
-                )}
+                 <DebtStatusIcon status={customer.debtStatus} />
             </CardHeader>
             <CardContent className="flex-grow space-y-3">
                  <div className="space-y-2">
@@ -97,10 +120,20 @@ const CustomerCardComponent = ({ customer, onEdit, onDelete }: CustomerCardProps
                         <Progress value={creditUsage} className={cn("h-1.5", creditUsage > 100 ? "bg-destructive" : creditUsage > 90 ? "bg-orange-500" : "")} />
                     )}
                  </div>
+                 <div className="flex items-center text-sm">
+                    <DollarSign className="h-4 w-4 mr-2 text-muted-foreground"/>
+                    <span className="text-muted-foreground">Total Dépensé:</span>
+                     <span className={`font-semibold ml-auto`}>{formatCurrency(customer.totalSpent)}</span>
+                </div>
                 <div className="flex items-center text-sm">
                     <DollarSign className="h-4 w-4 mr-2 text-muted-foreground"/>
                     <span className="text-muted-foreground">Solde impayé:</span>
                      <span className={`font-semibold ml-auto ${customer.outstandingBalance > 0 ? 'text-destructive' : ''}`}>{formatCurrency(customer.outstandingBalance)}</span>
+                </div>
+                 <div className="flex items-center text-sm">
+                    <Calendar className="h-4 w-4 mr-2 text-muted-foreground"/>
+                    <span className="text-muted-foreground">Dernière activité:</span>
+                     <span className="font-semibold ml-auto">{customer.lastActivityDate ? formatDistanceToNow(customer.lastActivityDate, { addSuffix: true, locale: fr }) : 'N/A'}</span>
                 </div>
             </CardContent>
             <CardFooter className="pt-0">
