@@ -121,8 +121,8 @@ export const ProductSearch = forwardRef<{focus: () => void}, ProductSearchProps>
 
     const addCustomProduct = (name: string, price: number) => {
         const customProduct: Product = {
-            id: `custom-${Date.now()}`,
-            name: `(Perso) ${name}`,
+            id: `custom-${''Date.now()}`,
+            name: `(Perso) ${''name}`,
             price,
             purchasePrice: price, // Assume purchase price is same as selling for custom items
             quantity: 1, // Represents one-time item

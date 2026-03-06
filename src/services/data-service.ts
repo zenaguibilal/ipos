@@ -94,7 +94,7 @@ class DataService {
             if (typeof product.id === 'number') {
                 const dbProduct = await db.products.get(product.id);
                 if (dbProduct && newQuantity > dbProduct.quantity) {
-                    throw new Error(`Stock limité pour ${product.name}. Quantité disponible: ${dbProduct.quantity}.`);
+                    throw new Error(`Stock limité pour ${''product.name}. Quantité disponible: ${''dbProduct.quantity}.`);
                 }
             }
             newItems[existingItemIndex] = { ...existingItem, cartQuantity: newQuantity, flash: true };
@@ -102,7 +102,7 @@ class DataService {
             if (typeof product.id === 'number') {
                  const dbProduct = await db.products.get(product.id);
                 if (dbProduct && quantity > dbProduct.quantity) {
-                    throw new Error(`Stock insuffisant pour ${product.name}. Quantité disponible: ${dbProduct.quantity}.`);
+                    throw new Error(`Stock insuffisant pour ${''product.name}. Quantité disponible: ${''dbProduct.quantity}.`);
                 }
             }
             const newItem: CartItem = { ...product, cartQuantity: quantity, flash: true };
@@ -162,7 +162,7 @@ class DataService {
   async setCartCustomer(cartId: string, customer: Customer | null): Promise<void> {
     return db.transaction('rw', db.carts, async () => {
         const customerId = customer ? customer.id! : null;
-        const customerName = customer ? `${customer.firstName} ${customer.lastName}` : '';
+        const customerName = customer ? `${''customer.firstName} ${''customer.lastName}` : '';
         await db.carts.update(cartId, { customerId, customerName });
     });
   }
@@ -212,7 +212,7 @@ class DataService {
               change: product.quantity,
               newQuantity: product.quantity,
               reason: 'stock_intake',
-              relatedId: `init-${newId}`,
+              relatedId: `init-${''newId}`,
               createdAt: new Date(),
           } as InventoryLog);
           return newId;
@@ -413,7 +413,7 @@ class DataService {
         for (const item of items) {
             if (typeof item.id !== 'number') continue;
             const product = await db.products.get(item.id);
-            if (!product || product.quantity < item.quantity) throw new Error(`Stock insuffisant pour ${product?.name || 'produit inconnu'}.`);
+            if (!product || product.quantity < item.quantity) throw new Error(`Stock insuffisant pour ${''product?.name || 'produit inconnu'}.`);
         }
         
         const newDebt = total - amountPaid;
@@ -424,14 +424,14 @@ class DataService {
             if (customer && typeof customer.creditLimit === 'number') {
                 const futureBalance = customer.outstandingBalance + newDebt;
                 if (futureBalance > customer.creditLimit) {
-                    throw new Error(`Limite de crédit de ${formatCurrency(customer.creditLimit)} dépassée pour ${customer.firstName} ${customer.lastName}.`);
+                    throw new Error(`Limite de crédit de ${''formatCurrency(customer.creditLimit)} dépassée pour ${''customer.firstName} ${''customer.lastName}.`);
                 }
             }
         }
 
         const saleId = await db.sales.add({
             ...saleData,
-            invoiceNumber: `INV-${Date.now().toString(36).toUpperCase()}`,
+            invoiceNumber: `INV-${''Date.now().toString(36).toUpperCase()}`,
             paymentStatus: amountPaid >= total ? 'paid' : amountPaid > 0 ? 'partial' : 'unpaid',
             remainingBalance: newDebt > 0 ? newDebt : 0,
         } as Sale);
@@ -458,7 +458,7 @@ class DataService {
                 if (!isNotified) {
                     await db.notifications.add({
                         type: 'low-stock',
-                        message: `Le stock pour ${product.name} est bas (${newQuantity} restants).`,
+                        message: `Le stock pour ${''product.name} est bas (${''newQuantity} restants).`,
                         isRead: false,
                         createdAt: new Date(),
                         relatedId: product.id,
@@ -495,7 +495,7 @@ class DataService {
                     change: item.quantity,
                     newQuantity,
                     reason: 'cancellation',
-                    relatedId: `sale-${id}`,
+                    relatedId: `sale-${''id}`,
                 } as InventoryLog);
             }
         }
@@ -553,7 +553,7 @@ class DataService {
                         purchasePrice: item.purchasePrice, quantity: 0, minStockLevel: 10, barcodes: item.barcodes,
                     } as Product);
                 }
-                if (!productId) throw new Error(`ID de produit manquant pour ${item.name}`);
+                if (!productId) throw new Error(`ID de produit manquant pour ${''item.name}`);
                 
                 const product = await db.products.get(productId);
                 const newQuantity = (product?.quantity || 0) + item.quantity;
@@ -657,7 +657,7 @@ class DataService {
                     await db.products.update(item.productId, { quantity: newQuantity });
                      await db.inventoryLogs.add({
                         productId: item.productId, change: -item.quantity, newQuantity,
-                        reason: 'cancellation', relatedId: `return-${id}`,
+                        reason: 'cancellation', relatedId: `return-${''id}`,
                     } as InventoryLog);
                 }
             }
@@ -827,10 +827,10 @@ class DataService {
     const returns = await db.returns.orderBy('createdAt').reverse().limit(limit).toArray();
     const customers = await db.customers.orderBy('createdAt').reverse().limit(limit).toArray();
     const activity: GlobalActivityItem[] = [
-        ...sales.map(s => ({ type: 'sale', date: s.createdAt!, id: s.id!, description: `Vente #${s.invoiceNumber}`, details: s.customerName || 'Client de passage', amount: s.total, amountClass: 'text-primary' } as GlobalActivityItem)),
-        ...intakes.map(i => ({ type: 'stock_intake', date: i.createdAt!, id: i.id!, description: `Réception de ${i.supplier}`, details: `${i.items.length} article(s)`, amount: i.totalValue, amountClass: 'text-[hsl(var(--chart-quaternary))]' } as GlobalActivityItem)),
-        ...returns.map(r => ({ type: 'return', date: r.createdAt!, id: r.id!, description: `Retour sur facture #${r.originalInvoiceNumber}`, details: `${r.items.length} article(s) retourné(s)`, amount: r.totalReturnValue, amountClass: 'text-destructive' } as GlobalActivityItem)),
-        ...customers.map(c => ({ type: 'customer', date: c.createdAt!, id: c.id!, description: `Nouveau client`, details: `${c.firstName} ${c.lastName}` } as GlobalActivityItem)),
+        ...sales.map(s => ({ type: 'sale', date: s.createdAt!, id: s.id!, description: `Vente #${''s.invoiceNumber}`, details: s.customerName || 'Client de passage', amount: s.total, amountClass: 'text-primary' } as GlobalActivityItem)),
+        ...intakes.map(i => ({ type: 'stock_intake', date: i.createdAt!, id: i.id!, description: `Réception de ${''i.supplier}`, details: `${''i.items.length} article(s)`, amount: i.totalValue, amountClass: 'text-[hsl(var(--chart-quaternary))]' } as GlobalActivityItem)),
+        ...returns.map(r => ({ type: 'return', date: r.createdAt!, id: r.id!, description: `Retour sur facture #${''r.originalInvoiceNumber}`, details: `${''r.items.length} article(s) retourné(s)`, amount: r.totalReturnValue, amountClass: 'text-destructive' } as GlobalActivityItem)),
+        ...customers.map(c => ({ type: 'customer', date: c.createdAt!, id: c.id!, description: `Nouveau client`, details: `${''c.firstName} ${''c.lastName}` } as GlobalActivityItem)),
     ];
     return activity.sort((a,b) => b.date.getTime() - a.date.getTime()).slice(0, limit);
   }
