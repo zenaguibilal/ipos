@@ -20,6 +20,7 @@ const initialFormState = {
     firstName: '',
     lastName: '',
     phone: '',
+    address: '',
     settlementDay: '',
     creditLimit: '',
 };
@@ -35,6 +36,7 @@ export function CustomerDialog({ isOpen, onOpenChange, customer }: CustomerDialo
                 firstName: customer.firstName,
                 lastName: customer.lastName,
                 phone: customer.phone || '',
+                address: customer.address || '',
                 settlementDay: String(customer.settlementDay || ''),
                 creditLimit: String(customer.creditLimit || ''),
             });
@@ -49,7 +51,7 @@ export function CustomerDialog({ isOpen, onOpenChange, customer }: CustomerDialo
         setError(null);
         setIsLoading(true);
 
-        const { firstName, lastName, phone, settlementDay, creditLimit } = formState;
+        const { firstName, lastName, phone, address, settlementDay, creditLimit } = formState;
 
         if (!firstName || !lastName) {
             setError("Le prénom et le nom sont requis.");
@@ -57,10 +59,11 @@ export function CustomerDialog({ isOpen, onOpenChange, customer }: CustomerDialo
             return;
         }
 
-        const customerData = {
+        const customerData: Partial<Customer> = {
             firstName,
             lastName,
             phone,
+            address,
             settlementDay: settlementDay ? parseInt(settlementDay, 10) : undefined,
             creditLimit: creditLimit ? parseFloat(creditLimit) : undefined,
         };
@@ -70,7 +73,7 @@ export function CustomerDialog({ isOpen, onOpenChange, customer }: CustomerDialo
                 await dataService.updateCustomer(customer.id, customerData);
                 toast.success(`Client ${firstName} ${lastName} mis à jour.`);
             } else { // Adding
-                await dataService.addCustomer(customerData);
+                await dataService.addCustomer(customerData as any);
                 toast.success(`Client ${firstName} ${lastName} ajouté.`);
             }
             onOpenChange(false);
@@ -108,6 +111,10 @@ export function CustomerDialog({ isOpen, onOpenChange, customer }: CustomerDialo
                         <div className="space-y-2">
                             <Label htmlFor="phone">Téléphone</Label>
                             <Input id="phone" type="tel" value={formState.phone} onChange={(e) => setFormState(s => ({...s, phone: e.target.value}))} />
+                        </div>
+                         <div className="space-y-2">
+                            <Label htmlFor="address">Adresse</Label>
+                            <Input id="address" value={formState.address} onChange={(e) => setFormState(s => ({...s, address: e.target.value}))} />
                         </div>
                          <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">

@@ -15,6 +15,8 @@ type TableName = keyof Pick<PosDatabase,
     'companyProfile' | 'carts' | 'expenses' | 'settings' | 'notifications' | 'inventoryLogs' | 'suppliers'
 >;
 
+type CustomerFilterStatus = 'all' | 'has_debt' | 'overdue' | 'over_limit';
+
 class DataService {
   
   // ====================================================================
@@ -227,7 +229,7 @@ class DataService {
 
         const result = await db.products.update(id, productData);
 
-        if (oldProduct.quantity !== productData.quantity) {
+        if (productData.quantity !== undefined && oldProduct.quantity !== productData.quantity) {
              await db.inventoryLogs.add({
                 productId: id,
                 change: (productData.quantity || 0) - oldProduct.quantity,
@@ -352,8 +354,8 @@ class DataService {
     return combined.sort((a, b) => (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0));
   }
 
-  async getCustomers(params: { query?: string }): Promise<CustomerWithSalesData[]> {
-    const { query } = params;
+  async getCustomers(params: { query?: string; status?: CustomerFilterStatus }): Promise<CustomerWithSalesData[]> {
+    const { query, status = 'all' } = params;
     let customers: Customer[];
 
     if (query) {
@@ -362,16 +364,32 @@ class DataService {
     } else {
         customers = await db.customers.orderBy('lastName').toArray();
     }
-    
-    return customers.map(c => {
+
+    const today = new Date();
+
+    const customerWithData = customers.map(c => {
         let isReminderDue = false;
-        if(c.outstandingBalance > 0 && c.settlementDay && c.lastActivityDate) {
+        if (c.outstandingBalance > 0 && c.settlementDay && c.lastActivityDate) {
             const dueDate = new Date(c.lastActivityDate);
             dueDate.setDate(dueDate.getDate() + c.settlementDay);
-            if (new Date() > dueDate) isReminderDue = true;
+            if (today > dueDate) isReminderDue = true;
         }
-        return { ...c, id: c.id!, isReminderDue };
+
+        const isOverLimit = c.creditLimit ? c.outstandingBalance > c.creditLimit : false;
+        return { ...c, id: c.id!, isReminderDue, isOverLimit };
     });
+    
+    switch (status) {
+      case 'has_debt':
+        return customerWithData.filter(c => c.outstandingBalance > 0);
+      case 'overdue':
+        return customerWithData.filter(c => c.isReminderDue);
+      case 'over_limit':
+        return customerWithData.filter(c => c.isOverLimit);
+      case 'all':
+      default:
+        return customerWithData;
+    }
   }
 
   async addCustomer(customer: Omit<Customer, 'id' | 'totalSpent' | 'outstandingBalance' | 'lastActivityDate'>): Promise<number> {
@@ -392,11 +410,24 @@ class DataService {
     return db.transaction('rw', db.customers, db.sales, db.payments, db.returns, async () => {
         const customer = await db.customers.get(id);
         if (!customer) return;
-        if (customer.outstandingBalance > 0) throw new Error("Suppression impossible : ce client a un solde impayé.");
+        if (customer.outstandingBalance > 0) {
+            throw new Error(`Suppression impossible : ce client a un solde impayé de ${formatCurrency(customer.outstandingBalance)}.`);
+        }
         const salesCount = await db.sales.where({ customerId: id }).count();
-        if (salesCount > 0) throw new Error("Suppression impossible : ce client a un historique de transactions.");
+        if (salesCount > 0) {
+            throw new Error("Suppression impossible : ce client a un historique de transactions. Envisagez de le désactiver à la place.");
+        }
+        await db.payments.where({ customerId: id }).delete();
+        await db.returns.where({ customerId: id }).delete();
         return db.customers.delete(id);
     });
+  }
+  
+  async getCustomerStatementData(customerId: number): Promise<{ customer: Customer; unpaidSales: Sale[] }> {
+    const customer = await this.getCustomerById(customerId);
+    if (!customer) throw new Error("Client non trouvé.");
+    const unpaidSales = await db.sales.where({ customerId }).and(sale => sale.paymentStatus !== 'paid').toArray();
+    return { customer, unpaidSales };
   }
 
   // ====================================================================

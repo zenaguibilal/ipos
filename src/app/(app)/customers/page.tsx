@@ -7,7 +7,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import type { Customer, CustomerWithSalesData } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, Users, FileDown } from 'lucide-react';
+import { Plus, Search, Users, FileDown, Filter } from 'lucide-react';
 import { CustomerCard } from '@/components/customers/customer-card';
 import { CustomerCardSkeleton } from '@/components/customers/customer-card-skeleton';
 import { CustomerDialog } from '@/components/customers/customer-dialog';
@@ -16,10 +16,14 @@ import { ImportPreviewDialog } from '@/components/customers/import-preview-dialo
 import { toast } from 'sonner';
 import Papa from 'papaparse';
 import type { ImportAnalysis } from '@/lib/types';
+import { CustomerStats } from '@/components/customers/CustomerStats';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
+type FilterStatus = 'all' | 'has_debt' | 'overdue' | 'over_limit';
 
 export default function CustomersPage() {
     const [searchQuery, setSearchQuery] = useState('');
+    const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
     const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
@@ -30,9 +34,9 @@ export default function CustomersPage() {
     
     const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
-    const customers = useLiveQuery(
-        () => dataService.getCustomers({ query: debouncedSearchQuery }),
-        [debouncedSearchQuery],
+    const customers = useLiveQuery<CustomerWithSalesData[]>(
+        () => dataService.getCustomers({ query: debouncedSearchQuery, status: filterStatus }),
+        [debouncedSearchQuery, filterStatus],
         []
     );
     
@@ -64,7 +68,6 @@ export default function CustomersPage() {
                 }
             });
         }
-        // Reset file input to allow re-selection of the same file
         if (e.target) e.target.value = '';
     };
 
@@ -101,7 +104,7 @@ export default function CustomersPage() {
                 <div className="text-center py-16">
                     <Users className="mx-auto h-16 w-16 text-muted-foreground" />
                     <h3 className="text-xl font-semibold mt-4">Aucun client trouvé</h3>
-                    <p className="text-muted-foreground mt-2">Commencez par ajouter votre premier client.</p>
+                    <p className="text-muted-foreground mt-2">Commencez par ajouter votre premier client ou ajustez vos filtres.</p>
                      <Button className="mt-4" onClick={() => { setSelectedCustomer(null); setIsCustomerDialogOpen(true); }}>
                         <Plus className="mr-2 h-4 w-4" /> Ajouter un client
                     </Button>
@@ -143,6 +146,8 @@ export default function CustomersPage() {
                 </div>
             </header>
 
+            <CustomerStats customers={customers} isLoading={isLoading} />
+
             <div className="flex flex-col sm:flex-row gap-2">
                 <div className="relative flex-grow">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -153,6 +158,22 @@ export default function CustomersPage() {
                         onChange={e => setSearchQuery(e.target.value)}
                     />
                 </div>
+                 <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="outline" className="w-full sm:w-auto">
+                            <Filter className="mr-2 h-4 w-4" />
+                            Filtrer
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                        <DropdownMenuLabel>Statut du Client</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuCheckboxItem checked={filterStatus === 'all'} onCheckedChange={() => setFilterStatus('all')}>Tous les clients</DropdownMenuCheckboxItem>
+                        <DropdownMenuCheckboxItem checked={filterStatus === 'has_debt'} onCheckedChange={() => setFilterStatus('has_debt')}>Avec une dette</DropdownMenuCheckboxItem>
+                        <DropdownMenuCheckboxItem checked={filterStatus === 'overdue'} onCheckedChange={() => setFilterStatus('overdue')}>En retard de paiement</DropdownMenuCheckboxItem>
+                        <DropdownMenuCheckboxItem checked={filterStatus === 'over_limit'} onCheckedChange={() => setFilterStatus('over_limit')}>Plafond dépassé</DropdownMenuCheckboxItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
             </div>
             
             <div>

@@ -33,6 +33,7 @@ export interface Customer {
     lastName: string;
     searchName?: string;
     phone?: string;
+    address?: string;
     settlementDay?: number;
     creditLimit?: number;
     totalSpent: number;
@@ -101,6 +102,7 @@ export interface Payment {
     customerId: number;
     customerName?: string;
     amount: number;
+    notes?: string;
     createdAt?: Date;
     updatedAt?: Date;
 }
@@ -123,6 +125,7 @@ export interface Draft {
 export interface CustomerWithSalesData extends Customer {
     id: number; // Make id mandatory here
     isReminderDue?: boolean;
+    isOverLimit?: boolean;
 }
 
 

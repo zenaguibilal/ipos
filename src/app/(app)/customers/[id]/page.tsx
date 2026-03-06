@@ -5,7 +5,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { dataService } from '@/services/data-service';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, HandCoins } from 'lucide-react';
+import { ArrowLeft, HandCoins, Printer } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CustomerMetrics } from '@/components/customers/CustomerMetrics';
@@ -14,7 +14,8 @@ import { useState } from 'react';
 import { AddPaymentDialog } from '@/components/payments/AddPaymentDialog';
 import { SaleDetailsDialog } from '@/components/sales/SaleDetailsDialog';
 import { ReturnDetailsDialog } from '@/components/returns/ReturnDetailsDialog';
-import type { Sale, ProductReturn } from '@/lib/types';
+import type { Sale, ProductReturn, Customer } from '@/lib/types';
+import { PrintStatementDialog } from '@/components/customers/PrintStatementDialog';
 
 
 export default function CustomerDetailPage() {
@@ -22,12 +23,13 @@ export default function CustomerDetailPage() {
     const customerId = Number(params.id);
 
     const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+    const [isStatementDialogOpen, setIsStatementDialogOpen] = useState(false);
     const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
     const [isSaleDetailsOpen, setIsSaleDetailsOpen] = useState(false);
     const [selectedReturn, setSelectedReturn] = useState<ProductReturn | null>(null);
     const [isReturnDetailsOpen, setIsReturnDetailsOpen] = useState(false);
 
-    const customer = useLiveQuery(
+    const customer = useLiveQuery<Customer | undefined>(
         () => dataService.getCustomerById(customerId),
         [customerId]
     );
@@ -110,14 +112,23 @@ export default function CustomerDetailPage() {
                 </div>
                 <div className="space-y-6">
                     <CustomerMetrics customer={customer} />
-                    <Button 
-                        size="lg" 
-                        className="w-full"
-                        onClick={() => setIsPaymentDialogOpen(true)}
-                        disabled={customer.outstandingBalance <= 0}
-                    >
-                        <HandCoins className="mr-2 h-5 w-5" /> Enregistrer un paiement
-                    </Button>
+                    <div className="grid grid-cols-2 gap-2">
+                        <Button 
+                            size="lg" 
+                            className="w-full"
+                            onClick={() => setIsStatementDialogOpen(true)}
+                        >
+                            <Printer className="mr-2 h-5 w-5" /> Relevé
+                        </Button>
+                        <Button 
+                            size="lg" 
+                            className="w-full"
+                            onClick={() => setIsPaymentDialogOpen(true)}
+                            disabled={customer.outstandingBalance <= 0}
+                        >
+                            <HandCoins className="mr-2 h-5 w-5" /> Paiement
+                        </Button>
+                    </div>
                 </div>
             </div>
             
@@ -126,6 +137,12 @@ export default function CustomerDetailPage() {
                 onOpenChange={setIsPaymentDialogOpen}
                 customer={customer}
                 outstandingBalance={customer.outstandingBalance}
+            />
+
+            <PrintStatementDialog
+                isOpen={isStatementDialogOpen}
+                onOpenChange={setIsStatementDialogOpen}
+                customer={customer}
             />
 
             <SaleDetailsDialog

@@ -5,10 +5,12 @@ import type { CustomerWithSalesData } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Edit, Trash2, FileText, Phone, DollarSign, BellRing, ShieldCheck } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, FileText, Phone, DollarSign, BellRing, ShieldCheck, Home } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import Link from 'next/link';
 import { formatCurrency } from '@/lib/utils';
+import { Progress } from '../ui/progress';
+import { cn } from '@/lib/utils';
 
 interface CustomerCardProps {
     customer: CustomerWithSalesData;
@@ -17,6 +19,9 @@ interface CustomerCardProps {
 }
 
 const CustomerCardComponent = ({ customer, onEdit, onDelete }: CustomerCardProps) => {
+    
+    const creditUsage = customer.creditLimit ? (customer.outstandingBalance / customer.creditLimit) * 100 : 0;
+
     return (
         <Card className="flex flex-col transition-all duration-300 hover:shadow-xl hover:-translate-y-1 relative">
             <CardHeader>
@@ -27,12 +32,20 @@ const CustomerCardComponent = ({ customer, onEdit, onDelete }: CustomerCardProps
                                 {customer.firstName} {customer.lastName}
                             </Link>
                         </CardTitle>
-                         {customer.phone && (
-                            <div className="flex items-center text-sm text-muted-foreground gap-2">
-                                <Phone className="h-3 w-3" />
-                                <span>{customer.phone}</span>
-                            </div>
-                        )}
+                        <div className="flex items-center text-sm text-muted-foreground gap-4">
+                             {customer.phone && (
+                                <div className="flex items-center gap-2">
+                                    <Phone className="h-3 w-3" />
+                                    <span>{customer.phone}</span>
+                                </div>
+                            )}
+                             {customer.address && (
+                                <div className="flex items-center gap-2">
+                                    <Home className="h-3 w-3" />
+                                    <span className="truncate">{customer.address}</span>
+                                </div>
+                            )}
+                        </div>
                     </div>
                      <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -74,11 +87,16 @@ const CustomerCardComponent = ({ customer, onEdit, onDelete }: CustomerCardProps
                 )}
             </CardHeader>
             <CardContent className="flex-grow space-y-3">
-                 <div className="flex items-center text-sm">
-                    <ShieldCheck className="h-4 w-4 mr-2 text-muted-foreground"/>
-                    <span className="text-muted-foreground">Limite crédit:</span>
-                     <span className="font-semibold ml-auto">{typeof customer.creditLimit === 'number' ? formatCurrency(customer.creditLimit) : 'N/A'}</span>
-                </div>
+                 <div className="space-y-2">
+                    <div className="flex items-center text-sm">
+                        <ShieldCheck className="h-4 w-4 mr-2 text-muted-foreground"/>
+                        <span className="text-muted-foreground">Limite crédit:</span>
+                         <span className="font-semibold ml-auto">{typeof customer.creditLimit === 'number' ? formatCurrency(customer.creditLimit) : 'N/A'}</span>
+                    </div>
+                    {customer.creditLimit && customer.creditLimit > 0 && (
+                        <Progress value={creditUsage} className={cn("h-1.5", creditUsage > 100 ? "bg-destructive" : creditUsage > 90 ? "bg-orange-500" : "")} />
+                    )}
+                 </div>
                 <div className="flex items-center text-sm">
                     <DollarSign className="h-4 w-4 mr-2 text-muted-foreground"/>
                     <span className="text-muted-foreground">Solde impayé:</span>

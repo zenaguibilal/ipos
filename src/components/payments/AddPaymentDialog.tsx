@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 import type { Customer, Payment } from '@/lib/types';
 import { formatCurrency } from '@/lib/utils';
+import { Textarea } from '../ui/textarea';
 
 interface AddPaymentDialogProps {
   isOpen: boolean;
@@ -20,11 +21,13 @@ interface AddPaymentDialogProps {
 
 export function AddPaymentDialog({ isOpen, onOpenChange, customer, outstandingBalance }: AddPaymentDialogProps) {
   const [amount, setAmount] = useState('');
+  const [notes, setNotes] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
       setAmount(String(outstandingBalance > 0 ? outstandingBalance : ''));
+      setNotes('');
     }
   }, [isOpen, outstandingBalance]);
 
@@ -34,6 +37,10 @@ export function AddPaymentDialog({ isOpen, onOpenChange, customer, outstandingBa
       toast.error('Veuillez entrer un montant valide.');
       return;
     }
+    if (paymentAmount > outstandingBalance) {
+        toast.error('Le montant du paiement ne peut pas dépasser le solde impayé.');
+        return;
+    }
     
     setIsLoading(true);
     try {
@@ -41,6 +48,7 @@ export function AddPaymentDialog({ isOpen, onOpenChange, customer, outstandingBa
         customerId: customer.id!,
         customerName: `${customer.firstName} ${customer.lastName}`,
         amount: paymentAmount,
+        notes: notes || undefined,
       };
       await dataService.addPayment(paymentData);
 
@@ -75,6 +83,15 @@ export function AddPaymentDialog({ isOpen, onOpenChange, customer, outstandingBa
                 placeholder="0.00"
                 className="text-lg"
                 autoFocus
+            />
+          </div>
+           <div className="space-y-2">
+            <Label htmlFor="payment-notes">Notes (facultatif)</Label>
+            <Textarea
+                id="payment-notes"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Ex: Paiement partiel, numéro de chèque..."
             />
           </div>
         </div>
