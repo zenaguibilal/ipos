@@ -47,7 +47,7 @@ export const useCarts = () => {
 
     const addCart = useCallback(async () => {
         if(!carts) return;
-        const newCart = createNewCart(`Panier ${''carts.length + 1}`);
+        const newCart = createNewCart(`Panier ${carts.length + 1}`);
         await dataService.saveCart(newCart);
         await setActiveCartId(newCart.id);
     }, [carts, setActiveCartId]);
@@ -79,7 +79,7 @@ export const useCarts = () => {
             const result = await dataService.updateCartItemQuantity(activeCartId, itemId, newQuantity);
             if (result.capped) {
                 const item = activeCart.items.find(i => i.id === itemId);
-                toast.warning(`Stock limité`, { description: `Maximum ${''result.maxQuantity} unités pour ${''item?.name}.` });
+                toast.warning(`Stock limité`, { description: `Maximum ${result.maxQuantity} unités pour ${item?.name}.` });
             }
         } catch (e: any) {
              toast.error(e.message || "Erreur lors de la mise à jour de la quantité.");
@@ -132,7 +132,7 @@ export const useCarts = () => {
 
         await dataService.saveCart(updatedCart as Cart);
         await dataService.deleteDraft(draftId);
-        toast.success(`Brouillon chargé dans ${''activeCart?.name}.`);
+        toast.success(`Brouillon chargé dans ${activeCart?.name}.`);
 
     }, [activeCart, activeCartId]);
 

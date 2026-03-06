@@ -24,7 +24,9 @@ interface ProductSearchProps {
 type Placeholder = { url: string; width: number; height: number; hint: string };
 const placeholders = placeholderImages as Record<string, Placeholder>;
 const getPlaceholder = (category?: string): Placeholder => {
-    if (category && placeholders[category]) return placeholders[category];
+    if (category && placeholders[category]) {
+        return placeholders[category];
+    }
     return placeholders.default;
 };
 
@@ -121,8 +123,8 @@ export const ProductSearch = forwardRef<{focus: () => void}, ProductSearchProps>
 
     const addCustomProduct = (name: string, price: number) => {
         const customProduct: Product = {
-            id: `custom-${''Date.now()}`,
-            name: `(Perso) ${''name}`,
+            id: `custom-${Date.now()}`,
+            name: `(Perso) ${name}`,
             price,
             purchasePrice: price, // Assume purchase price is same as selling for custom items
             quantity: 1, // Represents one-time item

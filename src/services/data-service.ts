@@ -1,4 +1,3 @@
-
 'use client';
 
 import { db, PosDatabase } from '@/lib/database';
@@ -7,6 +6,7 @@ import { initialData, type DB, type CollectionName } from './initial-data';
 import Dexie from 'dexie';
 import { startOfDay, endOfDay, format } from 'date-fns';
 import Papa from 'papaparse';
+import { formatCurrency } from '@/lib/utils';
 
 type TableName = keyof Pick<PosDatabase, 
     'products' | 'customers' | 'sales' | 'payments' | 
@@ -94,7 +94,7 @@ class DataService {
             if (typeof product.id === 'number') {
                 const dbProduct = await db.products.get(product.id);
                 if (dbProduct && newQuantity > dbProduct.quantity) {
-                    throw new Error(`Stock limité pour ${''product.name}. Quantité disponible: ${''dbProduct.quantity}.`);
+                    throw new Error(`Stock limité pour ${product.name}. Quantité disponible: ${dbProduct.quantity}.`);
                 }
             }
             newItems[existingItemIndex] = { ...existingItem, cartQuantity: newQuantity, flash: true };
@@ -102,7 +102,7 @@ class DataService {
             if (typeof product.id === 'number') {
                  const dbProduct = await db.products.get(product.id);
                 if (dbProduct && quantity > dbProduct.quantity) {
-                    throw new Error(`Stock insuffisant pour ${''product.name}. Quantité disponible: ${''dbProduct.quantity}.`);
+                    throw new Error(`Stock insuffisant pour ${product.name}. Quantité disponible: ${dbProduct.quantity}.`);
                 }
             }
             const newItem: CartItem = { ...product, cartQuantity: quantity, flash: true };
@@ -162,7 +162,7 @@ class DataService {
   async setCartCustomer(cartId: string, customer: Customer | null): Promise<void> {
     return db.transaction('rw', db.carts, async () => {
         const customerId = customer ? customer.id! : null;
-        const customerName = customer ? `${''customer.firstName} ${''customer.lastName}` : '';
+        const customerName = customer ? `${customer.firstName} ${customer.lastName}` : '';
         await db.carts.update(cartId, { customerId, customerName });
     });
   }
@@ -212,7 +212,7 @@ class DataService {
               change: product.quantity,
               newQuantity: product.quantity,
               reason: 'stock_intake',
-              relatedId: `init-${''newId}`,
+              relatedId: `init-${newId}`,
               createdAt: new Date(),
           } as InventoryLog);
           return newId;
@@ -413,7 +413,7 @@ class DataService {
         for (const item of items) {
             if (typeof item.id !== 'number') continue;
             const product = await db.products.get(item.id);
-            if (!product || product.quantity < item.quantity) throw new Error(`Stock insuffisant pour ${''product?.name || 'produit inconnu'}.`);
+            if (!product || product.quantity < item.quantity) throw new Error(`Stock insuffisant pour ${product?.name || 'produit inconnu'}.`);
         }
         
         const newDebt = total - amountPaid;
@@ -424,14 +424,14 @@ class DataService {
             if (customer && typeof customer.creditLimit === 'number') {
                 const futureBalance = customer.outstandingBalance + newDebt;
                 if (futureBalance > customer.creditLimit) {
-                    throw new Error(`Limite de crédit de ${''formatCurrency(customer.creditLimit)} dépassée pour ${''customer.firstName} ${''customer.lastName}.`);
+                    throw new Error(`Limite de crédit de ${formatCurrency(customer.creditLimit)} dépassée pour ${customer.firstName} ${customer.lastName}.`);
                 }
             }
         }
 
         const saleId = await db.sales.add({
             ...saleData,
-            invoiceNumber: `INV-${''Date.now().toString(36).toUpperCase()}`,
+            invoiceNumber: `INV-${Date.now().toString(36).toUpperCase()}`,
             paymentStatus: amountPaid >= total ? 'paid' : amountPaid > 0 ? 'partial' : 'unpaid',
             remainingBalance: newDebt > 0 ? newDebt : 0,
         } as Sale);
@@ -458,7 +458,7 @@ class DataService {
                 if (!isNotified) {
                     await db.notifications.add({
                         type: 'low-stock',
-                        message: `Le stock pour ${''product.name} est bas (${''newQuantity} restants).`,
+                        message: `Le stock pour ${product.name} est bas (${newQuantity} restants).`,
                         isRead: false,
                         createdAt: new Date(),
                         relatedId: product.id,
@@ -495,7 +495,7 @@ class DataService {
                     change: item.quantity,
                     newQuantity,
                     reason: 'cancellation',
-                    relatedId: `sale-${''id}`,
+                    relatedId: `sale-${id}`,
                 } as InventoryLog);
             }
         }
@@ -553,7 +553,7 @@ class DataService {
                         purchasePrice: item.purchasePrice, quantity: 0, minStockLevel: 10, barcodes: item.barcodes,
                     } as Product);
                 }
-                if (!productId) throw new Error(`ID de produit manquant pour ${''item.name}`);
+                if (!productId) throw new Error(`ID de produit manquant pour ${item.name}`);
                 
                 const product = await db.products.get(productId);
                 const newQuantity = (product?.quantity || 0) + item.quantity;
@@ -657,7 +657,7 @@ class DataService {
                     await db.products.update(item.productId, { quantity: newQuantity });
                      await db.inventoryLogs.add({
                         productId: item.productId, change: -item.quantity, newQuantity,
-                        reason: 'cancellation', relatedId: `return-${''id}`,
+                        reason: 'cancellation', relatedId: `return-${id}`,
                     } as InventoryLog);
                 }
             }
@@ -827,10 +827,10 @@ class DataService {
     const returns = await db.returns.orderBy('createdAt').reverse().limit(limit).toArray();
     const customers = await db.customers.orderBy('createdAt').reverse().limit(limit).toArray();
     const activity: GlobalActivityItem[] = [
-        ...sales.map(s => ({ type: 'sale', date: s.createdAt!, id: s.id!, description: `Vente #${''s.invoiceNumber}`, details: s.customerName || 'Client de passage', amount: s.total, amountClass: 'text-primary' } as GlobalActivityItem)),
-        ...intakes.map(i => ({ type: 'stock_intake', date: i.createdAt!, id: i.id!, description: `Réception de ${''i.supplier}`, details: `${''i.items.length} article(s)`, amount: i.totalValue, amountClass: 'text-[hsl(var(--chart-quaternary))]' } as GlobalActivityItem)),
-        ...returns.map(r => ({ type: 'return', date: r.createdAt!, id: r.id!, description: `Retour sur facture #${''r.originalInvoiceNumber}`, details: `${''r.items.length} article(s) retourné(s)`, amount: r.totalReturnValue, amountClass: 'text-destructive' } as GlobalActivityItem)),
-        ...customers.map(c => ({ type: 'customer', date: c.createdAt!, id: c.id!, description: `Nouveau client`, details: `${''c.firstName} ${''c.lastName}` } as GlobalActivityItem)),
+        ...sales.map(s => ({ type: 'sale', date: s.createdAt!, id: s.id!, description: `Vente #${s.invoiceNumber}`, details: s.customerName || 'Client de passage', amount: s.total, amountClass: 'text-primary' } as GlobalActivityItem)),
+        ...intakes.map(i => ({ type: 'stock_intake', date: i.createdAt!, id: i.id!, description: `Réception de ${i.supplier}`, details: `${i.items.length} article(s)`, amount: i.totalValue, amountClass: 'text-[hsl(var(--chart-quaternary))]' } as GlobalActivityItem)),
+        ...returns.map(r => ({ type: 'return', date: r.createdAt!, id: r.id!, description: `Retour sur facture #${r.originalInvoiceNumber}`, details: `${r.items.length} article(s) retourné(s)`, amount: r.totalReturnValue, amountClass: 'text-destructive' } as GlobalActivityItem)),
+        ...customers.map(c => ({ type: 'customer', date: c.createdAt!, id: c.id!, description: `Nouveau client`, details: `${c.firstName} ${c.lastName}` } as GlobalActivityItem)),
     ];
     return activity.sort((a,b) => b.date.getTime() - a.date.getTime()).slice(0, limit);
   }
@@ -867,6 +867,166 @@ class DataService {
         if (initialData.companyProfile) await db.companyProfile.put(initialData.companyProfile);
     });
   }
+
+    async analyzeCustomerImport(data: any[]): Promise<ImportAnalysis> {
+        const existingCustomers = await db.customers.toArray();
+        const existingPhones = new Set(existingCustomers.map(c => c.phone).filter(Boolean));
+        const analysis: ImportAnalysis = {
+            customersToAdd: [],
+            customersToUpdate: [],
+            skippedRows: [],
+            errorRows: [],
+            totalRows: data.length,
+        };
+
+        for (const row of data) {
+            if (!row.firstName || !row.lastName) {
+                analysis.errorRows.push({ ...row, error: 'Prénom ou nom manquant' });
+                continue;
+            }
+            
+            const existingByName = existingCustomers.find(c => 
+                c.firstName.toLowerCase() === row.firstName.toLowerCase() && 
+                c.lastName.toLowerCase() === row.lastName.toLowerCase()
+            );
+
+            if (existingByName) {
+                analysis.customersToUpdate.push({ ...existingByName, ...row });
+            } else if (row.phone && existingPhones.has(row.phone)) {
+                const existingByPhone = existingCustomers.find(c => c.phone === row.phone);
+                 analysis.customersToUpdate.push({ ...existingByPhone, ...row });
+            } else {
+                 analysis.customersToAdd.push(row);
+            }
+        }
+        return analysis;
+    }
+
+    async processCustomerImport(toAdd: any[], toUpdate: any[]): Promise<void> {
+        return db.transaction('rw', db.customers, async () => {
+            const customersToAdd = toAdd.map(c => ({
+                firstName: c.firstName,
+                lastName: c.lastName,
+                phone: c.phone || '',
+                creditLimit: c.creditLimit ? parseFloat(c.creditLimit) : undefined,
+                totalSpent: 0,
+                outstandingBalance: c.outstandingBalance ? parseFloat(c.outstandingBalance) : 0,
+            }));
+            await db.customers.bulkAdd(customersToAdd as any);
+            
+            for (const c of toUpdate) {
+                await db.customers.update(c.id, {
+                    firstName: c.firstName,
+                    lastName: c.lastName,
+                    phone: c.phone,
+                    creditLimit: c.creditLimit ? parseFloat(c.creditLimit) : undefined,
+                });
+            }
+        });
+    }
+
+    async analyzeProductImport(data: any[]): Promise<ProductImportAnalysis> {
+        const existingProducts = await db.products.toArray();
+        const existingNames = new Set(existingProducts.map(p => p.name.toLowerCase()));
+        const existingBarcodes = new Set(existingProducts.flatMap(p => p.barcodes || []));
+
+        const analysis: ProductImportAnalysis = {
+            productsToAdd: [],
+            productsToUpdate: [],
+            skippedRows: [],
+            errorRows: [],
+            totalRows: data.length,
+        };
+
+        for (const row of data) {
+            const name = row.name || row.Name;
+            const price = row.price || row.Price;
+            if (!name || !price) {
+                analysis.errorRows.push({ ...row, error: 'Nom ou prix manquant' });
+                continue;
+            }
+
+            const barcodes = (row.barcodes || row.Barcodes || '').split(',').map((b: string) => b.trim()).filter(Boolean);
+            let existing: Product | undefined = undefined;
+
+            if (barcodes.length > 0) {
+                existing = existingProducts.find(p => p.barcodes?.some(b => barcodes.includes(b)));
+            }
+            if (!existing) {
+                existing = existingProducts.find(p => p.name.toLowerCase() === name.toLowerCase());
+            }
+
+            const productData = {
+                name,
+                category: row.category || row.Category || '',
+                price: parseFloat(price),
+                purchasePrice: parseFloat(row.purchasePrice || row.PurchasePrice || '0'),
+                quantity: parseInt(row.quantity || row.Quantity || '0', 10),
+                minStockLevel: parseInt(row.minStockLevel || row.MinStockLevel || '10', 10),
+                barcodes,
+                imageUrl: row.imageUrl || row.ImageUrl || ''
+            };
+
+            if (existing) {
+                analysis.productsToUpdate.push({ ...existing, ...productData });
+            } else {
+                analysis.productsToAdd.push(productData);
+            }
+        }
+        return analysis;
+    }
+
+    async processProductImport(toAdd: any[], toUpdate: any[]): Promise<void> {
+        return db.transaction('rw', db.products, async () => {
+            await db.products.bulkAdd(toAdd);
+            for (const p of toUpdate) {
+                await db.products.update(p.id, p);
+            }
+        });
+    }
+
+    async exportProductsToCSV(): Promise<string> {
+        const products = await db.products.toArray();
+        const data = products.map(p => ({
+            id: p.id,
+            name: p.name,
+            category: p.category,
+            price: p.price,
+            purchasePrice: p.purchasePrice,
+            quantity: p.quantity,
+            minStockLevel: p.minStockLevel,
+            barcodes: p.barcodes?.join(','),
+            imageUrl: p.imageUrl,
+        }));
+        return Papa.unparse(data);
+    }
+    
+    async syncDataToGoogleSheet() {
+        const profile = await this.getCompanyProfile();
+        if (!profile || !profile.syncUrl) {
+            throw new Error("L'URL du script de synchronisation Google Apps n'est pas configurée.");
+        }
+
+        const dataToSync = {
+            products: await this.getAll('products'),
+            customers: await this.getAll('customers'),
+            sales: await this.getAll('sales'),
+            expenses: await this.getAll('expenses'),
+        };
+
+        const response = await fetch(profile.syncUrl, {
+            method: 'POST',
+            mode: 'no-cors', // Important for simple requests to Apps Script
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(dataToSync),
+        });
+        
+        // As it's a no-cors request, we can't inspect the response.
+        // We assume success if the request doesn't throw a network error.
+        await this.updateCompanyProfile({ lastSyncDate: new Date().toISOString() });
+    }
 }
 
 export const dataService = new DataService();
