@@ -24,14 +24,8 @@ import { PrintableBreadList } from '@/components/bread/PrintableBreadList';
 import { toast } from 'sonner';
 
 export default function BreadPage() {
-    const [date, setDate] = useState<Date>();
-    const [isMounted, setIsMounted] = useState(false);
-    useEffect(() => {
-        setDate(new Date());
-        setIsMounted(true);
-    }, []);
-
-    const dateString = useMemo(() => date ? format(date, 'yyyy-MM-dd') : '', [date]);
+    const [date, setDate] = useState<Date>(new Date());
+    const dateString = useMemo(() => format(date, 'yyyy-MM-dd'), [date]);
 
     const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
     const [isEditOrderOpen, setIsEditOrderOpen] = useState(false);
@@ -44,27 +38,23 @@ export default function BreadPage() {
 
     const companyProfile = useLiveQuery<CompanyProfile | undefined>(() => dataService.getCompanyProfile());
     
-    const todaysOrders = useLiveQuery(() => {
-        if (!dateString) return [];
-        return db.dailyBreadOrders.where('date').equals(dateString).toArray();
-    }, [dateString]);
-
-    const allCustomers = useLiveQuery(() => db.breadCustomers.where('isActive').equals(1).toArray(), []);
-    
-    const salesForDate = useLiveQuery(() => {
-        if (!dateString) return [];
-        return db.sales.where('breadOrderDate').equals(dateString).toArray();
+    const pageData = useLiveQuery(async () => {
+        const [customers, dailyOrders, sales] = await Promise.all([
+            db.breadCustomers.where('isActive').equals(1).toArray(),
+            db.dailyBreadOrders.where('date').equals(dateString).toArray(),
+            db.sales.where('breadOrderDate').equals(dateString).toArray()
+        ]);
+        return { customers, dailyOrders, sales };
     }, [dateString]);
 
     const orders = useMemo<BreadOrder[] | undefined>(() => {
-        if (allCustomers === undefined || todaysOrders === undefined || salesForDate === undefined) {
-            return undefined;
-        }
+        if (!pageData) return undefined;
 
-        const ordersMap = new Map(todaysOrders.map(o => [o.breadCustomerId, o]));
-        const salesMap = new Map(salesForDate.map(s => [s.id, s]).filter(s => s[0] !== undefined) as [number, Sale][]);
+        const { customers, dailyOrders, sales } = pageData;
+        const ordersMap = new Map(dailyOrders.map(o => [o.breadCustomerId, o]));
+        const salesMap = new Map(sales.filter(s => s.id !== undefined).map(s => [s.id!, s]));
 
-        return allCustomers.map(customer => {
+        return customers.map(customer => {
             const todaysOrder = ordersMap.get(customer.id!);
             let finalOrder: (DailyBreadOrder & { saleId?: number }) | undefined = undefined;
             if (todaysOrder) {
@@ -74,15 +64,20 @@ export default function BreadPage() {
             return { ...customer, id: customer.id!, todaysOrder: finalOrder };
         }).sort((a,b) => a.name.localeCompare(b.name));
 
-    }, [allCustomers, todaysOrders, salesForDate]);
+    }, [pageData]);
 
-    const isLoading = orders === undefined || companyProfile === undefined || !isMounted;
+    const isLoading = orders === undefined || companyProfile === undefined;
 
     const printRef = useRef<HTMLDivElement>(null);
     const handlePrint = useReactToPrint({
         content: () => printRef.current,
         documentTitle: `Commandes-Pain-${dateString}`,
     });
+
+    // Clear selection when date changes
+    useEffect(() => {
+        setSelectedIds(new Set());
+    }, [dateString]);
 
     const handleUpdateStatus = async (orderId: number, field: 'isPaid' | 'isDelivered', value: boolean) => {
         setIsUpdating(prev => ({...prev, [orderId]: true}));
@@ -190,11 +185,11 @@ export default function BreadPage() {
             
             <div className="flex flex-col sm:flex-row gap-2 justify-between items-center bg-card border rounded-lg p-3">
                 <div className="flex items-center gap-2">
-                    <Button variant="outline" size="icon" onClick={() => setDate(d => d ? subDays(d, 1) : subDays(new Date(), 1))} disabled={!date}>
+                    <Button variant="outline" size="icon" onClick={() => setDate(d => subDays(d, 1))} disabled={!date}>
                         <ChevronLeft className="h-4 w-4" />
                     </Button>
                     <DatePicker date={date} setDate={(d) => setDate(d || new Date())} />
-                    <Button variant="outline" size="icon" onClick={() => setDate(d => d ? addDays(d, 1) : addDays(new Date(), 1))} disabled={!date}>
+                    <Button variant="outline" size="icon" onClick={() => setDate(d => addDays(d, 1))} disabled={!date}>
                         <ChevronRight className="h-4 w-4" />
                     </Button>
                 </div>
