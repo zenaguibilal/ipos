@@ -42,10 +42,13 @@ export default function BreadPage() {
     const [isFinalizing, setIsFinalizing] = useState(false);
 
     const companyProfile = useLiveQuery<CompanyProfile | undefined>(() => dataService.getCompanyProfile());
-    const orders = useLiveQuery(() => date ? dataService.getBreadOrdersForDate(date) : Promise.resolve([]), [dateString]);
+    
+    const orders = useLiveQuery(async () => {
+        if (!date) return [];
+        return dataService.getBreadOrdersForDate(date);
+    }, [date]);
     
     const isLoading = orders === undefined || companyProfile === undefined || !isMounted;
-    const isPriceSet = !!companyProfile?.breadPrice && companyProfile.breadPrice > 0;
 
     const printRef = useRef<HTMLDivElement>(null);
     const handlePrint = useReactToPrint({
@@ -109,7 +112,7 @@ export default function BreadPage() {
             )
         }
 
-        if (orders.length === 0) {
+        if (!orders || orders.length === 0) {
             return (
                 <div className="text-center py-16">
                     <h3 className="text-xl font-semibold">Aucun client de pain</h3>
@@ -133,7 +136,7 @@ export default function BreadPage() {
                         onDelete={() => { setSelectedOrder(order); setIsDeleteCustomerOpen(true); }}
                         onUpdateStatus={(field, value) => handleUpdateStatus(order.id, field, value)}
                         isUpdating={isUpdating[order.id]}
-                        isPriceSet={isPriceSet}
+                        isPriceSet={!!companyProfile?.breadPrice && companyProfile.breadPrice > 0}
                     />
                 ))}
             </div>
@@ -170,7 +173,7 @@ export default function BreadPage() {
                 <Button onClick={() => setDate(new Date())} variant="ghost" size="sm">Aujourd'hui</Button>
             </div>
 
-            {!isPriceSet && !isLoading && (
+            {!isLoading && (!companyProfile?.breadPrice || companyProfile.breadPrice <= 0) && (
                 <Alert variant="destructive">
                     <AlertTriangle className="h-4 w-4" />
                     <AlertTitle>Prix du pain non configuré !</AlertTitle>
@@ -184,12 +187,12 @@ export default function BreadPage() {
 
             <div className="flex flex-col sm:flex-row gap-2 justify-between items-center bg-card border rounded-lg p-3">
                 <div className="flex items-center gap-3">
-                    <Checkbox id="select-all" checked={!isLoading && orders.length > 0 && selectedIds.size === orders.length} onCheckedChange={handleToggleSelectAll} disabled={isLoading || !orders || orders.length === 0} />
+                    <Checkbox id="select-all" checked={!isLoading && orders && orders.length > 0 && selectedIds.size === orders.length} onCheckedChange={handleToggleSelectAll} disabled={isLoading || !orders || orders.length === 0} />
                     <label htmlFor="select-all" className="text-sm font-medium">
                         {selectedIds.size > 0 ? `${selectedIds.size} sélectionné(s)` : "Tout sélectionner"}
                     </label>
                 </div>
-                 <Button onClick={handleFinalizeSales} disabled={selectedIds.size === 0 || isFinalizing || !isPriceSet}>
+                 <Button onClick={handleFinalizeSales} disabled={selectedIds.size === 0 || isFinalizing || !companyProfile?.breadPrice || companyProfile.breadPrice <= 0}>
                     {isFinalizing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
                     {isFinalizing ? 'Validation...' : `Valider ${selectedIds.size} Vente(s)`}
                 </Button>
