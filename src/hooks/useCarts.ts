@@ -4,7 +4,7 @@ import { useEffect, useCallback } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { v4 as uuidv4 } from 'uuid';
 import { dataService } from '@/services/data-service';
-import type { Cart, Product, Customer } from '@/lib/types';
+import type { Cart, Product, Customer, Draft } from '@/lib/types';
 import { toast } from 'sonner';
 
 const ACTIVE_CART_ID_KEY = 'active_cart_id';
@@ -26,29 +26,18 @@ export const useCarts = () => {
     const isLoading = carts === undefined || activeCartIdSetting === undefined;
 
     useEffect(() => {
-        // We only want to run this logic after the initial query for carts has completed.
-        if (carts === undefined) {
-            return;
-        }
-
+        if (carts === undefined) return;
         const initializeCarts = async () => {
-            const currentActiveId = activeCartIdSetting?.value;
-
-            // If there are no carts at all, create the very first one and set it as active.
             if (carts.length === 0) {
                 const newCart = createNewCart('Panier 1');
                 await dataService.saveCart(newCart);
                 await dataService.setSetting(ACTIVE_CART_ID_KEY, newCart.id);
-            } 
-            // If there are carts, but the active one is missing or invalid, reset to the first available cart.
-            else if (!currentActiveId || !carts.some(c => c.id === currentActiveId)) {
+            } else if (!activeCartId || !carts.some(c => c.id === activeCartId)) {
                 await dataService.setSetting(ACTIVE_CART_ID_KEY, carts[0].id);
             }
         };
-
         initializeCarts();
-    // We depend on the raw query results. When they change (from undefined to a value), this effect runs.
-    }, [carts, activeCartIdSetting]);
+    }, [carts, activeCartId]);
 
     const setActiveCartId = useCallback(async (id: string) => {
         await dataService.setSetting(ACTIVE_CART_ID_KEY, id);
@@ -68,13 +57,9 @@ export const useCarts = () => {
             toast.error("Vous ne pouvez pas supprimer le dernier panier.");
             return;
         }
-        
-        const currentActiveId = activeCartId;
         const newCarts = carts.filter(c => c.id !== cartId);
-
         await dataService.deleteCart(cartId);
-
-        if (currentActiveId === cartId) {
+        if (activeCartId === cartId) {
             await setActiveCartId(newCarts[0]?.id || '');
         }
     }, [carts, activeCartId, setActiveCartId]);
@@ -83,7 +68,6 @@ export const useCarts = () => {
         if(!activeCartId) return;
         try {
             await dataService.addProductToCart(activeCartId, product, quantity);
-            toast.success(`${product.name} ajouté/mis à jour dans le panier.`);
         } catch (e: any) {
             toast.error(e.message || "Erreur lors de l'ajout du produit.");
         }
@@ -119,19 +103,38 @@ export const useCarts = () => {
 
     const setCartDiscount = useCallback(async (discount: { type: 'fixed' | 'percentage'; value: number }) => {
         if (!activeCartId || !activeCart) return;
-        
         const value = discount.value || 0;
         const subtotal = activeCart.items.reduce((acc, item) => acc + item.price * item.cartQuantity, 0);
-
-        if (discount.type === 'fixed' && value > subtotal) {
-            toast.warning("La remise est plafonnée au sous-total.");
-        }
-        if (discount.type === 'percentage' && (value < 0 || value > 100)) {
-            toast.warning("Le pourcentage de remise doit être compris entre 0 et 100.");
-        }
-
+        if (discount.type === 'fixed' && value > subtotal) toast.warning("La remise est plafonnée au sous-total.");
+        if (discount.type === 'percentage' && (value < 0 || value > 100)) toast.warning("Le pourcentage de remise doit être compris entre 0 et 100.");
         await dataService.setCartDiscount(activeCartId, discount);
     }, [activeCartId, activeCart]);
+
+    const saveActiveCartAsDraft = useCallback(async (notes?: string) => {
+        if (!activeCart) throw new Error("Aucun panier actif à sauvegarder.");
+        await dataService.saveDraft(activeCart, notes);
+    }, [activeCart]);
+    
+    const loadDraftToCart = useCallback(async (draftId: number) => {
+        if (!activeCartId) return;
+        const draft = await dataService.getById<Draft>('drafts', draftId);
+        if (!draft) {
+            toast.error("Brouillon non trouvé.");
+            return;
+        }
+        
+        const updatedCart = {
+            ...activeCart,
+            items: draft.items,
+            customerId: draft.customerId,
+            customerName: draft.customerName,
+        };
+
+        await dataService.saveCart(updatedCart as Cart);
+        await dataService.deleteDraft(draftId);
+        toast.success(`Brouillon chargé dans ${activeCart?.name}.`);
+
+    }, [activeCart, activeCartId]);
 
     useEffect(() => {
         if (activeCart && activeCart.items.some(i => i.flash)) {
@@ -141,7 +144,6 @@ export const useCarts = () => {
             return () => clearTimeout(timer);
         }
     }, [activeCart]);
-
 
     return {
         carts: carts ?? [],
@@ -156,6 +158,8 @@ export const useCarts = () => {
         removeCartItem,
         setCartCustomer,
         setCartDiscount,
+        saveActiveCartAsDraft,
+        loadDraftToCart,
         isLoading,
         error: null,
     };

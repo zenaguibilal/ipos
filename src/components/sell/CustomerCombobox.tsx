@@ -18,7 +18,7 @@ const WalkInCustomerOption: ComboboxOption = {
     subLabel: 'Aucun client sélectionné',
 };
 
-export function CustomerCombobox({ customerId, onSelectCustomer }: CustomerComboboxProps) {
+export const CustomerCombobox = React.forwardRef<HTMLButtonElement, CustomerComboboxProps>(({ customerId, onSelectCustomer }, ref) => {
     
     const customers = useLiveQuery(() => db.customers.orderBy('lastName').toArray());
 
@@ -50,6 +50,7 @@ export function CustomerCombobox({ customerId, onSelectCustomer }: CustomerCombo
     
     return (
         <Combobox
+            ref={ref}
             options={customerOptions}
             onSelect={handleSelect}
             value={customerId ? String(customerId) : 'walk-in'}
@@ -58,4 +59,6 @@ export function CustomerCombobox({ customerId, onSelectCustomer }: CustomerCombo
             notFoundMessage="Aucun client trouvé."
         />
     );
-}
+});
+
+CustomerCombobox.displayName = 'CustomerCombobox';

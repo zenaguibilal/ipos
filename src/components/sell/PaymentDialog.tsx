@@ -2,17 +2,26 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogClose
+} from '@/components/ui/dialog';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import type { Cart, SalePayment } from '@/lib/types';
-import { Loader2, Printer, CreditCard, Banknote, Landmark } from 'lucide-react';
+import type { Cart, SalePayment, Customer, Product } from '@/lib/types';
+import { Loader2, Printer, CreditCard, Banknote, Landmark, AlertTriangle } from 'lucide-react';
 import { dataService } from '@/services/data-service';
 import { formatCurrency } from '@/lib/utils';
 import { Receipt } from './Receipt';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/database';
+import { cn } from '@/lib/utils';
+import { DatePicker } from '@/components/ui/date-picker';
+import { Separator } from '@/components/ui/separator';
 
 interface PaymentDialogProps {
     isOpen: boolean;
@@ -21,12 +30,20 @@ interface PaymentDialogProps {
     onSaleFinalized: () => void;
 }
 
+type PaymentMode = 'cash' | 'card' | 'other' | 'credit' | 'mixed';
+
 export function PaymentDialog({ isOpen, onOpenChange, cart, onSaleFinalized }: PaymentDialogProps) {
-    const [amountPaid, setAmountPaid] = useState('');
-    const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'other'>('cash');
+    const [paymentMode, setPaymentMode] = useState<PaymentMode>('cash');
+    const [cashAmount, setCashAmount] = useState('');
+    const [creditAmount, setCreditAmount] = useState('');
+    const [dueDate, setDueDate] = useState<Date | undefined>();
+    
     const [isLoading, setIsLoading] = useState(false);
     const receiptRef = useRef<HTMLDivElement>(null);
     const [lastSale, setLastSale] = useState<any>(null);
+
+    const [showLossAlert, setShowLossAlert] = useState(false);
+    const [lossItems, setLossItems] = useState<Product[]>([]);
 
     const customer = useLiveQuery(() => 
         cart.customerId ? db.customers.get(cart.customerId) : Promise.resolve(undefined), 
@@ -34,29 +51,50 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, onSaleFinalized }: P
     );
 
     const subtotal = useMemo(() => cart.items.reduce((acc, item) => acc + item.price * item.cartQuantity, 0), [cart.items]);
-    
     const discountAmount = useMemo(() => {
         if (!cart.discount || cart.discount.value <= 0) return 0;
-        return cart.discount.type === 'percentage'
-            ? (subtotal * cart.discount.value) / 100
-            : cart.discount.value;
+        return cart.discount.type === 'percentage' ? (subtotal * cart.discount.value) / 100 : cart.discount.value;
     }, [cart.discount, subtotal]);
-
     const total = Math.max(0, subtotal - discountAmount);
-    const amountPaidNum = parseFloat(amountPaid) || 0;
-    const change = amountPaidNum - total;
-    const debtFromThisSale = change < 0 ? Math.abs(change) : 0;
-    const newTotalOutstandingBalance = (customer?.outstandingBalance ?? 0) + debtFromThisSale;
 
+    const cashAmountNum = parseFloat(cashAmount) || 0;
+    const creditAmountNum = parseFloat(creditAmount) || 0;
+    const amountPaidNum = paymentMode === 'mixed' ? cashAmountNum : (paymentMode === 'credit' ? 0 : parseFloat(cashAmount) || 0);
+
+    const change = (paymentMode === 'cash' || paymentMode === 'card' || paymentMode === 'other') ? cashAmountNum - total : 0;
+    const debtFromThisSale = paymentMode === 'credit' ? total : (paymentMode === 'mixed' ? creditAmountNum : 0);
+    const newTotalOutstanding = (customer?.outstandingBalance ?? 0) + debtFromThisSale;
+    const creditUsage = customer?.creditLimit ? (newTotalOutstanding / customer.creditLimit) * 100 : 0;
 
     useEffect(() => {
         if (isOpen) {
-            setAmountPaid(String(total));
+            const itemsSoldAtLoss = cart.items.filter(item => item.price < item.purchasePrice);
+            if (itemsSoldAtLoss.length > 0) {
+                setLossItems(itemsSoldAtLoss);
+                setShowLossAlert(true);
+            } else {
+                initializePayment();
+            }
+        } else {
+            // Reset state on close
             setLastSale(null);
-            setPaymentMethod('cash');
+            setIsLoading(false);
         }
-    }, [isOpen, total]);
+    }, [isOpen]);
 
+    const initializePayment = () => {
+        setPaymentMode('cash');
+        setCashAmount(String(total));
+        setCreditAmount('0');
+        setDueDate(undefined);
+        setShowLossAlert(false);
+    };
+
+    useEffect(() => {
+        if (paymentMode === 'cash' || paymentMode === 'card' || paymentMode === 'other') setCashAmount(String(total));
+        if (paymentMode === 'credit') setCashAmount('0');
+    }, [paymentMode, total]);
+    
     const handlePrint = (thermal: boolean) => {
         const printableContent = document.getElementById('receipt-for-print');
         const receiptElement = receiptRef.current;
@@ -81,9 +119,24 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, onSaleFinalized }: P
     };
 
     const handleFinalizeSale = async () => {
+        if (paymentMode === 'mixed' && (cashAmountNum + creditAmountNum !== total)) {
+            toast.error("Le montant en espèces et le montant à crédit doivent correspondre au total.");
+            return;
+        }
+
+        if (customer && customer.creditLimit && newTotalOutstanding > customer.creditLimit) {
+            toast.error("La limite de crédit du client est dépassée.", {
+                description: `Le nouveau solde (${formatCurrency(newTotalOutstanding)}) dépasse la limite (${formatCurrency(customer.creditLimit)}).`
+            });
+            return;
+        }
+
         setIsLoading(true);
 
-        const payments: SalePayment[] = [{ method: paymentMethod, amount: amountPaidNum }];
+        const payments: SalePayment[] = [];
+        if (amountPaidNum > 0) {
+            payments.push({ method: paymentMode === 'card' ? 'card' : (paymentMode === 'other' ? 'other' : 'cash'), amount: amountPaidNum });
+        }
         
         const saleData = {
             items: cart.items.map(i => ({ id: i.id, name: i.name, price: i.price, purchasePrice: i.purchasePrice, quantity: i.cartQuantity })),
@@ -95,6 +148,7 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, onSaleFinalized }: P
             payments,
             customerId: cart.customerId ?? undefined,
             customerName: cart.customerName ?? undefined,
+            dueDate: debtFromThisSale > 0 ? dueDate : undefined,
         };
 
         try {
@@ -107,129 +161,159 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, onSaleFinalized }: P
             console.error("Failed to finalize sale:", error);
             toast.error(error.message || "Erreur lors de la finalisation de la vente.");
             setIsLoading(false);
-        } finally {
-            // Keep loading true on success to show receipt screen
-            // setIsLoading(false) will be handled by closing the dialog
         }
     };
     
     const closeAndReset = () => {
         onOpenChange(false);
-        setIsLoading(false);
     }
+    
+    const handleLossAlertConfirm = () => {
+        setShowLossAlert(false);
+        initializePayment();
+    };
+
+    if (!isOpen) return null;
 
     return (
-        <Dialog open={isOpen} onOpenChange={(open) => !open && closeAndReset()}>
-            <DialogContent className="sm:max-w-md">
-                {!lastSale ? (
-                    <>
-                        <DialogHeader>
-                            <DialogTitle>Finaliser la vente</DialogTitle>
-                            <DialogDescription>
-                                Confirmez le montant payé pour terminer la transaction.
-                            </DialogDescription>
-                        </DialogHeader>
-                        <div className="grid gap-6 py-4">
-                             <div className="text-center py-4 luxury-glass">
-                                <Label>TOTAL À PAYER</Label>
-                                <p className="text-4xl font-bold text-primary">{formatCurrency(total)}</p>
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="amountPaid">Montant Payé (DA)</Label>
-                                <Input 
-                                    id="amountPaid" 
-                                    type="number"
-                                    value={amountPaid} 
-                                    onChange={(e) => setAmountPaid(e.target.value)} 
-                                    className="text-2xl h-14 text-center"
-                                    autoFocus
-                                />
-                            </div>
+        <>
+            <AlertDialog open={showLossAlert} onOpenChange={setShowLossAlert}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2"><AlertTriangle className="text-destructive"/>Vente à perte détectée</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Les produits suivants ont un prix de vente inférieur à leur prix d'achat. Êtes-vous sûr de vouloir continuer ?
+                            <ul className="list-disc pl-5 mt-2 text-destructive/80 font-medium">
+                                {lossItems.map(item => <li key={item.id}>{item.name}</li>)}
+                            </ul>
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel onClick={() => onOpenChange(false)}>Modifier la vente</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleLossAlertConfirm} className={cn("bg-destructive hover:bg-destructive/80")}>Continuer quand même</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
 
-                             <div className="space-y-2">
-                                <Label>Méthode de Paiement</Label>
-                                <div className="grid grid-cols-3 gap-2">
-                                    <Button
-                                        type="button"
-                                        variant={paymentMethod === 'cash' ? 'secondary' : 'outline'}
-                                        onClick={() => setPaymentMethod('cash')}
-                                        className="h-12"
-                                    >
-                                        <Banknote className="mr-2 h-5 w-5"/>
-                                        Espèces
-                                    </Button>
-                                    <Button
-                                        type="button"
-                                        variant={paymentMethod === 'card' ? 'secondary' : 'outline'}
-                                        onClick={() => setPaymentMethod('card')}
-                                        className="h-12"
-                                    >
-                                        <CreditCard className="mr-2 h-5 w-5"/>
-                                        Carte
-                                    </Button>
-                                    <Button
-                                        type="button"
-                                        variant={paymentMethod === 'other' ? 'secondary' : 'outline'}
-                                        onClick={() => setPaymentMethod('other')}
-                                        className="h-12"
-                                    >
-                                        <Landmark className="mr-2 h-5 w-5"/>
-                                        Autre
-                                    </Button>
+            <Dialog open={isOpen && !showLossAlert} onOpenChange={(open) => !open && closeAndReset()}>
+                <DialogContent className="sm:max-w-lg">
+                    {!lastSale ? (
+                        <>
+                            <DialogHeader>
+                                <DialogTitle>Finaliser la vente</DialogTitle>
+                                {customer && (
+                                    <DialogDescription>
+                                        Client: <span className="font-bold">{customer.firstName} {customer.lastName}</span>
+                                    </DialogDescription>
+                                )}
+                            </DialogHeader>
+                            <div className="grid gap-4 py-4">
+                                <div className="text-center py-4 luxury-glass">
+                                    <Label>TOTAL À PAYER</Label>
+                                    <p className="text-4xl font-bold text-primary">{formatCurrency(total)}</p>
                                 </div>
-                            </div>
+                                
+                                {customer && (
+                                    <div className={cn("grid grid-cols-2 gap-2 text-center p-2 rounded-lg text-sm", creditUsage > 90 ? "bg-destructive/10 text-destructive" : "bg-muted")}>
+                                        <div>
+                                            <p className="font-semibold">{formatCurrency(customer.outstandingBalance)}</p>
+                                            <p className="text-xs">Solde actuel</p>
+                                        </div>
+                                        <div>
+                                            <p className="font-semibold">{customer.creditLimit ? formatCurrency(customer.creditLimit) : 'Aucune'}</p>
+                                            <p className="text-xs">Plafond de crédit</p>
+                                        </div>
+                                    </div>
+                                )}
+                                
+                                <div className="space-y-2">
+                                    <Label>Méthode de Paiement</Label>
+                                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+                                        <Button type="button" variant={paymentMode === 'cash' ? 'secondary' : 'outline'} onClick={() => setPaymentMode('cash')}><Banknote className="mr-2 h-4 w-4"/>Espèces</Button>
+                                        <Button type="button" variant={paymentMode === 'card' ? 'secondary' : 'outline'} onClick={() => setPaymentMode('card')}><CreditCard className="mr-2 h-4 w-4"/>Carte</Button>
+                                        {customer && <Button type="button" variant={paymentMode === 'credit' ? 'secondary' : 'outline'} onClick={() => setPaymentMode('credit')}>Crédit</Button>}
+                                        {customer && <Button type="button" variant={paymentMode === 'mixed' ? 'secondary' : 'outline'} onClick={() => setPaymentMode('mixed')}>Mixte</Button>}
+                                    </div>
+                                </div>
 
-                            {change >= 0 && (
-                                <div className="text-center py-2 luxury-glass border-green-500/20">
-                                    <Label>MONNAIE À RENDRE</Label>
-                                    <p className="text-2xl font-bold text-green-400">{formatCurrency(change)}</p>
-                                </div>
-                            )}
-                             {debtFromThisSale > 0 && customer && (
-                                <div className="text-center py-2 luxury-glass border-amber-500/20 space-y-1">
-                                    <Label>NOUVEAU SOLDE CLIENT</Label>
-                                    <p className="text-2xl font-bold text-amber-400">{formatCurrency(newTotalOutstandingBalance)}</p>
-                                    <p className="text-xs text-muted-foreground">
-                                        (Solde actuel: {formatCurrency(customer.outstandingBalance)} + Crédit: {formatCurrency(debtFromThisSale)})
-                                    </p>
-                                </div>
-                            )}
-                        </div>
-                        <DialogFooter>
-                            <Button type="button" variant="secondary" onClick={() => onOpenChange(false)} disabled={isLoading}>
-                                Annuler
-                            </Button>
-                            <Button type="submit" onClick={handleFinalizeSale} disabled={isLoading}>
-                                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Valider la vente
-                            </Button>
-                        </DialogFooter>
-                    </>
-                ) : (
-                    <>
-                         <DialogHeader>
-                            <DialogTitle>Vente Réussie</DialogTitle>
-                            <DialogDescription>
-                                Imprimez le reçu pour le client ou fermez pour commencer une nouvelle vente.
-                            </DialogDescription>
-                        </DialogHeader>
-                        <div className="py-4 my-4 max-h-[50vh] overflow-y-auto bg-gray-100 dark:bg-gray-800 rounded-lg">
-                            <Receipt sale={lastSale} ref={receiptRef} />
-                        </div>
-                        <DialogFooter className="sm:justify-between flex-col sm:flex-row gap-2">
-                            <div className="flex gap-2">
-                                <Button variant="outline" onClick={() => handlePrint(true)}>
-                                    <Printer className="mr-2 h-4 w-4"/> Thermique
-                                </Button>
-                                <Button variant="outline" onClick={() => handlePrint(false)}>
-                                    <Printer className="mr-2 h-4 w-4"/> A4
-                                </Button>
+                                {(paymentMode === 'cash' || paymentMode === 'card' || paymentMode === 'other') && (
+                                    <div className="space-y-2">
+                                        <Label htmlFor="amountPaid">Montant Payé</Label>
+                                        <Input id="amountPaid" type="number" value={cashAmount} onChange={(e) => setCashAmount(e.target.value)} className="text-lg" autoFocus />
+                                        {change > 0 && (
+                                            <div className="text-center p-2 bg-green-500/10 rounded-lg">
+                                                <Label className="text-green-300">Monnaie à rendre</Label>
+                                                <p className="text-lg font-bold text-green-400">{formatCurrency(change)}</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {paymentMode === 'mixed' && (
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="cashAmount">Montant Espèces</Label>
+                                            <Input id="cashAmount" type="number" value={cashAmount} onChange={(e) => setCashAmount(e.target.value)} autoFocus />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="creditAmount">Montant Crédit</Label>
+                                            <Input id="creditAmount" type="number" value={creditAmount} onChange={(e) => setCreditAmount(e.target.value)} />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {(paymentMode === 'credit' || paymentMode === 'mixed') && (
+                                    <>
+                                        <Separator />
+                                        <div className="space-y-2">
+                                            <Label>Date d'échéance (optionnel)</Label>
+                                            <DatePicker date={dueDate} setDate={setDueDate}/>
+                                        </div>
+                                         <div className="text-center py-2 luxury-glass border-amber-500/20 space-y-1">
+                                            <Label>NOUVEAU SOLDE CLIENT</Label>
+                                            <p className="text-2xl font-bold text-amber-400">{formatCurrency(newTotalOutstanding)}</p>
+                                            <p className="text-xs text-muted-foreground">
+                                                (Actuel: {formatCurrency(customer?.outstandingBalance ?? 0)} + Crédit: {formatCurrency(debtFromThisSale)})
+                                            </p>
+                                        </div>
+                                    </>
+                                )}
+
                             </div>
-                            <Button onClick={closeAndReset}>Fermer</Button>
-                        </DialogFooter>
-                    </>
-                )}
-            </DialogContent>
-        </Dialog>
+                            <DialogFooter>
+                                <DialogClose asChild><Button type="button" variant="secondary" disabled={isLoading}>Annuler</Button></DialogClose>
+                                <Button type="submit" onClick={handleFinalizeSale} disabled={isLoading}>
+                                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Valider la vente
+                                </Button>
+                            </DialogFooter>
+                        </>
+                    ) : (
+                        <>
+                             <DialogHeader>
+                                <DialogTitle>Vente Réussie</DialogTitle>
+                                <DialogDescription>
+                                    Imprimez le reçu pour le client ou fermez pour commencer une nouvelle vente.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="py-4 my-4 max-h-[50vh] overflow-y-auto bg-gray-100 dark:bg-gray-800 rounded-lg">
+                                <Receipt sale={lastSale} ref={receiptRef} />
+                            </div>
+                            <DialogFooter className="sm:justify-between flex-col sm:flex-row gap-2">
+                                <div className="flex gap-2">
+                                    <Button variant="outline" onClick={() => handlePrint(true)}>
+                                        <Printer className="mr-2 h-4 w-4"/> Thermique
+                                    </Button>
+                                    <Button variant="outline" onClick={() => handlePrint(false)}>
+                                        <Printer className="mr-2 h-4 w-4"/> A4
+                                    </Button>
+                                </div>
+                                <Button onClick={closeAndReset}>Fermer</Button>
+                            </DialogFooter>
+                        </>
+                    )}
+                </DialogContent>
+            </Dialog>
+        </>
     );
 }

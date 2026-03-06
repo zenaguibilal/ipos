@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, forwardRef, useImperativeHandle, useRef } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/database';
 import { dataService } from '@/services/data-service';
@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Label } from '../ui/label';
 import { formatCurrency } from '@/lib/utils';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 interface ProductSearchProps {
     onProductSelect: (product: Product, quantity: number) => void;
@@ -74,21 +75,30 @@ const CustomProductDialog = ({ onAdd }: { onAdd: (name: string, price: number) =
     );
 };
 
-export function ProductSearch({ onProductSelect }: ProductSearchProps) {
+export const ProductSearch = forwardRef<{focus: () => void}, ProductSearchProps>(({ onProductSelect }, ref) => {
     const [query, setQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('all');
+    const inputRef = useRef<HTMLInputElement>(null);
+
+    useImperativeHandle(ref, () => ({
+        focus: () => {
+            inputRef.current?.focus();
+        },
+    }));
     
     const products = useLiveQuery(() => db.products.toArray(), []);
     const categories = useLiveQuery(() => dataService.getProductCategories(), [], []);
 
-    const handleBarcodeScanned = useCallback((scannedBarcode: string) => {
-        if (!products || !scannedBarcode.trim()) return;
-        const product = products.find(p => p.barcodes?.includes(scannedBarcode.trim()));
+    const handleBarcodeScanned = useCallback(async (scannedBarcode: string) => {
+        if (!scannedBarcode.trim()) return;
+        const product = await dataService.getProductByBarcode(scannedBarcode.trim());
         if (product) {
             onProductSelect(product, 1);
             setQuery(''); // Clear query after successful scan
+        } else {
+            toast.error("Produit non trouvé pour ce code-barres.");
         }
-    }, [products, onProductSelect]);
+    }, [onProductSelect]);
     
     const filteredProducts = useMemo(() => {
         if (!products) return [];
@@ -127,12 +137,14 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
             <div className="relative mb-4">
                 <Barcode className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input 
+                    ref={inputRef}
                     placeholder="Scanner un code-barres ou rechercher..."
                     className="pl-10 h-12 text-base"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     onKeyDown={(e) => {
                         if (e.key === 'Enter') {
+                            e.preventDefault();
                             handleBarcodeScanned(e.currentTarget.value);
                         }
                     }}
@@ -190,7 +202,8 @@ export function ProductSearch({ onProductSelect }: ProductSearchProps) {
             </div>
         </div>
     );
-}
+});
+ProductSearch.displayName = 'ProductSearch';
 
 interface ListItemProps {
     product: Product;

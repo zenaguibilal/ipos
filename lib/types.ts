@@ -1,3 +1,4 @@
+
 export interface Product {
     id?: number | string; // string for custom products
     name: string;
@@ -16,8 +17,10 @@ export interface Customer {
     id?: number;
     firstName: string;
     lastName: string;
+    searchName?: string;
     phone?: string;
     settlementDay?: number;
+    creditLimit?: number;
     totalSpent: number;
     outstandingBalance: number;
     lastActivityDate?: Date;
@@ -75,6 +78,7 @@ export interface Sale {
     createdAt?: Date;
     updatedAt?: Date;
     breadOrderDate?: string;
+    dueDate?: Date;
 }
 
 export interface Payment {
@@ -85,6 +89,17 @@ export interface Payment {
     createdAt?: Date;
     updatedAt?: Date;
 }
+
+export interface Draft {
+  id?: number;
+  date: Date;
+  customerId: number | null;
+  customerName: string;
+  items: CartItem[];
+  total: number;
+  notes?: string;
+}
+
 
 export interface CustomerWithSalesData extends Customer {
     id: number; // Make id mandatory here
@@ -124,8 +139,11 @@ export interface CompanyProfile {
     website?: string;
     vatNumber?: string;
     rcNumber?: string;
+    syncUrl?: string;
+    lastSyncDate?: string;
     breadPrice?: number;
     breadPurchasePrice?: number;
+    goldPricePerGram?: number;
     updatedAt?: Date;
 }
 
@@ -247,16 +265,26 @@ export interface InventoryLog {
     createdAt: Date;
 }
 
+export interface CostingItem extends SaleItem {
+    totalPurchasePrice: number;
+    allocatedDeliveryCost: number;
+    finalCostPerUnit: number;
+    totalFinalCost: number;
+    productId?: number;
+}
+
 export interface DashboardStats {
     totalRevenue: number;
     totalProfit: number;
     salesCount: number;
     inventoryValue: number;
+    totalExpenses: number;
 }
 
 export interface DashboardData {
     stats: DashboardStats;
     sales: Sale[];
+    expenses: Expense[];
     topProducts: TopProduct[];
     topCustomers: TopCustomer[];
 }
@@ -267,4 +295,27 @@ export interface ImportAnalysis {
     skippedRows: any[];
     errorRows: any[];
     totalRows: number;
+}
+
+export interface ProductImportAnalysis {
+    productsToAdd: any[];
+    productsToUpdate: any[];
+    skippedRows: any[];
+    errorRows: any[];
+    totalRows: number;
+}
+
+export interface GlobalActivityItem {
+    type: 'sale' | 'stock_intake' | 'return' | 'customer';
+    date: Date;
+    id: number | string;
+    description: string;
+    details: string;
+    amount?: number;
+    amountClass?: string;
+}
+
+export interface ZakatData {
+    inventoryValue: number;
+    totalReceivables: number;
 }

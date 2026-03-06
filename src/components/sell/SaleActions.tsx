@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Trash2, CreditCard } from 'lucide-react';
+import { Trash2, CreditCard, Edit, FolderOpen } from 'lucide-react';
 import type { Cart } from '@/lib/types';
 import { PaymentDialog } from './PaymentDialog';
 import {
@@ -25,9 +25,11 @@ interface SaleActionsProps {
     cart: Cart;
     onClearCart: () => void;
     onSetDiscount: (discount: { type: 'fixed' | 'percentage'; value: number }) => void;
+    onSaveDraft: () => void;
+    onOpenDrafts: () => void;
 }
 
-export function SaleActions({ cart, onClearCart, onSetDiscount }: SaleActionsProps) {
+export const SaleActions = React.forwardRef<HTMLButtonElement, SaleActionsProps>(({ cart, onClearCart, onSetDiscount, onSaveDraft, onOpenDrafts }, ref) => {
     const [isPaymentOpen, setIsPaymentOpen] = useState(false);
     
     const subtotal = cart.items.reduce((acc, item) => acc + item.price * item.cartQuantity, 0);
@@ -98,6 +100,15 @@ export function SaleActions({ cart, onClearCart, onSetDiscount }: SaleActionsPro
                     </div>
                  </div>
 
+                 <div className="grid grid-cols-2 gap-2">
+                    <Button variant="outline" onClick={onSaveDraft} disabled={cart.items.length === 0}>
+                        <Edit className="mr-2 h-4 w-4"/>Brouillon (F4)
+                    </Button>
+                    <Button variant="outline" onClick={onOpenDrafts}>
+                        <FolderOpen className="mr-2 h-4 w-4"/>Ouvrir (F6)
+                    </Button>
+                 </div>
+
                  <div className="grid grid-cols-2 gap-4 pt-2">
                      <AlertDialog>
                         <AlertDialogTrigger asChild>
@@ -122,14 +133,17 @@ export function SaleActions({ cart, onClearCart, onSetDiscount }: SaleActionsPro
                     </AlertDialog>
 
                     <Button 
+                        ref={ref}
                         size="lg" 
                         disabled={cart.items.length === 0}
                         onClick={() => setIsPaymentOpen(true)}
                     >
-                        <CreditCard className="mr-2 h-5 w-5" /> Payer
+                        <CreditCard className="mr-2 h-5 w-5" /> Payer (F9)
                     </Button>
                 </div>
             </div>
         </>
     );
-}
+});
+
+SaleActions.displayName = 'SaleActions';

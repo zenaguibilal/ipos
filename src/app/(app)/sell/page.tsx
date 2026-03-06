@@ -9,9 +9,11 @@ import { useCarts } from '@/hooks/useCarts';
 import { Button } from '@/components/ui/button';
 import { CustomerCombobox } from '@/components/sell/CustomerCombobox';
 import { CartTabs } from '@/components/sell/CartTabs';
-import { PackageSearch } from 'lucide-react';
-import { useState } from 'react';
+import { PackageSearch, Edit, FolderOpen } from 'lucide-react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { toast } from 'sonner';
+import { DraftsDialog } from '@/components/sell/DraftsDialog';
 
 export default function SellPage() {
     const {
@@ -27,9 +29,73 @@ export default function SellPage() {
         clearCart,
         setCartCustomer,
         setCartDiscount,
+        saveActiveCartAsDraft,
+        loadDraftToCart,
         isLoading,
     } = useCarts();
+
     const [isProductSheetOpen, setIsProductSheetOpen] = useState(false);
+    const [isDraftsDialogOpen, setIsDraftsDialogOpen] = useState(false);
+    const productSearchRef = useRef<{ focus: () => void }>(null);
+    const customerComboboxRef = useRef<HTMLButtonElement>(null);
+    const paymentButtonRef = useRef<HTMLButtonElement>(null);
+
+
+    const handleSaveDraft = async () => {
+        if (!activeCart || activeCart.items.length === 0) {
+            toast.error("Impossible d'enregistrer un panier vide comme brouillon.");
+            return;
+        }
+        try {
+            await saveActiveCartAsDraft();
+            toast.success("Brouillon enregistré avec succès.");
+        } catch (error) {
+            toast.error("Erreur lors de l'enregistrement du brouillon.");
+        }
+    };
+
+    const handleLoadDraft = (draftId: number) => {
+        loadDraftToCart(draftId);
+        setIsDraftsDialogOpen(false);
+    };
+
+    const handleKeyDown = useCallback((e: KeyboardEvent) => {
+        if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+
+        switch (e.key) {
+            case 'F1':
+                e.preventDefault();
+                productSearchRef.current?.focus();
+                break;
+            case 'F2':
+                e.preventDefault();
+                customerComboboxRef.current?.click();
+                break;
+            case 'F4':
+                e.preventDefault();
+                handleSaveDraft();
+                break;
+            case 'F6':
+                e.preventDefault();
+                setIsDraftsDialogOpen(true);
+                break;
+            case 'F9':
+                e.preventDefault();
+                if (activeCart && activeCart.items.length > 0) {
+                    paymentButtonRef.current?.click();
+                } else {
+                    toast.info("Le panier est vide. Impossible de finaliser la vente.");
+                }
+                break;
+        }
+    }, [activeCart, saveActiveCartAsDraft]);
+
+    useEffect(() => {
+        document.addEventListener('keydown', handleKeyDown);
+        return () => {
+            document.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [handleKeyDown]);
 
     if (isLoading || !activeCart) {
         return (
@@ -52,69 +118,80 @@ export default function SellPage() {
     }
 
     return (
-        <div className="h-screen flex flex-col p-4">
-             <div className="grid md:grid-cols-3 gap-4 flex-grow min-h-0">
-                {/* Main column */}
-                <div className="md:col-span-2 flex flex-col gap-4">
-                    <div className="flex flex-col sm:flex-row gap-4">
-                        <div className="flex-grow">
-                            <CartTabs
-                                carts={carts}
-                                activeCartId={activeCartId}
-                                onTabChange={setActiveCartId}
-                                onAddCart={addCart}
-                                onRemoveCart={removeCart}
-                            />
-                        </div>
-                        <div className="flex gap-2">
-                            <div className="w-full sm:w-64">
-                                <CustomerCombobox
-                                    customerId={activeCart.customerId}
-                                    onSelectCustomer={setCartCustomer}
+        <>
+            <div className="h-screen flex flex-col p-4">
+                <div className="grid md:grid-cols-3 gap-4 flex-grow min-h-0">
+                    {/* Main column */}
+                    <div className="md:col-span-2 flex flex-col gap-4">
+                        <div className="flex flex-col sm:flex-row gap-4">
+                            <div className="flex-grow">
+                                <CartTabs
+                                    carts={carts}
+                                    activeCartId={activeCartId}
+                                    onTabChange={setActiveCartId}
+                                    onAddCart={addCart}
+                                    onRemoveCart={removeCart}
                                 />
                             </div>
-                            <div className="md:hidden">
-                                <Sheet open={isProductSheetOpen} onOpenChange={setIsProductSheetOpen}>
-                                    <SheetTrigger asChild>
-                                        <Button variant="outline" className="w-full sm:w-auto h-full">
-                                            <PackageSearch className="mr-2 h-4 w-4" />
-                                            Produits
-                                        </Button>
-                                    </SheetTrigger>
-                                    <SheetContent side="right" className="p-0 w-full max-w-full sm:max-w-md">
-                                        <ProductSearch onProductSelect={handleProductSelected} />
-                                    </SheetContent>
-                                </Sheet>
+                            <div className="flex gap-2">
+                                <div className="w-full sm:w-64">
+                                    <CustomerCombobox
+                                        ref={customerComboboxRef}
+                                        customerId={activeCart.customerId}
+                                        onSelectCustomer={setCartCustomer}
+                                    />
+                                </div>
+                                <div className="md:hidden">
+                                    <Sheet open={isProductSheetOpen} onOpenChange={setIsProductSheetOpen}>
+                                        <SheetTrigger asChild>
+                                            <Button variant="outline" className="w-full sm:w-auto h-full">
+                                                <PackageSearch className="mr-2 h-4 w-4" />
+                                                Produits
+                                            </Button>
+                                        </SheetTrigger>
+                                        <SheetContent side="right" className="p-0 w-full max-w-full sm:max-w-md">
+                                            <ProductSearch ref={productSearchRef} onProductSelect={handleProductSelected} />
+                                        </SheetContent>
+                                    </Sheet>
+                                </div>
                             </div>
                         </div>
+
+                        <Card className="flex-grow flex flex-col min-h-0">
+                            <CartDisplay
+                                cart={activeCart}
+                                onQuantityChange={updateCartItemQuantity}
+                                onRemoveItem={removeCartItem}
+                            />
+                        </Card>
+
+                        <Card>
+                            <CardContent className="p-4 sm:p-6">
+                                <SaleActions
+                                    cart={activeCart}
+                                    onClearCart={clearCart}
+                                    onSetDiscount={setCartDiscount}
+                                    onSaveDraft={handleSaveDraft}
+                                    onOpenDrafts={() => setIsDraftsDialogOpen(true)}
+                                    ref={paymentButtonRef}
+                                />
+                            </CardContent>
+                        </Card>
                     </div>
 
-                    <Card className="flex-grow flex flex-col min-h-0">
-                        <CartDisplay
-                            cart={activeCart}
-                            onQuantityChange={updateCartItemQuantity}
-                            onRemoveItem={removeCartItem}
-                        />
-                    </Card>
-
-                    <Card>
-                        <CardContent className="p-4 sm:p-6">
-                            <SaleActions
-                                cart={activeCart}
-                                onClearCart={clearCart}
-                                onSetDiscount={setCartDiscount}
-                            />
-                        </CardContent>
-                    </Card>
-                </div>
-
-                {/* Right column (Product Search) */}
-                <div className="hidden md:flex md:flex-col">
-                    <Card className="h-full flex flex-col">
-                        <ProductSearch onProductSelect={handleProductSelected} />
-                    </Card>
+                    {/* Right column (Product Search) */}
+                    <div className="hidden md:flex md:flex-col">
+                        <Card className="h-full flex flex-col">
+                            <ProductSearch ref={productSearchRef} onProductSelect={handleProductSelected} />
+                        </Card>
+                    </div>
                 </div>
             </div>
-        </div>
+            <DraftsDialog 
+                isOpen={isDraftsDialogOpen}
+                onOpenChange={setIsDraftsDialogOpen}
+                onLoadDraft={handleLoadDraft}
+            />
+        </>
     );
 }
