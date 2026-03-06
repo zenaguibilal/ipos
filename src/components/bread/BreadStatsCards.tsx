@@ -8,12 +8,13 @@ import { useMemo } from 'react';
 import { Skeleton } from '../ui/skeleton';
 
 interface BreadStatsCardsProps {
-  orders: BreadOrder[];
+  orders: BreadOrder[] | undefined;
   isLoading: boolean;
 }
 
 export default function BreadStatsCards({ orders, isLoading }: BreadStatsCardsProps) {
     const stats = useMemo(() => {
+        if (!orders) return { totalOrdered: 0, totalDelivered: 0, totalRemaining: 0 };
         let totalOrdered = 0;
         let totalDelivered = 0;
 

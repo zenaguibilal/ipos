@@ -42,7 +42,7 @@ export default function BreadPage() {
     const [isFinalizing, setIsFinalizing] = useState(false);
 
     const companyProfile = useLiveQuery<CompanyProfile | undefined>(() => dataService.getCompanyProfile());
-    const orders = useLiveQuery(() => date ? dataService.getBreadOrdersForDate(date) : [], [dateString], []);
+    const orders = useLiveQuery(() => date ? dataService.getBreadOrdersForDate(date) : Promise.resolve([]), [dateString]);
     
     const isLoading = orders === undefined || companyProfile === undefined || !isMounted;
     const isPriceSet = !!companyProfile?.breadPrice && companyProfile.breadPrice > 0;
@@ -170,7 +170,7 @@ export default function BreadPage() {
                 <Button onClick={() => setDate(new Date())} variant="ghost" size="sm">Aujourd'hui</Button>
             </div>
 
-            {!isPriceSet && (
+            {!isPriceSet && !isLoading && (
                 <Alert variant="destructive">
                     <AlertTriangle className="h-4 w-4" />
                     <AlertTitle>Prix du pain non configuré !</AlertTitle>
@@ -180,11 +180,11 @@ export default function BreadPage() {
                 </Alert>
             )}
             
-            <BreadStatsCards orders={orders || []} isLoading={isLoading} />
+            <BreadStatsCards orders={orders} isLoading={isLoading} />
 
             <div className="flex flex-col sm:flex-row gap-2 justify-between items-center bg-card border rounded-lg p-3">
                 <div className="flex items-center gap-3">
-                    <Checkbox id="select-all" checked={!isLoading && orders.length > 0 && selectedIds.size === orders.length} onCheckedChange={handleToggleSelectAll} disabled={isLoading || orders.length === 0} />
+                    <Checkbox id="select-all" checked={!isLoading && orders.length > 0 && selectedIds.size === orders.length} onCheckedChange={handleToggleSelectAll} disabled={isLoading || !orders || orders.length === 0} />
                     <label htmlFor="select-all" className="text-sm font-medium">
                         {selectedIds.size > 0 ? `${selectedIds.size} sélectionné(s)` : "Tout sélectionner"}
                     </label>
