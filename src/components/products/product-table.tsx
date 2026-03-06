@@ -5,14 +5,15 @@ import type { Product, Supplier } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Edit, Trash2, AlertCircle, PackageX, CalendarClock } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, AlertCircle, PackageX, CalendarClock, AlertTriangle } from 'lucide-react';
 import Image from 'next/image';
 import placeholderImages from '@/lib/placeholder-images.json';
 import { cn, formatCurrency } from '@/lib/utils';
 import { Checkbox } from '../ui/checkbox';
 import { useMemo } from 'react';
-import { differenceInDays, format } from 'date-fns';
+import { differenceInDays, format, subDays } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 
 interface ProductTableProps {
     products: Product[];
@@ -75,6 +76,8 @@ export function ProductTable({ products, onEdit, onDelete, selectedProducts, onT
                             if (daysUntilExpiration <= 30) return { color: 'text-yellow-500', text: `Expire dans ${daysUntilExpiration} j` };
                             return { color: 'text-muted-foreground', text: format(expirationDate, 'dd/MM/yy', {locale: fr}) };
                         }, [product.dateExpiration]);
+                        
+                        const isPriceOld = product.dateMajPrix && differenceInDays(new Date(), new Date(product.dateMajPrix)) > 30;
 
                         return (
                             <TableRow key={product.id} data-state={selectedProducts.has(product.id!) ? "selected" : ""}>
@@ -124,7 +127,23 @@ export function ProductTable({ products, onEdit, onDelete, selectedProducts, onT
                                          <span className="text-xs text-muted-foreground">{product.unite}</span>
                                     </div>
                                 </TableCell>
-                                <TableCell className="text-right">{formatCurrency(product.purchasePrice)}</TableCell>
+                                <TableCell className="text-right">
+                                    <div className="flex items-center justify-end gap-1">
+                                        {isPriceOld && (
+                                            <TooltipProvider>
+                                                <Tooltip>
+                                                    <TooltipTrigger>
+                                                        <AlertTriangle className="h-3 w-3 text-yellow-500" />
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>
+                                                        <p>Prix d'achat non mis à jour depuis plus de 30 jours.</p>
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            </TooltipProvider>
+                                        )}
+                                        {formatCurrency(product.purchasePrice)}
+                                    </div>
+                                </TableCell>
                                 <TableCell className="text-right font-bold text-primary">{formatCurrency(product.price)}</TableCell>
                                 <TableCell className="text-right">
                                     <DropdownMenu>

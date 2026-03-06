@@ -1,9 +1,8 @@
 
-
 'use client';
 
 import { db, PosDatabase } from '@/lib/database';
-import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, DailyBreadOrder, BreadCustomer, BreadOrder, Notification, InventoryLog, CustomerWithSalesData, ImportAnalysis, DashboardData, StockIntakeItem, CartItem, TopProduct, TopCustomer, GlobalActivityItem, ProductImportAnalysis, ZakatData, CostingItem, Draft } from '@/lib/types';
+import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, DailyBreadOrder, BreadCustomer, BreadOrder, Notification, InventoryLog, CustomerWithSalesData, ImportAnalysis, DashboardData, StockIntakeItem, CartItem, TopProduct, TopCustomer, GlobalActivityItem, ProductImportAnalysis, ZakatData, CostingItem, Draft, SaleItem, Supplier } from '@/lib/types';
 import { initialData, type DB, type CollectionName } from './initial-data';
 import Dexie from 'dexie';
 import { startOfDay, endOfDay, format } from 'date-fns';
@@ -13,7 +12,7 @@ import { formatCurrency } from '@/lib/utils';
 type TableName = keyof Pick<PosDatabase, 
     'products' | 'customers' | 'sales' | 'payments' | 
     'stockIntakes' | 'returns' | 'breadCustomers' | 'dailyBreadOrders' | 'drafts' |
-    'companyProfile' | 'carts' | 'expenses' | 'settings' | 'notifications' | 'inventoryLogs'
+    'companyProfile' | 'carts' | 'expenses' | 'settings' | 'notifications' | 'inventoryLogs' | 'suppliers'
 >;
 
 class DataService {
@@ -221,7 +220,7 @@ class DataService {
       });
   }
 
-  async updateProduct(id: number, productData: Omit<Product, 'id'>): Promise<number> {
+  async updateProduct(id: number, productData: Partial<Omit<Product, 'id'>>): Promise<number> {
       return db.transaction('rw', db.products, db.inventoryLogs, async () => {
         const oldProduct = await db.products.get(id);
         if (!oldProduct) throw new Error("Produit non trouvé pour la mise à jour.");
@@ -231,7 +230,7 @@ class DataService {
         if (oldProduct.quantity !== productData.quantity) {
              await db.inventoryLogs.add({
                 productId: id,
-                change: productData.quantity - oldProduct.quantity,
+                change: (productData.quantity || 0) - oldProduct.quantity,
                 newQuantity: productData.quantity,
                 reason: 'manual_adjustment',
                 createdAt: new Date(),
@@ -258,17 +257,19 @@ class DataService {
   async getProducts(params: { 
     query?: string; 
     category?: string; 
+    supplierId?: number;
     stockStatus?: 'all' | 'in_stock' | 'low_stock' | 'out_of_stock';
     sortBy?: string;
   }): Promise<Product[]> {
-    const { query, category, stockStatus = 'all', sortBy = 'name_asc' } = params;
+    const { query, category, stockStatus = 'all', sortBy = 'name_asc', supplierId } = params;
 
-    let collection;
+    let collection: Dexie.Collection<Product, number> = db.products.toCollection();
 
     if (category) {
-      collection = db.products.where('category').equals(category);
-    } else {
-      collection = db.products.toCollection();
+      collection = collection.filter(p => p.category === category);
+    }
+    if (supplierId) {
+        collection = collection.filter(p => p.fournisseurId === supplierId);
     }
 
     let productsArray = await collection.toArray();
@@ -299,13 +300,21 @@ class DataService {
     const [sortField, sortOrder] = sortBy.split('_');
 
     productsArray.sort((a, b) => {
-        const valA = (a as any)[sortField];
-        const valB = (b as any)[sortField];
+        let valA = (a as any)[sortField];
+        let valB = (b as any)[sortField];
+        
+        // Handle undefined or null values, sorting them to the end
         if (valA === undefined || valA === null) return 1;
         if (valB === undefined || valB === null) return -1;
-        if (valA instanceof Date && valB instanceof Date) return valA.getTime() - valB.getTime();
-        if (typeof valA === 'string' && typeof valB === 'string') return valA.localeCompare(valB);
-        if (typeof valA === 'number' && typeof valB === 'number') return valA - valB;
+        
+        // Special handling for date fields
+        if (['dateExpiration', 'createdAt', 'updatedAt', 'dateMajPrix'].includes(sortField)) {
+            valA = new Date(valA).getTime();
+            valB = new Date(valB).getTime();
+        }
+
+        if (valA < valB) return -1;
+        if (valA > valB) return 1;
         return 0;
     });
 
@@ -321,6 +330,10 @@ class DataService {
   async getProductCategories(): Promise<string[]> {
     const keys = await db.products.orderBy('category').uniqueKeys();
     return keys.filter(k => k) as string[];
+  }
+  
+  async getSuppliers(): Promise<Supplier[]> {
+    return db.suppliers.orderBy('name').toArray();
   }
 
   // ====================================================================
@@ -407,7 +420,7 @@ class DataService {
     return db.sales.where('invoiceNumber').equals(invoiceNumber).first();
   }
 
-  async addSale(saleData: Omit<Sale, 'id' | 'invoiceNumber' | 'paymentStatus' | 'remainingBalance'>): Promise<number> {
+  async addSale(saleData: Omit<Sale, 'id' | 'invoiceNumber' | 'paymentStatus' | 'remainingBalance'> & { items: SaleItem[] }): Promise<number> {
     return db.transaction('rw', db.sales, db.products, db.customers, db.notifications, db.inventoryLogs, async () => {
         const { items, customerId, total, amountPaid } = saleData;
 
@@ -550,23 +563,38 @@ class DataService {
   // Stock Intake - All writes are transactional
   // ====================================================================
    async addStockIntake(intakeData: Omit<StockIntake, 'id' | 'items' | 'totalValue'>, items: StockIntakeItem[]): Promise<number> {
-        return db.transaction('rw', db.products, db.stockIntakes, db.inventoryLogs, async () => {
+        return db.transaction('rw', db.products, db.stockIntakes, db.inventoryLogs, db.suppliers, async () => {
+            
+            // Ensure supplier exists
+            const supplierName = intakeData.supplier;
+            let supplier = await db.suppliers.where('name').equalsIgnoreCase(supplierName).first();
+            if (!supplier) {
+                const supplierId = await db.suppliers.add({ name: supplierName });
+                supplier = { id: supplierId, name: supplierName };
+            }
+
             const totalValue = items.reduce((acc, item) => acc + item.purchasePrice * item.quantity, 0);
             const intakeId = await db.stockIntakes.add({ ...intakeData, totalValue, items: [] } as StockIntake);
             const persistedItems: StockIntake['items'] = [];
+
             for (const item of items) {
                 let productId: number | undefined = item.productId;
                 if (item.isNew) {
                     productId = await db.products.add({
                         name: item.name, category: item.category, price: item.price,
                         purchasePrice: item.purchasePrice, quantity: 0, minStockLevel: 10, barcodes: item.barcodes,
+                        fournisseurId: supplier.id
                     } as Product);
                 }
                 if (!productId) throw new Error(`ID de produit manquant pour ${item.name}`);
                 
                 const product = await db.products.get(productId);
                 const newQuantity = (product?.quantity || 0) + item.quantity;
-                await db.products.update(productId, { quantity: newQuantity, purchasePrice: item.purchasePrice });
+                await db.products.update(productId, { 
+                    quantity: newQuantity, 
+                    purchasePrice: item.purchasePrice,
+                    fournisseurId: supplier.id // Associate with supplier
+                });
                 
                 await db.inventoryLogs.add({
                     productId, change: item.quantity, newQuantity,
@@ -751,7 +779,7 @@ class DataService {
           if (!customer) continue;
           const total = profile.breadPrice * order.quantity;
           const saleId = await db.sales.add({
-              items: [{ id: 'bread-product', name: 'Pain', price: profile.breadPrice, purchasePrice: profile.breadPurchasePrice || 0, quantity: order.quantity }],
+              items: [{ id: 'bread-product', name: 'Pain', price: profile.breadPrice, purchasePrice: profile.breadPurchasePrice || 0, quantity: order.quantity, unite: 'Pièce' }],
               subtotal: total, total, amountPaid: total, remainingBalance: 0, paymentStatus: 'paid',
               payments: [{ method: 'cash', amount: total }], customerName: customer.name, breadOrderDate: dateString,
           } as Sale);
@@ -846,7 +874,7 @@ class DataService {
 
   async exportData(): Promise<string> {
     const data: Partial<DB> = {};
-    const tables: CollectionName[] = ['products', 'customers', 'sales', 'payments', 'stockIntakes', 'returns', 'breadCustomers', 'dailyBreadOrders', 'expenses', 'notifications', 'settings', 'inventoryLogs', 'drafts'];
+    const tables: CollectionName[] = ['products', 'customers', 'suppliers', 'sales', 'payments', 'stockIntakes', 'returns', 'breadCustomers', 'dailyBreadOrders', 'expenses', 'notifications', 'settings', 'inventoryLogs', 'drafts'];
     await db.transaction('r', ...db.tables, async () => {
         for (const tableName of tables) data[tableName] = await db.table(tableName).toArray();
         const profile = await db.companyProfile.get(1);
@@ -857,7 +885,7 @@ class DataService {
 
   async importData(jsonString: string): Promise<void> {
       const data: Partial<DB> = JSON.parse(jsonString);
-      const tables: (CollectionName | 'companyProfile' | 'drafts')[] = ['products', 'customers', 'sales', 'payments', 'stockIntakes', 'returns', 'breadCustomers', 'dailyBreadOrders', 'expenses', 'notifications', 'settings', 'inventoryLogs', 'companyProfile', 'drafts'];
+      const tables: (CollectionName | 'companyProfile' | 'drafts')[] = ['products', 'customers', 'suppliers', 'sales', 'payments', 'stockIntakes', 'returns', 'breadCustomers', 'dailyBreadOrders', 'expenses', 'notifications', 'settings', 'inventoryLogs', 'companyProfile', 'drafts'];
       return db.transaction('rw', ...db.tables, async () => {
           for (const tableName of tables) await db.table(tableName)?.clear();
           for (const tableName of tables) {
@@ -996,6 +1024,9 @@ class DataService {
 
     async exportProductsToCSV(): Promise<string> {
         const products = await db.products.toArray();
+        const suppliers = await db.suppliers.toArray();
+        const supplierMap = new Map(suppliers.map(s => [s.id, s.name]));
+
         const data = products.map(p => ({
             id: p.id,
             name: p.name,
@@ -1004,6 +1035,10 @@ class DataService {
             purchasePrice: p.purchasePrice,
             quantity: p.quantity,
             minStockLevel: p.minStockLevel,
+            unite: p.unite,
+            dateExpiration: p.dateExpiration ? format(p.dateExpiration, 'yyyy-MM-dd') : '',
+            fournisseur: p.fournisseurId ? supplierMap.get(p.fournisseurId) : '',
+            dateMajPrix: p.dateMajPrix ? format(p.dateMajPrix, 'yyyy-MM-dd') : '',
             barcodes: p.barcodes?.join(','),
             imageUrl: p.imageUrl,
         }));
