@@ -28,11 +28,11 @@ export const CustomerCombobox = React.forwardRef<HTMLButtonElement, CustomerComb
         if (!customers) return [WalkInCustomerOption];
 
         const options = customers.map(c => {
-            const creditLimitText = c.creditLimit ? `/ ${formatCurrency(c.creditLimit)}` : '';
+            const availableCredit = (c.creditLimit || 0) - c.outstandingBalance;
             return {
                 value: String(c.id!),
                 label: `${c.firstName} ${c.lastName}`,
-                subLabel: `Dette: ${formatCurrency(c.outstandingBalance)} ${creditLimitText}`,
+                subLabel: `Dette: ${formatCurrency(c.outstandingBalance)} | Disponible: ${formatCurrency(availableCredit)}`,
                 subLabelClassName: c.outstandingBalance > 0 ? 'text-destructive' : 'text-green-600',
             };
         });

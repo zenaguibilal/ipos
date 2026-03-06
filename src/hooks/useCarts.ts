@@ -55,14 +55,19 @@ export const useCarts = () => {
     }, [carts, setActiveCartId]);
 
     const removeCart = useCallback(async (cartId: string) => {
-        if (!carts || carts.length <= 1) {
-            toast.error("Vous ne pouvez pas supprimer le dernier panier.");
-            return;
-        }
-        const newCarts = carts.filter(c => c.id !== cartId);
+        if (!carts) return;
+        
         await dataService.deleteCart(cartId);
-        if (activeCartId === cartId) {
-            await setActiveCartId(newCarts[0]?.id || '');
+
+        if (carts.length === 1 && carts[0].id === cartId) {
+            // It was the last cart, create a new one
+            const newCart = createNewCart('Panier 1');
+            await dataService.saveCart(newCart);
+            await setActiveCartId(newCart.id);
+        } else if (activeCartId === cartId) {
+            // It was not the last cart, but it was active
+            const remainingCarts = carts.filter(c => c.id !== cartId);
+            await setActiveCartId(remainingCarts[0]?.id || '');
         }
     }, [carts, activeCartId, setActiveCartId]);
     
