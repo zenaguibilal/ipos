@@ -40,7 +40,7 @@ export default function BreadPage() {
     const breadCustomers = useLiveQuery(() => db.breadCustomers.where('isActive').equals(1).toArray(), []);
     const dailyOrders = useLiveQuery(() => db.dailyBreadOrders.where('date').equals(dateString).toArray(), [dateString]);
     const salesForDate = useLiveQuery(() => db.sales.where('breadOrderDate').equals(dateString).toArray(), [dateString]);
-    const companyProfile = useLiveQuery<CompanyProfile | undefined>(() => dataService.getCompanyProfile());
+    const companyProfile = useLiveQuery<CompanyProfile | undefined>(() => dataService.getCompanyProfile(), []);
 
     const isLoading = breadCustomers === undefined || dailyOrders === undefined || salesForDate === undefined || companyProfile === undefined;
 
