@@ -375,22 +375,62 @@ class DataService {
     }
 
     const today = new Date();
+    today.setHours(0, 0, 0, 0); 
+    
+    const unpaidSales = await db.sales.where('paymentStatus').notEqual('paid').toArray();
+    const unpaidSalesByCustomer = new Map<number, Sale[]>();
+    for (const sale of unpaidSales) {
+        if (sale.customerId) {
+            if (!unpaidSalesByCustomer.has(sale.customerId)) {
+                unpaidSalesByCustomer.set(sale.customerId, []);
+            }
+            unpaidSalesByCustomer.get(sale.customerId)!.push(sale);
+        }
+    }
 
     const customerWithData: CustomerWithSalesData[] = customers.map(c => {
         let debtStatus: CustomerWithSalesData['debtStatus'] = 'none';
-        if (c.outstandingBalance > 0 && c.settlementDay && c.lastActivityDate) {
-            const dueDate = new Date(c.lastActivityDate);
-            dueDate.setDate(dueDate.getDate() + c.settlementDay);
-            const daysDiff = (dueDate.getTime() - today.getTime()) / (1000 * 3600 * 24);
+        
+        if (c.outstandingBalance > 0) {
+            const customerSales = unpaidSalesByCustomer.get(c.id!);
+            let isOverdue = false;
+            let isDueSoon = false;
 
-            if (daysDiff < 0) debtStatus = 'overdue';
-            else if (daysDiff <= 7) debtStatus = 'due_soon';
-            else debtStatus = 'ok';
-        } else if (c.outstandingBalance > 0) {
-            debtStatus = 'ok';
+            if (customerSales) {
+                for (const sale of customerSales) {
+                    let dueDate: Date | null = null;
+                    if (sale.dueDate) {
+                        dueDate = new Date(sale.dueDate);
+                    } else if (c.settlementDay && sale.createdAt) {
+                        dueDate = new Date(sale.createdAt);
+                        dueDate.setDate(dueDate.getDate() + c.settlementDay);
+                    }
+                    
+                    if(dueDate) {
+                        dueDate.setHours(0,0,0,0);
+                        const daysDiff = (dueDate.getTime() - today.getTime()) / (1000 * 3600 * 24);
+
+                        if (daysDiff < 0) {
+                            isOverdue = true;
+                            break; 
+                        }
+                        if (daysDiff <= 7) {
+                            isDueSoon = true;
+                        }
+                    }
+                }
+            }
+            
+            if(isOverdue) {
+                debtStatus = 'overdue';
+            } else if (isDueSoon) {
+                debtStatus = 'due_soon';
+            } else {
+                debtStatus = 'ok';
+            }
         }
         
-        const isOverLimit = c.creditLimit != null ? c.outstandingBalance > c.creditLimit : false;
+        const isOverLimit = c.creditLimit != null && c.creditLimit > 0 ? c.outstandingBalance > c.creditLimit : false;
         
         return { ...c, id: c.id!, debtStatus, isOverLimit };
     });

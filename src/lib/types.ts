@@ -126,7 +126,7 @@ export interface Draft {
 export interface CustomerWithSalesData extends Customer {
     id: number; // Make id mandatory here
     debtStatus: 'ok' | 'due_soon' | 'overdue' | 'none';
-    isOverLimit?: boolean;
+    isOverLimit: boolean;
 }
 
 

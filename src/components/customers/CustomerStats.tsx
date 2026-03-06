@@ -18,7 +18,7 @@ export function CustomerStats({ customers, isLoading }: CustomerStatsProps) {
     }
     return {
       total: customers.length,
-      overdue: customers.filter(c => c.isReminderDue).length,
+      overdue: customers.filter(c => c.debtStatus === 'overdue').length,
       overLimit: customers.filter(c => c.isOverLimit).length,
     };
   }, [customers]);
