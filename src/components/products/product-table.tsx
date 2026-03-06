@@ -1,14 +1,18 @@
+
 'use client';
 
-import type { Product } from '@/lib/types';
+import type { Product, Supplier } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Edit, Trash2, AlertCircle, PackageX } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, AlertCircle, PackageX, CalendarClock } from 'lucide-react';
 import Image from 'next/image';
 import placeholderImages from '@/lib/placeholder-images.json';
 import { cn, formatCurrency } from '@/lib/utils';
 import { Checkbox } from '../ui/checkbox';
+import { useMemo } from 'react';
+import { differenceInDays, format } from 'date-fns';
+import { fr } from 'date-fns/locale';
 
 interface ProductTableProps {
     products: Product[];
@@ -17,6 +21,7 @@ interface ProductTableProps {
     selectedProducts: Set<number>;
     onToggleProductSelection: (productId: number) => void;
     onToggleSelectAll: () => void;
+    suppliers: Supplier[];
 }
 
 type Placeholder = { url: string; width: number; height: number; hint: string };
@@ -29,7 +34,9 @@ const getPlaceholder = (category?: string): Placeholder => {
     return placeholders.default;
 };
 
-export function ProductTable({ products, onEdit, onDelete, selectedProducts, onToggleProductSelection, onToggleSelectAll }: ProductTableProps) {
+export function ProductTable({ products, onEdit, onDelete, selectedProducts, onToggleProductSelection, onToggleSelectAll, suppliers }: ProductTableProps) {
+    const supplierMap = useMemo(() => new Map(suppliers.map(s => [s.id, s.name])), [suppliers]);
+
     return (
         <div className="rounded-md border">
             <Table>
@@ -46,6 +53,8 @@ export function ProductTable({ products, onEdit, onDelete, selectedProducts, onT
                         <TableHead className="w-[80px]">Image</TableHead>
                         <TableHead>Nom du Produit</TableHead>
                         <TableHead>Catégorie</TableHead>
+                        <TableHead>Fournisseur</TableHead>
+                        <TableHead>Date Exp.</TableHead>
                         <TableHead className="text-center">Stock</TableHead>
                         <TableHead className="text-right">Prix d'Achat</TableHead>
                         <TableHead className="text-right">Prix de Vente</TableHead>
@@ -56,6 +65,16 @@ export function ProductTable({ products, onEdit, onDelete, selectedProducts, onT
                     {products.map(product => {
                         const placeholder = getPlaceholder(product.category);
                         const imageUrl = product.imageUrl || placeholder.url;
+
+                        const expirationStatus = useMemo(() => {
+                            if (!product.dateExpiration) return null;
+                            const today = new Date();
+                            const expirationDate = new Date(product.dateExpiration);
+                            const daysUntilExpiration = differenceInDays(expirationDate, today);
+                            if (daysUntilExpiration < 0) return { color: 'text-destructive', text: `Expiré` };
+                            if (daysUntilExpiration <= 30) return { color: 'text-yellow-500', text: `Expire dans ${daysUntilExpiration} j` };
+                            return { color: 'text-muted-foreground', text: format(expirationDate, 'dd/MM/yy', {locale: fr}) };
+                        }, [product.dateExpiration]);
 
                         return (
                             <TableRow key={product.id} data-state={selectedProducts.has(product.id!) ? "selected" : ""}>
@@ -78,20 +97,32 @@ export function ProductTable({ products, onEdit, onDelete, selectedProducts, onT
                                 </TableCell>
                                 <TableCell className="font-medium">{product.name}</TableCell>
                                 <TableCell>{product.category || 'N/A'}</TableCell>
+                                <TableCell>{product.fournisseurId ? supplierMap.get(product.fournisseurId) : 'N/A'}</TableCell>
+                                <TableCell className={cn("text-xs font-semibold", expirationStatus?.color)}>
+                                    {expirationStatus ? (
+                                        <div className="flex items-center gap-1">
+                                            <CalendarClock className="h-3 w-3" />
+                                            {expirationStatus.text}
+                                        </div>
+                                    ) : 'N/A'}
+                                </TableCell>
                                 <TableCell className="text-center font-semibold">
-                                    {product.quantity <= 0 ? (
-                                        <div className="flex items-center justify-center gap-1 text-destructive">
-                                            <PackageX className="h-4 w-4" />
+                                    <div className="flex items-center justify-center gap-1">
+                                        {product.quantity <= 0 ? (
+                                            <div className="flex items-center justify-center gap-1 text-destructive">
+                                                <PackageX className="h-4 w-4" />
+                                                <span>{product.quantity}</span>
+                                            </div>
+                                        ) : product.quantity <= product.minStockLevel ? (
+                                            <div className="flex items-center justify-center gap-1 text-yellow-600 dark:text-yellow-500">
+                                                <AlertCircle className="h-4 w-4" />
+                                                <span>{product.quantity}</span>
+                                            </div>
+                                        ) : (
                                             <span>{product.quantity}</span>
-                                        </div>
-                                    ) : product.quantity <= product.minStockLevel ? (
-                                        <div className="flex items-center justify-center gap-1 text-yellow-600 dark:text-yellow-500">
-                                            <AlertCircle className="h-4 w-4" />
-                                            <span>{product.quantity}</span>
-                                        </div>
-                                    ) : (
-                                        <span>{product.quantity}</span>
-                                    )}
+                                        )}
+                                         <span className="text-xs text-muted-foreground">{product.unite}</span>
+                                    </div>
                                 </TableCell>
                                 <TableCell className="text-right">{formatCurrency(product.purchasePrice)}</TableCell>
                                 <TableCell className="text-right font-bold text-primary">{formatCurrency(product.price)}</TableCell>

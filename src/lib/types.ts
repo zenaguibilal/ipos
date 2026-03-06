@@ -10,8 +10,21 @@ export interface Product {
     minStockLevel: number;
     barcodes?: string[];
     imageUrl?: string;
+    unite?: 'Pièce' | 'Kg' | 'Litre' | 'Boîte' | 'Carton' | 'Sachet' | 'Bouteille';
+    dateExpiration?: Date;
+    fournisseurId?: number;
+    dateMajPrix?: Date;
     createdAt?: Date;
     updatedAt?: Date;
+}
+
+export interface Supplier {
+    id?: number;
+    name: string;
+    contactPerson?: string;
+    phone?: string;
+    email?: string;
+    address?: string;
 }
 
 export interface Customer {
@@ -35,6 +48,7 @@ export interface SaleItem {
     price: number;
     purchasePrice: number;
     quantity: number;
+    unite?: string;
 }
 
 // Represents an item in the live shopping cart

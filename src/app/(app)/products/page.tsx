@@ -5,10 +5,10 @@ import { useState, useMemo, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { dataService } from '@/services/data-service';
 import { useDebounce } from '@/hooks/useDebounce';
-import type { Product, ProductImportAnalysis } from '@/lib/types';
+import type { Product, ProductImportAnalysis, Supplier } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, LayoutGrid, List, Printer, Trash2, PackageCheck, PackageX, AlertTriangle, Archive, SortAsc, FileDown, FileUp } from 'lucide-react';
+import { Plus, Search, LayoutGrid, List, Printer, Trash2, PackageCheck, PackageX, AlertTriangle, Archive, SortAsc, FileDown, FileUp, Building } from 'lucide-react';
 import { ProductCard } from '@/components/products/product-card';
 import { ProductTable } from '@/components/products/product-table';
 import { ProductCardSkeleton } from '@/components/products/product-card-skeleton';
@@ -54,10 +54,13 @@ const sortOptions: { [key: string]: string } = {
     'createdAt_asc': 'Plus anciens',
 };
 
+const productCategories = ['Boissons', 'Conserves', 'Produits laitiers', 'Épicerie', 'Hygiène', 'Nettoyage', 'Surgelés', 'Autres'];
+
 
 export default function ProductsPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
+    const [selectedSupplier, setSelectedSupplier] = useState<string>('all');
     const [stockStatus, setStockStatus] = useState<StockStatus>('all');
     const [viewMode, setViewMode] = useState<ViewMode>('grid');
     const [sortBy, setSortBy] = useState('createdAt_desc');
@@ -80,21 +83,23 @@ export default function ProductsPage() {
         () => dataService.getProducts({ 
             query: debouncedSearchQuery, 
             category: selectedCategory === 'all' ? undefined : selectedCategory,
+            supplierId: selectedSupplier === 'all' ? undefined : parseInt(selectedSupplier),
             stockStatus: stockStatus,
             sortBy: sortBy,
         }),
-        [debouncedSearchQuery, selectedCategory, stockStatus, sortBy],
+        [debouncedSearchQuery, selectedCategory, selectedSupplier, stockStatus, sortBy],
         []
     );
     
     const categories = useLiveQuery(() => dataService.getProductCategories(), [], []);
+    const suppliers = useLiveQuery(() => dataService.getSuppliers(), [], []);
     
-    const isLoading = products === undefined || categories === undefined;
+    const isLoading = products === undefined || categories === undefined || suppliers === undefined;
 
     useEffect(() => {
         // Clear selection when filters change
         setSelectedProducts(new Set());
-    }, [debouncedSearchQuery, selectedCategory, stockStatus]);
+    }, [debouncedSearchQuery, selectedCategory, stockStatus, selectedSupplier]);
 
     const handleEditProduct = (product: Product) => {
         setSelectedProduct(product);
@@ -235,6 +240,7 @@ export default function ProductsPage() {
                 selectedProducts={selectedProducts}
                 onToggleProductSelection={handleToggleSelection}
                 onToggleSelectAll={handleToggleSelectAll}
+                suppliers={suppliers || []}
             />
         );
     }
@@ -293,6 +299,30 @@ export default function ProductsPage() {
                                 onCheckedChange={() => setSelectedCategory(cat)}
                             >{cat}</DropdownMenuCheckboxItem>
                          ))}
+                    </DropdownMenuContent>
+                </DropdownMenu>
+
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="outline" className="w-full sm:w-auto">
+                            <Building className="mr-2 h-4 w-4" />
+                            Filtrer par Fournisseur
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                        <DropdownMenuLabel>Fournisseurs</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuCheckboxItem
+                            checked={selectedSupplier === 'all'}
+                            onCheckedChange={() => setSelectedSupplier('all')}
+                        >Tous</DropdownMenuCheckboxItem>
+                        {suppliers?.map(sup => (
+                            <DropdownMenuCheckboxItem
+                                key={sup.id}
+                                checked={selectedSupplier === String(sup.id)}
+                                onCheckedChange={() => setSelectedSupplier(String(sup.id))}
+                            >{sup.name}</DropdownMenuCheckboxItem>
+                        ))}
                     </DropdownMenuContent>
                 </DropdownMenu>
 
@@ -380,6 +410,8 @@ export default function ProductsPage() {
                 isOpen={isProductDialogOpen}
                 onOpenChange={setIsProductDialogOpen}
                 product={selectedProduct}
+                categories={productCategories}
+                suppliers={suppliers || []}
             />
             <DeleteProductDialog 
                 isOpen={isDeleteDialogOpen}

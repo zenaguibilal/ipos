@@ -1,9 +1,10 @@
 import Dexie, { type Table } from 'dexie';
-import type { Product, Customer, Sale, Payment, StockIntake, ProductReturn, Cart, CompanyProfile, BreadCustomer, DailyBreadOrder, Expense, Setting, Notification, InventoryLog, Draft } from './types';
+import type { Product, Customer, Sale, Payment, StockIntake, ProductReturn, Cart, CompanyProfile, BreadCustomer, DailyBreadOrder, Expense, Setting, Notification, InventoryLog, Draft, Supplier } from './types';
 
 export class PosDatabase extends Dexie {
     products!: Table<Product, number>;
     customers!: Table<Customer, number>;
+    suppliers!: Table<Supplier, number>;
     sales!: Table<Sale, number>;
     payments!: Table<Payment, number>;
     stockIntakes!: Table<StockIntake, number>;
@@ -20,9 +21,10 @@ export class PosDatabase extends Dexie {
 
     constructor() {
         super('posDB');
-        this.version(23).stores({
-            products: '++id, name, *barcodes, category, price, quantity, [category+name]',
+        this.version(24).stores({
+            products: '++id, name, *barcodes, category, price, quantity, minStockLevel, fournisseurId, dateExpiration, [category+name]',
             customers: '++id, searchName, createdAt, lastName, firstName, [lastName+firstName], phone, outstandingBalance, lastActivityDate',
+            suppliers: '++id, &name',
             sales: '++id, &invoiceNumber, createdAt, customerId, customerName, paymentStatus, breadOrderDate, dueDate',
             payments: '++id, createdAt, customerId',
             stockIntakes: '++id, &invoiceNumber, supplier, createdAt',
@@ -36,14 +38,6 @@ export class PosDatabase extends Dexie {
             settings: '&id', // Key-value store for UI state and preferences
             notifications: '++id, createdAt, isRead, type, [type+isRead]',
             inventoryLogs: '++id, productId, createdAt, reason',
-        }).upgrade(tx => {
-            // Dexie upgrade functions are declarative of the target version structure.
-            // This is for version 22, ensuring searchName is populated. It runs if the client db version is < 22.
-            return tx.table('customers').toCollection().modify(customer => {
-                if (customer.firstName && customer.lastName && !customer.searchName) {
-                   customer.searchName = `${customer.firstName.toLowerCase()} ${customer.lastName.toLowerCase()}`;
-                }
-            });
         });
 
         // Hooks to add/update timestamps
@@ -81,6 +75,13 @@ export class PosDatabase extends Dexie {
                 if (typeof newFirstName === 'string' && typeof newLastName === 'string') {
                     (modifications as any).searchName = `${newFirstName.toLowerCase()} ${newLastName.toLowerCase()}`;
                 }
+            }
+        });
+
+        // Hook to update price update date
+        this.products.hook('updating', (modifications, primKey, obj, trans) => {
+            if (Object.hasOwn(modifications, 'purchasePrice') && (modifications as any).purchasePrice !== obj.purchasePrice) {
+                (modifications as any).dateMajPrix = new Date();
             }
         });
     }

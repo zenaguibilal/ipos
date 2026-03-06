@@ -1,20 +1,27 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogClose } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import type { Product } from '@/lib/types';
-import { Loader2, X } from 'lucide-react';
+import type { Product, Supplier } from '@/lib/types';
+import { Loader2, X, AlertTriangle } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { dataService } from '@/services/data-service';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { DatePicker } from '../ui/date-picker';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
+import { Combobox } from '../ui/combobox';
 
 interface ProductDialogProps {
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
     product: Product | null;
+    categories: string[];
+    suppliers: Supplier[];
 }
 
 const initialFormState = {
@@ -23,16 +30,23 @@ const initialFormState = {
     price: '',
     purchasePrice: '',
     quantity: '',
-    minStockLevel: '',
+    minStockLevel: '10',
     barcodes: [] as string[],
     imageUrl: '',
+    unite: 'Pièce' as Product['unite'],
+    dateExpiration: undefined as Date | undefined,
+    fournisseurId: undefined as number | undefined,
 };
 
-export function ProductDialog({ isOpen, onOpenChange, product }: ProductDialogProps) {
+const units: Product['unite'][] = ['Pièce', 'Kg', 'Litre', 'Boîte', 'Carton', 'Sachet', 'Bouteille'];
+
+export function ProductDialog({ isOpen, onOpenChange, product, categories, suppliers }: ProductDialogProps) {
     const [formState, setFormState] = useState(initialFormState);
     const [currentBarcode, setCurrentBarcode] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [priceWarning, setPriceWarning] = useState(false);
+    const [showPriceConfirm, setShowPriceConfirm] = useState(false);
 
     useEffect(() => {
         if (product && isOpen) {
@@ -45,11 +59,20 @@ export function ProductDialog({ isOpen, onOpenChange, product }: ProductDialogPr
                 minStockLevel: String(product.minStockLevel),
                 barcodes: product.barcodes || [],
                 imageUrl: product.imageUrl || '',
+                unite: product.unite || 'Pièce',
+                dateExpiration: product.dateExpiration ? new Date(product.dateExpiration) : undefined,
+                fournisseurId: product.fournisseurId,
             });
         } else if (!product && isOpen) {
             setFormState(initialFormState);
         }
     }, [product, isOpen]);
+    
+    useEffect(() => {
+        const purchasePriceNum = parseFloat(formState.purchasePrice);
+        const priceNum = parseFloat(formState.price);
+        setPriceWarning(priceNum < purchasePriceNum);
+    }, [formState.price, formState.purchasePrice]);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { id, value } = e.target;
@@ -67,12 +90,11 @@ export function ProductDialog({ isOpen, onOpenChange, product }: ProductDialogPr
         setFormState(prev => ({...prev, barcodes: prev.barcodes.filter(b => b !== barcodeToRemove)}));
     };
 
-    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
+    const proceedWithSubmit = async () => {
         setError(null);
         setIsLoading(true);
 
-        const { name, category, price, purchasePrice, quantity, minStockLevel, barcodes, imageUrl } = formState;
+        const { name, category, price, purchasePrice, quantity, minStockLevel, barcodes, imageUrl, unite, dateExpiration, fournisseurId } = formState;
 
         if (!name) {
             setError("Le nom du produit est requis.");
@@ -91,15 +113,9 @@ export function ProductDialog({ isOpen, onOpenChange, product }: ProductDialogPr
             return;
         }
         
-        const productData = {
-            name,
-            category,
-            price: priceNum,
-            purchasePrice: purchasePriceNum,
-            quantity: quantityNum,
-            minStockLevel: minStockNum,
-            barcodes,
-            imageUrl,
+        const productData: Omit<Product, 'id'> = {
+            name, category, price: priceNum, purchasePrice: purchasePriceNum, quantity: quantityNum,
+            minStockLevel: minStockNum, barcodes, imageUrl, unite, dateExpiration, fournisseurId,
         };
 
         try {
@@ -118,9 +134,21 @@ export function ProductDialog({ isOpen, onOpenChange, product }: ProductDialogPr
         } finally {
             setIsLoading(false);
         }
+    }
+
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        if (priceWarning) {
+            setShowPriceConfirm(true);
+        } else {
+            await proceedWithSubmit();
+        }
     };
+    
+    const supplierOptions = suppliers.map(s => ({ value: String(s.id), label: s.name }));
 
     return (
+        <>
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-2xl">
                 <form onSubmit={handleSubmit}>
@@ -139,7 +167,12 @@ export function ProductDialog({ isOpen, onOpenChange, product }: ProductDialogPr
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="category">Catégorie</Label>
-                                <Input id="category" value={formState.category} onChange={handleInputChange} />
+                                <Select value={formState.category} onValueChange={(value) => setFormState(s => ({ ...s, category: value }))}>
+                                    <SelectTrigger id="category"><SelectValue placeholder="Sélectionner..." /></SelectTrigger>
+                                    <SelectContent>
+                                        {categories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
                             </div>
                         </div>
                         <div className="grid md:grid-cols-2 gap-4">
@@ -147,9 +180,15 @@ export function ProductDialog({ isOpen, onOpenChange, product }: ProductDialogPr
                                 <Label htmlFor="purchasePrice">Prix d'achat (DA)</Label>
                                 <Input id="purchasePrice" type="number" step="0.1" value={formState.purchasePrice} onChange={handleInputChange} required />
                             </div>
-                             <div className="space-y-2">
+                             <div className="space-y-2 relative">
                                 <Label htmlFor="price">Prix de vente (DA)</Label>
                                 <Input id="price" type="number" step="0.1" value={formState.price} onChange={handleInputChange} required />
+                                {priceWarning && (
+                                    <p className="text-xs text-destructive flex items-center gap-1 mt-1">
+                                        <AlertTriangle className="h-3 w-3"/>
+                                        Le prix de vente est inférieur au prix d'achat.
+                                    </p>
+                                )}
                             </div>
                         </div>
                          <div className="grid md:grid-cols-2 gap-4">
@@ -161,6 +200,32 @@ export function ProductDialog({ isOpen, onOpenChange, product }: ProductDialogPr
                                 <Label htmlFor="minStockLevel">Niveau de stock minimum</Label>
                                 <Input id="minStockLevel" type="number" value={formState.minStockLevel} onChange={handleInputChange} required />
                             </div>
+                        </div>
+                         <div className="grid md:grid-cols-2 gap-4">
+                             <div className="space-y-2">
+                                <Label htmlFor="unite">Unité</Label>
+                                <Select value={formState.unite} onValueChange={(value) => setFormState(s => ({ ...s, unite: value as Product['unite'] }))}>
+                                    <SelectTrigger id="unite"><SelectValue placeholder="Sélectionner..." /></SelectTrigger>
+                                    <SelectContent>
+                                        {units.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                             <div className="space-y-2">
+                                <Label>Date d'expiration (Optionnel)</Label>
+                                <DatePicker date={formState.dateExpiration} setDate={(date) => setFormState(s => ({...s, dateExpiration: date }))}/>
+                            </div>
+                        </div>
+                         <div className="space-y-2">
+                            <Label>Fournisseur (Optionnel)</Label>
+                             <Combobox
+                                options={supplierOptions}
+                                value={formState.fournisseurId ? String(formState.fournisseurId) : ''}
+                                onSelect={(value) => setFormState(s => ({ ...s, fournisseurId: value ? parseInt(value) : undefined }))}
+                                placeholder="Sélectionner un fournisseur..."
+                                searchPlaceholder="Rechercher..."
+                                notFoundMessage="Aucun fournisseur trouvé."
+                            />
                         </div>
                          <div className="space-y-2">
                             <Label htmlFor="barcodes">Codes-barres</Label>
@@ -199,5 +264,20 @@ export function ProductDialog({ isOpen, onOpenChange, product }: ProductDialogPr
                 </form>
             </DialogContent>
         </Dialog>
+         <AlertDialog open={showPriceConfirm} onOpenChange={setShowPriceConfirm}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle className="flex items-center gap-2"><AlertTriangle className="text-destructive"/>Vente à perte potentielle</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        Le prix de vente que vous avez saisi est inférieur au prix d'achat. Êtes-vous sûr de vouloir continuer ?
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>Modifier le prix</AlertDialogCancel>
+                    <AlertDialogAction onClick={proceedWithSubmit} className="bg-destructive hover:bg-destructive/80">Continuer quand même</AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+        </>
     );
 }
