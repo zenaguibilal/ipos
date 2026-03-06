@@ -36,25 +36,23 @@ export default function BreadPage() {
     const [isUpdating, setIsUpdating] = useState<Record<number, boolean>>({});
     const [isFinalizing, setIsFinalizing] = useState(false);
 
+    // Refactored data fetching for improved stability
+    const breadCustomers = useLiveQuery(() => db.breadCustomers.where('isActive').equals(1).toArray(), []);
+    const dailyOrders = useLiveQuery(() => db.dailyBreadOrders.where('date').equals(dateString).toArray(), [dateString]);
+    const salesForDate = useLiveQuery(() => db.sales.where('breadOrderDate').equals(dateString).toArray(), [dateString]);
     const companyProfile = useLiveQuery<CompanyProfile | undefined>(() => dataService.getCompanyProfile());
-    
-    const pageData = useLiveQuery(async () => {
-        const [customers, dailyOrders, sales] = await Promise.all([
-            db.breadCustomers.where('isActive').equals(1).toArray(),
-            db.dailyBreadOrders.where('date').equals(dateString).toArray(),
-            db.sales.where('breadOrderDate').equals(dateString).toArray()
-        ]);
-        return { customers, dailyOrders, sales };
-    }, [dateString]);
+
+    const isLoading = breadCustomers === undefined || dailyOrders === undefined || salesForDate === undefined || companyProfile === undefined;
 
     const orders = useMemo<BreadOrder[] | undefined>(() => {
-        if (!pageData) return undefined;
+        if (isLoading || !breadCustomers || !dailyOrders || !salesForDate) {
+            return undefined;
+        }
 
-        const { customers, dailyOrders, sales } = pageData;
         const ordersMap = new Map(dailyOrders.map(o => [o.breadCustomerId, o]));
-        const salesMap = new Map(sales.filter(s => s.id !== undefined).map(s => [s.id!, s]));
+        const salesMap = new Map(salesForDate.filter(s => s.id !== undefined).map(s => [s.id!, s]));
 
-        return customers.map(customer => {
+        return breadCustomers.map(customer => {
             const todaysOrder = ordersMap.get(customer.id!);
             let finalOrder: (DailyBreadOrder & { saleId?: number }) | undefined = undefined;
             if (todaysOrder) {
@@ -64,9 +62,7 @@ export default function BreadPage() {
             return { ...customer, id: customer.id!, todaysOrder: finalOrder };
         }).sort((a,b) => a.name.localeCompare(b.name));
 
-    }, [pageData]);
-
-    const isLoading = orders === undefined || companyProfile === undefined;
+    }, [breadCustomers, dailyOrders, salesForDate, isLoading]);
 
     const printRef = useRef<HTMLDivElement>(null);
     const handlePrint = useReactToPrint({
