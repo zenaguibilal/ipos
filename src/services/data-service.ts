@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { db, PosDatabase } from '@/lib/database';
@@ -518,12 +519,19 @@ class DataService {
 
   async saveDraft(cart: Cart, notes?: string): Promise<number> {
     return db.transaction('rw', db.drafts, () => {
+        const subtotal = cart.items.reduce((acc, item) => acc + item.price * item.cartQuantity, 0);
+        const discountAmount = cart.discount.type === 'percentage'
+            ? (subtotal * cart.discount.value) / 100
+            : cart.discount.value;
+        const total = subtotal - discountAmount;
+
         const draft: Omit<Draft, 'id'> = {
             date: new Date(),
             customerId: cart.customerId,
             customerName: cart.customerName,
             items: cart.items,
-            total: cart.items.reduce((acc, item) => acc + item.price * item.cartQuantity, 0),
+            discount: cart.discount,
+            total,
             notes,
         };
         return db.drafts.add(draft as Draft);

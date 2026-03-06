@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
@@ -65,7 +66,8 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, onSaleFinalized }: P
     const change = (paymentMode === 'cash' || paymentMode === 'card' || paymentMode === 'other') ? cashAmountNum - total : 0;
     const debtFromThisSale = paymentMode === 'credit' ? total : (paymentMode === 'mixed' ? creditAmountNum : 0);
     const newTotalOutstanding = (customer?.outstandingBalance ?? 0) + debtFromThisSale;
-    const creditUsage = customer?.creditLimit ? (newTotalOutstanding / customer.creditLimit) * 100 : 0;
+    const creditAvailable = (customer?.creditLimit ?? 0) - (customer?.outstandingBalance ?? 0);
+    const creditUsage = customer?.creditLimit && customer.creditLimit > 0 ? (newTotalOutstanding / customer.creditLimit) * 100 : 0;
 
     useEffect(() => {
         if (isOpen) {
@@ -221,7 +223,7 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, onSaleFinalized }: P
                                             <p className="text-xs">Solde actuel</p>
                                         </div>
                                         <div>
-                                            <p className="font-semibold">{customer.creditLimit ? formatCurrency(customer.creditLimit) : 'Aucune'}</p>
+                                            <p className="font-semibold">{customer.creditLimit ? formatCurrency(customer.creditLimit) : 'N/A'}</p>
                                             <p className="text-xs">Plafond de crédit</p>
                                         </div>
                                     </div>
@@ -263,18 +265,18 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, onSaleFinalized }: P
                                     </div>
                                 )}
 
-                                {(paymentMode === 'credit' || paymentMode === 'mixed') && (
+                                {(paymentMode === 'credit' || paymentMode === 'mixed') && customer && (
                                     <>
                                         <Separator />
                                         <div className="space-y-2">
                                             <Label>Date d'échéance (optionnel)</Label>
                                             <DatePicker date={dueDate} setDate={setDueDate}/>
                                         </div>
-                                         <div className="text-center py-2 luxury-glass border-amber-500/20 space-y-1">
+                                         <div className={cn("text-center py-2 luxury-glass border", creditUsage > 90 ? "border-destructive/30" : "border-amber-500/20")}>
                                             <Label>NOUVEAU SOLDE CLIENT</Label>
-                                            <p className="text-2xl font-bold text-amber-400">{formatCurrency(newTotalOutstanding)}</p>
+                                            <p className={cn("text-2xl font-bold", creditUsage > 90 ? "text-destructive" : "text-amber-400")}>{formatCurrency(newTotalOutstanding)}</p>
                                             <p className="text-xs text-muted-foreground">
-                                                (Actuel: {formatCurrency(customer?.outstandingBalance ?? 0)} + Crédit: {formatCurrency(debtFromThisSale)})
+                                               (Disponible: {formatCurrency(creditAvailable - debtFromThisSale)})
                                             </p>
                                         </div>
                                     </>

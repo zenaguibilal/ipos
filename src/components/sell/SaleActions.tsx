@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState } from 'react';
@@ -28,9 +29,10 @@ interface SaleActionsProps {
     onSetDiscount: (discount: { type: 'fixed' | 'percentage'; value: number }) => void;
     onSaveDraft: () => void;
     onOpenDrafts: () => void;
+    onSaleFinalized: () => void;
 }
 
-export const SaleActions = React.forwardRef<HTMLButtonElement, SaleActionsProps>(({ cart, onClearCart, onSetDiscount, onSaveDraft, onOpenDrafts }, ref) => {
+export const SaleActions = React.forwardRef<HTMLButtonElement, SaleActionsProps>(({ cart, onClearCart, onSetDiscount, onSaveDraft, onOpenDrafts, onSaleFinalized }, ref) => {
     const [isPaymentOpen, setIsPaymentOpen] = useState(false);
     
     const subtotal = cart.items.reduce((acc, item) => acc + item.price * item.cartQuantity, 0);
@@ -45,18 +47,13 @@ export const SaleActions = React.forwardRef<HTMLButtonElement, SaleActionsProps>
     
     const total = Math.max(0, subtotal - discountAmount);
 
-
-    const handleSaleFinalized = () => {
-        onClearCart();
-    }
-
     return (
         <>
             <PaymentDialog 
                 isOpen={isPaymentOpen}
                 onOpenChange={setIsPaymentOpen}
                 cart={cart}
-                onSaleFinalized={handleSaleFinalized}
+                onSaleFinalized={onSaleFinalized}
             />
              <div className="space-y-4">
                 <div className="flex justify-between items-center text-lg">

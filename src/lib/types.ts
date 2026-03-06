@@ -1,4 +1,5 @@
 
+
 export interface Product {
     id?: number | string; // string for custom products
     name: string;
@@ -98,6 +99,10 @@ export interface Draft {
   items: CartItem[];
   total: number;
   notes?: string;
+  discount: {
+      type: 'fixed' | 'percentage';
+      value: number;
+  };
 }
 
 

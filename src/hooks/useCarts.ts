@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useEffect, useCallback } from 'react';
@@ -117,7 +118,7 @@ export const useCarts = () => {
     }, [activeCart]);
     
     const loadDraftToCart = useCallback(async (draftId: number) => {
-        if (!activeCartId) return;
+        if (!activeCartId || !activeCart) return;
         const draft = await dataService.getById<Draft>('drafts', draftId);
         if (!draft) {
             toast.error("Brouillon non trouvé.");
@@ -129,6 +130,7 @@ export const useCarts = () => {
             items: draft.items,
             customerId: draft.customerId,
             customerName: draft.customerName,
+            discount: draft.discount,
         };
 
         await dataService.saveCart(updatedCart as Cart);

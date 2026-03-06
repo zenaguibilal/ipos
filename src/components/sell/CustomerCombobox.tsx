@@ -1,3 +1,5 @@
+
+
 'use client';
 
 import React, { useMemo } from 'react';
@@ -26,10 +28,11 @@ export const CustomerCombobox = React.forwardRef<HTMLButtonElement, CustomerComb
         if (!customers) return [WalkInCustomerOption];
 
         const options = customers.map(c => {
+            const creditLimitText = c.creditLimit ? `/ ${formatCurrency(c.creditLimit)}` : '';
             return {
                 value: String(c.id!),
                 label: `${c.firstName} ${c.lastName}`,
-                subLabel: `Dette: ${formatCurrency(c.outstandingBalance)}`,
+                subLabel: `Dette: ${formatCurrency(c.outstandingBalance)} ${creditLimitText}`,
                 subLabelClassName: c.outstandingBalance > 0 ? 'text-destructive' : 'text-green-600',
             };
         });

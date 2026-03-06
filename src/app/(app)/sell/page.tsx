@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { CartDisplay } from '@/components/sell/CartDisplay';
@@ -60,11 +61,18 @@ export default function SellPage() {
         setIsDraftsDialogOpen(false);
     };
 
+    const handleSaleFinalized = useCallback(() => {
+        if (activeCartId) {
+            removeCart(activeCartId);
+        }
+    }, [activeCartId, removeCart]);
+
     const handleKeyDown = useCallback((e: KeyboardEvent) => {
         if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
 
         switch (e.key) {
             case 'F1':
+            case 'F3':
                 e.preventDefault();
                 productSearchRef.current?.focus();
                 break;
@@ -89,7 +97,7 @@ export default function SellPage() {
                 }
                 break;
         }
-    }, [activeCart, saveActiveCartAsDraft]);
+    }, [activeCart, handleSaveDraft]);
 
     useEffect(() => {
         document.addEventListener('keydown', handleKeyDown);
@@ -174,6 +182,7 @@ export default function SellPage() {
                                     onSetDiscount={setCartDiscount}
                                     onSaveDraft={handleSaveDraft}
                                     onOpenDrafts={() => setIsDraftsDialogOpen(true)}
+                                    onSaleFinalized={handleSaleFinalized}
                                     ref={paymentButtonRef}
                                 />
                             </CardContent>
