@@ -230,13 +230,6 @@ export interface BreadCustomer {
     updatedAt?: Date;
 }
 
-// Represents the order information for a customer on a given day
-export interface BreadOrder extends BreadCustomer {
-    id: number;
-    todaysOrder?: DailyBreadOrder & { saleId?: number };
-}
-
-
 export interface DailyBreadOrder {
     id?: number;
     breadCustomerId: number;
@@ -249,6 +242,15 @@ export interface DailyBreadOrder {
     isPaid: boolean;
     isDelivered: boolean;
 }
+
+// Represents the order information for a customer on a given day
+export interface BreadOrder extends BreadCustomer {
+    id: number;
+    todaysOrder?: DailyBreadOrder & { saleId?: number };
+}
+
+
+
 
 export type ExpenseCategory = 'Loyer' | 'Salaires' | 'Fournisseurs' | 'Services Publics' | 'Marketing' | 'Maintenance' | 'Autre';
 

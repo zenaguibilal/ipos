@@ -3,10 +3,11 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { dataService } from '@/services/data-service';
+import { db } from '@/lib/database';
 import { useReactToPrint } from 'react-to-print';
 import { format, addDays, subDays } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import type { BreadOrder, CompanyProfile } from '@/lib/types';
+import type { BreadOrder, CompanyProfile, DailyBreadOrder, Sale } from '@/lib/types';
 
 import { Button } from '@/components/ui/button';
 import { Plus, Printer, Check, ChevronLeft, ChevronRight, Loader2, AlertTriangle } from 'lucide-react';
@@ -43,11 +44,38 @@ export default function BreadPage() {
 
     const companyProfile = useLiveQuery<CompanyProfile | undefined>(() => dataService.getCompanyProfile());
     
-    const orders = useLiveQuery(async () => {
-        if (!date) return [];
-        return dataService.getBreadOrdersForDate(date);
-    }, [date]);
+    const todaysOrders = useLiveQuery(() => {
+        if (!dateString) return [];
+        return db.dailyBreadOrders.where('date').equals(dateString).toArray();
+    }, [dateString]);
+
+    const allCustomers = useLiveQuery(() => db.breadCustomers.where('isActive').equals(1).toArray(), []);
     
+    const salesForDate = useLiveQuery(() => {
+        if (!dateString) return [];
+        return db.sales.where('breadOrderDate').equals(dateString).toArray();
+    }, [dateString]);
+
+    const orders = useMemo<BreadOrder[] | undefined>(() => {
+        if (allCustomers === undefined || todaysOrders === undefined || salesForDate === undefined) {
+            return undefined;
+        }
+
+        const ordersMap = new Map(todaysOrders.map(o => [o.breadCustomerId, o]));
+        const salesMap = new Map(salesForDate.map(s => [s.id, s]).filter(s => s[0] !== undefined) as [number, Sale][]);
+
+        return allCustomers.map(customer => {
+            const todaysOrder = ordersMap.get(customer.id!);
+            let finalOrder: (DailyBreadOrder & { saleId?: number }) | undefined = undefined;
+            if (todaysOrder) {
+                const sale = todaysOrder.saleId ? salesMap.get(todaysOrder.saleId) : undefined;
+                finalOrder = { ...todaysOrder, saleId: sale?.id };
+            }
+            return { ...customer, id: customer.id!, todaysOrder: finalOrder };
+        }).sort((a,b) => a.name.localeCompare(b.name));
+
+    }, [allCustomers, todaysOrders, salesForDate]);
+
     const isLoading = orders === undefined || companyProfile === undefined || !isMounted;
 
     const printRef = useRef<HTMLDivElement>(null);
