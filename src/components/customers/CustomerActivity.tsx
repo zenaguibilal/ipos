@@ -6,7 +6,7 @@ import { Timeline, TimelineItem, TimelineConnector, TimelineHeader, TimelineIcon
 import { safeToDate, formatCurrency } from '@/lib/utils';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { HandCoins, ShoppingBag, Receipt, Truck, Undo2 } from 'lucide-react';
+import { HandCoins, ShoppingBag, Receipt, Undo2 } from 'lucide-react';
 
 type ActivityItem = Sale | Payment | ProductReturn;
 
@@ -44,8 +44,8 @@ export function CustomerActivity({ activity, onSaleClick, onReturnClick }: Custo
         const formattedDate = format(activityDate, 'd MMM yyyy, HH:mm', { locale: fr });
         
         if (isSale(item)) {
-           const Icon = item.breadOrderDate ? Truck : ShoppingBag;
-           const title = item.breadOrderDate ? `Commande de pain` : `Achat - Facture #${item.invoiceNumber}`;
+           const Icon = ShoppingBag;
+           const title = `Achat - Facture #${item.invoiceNumber}`;
           return (
             <TimelineItem key={`sale-${item.id}`}>
               {!isLast && <TimelineConnector />}

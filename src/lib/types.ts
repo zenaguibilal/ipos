@@ -93,7 +93,6 @@ export interface Sale {
     customerName?: string;
     createdAt?: Date;
     updatedAt?: Date;
-    breadOrderDate?: string;
     dueDate?: Date;
 }
 
@@ -164,8 +163,6 @@ export interface CompanyProfile {
     rcNumber?: string;
     syncUrl?: string;
     lastSyncDate?: string;
-    breadPrice?: number;
-    breadPurchasePrice?: number;
     goldPricePerGram?: number;
     updatedAt?: Date;
 }
@@ -220,37 +217,6 @@ export interface ProductReturn {
     updatedAt?: Date;
     notes?: string;
 }
-
-export interface BreadCustomer {
-    id?: number;
-    name: string;
-    isActive: boolean;
-    defaultOrderQuantity: number;
-    createdAt?: Date;
-    updatedAt?: Date;
-}
-
-export interface DailyBreadOrder {
-    id?: number;
-    breadCustomerId: number;
-    customerName: string;
-    quantity: number;
-    date: string; // YYYY-MM-DD
-    createdAt?: Date;
-    updatedAt?: Date;
-    saleId?: number;
-    isPaid: boolean;
-    isDelivered: boolean;
-}
-
-// Represents the order information for a customer on a given day
-export interface BreadOrder extends BreadCustomer {
-    id: number;
-    todaysOrder?: DailyBreadOrder & { saleId?: number };
-}
-
-
-
 
 export type ExpenseCategory = 'Loyer' | 'Salaires' | 'Fournisseurs' | 'Services Publics' | 'Marketing' | 'Maintenance' | 'Autre';
 

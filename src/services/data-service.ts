@@ -2,7 +2,7 @@
 'use client';
 
 import { db, PosDatabase } from '@/lib/database';
-import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, DailyBreadOrder, BreadCustomer, BreadOrder, Notification, InventoryLog, CustomerWithSalesData, ImportAnalysis, DashboardData, StockIntakeItem, CartItem, TopProduct, TopCustomer, GlobalActivityItem, ProductImportAnalysis, ZakatData, CostingItem, Draft, SaleItem, Supplier } from '@/lib/types';
+import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, Notification, InventoryLog, CustomerWithSalesData, ImportAnalysis, DashboardData, StockIntakeItem, CartItem, TopProduct, TopCustomer, GlobalActivityItem, ProductImportAnalysis, ZakatData, CostingItem, Draft, SaleItem, Supplier } from '@/lib/types';
 import { initialData, type DB, type CollectionName } from './initial-data';
 import Dexie from 'dexie';
 import { startOfDay, endOfDay, format } from 'date-fns';
@@ -11,7 +11,7 @@ import { formatCurrency } from '@/lib/utils';
 
 type TableName = keyof Pick<PosDatabase, 
     'products' | 'customers' | 'sales' | 'payments' | 
-    'stockIntakes' | 'returns' | 'breadCustomers' | 'dailyBreadOrders' | 'drafts' |
+    'stockIntakes' | 'returns' | 'drafts' |
     'companyProfile' | 'carts' | 'expenses' | 'settings' | 'notifications' | 'inventoryLogs' | 'suppliers'
 >;
 
@@ -825,90 +825,6 @@ class DataService {
         });
     }
 
-  async addBreadCustomer(customer: Omit<BreadCustomer, 'id' | 'createdAt' | 'updatedAt' | 'isActive'>): Promise<number> {
-    return db.transaction('rw', db.breadCustomers, () => db.breadCustomers.add({ ...customer, isActive: true } as BreadCustomer));
-  }
-
-  async deleteBreadCustomer(customerId: number): Promise<void> {
-    return db.transaction('rw', db.breadCustomers, db.dailyBreadOrders, db.sales, async () => {
-      const orders = await db.dailyBreadOrders.where({ breadCustomerId: customerId }).toArray();
-      const saleIdsToDelete = orders.map(o => o.saleId).filter((id): id is number => !!id);
-      if (saleIdsToDelete.length > 0) await db.sales.bulkDelete(saleIdsToDelete);
-      await db.dailyBreadOrders.where({ breadCustomerId: customerId }).delete();
-      await db.breadCustomers.delete(customerId);
-    });
-  }
-
-  async getBreadOrdersForDate(date: Date): Promise<BreadOrder[]> {
-    const dateString = format(date, 'yyyy-MM-dd');
-    const customers = await db.breadCustomers.where('isActive').equals(1).toArray();
-    const todaysOrders = await db.dailyBreadOrders.where('date').equals(dateString).toArray();
-    const sales = await db.sales.where('breadOrderDate').equals(dateString).toArray();
-    const ordersMap = new Map(todaysOrders.map(o => [o.breadCustomerId, o]));
-    return customers.map(customer => {
-      const todaysOrder = ordersMap.get(customer.id!);
-      let finalOrder: (DailyBreadOrder & { saleId?: number }) | undefined = undefined;
-      if (todaysOrder) {
-          const sale = sales.find(s => s.id === todaysOrder.saleId);
-          finalOrder = { ...todaysOrder, saleId: sale?.id };
-      }
-      return { ...customer, id: customer.id!, todaysOrder: finalOrder };
-    }).sort((a,b) => a.name.localeCompare(b.name));
-  }
-  
-  async updateDailyBreadOrderQuantity(order: BreadOrder, newQuantity: number, dateString: string): Promise<number> {
-    return db.transaction('rw', db.dailyBreadOrders, async () => {
-      const existingOrder = await db.dailyBreadOrders.where('[breadCustomerId+date]').equals([order.id, dateString]).first();
-      if (existingOrder) {
-        if(newQuantity === order.defaultOrderQuantity) return db.dailyBreadOrders.delete(existingOrder.id!);
-        return db.dailyBreadOrders.update(existingOrder.id!, { quantity: newQuantity });
-      } else {
-        return db.dailyBreadOrders.add({
-          breadCustomerId: order.id, customerName: order.name, quantity: newQuantity, date: dateString, isPaid: false, isDelivered: false
-        } as DailyBreadOrder);
-      }
-    });
-  }
-
-  async updateOrderStatus(orderId: number, dateString: string, field: 'isPaid' | 'isDelivered', value: boolean): Promise<number> {
-      return db.transaction('rw', db.dailyBreadOrders, async () => {
-          const order = await db.breadCustomers.get(orderId);
-          if (!order) throw new Error("Client non trouvé");
-          const existingOrder = await db.dailyBreadOrders.where('[breadCustomerId+date]').equals([orderId, dateString]).first();
-          if(existingOrder) {
-              return db.dailyBreadOrders.update(existingOrder.id!, { [field]: value });
-          } else {
-              return db.dailyBreadOrders.add({
-                  breadCustomerId: orderId, customerName: order.name, quantity: order.defaultOrderQuantity, date: dateString,
-                  isPaid: field === 'isPaid' ? value : false, isDelivered: field === 'isDelivered' ? value : false,
-              } as DailyBreadOrder);
-          }
-      });
-  }
-
-  async finalizeBreadSales(breadCustomerIds: number[], dateString: string): Promise<{ count: number }> {
-    return db.transaction('rw', db.sales, db.dailyBreadOrders, db.companyProfile, db.products, db.inventoryLogs, async () => {
-      const profile = await db.companyProfile.get(1);
-      if (!profile?.breadPrice || profile.breadPrice <= 0) throw new Error("Le prix du pain n'est pas configuré.");
-      const ordersToProcess = await db.dailyBreadOrders.where('date').equals(dateString).and(order => breadCustomerIds.includes(order.breadCustomerId) && !order.saleId).toArray();
-      const customersMap = new Map((await db.breadCustomers.where('id').anyOf(ordersToProcess.map(o => o.breadCustomerId)).toArray()).map(c => [c.id!, c]));
-      let salesCount = 0;
-      for (const order of ordersToProcess) {
-          const customer = customersMap.get(order.breadCustomerId);
-          if (!customer) continue;
-          const total = profile.breadPrice * order.quantity;
-          const saleId = await db.sales.add({
-              items: [{ id: 'bread-product', name: 'Pain', price: profile.breadPrice, purchasePrice: profile.breadPurchasePrice || 0, quantity: order.quantity, unite: 'Pièce' }],
-              subtotal: total, total, amountPaid: total, remainingBalance: 0, paymentStatus: 'paid',
-              payments: [{ method: 'cash', amount: total }], customerName: customer.name, breadOrderDate: dateString,
-          } as Sale);
-          await db.dailyBreadOrders.update(order.id!, { isPaid: true, saleId: saleId });
-          salesCount++;
-      }
-      return { count: salesCount };
-    });
-  }
-
   async getExpenses(params: { category?: string; from?: Date; to?: Date }): Promise<Expense[]> {
     const { category, from, to } = params;
     let collection;
@@ -993,7 +909,7 @@ class DataService {
 
   async exportData(): Promise<string> {
     const data: Partial<DB> = {};
-    const tables: CollectionName[] = ['products', 'customers', 'suppliers', 'sales', 'payments', 'stockIntakes', 'returns', 'breadCustomers', 'dailyBreadOrders', 'expenses', 'notifications', 'settings', 'inventoryLogs', 'drafts'];
+    const tables: CollectionName[] = ['products', 'customers', 'suppliers', 'sales', 'payments', 'stockIntakes', 'returns', 'expenses', 'notifications', 'settings', 'inventoryLogs', 'drafts'];
     await db.transaction('r', ...db.tables, async () => {
         for (const tableName of tables) data[tableName] = await db.table(tableName).toArray();
         const profile = await db.companyProfile.get(1);
@@ -1004,7 +920,7 @@ class DataService {
 
   async importData(jsonString: string): Promise<void> {
       const data: Partial<DB> = JSON.parse(jsonString);
-      const tables: (CollectionName | 'companyProfile' | 'drafts')[] = ['products', 'customers', 'suppliers', 'sales', 'payments', 'stockIntakes', 'returns', 'breadCustomers', 'dailyBreadOrders', 'expenses', 'notifications', 'settings', 'inventoryLogs', 'companyProfile', 'drafts'];
+      const tables: (CollectionName | 'companyProfile' | 'drafts')[] = ['products', 'customers', 'suppliers', 'sales', 'payments', 'stockIntakes', 'returns', 'expenses', 'notifications', 'settings', 'inventoryLogs', 'companyProfile', 'drafts'];
       return db.transaction('rw', ...db.tables, async () => {
           for (const tableName of tables) await db.table(tableName)?.clear();
           for (const tableName of tables) {

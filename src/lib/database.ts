@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie';
-import type { Product, Customer, Sale, Payment, StockIntake, ProductReturn, Cart, CompanyProfile, BreadCustomer, DailyBreadOrder, Expense, Setting, Notification, InventoryLog, Draft, Supplier } from './types';
+import type { Product, Customer, Sale, Payment, StockIntake, ProductReturn, Cart, CompanyProfile, Expense, Setting, Notification, InventoryLog, Draft, Supplier } from './types';
 
 export class PosDatabase extends Dexie {
     products!: Table<Product, number>;
@@ -12,8 +12,6 @@ export class PosDatabase extends Dexie {
     carts!: Table<Cart, string>;
     drafts!: Table<Draft, number>;
     companyProfile!: Table<CompanyProfile, number>;
-    breadCustomers!: Table<BreadCustomer, number>;
-    dailyBreadOrders!: Table<DailyBreadOrder, number>;
     expenses!: Table<Expense, number>;
     settings!: Table<Setting, string>;
     notifications!: Table<Notification, number>;
@@ -21,19 +19,17 @@ export class PosDatabase extends Dexie {
 
     constructor() {
         super('posDB');
-        this.version(26).stores({
+        this.version(27).stores({
             products: '++id, name, *barcodes, category, price, quantity, minStockLevel, fournisseurId, dateExpiration, [category+name]',
             customers: '++id, searchName, createdAt, lastName, firstName, [lastName+firstName], phone, outstandingBalance, lastActivityDate, address',
             suppliers: '++id, &name',
-            sales: '++id, &invoiceNumber, createdAt, customerId, customerName, paymentStatus, breadOrderDate, dueDate',
+            sales: '++id, &invoiceNumber, createdAt, customerId, customerName, paymentStatus, dueDate',
             payments: '++id, createdAt, customerId, paymentDate',
             stockIntakes: '++id, &invoiceNumber, supplier, createdAt',
             returns: '++id, createdAt, originalSaleId, customerId',
             carts: '&id',
             drafts: '++id, date',
             companyProfile: 'id', // Singleton table
-            breadCustomers: '++id, &name',
-            dailyBreadOrders: '++id, &[breadCustomerId+date], date',
             expenses: '++id, category, expenseDate, [category+expenseDate]',
             settings: '&id', // Key-value store for UI state and preferences
             notifications: '++id, createdAt, isRead, type, [type+isRead]',
