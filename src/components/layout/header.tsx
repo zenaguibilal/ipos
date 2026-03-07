@@ -15,7 +15,6 @@ import {
   LayoutDashboard,
   HandHeart,
   Calculator,
-  Sandwich,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -43,7 +42,6 @@ const navLinks = [
   { href: '/sales-history', label: 'Ventes', icon: History },
   { href: '/returns', label: 'Retours', icon: Undo2 },
   { href: '/expenses', label: 'Dépenses', icon: Wallet },
-  { href: '/bread', label: 'Commandes de Pain', icon: Sandwich },
   { href: '/costing', label: 'Calcul des Coûts', icon: Calculator },
   { href: '/zakat', label: 'Zakat', icon: HandHeart },
 ];

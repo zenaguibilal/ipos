@@ -90,7 +90,6 @@ export interface Sale {
     payments: SalePayment[];
     customerId?: number;
     customerName?: string;
-    client_pain_id?: number;
     createdAt?: Date;
     updatedAt?: Date;
     dueDate?: Date;
@@ -160,8 +159,6 @@ export interface CompanyProfile {
     rcNumber?: string;
     syncUrl?: string;
     lastSyncDate?: string;
-    prix_pain?: number;
-    prix_achat_pain?: number;
     goldPricePerGram?: number;
     updatedAt?: Date;
 }
@@ -216,40 +213,6 @@ export interface ProductReturn {
     updatedAt?: Date;
     notes?: string;
 }
-
-export type Weekday = 'lundi' | 'mardi' | 'mercredi' | 'jeudi' | 'vendredi' | 'samedi' | 'dimanche';
-
-export interface PainClient {
-    id?: number;
-    nom: string;
-    actif: boolean;
-    type_recurrence: 'quotidien' | 'jours_specifiques' | 'aucun';
-    quantite_defaut: number;
-    jours_semaine: {
-        [key in Weekday]: { actif: boolean; quantite: number };
-    };
-    createdAt?: Date;
-    updatedAt?: Date;
-}
-
-export interface CommandePain {
-    id?: number;
-    client_pain_id: number;
-    nom_client: string;
-    date: string; // YYYY-MM-DD
-    quantite: number;
-    statut: 'en_attente' | 'livre' | 'paye';
-    vente_id?: number;
-    createdAt?: Date;
-    updatedAt?: Date;
-}
-
-export interface LigneCommandePain extends PainClient {
-    id: number; // customer id
-    commandeDuJour?: CommandePain;
-    estModifie: boolean;
-}
-
 
 export type ExpenseCategory = 'Loyer' | 'Salaires' | 'Fournisseurs' | 'Services Publics' | 'Marketing' | 'Maintenance' | 'Autre';
 

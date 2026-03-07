@@ -2,7 +2,7 @@
 'use client';
 
 import { db, PosDatabase } from '@/lib/database';
-import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, Notification, InventoryLog, CustomerWithSalesData, ImportAnalysis, DashboardData, StockIntakeItem, CartItem, TopProduct, TopCustomer, GlobalActivityItem, ProductImportAnalysis, ZakatData, CostingItem, Draft, SaleItem, Supplier, PainClient, CommandePain, Weekday } from '@/lib/types';
+import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, Notification, InventoryLog, CustomerWithSalesData, ImportAnalysis, DashboardData, StockIntakeItem, CartItem, TopProduct, TopCustomer, GlobalActivityItem, ProductImportAnalysis, ZakatData, CostingItem, Draft, SaleItem, Supplier } from '@/lib/types';
 import { initialData, type DB, type CollectionName } from './initial-data';
 import Dexie from 'dexie';
 import { startOfDay, endOfDay, format } from 'date-fns';
@@ -12,8 +12,7 @@ import { formatCurrency } from '@/lib/utils';
 type TableName = keyof Pick<PosDatabase, 
     'products' | 'customers' | 'sales' | 'payments' | 
     'stockIntakes' | 'returns' | 'drafts' |
-    'companyProfile' | 'carts' | 'expenses' | 'settings' | 'notifications' | 'inventoryLogs' | 'suppliers' |
-    'clients_pain' | 'commandes_pain'
+    'companyProfile' | 'carts' | 'expenses' | 'settings' | 'notifications' | 'inventoryLogs' | 'suppliers'
 >;
 
 type CustomerFilterStatus = 'all' | 'has_debt' | 'overdue' | 'over_limit';
@@ -904,7 +903,7 @@ class DataService {
 
   async exportData(): Promise<string> {
     const data: Partial<DB> = {};
-    const tables: CollectionName[] = ['products', 'customers', 'suppliers', 'sales', 'payments', 'stockIntakes', 'returns', 'expenses', 'notifications', 'settings', 'inventoryLogs', 'drafts', 'clients_pain', 'commandes_pain'];
+    const tables: CollectionName[] = ['products', 'customers', 'suppliers', 'sales', 'payments', 'stockIntakes', 'returns', 'expenses', 'notifications', 'settings', 'inventoryLogs', 'drafts'];
     await db.transaction('r', ...db.tables, async () => {
         for (const tableName of tables) data[tableName] = await db.table(tableName).toArray();
         const profile = await db.companyProfile.get(1);
@@ -915,7 +914,7 @@ class DataService {
 
   async importData(jsonString: string): Promise<void> {
       const data: Partial<DB> = JSON.parse(jsonString);
-      const tables: (CollectionName | 'companyProfile' | 'drafts')[] = ['products', 'customers', 'suppliers', 'sales', 'payments', 'stockIntakes', 'returns', 'expenses', 'notifications', 'settings', 'inventoryLogs', 'companyProfile', 'drafts', 'clients_pain', 'commandes_pain'];
+      const tables: (CollectionName | 'companyProfile' | 'drafts')[] = ['products', 'customers', 'suppliers', 'sales', 'payments', 'stockIntakes', 'returns', 'expenses', 'notifications', 'settings', 'inventoryLogs', 'companyProfile', 'drafts'];
       return db.transaction('rw', ...db.tables, async () => {
           for (const tableName of tables) await db.table(tableName)?.clear();
           for (const tableName of tables) {
@@ -1121,149 +1120,6 @@ class DataService {
         
         await this.updateCompanyProfile({ lastSyncDate: new Date().toISOString() });
     }
-
-    // ====================================================================
-    // BREAD MANAGEMENT
-    // ====================================================================
-    async getPainClients(params: { actifs?: boolean } = {}): Promise<PainClient[]> {
-        let collection = db.clients_pain.orderBy('nom');
-        if(params.actifs) {
-            return collection.filter(c => c.actif).toArray();
-        }
-        return collection.toArray();
-    }
-    
-    async addPainClient(client: Omit<PainClient, 'id'>): Promise<number> {
-        return db.clients_pain.add(client as PainClient);
-    }
-
-    async updatePainClient(id: number, data: Partial<PainClient>): Promise<number> {
-        return db.clients_pain.update(id, data);
-    }
-
-    async deletePainClient(id: number): Promise<void> {
-        return db.transaction('rw', db.clients_pain, db.commandes_pain, async () => {
-            await db.commandes_pain.where({ client_pain_id: id }).delete();
-            await db.clients_pain.delete(id);
-        });
-    }
-
-    async getCommandesPainDuJour(dateString: string): Promise<CommandePain[]> {
-        return db.commandes_pain.where('date').equals(dateString).toArray();
-    }
-
-    getQuantitePainParDefautPourJour(client: PainClient, date: Date): number {
-        const joursSemaine: Weekday[] = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
-        const jourActuel = joursSemaine[date.getDay()];
-
-        if (client.type_recurrence === 'quotidien') {
-            return client.quantite_defaut;
-        }
-        if (client.type_recurrence === 'jours_specifiques') {
-            const jourConfig = client.jours_semaine[jourActuel];
-            if (jourConfig && jourConfig.actif) {
-                return jourConfig.quantite;
-            }
-        }
-        return 0;
-    }
-
-    async creerCommandesDuJourSiNecessaire(dateString: string): Promise<void> {
-        return db.transaction('rw', db.clients_pain, db.commandes_pain, async () => {
-            const commandesExistantes = await db.commandes_pain.where('date').equals(dateString).count();
-            if (commandesExistantes > 0) return;
-
-            const clientsActifs = await db.clients_pain.where('actif').equals(1).toArray();
-            const nouvellesCommandes: Omit<CommandePain, 'id'>[] = [];
-            const date = new Date(dateString);
-
-            for (const client of clientsActifs) {
-                const quantite = this.getQuantitePainParDefautPourJour(client, date);
-                if (quantite > 0) {
-                     nouvellesCommandes.push({
-                        client_pain_id: client.id!,
-                        nom_client: client.nom,
-                        date: dateString,
-                        quantite,
-                        statut: 'en_attente',
-                    });
-                }
-            }
-
-            if (nouvellesCommandes.length > 0) {
-                await db.commandes_pain.bulkAdd(nouvellesCommandes as CommandePain[]);
-            }
-        });
-    }
-    
-    async addCommandePainManuelle(clientId: number, dateString: string, quantite: number): Promise<void> {
-        const client = await db.clients_pain.get(clientId);
-        if (!client) throw new Error("Client non trouvé");
-
-        const commandeExistante = await db.commandes_pain.where({ client_pain_id: clientId, date: dateString }).first();
-        if(commandeExistante) {
-            await db.commandes_pain.update(commandeExistante.id!, { quantite: commandeExistante.quantite + quantite });
-        } else {
-            await db.commandes_pain.add({
-                client_pain_id: clientId,
-                nom_client: client.nom,
-                date: dateString,
-                quantite,
-                statut: 'en_attente'
-            } as CommandePain);
-        }
-    }
-    
-    async updateCommandePainStatut(id: number, statut: 'en_attente' | 'livre' | 'paye'): Promise<void> {
-        await db.commandes_pain.update(id, { statut });
-    }
-
-    async updateCommandePainQuantite(id: number, quantite: number): Promise<void> {
-        await db.commandes_pain.update(id, { quantite });
-    }
-
-    async genererVentesPain(commandeIds: number[]): Promise<{ count: number }> {
-        return db.transaction('rw', db.commandes_pain, db.sales, db.customers, db.companyProfile, db.products, db.inventoryLogs, async () => {
-            const profile = await this.getCompanyProfile();
-            if (!profile?.prix_pain || !profile.prix_achat_pain) {
-                throw new Error("Le prix de vente ou d'achat du pain n'est pas configuré.");
-            }
-
-            const commandesAFacturer = await db.commandes_pain.where('id').anyOf(commandeIds).toArray();
-            let count = 0;
-
-            for (const commande of commandesAFacturer) {
-                if (commande.statut === 'paye' || commande.vente_id) continue;
-
-                const mainCustomer = await db.customers.where('searchName').equalsIgnoreCase(commande.nom_client.toLowerCase()).first();
-                const total = commande.quantite * profile.prix_pain;
-                
-                const saleData: Omit<Sale, 'id' | 'invoiceNumber' | 'paymentStatus' | 'remainingBalance'> & { items: SaleItem[] } = {
-                    items: [{
-                        id: 'pain-special',
-                        name: 'Pain',
-                        price: profile.prix_pain,
-                        purchasePrice: profile.prix_achat_pain,
-                        quantity: commande.quantite
-                    }],
-                    subtotal: total,
-                    total: total,
-                    amountPaid: total,
-                    payments: [{ method: 'cash', amount: total }],
-                    customerId: mainCustomer?.id,
-                    customerName: commande.nom_client,
-                    client_pain_id: commande.client_pain_id,
-                    createdAt: new Date(),
-                };
-
-                const saleId = await this.addSale(saleData);
-                await db.commandes_pain.update(commande.id!, { vente_id: saleId, statut: 'paye' });
-                count++;
-            }
-            return { count };
-        });
-    }
-
 }
 
 export const dataService = new DataService();

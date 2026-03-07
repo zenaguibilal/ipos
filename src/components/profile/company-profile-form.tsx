@@ -49,8 +49,6 @@ export function CompanyProfileForm() {
         const dataToSave: Partial<CompanyProfile> = {
             ...formState,
             goldPricePerGram: formState.goldPricePerGram ? Number(formState.goldPricePerGram) : undefined,
-            prix_pain: formState.prix_pain ? Number(formState.prix_pain) : undefined,
-            prix_achat_pain: formState.prix_achat_pain ? Number(formState.prix_achat_pain) : undefined,
         };
 
         try {
@@ -100,14 +98,6 @@ export function CompanyProfileForm() {
                          <div className="space-y-4 border-t pt-6">
                             <h4 className="font-medium text-muted-foreground">Paramètres Spécifiques</h4>
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="prix_pain">Prix de vente du pain (DA)</Label>
-                                    <Input id="prix_pain" type="number" step="0.1" value={formState.prix_pain || ''} onChange={handleInputChange} disabled={isSaving} placeholder="Ex: 15" />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="prix_achat_pain">Prix d'achat du pain (DA)</Label>
-                                    <Input id="prix_achat_pain" type="number" step="0.1" value={formState.prix_achat_pain || ''} onChange={handleInputChange} disabled={isSaving} placeholder="Ex: 10" />
-                                </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="goldPricePerGram">Prix de l'or par gramme (DA)</Label>
                                     <Input 
