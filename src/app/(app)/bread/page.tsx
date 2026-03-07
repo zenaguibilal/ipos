@@ -27,13 +27,20 @@ export default function BreadPage() {
     const [selectedClient, setSelectedClient] = useState<PainClient | null>(null);
     const [selectedOrders, setSelectedOrders] = useState<Set<number>>(new Set());
     const [isGeneratingSales, setIsGeneratingSales] = useState(false);
+    const [isMounted, setIsMounted] = useState(false);
+
+    useEffect(() => {
+        setIsMounted(true);
+    }, []);
     
     const dateString = formatDate(selectedDate);
     
     // Side effect to create daily orders if they don't exist. This runs once per date change.
     useEffect(() => {
-        dataService.creerCommandesDuJourSiNecessaire(dateString);
-    }, [dateString]);
+        if(isMounted) {
+            dataService.creerCommandesDuJourSiNecessaire(dateString);
+        }
+    }, [dateString, isMounted]);
 
     // Separate live queries for each data source for stability.
     const clients = useLiveQuery(() => dataService.getPainClients({ actifs: true }), []);
@@ -41,7 +48,7 @@ export default function BreadPage() {
     const profile = useLiveQuery(() => db.companyProfile.get(1), []);
 
     // isLoading is true until ALL data sources have loaded.
-    const isLoading = clients === undefined || commandes === undefined || profile === undefined;
+    const isLoading = !isMounted || clients === undefined || commandes === undefined || profile === undefined;
 
     const combinedOrders: LigneCommandePain[] = useMemo(() => {
         if (isLoading || !clients || !commandes) return [];
