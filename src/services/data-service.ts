@@ -1222,11 +1222,11 @@ class DataService {
         await db.commandes_pain.update(id, { quantite });
     }
 
-    async genererVentesPain(commandeIds: number[], dateString: string): Promise<{ count: number }> {
-        return db.transaction('rw', db.commandes_pain, db.sales, db.customers, db.companyProfile, async () => {
+    async genererVentesPain(commandeIds: number[]): Promise<{ count: number }> {
+        return db.transaction('rw', db.commandes_pain, db.sales, db.customers, db.companyProfile, db.products, db.inventoryLogs, async () => {
             const profile = await this.getCompanyProfile();
-            if (!profile?.prix_pain || !profile?.prix_achat_pain) {
-                throw new Error("Le prix de vente ou d'achat du pain n'est pas configuré dans les paramètres.");
+            if (!profile?.prix_pain || !profile.prix_achat_pain) {
+                throw new Error("Le prix de vente ou d'achat du pain n'est pas configuré.");
             }
 
             const commandesAFacturer = await db.commandes_pain.where('id').anyOf(commandeIds).toArray();
@@ -1236,9 +1236,7 @@ class DataService {
                 if (commande.statut === 'paye' || commande.vente_id) continue;
 
                 const clientPain = await db.clients_pain.get(commande.client_pain_id);
-                // Try to find a matching customer in the main customer table
                 const mainCustomer = await db.customers.where('searchName').equalsIgnoreCase(clientPain!.nom.toLowerCase()).first();
-
                 const total = commande.quantite * profile.prix_pain;
                 
                 const saleData: Omit<Sale, 'id' | 'invoiceNumber'> = {
@@ -1257,7 +1255,6 @@ class DataService {
                     payments: [{ method: 'cash', amount: total }],
                     customerId: mainCustomer?.id,
                     customerName: clientPain?.nom,
-                    date_commande_pain: dateString,
                     createdAt: new Date(),
                 };
 

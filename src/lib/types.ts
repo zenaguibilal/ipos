@@ -1,5 +1,3 @@
-
-
 export interface Product {
     id?: number | string; // string for custom products
     name: string;
@@ -94,7 +92,6 @@ export interface Sale {
     customerName?: string;
     createdAt?: Date;
     updatedAt?: Date;
-    date_commande_pain?: string;
     dueDate?: Date;
 }
 

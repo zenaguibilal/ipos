@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { dataService } from '@/services/data-service';
-import type { LigneCommandePain, PainClient, CommandePain, CompanyProfile, Sale } from '@/lib/types';
+import type { LigneCommandePain, PainClient, CommandePain, CompanyProfile } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, Users, Printer, AlertTriangle, Check, Loader2 } from 'lucide-react';
 import { format, addDays, subDays } from 'date-fns';
@@ -32,28 +32,20 @@ export default function BreadPage() {
     
     const { data, isLoading } = useLiveQuery(async () => {
         await dataService.creerCommandesDuJourSiNecessaire(dateString);
-        const [clients, commandes, ventes, profile] = await Promise.all([
+        const [clients, commandes, profile] = await Promise.all([
             dataService.getPainClients({ actifs: true }),
             dataService.getCommandesPainDuJour(dateString),
-            db.sales.where('date_commande_pain').equals(dateString).toArray(),
             db.companyProfile.get(1)
         ]);
-        return { clients, commandes, ventes, profile: profile ?? null };
-    }, [dateString], { data: { clients: [], commandes: [], ventes: [], profile: null }, isLoading: true });
+        return { clients, commandes, profile: profile ?? null };
+    }, [dateString], { data: { clients: [], commandes: [], profile: null }, isLoading: true });
 
-    const { clients, commandes, ventes, profile } = data;
+    const { clients, commandes, profile } = data;
 
     const combinedOrders: LigneCommandePain[] = useMemo(() => {
-        if (isLoading || !clients || !commandes || !ventes) return [];
+        if (isLoading || !clients || !commandes) return [];
 
         const commandeMap = new Map(commandes.map(c => [c.client_pain_id, c]));
-        const venteMap = new Map(ventes.filter(v => v.id).map(v => [v.id!, v]));
-        
-        commandes.forEach(cmd => {
-            if(cmd.vente_id && venteMap.has(cmd.vente_id) && cmd.statut !== 'paye') {
-                dataService.updateCommandePainStatut(cmd.id!, 'paye');
-            }
-        });
 
         return clients
             .filter(c => c.actif)
@@ -70,7 +62,7 @@ export default function BreadPage() {
                 };
             })
             .sort((a,b) => a.nom.localeCompare(b.nom));
-    }, [clients, commandes, ventes, selectedDate, isLoading]);
+    }, [clients, commandes, selectedDate, isLoading]);
     
     const unassignedCustomers = useMemo(() => {
         if (!clients || !commandes) return [];
@@ -124,7 +116,7 @@ export default function BreadPage() {
         }
         setIsGeneratingSales(true);
         try {
-            const result = await dataService.genererVentesPain(Array.from(selectedOrders), dateString);
+            const result = await dataService.genererVentesPain(Array.from(selectedOrders));
             toast.success(`${result.count} vente(s) générée(s) avec succès !`);
             setSelectedOrders(new Set());
         } catch (e: any) {

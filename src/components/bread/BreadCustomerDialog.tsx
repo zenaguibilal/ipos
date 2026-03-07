@@ -27,15 +27,15 @@ const initialFormState: Omit<PainClient, 'id' | 'createdAt' | 'updatedAt'> = {
     nom: '',
     actif: true,
     type_recurrence: 'quotidien',
-    quantite_defaut: 10,
+    quantite_defaut: 1,
     jours_semaine: {
-        lundi: { actif: true, quantite: 10 },
-        mardi: { actif: true, quantite: 10 },
-        mercredi: { actif: true, quantite: 10 },
-        jeudi: { actif: true, quantite: 10 },
-        vendredi: { actif: true, quantite: 10 },
-        samedi: { actif: false, quantite: 10 },
-        dimanche: { actif: false, quantite: 10 },
+        lundi: { actif: true, quantite: 1 },
+        mardi: { actif: true, quantite: 1 },
+        mercredi: { actif: true, quantite: 1 },
+        jeudi: { actif: true, quantite: 1 },
+        vendredi: { actif: true, quantite: 1 },
+        samedi: { actif: false, quantite: 1 },
+        dimanche: { actif: false, quantite: 1 },
     },
 };
 
@@ -139,13 +139,36 @@ function ClientForm({ client, onDone }: { client: PainClient | null, onDone: () 
             }
         }));
     };
+
+    const validateForm = (): boolean => {
+        if (!formState.nom.trim()) {
+            toast.error("Le nom du client est requis.");
+            return false;
+        }
+
+        if (formState.type_recurrence === 'quotidien' && formState.quantite_defaut <= 0) {
+            toast.error("La quantité par défaut doit être supérieure à zéro.");
+            return false;
+        }
+
+        if (formState.type_recurrence === 'jours_specifiques') {
+            const activeDays = Object.values(formState.jours_semaine).filter(d => d.actif);
+            if (activeDays.length === 0) {
+                toast.error("Veuillez sélectionner au moins un jour actif.");
+                return false;
+            }
+            if (activeDays.some(d => d.quantite <= 0)) {
+                toast.error("La quantité pour chaque jour actif doit être supérieure à zéro.");
+                return false;
+            }
+        }
+        return true;
+    };
     
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if(!formState.nom) {
-            toast.error("Le nom du client est requis.");
-            return;
-        }
+        if (!validateForm()) return;
+        
         setIsLoading(true);
         try {
             if(formState.id) {
@@ -188,7 +211,7 @@ function ClientForm({ client, onDone }: { client: PainClient | null, onDone: () 
             {formState.type_recurrence === 'quotidien' && (
                  <div className="space-y-2">
                     <Label htmlFor="quantite_defaut">Quantité par défaut</Label>
-                    <Input id="quantite_defaut" type="number" value={formState.quantite_defaut} onChange={e => handleInputChange('quantite_defaut', parseInt(e.target.value) || 0)} />
+                    <Input id="quantite_defaut" type="number" value={formState.quantite_defaut} onChange={e => handleInputChange('quantite_defaut', parseInt(e.target.value) || 0)} min="1" />
                 </div>
             )}
              {formState.type_recurrence === 'jours_specifiques' && (
@@ -199,7 +222,7 @@ function ClientForm({ client, onDone }: { client: PainClient | null, onDone: () 
                             <div key={day} className="flex items-center gap-3">
                                 <Switch id={`switch-${day}`} checked={formState.jours_semaine[day].actif} onCheckedChange={c => handleWeekdayChange(day, 'actif', c)}/>
                                 <Label htmlFor={`switch-${day}`} className="w-20 capitalize">{day}</Label>
-                                <Input type="number" disabled={!formState.jours_semaine[day].actif} value={formState.jours_semaine[day].quantite} onChange={e => handleWeekdayChange(day, 'quantite', parseInt(e.target.value) || 0)} />
+                                <Input type="number" disabled={!formState.jours_semaine[day].actif} value={formState.jours_semaine[day].quantite} onChange={e => handleWeekdayChange(day, 'quantite', parseInt(e.target.value) || 0)} min="1"/>
                             </div>
                         ))}
                     </div>
@@ -238,7 +261,7 @@ function FormulaireCommandeManuelle({ clients, onAdd, onDone }: { clients: PainC
                     ))}
                 </SelectContent>
             </Select>
-            <Input type="number" value={quantity} onChange={e => setQuantity(parseInt(e.target.value) || 1)} placeholder="Quantité" />
+            <Input type="number" value={quantity} onChange={e => setQuantity(parseInt(e.target.value) || 1)} placeholder="Quantité" min="1"/>
             <Button onClick={handleAdd} className="w-full">
                 <Plus className="mr-2 h-4 w-4"/> Ajouter
             </Button>

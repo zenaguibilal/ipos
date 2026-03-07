@@ -21,11 +21,11 @@ export class PosDatabase extends Dexie {
 
     constructor() {
         super('posDB');
-        this.version(27).stores({
-            products: '++id, name, *barcodes, category, price, quantity, [category+name]',
+        this.version(28).stores({
+            products: '++id, name, *barcodes, category, price, quantity, [category+name], fournisseurId',
             customers: '++id, searchName, createdAt, lastName, firstName, [lastName+firstName], phone, outstandingBalance, lastActivityDate',
             suppliers: '++id, &name',
-            sales: '++id, &invoiceNumber, createdAt, customerId, customerName, paymentStatus, date_commande_pain, dueDate',
+            sales: '++id, &invoiceNumber, createdAt, customerId, customerName, paymentStatus, dueDate',
             payments: '++id, createdAt, customerId',
             stockIntakes: '++id, &invoiceNumber, supplier, createdAt',
             returns: '++id, createdAt, originalSaleId, customerId',
@@ -33,7 +33,7 @@ export class PosDatabase extends Dexie {
             drafts: '++id, date',
             companyProfile: 'id', // Singleton table
             clients_pain: '++id, &nom, actif, type_recurrence',
-            commandes_pain: '++id, &[client_pain_id+date], date, statut',
+            commandes_pain: '++id, &[client_pain_id+date], date, statut, vente_id',
             expenses: '++id, category, expenseDate, [category+expenseDate]',
             settings: '&id', // Key-value store for UI state and preferences
             notifications: '++id, createdAt, isRead, type, [type+isRead]',
