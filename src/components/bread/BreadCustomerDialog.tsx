@@ -19,7 +19,7 @@ interface PainClientDialogProps {
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
     selectedClient: PainClient | null;
-    clientsNonAssignes: PainClient[];
+    manualOrderCustomers: PainClient[];
     onAddCommandeManuelle: (clientId: number, quantite: number) => void;
 }
 
@@ -41,7 +41,7 @@ const initialFormState: Omit<PainClient, 'id' | 'createdAt' | 'updatedAt'> = {
 
 const weekdays: Weekday[] = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
 
-export function PainClientDialog({ isOpen, onOpenChange, selectedClient, clientsNonAssignes, onAddCommandeManuelle }: PainClientDialogProps) {
+export function PainClientDialog({ isOpen, onOpenChange, selectedClient, manualOrderCustomers, onAddCommandeManuelle }: PainClientDialogProps) {
     const [clientToEdit, setClientToEdit] = useState<PainClient | null>(selectedClient);
     const [clientToDelete, setClientToDelete] = useState<PainClient | null>(null);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -100,7 +100,7 @@ export function PainClientDialog({ isOpen, onOpenChange, selectedClient, clients
                             </div>
                             <div className="space-y-2 border-t pt-4">
                                 <h3 className="font-semibold text-lg">Ajouter une commande manuelle</h3>
-                                <FormulaireCommandeManuelle clients={clientsNonAssignes} onAdd={onAddCommandeManuelle} onDone={handleClose} />
+                                <FormulaireCommandeManuelle clients={manualOrderCustomers} onAdd={onAddCommandeManuelle} onDone={handleClose} />
                             </div>
                         </div>
                     </div>
@@ -259,10 +259,11 @@ function FormulaireCommandeManuelle({ clients, onAdd, onDone }: { clients: PainC
                     {clients.map(c => (
                         <SelectItem key={c.id} value={String(c.id!)}>{c.nom}</SelectItem>
                     ))}
+                     {clients.length === 0 && <p className="text-sm text-muted-foreground text-center p-2">Aucun client manuel trouvé.</p>}
                 </SelectContent>
             </Select>
             <Input type="number" value={quantity} onChange={e => setQuantity(parseInt(e.target.value) || 1)} placeholder="Quantité" min="1"/>
-            <Button onClick={handleAdd} className="w-full">
+            <Button onClick={handleAdd} className="w-full" disabled={!selectedClientId}>
                 <Plus className="mr-2 h-4 w-4"/> Ajouter
             </Button>
         </div>

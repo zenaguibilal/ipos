@@ -48,7 +48,7 @@ export default function BreadPage() {
         const commandeMap = new Map(commandes.map(c => [c.client_pain_id, c]));
 
         return clients
-            .filter(c => c.actif)
+            .filter(c => c.actif && commandeMap.has(c.id!))
             .map(client => {
                 const commandeDuJour = commandeMap.get(client.id!);
                 const defaultQuantity = dataService.getQuantitePainParDefautPourJour(client, selectedDate);
@@ -64,11 +64,10 @@ export default function BreadPage() {
             .sort((a,b) => a.nom.localeCompare(b.nom));
     }, [clients, commandes, selectedDate, isLoading]);
     
-    const unassignedCustomers = useMemo(() => {
-        if (!clients || !commandes) return [];
-        const assignedCustomerIds = new Set(commandes.map(o => o.client_pain_id));
-        return clients.filter(c => c.actif && !assignedCustomerIds.has(c.id!));
-    }, [clients, commandes]);
+    const manualOrderCustomers = useMemo(() => {
+        if (!clients) return [];
+        return clients.filter(c => c.actif && c.type_recurrence === 'aucun');
+    }, [clients]);
 
 
     const handleEditCustomer = (client: PainClient) => {
@@ -209,7 +208,7 @@ export default function BreadPage() {
                 isOpen={isCustomerDialogOpen}
                 onOpenChange={setIsCustomerDialogOpen}
                 selectedClient={selectedClient}
-                clientsNonAssignes={unassignedCustomers}
+                manualOrderCustomers={manualOrderCustomers}
                 onAddCommandeManuelle={handleAddManualOrder}
             />
         </div>
