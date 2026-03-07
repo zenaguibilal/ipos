@@ -1235,11 +1235,11 @@ class DataService {
             for (const commande of commandesAFacturer) {
                 if (commande.statut === 'paye' || commande.vente_id) continue;
 
-                const clientPain = await db.clients_pain.get(commande.client_pain_id);
-                const mainCustomer = await db.customers.where('searchName').equalsIgnoreCase(clientPain!.nom.toLowerCase()).first();
+                // Find main customer by name, if exists
+                const mainCustomer = await db.customers.where('searchName').equalsIgnoreCase(commande.nom_client.toLowerCase()).first();
                 const total = commande.quantite * profile.prix_pain;
                 
-                const saleData: Omit<Sale, 'id' | 'invoiceNumber'> = {
+                const saleData: Omit<Sale, 'id' | 'invoiceNumber' | 'paymentStatus' | 'remainingBalance'> & { items: SaleItem[] } = {
                     items: [{
                         id: 'pain-special',
                         name: 'Pain',
@@ -1250,11 +1250,9 @@ class DataService {
                     subtotal: total,
                     total: total,
                     amountPaid: total,
-                    remainingBalance: 0,
-                    paymentStatus: 'paid',
                     payments: [{ method: 'cash', amount: total }],
                     customerId: mainCustomer?.id,
-                    customerName: clientPain?.nom,
+                    customerName: commande.nom_client,
                     createdAt: new Date(),
                 };
 
