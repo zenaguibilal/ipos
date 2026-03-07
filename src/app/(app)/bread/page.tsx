@@ -8,6 +8,7 @@ import { useReactToPrint } from 'react-to-print';
 import { format, addDays, subDays } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import type { BreadOrder, CompanyProfile, DailyBreadOrder, Sale } from '@/lib/types';
+import { Promise } from 'dexie';
 
 import { Button } from '@/components/ui/button';
 import { Plus, Printer, Check, ChevronLeft, ChevronRight, Loader2, AlertTriangle } from 'lucide-react';
@@ -36,13 +37,22 @@ export default function BreadPage() {
     const [isUpdating, setIsUpdating] = useState<Record<number, boolean>>({});
     const [isFinalizing, setIsFinalizing] = useState(false);
 
-    // Refactored data fetching for improved stability
-    const breadCustomers = useLiveQuery(() => db.breadCustomers.where('isActive').equals(1).toArray(), []);
-    const dailyOrders = useLiveQuery(() => db.dailyBreadOrders.where('date').equals(dateString).toArray(), [dateString]);
-    const salesForDate = useLiveQuery(() => db.sales.where('breadOrderDate').equals(dateString).toArray(), [dateString]);
-    const companyProfile = useLiveQuery<CompanyProfile | undefined>(() => dataService.getCompanyProfile(), []);
+    // Refactored data fetching for stability
+    const data = useLiveQuery(() => {
+        return Promise.all([
+            db.breadCustomers.where('isActive').equals(1).toArray(),
+            db.dailyBreadOrders.where('date').equals(dateString).toArray(),
+            db.sales.where('breadOrderDate').equals(dateString).toArray(),
+            dataService.getCompanyProfile(),
+        ]);
+    }, [dateString]);
+    
+    const breadCustomers = data?.[0];
+    const dailyOrders = data?.[1];
+    const salesForDate = data?.[2];
+    const companyProfile = data?.[3];
 
-    const isLoading = breadCustomers === undefined || dailyOrders === undefined || salesForDate === undefined || companyProfile === undefined;
+    const isLoading = data === undefined;
 
     const orders = useMemo<BreadOrder[] | undefined>(() => {
         if (isLoading || !breadCustomers || !dailyOrders || !salesForDate) {
