@@ -2,25 +2,25 @@
 
 import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import type { DailyBreadOrder } from '@/lib/types';
+import type { CommandePain } from '@/lib/types';
 import { Box, Truck, PackageCheck } from 'lucide-react';
 import { Skeleton } from '../ui/skeleton';
 
-interface BreadStatsCardsProps {
-    orders?: DailyBreadOrder[];
+interface PainStatsCartesProps {
+    commandes?: CommandePain[];
 }
 
-export function BreadStatsCards({ orders }: BreadStatsCardsProps) {
+export function PainStatsCartes({ commandes }: PainStatsCartesProps) {
     const stats = useMemo(() => {
-        if (!orders) return { total: 0, delivered: 0, remaining: 0 };
-        const total = orders.reduce((sum, o) => sum + o.quantity, 0);
-        const delivered = orders
-            .filter(o => o.status === 'livre' || o.status === 'paye')
-            .reduce((sum, o) => sum + o.quantity, 0);
+        if (!commandes) return { total: 0, delivered: 0, remaining: 0 };
+        const total = commandes.reduce((sum, o) => sum + o.quantite, 0);
+        const delivered = commandes
+            .filter(o => o.statut === 'livre' || o.statut === 'paye')
+            .reduce((sum, o) => sum + o.quantite, 0);
         return { total, delivered, remaining: total - delivered };
-    }, [orders]);
+    }, [commandes]);
 
-    if (!orders) {
+    if (!commandes) {
         return (
              <div className="grid gap-4 md:grid-cols-3">
                 <Skeleton className="h-24 w-full" />

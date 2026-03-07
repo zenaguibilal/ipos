@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie';
-import type { Product, Customer, Sale, Payment, StockIntake, ProductReturn, Cart, CompanyProfile, Expense, Setting, Notification, InventoryLog, Draft, Supplier, BreadCustomer, DailyBreadOrder } from './types';
+import type { Product, Customer, Sale, Payment, StockIntake, ProductReturn, Cart, CompanyProfile, Expense, Setting, Notification, InventoryLog, Draft, Supplier, PainClient, CommandePain } from './types';
 
 export class PosDatabase extends Dexie {
     products!: Table<Product, number>;
@@ -12,8 +12,8 @@ export class PosDatabase extends Dexie {
     carts!: Table<Cart, string>;
     drafts!: Table<Draft, number>;
     companyProfile!: Table<CompanyProfile, number>;
-    breadCustomers!: Table<BreadCustomer, number>;
-    dailyBreadOrders!: Table<DailyBreadOrder, number>;
+    clients_pain!: Table<PainClient, number>;
+    commandes_pain!: Table<CommandePain, number>;
     expenses!: Table<Expense, number>;
     settings!: Table<Setting, string>;
     notifications!: Table<Notification, number>;
@@ -21,19 +21,19 @@ export class PosDatabase extends Dexie {
 
     constructor() {
         super('posDB');
-        this.version(25).stores({
+        this.version(26).stores({
             products: '++id, name, *barcodes, category, price, quantity, [category+name]',
             customers: '++id, searchName, createdAt, lastName, firstName, [lastName+firstName], phone, outstandingBalance, lastActivityDate',
             suppliers: '++id, &name',
-            sales: '++id, &invoiceNumber, createdAt, customerId, customerName, paymentStatus, breadOrderDate, dueDate',
+            sales: '++id, &invoiceNumber, createdAt, customerId, customerName, paymentStatus, date_commande_pain, dueDate',
             payments: '++id, createdAt, customerId',
             stockIntakes: '++id, &invoiceNumber, supplier, createdAt',
             returns: '++id, createdAt, originalSaleId, customerId',
             carts: '&id',
             drafts: '++id, date',
             companyProfile: 'id', // Singleton table
-            breadCustomers: '++id, &name, isActive, type_recurrence',
-            dailyBreadOrders: '++id, &[breadCustomerId+date], date, status',
+            clients_pain: '++id, &nom, actif, type_recurrence',
+            commandes_pain: '++id, &[client_pain_id+date], date, statut',
             expenses: '++id, category, expenseDate, [category+expenseDate]',
             settings: '&id', // Key-value store for UI state and preferences
             notifications: '++id, createdAt, isRead, type, [type+isRead]',

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import type { BreadOrder } from '@/lib/types';
+import type { LigneCommandePain } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Check, Edit, Send, Undo } from 'lucide-react';
@@ -9,10 +9,10 @@ import { cn } from '@/lib/utils';
 import { dataService } from '@/services/data-service';
 import { toast } from 'sonner';
 import { Badge } from '../ui/badge';
-import { EditOrderDialog } from './EditOrderDialog';
+import { ModifierPainCommandeDialog } from './EditOrderDialog';
 
-interface BreadOrderCardProps {
-    order: BreadOrder;
+interface PainCommandeCarteProps {
+    ligne: LigneCommandePain;
     date: string;
     isSelected: boolean;
     onSelect?: () => void;
@@ -24,7 +24,7 @@ const statusConfig = {
     paye: { label: "Payé", color: "bg-green-500", icon: Check },
 };
 
-const RecurrenceBadge = ({ type }: { type: BreadOrder['type_recurrence'] }) => {
+const RecurrenceBadge = ({ type }: { type: LigneCommandePain['type_recurrence'] }) => {
     const config = {
         quotidien: { label: "Quotidien", color: "bg-blue-500/20 text-blue-300" },
         jours_specifiques: { label: "Jours Spécifiques", color: "bg-orange-500/20 text-orange-300" },
@@ -34,29 +34,29 @@ const RecurrenceBadge = ({ type }: { type: BreadOrder['type_recurrence'] }) => {
     return <Badge className={cn("text-xs", color)}>{label}</Badge>;
 }
 
-const BreadOrderCardComponent = ({ order, date, isSelected, onSelect }: BreadOrderCardProps) => {
+const PainCommandeCarteComponent = ({ ligne, date, isSelected, onSelect }: PainCommandeCarteProps) => {
     const [isEditOpen, setIsEditOpen] = useState(false);
 
     const handleStatusChange = async (newStatus: 'en_attente' | 'livre' | 'paye') => {
-        if (!order.todaysOrder) return;
+        if (!ligne.commandeDuJour) return;
         try {
-            await dataService.updateDailyOrderStatus(order.todaysOrder.id!, newStatus);
+            await dataService.updateCommandePainStatut(ligne.commandeDuJour.id!, newStatus);
         } catch (e: any) {
             toast.error("Erreur", { description: e.message });
         }
     };
     
     const handleUndo = async () => {
-         if (!order.todaysOrder) return;
+         if (!ligne.commandeDuJour) return;
         try {
-            const defaultQty = dataService.getDefaultBreadQuantityForDay(order, new Date(date));
-            await dataService.updateDailyOrderQuantity(order.todaysOrder.id!, defaultQty);
+            const defaultQty = dataService.getQuantitePainParDefautPourJour(ligne, new Date(date));
+            await dataService.updateCommandePainQuantite(ligne.commandeDuJour.id!, defaultQty);
         } catch(e: any) {
              toast.error("Erreur", { description: e.message });
         }
     };
     
-    const currentStatus = order.todaysOrder?.status || 'en_attente';
+    const currentStatus = ligne.commandeDuJour?.statut || 'en_attente';
     const statusInfo = statusConfig[currentStatus];
 
     return (
@@ -64,8 +64,8 @@ const BreadOrderCardComponent = ({ order, date, isSelected, onSelect }: BreadOrd
             <Card className={cn("flex flex-col transition-all duration-300 hover:shadow-xl hover:-translate-y-1 relative", isSelected && "ring-2 ring-primary/80")}>
                 <CardHeader className="pb-2">
                     <div className="flex justify-between items-start">
-                        <CardTitle className="text-lg">{order.name}</CardTitle>
-                        {onSelect && order.todaysOrder && (
+                        <CardTitle className="text-lg">{ligne.nom}</CardTitle>
+                        {onSelect && ligne.commandeDuJour && (
                              <input 
                                 type="checkbox"
                                 checked={isSelected}
@@ -76,19 +76,19 @@ const BreadOrderCardComponent = ({ order, date, isSelected, onSelect }: BreadOrd
                         )}
                     </div>
                     <CardDescription>
-                        <RecurrenceBadge type={order.type_recurrence}/>
+                        <RecurrenceBadge type={ligne.type_recurrence}/>
                     </CardDescription>
                 </CardHeader>
                  <CardContent className="flex-grow flex flex-col justify-center items-center gap-2 text-center relative">
-                    {order.isModified && (
+                    {ligne.estModifie && (
                         <div className="absolute top-0 right-2">
                             <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-primary" onClick={handleUndo}>
                                 <Undo className="h-3 w-3"/>
                             </Button>
                         </div>
                     )}
-                    <p className="text-6xl font-bold">{order.todaysOrder?.quantity ?? '-'}</p>
-                    <Button variant="outline" size="sm" onClick={() => setIsEditOpen(true)} disabled={!order.todaysOrder}>
+                    <p className="text-6xl font-bold">{ligne.commandeDuJour?.quantite ?? '-'}</p>
+                    <Button variant="outline" size="sm" onClick={() => setIsEditOpen(true)} disabled={!ligne.commandeDuJour}>
                         <Edit className="mr-2 h-3 w-3" /> Modifier
                     </Button>
                 </CardContent>
@@ -97,27 +97,27 @@ const BreadOrderCardComponent = ({ order, date, isSelected, onSelect }: BreadOrd
                          <Button 
                             variant={currentStatus === 'livre' ? 'secondary' : 'ghost'} 
                             onClick={() => handleStatusChange('livre')}
-                            disabled={!order.todaysOrder || currentStatus === 'paye'}
+                            disabled={!ligne.commandeDuJour || currentStatus === 'paye'}
                             className="h-9"
                         >Livré</Button>
                         <Button 
                             variant={currentStatus === 'paye' ? 'secondary' : 'ghost'} 
                             onClick={() => handleStatusChange('paye')}
-                            disabled={!order.todaysOrder}
+                            disabled={!ligne.commandeDuJour}
                              className="h-9"
                         >Payé</Button>
                     </div>
                 </CardFooter>
             </Card>
-            {order.todaysOrder && (
-                 <EditOrderDialog 
+            {ligne.commandeDuJour && (
+                 <ModifierPainCommandeDialog 
                     isOpen={isEditOpen} 
                     onOpenChange={setIsEditOpen} 
-                    order={order.todaysOrder} 
+                    commande={ligne.commandeDuJour} 
                 />
             )}
         </>
     );
 };
 
-export const BreadOrderCard = React.memo(BreadOrderCardComponent);
+export const PainCommandeCarte = React.memo(PainCommandeCarteComponent);

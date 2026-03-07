@@ -6,30 +6,30 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import type { DailyBreadOrder } from '@/lib/types';
+import type { CommandePain } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
 import { dataService } from '@/services/data-service';
 
-interface EditOrderDialogProps {
+interface ModifierPainCommandeDialogProps {
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
-    order: DailyBreadOrder;
+    commande: CommandePain;
 }
 
-export function EditOrderDialog({ isOpen, onOpenChange, order }: EditOrderDialogProps) {
-    const [quantity, setQuantity] = useState(order.quantity);
+export function ModifierPainCommandeDialog({ isOpen, onOpenChange, commande }: ModifierPainCommandeDialogProps) {
+    const [quantity, setQuantity] = useState(commande.quantite);
     const [isLoading, setIsLoading] = useState(false);
     
     useEffect(() => {
         if(isOpen) {
-            setQuantity(order.quantity);
+            setQuantity(commande.quantite);
         }
-    }, [isOpen, order.quantity]);
+    }, [isOpen, commande.quantite]);
 
     const handleSave = async () => {
         setIsLoading(true);
         try {
-            await dataService.updateDailyOrderQuantity(order.id!, quantity);
+            await dataService.updateCommandePainQuantite(commande.id!, quantity);
             toast.success("Quantité mise à jour.");
             onOpenChange(false);
         } catch (e: any) {
@@ -43,7 +43,7 @@ export function EditOrderDialog({ isOpen, onOpenChange, order }: EditOrderDialog
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-xs">
                 <DialogHeader>
-                    <DialogTitle>Modifier la quantité pour {order.customerName}</DialogTitle>
+                    <DialogTitle>Modifier la quantité pour {commande.nom_client}</DialogTitle>
                 </DialogHeader>
                 <div className="py-4">
                     <Label htmlFor="quantity">Nouvelle quantité</Label>

@@ -94,7 +94,7 @@ export interface Sale {
     customerName?: string;
     createdAt?: Date;
     updatedAt?: Date;
-    breadOrderDate?: string;
+    date_commande_pain?: string;
     dueDate?: Date;
 }
 
@@ -162,8 +162,8 @@ export interface CompanyProfile {
     rcNumber?: string;
     syncUrl?: string;
     lastSyncDate?: string;
-    breadPrice?: number;
-    breadPurchasePrice?: number;
+    prix_pain?: number;
+    prix_achat_pain?: number;
     goldPricePerGram?: number;
     updatedAt?: Date;
 }
@@ -221,10 +221,10 @@ export interface ProductReturn {
 
 export type Weekday = 'lundi' | 'mardi' | 'mercredi' | 'jeudi' | 'vendredi' | 'samedi' | 'dimanche';
 
-export interface BreadCustomer {
+export interface PainClient {
     id?: number;
-    name: string;
-    isActive: boolean;
+    nom: string;
+    actif: boolean;
     type_recurrence: 'quotidien' | 'jours_specifiques' | 'aucun';
     quantite_defaut: number;
     jours_semaine: {
@@ -234,25 +234,24 @@ export interface BreadCustomer {
     updatedAt?: Date;
 }
 
-// Represents the order information for a customer on a given day
-export interface BreadOrder extends BreadCustomer {
-    id: number; // customer id
-    todaysOrder?: DailyBreadOrder & { saleId?: number };
-    isModified: boolean;
-}
-
-
-export interface DailyBreadOrder {
+export interface CommandePain {
     id?: number;
-    breadCustomerId: number;
-    customerName: string;
-    quantity: number;
+    client_pain_id: number;
+    nom_client: string;
     date: string; // YYYY-MM-DD
+    quantite: number;
+    statut: 'en_attente' | 'livre' | 'paye';
+    vente_id?: number;
     createdAt?: Date;
     updatedAt?: Date;
-    saleId?: number;
-    status: 'en_attente' | 'livre' | 'paye';
 }
+
+export interface LigneCommandePain extends PainClient {
+    id: number; // customer id
+    commandeDuJour?: CommandePain;
+    estModifie: boolean;
+}
+
 
 export type ExpenseCategory = 'Loyer' | 'Salaires' | 'Fournisseurs' | 'Services Publics' | 'Marketing' | 'Maintenance' | 'Autre';
 

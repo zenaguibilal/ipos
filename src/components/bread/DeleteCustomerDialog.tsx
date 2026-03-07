@@ -14,29 +14,29 @@ import {
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { toast } from 'sonner';
-import type { BreadCustomer } from '@/lib/types';
+import type { PainClient } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
 import { dataService } from '@/services/data-service';
 
-interface DeleteCustomerDialogProps {
+interface SupprimerPainClientDialogProps {
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
-    customer: BreadCustomer | null;
+    client: PainClient | null;
 }
 
-export function DeleteCustomerDialog({ isOpen, onOpenChange, customer }: DeleteCustomerDialogProps) {
+export function SupprimerPainClientDialog({ isOpen, onOpenChange, client }: SupprimerPainClientDialogProps) {
     const [isDeleting, setIsDeleting] = useState(false);
 
     const handleDelete = async () => {
-        if (!customer || !customer.id) return;
+        if (!client || !client.id) return;
         setIsDeleting(true);
 
         try {
-            await dataService.deleteBreadCustomer(customer.id);
-            toast.success(`Client "${customer.name}" supprimé.`);
+            await dataService.deletePainClient(client.id);
+            toast.success(`Client "${client.nom}" supprimé.`);
             onOpenChange(false);
         } catch (error: any) {
-            console.error("Failed to delete bread customer:", error);
+            console.error("Failed to delete bread client:", error);
             toast.error(error.message || "Échec de la suppression du client.");
         } finally {
             setIsDeleting(false);
@@ -49,7 +49,7 @@ export function DeleteCustomerDialog({ isOpen, onOpenChange, customer }: DeleteC
             <AlertDialogHeader>
               <AlertDialogTitle>Êtes-vous absolument sûr ?</AlertDialogTitle>
               <AlertDialogDescription>
-                Cette action est irréversible. Le client "{customer?.name}" et toutes ses commandes de pain seront définitivement supprimés.
+                Cette action est irréversible. Le client "{client?.nom}" et toutes ses commandes de pain seront définitivement supprimés.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

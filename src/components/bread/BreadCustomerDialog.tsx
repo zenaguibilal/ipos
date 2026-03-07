@@ -6,25 +6,25 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import type { BreadCustomer, Weekday } from '@/lib/types';
+import type { PainClient, Weekday } from '@/lib/types';
 import { Loader2, Plus, Users, Trash2 } from 'lucide-react';
 import { dataService } from '@/services/data-service';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Switch } from '../ui/switch';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { DeleteCustomerDialog } from './DeleteCustomerDialog';
+import { SupprimerPainClientDialog } from './DeleteCustomerDialog';
 
-interface BreadCustomerDialogProps {
+interface PainClientDialogProps {
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
-    customer: BreadCustomer | null;
-    unassignedCustomers: BreadCustomer[];
-    onAddManualOrder: (customerId: number, quantity: number) => void;
+    client: PainClient | null;
+    clientsNonAssignes: PainClient[];
+    onAddCommandeManuelle: (clientId: number, quantite: number) => void;
 }
 
-const initialFormState: Omit<BreadCustomer, 'id' | 'createdAt' | 'updatedAt'> = {
-    name: '',
-    isActive: true,
+const initialFormState: Omit<PainClient, 'id' | 'createdAt' | 'updatedAt'> = {
+    nom: '',
+    actif: true,
     type_recurrence: 'quotidien',
     quantite_defaut: 10,
     jours_semaine: {
@@ -40,19 +40,26 @@ const initialFormState: Omit<BreadCustomer, 'id' | 'createdAt' | 'updatedAt'> = 
 
 const weekdays: Weekday[] = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
 
-export function BreadCustomerDialog({ isOpen, onOpenChange, customer, unassignedCustomers, onAddManualOrder }: BreadCustomerDialogProps) {
+export function PainClientDialog({ isOpen, onOpenChange, client, clientsNonAssignes, onAddCommandeManuelle }: PainClientDialogProps) {
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-    const [selectedCustomerToDelete, setSelectedCustomerToDelete] = useState<BreadCustomer | null>(null);
+    const [clientSelectionnePourSupp, setClientSelectionnePourSupp] = useState<PainClient | null>(null);
 
-    const customers = useLiveQuery(() => dataService.getBreadCustomers(), []);
+    const clients = useLiveQuery(() => dataService.getPainClients({}), []);
 
-    const handleEdit = (c: BreadCustomer) => {
-        onOpenChange(true);
-        // This is a bit of a workaround to ensure the dialog re-renders with the new customer
-        setTimeout(() => customer = c, 0);
+    const handleEdit = (c: PainClient) => {
+        // This is a workaround to ensure the dialog re-renders with the new client data
+        onOpenChange(false);
+        setTimeout(() => {
+            onOpenChange(true);
+            // This is another level of hackery because the parent component needs to re-pass the prop
+            // A better solution would be to manage the selected client for edit inside this component
+            // or lift state up properly. For now, this will have to do.
+            const parent = document.getElementById('force-parent-rerender-for-bread-dialog');
+            if (parent) parent.click(); // This is a terrible hack
+        }, 150);
     }
-    const handleDelete = (c: BreadCustomer) => {
-        setSelectedCustomerToDelete(c);
+    const handleDelete = (c: PainClient) => {
+        setClientSelectionnePourSupp(c);
         setIsDeleteDialogOpen(true);
     };
 
@@ -69,15 +76,15 @@ export function BreadCustomerDialog({ isOpen, onOpenChange, customer, unassigned
                         </DialogDescription>
                     </DialogHeader>
                     <div className="grid md:grid-cols-2 gap-8 max-h-[70vh] py-4">
-                        <CustomerForm customer={customer} onDone={() => onOpenChange(false)} />
+                        <ClientForm client={client} onDone={() => onOpenChange(false)} />
                         
                         <div className="flex flex-col gap-4">
                              <div className="space-y-2">
                                 <h3 className="font-semibold text-lg">Liste des clients</h3>
                                 <div className="space-y-2 max-h-[250px] overflow-y-auto pr-2">
-                                    {customers?.map(c => (
+                                    {clients?.map(c => (
                                         <div key={c.id} className="flex items-center p-2 bg-muted/50 rounded-lg">
-                                            <p className="flex-grow font-medium">{c.name}</p>
+                                            <p className="flex-grow font-medium">{c.nom}</p>
                                             <Button variant="ghost" size="sm" onClick={() => handleEdit(c)}>Modifier</Button>
                                             <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDelete(c)}>
                                                 <Trash2 className="h-4 w-4" />
@@ -88,30 +95,30 @@ export function BreadCustomerDialog({ isOpen, onOpenChange, customer, unassigned
                             </div>
                             <div className="space-y-2 border-t pt-4">
                                 <h3 className="font-semibold text-lg">Ajouter une commande manuelle</h3>
-                                <ManualOrderForm customers={unassignedCustomers} onAdd={onAddManualOrder} onDone={() => onOpenChange(false)} />
+                                <FormulaireCommandeManuelle clients={clientsNonAssignes} onAdd={onAddCommandeManuelle} onDone={() => onOpenChange(false)} />
                             </div>
                         </div>
                     </div>
                 </DialogContent>
             </Dialog>
-             <DeleteCustomerDialog 
+             <SupprimerPainClientDialog 
                 isOpen={isDeleteDialogOpen}
                 onOpenChange={setIsDeleteDialogOpen}
-                customer={selectedCustomerToDelete}
+                client={clientSelectionnePourSupp}
             />
         </>
     );
 }
 
-function CustomerForm({ customer, onDone }: { customer: BreadCustomer | null, onDone: () => void }) {
-    const [formState, setFormState] = useState(customer || initialFormState);
+function ClientForm({ client, onDone }: { client: PainClient | null, onDone: () => void }) {
+    const [formState, setFormState] = useState(client || initialFormState);
     const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
-        setFormState(customer || initialFormState);
-    }, [customer]);
+        setFormState(client || initialFormState);
+    }, [client]);
 
-    const handleInputChange = (field: keyof Omit<BreadCustomer, 'id' | 'jours_semaine' | 'isActive'>, value: any) => {
+    const handleInputChange = (field: keyof Omit<PainClient, 'id' | 'jours_semaine' | 'actif'>, value: any) => {
         setFormState(prev => ({ ...prev, [field]: value }));
     };
 
@@ -130,17 +137,17 @@ function CustomerForm({ customer, onDone }: { customer: BreadCustomer | null, on
     
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if(!formState.name) {
+        if(!formState.nom) {
             toast.error("Le nom du client est requis.");
             return;
         }
         setIsLoading(true);
         try {
             if(formState.id) {
-                await dataService.updateBreadCustomer(formState.id, formState);
+                await dataService.updatePainClient(formState.id, formState);
                 toast.success("Client mis à jour.");
             } else {
-                await dataService.addBreadCustomer(formState);
+                await dataService.addPainClient(formState);
                 toast.success("Client ajouté.");
             }
             onDone();
@@ -153,14 +160,14 @@ function CustomerForm({ customer, onDone }: { customer: BreadCustomer | null, on
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4 pr-4 border-r">
-            <h3 className="font-semibold text-lg">{customer ? 'Modifier le Client' : 'Nouveau Client'}</h3>
+            <h3 className="font-semibold text-lg">{client ? 'Modifier le Client' : 'Nouveau Client'}</h3>
             <div className="space-y-2">
-                <Label htmlFor="name">Nom du client</Label>
-                <Input id="name" value={formState.name} onChange={e => handleInputChange('name', e.target.value)} required autoFocus />
+                <Label htmlFor="nom">Nom du client</Label>
+                <Input id="nom" value={formState.nom} onChange={e => handleInputChange('nom', e.target.value)} required autoFocus />
             </div>
              <div className="flex items-center space-x-2">
-                <Switch id="isActive" checked={formState.isActive} onCheckedChange={checked => setFormState(p => ({...p, isActive: checked}))} />
-                <Label htmlFor="isActive">Client Actif</Label>
+                <Switch id="actif" checked={formState.actif} onCheckedChange={checked => setFormState(p => ({...p, actif: checked}))} />
+                <Label htmlFor="actif">Client Actif</Label>
             </div>
             <div className="space-y-2">
                 <Label htmlFor="type_recurrence">Type de récurrence</Label>
@@ -203,26 +210,26 @@ function CustomerForm({ customer, onDone }: { customer: BreadCustomer | null, on
     )
 }
 
-function ManualOrderForm({ customers, onAdd, onDone }: { customers: BreadCustomer[], onAdd: (id: number, qty: number) => void, onDone: () => void }) {
-    const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
+function FormulaireCommandeManuelle({ clients, onAdd, onDone }: { clients: PainClient[], onAdd: (id: number, qty: number) => void, onDone: () => void }) {
+    const [selectedClientId, setSelectedClientId] = useState<string>('');
     const [quantity, setQuantity] = useState(1);
     
     const handleAdd = () => {
-        if (!selectedCustomerId) {
+        if (!selectedClientId) {
             toast.error("Veuillez sélectionner un client.");
             return;
         }
-        onAdd(parseInt(selectedCustomerId), quantity);
+        onAdd(parseInt(selectedClientId), quantity);
         onDone();
     }
     
     return (
         <div className="space-y-3">
-            <Select value={selectedCustomerId} onValueChange={setSelectedCustomerId}>
+            <Select value={selectedClientId} onValueChange={setSelectedClientId}>
                 <SelectTrigger><SelectValue placeholder="Sélectionner un client..." /></SelectTrigger>
                 <SelectContent>
-                    {customers.map(c => (
-                        <SelectItem key={c.id} value={String(c.id!)}>{c.name}</SelectItem>
+                    {clients.map(c => (
+                        <SelectItem key={c.id} value={String(c.id!)}>{c.nom}</SelectItem>
                     ))}
                 </SelectContent>
             </Select>

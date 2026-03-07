@@ -1,22 +1,22 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { dataService } from '@/services/data-service';
-import type { BreadOrder, BreadCustomer, CompanyProfile } from '@/lib/types';
+import type { LigneCommandePain, PainClient, CompanyProfile } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, Plus, Users, Printer, AlertTriangle, Check, Loader2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Users, Printer, AlertTriangle, Check, Loader2 } from 'lucide-react';
 import { format, addDays, subDays } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Skeleton } from '@/components/ui/skeleton';
-import { BreadStatsCards } from '@/components/bread/BreadStatsCards';
-import { BreadCustomerDialog } from '@/components/bread/BreadCustomerDialog';
-import { BreadOrderCard } from '@/components/bread/BreadOrderCard';
-import { DeleteCustomerDialog } from '@/components/bread/DeleteCustomerDialog';
-import { PrintableBreadList } from '@/components/bread/PrintableBreadList';
+import { PainStatsCartes } from '@/components/bread/BreadStatsCards';
+import { PainClientDialog } from '@/components/bread/BreadCustomerDialog';
+import { PainCommandeCarte } from '@/components/bread/BreadOrderCard';
+import { ListePainImprimable } from '@/components/bread/PrintableBreadList';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import Link from 'next/link';
 import { toast } from 'sonner';
+import { db } from '@/lib/database';
 
 const formatDate = (date: Date) => format(date, 'yyyy-MM-dd');
 
@@ -24,71 +24,79 @@ export default function BreadPage() {
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
     const [isPrintMode, setIsPrintMode] = useState(false);
-    const [selectedCustomer, setSelectedCustomer] = useState<BreadCustomer | null>(null);
+    const [selectedClient, setSelectedClient] = useState<PainClient | null>(null);
     const [selectedOrders, setSelectedOrders] = useState<Set<number>>(new Set());
     const [isGeneratingSales, setIsGeneratingSales] = useState(false);
-    const [isMounted, setIsMounted] = useState(false);
     
     const dateString = formatDate(selectedDate);
     
-    // Stable data fetching using a single useLiveQuery with Promise.all
     const { data, isLoading } = useLiveQuery(async () => {
-        try {
-            const [customers, orders, profile] = await Promise.all([
-                dataService.getBreadCustomers(),
-                dataService.getDailyBreadOrders(dateString),
-                dataService.getCompanyProfile(),
-            ]);
-            return { customers, orders, profile };
-        } catch (error) {
-            console.error("Error fetching bread data:", error);
-            return { customers: [], orders: [], profile: null, error };
-        }
-    }, [dateString], { data: { customers: [], orders: [], profile: null }, isLoading: true });
+        await dataService.creerCommandesDuJourSiNecessaire(dateString);
+        const [clients, commandes, ventes, profile] = await Promise.all([
+            dataService.getPainClients({ actifs: true }),
+            dataService.getCommandesPainDuJour(dateString),
+            db.sales.where('date_commande_pain').equals(dateString).toArray(),
+            db.companyProfile.get(1)
+        ]);
+        return { clients, commandes, ventes, profile: profile ?? null };
+    }, [dateString], { data: { clients: [], commandes: [], ventes: [], profile: null }, isLoading: true });
 
-    const { customers, orders, profile } = data.data;
+    const { clients, commandes, ventes, profile } = data;
 
-    useEffect(() => {
-        setIsMounted(true);
-    }, []);
+    const combinedOrders: LigneCommandePain[] = useMemo(() => {
+        if (isLoading || !clients || !commandes || !ventes) return [];
 
-    const combinedOrders: BreadOrder[] = useMemo(() => {
-        if (!customers || !orders) return [];
-
-        const orderMap = new Map(orders.map(order => [order.breadCustomerId, order]));
+        const commandeMap = new Map(commandes.map(c => [c.client_pain_id, c]));
+        const venteMap = new Map(ventes.filter(v => v.id).map(v => [v.id!, v]));
         
-        return customers
-            .filter(c => c.isActive)
-            .map(customer => {
-                const todaysOrder = orderMap.get(customer.id!);
-                const defaultQuantity = dataService.getDefaultBreadQuantityForDay(customer, selectedDate);
-                const isModified = todaysOrder ? todaysOrder.quantity !== defaultQuantity : false;
+        // Ensure commands have their sale status updated
+        commandes.forEach(cmd => {
+            if(cmd.vente_id && venteMap.has(cmd.vente_id) && cmd.statut !== 'paye') {
+                // This is a data-sync mechanism, ideally should be in the service layer
+                // but for UI reactivity, it's okay here for now.
+                dataService.updateCommandePainStatut(cmd.id!, 'paye');
+            }
+        });
+
+        return clients
+            .filter(c => c.actif)
+            .map(client => {
+                const commandeDuJour = commandeMap.get(client.id!);
+                const defaultQuantity = dataService.getQuantitePainParDefautPourJour(client, selectedDate);
+                const estModifie = commandeDuJour ? commandeDuJour.quantite !== defaultQuantity : false;
                 
                 return {
-                    ...customer,
-                    id: customer.id!,
-                    todaysOrder,
-                    isModified
+                    ...client,
+                    id: client.id!,
+                    commandeDuJour,
+                    estModifie
                 };
             })
-            .sort((a,b) => a.name.localeCompare(b.name));
-    }, [customers, orders, selectedDate]);
+            .sort((a,b) => a.nom.localeCompare(b.nom));
+    }, [clients, commandes, ventes, selectedDate, isLoading]);
     
     const unassignedCustomers = useMemo(() => {
-        if (!customers || !orders) return [];
-        const assignedCustomerIds = new Set(orders.map(o => o.breadCustomerId));
-        return customers.filter(c => c.isActive && !assignedCustomerIds.has(c.id!));
-    }, [customers, orders]);
+        if (!clients || !commandes) return [];
+        const assignedCustomerIds = new Set(commandes.map(o => o.client_pain_id));
+        return clients.filter(c => c.actif && !assignedCustomerIds.has(c.id!));
+    }, [clients, commandes]);
 
 
-    const handleEditCustomer = (customer: BreadCustomer) => {
-        setSelectedCustomer(customer);
+    const handleEditCustomer = (client: PainClient) => {
+        setSelectedClient(client);
         setIsCustomerDialogOpen(true);
     };
+    
+    // This is a hack to force re-render for dialog editing
+    const forceRerender = () => {
+        setSelectedClient(null);
+        setIsCustomerDialogOpen(false);
+        setTimeout(() => setIsCustomerDialogOpen(true), 0);
+    }
 
-    const handleAddManualOrder = async (customerId: number, quantity: number) => {
+    const handleAddManualOrder = async (clientId: number, quantite: number) => {
         try {
-            await dataService.addManualBreadOrder(customerId, dateString, quantity);
+            await dataService.addCommandePainManuelle(clientId, dateString, quantite);
             toast.success("Commande manuelle ajoutée.");
         } catch (e: any) {
             toast.error("Erreur", { description: e.message });
@@ -109,8 +117,8 @@ export default function BreadPage() {
 
     const handleSelectAll = () => {
         const allSelectableOrders = combinedOrders
-            .filter(o => o.todaysOrder && o.todaysOrder.status !== 'paye')
-            .map(o => o.todaysOrder!.id!);
+            .filter(o => o.commandeDuJour && o.commandeDuJour.statut !== 'paye')
+            .map(o => o.commandeDuJour!.id!);
             
         if (selectedOrders.size === allSelectableOrders.length) {
             setSelectedOrders(new Set());
@@ -126,7 +134,7 @@ export default function BreadPage() {
         }
         setIsGeneratingSales(true);
         try {
-            const result = await dataService.generateBreadSales(Array.from(selectedOrders));
+            const result = await dataService.genererVentesPain(Array.from(selectedOrders), dateString);
             toast.success(`${result.count} vente(s) générée(s) avec succès !`);
             setSelectedOrders(new Set());
         } catch (e: any) {
@@ -145,11 +153,12 @@ export default function BreadPage() {
         }
     }, [isPrintMode]);
 
-    const pageIsLoading = isLoading || !isMounted;
-
     return (
         <>
         <div className="p-4 sm:p-6 space-y-6 print-hide">
+            {/* Hidden button for dialog hack */}
+            <button id="force-parent-rerender-for-bread-dialog" onClick={forceRerender} className="hidden" />
+
             <header className="flex flex-col sm:flex-row gap-4 justify-between items-center">
                 <div className="flex items-center gap-4">
                     <div className="flex items-center gap-1 luxury-glass p-1 rounded-full">
@@ -161,13 +170,13 @@ export default function BreadPage() {
                 </div>
                  <div className="flex gap-2 w-full sm:w-auto">
                     <Button variant="outline" className="w-full sm:w-auto" onClick={() => setIsPrintMode(true)}><Printer className="mr-2 h-4 w-4"/> Imprimer</Button>
-                    <Button className="w-full sm:w-auto" onClick={() => { setSelectedCustomer(null); setIsCustomerDialogOpen(true); }}>
+                    <Button className="w-full sm:w-auto" onClick={() => { setSelectedClient(null); setIsCustomerDialogOpen(true); }}>
                         <Users className="mr-2 h-4 w-4" /> Gérer les clients
                     </Button>
                 </div>
             </header>
 
-            {!profile?.breadPrice && !pageIsLoading && (
+            {!profile?.prix_pain && !isLoading && (
                  <Alert variant="destructive">
                     <AlertTriangle className="h-4 w-4" />
                     <AlertTitle>Prix du pain non configuré !</AlertTitle>
@@ -177,12 +186,12 @@ export default function BreadPage() {
                 </Alert>
             )}
 
-            <BreadStatsCards orders={orders} />
+            <PainStatsCartes commandes={commandes} />
 
              <div className="p-3 luxury-glass flex items-center justify-between">
                 <div className="flex items-center gap-3">
                     <input type="checkbox" id="select-all" 
-                        checked={combinedOrders.filter(o => o.todaysOrder && o.todaysOrder.status !== 'paye').length > 0 && selectedOrders.size === combinedOrders.filter(o => o.todaysOrder && o.todaysOrder.status !== 'paye').length}
+                        checked={combinedOrders.filter(o => o.commandeDuJour && o.commandeDuJour.statut !== 'paye').length > 0 && selectedOrders.size === combinedOrders.filter(o => o.commandeDuJour && o.commandeDuJour.statut !== 'paye').length}
                         onChange={handleSelectAll}
                         className="h-5 w-5 rounded border-primary text-primary focus:ring-primary"
                     />
@@ -192,41 +201,41 @@ export default function BreadPage() {
                 </div>
                 <Button 
                     onClick={handleGenerateSales} 
-                    disabled={isGeneratingSales || selectedOrders.size === 0 || !profile?.breadPrice}
+                    disabled={isGeneratingSales || selectedOrders.size === 0 || !profile?.prix_pain}
                 >
                     {isGeneratingSales ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Check className="mr-2 h-4 w-4"/>}
                     Facturer la sélection
                 </Button>
             </div>
 
-            {pageIsLoading ? (
+            {isLoading ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                     {[...Array(8)].map((_, i) => <Skeleton key={i} className="h-48 w-full rounded-2xl" />)}
                 </div>
             ) : (
                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {combinedOrders.map(order => (
-                        <BreadOrderCard 
-                            key={order.id} 
-                            order={order} 
+                    {combinedOrders.map(ligne => (
+                        <PainCommandeCarte
+                            key={ligne.id} 
+                            ligne={ligne} 
                             date={dateString}
-                            isSelected={order.todaysOrder ? selectedOrders.has(order.todaysOrder.id!) : false}
-                            onSelect={order.todaysOrder ? () => handleSelectOrder(order.todaysOrder!.id!) : undefined}
+                            isSelected={ligne.commandeDuJour ? selectedOrders.has(ligne.commandeDuJour.id!) : false}
+                            onSelect={ligne.commandeDuJour ? () => handleSelectOrder(ligne.commandeDuJour!.id!) : undefined}
                         />
                     ))}
                 </div>
             )}
             
-            <BreadCustomerDialog
+            <PainClientDialog
                 isOpen={isCustomerDialogOpen}
                 onOpenChange={setIsCustomerDialogOpen}
-                customer={selectedCustomer}
-                unassignedCustomers={unassignedCustomers}
-                onAddManualOrder={handleAddManualOrder}
+                client={selectedClient}
+                clientsNonAssignes={unassignedCustomers}
+                onAddCommandeManuelle={handleAddManualOrder}
             />
         </div>
         
-        {isPrintMode && <PrintableBreadList orders={combinedOrders} date={selectedDate} />}
+        {isPrintMode && <ListePainImprimable lignes={combinedOrders} date={selectedDate} />}
         </>
     );
 }
