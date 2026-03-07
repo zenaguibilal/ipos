@@ -36,24 +36,28 @@ export default function BreadPage() {
     const [isUpdating, setIsUpdating] = useState<Record<number, boolean>>({});
     const [isFinalizing, setIsFinalizing] = useState(false);
 
-    // Refactored data fetching for stability. Using Promise.all ensures atomic data loading.
-    const data = useLiveQuery(() => {
-        return Promise.all([
-            db.breadCustomers.where('isActive').equals(1).toArray(),
-            db.dailyBreadOrders.where('date').equals(dateString).toArray(),
-            db.sales.where('breadOrderDate').equals(dateString).toArray(),
-            db.companyProfile.get(1) // Direct Dexie call for stability
-        ]);
-    }, [dateString]);
+    // Fetch data using separate, stable live queries
+    const breadCustomers = useLiveQuery(() => 
+        db.breadCustomers.where('isActive').equals(1).toArray()
+    , []);
     
-    const breadCustomers = data?.[0];
-    const dailyOrders = data?.[1];
-    const salesForDate = data?.[2];
-    const companyProfile = data?.[3];
+    const dailyOrders = useLiveQuery(() => 
+        db.dailyBreadOrders.where('date').equals(dateString).toArray()
+    , [dateString]);
+    
+    const salesForDate = useLiveQuery(() => 
+        db.sales.where('breadOrderDate').equals(dateString).toArray()
+    , [dateString]);
+    
+    const companyProfile = useLiveQuery(() => 
+        db.companyProfile.get(1)
+    , []);
 
-    const isLoading = data === undefined;
+    // isLoading is true until all queries have returned a result (even if it's an empty array or null)
+    const isLoading = breadCustomers === undefined || dailyOrders === undefined || salesForDate === undefined || companyProfile === undefined;
 
     const orders = useMemo<BreadOrder[] | undefined>(() => {
+        // Guard clause: Don't compute until all data is loaded.
         if (isLoading || !breadCustomers || !dailyOrders || !salesForDate) {
             return undefined;
         }
@@ -71,7 +75,7 @@ export default function BreadPage() {
             return { ...customer, id: customer.id!, todaysOrder: finalOrder };
         }).sort((a,b) => a.name.localeCompare(b.name));
 
-    }, [data, isLoading, breadCustomers, dailyOrders, salesForDate]);
+    }, [isLoading, breadCustomers, dailyOrders, salesForDate]);
 
     const printRef = useRef<HTMLDivElement>(null);
     const handlePrint = useReactToPrint({
