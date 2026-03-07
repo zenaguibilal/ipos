@@ -30,17 +30,18 @@ export default function BreadPage() {
     
     const dateString = formatDate(selectedDate);
     
-    const { data, isLoading } = useLiveQuery(async () => {
-        await dataService.creerCommandesDuJourSiNecessaire(dateString);
-        const [clients, commandes, profile] = await Promise.all([
-            dataService.getPainClients({ actifs: true }),
-            dataService.getCommandesPainDuJour(dateString),
-            db.companyProfile.get(1)
-        ]);
-        return { clients, commandes, profile: profile ?? null };
-    }, [dateString], { data: { clients: [], commandes: [], profile: null }, isLoading: true });
+    // Side effect to create daily orders if they don't exist. This runs once per date change.
+    useEffect(() => {
+        dataService.creerCommandesDuJourSiNecessaire(dateString);
+    }, [dateString]);
 
-    const { clients, commandes, profile } = data;
+    // Separate live queries for each data source for stability.
+    const clients = useLiveQuery(() => dataService.getPainClients({ actifs: true }), []);
+    const commandes = useLiveQuery(() => dataService.getCommandesPainDuJour(dateString), [dateString]);
+    const profile = useLiveQuery(() => db.companyProfile.get(1), []);
+
+    // isLoading is true until ALL data sources have loaded.
+    const isLoading = clients === undefined || commandes === undefined || profile === undefined;
 
     const combinedOrders: LigneCommandePain[] = useMemo(() => {
         if (isLoading || !clients || !commandes) return [];
@@ -65,9 +66,10 @@ export default function BreadPage() {
     }, [clients, commandes, selectedDate, isLoading]);
     
     const manualOrderCustomers = useMemo(() => {
-        if (!clients) return [];
-        return clients.filter(c => c.actif && c.type_recurrence === 'aucun');
-    }, [clients]);
+        if (!clients || !commandes) return [];
+        const customersWithOrders = new Set(commandes.map(c => c.client_pain_id));
+        return clients.filter(c => c.actif && c.type_recurrence === 'aucun' && !customersWithOrders.has(c.id!));
+    }, [clients, commandes]);
 
     const allSelectableOrderIds = useMemo(() => 
         combinedOrders
