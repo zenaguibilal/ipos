@@ -37,13 +37,13 @@ export default function BreadPage() {
     const [isUpdating, setIsUpdating] = useState<Record<number, boolean>>({});
     const [isFinalizing, setIsFinalizing] = useState(false);
 
-    // Refactored data fetching for stability
+    // Refactored data fetching for stability. Using Promise.all ensures atomic data loading.
     const data = useLiveQuery(() => {
         return Promise.all([
             db.breadCustomers.where('isActive').equals(1).toArray(),
             db.dailyBreadOrders.where('date').equals(dateString).toArray(),
             db.sales.where('breadOrderDate').equals(dateString).toArray(),
-            dataService.getCompanyProfile(),
+            db.companyProfile.get(1) // Direct Dexie call for stability
         ]);
     }, [dateString]);
     
@@ -72,7 +72,7 @@ export default function BreadPage() {
             return { ...customer, id: customer.id!, todaysOrder: finalOrder };
         }).sort((a,b) => a.name.localeCompare(b.name));
 
-    }, [breadCustomers, dailyOrders, salesForDate, isLoading]);
+    }, [data, isLoading, breadCustomers, dailyOrders, salesForDate]);
 
     const printRef = useRef<HTMLDivElement>(null);
     const handlePrint = useReactToPrint({
