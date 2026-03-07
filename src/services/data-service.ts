@@ -2,20 +2,18 @@
 'use client';
 
 import { db, PosDatabase } from '@/lib/database';
-import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, Notification, InventoryLog, CustomerWithSalesData, ImportAnalysis, DashboardData, StockIntakeItem, CartItem, TopProduct, TopCustomer, GlobalActivityItem, ProductImportAnalysis, ZakatData, CostingItem, Draft, SaleItem, Supplier } from '@/lib/types';
+import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, Notification, InventoryLog, CustomerWithSalesData, ImportAnalysis, DashboardData, StockIntakeItem, CartItem, TopProduct, TopCustomer, GlobalActivityItem, ProductImportAnalysis, ZakatData, CostingItem, Draft, SaleItem } from '@/lib/types';
 import { initialData, type DB, type CollectionName } from './initial-data';
 import Dexie from 'dexie';
-import { startOfDay, endOfDay, format } from 'date-fns';
+import { startOfDay, endOfDay } from 'date-fns';
 import Papa from 'papaparse';
 import { formatCurrency } from '@/lib/utils';
 
 type TableName = keyof Pick<PosDatabase, 
     'products' | 'customers' | 'sales' | 'payments' | 
     'stockIntakes' | 'returns' | 'drafts' |
-    'companyProfile' | 'carts' | 'expenses' | 'settings' | 'notifications' | 'inventoryLogs' | 'suppliers'
+    'companyProfile' | 'carts' | 'expenses' | 'settings' | 'notifications' | 'inventoryLogs'
 >;
-
-type CustomerFilterStatus = 'all' | 'has_debt' | 'overdue' | 'over_limit';
 
 class DataService {
   
@@ -256,24 +254,15 @@ class DataService {
     });
   }
 
-  async getProducts(params: { 
-    query?: string; 
-    category?: string; 
-    supplierId?: number;
-    stockStatus?: 'all' | 'in_stock' | 'low_stock' | 'out_of_stock';
-    sortBy?: string;
-  }): Promise<Product[]> {
-    const { query, category, stockStatus = 'all', sortBy = 'name_asc', supplierId } = params;
+  async getProducts(params: { query?: string; category?: string; stockStatus?: 'all' | 'in_stock' | 'low_stock' | 'out_of_stock' }): Promise<Product[]> {
+    const { query, category, stockStatus = 'all' } = params;
 
-    let collection: Dexie.Collection<Product, number> = db.products.toCollection();
+    let collection = db.products.toCollection();
 
     if (category) {
       collection = collection.filter(p => p.category === category);
     }
-    if (supplierId) {
-        collection = collection.filter(p => p.fournisseurId === supplierId);
-    }
-
+    
     let productsArray = await collection.toArray();
 
     if (stockStatus !== 'all') {
@@ -299,27 +288,7 @@ class DataService {
       );
     }
     
-    const [sortField, sortOrder] = sortBy.split('_');
-
-    productsArray.sort((a, b) => {
-        let valA = (a as any)[sortField];
-        let valB = (b as any)[sortField];
-        
-        if (valA === undefined || valA === null) return 1;
-        if (valB === undefined || valB === null) return -1;
-        
-        if (['dateExpiration', 'createdAt', 'updatedAt', 'dateMajPrix'].includes(sortField)) {
-            valA = new Date(valA).getTime();
-            valB = new Date(valB).getTime();
-        }
-
-        if (valA < valB) return -1;
-        if (valA > valB) return 1;
-        return 0;
-    });
-
-    if (sortOrder === 'desc') productsArray.reverse();
-    return productsArray;
+    return productsArray.sort((a, b) => a.name.localeCompare(b.name));
   }
 
   async getProductsByIds(ids: number[]): Promise<Product[]> {
@@ -332,10 +301,6 @@ class DataService {
     return keys.filter(k => k) as string[];
   }
   
-  async getSuppliers(): Promise<Supplier[]> {
-    return db.suppliers.orderBy('name').toArray();
-  }
-
   // ====================================================================
   // Customers
   // ====================================================================
@@ -351,127 +316,37 @@ class DataService {
     const combined = [...sales, ...payments, ...returns];
     
     const getActivityDate = (item: Sale | Payment | ProductReturn): Date => {
-        if ('paymentDate' in item) return item.paymentDate;
+        if ('paymentDate' in item) return (item as Payment).createdAt!; // Assuming paymentDate might not exist
         return item.createdAt!;
     };
 
     return combined.sort((a, b) => getActivityDate(b).getTime() - getActivityDate(a).getTime());
   }
 
-  async getCustomers(params: { query?: string; status?: CustomerFilterStatus, sortBy?: string }): Promise<CustomerWithSalesData[]> {
-    const { query, status = 'all', sortBy = 'lastName_asc' } = params;
-    let customers: Customer[];
+  async getCustomers(params: { query?: string; status?: 'all' | 'has_debt' | 'overdue' | 'over_limit' }): Promise<CustomerWithSalesData[]> {
+    const { query, status = 'all' } = params;
+    let collection: Dexie.Collection<Customer, number> | Customer[] = db.customers;
 
     if (query) {
         const lowerQuery = query.toLowerCase();
-        customers = await db.customers.filter(c => 
-            (c.searchName?.toLowerCase().includes(lowerQuery) ?? false) ||
-            (c.phone?.includes(lowerQuery) ?? false)
-        ).toArray();
-    } else {
-        customers = await db.customers.toArray();
+        collection = collection.filter(c => c.searchName?.toLowerCase().includes(lowerQuery) || c.phone?.includes(lowerQuery));
     }
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); 
     
-    const unpaidSales = await db.sales.where('paymentStatus').notEqual('paid').toArray();
-    const unpaidSalesByCustomer = new Map<number, Sale[]>();
-    for (const sale of unpaidSales) {
-        if (sale.customerId) {
-            if (!unpaidSalesByCustomer.has(sale.customerId)) {
-                unpaidSalesByCustomer.set(sale.customerId, []);
-            }
-            unpaidSalesByCustomer.get(sale.customerId)!.push(sale);
-        }
-    }
-
-    const customerWithData: CustomerWithSalesData[] = customers.map(c => {
-        let debtStatus: CustomerWithSalesData['debtStatus'] = 'none';
-        
-        if (c.outstandingBalance > 0) {
-            const customerSales = unpaidSalesByCustomer.get(c.id!);
-            let isOverdue = false;
-            let isDueSoon = false;
-
-            if (customerSales) {
-                for (const sale of customerSales) {
-                    let dueDate: Date | null = null;
-                    if (sale.dueDate) {
-                        dueDate = new Date(sale.dueDate);
-                    } else if (c.settlementDay && sale.createdAt) {
-                        dueDate = new Date(sale.createdAt);
-                        dueDate.setDate(dueDate.getDate() + c.settlementDay);
-                    }
-                    
-                    if(dueDate) {
-                        dueDate.setHours(0,0,0,0);
-                        const daysDiff = (dueDate.getTime() - today.getTime()) / (1000 * 3600 * 24);
-
-                        if (daysDiff < 0) {
-                            isOverdue = true;
-                            break; 
-                        }
-                        if (daysDiff <= 7) {
-                            isDueSoon = true;
-                        }
-                    }
-                }
-            }
-            
-            if(isOverdue) {
-                debtStatus = 'overdue';
-            } else if (isDueSoon) {
-                debtStatus = 'due_soon';
-            } else {
-                debtStatus = 'ok';
-            }
-        }
-        
-        const isOverLimit = c.creditLimit != null && c.creditLimit > 0 ? c.outstandingBalance > c.creditLimit : false;
-        
-        return { ...c, id: c.id!, debtStatus, isOverLimit };
+    const customersArray = await collection.toArray();
+    
+    const customerWithData: CustomerWithSalesData[] = customersArray.map(c => {
+        const isOverdue = c.settlementDay ? 
+            (c.lastActivityDate ? (Date.now() - new Date(c.lastActivityDate).getTime()) / (1000 * 3600 * 24) > c.settlementDay : false)
+            : false;
+        const isReminderDue = isOverdue && c.outstandingBalance > 0;
+        return { ...c, id: c.id!, isReminderDue };
     });
     
-    let filteredCustomers = customerWithData;
-    switch (status) {
-      case 'has_debt':
-        filteredCustomers = customerWithData.filter(c => c.outstandingBalance > 0);
-        break;
-      case 'overdue':
-        filteredCustomers = customerWithData.filter(c => c.debtStatus === 'overdue');
-        break;
-      case 'over_limit':
-        filteredCustomers = customerWithData.filter(c => c.isOverLimit);
-        break;
-      case 'all':
-      default:
-        // no filter
+    if (status === 'has_debt') {
+        return customerWithData.filter(c => c.outstandingBalance > 0);
     }
-    
-    const [sortField, sortOrder] = sortBy.split('_');
-
-    filteredCustomers.sort((a, b) => {
-        let valA = (a as any)[sortField];
-        let valB = (b as any)[sortField];
-        
-        if (valA === undefined || valA === null) return 1;
-        if (valB === undefined || valB === null) return -1;
-        
-        if (['lastActivityDate', 'createdAt'].includes(sortField)) {
-            valA = new Date(valA).getTime();
-            valB = new Date(valB).getTime();
-        }
-
-        if (typeof valA === 'string') return valA.localeCompare(valB);
-        if (valA < valB) return -1;
-        if (valA > valB) return 1;
-        return 0;
-    });
-
-    if (sortOrder === 'desc') filteredCustomers.reverse();
-
-    return filteredCustomers;
+    // More status logic can be added here
+    return customerWithData.sort((a, b) => (a.lastName || '').localeCompare(b.lastName || ''));
   }
 
   async addCustomer(customer: Omit<Customer, 'id' | 'totalSpent' | 'outstandingBalance' | 'lastActivityDate'>): Promise<number> {
@@ -505,13 +380,6 @@ class DataService {
     });
   }
   
-  async getCustomerStatementData(customerId: number): Promise<{ customer: Customer; unpaidSales: Sale[] }> {
-    const customer = await this.getCustomerById(customerId);
-    if (!customer) throw new Error("Client non trouvé.");
-    const unpaidSales = await db.sales.where({ customerId }).and(sale => sale.paymentStatus !== 'paid').toArray();
-    return { customer, unpaidSales };
-  }
-
   // ====================================================================
   // Sales - Complex logic is handled atomically
   // ====================================================================
@@ -656,7 +524,6 @@ class DataService {
             customerId: cart.customerId,
             customerName: cart.customerName,
             items: cart.items,
-            discount: cart.discount,
             total,
             notes,
         };
@@ -676,15 +543,7 @@ class DataService {
   // Stock Intake - All writes are transactional
   // ====================================================================
    async addStockIntake(intakeData: Omit<StockIntake, 'id' | 'items' | 'totalValue'>, items: StockIntakeItem[]): Promise<number> {
-        return db.transaction('rw', db.products, db.stockIntakes, db.inventoryLogs, db.suppliers, async () => {
-            
-            const supplierName = intakeData.supplier;
-            let supplier = await db.suppliers.where('name').equalsIgnoreCase(supplierName).first();
-            if (!supplier) {
-                const supplierId = await db.suppliers.add({ name: supplierName });
-                supplier = { id: supplierId, name: supplierName };
-            }
-
+        return db.transaction('rw', db.products, db.stockIntakes, db.inventoryLogs, async () => {
             const totalValue = items.reduce((acc, item) => acc + item.purchasePrice * item.quantity, 0);
             const intakeId = await db.stockIntakes.add({ ...intakeData, totalValue, items: [] } as StockIntake);
             const persistedItems: StockIntake['items'] = [];
@@ -694,19 +553,14 @@ class DataService {
                 if (item.isNew) {
                     productId = await db.products.add({
                         name: item.name, category: item.category, price: item.price,
-                        purchasePrice: item.purchasePrice, quantity: 0, minStockLevel: 10, barcodes: item.barcodes,
-                        fournisseurId: supplier.id
+                        purchasePrice: item.purchasePrice, quantity: 0, minStockLevel: 10, barcodes: item.barcodes
                     } as Product);
                 }
                 if (!productId) throw new Error(`ID de produit manquant pour ${item.name}`);
                 
                 const product = await db.products.get(productId);
                 const newQuantity = (product?.quantity || 0) + item.quantity;
-                await db.products.update(productId, { 
-                    quantity: newQuantity, 
-                    purchasePrice: item.purchasePrice,
-                    fournisseurId: supplier.id
-                });
+                await db.products.update(productId, { quantity: newQuantity, purchasePrice: item.purchasePrice });
                 
                 await db.inventoryLogs.add({
                     productId, change: item.quantity, newQuantity,
@@ -745,11 +599,7 @@ class DataService {
   
   async addPayment(paymentData: Omit<Payment, 'id' | 'createdAt' | 'updatedAt'>): Promise<number> {
       return db.transaction('rw', db.payments, db.customers, async () => {
-          const dataToSave: Payment = {
-            ...paymentData,
-            paymentDate: paymentData.paymentDate || new Date(),
-          };
-          const id = await db.payments.add(dataToSave as Payment);
+          const id = await db.payments.add(paymentData as Payment);
           await db.customers.where('id').equals(paymentData.customerId).modify(c => {
               c.outstandingBalance = Math.max(0, c.outstandingBalance - paymentData.amount);
               c.lastActivityDate = new Date();
@@ -903,7 +753,7 @@ class DataService {
 
   async exportData(): Promise<string> {
     const data: Partial<DB> = {};
-    const tables: CollectionName[] = ['products', 'customers', 'suppliers', 'sales', 'payments', 'stockIntakes', 'returns', 'expenses', 'notifications', 'settings', 'inventoryLogs', 'drafts'];
+    const tables: CollectionName[] = ['products', 'customers', 'sales', 'payments', 'stockIntakes', 'returns', 'expenses', 'notifications', 'settings', 'inventoryLogs'];
     await db.transaction('r', ...db.tables, async () => {
         for (const tableName of tables) data[tableName] = await db.table(tableName).toArray();
         const profile = await db.companyProfile.get(1);
@@ -914,7 +764,7 @@ class DataService {
 
   async importData(jsonString: string): Promise<void> {
       const data: Partial<DB> = JSON.parse(jsonString);
-      const tables: (CollectionName | 'companyProfile' | 'drafts')[] = ['products', 'customers', 'suppliers', 'sales', 'payments', 'stockIntakes', 'returns', 'expenses', 'notifications', 'settings', 'inventoryLogs', 'companyProfile', 'drafts'];
+      const tables: (CollectionName | 'companyProfile')[] = ['products', 'customers', 'sales', 'payments', 'stockIntakes', 'returns', 'expenses', 'notifications', 'settings', 'inventoryLogs', 'companyProfile'];
       return db.transaction('rw', ...db.tables, async () => {
           for (const tableName of tables) await db.table(tableName)?.clear();
           for (const tableName of tables) {
@@ -974,9 +824,6 @@ class DataService {
                 firstName: c.firstName,
                 lastName: c.lastName,
                 phone: c.phone || '',
-                address: c.address || '',
-                settlementDay: c.settlementDay ? parseInt(c.settlementDay, 10) : undefined,
-                creditLimit: c.creditLimit ? parseFloat(c.creditLimit) : undefined,
                 totalSpent: 0,
                 outstandingBalance: c.outstandingBalance ? parseFloat(c.outstandingBalance) : 0,
             }));
@@ -986,31 +833,10 @@ class DataService {
                 await db.customers.update(c.id, {
                     firstName: c.firstName,
                     lastName: c.lastName,
-                    phone: c.phone,
-                    address: c.address,
-                    settlementDay: c.settlementDay ? parseInt(c.settlementDay, 10) : undefined,
-                    creditLimit: c.creditLimit ? parseFloat(c.creditLimit) : undefined,
+                    phone: c.phone
                 });
             }
         });
-    }
-
-     async exportCustomersToCSV(): Promise<string> {
-        const customers = await db.customers.orderBy('lastName').toArray();
-        const data = customers.map(c => ({
-            id: c.id,
-            firstName: c.firstName,
-            lastName: c.lastName,
-            phone: c.phone,
-            address: c.address,
-            outstandingBalance: c.outstandingBalance,
-            creditLimit: c.creditLimit,
-            settlementDay: c.settlementDay,
-            totalSpent: c.totalSpent,
-            lastActivityDate: c.lastActivityDate ? format(c.lastActivityDate, 'yyyy-MM-dd') : '',
-            createdAt: c.createdAt ? format(c.createdAt, 'yyyy-MM-dd') : '',
-        }));
-        return Papa.unparse(data);
     }
 
     async analyzeProductImport(data: any[]): Promise<ProductImportAnalysis> {
@@ -1071,29 +897,6 @@ class DataService {
                 await db.products.update(p.id, p);
             }
         });
-    }
-
-    async exportProductsToCSV(): Promise<string> {
-        const products = await db.products.toArray();
-        const suppliers = await db.suppliers.toArray();
-        const supplierMap = new Map(suppliers.map(s => [s.id, s.name]));
-
-        const data = products.map(p => ({
-            id: p.id,
-            name: p.name,
-            category: p.category,
-            price: p.price,
-            purchasePrice: p.purchasePrice,
-            quantity: p.quantity,
-            minStockLevel: p.minStockLevel,
-            unite: p.unite,
-            dateExpiration: p.dateExpiration ? format(p.dateExpiration, 'yyyy-MM-dd') : '',
-            fournisseur: p.fournisseurId ? supplierMap.get(p.fournisseurId) : '',
-            dateMajPrix: p.dateMajPrix ? format(p.dateMajPrix, 'yyyy-MM-dd') : '',
-            barcodes: p.barcodes?.join(','),
-            imageUrl: p.imageUrl,
-        }));
-        return Papa.unparse(data);
     }
     
     async syncDataToGoogleSheet() {

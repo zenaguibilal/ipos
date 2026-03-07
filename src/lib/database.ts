@@ -1,10 +1,9 @@
 import Dexie, { type Table } from 'dexie';
-import type { Product, Customer, Sale, Payment, StockIntake, ProductReturn, Cart, CompanyProfile, Expense, Setting, Notification, InventoryLog, Draft, Supplier } from './types';
+import type { Product, Customer, Sale, Payment, StockIntake, ProductReturn, Cart, CompanyProfile, Expense, Setting, Notification, InventoryLog, Draft } from './types';
 
 export class PosDatabase extends Dexie {
     products!: Table<Product, number>;
     customers!: Table<Customer, number>;
-    suppliers!: Table<Supplier, number>;
     sales!: Table<Sale, number>;
     payments!: Table<Payment, number>;
     stockIntakes!: Table<StockIntake, number>;
@@ -19,10 +18,9 @@ export class PosDatabase extends Dexie {
 
     constructor() {
         super('posDB');
-        this.version(31).stores({
-            products: '++id, name, *barcodes, category, price, quantity, [category+name], fournisseurId',
+        this.version(24).stores({
+            products: '++id, name, *barcodes, category, price, quantity, [category+name]',
             customers: '++id, searchName, createdAt, lastName, firstName, [lastName+firstName], phone, outstandingBalance, lastActivityDate',
-            suppliers: '++id, &name',
             sales: '++id, &invoiceNumber, createdAt, customerId, customerName, paymentStatus, dueDate',
             payments: '++id, createdAt, customerId',
             stockIntakes: '++id, &invoiceNumber, supplier, createdAt',
@@ -34,6 +32,14 @@ export class PosDatabase extends Dexie {
             settings: '&id', // Key-value store for UI state and preferences
             notifications: '++id, createdAt, isRead, type, [type+isRead]',
             inventoryLogs: '++id, productId, createdAt, reason',
+        }).upgrade(tx => {
+            // Dexie upgrade functions are declarative of the target version structure.
+            // This is for version 22, ensuring searchName is populated. It runs if the client db version is < 22.
+            return tx.table('customers').toCollection().modify(customer => {
+                if (customer.firstName && customer.lastName && !customer.searchName) {
+                   customer.searchName = `${customer.firstName.toLowerCase()} ${customer.lastName.toLowerCase()}`;
+                }
+            });
         });
 
         // Hooks to add/update timestamps

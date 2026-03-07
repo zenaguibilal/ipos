@@ -1,3 +1,4 @@
+
 export interface Product {
     id?: number | string; // string for custom products
     name: string;
@@ -10,10 +11,6 @@ export interface Product {
     imageUrl?: string;
     createdAt?: Date;
     updatedAt?: Date;
-    unite?: 'Pièce' | 'Kg' | 'Litre' | 'Boîte' | 'Carton' | 'Sachet' | 'Bouteille';
-    dateExpiration?: Date;
-    fournisseurId?: number;
-    dateMajPrix?: Date;
 }
 
 export interface Customer {
@@ -22,23 +19,11 @@ export interface Customer {
     lastName: string;
     searchName?: string;
     phone?: string;
-    address?: string;
     settlementDay?: number;
     creditLimit?: number;
     totalSpent: number;
     outstandingBalance: number;
     lastActivityDate?: Date;
-    createdAt?: Date;
-    updatedAt?: Date;
-}
-
-export interface Supplier {
-    id?: number;
-    name: string;
-    contactPerson?: string;
-    phone?: string;
-    email?: string;
-    address?: string;
     createdAt?: Date;
     updatedAt?: Date;
 }
@@ -100,8 +85,6 @@ export interface Payment {
     customerId: number;
     customerName?: string;
     amount: number;
-    paymentDate: Date;
-    notes?: string;
     createdAt?: Date;
     updatedAt?: Date;
 }
@@ -112,7 +95,6 @@ export interface Draft {
   customerId: number | null;
   customerName: string;
   items: CartItem[];
-  discount: { type: 'fixed' | 'percentage'; value: number };
   total: number;
   notes?: string;
 }
@@ -120,8 +102,7 @@ export interface Draft {
 
 export interface CustomerWithSalesData extends Customer {
     id: number; // Make id mandatory here
-    debtStatus?: 'none' | 'ok' | 'due_soon' | 'overdue';
-    isOverLimit?: boolean;
+    isReminderDue?: boolean;
 }
 
 
