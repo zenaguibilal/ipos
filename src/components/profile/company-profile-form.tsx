@@ -50,6 +50,8 @@ export function CompanyProfileForm() {
         const dataToSave: Partial<CompanyProfile> = {
             ...formState,
             goldPricePerGram: formState.goldPricePerGram ? Number(formState.goldPricePerGram) : undefined,
+            breadPrice: formState.breadPrice ? Number(formState.breadPrice) : undefined,
+            breadPurchasePrice: formState.breadPurchasePrice ? Number(formState.breadPurchasePrice) : undefined,
         };
 
         try {
@@ -95,24 +97,33 @@ export function CompanyProfileForm() {
                             </div>
                             <div className="space-y-2"><Label htmlFor="website">Site Web</Label><Input id="website" value={formState.website || ''} onChange={handleInputChange} disabled={isSaving} placeholder="https://www.exemple.com" /></div>
                         </div>
-                        <div className="space-y-4 border-t pt-6">
-                            <h4 className="font-medium text-muted-foreground">Paramètres de la Zakat</h4>
-                            <div className="space-y-2">
-                                <Label htmlFor="goldPricePerGram">Prix de l'or par gramme (DA) pour le Nisab</Label>
-                                <Input 
-                                    id="goldPricePerGram" 
-                                    type="number"
-                                    step="0.01"
-                                    value={formState.goldPricePerGram || ''} 
-                                    onChange={handleInputChange} 
-                                    disabled={isSaving} 
-                                    placeholder="Ex: 12000" 
-                                />
-                                <p className="text-xs text-muted-foreground">
-                                    Le Nisab est calculé sur la base de 85 grammes d'or.
-                                </p>
+
+                         <div className="space-y-4 border-t pt-6">
+                            <h4 className="font-medium text-muted-foreground">Paramètres Spécifiques</h4>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="breadPrice">Prix de vente du pain (DA)</Label>
+                                    <Input id="breadPrice" type="number" step="0.1" value={formState.breadPrice || ''} onChange={handleInputChange} disabled={isSaving} placeholder="Ex: 15" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="breadPurchasePrice">Prix d'achat du pain (DA)</Label>
+                                    <Input id="breadPurchasePrice" type="number" step="0.1" value={formState.breadPurchasePrice || ''} onChange={handleInputChange} disabled={isSaving} placeholder="Ex: 10" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="goldPricePerGram">Prix de l'or par gramme (DA)</Label>
+                                    <Input 
+                                        id="goldPricePerGram" 
+                                        type="number"
+                                        step="0.01"
+                                        value={formState.goldPricePerGram || ''} 
+                                        onChange={handleInputChange} 
+                                        disabled={isSaving} 
+                                        placeholder="Ex: 12000" 
+                                    />
+                                </div>
                             </div>
                         </div>
+
                         <div className="space-y-4 border-t pt-6">
                             <h4 className="font-medium text-muted-foreground">Paramètres de Synchronisation</h4>
                             <div className="space-y-2">

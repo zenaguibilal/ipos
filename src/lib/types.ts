@@ -12,6 +12,10 @@ export interface Product {
     imageUrl?: string;
     createdAt?: Date;
     updatedAt?: Date;
+    unite?: 'Pièce' | 'Kg' | 'Litre' | 'Boîte' | 'Carton' | 'Sachet' | 'Bouteille';
+    dateExpiration?: Date;
+    fournisseurId?: number;
+    dateMajPrix?: Date;
 }
 
 export interface Customer {
@@ -20,11 +24,23 @@ export interface Customer {
     lastName: string;
     searchName?: string;
     phone?: string;
+    address?: string;
     settlementDay?: number;
     creditLimit?: number;
     totalSpent: number;
     outstandingBalance: number;
     lastActivityDate?: Date;
+    createdAt?: Date;
+    updatedAt?: Date;
+}
+
+export interface Supplier {
+    id?: number;
+    name: string;
+    contactPerson?: string;
+    phone?: string;
+    email?: string;
+    address?: string;
     createdAt?: Date;
     updatedAt?: Date;
 }
@@ -78,6 +94,7 @@ export interface Sale {
     customerName?: string;
     createdAt?: Date;
     updatedAt?: Date;
+    breadOrderDate?: string;
     dueDate?: Date;
 }
 
@@ -86,6 +103,8 @@ export interface Payment {
     customerId: number;
     customerName?: string;
     amount: number;
+    paymentDate: Date;
+    notes?: string;
     createdAt?: Date;
     updatedAt?: Date;
 }
@@ -96,6 +115,7 @@ export interface Draft {
   customerId: number | null;
   customerName: string;
   items: CartItem[];
+  discount: { type: 'fixed' | 'percentage'; value: number };
   total: number;
   notes?: string;
 }
@@ -103,7 +123,8 @@ export interface Draft {
 
 export interface CustomerWithSalesData extends Customer {
     id: number; // Make id mandatory here
-    isReminderDue?: boolean;
+    debtStatus?: 'none' | 'ok' | 'due_soon' | 'overdue';
+    isOverLimit?: boolean;
 }
 
 
@@ -141,6 +162,8 @@ export interface CompanyProfile {
     rcNumber?: string;
     syncUrl?: string;
     lastSyncDate?: string;
+    breadPrice?: number;
+    breadPurchasePrice?: number;
     goldPricePerGram?: number;
     updatedAt?: Date;
 }
@@ -194,6 +217,41 @@ export interface ProductReturn {
     createdAt?: Date;
     updatedAt?: Date;
     notes?: string;
+}
+
+export type Weekday = 'lundi' | 'mardi' | 'mercredi' | 'jeudi' | 'vendredi' | 'samedi' | 'dimanche';
+
+export interface BreadCustomer {
+    id?: number;
+    name: string;
+    isActive: boolean;
+    type_recurrence: 'quotidien' | 'jours_specifiques' | 'aucun';
+    quantite_defaut: number;
+    jours_semaine: {
+        [key in Weekday]: { actif: boolean; quantite: number };
+    };
+    createdAt?: Date;
+    updatedAt?: Date;
+}
+
+// Represents the order information for a customer on a given day
+export interface BreadOrder extends BreadCustomer {
+    id: number; // customer id
+    todaysOrder?: DailyBreadOrder & { saleId?: number };
+    isModified: boolean;
+}
+
+
+export interface DailyBreadOrder {
+    id?: number;
+    breadCustomerId: number;
+    customerName: string;
+    quantity: number;
+    date: string; // YYYY-MM-DD
+    createdAt?: Date;
+    updatedAt?: Date;
+    saleId?: number;
+    status: 'en_attente' | 'livre' | 'paye';
 }
 
 export type ExpenseCategory = 'Loyer' | 'Salaires' | 'Fournisseurs' | 'Services Publics' | 'Marketing' | 'Maintenance' | 'Autre';
