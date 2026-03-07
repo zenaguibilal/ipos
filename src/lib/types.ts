@@ -90,6 +90,7 @@ export interface Sale {
     payments: SalePayment[];
     customerId?: number;
     customerName?: string;
+    client_pain_id?: number;
     createdAt?: Date;
     updatedAt?: Date;
     dueDate?: Date;

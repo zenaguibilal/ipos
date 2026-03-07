@@ -1253,6 +1253,7 @@ class DataService {
                     payments: [{ method: 'cash', amount: total }],
                     customerId: mainCustomer?.id,
                     customerName: commande.nom_client,
+                    client_pain_id: commande.client_pain_id,
                     createdAt: new Date(),
                 };
 

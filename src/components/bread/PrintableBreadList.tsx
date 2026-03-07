@@ -10,6 +10,12 @@ interface ListePainImprimableProps {
   date: Date;
 }
 
+const statusMap = {
+    en_attente: 'En attente',
+    livre: 'Livré',
+    paye: 'Payé',
+};
+
 export const ListePainImprimable: React.FC<ListePainImprimableProps> = ({ lignes, date }) => {
     const totalQuantity = lignes.reduce((sum, ligne) => sum + (ligne.commandeDuJour?.quantite ?? 0), 0);
     const deliveredQuantity = lignes.filter(l => l.commandeDuJour?.statut === 'livre' || l.commandeDuJour?.statut === 'paye').reduce((sum, ligne) => sum + (ligne.commandeDuJour?.quantite ?? 0), 0);
@@ -27,6 +33,7 @@ export const ListePainImprimable: React.FC<ListePainImprimableProps> = ({ lignes
                         <th className="text-left p-2 w-12"></th>
                         <th className="text-left p-2">Client</th>
                         <th className="text-center p-2 w-32">Quantité</th>
+                        <th className="text-left p-2 w-32">Statut</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -37,6 +44,7 @@ export const ListePainImprimable: React.FC<ListePainImprimableProps> = ({ lignes
                             </td>
                             <td className="p-3 font-medium">{ligne.nom}</td>
                             <td className="p-3 text-center font-bold text-lg">{ligne.commandeDuJour!.quantite}</td>
+                            <td className="p-3">{statusMap[ligne.commandeDuJour!.statut]}</td>
                         </tr>
                     ))}
                 </tbody>
