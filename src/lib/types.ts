@@ -10,21 +10,8 @@ export interface Product {
     minStockLevel: number;
     barcodes?: string[];
     imageUrl?: string;
-    unite?: 'Pièce' | 'Kg' | 'Litre' | 'Boîte' | 'Carton' | 'Sachet' | 'Bouteille';
-    dateExpiration?: Date;
-    fournisseurId?: number;
-    dateMajPrix?: Date;
     createdAt?: Date;
     updatedAt?: Date;
-}
-
-export interface Supplier {
-    id?: number;
-    name: string;
-    contactPerson?: string;
-    phone?: string;
-    email?: string;
-    address?: string;
 }
 
 export interface Customer {
@@ -33,7 +20,6 @@ export interface Customer {
     lastName: string;
     searchName?: string;
     phone?: string;
-    address?: string;
     settlementDay?: number;
     creditLimit?: number;
     totalSpent: number;
@@ -49,7 +35,6 @@ export interface SaleItem {
     price: number;
     purchasePrice: number;
     quantity: number;
-    unite?: string;
 }
 
 // Represents an item in the live shopping cart
@@ -101,8 +86,6 @@ export interface Payment {
     customerId: number;
     customerName?: string;
     amount: number;
-    paymentDate: Date;
-    notes?: string;
     createdAt?: Date;
     updatedAt?: Date;
 }
@@ -115,17 +98,12 @@ export interface Draft {
   items: CartItem[];
   total: number;
   notes?: string;
-  discount: {
-      type: 'fixed' | 'percentage';
-      value: number;
-  };
 }
 
 
 export interface CustomerWithSalesData extends Customer {
     id: number; // Make id mandatory here
-    debtStatus: 'ok' | 'due_soon' | 'overdue' | 'none';
-    isOverLimit: boolean;
+    isReminderDue?: boolean;
 }
 
 

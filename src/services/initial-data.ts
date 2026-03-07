@@ -1,4 +1,4 @@
-import type { Product, Customer, Sale, Payment, StockIntake, ProductReturn, BreadCustomer, DailyBreadOrder, CompanyProfile, Expense, Notification, Setting, InventoryLog } from "@/lib/types";
+import type { Product, Customer, Sale, Payment, StockIntake, ProductReturn, CompanyProfile, Expense, Notification, Setting, InventoryLog } from "@/lib/types";
 
 export interface DB {
     products: Product[];
@@ -7,8 +7,6 @@ export interface DB {
     payments: Payment[];
     stockIntakes: StockIntake[];
     returns: ProductReturn[];
-    breadCustomers: BreadCustomer[];
-    dailyBreadOrders: DailyBreadOrder[];
     expenses: Expense[];
     notifications: Notification[];
     settings: Setting[];
@@ -26,8 +24,6 @@ export const initialData: Partial<DB> = {
     payments: [],
     stockIntakes: [],
     returns: [],
-    breadCustomers: [],
-    dailyBreadOrders: [],
     expenses: [],
     notifications: [],
     settings: [],
