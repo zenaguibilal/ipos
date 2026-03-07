@@ -8,7 +8,6 @@ import { useReactToPrint } from 'react-to-print';
 import { format, addDays, subDays } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import type { BreadOrder, CompanyProfile, DailyBreadOrder, Sale } from '@/lib/types';
-import { Promise } from 'dexie';
 
 import { Button } from '@/components/ui/button';
 import { Plus, Printer, Check, ChevronLeft, ChevronRight, Loader2, AlertTriangle } from 'lucide-react';
