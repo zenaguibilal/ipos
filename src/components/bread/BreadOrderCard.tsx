@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import type { LigneCommandePain } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Check, Edit, Send, Undo } from 'lucide-react';
+import { Edit, Undo } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { dataService } from '@/services/data-service';
 import { toast } from 'sonner';
@@ -22,10 +22,10 @@ const RecurrenceBadge = ({ ligne }: { ligne: LigneCommandePain }) => {
     const { type_recurrence, jours_semaine } = ligne;
     
     if (type_recurrence === 'quotidien') {
-        return <Badge className="text-xs bg-blue-500/20 text-blue-300">Quotidien</Badge>;
+        return <Badge className="text-xs bg-blue-500/20 text-blue-300">🔵 Quotidien</Badge>;
     }
     if (type_recurrence === 'aucun') {
-        return <Badge className="text-xs bg-gray-500/20 text-gray-300">Manuel</Badge>;
+        return <Badge className="text-xs bg-gray-500/20 text-gray-300">⚪ Manuel</Badge>;
     }
     if (type_recurrence === 'jours_specifiques') {
         const activeDays = Object.entries(jours_semaine)
@@ -33,10 +33,10 @@ const RecurrenceBadge = ({ ligne }: { ligne: LigneCommandePain }) => {
             .map(([key]) => key.substring(0, 3));
         
         const label = activeDays.length > 3 
-            ? `${activeDays.slice(0,2).join(', ')}... (${activeDays.length})` 
+            ? `${activeDays.slice(0,2).join(', ')}... (×${activeDays.length})` 
             : activeDays.join(', ');
         
-        return <Badge className="text-xs bg-orange-500/20 text-orange-300 capitalize">{label || 'Jours Spécifiques'}</Badge>;
+        return <Badge className="text-xs bg-orange-500/20 text-orange-300 capitalize">🟠 {label || 'Jours Spécifiques'}</Badge>;
     }
     return null;
 }
