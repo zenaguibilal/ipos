@@ -18,20 +18,27 @@ interface PainCommandeCarteProps {
     onSelect?: () => void;
 }
 
-const statusConfig = {
-    en_attente: { label: "En attente", color: "bg-gray-500", icon: Send },
-    livre: { label: "Livré", color: "bg-blue-500", icon: Check },
-    paye: { label: "Payé", color: "bg-green-500", icon: Check },
-};
-
-const RecurrenceBadge = ({ type }: { type: LigneCommandePain['type_recurrence'] }) => {
-    const config = {
-        quotidien: { label: "Quotidien", color: "bg-blue-500/20 text-blue-300" },
-        jours_specifiques: { label: "Jours Spécifiques", color: "bg-orange-500/20 text-orange-300" },
-        aucun: { label: "Manuel", color: "bg-gray-500/20 text-gray-300" },
-    };
-    const { label, color } = config[type];
-    return <Badge className={cn("text-xs", color)}>{label}</Badge>;
+const RecurrenceBadge = ({ ligne }: { ligne: LigneCommandePain }) => {
+    const { type_recurrence, jours_semaine } = ligne;
+    
+    if (type_recurrence === 'quotidien') {
+        return <Badge className="text-xs bg-blue-500/20 text-blue-300">Quotidien</Badge>;
+    }
+    if (type_recurrence === 'aucun') {
+        return <Badge className="text-xs bg-gray-500/20 text-gray-300">Manuel</Badge>;
+    }
+    if (type_recurrence === 'jours_specifiques') {
+        const activeDays = Object.entries(jours_semaine)
+            .filter(([, val]) => val.actif)
+            .map(([key]) => key.substring(0, 3));
+        
+        const label = activeDays.length > 3 
+            ? `${activeDays.slice(0,2).join(', ')}... (${activeDays.length})` 
+            : activeDays.join(', ');
+        
+        return <Badge className="text-xs bg-orange-500/20 text-orange-300 capitalize">{label || 'Jours Spécifiques'}</Badge>;
+    }
+    return null;
 }
 
 const PainCommandeCarteComponent = ({ ligne, date, isSelected, onSelect }: PainCommandeCarteProps) => {
@@ -57,7 +64,6 @@ const PainCommandeCarteComponent = ({ ligne, date, isSelected, onSelect }: PainC
     };
     
     const currentStatus = ligne.commandeDuJour?.statut || 'en_attente';
-    const statusInfo = statusConfig[currentStatus];
 
     return (
         <>
@@ -76,7 +82,7 @@ const PainCommandeCarteComponent = ({ ligne, date, isSelected, onSelect }: PainC
                         )}
                     </div>
                     <CardDescription>
-                        <RecurrenceBadge type={ligne.type_recurrence}/>
+                        <RecurrenceBadge ligne={ligne}/>
                     </CardDescription>
                 </CardHeader>
                  <CardContent className="flex-grow flex flex-col justify-center items-center gap-2 text-center relative">
@@ -93,11 +99,17 @@ const PainCommandeCarteComponent = ({ ligne, date, isSelected, onSelect }: PainC
                     </Button>
                 </CardContent>
                 <CardFooter className="p-1">
-                    <div className="grid grid-cols-2 gap-1 w-full">
+                    <div className="grid grid-cols-3 gap-1 w-full">
+                         <Button 
+                            variant={currentStatus === 'en_attente' ? 'secondary' : 'ghost'} 
+                            onClick={() => handleStatusChange('en_attente')}
+                            disabled={!ligne.commandeDuJour}
+                            className="h-9"
+                        >En attente</Button>
                          <Button 
                             variant={currentStatus === 'livre' ? 'secondary' : 'ghost'} 
                             onClick={() => handleStatusChange('livre')}
-                            disabled={!ligne.commandeDuJour || currentStatus === 'paye'}
+                            disabled={!ligne.commandeDuJour}
                             className="h-9"
                         >Livré</Button>
                         <Button 

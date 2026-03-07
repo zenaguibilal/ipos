@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { dataService } from '@/services/data-service';
-import type { LigneCommandePain, PainClient, CompanyProfile } from '@/lib/types';
+import type { LigneCommandePain, PainClient, CommandePain, CompanyProfile, Sale } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, Users, Printer, AlertTriangle, Check, Loader2 } from 'lucide-react';
 import { format, addDays, subDays } from 'date-fns';
@@ -49,11 +49,8 @@ export default function BreadPage() {
         const commandeMap = new Map(commandes.map(c => [c.client_pain_id, c]));
         const venteMap = new Map(ventes.filter(v => v.id).map(v => [v.id!, v]));
         
-        // Ensure commands have their sale status updated
         commandes.forEach(cmd => {
             if(cmd.vente_id && venteMap.has(cmd.vente_id) && cmd.statut !== 'paye') {
-                // This is a data-sync mechanism, ideally should be in the service layer
-                // but for UI reactivity, it's okay here for now.
                 dataService.updateCommandePainStatut(cmd.id!, 'paye');
             }
         });
@@ -86,13 +83,6 @@ export default function BreadPage() {
         setSelectedClient(client);
         setIsCustomerDialogOpen(true);
     };
-    
-    // This is a hack to force re-render for dialog editing
-    const forceRerender = () => {
-        setSelectedClient(null);
-        setIsCustomerDialogOpen(false);
-        setTimeout(() => setIsCustomerDialogOpen(true), 0);
-    }
 
     const handleAddManualOrder = async (clientId: number, quantite: number) => {
         try {
@@ -156,9 +146,6 @@ export default function BreadPage() {
     return (
         <>
         <div className="p-4 sm:p-6 space-y-6 print-hide">
-            {/* Hidden button for dialog hack */}
-            <button id="force-parent-rerender-for-bread-dialog" onClick={forceRerender} className="hidden" />
-
             <header className="flex flex-col sm:flex-row gap-4 justify-between items-center">
                 <div className="flex items-center gap-4">
                     <div className="flex items-center gap-1 luxury-glass p-1 rounded-full">
@@ -229,7 +216,7 @@ export default function BreadPage() {
             <PainClientDialog
                 isOpen={isCustomerDialogOpen}
                 onOpenChange={setIsCustomerDialogOpen}
-                client={selectedClient}
+                selectedClient={selectedClient}
                 clientsNonAssignes={unassignedCustomers}
                 onAddCommandeManuelle={handleAddManualOrder}
             />

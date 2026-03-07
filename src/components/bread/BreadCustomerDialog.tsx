@@ -13,11 +13,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Switch } from '../ui/switch';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { SupprimerPainClientDialog } from './DeleteCustomerDialog';
+import { ScrollArea } from '../ui/scroll-area';
 
 interface PainClientDialogProps {
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
-    client: PainClient | null;
+    selectedClient: PainClient | null;
     clientsNonAssignes: PainClient[];
     onAddCommandeManuelle: (clientId: number, quantite: number) => void;
 }
@@ -40,34 +41,36 @@ const initialFormState: Omit<PainClient, 'id' | 'createdAt' | 'updatedAt'> = {
 
 const weekdays: Weekday[] = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
 
-export function PainClientDialog({ isOpen, onOpenChange, client, clientsNonAssignes, onAddCommandeManuelle }: PainClientDialogProps) {
+export function PainClientDialog({ isOpen, onOpenChange, selectedClient, clientsNonAssignes, onAddCommandeManuelle }: PainClientDialogProps) {
+    const [clientToEdit, setClientToEdit] = useState<PainClient | null>(selectedClient);
+    const [clientToDelete, setClientToDelete] = useState<PainClient | null>(null);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-    const [clientSelectionnePourSupp, setClientSelectionnePourSupp] = useState<PainClient | null>(null);
+
+    useEffect(() => {
+        setClientToEdit(selectedClient);
+    }, [selectedClient]);
 
     const clients = useLiveQuery(() => dataService.getPainClients({}), []);
 
     const handleEdit = (c: PainClient) => {
-        // This is a workaround to ensure the dialog re-renders with the new client data
-        onOpenChange(false);
-        setTimeout(() => {
-            onOpenChange(true);
-            // This is another level of hackery because the parent component needs to re-pass the prop
-            // A better solution would be to manage the selected client for edit inside this component
-            // or lift state up properly. For now, this will have to do.
-            const parent = document.getElementById('force-parent-rerender-for-bread-dialog');
-            if (parent) parent.click(); // This is a terrible hack
-        }, 150);
-    }
+        setClientToEdit(c);
+    };
+
     const handleDelete = (c: PainClient) => {
-        setClientSelectionnePourSupp(c);
+        setClientToDelete(c);
         setIsDeleteDialogOpen(true);
     };
+
+    const handleClose = () => {
+        setClientToEdit(null);
+        onOpenChange(false);
+    }
 
     if (!isOpen) return null;
 
     return (
         <>
-            <Dialog open={isOpen} onOpenChange={onOpenChange}>
+            <Dialog open={isOpen} onOpenChange={handleClose}>
                 <DialogContent className="sm:max-w-4xl">
                     <DialogHeader>
                         <DialogTitle>Gestion des Clients de Pain</DialogTitle>
@@ -76,12 +79,13 @@ export function PainClientDialog({ isOpen, onOpenChange, client, clientsNonAssig
                         </DialogDescription>
                     </DialogHeader>
                     <div className="grid md:grid-cols-2 gap-8 max-h-[70vh] py-4">
-                        <ClientForm client={client} onDone={() => onOpenChange(false)} />
+                        <ClientForm client={clientToEdit} onDone={() => setClientToEdit(null)} />
                         
                         <div className="flex flex-col gap-4">
                              <div className="space-y-2">
                                 <h3 className="font-semibold text-lg">Liste des clients</h3>
-                                <div className="space-y-2 max-h-[250px] overflow-y-auto pr-2">
+                                <ScrollArea className="h-[250px] pr-4">
+                                <div className="space-y-2">
                                     {clients?.map(c => (
                                         <div key={c.id} className="flex items-center p-2 bg-muted/50 rounded-lg">
                                             <p className="flex-grow font-medium">{c.nom}</p>
@@ -92,10 +96,11 @@ export function PainClientDialog({ isOpen, onOpenChange, client, clientsNonAssig
                                         </div>
                                     ))}
                                 </div>
+                                </ScrollArea>
                             </div>
                             <div className="space-y-2 border-t pt-4">
                                 <h3 className="font-semibold text-lg">Ajouter une commande manuelle</h3>
-                                <FormulaireCommandeManuelle clients={clientsNonAssignes} onAdd={onAddCommandeManuelle} onDone={() => onOpenChange(false)} />
+                                <FormulaireCommandeManuelle clients={clientsNonAssignes} onAdd={onAddCommandeManuelle} onDone={handleClose} />
                             </div>
                         </div>
                     </div>
@@ -104,7 +109,7 @@ export function PainClientDialog({ isOpen, onOpenChange, client, clientsNonAssig
              <SupprimerPainClientDialog 
                 isOpen={isDeleteDialogOpen}
                 onOpenChange={setIsDeleteDialogOpen}
-                client={clientSelectionnePourSupp}
+                client={clientToDelete}
             />
         </>
     );
