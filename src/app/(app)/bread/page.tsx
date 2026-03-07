@@ -69,6 +69,12 @@ export default function BreadPage() {
         return clients.filter(c => c.actif && c.type_recurrence === 'aucun');
     }, [clients]);
 
+    const allSelectableOrderIds = useMemo(() => 
+        combinedOrders
+            .filter(o => o.commandeDuJour && o.commandeDuJour.statut !== 'paye')
+            .map(o => o.commandeDuJour!.id!),
+        [combinedOrders]
+    );
 
     const handleEditCustomer = (client: PainClient) => {
         setSelectedClient(client);
@@ -97,14 +103,10 @@ export default function BreadPage() {
     };
 
     const handleSelectAll = () => {
-        const allSelectableOrders = combinedOrders
-            .filter(o => o.commandeDuJour && o.commandeDuJour.statut !== 'paye')
-            .map(o => o.commandeDuJour!.id!);
-            
-        if (selectedOrders.size === allSelectableOrders.length) {
+        if (selectedOrders.size === allSelectableOrderIds.length) {
             setSelectedOrders(new Set());
         } else {
-            setSelectedOrders(new Set(allSelectableOrders));
+            setSelectedOrders(new Set(allSelectableOrderIds));
         }
     };
 
@@ -169,9 +171,10 @@ export default function BreadPage() {
              <div className="p-3 luxury-glass flex items-center justify-between">
                 <div className="flex items-center gap-3">
                     <input type="checkbox" id="select-all" 
-                        checked={combinedOrders.filter(o => o.commandeDuJour && o.commandeDuJour.statut !== 'paye').length > 0 && selectedOrders.size === combinedOrders.filter(o => o.commandeDuJour && o.commandeDuJour.statut !== 'paye').length}
+                        checked={allSelectableOrderIds.length > 0 && selectedOrders.size === allSelectableOrderIds.length}
                         onChange={handleSelectAll}
-                        className="h-5 w-5 rounded border-primary text-primary focus:ring-primary"
+                        disabled={allSelectableOrderIds.length === 0}
+                        className="h-5 w-5 rounded border-primary text-primary focus:ring-primary disabled:opacity-50"
                     />
                     <label htmlFor="select-all" className="text-sm font-medium">
                         {selectedOrders.size > 0 ? `${selectedOrders.size} sélectionné(s)` : 'Tout sélectionner'}

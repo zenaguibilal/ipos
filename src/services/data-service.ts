@@ -1235,7 +1235,6 @@ class DataService {
             for (const commande of commandesAFacturer) {
                 if (commande.statut === 'paye' || commande.vente_id) continue;
 
-                // Find main customer by name, if exists
                 const mainCustomer = await db.customers.where('searchName').equalsIgnoreCase(commande.nom_client.toLowerCase()).first();
                 const total = commande.quantite * profile.prix_pain;
                 
