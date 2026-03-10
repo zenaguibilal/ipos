@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Plus, Trash2, Save, ChevronsUpDown } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Save, ChevronsUpDown, AlertTriangle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
@@ -61,20 +61,31 @@ export default function NewStockIntakePage() {
     const handleAddProduct = (productId: string) => {
         const product = products?.find(p => String(p.id!) === productId);
         if (product) {
-            setItems(prev => [
-                ...prev,
-                {
-                    id: uuidv4(),
-                    productId: product.id as number,
-                    name: product.name,
-                    barcodes: product.barcodes || [],
-                    category: product.category,
-                    quantity: 1,
-                    purchasePrice: product.purchasePrice,
-                    price: product.price,
-                    isNew: false,
-                }
-            ]);
+            const existingItemIndex = items.findIndex(item => item.productId === product.id);
+            if (existingItemIndex > -1) {
+                // Product already in list, just increase quantity
+                const newItems = [...items];
+                newItems[existingItemIndex].quantity += 1;
+                setItems(newItems);
+                toast.info(`Quantité de "${product.name}" augmentée.`);
+            } else {
+                // Add new product to list
+                setItems(prev => [
+                    ...prev,
+                    {
+                        id: uuidv4(),
+                        productId: product.id as number,
+                        name: product.name,
+                        barcodes: product.barcodes || [],
+                        category: product.category,
+                        quantity: 1,
+                        quantityDamaged: 0,
+                        purchasePrice: product.purchasePrice,
+                        price: product.price,
+                        isNew: false,
+                    }
+                ]);
+            }
         }
     };
     
@@ -85,6 +96,7 @@ export default function NewStockIntakePage() {
             barcodes: [],
             category: '',
             quantity: 1,
+            quantityDamaged: 0,
             purchasePrice: 0,
             price: 0,
             isNew: true,
@@ -96,10 +108,9 @@ export default function NewStockIntakePage() {
         setItems(prev => prev.map(item => {
             if (item.id === id) {
                 const updatedItem = { ...item, [field]: value };
-                if (field === 'purchasePrice') {
-                    // Default selling price to be 20% higher than purchase price for new items
-                    if(updatedItem.isNew && updatedItem.price === 0) {
-                        updatedItem.price = parseFloat(value) * 1.2;
+                if (field === 'purchasePrice' || field === 'quantity') {
+                    if (updatedItem.isNew && updatedItem.price === 0) {
+                        updatedItem.price = parseFloat(String(updatedItem.purchasePrice)) * 1.2;
                     }
                 }
                 return updatedItem;
@@ -115,8 +126,8 @@ export default function NewStockIntakePage() {
     const totalValue = items.reduce((acc, item) => acc + (item.quantity * item.purchasePrice), 0);
 
     const handleSave = async () => {
-        if (!supplier || !invoiceNumber || !invoiceDate) {
-            toast.error("Veuillez remplir les informations sur le fournisseur et la facture.");
+        if (!supplier) {
+            toast.error("Veuillez remplir le nom du fournisseur.");
             return;
         }
         if (items.length === 0) {
@@ -125,15 +136,23 @@ export default function NewStockIntakePage() {
         }
 
         for (const item of items) {
-            if (!item.name || item.quantity <= 0 || item.purchasePrice <= 0 || (item.isNew && item.price <= 0)) {
-                toast.error(`Veuillez remplir toutes les informations pour l'article "${item.name || 'Nouvel article'}".`);
+            if (!item.name || item.quantity <= 0 || item.purchasePrice < 0) {
+                toast.error(`Veuillez remplir les informations pour l'article "${item.name || 'Nouvel article'}". La quantité doit être > 0 et le prix d'achat >= 0.`);
+                return;
+            }
+             if (item.quantityDamaged > item.quantity) {
+                toast.error(`La quantité endommagée ne peut pas dépasser la quantité reçue pour "${item.name}".`);
+                return;
+            }
+            if (item.isNew && item.price <= 0) {
+                toast.error(`Veuillez définir un prix de vente pour le nouvel article "${item.name}".`);
                 return;
             }
         }
 
         setIsSaving(true);
         try {
-            const intakeData = { supplier, invoiceNumber, invoiceDate };
+            const intakeData = { supplier, invoiceNumber, invoiceDate: invoiceDate || new Date() };
             await dataService.addStockIntake(intakeData, items);
             toast.success("Réception de stock enregistrée avec succès !");
             router.push('/stock');
@@ -170,7 +189,7 @@ export default function NewStockIntakePage() {
                         <Input id="supplier" value={supplier} onChange={e => setSupplier(e.target.value)} placeholder="Nom du fournisseur" />
                     </div>
                      <div className="space-y-2">
-                        <Label htmlFor="invoiceNumber">N° de Facture/Bon</Label>
+                        <Label htmlFor="invoiceNumber">N° de Facture/Bon (Optionnel)</Label>
                         <Input id="invoiceNumber" value={invoiceNumber} onChange={e => setInvoiceNumber(e.target.value)} placeholder="INV-12345" />
                     </div>
                     <div className="space-y-2">
@@ -247,35 +266,49 @@ export default function NewStockIntakePage() {
                         </Popover>
                     </div>
                      <div className="overflow-x-auto">
-                        <table className="w-full">
+                        <table className="w-full text-sm">
                             <thead>
                                 <tr className="border-b">
                                     <th className="p-2 text-left">Produit</th>
-                                    <th className="p-2 text-left w-32">Qté</th>
-                                    <th className="p-2 text-left w-40">Prix Achat (Unitaire)</th>
-                                    <th className="p-2 text-left w-40">Prix Vente (Unitaire)</th>
+                                    <th className="p-2 text-left w-32">Qté Reçue</th>
+                                    <th className="p-2 text-left w-32">Qté Endommagée</th>
+                                    <th className="p-2 text-left w-40">Prix Achat U.</th>
+                                    <th className="p-2 text-left w-40">Prix Vente U.</th>
                                     <th className="p-2 text-right w-20">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {items.map(item => (
-                                    <tr key={item.id} className="border-b">
-                                        <td className="p-2">
-                                            {item.isNew ? (
-                                                <Input placeholder="Nom du nouveau produit" value={item.name} onChange={e => handleItemChange(item.id, 'name', e.target.value)} />
-                                            ) : item.name}
-                                        </td>
-                                        <td className="p-2"><Input type="number" value={item.quantity} onChange={e => handleItemChange(item.id, 'quantity', parseInt(e.target.value) || 0)} /></td>
-                                        <td className="p-2"><Input type="number" value={item.purchasePrice} onChange={e => handleItemChange(item.id, 'purchasePrice', parseFloat(e.target.value) || 0)} /></td>
-                                        <td className="p-2"><Input type="number" value={item.price} onChange={e => handleItemChange(item.id, 'price', parseFloat(e.target.value) || 0)} disabled={!item.isNew} /></td>
-                                        <td className="p-2 text-right">
-                                            <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleRemoveItem(item.id)}><Trash2 className="h-4 w-4" /></Button>
-                                        </td>
-                                    </tr>
-                                ))}
+                                {items.map(item => {
+                                    const isLoss = item.isNew && item.price > 0 && item.purchasePrice > 0 && item.price < item.purchasePrice;
+                                    return (
+                                        <tr key={item.id} className="border-b">
+                                            <td className="p-2">
+                                                {item.isNew ? (
+                                                    <Input placeholder="Nom du nouveau produit" value={item.name} onChange={e => handleItemChange(item.id, 'name', e.target.value)} />
+                                                ) : item.name}
+                                            </td>
+                                            <td className="p-2"><Input type="number" min="1" value={item.quantity} onChange={e => handleItemChange(item.id, 'quantity', parseInt(e.target.value) || 0)} /></td>
+                                            <td className="p-2"><Input type="number" min="0" value={item.quantityDamaged} onChange={e => handleItemChange(item.id, 'quantityDamaged', parseInt(e.target.value) || 0)} /></td>
+                                            <td className="p-2"><Input type="number" min="0" step="0.1" value={item.purchasePrice} onChange={e => handleItemChange(item.id, 'purchasePrice', parseFloat(e.target.value) || 0)} /></td>
+                                            <td className="p-2">
+                                                <div className="relative">
+                                                     <Input type="number" min="0" step="0.1" value={item.price} onChange={e => handleItemChange(item.id, 'price', parseFloat(e.target.value) || 0)} disabled={!item.isNew} />
+                                                     {isLoss && (
+                                                        <div className="absolute -bottom-5 left-0 text-xs text-destructive flex items-center gap-1">
+                                                          <AlertTriangle className="h-3 w-3" /> Vente à perte
+                                                        </div>
+                                                     )}
+                                                </div>
+                                            </td>
+                                            <td className="p-2 text-right">
+                                                <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleRemoveItem(item.id)}><Trash2 className="h-4 w-4" /></Button>
+                                            </td>
+                                        </tr>
+                                    )
+                                })}
                                 {items.length === 0 && (
                                     <tr>
-                                        <td colSpan={5} className="p-8 text-center text-muted-foreground">Aucun article ajouté.</td>
+                                        <td colSpan={6} className="p-8 text-center text-muted-foreground">Aucun article ajouté.</td>
                                     </tr>
                                 )}
                             </tbody>

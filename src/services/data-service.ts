@@ -1,18 +1,19 @@
 
+
 'use client';
 
 import { db, PosDatabase } from '@/lib/database';
-import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, Notification, InventoryLog, CustomerWithSalesData, ImportAnalysis, DashboardData, StockIntakeItem, CartItem, TopProduct, TopCustomer, GlobalActivityItem, ProductImportAnalysis, ZakatData, CostingItem, Draft, SaleItem } from '@/lib/types';
+import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, Notification, InventoryLog, CustomerWithSalesData, ImportAnalysis, DashboardData, StockIntakeItem, CartItem, TopProduct, TopCustomer, GlobalActivityItem, ProductImportAnalysis, ZakatData, CostingItem, Draft, SaleItem, Supplier } from '@/lib/types';
 import { initialData, type DB, type CollectionName } from './initial-data';
 import Dexie from 'dexie';
-import { startOfDay, endOfDay } from 'date-fns';
+import { startOfDay, endOfDay, subDays } from 'date-fns';
 import Papa from 'papaparse';
 import { formatCurrency } from '@/lib/utils';
 
 type TableName = keyof Pick<PosDatabase, 
     'products' | 'customers' | 'sales' | 'payments' | 
     'stockIntakes' | 'returns' | 'drafts' |
-    'companyProfile' | 'carts' | 'expenses' | 'settings' | 'notifications' | 'inventoryLogs'
+    'companyProfile' | 'carts' | 'expenses' | 'settings' | 'notifications' | 'inventoryLogs' | 'suppliers'
 >;
 
 class DataService {
@@ -254,13 +255,17 @@ class DataService {
     });
   }
 
-  async getProducts(params: { query?: string; category?: string; stockStatus?: 'all' | 'in_stock' | 'low_stock' | 'out_of_stock' }): Promise<Product[]> {
-    const { query, category, stockStatus = 'all' } = params;
+  async getProducts(params: { query?: string; category?: string; supplierId?: number; stockStatus?: 'all' | 'in_stock' | 'low_stock' | 'out_of_stock', sortBy?: string }): Promise<Product[]> {
+    const { query, category, supplierId, stockStatus = 'all', sortBy = 'name_asc' } = params;
 
     let collection = db.products.toCollection();
 
     if (category) {
       collection = collection.filter(p => p.category === category);
+    }
+
+    if(supplierId) {
+        collection = collection.filter(p => p.fournisseurId === supplierId);
     }
     
     let productsArray = await collection.toArray();
@@ -288,7 +293,19 @@ class DataService {
       );
     }
     
-    return productsArray.sort((a, b) => a.name.localeCompare(b.name));
+    const [sortField, sortOrder] = sortBy.split('_');
+    productsArray.sort((a, b) => {
+        const aValue = (a as any)[sortField];
+        const bValue = (b as any)[sortField];
+        
+        let comparison = 0;
+        if (aValue > bValue) comparison = 1;
+        else if (aValue < bValue) comparison = -1;
+
+        return sortOrder === 'desc' ? comparison * -1 : comparison;
+    });
+
+    return productsArray;
   }
 
   async getProductsByIds(ids: number[]): Promise<Product[]> {
@@ -301,6 +318,10 @@ class DataService {
     return keys.filter(k => k) as string[];
   }
   
+  async getSuppliers(): Promise<Supplier[]> {
+      return this.getAll<Supplier>('suppliers');
+  }
+
   // ====================================================================
   // Customers
   // ====================================================================
@@ -316,15 +337,25 @@ class DataService {
     const combined = [...sales, ...payments, ...returns];
     
     const getActivityDate = (item: Sale | Payment | ProductReturn): Date => {
-        if ('paymentDate' in item) return (item as Payment).createdAt!; // Assuming paymentDate might not exist
-        return item.createdAt!;
+        return new Date(item.createdAt!);
     };
 
     return combined.sort((a, b) => getActivityDate(b).getTime() - getActivityDate(a).getTime());
   }
 
-  async getCustomers(params: { query?: string; status?: 'all' | 'has_debt' | 'overdue' | 'over_limit' }): Promise<CustomerWithSalesData[]> {
-    const { query, status = 'all' } = params;
+    async getCustomerStatementData(customerId: number): Promise<{ customer: Customer, unpaidSales: Sale[]}> {
+        const customer = await this.getCustomerById(customerId);
+        if (!customer) throw new Error("Client non trouvé");
+
+        const unpaidSales = await db.sales.where({ customerId })
+            .and(sale => sale.paymentStatus !== 'paid')
+            .sortBy('createdAt');
+        
+        return { customer, unpaidSales };
+    }
+
+  async getCustomers(params: { query?: string; status?: 'all' | 'has_debt' | 'overdue' | 'over_limit', sortBy?: string }): Promise<CustomerWithSalesData[]> {
+    const { query, status = 'all', sortBy = 'lastName_asc' } = params;
     let collection: Dexie.Collection<Customer, number> | Customer[] = db.customers;
 
     if (query) {
@@ -332,21 +363,60 @@ class DataService {
         collection = collection.filter(c => c.searchName?.toLowerCase().includes(lowerQuery) || c.phone?.includes(lowerQuery));
     }
     
-    const customersArray = await collection.toArray();
+    let customersArray = await collection.toArray();
     
+    const now = new Date();
     const customerWithData: CustomerWithSalesData[] = customersArray.map(c => {
-        const isOverdue = c.settlementDay ? 
-            (c.lastActivityDate ? (Date.now() - new Date(c.lastActivityDate).getTime()) / (1000 * 3600 * 24) > c.settlementDay : false)
-            : false;
-        const isReminderDue = isOverdue && c.outstandingBalance > 0;
-        return { ...c, id: c.id!, isReminderDue };
+        let debtStatus: Customer['debtStatus'] = 'none';
+        if (c.outstandingBalance > 0) {
+            const dueDate = c.lastActivityDate && c.settlementDay ? new Date(new Date(c.lastActivityDate).getTime() + c.settlementDay * 24 * 60 * 60 * 1000) : null;
+            if(dueDate && now > dueDate) {
+                debtStatus = 'overdue';
+            } else if (dueDate && subDays(dueDate, 7) <= now) {
+                debtStatus = 'due_soon';
+            }
+        }
+        
+        const isOverLimit = c.creditLimit ? c.outstandingBalance > c.creditLimit : false;
+        
+        return { ...c, id: c.id!, debtStatus, isOverLimit };
     });
     
-    if (status === 'has_debt') {
-        return customerWithData.filter(c => c.outstandingBalance > 0);
+    let filteredCustomers: CustomerWithSalesData[];
+
+    switch (status) {
+        case 'has_debt':
+            filteredCustomers = customerWithData.filter(c => c.outstandingBalance > 0);
+            break;
+        case 'overdue':
+             filteredCustomers = customerWithData.filter(c => c.debtStatus === 'overdue');
+            break;
+        case 'over_limit':
+             filteredCustomers = customerWithData.filter(c => c.isOverLimit);
+            break;
+        default:
+             filteredCustomers = customerWithData;
+            break;
     }
-    // More status logic can be added here
-    return customerWithData.sort((a, b) => (a.lastName || '').localeCompare(b.lastName || ''));
+
+    const [sortField, sortOrder] = sortBy.split('_');
+
+    return filteredCustomers.sort((a, b) => {
+        const aValue = (a as any)[sortField];
+        const bValue = (b as any)[sortField];
+
+        let comparison = 0;
+        if (aValue > bValue) comparison = 1;
+        else if (aValue < bValue) comparison = -1;
+
+        // For dates, nulls/undefined should come last
+        if (sortField.includes('Date')) {
+            if (!aValue) return 1;
+            if (!bValue) return -1;
+        }
+
+        return sortOrder === 'desc' ? comparison * -1 : comparison;
+    });
   }
 
   async addCustomer(customer: Omit<Customer, 'id' | 'totalSpent' | 'outstandingBalance' | 'lastActivityDate'>): Promise<number> {
@@ -377,6 +447,14 @@ class DataService {
         await db.payments.where({ customerId: id }).delete();
         await db.returns.where({ customerId: id }).delete();
         return db.customers.delete(id);
+    });
+  }
+
+  async exportCustomersToCSV(): Promise<string> {
+    const customers = await this.getAll<Customer>('customers');
+    return Papa.unparse(customers, {
+        columns: ['id', 'firstName', 'lastName', 'phone', 'address', 'outstandingBalance', 'creditLimit', 'settlementDay', 'lastActivityDate', 'createdAt'],
+        header: true
     });
   }
   
@@ -447,6 +525,7 @@ class DataService {
                 newQuantity,
                 reason: 'sale',
                 relatedId: saleId,
+                createdAt: new Date()
             } as InventoryLog);
 
             if (newQuantity <= product.minStockLevel) {
@@ -492,6 +571,7 @@ class DataService {
                     newQuantity,
                     reason: 'cancellation',
                     relatedId: `sale-${id}`,
+                    createdAt: new Date()
                 } as InventoryLog);
             }
         }
@@ -525,6 +605,7 @@ class DataService {
             customerName: cart.customerName,
             items: cart.items,
             total,
+            discount: cart.discount,
             notes,
         };
         return db.drafts.add(draft as Draft);
@@ -549,25 +630,49 @@ class DataService {
             const persistedItems: StockIntake['items'] = [];
 
             for (const item of items) {
+                const quantityToAdd = item.quantity - item.quantityDamaged;
+                if (quantityToAdd < 0) continue;
+
                 let productId: number | undefined = item.productId;
+                let productUpdateData: Partial<Product> = {};
+
                 if (item.isNew) {
                     productId = await db.products.add({
                         name: item.name, category: item.category, price: item.price,
-                        purchasePrice: item.purchasePrice, quantity: 0, minStockLevel: 10, barcodes: item.barcodes
+                        purchasePrice: item.purchasePrice, quantity: 0, minStockLevel: 10, barcodes: item.barcodes,
+                        dateMajPrix: new Date()
                     } as Product);
+                } else if (productId) {
+                    const product = await db.products.get(productId);
+                    if (product && product.purchasePrice !== item.purchasePrice) {
+                        productUpdateData.dateMajPrix = new Date();
+                    }
                 }
+
                 if (!productId) throw new Error(`ID de produit manquant pour ${item.name}`);
                 
                 const product = await db.products.get(productId);
-                const newQuantity = (product?.quantity || 0) + item.quantity;
-                await db.products.update(productId, { quantity: newQuantity, purchasePrice: item.purchasePrice });
+                const newQuantity = (product?.quantity || 0) + quantityToAdd;
+                
+                await db.products.update(productId, { 
+                    quantity: newQuantity, 
+                    purchasePrice: item.purchasePrice,
+                    ...productUpdateData 
+                });
                 
                 await db.inventoryLogs.add({
-                    productId, change: item.quantity, newQuantity,
+                    productId, change: quantityToAdd, newQuantity,
                     reason: 'stock_intake', relatedId: intakeId,
+                    createdAt: new Date()
                 } as InventoryLog);
                 
-                persistedItems.push({ productId, productName: item.name, quantityReceived: item.quantity, purchasePrice: item.purchasePrice });
+                persistedItems.push({ 
+                    productId, 
+                    productName: item.name, 
+                    quantityReceived: item.quantity,
+                    quantityDamaged: item.quantityDamaged,
+                    purchasePrice: item.purchasePrice
+                });
             }
             await db.stockIntakes.update(intakeId, { items: persistedItems });
             return intakeId;
@@ -578,7 +683,10 @@ class DataService {
         return db.transaction('rw', db.products, async () => {
             for (const item of costingItems) {
                 if (item.productId && typeof item.productId === 'number') {
-                    await db.products.update(item.productId, { purchasePrice: item.finalCostPerUnit });
+                    await db.products.update(item.productId, { 
+                        purchasePrice: item.finalCostPerUnit,
+                        dateMajPrix: new Date()
+                    });
                 }
             }
         });
@@ -599,7 +707,10 @@ class DataService {
   
   async addPayment(paymentData: Omit<Payment, 'id' | 'createdAt' | 'updatedAt'>): Promise<number> {
       return db.transaction('rw', db.payments, db.customers, async () => {
-          const id = await db.payments.add(paymentData as Payment);
+          const id = await db.payments.add({
+              ...paymentData,
+              createdAt: paymentData.paymentDate
+          } as Payment);
           await db.customers.where('id').equals(paymentData.customerId).modify(c => {
               c.outstandingBalance = Math.max(0, c.outstandingBalance - paymentData.amount);
               c.lastActivityDate = new Date();
@@ -632,6 +743,7 @@ class DataService {
                    await db.inventoryLogs.add({
                         productId: item.productId, change: item.quantity, newQuantity,
                         reason: 'return', relatedId: returnId,
+                        createdAt: new Date()
                     } as InventoryLog);
               }
           }
@@ -658,6 +770,7 @@ class DataService {
                      await db.inventoryLogs.add({
                         productId: item.productId, change: -item.quantity, newQuantity,
                         reason: 'cancellation', relatedId: `return-${id}`,
+                        createdAt: new Date()
                     } as InventoryLog);
                 }
             }
@@ -753,7 +866,7 @@ class DataService {
 
   async exportData(): Promise<string> {
     const data: Partial<DB> = {};
-    const tables: CollectionName[] = ['products', 'customers', 'sales', 'payments', 'stockIntakes', 'returns', 'expenses', 'notifications', 'settings', 'inventoryLogs'];
+    const tables: CollectionName[] = ['products', 'customers', 'sales', 'payments', 'stockIntakes', 'returns', 'expenses', 'notifications', 'settings', 'inventoryLogs', 'suppliers'];
     await db.transaction('r', ...db.tables, async () => {
         for (const tableName of tables) data[tableName] = await db.table(tableName).toArray();
         const profile = await db.companyProfile.get(1);
@@ -764,7 +877,7 @@ class DataService {
 
   async importData(jsonString: string): Promise<void> {
       const data: Partial<DB> = JSON.parse(jsonString);
-      const tables: (CollectionName | 'companyProfile')[] = ['products', 'customers', 'sales', 'payments', 'stockIntakes', 'returns', 'expenses', 'notifications', 'settings', 'inventoryLogs', 'companyProfile'];
+      const tables: (CollectionName | 'companyProfile')[] = ['products', 'customers', 'sales', 'payments', 'stockIntakes', 'returns', 'expenses', 'notifications', 'settings', 'inventoryLogs', 'suppliers', 'companyProfile'];
       return db.transaction('rw', ...db.tables, async () => {
           for (const tableName of tables) await db.table(tableName)?.clear();
           for (const tableName of tables) {
@@ -824,6 +937,7 @@ class DataService {
                 firstName: c.firstName,
                 lastName: c.lastName,
                 phone: c.phone || '',
+                address: c.address || '',
                 totalSpent: 0,
                 outstandingBalance: c.outstandingBalance ? parseFloat(c.outstandingBalance) : 0,
             }));
@@ -833,9 +947,18 @@ class DataService {
                 await db.customers.update(c.id, {
                     firstName: c.firstName,
                     lastName: c.lastName,
-                    phone: c.phone
+                    phone: c.phone,
+                    address: c.address,
                 });
             }
+        });
+    }
+
+    async exportProductsToCSV(): Promise<string> {
+        const products = await this.getAll<Product>('products');
+        return Papa.unparse(products, {
+            columns: ['id', 'name', 'category', 'price', 'purchasePrice', 'quantity', 'minStockLevel', 'barcodes', 'unite', 'fournisseurId'],
+            header: true
         });
     }
 
@@ -872,13 +995,15 @@ class DataService {
 
             const productData = {
                 name,
-                category: row.category || row.Category || '',
+                category: row.category || row.Category || 'Autres',
                 price: parseFloat(price),
                 purchasePrice: parseFloat(row.purchasePrice || row.PurchasePrice || '0'),
                 quantity: parseInt(row.quantity || row.Quantity || '0', 10),
                 minStockLevel: parseInt(row.minStockLevel || row.MinStockLevel || '10', 10),
                 barcodes,
-                imageUrl: row.imageUrl || row.ImageUrl || ''
+                imageUrl: row.imageUrl || row.ImageUrl || '',
+                unite: row.unite || 'Pièce',
+                fournisseurId: row.fournisseurId ? parseInt(row.fournisseurId) : undefined
             };
 
             if (existing) {
