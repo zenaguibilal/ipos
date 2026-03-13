@@ -4,7 +4,7 @@
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Trash2, Edit, FolderOpen } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import type { Cart } from '@/lib/types';
 import { PaymentDialog } from './PaymentDialog';
 import {
@@ -94,10 +94,10 @@ export const SaleActions = React.forwardRef<HTMLButtonElement, SaleActionsProps>
 
                  <div className="grid grid-cols-2 gap-2">
                     <Button variant="outline" onClick={onSaveDraft} disabled={cart.items.length === 0}>
-                        <Edit className="mr-2 h-4 w-4"/>Brouillon (F4)
+                        Brouillon (F4)
                     </Button>
                     <Button variant="outline" onClick={onOpenDrafts}>
-                        <FolderOpen className="mr-2 h-4 w-4"/>Ouvrir (F6)
+                        Ouvrir (F6)
                     </Button>
                  </div>
 

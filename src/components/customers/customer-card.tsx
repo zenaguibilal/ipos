@@ -11,7 +11,7 @@ import Link from 'next/link';
 import { formatCurrency } from '@/lib/utils';
 import { Progress } from '../ui/progress';
 import { cn } from '@/lib/utils';
-import { format, formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
 interface CustomerCardProps {

@@ -1,7 +1,8 @@
 
+
 'use client';
 
-import React, { useState, useMemo, useCallback, forwardRef, useImperativeHandle, useRef } from 'react';
+import React, { useState, useMemo, forwardRef, useImperativeHandle, useRef } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/database';
 import { dataService } from '@/services/data-service';
@@ -92,7 +93,7 @@ export const ProductSearch = forwardRef<{focus: () => void}, ProductSearchProps>
     const products = useLiveQuery(() => db.products.toArray(), []);
     const categories = useLiveQuery(() => dataService.getProductCategories(), [], []);
 
-    const handleBarcodeScanned = useCallback(async (scannedBarcode: string) => {
+    const handleBarcodeScanned = async (scannedBarcode: string) => {
         if (!scannedBarcode.trim()) return;
         const product = await dataService.getProductByBarcode(scannedBarcode.trim());
         if (product) {
@@ -101,7 +102,7 @@ export const ProductSearch = forwardRef<{focus: () => void}, ProductSearchProps>
         } else {
             toast.error("Produit non trouvé pour ce code-barres.");
         }
-    }, [onProductSelect]);
+    };
     
     const filteredProducts = useMemo(() => {
         if (!products) return [];

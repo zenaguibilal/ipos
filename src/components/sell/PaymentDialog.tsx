@@ -88,10 +88,15 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, onSaleFinalized }: P
         setShowLossAlert(false);
     };
 
-    useEffect(() => {
-        if (paymentMode === 'cash' || paymentMode === 'card' || paymentMode === 'other') setCashAmount(String(total));
-        if (paymentMode === 'credit') setCashAmount('0');
-    }, [paymentMode, total]);
+    const handlePaymentModeChange = (mode: PaymentMode) => {
+        setPaymentMode(mode);
+        if (mode === 'cash' || mode === 'card' || mode === 'other') {
+            setCashAmount(String(total));
+        }
+        if (mode === 'credit') {
+            setCashAmount('0');
+        }
+    }
     
     const handlePrint = (thermal: boolean) => {
         const printableContent = document.getElementById('receipt-for-print');
@@ -227,10 +232,10 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, onSaleFinalized }: P
                                 <div className="space-y-2">
                                     <Label>Méthode de Paiement</Label>
                                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-                                        <Button type="button" variant={paymentMode === 'cash' ? 'secondary' : 'outline'} onClick={() => setPaymentMode('cash')}><Banknote className="mr-2 h-4 w-4"/>Espèces</Button>
-                                        <Button type="button" variant={paymentMode === 'card' ? 'secondary' : 'outline'} onClick={() => setPaymentMode('card')}><CreditCard className="mr-2 h-4 w-4"/>Carte</Button>
-                                        {customer && <Button type="button" variant={paymentMode === 'credit' ? 'secondary' : 'outline'} onClick={() => setPaymentMode('credit')}>Crédit</Button>}
-                                        {customer && <Button type="button" variant={paymentMode === 'mixed' ? 'secondary' : 'outline'} onClick={() => setPaymentMode('mixed')}>Mixte</Button>}
+                                        <Button type="button" variant={paymentMode === 'cash' ? 'secondary' : 'outline'} onClick={() => handlePaymentModeChange('cash')}><Banknote className="mr-2 h-4 w-4"/>Espèces</Button>
+                                        <Button type="button" variant={paymentMode === 'card' ? 'secondary' : 'outline'} onClick={() => handlePaymentModeChange('card')}><CreditCard className="mr-2 h-4 w-4"/>Carte</Button>
+                                        {customer && <Button type="button" variant={paymentMode === 'credit' ? 'secondary' : 'outline'} onClick={() => handlePaymentModeChange('credit')}>Crédit</Button>}
+                                        {customer && <Button type="button" variant={paymentMode === 'mixed' ? 'secondary' : 'outline'} onClick={() => handlePaymentModeChange('mixed')}>Mixte</Button>}
                                     </div>
                                 </div>
 
