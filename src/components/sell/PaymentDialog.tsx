@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import type { Cart, SalePayment, Customer, Product } from '@/lib/types';
-import { Loader2, Printer, CreditCard, Banknote, Landmark, AlertTriangle } from 'lucide-react';
+import { Loader2, Printer, CreditCard, Banknote, AlertTriangle } from 'lucide-react';
 import { dataService } from '@/services/data-service';
 import { formatCurrency } from '@/lib/utils';
 import { Receipt } from './Receipt';

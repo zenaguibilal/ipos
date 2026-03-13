@@ -4,11 +4,10 @@
 
 import { db, PosDatabase } from '@/lib/database';
 import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, Notification, InventoryLog, DashboardData, StockIntakeItem, CartItem, TopProduct, TopCustomer, GlobalActivityItem, ProductImportAnalysis, ZakatData, CostingItem, Draft, SaleItem, Supplier, ImportAnalysis } from '@/lib/types';
-import { initialData, type DB, type CollectionName } from './initial-data';
+import { type DB, type CollectionName } from './initial-data';
 import Dexie from 'dexie';
 import { startOfDay, endOfDay, subDays } from 'date-fns';
 import Papa from 'papaparse';
-import { formatCurrency } from '@/lib/utils';
 
 type TableName = keyof Pick<PosDatabase, 
     'products' | 'customers' | 'sales' | 'payments' | 
@@ -439,7 +438,7 @@ class DataService {
         const customer = await db.customers.get(id);
         if (!customer) return;
         if (customer.outstandingBalance > 0) {
-            throw new Error(`Suppression impossible : ce client a un solde impayé de ${formatCurrency(customer.outstandingBalance)}.`);
+            throw new Error(`Suppression impossible : ce client a un solde impayé de ${customer.outstandingBalance.toFixed(2)} DA.`);
         }
         const salesCount = await db.sales.where({ customerId: id }).count();
         if (salesCount > 0) {
@@ -499,7 +498,7 @@ class DataService {
             if (customer && typeof customer.creditLimit === 'number') {
                 const futureBalance = customer.outstandingBalance + newDebt;
                 if (futureBalance > customer.creditLimit) {
-                    throw new Error(`Limite de crédit de ${formatCurrency(customer.creditLimit)} dépassée pour ${customer.firstName} ${customer.lastName}.`);
+                    throw new Error(`Limite de crédit de ${customer.creditLimit.toFixed(2)} DA dépassée pour ${customer.firstName} ${customer.lastName}.`);
                 }
             }
         }
@@ -893,7 +892,7 @@ class DataService {
   async resetDatabase(): Promise<void> {
     return db.transaction('rw', ...db.tables, async () => {
         for (const table of db.tables) await table.clear();
-        if (initialData.companyProfile) await db.companyProfile.put(initialData.companyProfile);
+        
     });
   }
 

@@ -83,7 +83,6 @@ export interface Sale {
     payments: SalePayment[];
     customerId?: number;
     customerName?: string;
-    clientPainId?: number;
     createdAt?: Date;
     updatedAt?: Date;
     dueDate?: Date;
@@ -297,7 +296,6 @@ export interface ZakatData {
     inventoryValue: number;
     totalReceivables: number;
 }
-
 
 export interface Supplier {
     id?: number;

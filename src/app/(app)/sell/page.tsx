@@ -11,7 +11,7 @@ import { useCarts } from '@/hooks/useCarts';
 import { Button } from '@/components/ui/button';
 import { CustomerCombobox } from '@/components/sell/CustomerCombobox';
 import { CartTabs } from '@/components/sell/CartTabs';
-import { PackageSearch, Edit, FolderOpen } from 'lucide-react';
+import { PackageSearch } from 'lucide-react';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';

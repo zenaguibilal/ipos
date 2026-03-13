@@ -5,13 +5,13 @@ import type { Product, Supplier } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Edit, Trash2, AlertCircle, PackageX, CalendarClock, AlertTriangle } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, AlertCircle, PackageX, CalendarClock } from 'lucide-react';
 import Image from 'next/image';
 import placeholderImages from '@/lib/placeholder-images.json';
 import { cn, formatCurrency } from '@/lib/utils';
 import { Checkbox } from '../ui/checkbox';
 import { useMemo } from 'react';
-import { differenceInDays, format } from 'date-fns';
+import { differenceInDays } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 
@@ -74,7 +74,7 @@ export function ProductTable({ products, onEdit, onDelete, selectedProducts, onT
                             const daysUntilExpiration = differenceInDays(expirationDate, today);
                             if (daysUntilExpiration < 0) return { color: 'text-destructive', text: `Expiré` };
                             if (daysUntilExpiration <= 30) return { color: 'text-yellow-500', text: `Expire dans ${daysUntilExpiration} j` };
-                            return { color: 'text-muted-foreground', text: format(expirationDate, 'dd/MM/yy', {locale: fr}) };
+                            return { color: 'text-muted-foreground', text: new Date(expirationDate).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' }) };
                         }, [product.dateExpiration]);
                         
                         const isPriceOld = product.dateMajPrix && differenceInDays(new Date(), new Date(product.dateMajPrix)) > 30;
@@ -133,7 +133,7 @@ export function ProductTable({ products, onEdit, onDelete, selectedProducts, onT
                                             <TooltipProvider>
                                                 <Tooltip>
                                                     <TooltipTrigger>
-                                                        <AlertTriangle className="h-3 w-3 text-yellow-500" />
+                                                        <alerttriangle className="h-3 w-3 text-yellow-500" />
                                                     </TooltipTrigger>
                                                     <TooltipContent>
                                                         <p>Prix d'achat non mis à jour depuis plus de 30 jours.</p>
