@@ -113,12 +113,6 @@ export interface Draft {
   notes?: string;
 }
 
-export interface ChartData {
-  date: string;
-  revenue: number;
-  profit?: number;
-}
-
 export interface TopProduct {
     id: number;
     name: string;

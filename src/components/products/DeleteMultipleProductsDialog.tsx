@@ -1,21 +1,8 @@
 'use client';
 
-import { useState } from 'react';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { buttonVariants } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { toast } from 'sonner';
-import { Loader2 } from 'lucide-react';
 import { dataService } from '@/services/data-service';
+import { ConfirmAlertDialog } from '@/components/ui/ConfirmAlertDialog';
 
 interface DeleteMultipleProductsDialogProps {
     isOpen: boolean;
@@ -25,46 +12,22 @@ interface DeleteMultipleProductsDialogProps {
 }
 
 export function DeleteMultipleProductsDialog({ isOpen, onOpenChange, productIds, onSuccess }: DeleteMultipleProductsDialogProps) {
-    const [isDeleting, setIsDeleting] = useState(false);
 
     const handleDelete = async () => {
         if (productIds.length === 0) return;
-        setIsDeleting(true);
-
-        try {
-            await dataService.deleteProducts(productIds);
-            toast.success(`${productIds.length} produit(s) supprimé(s) avec succès.`);
-            onSuccess();
-            onOpenChange(false);
-        } catch (error) {
-            console.error("Failed to delete products:", error);
-            toast.error("Échec de la suppression des produits.");
-        } finally {
-            setIsDeleting(false);
-        }
+        await dataService.deleteProducts(productIds);
+        toast.success(`${productIds.length} produit(s) supprimé(s) avec succès.`);
+        onSuccess();
     };
 
     return (
-        <AlertDialog open={isOpen} onOpenChange={(open) => !isDeleting && onOpenChange(open)}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Êtes-vous absolument sûr ?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Cette action est irréversible. {productIds.length} produit(s) sélectionné(s) seront définitivement supprimé(s).
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel disabled={isDeleting}>Annuler</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handleDelete}
-                disabled={isDeleting}
-                className={cn(buttonVariants({ variant: "destructive" }))}
-              >
-                 {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Continuer et supprimer
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        <ConfirmAlertDialog
+            isOpen={isOpen}
+            onOpenChange={onOpenChange}
+            title='Êtes-vous absolument sûr ?'
+            description={`Cette action est irréversible. ${productIds.length} produit(s) sélectionné(s) seront définitivement supprimé(s).`}
+            onConfirm={handleDelete}
+            confirmText="Continuer et supprimer"
+        />
     );
 }
