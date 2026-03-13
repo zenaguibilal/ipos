@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogClose } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
@@ -45,7 +45,6 @@ export function ProductDialog({ isOpen, onOpenChange, product, categories, suppl
     const [currentBarcode, setCurrentBarcode] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
-    const [priceWarning, setPriceWarning] = useState(false);
     const [showPriceConfirm, setShowPriceConfirm] = useState(false);
 
     useEffect(() => {
@@ -68,11 +67,9 @@ export function ProductDialog({ isOpen, onOpenChange, product, categories, suppl
         }
     }, [product, isOpen]);
     
-    useEffect(() => {
-        const purchasePriceNum = parseFloat(formState.purchasePrice);
-        const priceNum = parseFloat(formState.price);
-        setPriceWarning(priceNum < purchasePriceNum);
-    }, [formState.price, formState.purchasePrice]);
+    const priceNum = parseFloat(formState.price);
+    const purchasePriceNum = parseFloat(formState.purchasePrice);
+    const priceWarning = !isNaN(priceNum) && !isNaN(purchasePriceNum) && priceNum > 0 && purchasePriceNum > 0 && priceNum < purchasePriceNum;
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { id, value } = e.target;
