@@ -169,6 +169,5 @@ export const useCarts = () => {
         saveActiveCartAsDraft,
         loadDraftToCart,
         isLoading,
-        error: null,
     };
 };

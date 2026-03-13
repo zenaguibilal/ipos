@@ -4,7 +4,7 @@
 
 import { db, PosDatabase } from '@/lib/database';
 import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, Notification, InventoryLog, DashboardData, StockIntakeItem, CartItem, TopProduct, TopCustomer, GlobalActivityItem, ProductImportAnalysis, ZakatData, CostingItem, Draft, SaleItem, Supplier, ImportAnalysis } from '@/lib/types';
-import type { DB, CollectionName } from './initial-data';
+import type { CollectionName } from './initial-data';
 import Dexie from 'dexie';
 import { subDays } from 'date-fns';
 import Papa from 'papaparse';
