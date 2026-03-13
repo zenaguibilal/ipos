@@ -5,7 +5,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogClose
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription
 } from '@/components/ui/dialog';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -52,7 +52,7 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, onSaleFinalized }: P
         [cart.customerId]
     );
 
-    const { subtotal, discountAmount, total } = useMemo(() => calculateCartTotals(cart), [cart]);
+    const { subtotal, discountAmount, total } = calculateCartTotals(cart);
 
     const cashAmountNum = parseFloat(cashAmount) || 0;
     const creditAmountNum = parseFloat(creditAmount) || 0;
@@ -284,7 +284,7 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, onSaleFinalized }: P
 
                             </div>
                             <DialogFooter>
-                                <DialogClose asChild><Button type="button" variant="secondary" disabled={isLoading}>Annuler</Button></DialogClose>
+                                <Button type="button" variant="secondary" onClick={closeAndReset} disabled={isLoading}>Annuler</Button>
                                 <Button type="submit" onClick={handleFinalizeSale} disabled={isLoading}>
                                     {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                     Valider la vente
