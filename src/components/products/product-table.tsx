@@ -66,7 +66,7 @@ export function ProductTable({ products, onEdit, onDelete, selectedProducts, onT
                         const placeholder = getPlaceholder(product.category);
                         const imageUrl = product.imageUrl || placeholder.url;
 
-                        const expirationStatus = useMemo(() => {
+                        const expirationStatus = (() => {
                             if (!product.dateExpiration) return null;
                             const today = new Date();
                             const expirationDate = new Date(product.dateExpiration);
@@ -74,7 +74,7 @@ export function ProductTable({ products, onEdit, onDelete, selectedProducts, onT
                             if (daysUntilExpiration < 0) return { color: 'text-destructive', text: `Expiré` };
                             if (daysUntilExpiration <= 30) return { color: 'text-yellow-500', text: `Expire dans ${daysUntilExpiration} j` };
                             return { color: 'text-muted-foreground', text: new Date(expirationDate).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' }) };
-                        }, [product.dateExpiration]);
+                        })();
                         
                         const isPriceOld = product.dateMajPrix && differenceInDays(new Date(), new Date(product.dateMajPrix)) > 30;
 
