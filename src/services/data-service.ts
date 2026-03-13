@@ -1144,7 +1144,7 @@ class DataService {
   }
 
   async updateBreadOrderStatus(orderId: number, newStatus: 'en_attente' | 'livre' | 'paye'): Promise<void> {
-    await db.transaction('rw', db.commandes_pain, () => db.commandes_pain.update(orderId, { statut: newStatus }));
+    await db.commandes_pain.update(orderId, { statut: newStatus });
   }
 
   async updateBreadOrderQuantity(orderId: number, newQuantity: number): Promise<void> {

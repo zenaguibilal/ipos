@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie';
-import type { Product, Customer, Sale, Payment, StockIntake, ProductReturn, Cart, CompanyProfile, Expense, Setting, Notification, InventoryLog, Draft, Supplier } from './types';
+import type { Product, Customer, Sale, Payment, StockIntake, ProductReturn, Cart, CompanyProfile, Expense, Setting, Notification, InventoryLog, Draft, Supplier, BreadClient, BreadOrder } from './types';
 
 export class PosDatabase extends Dexie {
     products!: Table<Product, number>;
@@ -16,10 +16,12 @@ export class PosDatabase extends Dexie {
     notifications!: Table<Notification, number>;
     inventoryLogs!: Table<InventoryLog, number>;
     suppliers!: Table<Supplier, number>;
+    clients_pain!: Table<BreadClient, number>;
+    commandes_pain!: Table<BreadOrder, number>;
 
     constructor() {
         super('posDB');
-        this.version(26).stores({
+        this.version(27).stores({
             products: '++id, name, *barcodes, category, price, quantity, [category+name]',
             customers: '++id, searchName, createdAt, lastName, firstName, [lastName+firstName], phone, outstandingBalance, lastActivityDate',
             sales: '++id, &invoiceNumber, createdAt, customerId, customerName, paymentStatus, dueDate',
@@ -34,6 +36,8 @@ export class PosDatabase extends Dexie {
             notifications: '++id, createdAt, isRead, type, [type+isRead]',
             inventoryLogs: '++id, productId, createdAt, reason',
             suppliers: '++id, &name',
+            clients_pain: '++id, nom, actif, type_recurrence',
+            commandes_pain: '++id, [client_pain_id+date], date, statut',
         }).upgrade(tx => {
             // Dexie upgrade functions are declarative of the target version structure.
             // This is for version 22, ensuring searchName is populated. It runs if the client db version is < 22.
