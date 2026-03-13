@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { dataService } from '@/services/data-service';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -9,8 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Search, Plus } from 'lucide-react';
 import { DateRangePicker } from '@/components/dashboard/date-range-picker';
-import type { DateRange } from 'react-day-picker';
-import { subDays, startOfDay, endOfDay } from 'date-fns';
+import { useDateRange } from '@/hooks/useDateRange';
 import { StockIntakeCard } from '@/components/stock/stock-intake-card';
 import { StockIntakeCardSkeleton } from '@/components/stock/stock-intake-card-skeleton';
 import { StockIntakeDetailsDialog } from '@/components/stock/stock-intake-details-dialog';
@@ -19,16 +19,7 @@ import Link from 'next/link';
 export default function StockPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const debouncedSearchQuery = useDebounce(searchQuery, 300);
-    const [dateRange, setDateRange] = useState<DateRange | undefined>();
-    const [isMounted, setIsMounted] = useState(false);
-
-    useEffect(() => {
-        setDateRange({
-            from: startOfDay(subDays(new Date(), 29)),
-            to: endOfDay(new Date()),
-        });
-        setIsMounted(true);
-    }, []);
+    const { dateRange, setDateRange, isMounted } = useDateRange(29);
     
     const [selectedIntake, setSelectedIntake] = useState<StockIntake | null>(null);
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);

@@ -1,6 +1,6 @@
+
 'use client';
 
-import { useState, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { dataService } from '@/services/data-service';
 import { DateRangePicker } from '@/components/dashboard/date-range-picker';
@@ -10,26 +10,16 @@ import GlobalActivity from '@/components/dashboard/GlobalActivity';
 import TopProducts from '@/components/dashboard/TopProducts';
 import TopCustomers from '@/components/dashboard/TopCustomers';
 import ExpenseSummary from '@/components/dashboard/ExpenseSummary';
-import type { DateRange } from 'react-day-picker';
-import { subDays, startOfDay, endOfDay } from 'date-fns';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, X } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Notification } from '@/lib/types';
+import { useDateRange } from '@/hooks/useDateRange';
 
 
 export default function DashboardPage() {
-    const [dateRange, setDateRange] = useState<DateRange | undefined>();
-    const [isMounted, setIsMounted] = useState(false);
-
-    useEffect(() => {
-        setDateRange({
-            from: startOfDay(subDays(new Date(), 29)),
-            to: endOfDay(new Date()),
-        });
-        setIsMounted(true);
-    }, []);
+    const { dateRange, setDateRange, isMounted } = useDateRange(29);
 
     const dashboardData = useLiveQuery(
         () => {

@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { dataService } from '@/services/data-service';
 import type { Expense } from '@/lib/types';
@@ -19,8 +20,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { DateRangePicker } from '@/components/dashboard/date-range-picker';
-import type { DateRange } from 'react-day-picker';
-import { subDays, startOfDay, endOfDay } from 'date-fns';
+import { useDateRange } from '@/hooks/useDateRange';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency } from '@/lib/utils';
 
@@ -29,16 +29,7 @@ export default function ExpensesPage() {
     const [isExpenseDialogOpen, setIsExpenseDialogOpen] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
-    const [dateRange, setDateRange] = useState<DateRange | undefined>();
-    const [isMounted, setIsMounted] = useState(false);
-
-    useEffect(() => {
-        setDateRange({
-            from: startOfDay(subDays(new Date(), 29)),
-            to: endOfDay(new Date()),
-        });
-        setIsMounted(true);
-    }, []);
+    const { dateRange, setDateRange, isMounted } = useDateRange(29);
 
     const expenses = useLiveQuery(
         () => dataService.getExpenses({ 

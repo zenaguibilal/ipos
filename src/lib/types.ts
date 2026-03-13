@@ -83,6 +83,7 @@ export interface Sale {
     payments: SalePayment[];
     customerId?: number;
     customerName?: string;
+    clientPainId?: number;
     createdAt?: Date;
     updatedAt?: Date;
     dueDate?: Date;
@@ -111,11 +112,6 @@ export interface Draft {
       value: number;
   };
   notes?: string;
-}
-
-
-export interface CustomerWithSalesData extends Customer {
-    id: number; // Make id mandatory here
 }
 
 export interface ChartData {
