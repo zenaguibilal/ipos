@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { BreadOrder, BreadOrderWithClient } from '@/lib/types';
@@ -11,9 +10,8 @@ import { toast } from 'sonner';
 import { dataService } from '@/services/data-service';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useDebounce } from '@/hooks/useDebounce';
-import { AlertTriangle, BookMarked, Check, CheckCircle, ChevronDown, X } from 'lucide-react';
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
-
+import { AlertTriangle } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 
 interface BreadOrderCardProps {
     order: BreadOrderWithClient;
@@ -21,20 +19,13 @@ interface BreadOrderCardProps {
     onToggleSelection: (orderId: number) => void;
 }
 
-const statusConfig: Record<BreadOrder['statut'], { label: string, color: string, icon: React.ElementType }> = {
-    en_attente: { label: 'En attente', color: 'bg-gray-500 hover:bg-gray-600', icon: X },
-    livre: { label: 'Livré', color: 'bg-blue-500 hover:bg-blue-600', icon: Check },
-    paye: { label: 'Payé (non livré)', color: 'bg-yellow-500 hover:bg-yellow-600 text-black', icon: BookMarked },
-    finalise: { label: 'Payé & Livré', color: 'bg-green-500 hover:bg-green-600', icon: CheckCircle },
-};
-
-
 export function BreadOrderCard({ order, isSelected, onToggleSelection }: BreadOrderCardProps) {
     const [quantity, setQuantity] = useState(order.quantite);
     const debouncedQuantity = useDebounce(quantity, 500);
 
     const isModified = order.quantite_origine !== undefined && order.quantite !== order.quantite_origine;
-    const isPaid = !!order.vente_id;
+    const isPaid = useMemo(() => !!order.vente_id, [order.vente_id]);
+    const isDelivered = useMemo(() => order.statut === 'livre' || order.statut === 'finalise', [order.statut]);
 
     const handleQuantityChange = useCallback(async (newQuantity: number) => {
         try {
@@ -55,20 +46,31 @@ export function BreadOrderCard({ order, isSelected, onToggleSelection }: BreadOr
         setQuantity(order.quantite);
     }, [order.quantite]);
 
-    const handleStatusChange = useCallback(async (newStatus: BreadOrder['statut']) => {
+    const handleDeliveryToggle = useCallback(async (delivered: boolean) => {
+        let newStatus: BreadOrder['statut'];
+
+        if (isPaid) {
+            newStatus = delivered ? 'finalise' : 'paye';
+        } else {
+            newStatus = delivered ? 'livre' : 'en_attente';
+        }
+
         if (newStatus === order.statut) return;
+
         try {
             await dataService.updateBreadOrderStatus(order.id!, newStatus);
             toast.success(`Statut mis à jour pour ${order.client.nom}`);
         } catch (error) {
             toast.error("Erreur lors de la mise à jour du statut.");
         }
-    }, [order.id, order.statut, order.client.nom]);
+    }, [order.id, order.statut, order.client.nom, isPaid]);
     
-    const CurrentIcon = statusConfig[order.statut].icon;
-
     return (
-        <Card className={cn("flex flex-col transition-all duration-200", isSelected && "ring-2 ring-primary", isPaid && "opacity-60")}>
+        <Card className={cn(
+            "flex flex-col transition-all duration-200", 
+            isSelected && "ring-2 ring-primary", 
+            isPaid ? "bg-green-500/10" : "bg-card"
+        )}>
             <CardHeader className="flex-row items-center justify-between p-4">
                 <CardTitle className="text-lg">{order.client.nom}</CardTitle>
                 <Checkbox checked={isSelected} onCheckedChange={() => onToggleSelection(order.id!)} disabled={isPaid} />
@@ -92,30 +94,23 @@ export function BreadOrderCard({ order, isSelected, onToggleSelection }: BreadOr
                     </div>
                  )}
             </CardContent>
-            <CardFooter className="p-2">
-                 <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button className={cn("w-full justify-between", statusConfig[order.statut].color)}>
-                            <span className="flex items-center">
-                                <CurrentIcon className="mr-2 h-4 w-4" />
-                                {statusConfig[order.statut].label}
-                            </span>
-                            <ChevronDown className="h-4 w-4" />
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)]">
-                        {Object.entries(statusConfig).map(([statusKey, config]) => (
-                            <DropdownMenuItem 
-                                key={statusKey} 
-                                onClick={() => handleStatusChange(statusKey as BreadOrder['statut'])}
-                                disabled={order.statut === statusKey}
-                            >
-                                <config.icon className="mr-2 h-4 w-4" />
-                                {config.label}
-                            </DropdownMenuItem>
-                        ))}
-                    </DropdownMenuContent>
-                </DropdownMenu>
+            <CardFooter className="p-2 grid grid-cols-2 gap-2 border-t mt-auto bg-background/30">
+                <div className="flex items-center justify-center space-x-2 p-2 rounded-md">
+                    <Switch 
+                        id={`paid-${order.id}`} 
+                        checked={isPaid} 
+                        disabled 
+                    />
+                    <Label htmlFor={`paid-${order.id}`} className={cn("transition-colors", isPaid && "text-primary font-semibold")}>Payé</Label>
+                </div>
+                <div className="flex items-center justify-center space-x-2 p-2 rounded-md">
+                    <Switch 
+                        id={`delivered-${order.id}`} 
+                        checked={isDelivered} 
+                        onCheckedChange={handleDeliveryToggle} 
+                    />
+                    <Label htmlFor={`delivered-${order.id}`} className={cn("transition-colors", isDelivered && "text-blue-400 font-semibold")}>Livré</Label>
+                </div>
             </CardFooter>
         </Card>
     );
