@@ -15,6 +15,7 @@ import {
   LayoutDashboard,
   HandHeart,
   Calculator,
+  Wheat,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -36,6 +37,7 @@ import { ThemeToggle } from './theme-toggle';
 const navLinks = [
   { href: '/dashboard', label: 'Tableau de bord', icon: LayoutDashboard },
   { href: '/sell', label: 'Point de Vente', icon: ShoppingCart },
+  { href: '/bread', label: 'Commandes de Pain', icon: Wheat },
   { href: '/products', label: 'Produits', icon: Package },
   { href: '/stock', label: 'Stock', icon: Archive },
   { href: '/customers', label: 'Clients', icon: Users2 },

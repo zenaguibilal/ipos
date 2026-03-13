@@ -49,6 +49,7 @@ export function CompanyProfileForm() {
         const dataToSave: Partial<CompanyProfile> = {
             ...formState,
             goldPricePerGram: formState.goldPricePerGram ? Number(formState.goldPricePerGram) : undefined,
+            prix_pain: formState.prix_pain ? Number(formState.prix_pain) : undefined,
         };
 
         try {
@@ -108,6 +109,18 @@ export function CompanyProfileForm() {
                                         onChange={handleInputChange} 
                                         disabled={isSaving} 
                                         placeholder="Ex: 12000" 
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="prix_pain">Prix de vente du pain (DA)</Label>
+                                    <Input 
+                                        id="prix_pain" 
+                                        type="number"
+                                        step="0.1"
+                                        value={formState.prix_pain || ''} 
+                                        onChange={handleInputChange} 
+                                        disabled={isSaving} 
+                                        placeholder="Ex: 15" 
                                     />
                                 </div>
                             </div>
