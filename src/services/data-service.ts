@@ -7,6 +7,7 @@ import Dexie from 'dexie';
 import { subDays } from 'date-fns';
 import Papa from 'papaparse';
 import { calculateCartTotals } from '@/lib/utils';
+import { BREAD_WEEK_DAYS } from '@/lib/constants';
 
 type TableName = keyof Pick<PosDatabase, 
     'products' | 'customers' | 'sales' | 'payments' | 
@@ -1088,8 +1089,7 @@ class DataService {
 
   async createDayOrders(date: string): Promise<void> {
     return db.transaction('rw', db.clients_pain, db.commandes_pain, async () => {
-      const joursSemaine = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
-      const jourActuel = joursSemaine[new Date(date).getUTCDay()] as keyof NonNullable<BreadClient['jours_semaine']>;
+      const jourActuel = BREAD_WEEK_DAYS[new Date(date.replace(/-/g, '/')).getUTCDay()] as keyof NonNullable<BreadClient['jours_semaine']>;
       
       const clients = await db.clients_pain.where('actif').equals(true).toArray();
       const newOrders: Omit<BreadOrder, 'id'>[] = [];

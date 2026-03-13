@@ -11,18 +11,7 @@ import { BreadClientForm } from './BreadClientForm';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
-
-const joursSemaineLabels: Record<keyof NonNullable<BreadClient['jours_semaine']>, string> = {
-    lundi: 'Lun',
-    mardi: 'Mar',
-    mercredi: 'Mer',
-    jeudi: 'Jeu',
-    vendredi: 'Ven',
-    samedi: 'Sam',
-    dimanche: 'Dim',
-};
-const joursSemaineOrder: (keyof typeof joursSemaineLabels)[] = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
-
+import { BREAD_WEEK_DAY_LABELS, BREAD_WEEK_DAYS } from '@/lib/constants';
 
 export function BreadClientList() {
     const [isFormOpen, setIsFormOpen] = useState(false);
@@ -47,8 +36,8 @@ export function BreadClientList() {
             case 'quotidien':
                 return <Badge variant="secondary" className="bg-blue-900/50 text-blue-300 border-blue-500/30">Quotidien</Badge>;
             case 'jours_specifiques':
-                const activeDays = client.jours_semaine ? joursSemaineOrder.filter(day => client.jours_semaine![day]?.actif) : [];
-                const label = activeDays.length > 0 ? `${activeDays.map(d => joursSemaineLabels[d]).join(', ')} (×${activeDays.length})` : 'Aucun jour';
+                const activeDays = client.jours_semaine ? BREAD_WEEK_DAYS.filter(day => client.jours_semaine![day]?.actif) : [];
+                const label = activeDays.length > 0 ? `${activeDays.map(d => BREAD_WEEK_DAY_LABELS[d]).join(', ')} (×${activeDays.length})` : 'Aucun jour';
                 return <Badge variant="secondary" className="bg-orange-900/50 text-orange-300 border-orange-500/30">{label}</Badge>;
             case 'aucun':
                 return <Badge variant="outline">Manuel</Badge>;

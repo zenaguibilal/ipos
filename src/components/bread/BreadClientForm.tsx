@@ -12,6 +12,7 @@ import { dataService } from '@/services/data-service';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { ConfirmAlertDialog } from '@/components/ui/ConfirmAlertDialog';
+import { BREAD_WEEK_DAY_LABELS_FULL } from '@/lib/constants';
 
 const initialFormState: Omit<BreadClient, 'id' | 'createdAt' | 'updatedAt'> = {
     nom: '',
@@ -27,16 +28,6 @@ const initialFormState: Omit<BreadClient, 'id' | 'createdAt' | 'updatedAt'> = {
         samedi:   { actif: true, quantite: 10 },
         dimanche: { actif: true, quantite: 10 }
     }
-};
-
-const joursSemaineLabels: Record<keyof NonNullable<BreadClient['jours_semaine']>, string> = {
-    lundi: 'Lundi',
-    mardi: 'Mardi',
-    mercredi: 'Mercredi',
-    jeudi: 'Jeudi',
-    vendredi: 'Vendredi',
-    samedi: 'Samedi',
-    dimanche: 'Dimanche',
 };
 
 interface BreadClientFormProps {
@@ -57,7 +48,7 @@ export function BreadClientForm({ isOpen, onOpenChange, client }: BreadClientFor
                 actif: client.actif,
                 type_recurrence: client.type_recurrence,
                 quantite_defaut: client.quantite_defaut || 10,
-                jours_semaine: client.jours_semaine || initialFormState.jours_semaine
+                jours_semaine: client.jours_semaine || initialFormState.jours_semaine!
             });
         } else {
             setFormState(initialFormState);
@@ -115,23 +106,23 @@ export function BreadClientForm({ isOpen, onOpenChange, client }: BreadClientFor
         }
     };
     
-    const handleDayToggle = (day: keyof typeof joursSemaineLabels) => {
+    const handleDayToggle = (day: keyof typeof BREAD_WEEK_DAY_LABELS_FULL) => {
         setFormState(prev => ({
             ...prev,
             jours_semaine: {
-                ...prev.jours_semaine,
-                [day]: { ...prev.jours_semaine[day], actif: !prev.jours_semaine[day].actif }
+                ...prev.jours_semaine!,
+                [day]: { ...prev.jours_semaine![day], actif: !prev.jours_semaine![day].actif }
             }
         }));
     };
 
-    const handleDayQuantityChange = (day: keyof typeof joursSemaineLabels, value: string) => {
+    const handleDayQuantityChange = (day: keyof typeof BREAD_WEEK_DAY_LABELS_FULL, value: string) => {
          const quantite = parseInt(value, 10) || 0;
          setFormState(prev => ({
             ...prev,
             jours_semaine: {
-                ...prev.jours_semaine,
-                [day]: { ...prev.jours_semaine[day], quantite }
+                ...prev.jours_semaine!,
+                [day]: { ...prev.jours_semaine![day], quantite }
             }
         }));
     };
@@ -177,14 +168,14 @@ export function BreadClientForm({ isOpen, onOpenChange, client }: BreadClientFor
                                 <div className="space-y-3">
                                     <Label>Quantités par jour</Label>
                                     <div className="space-y-2 rounded-md border p-4">
-                                        {Object.entries(joursSemaineLabels).map(([key, label]) => (
+                                        {Object.entries(BREAD_WEEK_DAY_LABELS_FULL).map(([key, label]) => (
                                             <div key={key} className="flex items-center justify-between gap-4">
-                                                <Switch id={key} checked={formState.jours_semaine[key as keyof typeof joursSemaineLabels].actif} onCheckedChange={() => handleDayToggle(key as keyof typeof joursSemaineLabels)} />
+                                                <Switch id={key} checked={formState.jours_semaine![key as keyof typeof BREAD_WEEK_DAY_LABELS_FULL].actif} onCheckedChange={() => handleDayToggle(key as keyof typeof BREAD_WEEK_DAY_LABELS_FULL)} />
                                                 <Label htmlFor={key} className="flex-grow">{label}</Label>
                                                 <Input type="number" className="w-24" 
-                                                    value={formState.jours_semaine[key as keyof typeof joursSemaineLabels].quantite}
-                                                    onChange={e => handleDayQuantityChange(key as keyof typeof joursSemaineLabels, e.target.value)}
-                                                    disabled={!formState.jours_semaine[key as keyof typeof joursSemaineLabels].actif}
+                                                    value={formState.jours_semaine![key as keyof typeof BREAD_WEEK_DAY_LABELS_FULL].quantite}
+                                                    onChange={e => handleDayQuantityChange(key as keyof typeof BREAD_WEEK_DAY_LABELS_FULL, e.target.value)}
+                                                    disabled={!formState.jours_semaine![key as keyof typeof BREAD_WEEK_DAY_LABELS_FULL].actif}
                                                 />
                                             </div>
                                         ))}
