@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -11,7 +11,7 @@ import {
     DialogFooter,
 } from '@/components/ui/dialog';
 import { Printer } from 'lucide-react';
-import type { BreadOrderWithClient } from '@/lib/types';
+import type { BreadOrder, BreadOrderWithClient } from '@/lib/types';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { dataService } from '@/services/data-service';
 import { format } from 'date-fns';
@@ -22,10 +22,11 @@ interface PrintBreadListDialogProps {
     currentDate: string;
 }
 
-const statusLabels = {
+const statusLabels: Record<BreadOrder['statut'], string> = {
     en_attente: 'En attente',
     livre: 'Livré',
-    paye: 'Payé',
+    paye: 'Payé (non livré)',
+    finalise: 'Payé & Livré',
 };
 
 const PrintableList = React.forwardRef<HTMLDivElement, PrintBreadListDialogProps>(({ orders, currentDate }, ref) => {
@@ -70,7 +71,7 @@ const PrintableList = React.forwardRef<HTMLDivElement, PrintBreadListDialogProps
 PrintableList.displayName = 'PrintableList';
 
 export function PrintBreadListDialog({ orders, currentDate }: PrintBreadListDialogProps) {
-    const [isOpen, setIsOpen] = useState(false);
+    const [isOpen, setIsOpen] = React.useState(false);
     const printRef = useRef<HTMLDivElement>(null);
 
     const handlePrint = () => {

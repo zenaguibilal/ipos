@@ -13,7 +13,7 @@ export function BreadStats({ orders }: BreadStatsProps) {
     const stats = useMemo(() => {
         if (!orders) return { ordered: 0, delivered: 0, remaining: 0 };
         const ordered = orders.reduce((sum, o) => sum + o.quantite, 0);
-        const delivered = orders.filter(o => o.statut === 'livre' || o.statut === 'paye').reduce((sum, o) => sum + o.quantite, 0);
+        const delivered = orders.filter(o => o.statut === 'livre' || o.statut === 'finalise').reduce((sum, o) => sum + o.quantite, 0);
         return {
             ordered,
             delivered,

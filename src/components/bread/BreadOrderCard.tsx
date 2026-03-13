@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 import { dataService } from '@/services/data-service';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useDebounce } from '@/hooks/useDebounce';
-import { AlertTriangle, BookMarked, Check, ChevronDown, X } from 'lucide-react';
+import { AlertTriangle, BookMarked, Check, CheckCircle, ChevronDown, X } from 'lucide-react';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 
 
@@ -24,7 +24,8 @@ interface BreadOrderCardProps {
 const statusConfig: Record<BreadOrder['statut'], { label: string, color: string, icon: React.ElementType }> = {
     en_attente: { label: 'En attente', color: 'bg-gray-500 hover:bg-gray-600', icon: X },
     livre: { label: 'Livré', color: 'bg-blue-500 hover:bg-blue-600', icon: Check },
-    paye: { label: 'Payé', color: 'bg-green-500 hover:bg-green-600', icon: BookMarked },
+    paye: { label: 'Payé (non livré)', color: 'bg-yellow-500 hover:bg-yellow-600 text-black', icon: BookMarked },
+    finalise: { label: 'Payé & Livré', color: 'bg-green-500 hover:bg-green-600', icon: CheckCircle },
 };
 
 
@@ -33,6 +34,7 @@ export function BreadOrderCard({ order, isSelected, onToggleSelection }: BreadOr
     const debouncedQuantity = useDebounce(quantity, 500);
 
     const isModified = order.quantite_origine !== undefined && order.quantite !== order.quantite_origine;
+    const isPaid = !!order.vente_id;
 
     const handleQuantityChange = useCallback(async (newQuantity: number) => {
         try {
@@ -66,10 +68,10 @@ export function BreadOrderCard({ order, isSelected, onToggleSelection }: BreadOr
     const CurrentIcon = statusConfig[order.statut].icon;
 
     return (
-        <Card className={cn("flex flex-col transition-all duration-200", isSelected && "ring-2 ring-primary", order.vente_id && "opacity-60")}>
+        <Card className={cn("flex flex-col transition-all duration-200", isSelected && "ring-2 ring-primary", isPaid && "opacity-60")}>
             <CardHeader className="flex-row items-center justify-between p-4">
                 <CardTitle className="text-lg">{order.client.nom}</CardTitle>
-                <Checkbox checked={isSelected} onCheckedChange={() => onToggleSelection(order.id!)} disabled={!!order.vente_id} />
+                <Checkbox checked={isSelected} onCheckedChange={() => onToggleSelection(order.id!)} disabled={isPaid} />
             </CardHeader>
             <CardContent className="flex-grow p-4 pt-0">
                 <div className="flex items-center justify-between">
@@ -80,7 +82,7 @@ export function BreadOrderCard({ order, isSelected, onToggleSelection }: BreadOr
                         value={quantity}
                         onChange={(e) => setQuantity(parseInt(e.target.value) || 0)}
                         className="w-24 h-9 text-center text-lg font-bold"
-                        disabled={!!order.vente_id}
+                        disabled={isPaid}
                     />
                 </div>
                  {isModified && (
@@ -92,7 +94,7 @@ export function BreadOrderCard({ order, isSelected, onToggleSelection }: BreadOr
             </CardContent>
             <CardFooter className="p-2">
                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild disabled={!!order.vente_id}>
+                    <DropdownMenuTrigger asChild>
                         <Button className={cn("w-full justify-between", statusConfig[order.statut].color)}>
                             <span className="flex items-center">
                                 <CurrentIcon className="mr-2 h-4 w-4" />

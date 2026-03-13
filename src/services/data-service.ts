@@ -258,14 +258,10 @@ class DataService {
   async getProducts(params: { query?: string; category?: string; supplierId?: number; stockStatus?: 'all' | 'in_stock' | 'low_stock' | 'out_of_stock', sortBy?: string }): Promise<Product[]> {
     const { query, category, supplierId, stockStatus = 'all', sortBy = 'name_asc' } = params;
 
-    let collection = db.products.toCollection();
+    let collection: Dexie.Collection<Product, number> = db.products.toCollection();
 
     if (category) {
-      collection = collection.where('category').equals(category);
-    }
-
-    if(supplierId) {
-        collection = collection.where('fournisseurId').equals(supplierId);
+      collection = db.products.where('category').equals(category);
     }
     
     if (stockStatus !== 'all') {
@@ -282,6 +278,10 @@ class DataService {
             }
         });
     }
+
+    if(supplierId) {
+        collection = collection.filter(p => p.fournisseurId === supplierId);
+    }
     
     if (query) {
       const lowerQuery = query.toLowerCase();
@@ -291,21 +291,13 @@ class DataService {
       );
     }
     
-    const productsArray = await collection.toArray();
-    
     const [sortField, sortOrder] = sortBy.split('_');
-    productsArray.sort((a, b) => {
-        const aValue = (a as any)[sortField];
-        const bValue = (b as any)[sortField];
-        
-        let comparison = 0;
-        if (aValue > bValue) comparison = 1;
-        else if (aValue < bValue) comparison = -1;
-
-        return sortOrder === 'desc' ? comparison * -1 : comparison;
-    });
-
-    return productsArray;
+    
+    if (sortOrder === 'desc') {
+        collection = collection.reverse();
+    }
+    
+    return collection.sortBy(sortField);
   }
 
   async getProductsByIds(ids: number[]): Promise<Product[]> {
@@ -357,23 +349,14 @@ class DataService {
 
   async getCustomers(params: { query?: string; status?: 'all' | 'has_debt' | 'overdue' | 'over_limit', sortBy?: string }): Promise<Customer[]> {
     const { query, status = 'all', sortBy = 'lastName_asc' } = params;
-    let collection = db.customers.toCollection();
+    let collection: Dexie.Collection<Customer, number> = db.customers.toCollection();
 
     if (query) {
         const lowerQuery = query.toLowerCase();
         collection = collection.filter(c => c.searchName?.toLowerCase().includes(lowerQuery) || c.phone?.includes(lowerQuery));
     }
     
-    switch (status) {
-        case 'has_debt':
-            collection = collection.filter(c => c.outstandingBalance > 0);
-            break;
-        case 'over_limit':
-            collection = collection.filter(c => c.creditLimit !== undefined && c.outstandingBalance > c.creditLimit);
-            break;
-    }
-    
-    const customersArray = await collection.toArray();
+    let customersArray = await collection.toArray();
     
     const now = new Date();
     const customerWithData: Customer[] = customersArray.map(c => {
@@ -394,8 +377,18 @@ class DataService {
     
     let filteredCustomers = customerWithData;
 
-    if (status === 'overdue') {
-        filteredCustomers = customerWithData.filter(c => c.debtStatus === 'overdue');
+    if (status) {
+        switch (status) {
+            case 'has_debt':
+                filteredCustomers = customerWithData.filter(c => c.outstandingBalance > 0);
+                break;
+            case 'over_limit':
+                filteredCustomers = customerWithData.filter(c => c.isOverLimit);
+                break;
+            case 'overdue':
+                filteredCustomers = customerWithData.filter(c => c.debtStatus === 'overdue');
+                break;
+        }
     }
 
     const [sortField, sortOrder] = sortBy.split('_');
@@ -408,7 +401,6 @@ class DataService {
         if (aValue > bValue) comparison = 1;
         else if (aValue < bValue) comparison = -1;
 
-        // For dates, nulls/undefined should come last
         if (sortField.includes('Date')) {
             if (!aValue) return 1;
             if (!bValue) return -1;
@@ -1143,7 +1135,7 @@ class DataService {
     });
   }
 
-  async updateBreadOrderStatus(orderId: number, newStatus: 'en_attente' | 'livre' | 'paye'): Promise<void> {
+  async updateBreadOrderStatus(orderId: number, newStatus: BreadOrder['statut']): Promise<void> {
     await db.commandes_pain.update(orderId, { statut: newStatus });
   }
 
@@ -1197,7 +1189,8 @@ class DataService {
             });
         }
         
-        await db.commandes_pain.update(order.id!, { vente_id: saleId, statut: 'paye' });
+        const newStatus = order.statut === 'livre' ? 'finalise' : 'paye';
+        await db.commandes_pain.update(order.id!, { vente_id: saleId, statut: newStatus });
       }
     });
   }
