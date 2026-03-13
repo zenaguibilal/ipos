@@ -4,10 +4,11 @@
 
 import { db, PosDatabase } from '@/lib/database';
 import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, Notification, InventoryLog, DashboardData, StockIntakeItem, CartItem, TopProduct, TopCustomer, GlobalActivityItem, ProductImportAnalysis, ZakatData, CostingItem, Draft, SaleItem, Supplier, ImportAnalysis } from '@/lib/types';
-import { type DB, type CollectionName } from './initial-data';
+import type { DB, CollectionName } from './initial-data';
 import Dexie from 'dexie';
 import { subDays } from 'date-fns';
 import Papa from 'papaparse';
+import { calculateCartTotals } from '@/lib/utils';
 
 type TableName = keyof Pick<PosDatabase, 
     'products' | 'customers' | 'sales' | 'payments' | 
@@ -593,11 +594,7 @@ class DataService {
 
   async saveDraft(cart: Cart, notes?: string): Promise<number> {
     return db.transaction('rw', db.drafts, () => {
-        const subtotal = cart.items.reduce((acc, item) => acc + item.price * item.cartQuantity, 0);
-        const discountAmount = cart.discount.type === 'percentage'
-            ? (subtotal * cart.discount.value) / 100
-            : cart.discount.value;
-        const total = subtotal - discountAmount;
+        const { total } = calculateCartTotals(cart);
 
         const draft: Omit<Draft, 'id'> = {
             date: new Date(),

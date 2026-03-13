@@ -17,7 +17,7 @@ import { toast } from 'sonner';
 import type { Cart, SalePayment, Customer, Product } from '@/lib/types';
 import { Loader2, Printer, CreditCard, Banknote, AlertTriangle } from 'lucide-react';
 import { dataService } from '@/services/data-service';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, calculateCartTotals } from '@/lib/utils';
 import { Receipt } from './Receipt';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/database';
@@ -52,12 +52,7 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, onSaleFinalized }: P
         [cart.customerId]
     );
 
-    const subtotal = useMemo(() => cart.items.reduce((acc, item) => acc + item.price * item.cartQuantity, 0), [cart.items]);
-    const discountAmount = useMemo(() => {
-        if (!cart.discount || cart.discount.value <= 0) return 0;
-        return cart.discount.type === 'percentage' ? (subtotal * cart.discount.value) / 100 : cart.discount.value;
-    }, [cart.discount, subtotal]);
-    const total = Math.max(0, subtotal - discountAmount);
+    const { subtotal, discountAmount, total } = useMemo(() => calculateCartTotals(cart), [cart]);
 
     const cashAmountNum = parseFloat(cashAmount) || 0;
     const creditAmountNum = parseFloat(creditAmount) || 0;

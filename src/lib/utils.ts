@@ -1,5 +1,6 @@
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
+import type { Cart, Draft } from "./types";
  
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -31,4 +32,18 @@ export function formatNumber(value: number): string {
 
 export function formatCurrency(value: number, currency = 'DA') {
   return `${formatNumber(value)} ${currency}`;
+}
+
+type CalculableCart = Pick<Cart, 'items' | 'discount'> | Pick<Draft, 'items' | 'discount'>;
+
+export function calculateCartTotals(cart: CalculableCart) {
+    const subtotal = cart.items.reduce((acc, item) => acc + item.price * item.cartQuantity, 0);
+    
+    const discountAmount = cart.discount.type === 'percentage'
+        ? (subtotal * (cart.discount.value || 0)) / 100
+        : (cart.discount.value || 0);
+    
+    const total = Math.max(0, subtotal - discountAmount);
+
+    return { subtotal, discountAmount, total };
 }

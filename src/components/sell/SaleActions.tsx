@@ -4,7 +4,7 @@
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Trash2, CreditCard, Edit, FolderOpen } from 'lucide-react';
+import { Trash2, Edit, FolderOpen } from 'lucide-react';
 import type { Cart } from '@/lib/types';
 import { PaymentDialog } from './PaymentDialog';
 import {
@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, calculateCartTotals } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 
 interface SaleActionsProps {
@@ -35,17 +35,11 @@ interface SaleActionsProps {
 export const SaleActions = React.forwardRef<HTMLButtonElement, SaleActionsProps>(({ cart, onClearCart, onSetDiscount, onSaveDraft, onOpenDrafts, onSaleFinalized }, ref) => {
     const [isPaymentOpen, setIsPaymentOpen] = useState(false);
     
-    const subtotal = cart.items.reduce((acc, item) => acc + item.price * item.cartQuantity, 0);
     const totalItems = cart.items.reduce((acc, item) => acc + item.cartQuantity, 0);
+    const { subtotal, discountAmount, total } = calculateCartTotals(cart);
     
     const discountValue = cart.discount.value || 0;
     const discountType = cart.discount.type || 'fixed';
-
-    const discountAmount = discountType === 'percentage'
-        ? (subtotal * discountValue) / 100
-        : discountValue;
-    
-    const total = Math.max(0, subtotal - discountAmount);
 
     return (
         <>
@@ -136,7 +130,7 @@ export const SaleActions = React.forwardRef<HTMLButtonElement, SaleActionsProps>
                         disabled={cart.items.length === 0}
                         onClick={() => setIsPaymentOpen(true)}
                     >
-                        <CreditCard className="mr-2 h-5 w-5" /> Payer (F9)
+                        Payer (F9)
                     </Button>
                 </div>
             </div>

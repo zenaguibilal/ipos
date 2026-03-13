@@ -1,35 +1,22 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Plus, Trash2, Save, ChevronsUpDown, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Trash2, Save, AlertTriangle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { DatePicker } from '@/components/ui/date-picker';
-import type { StockIntakeItem, Product } from '@/lib/types';
+import type { StockIntakeItem } from '@/lib/types';
 import { v4 as uuidv4 } from 'uuid';
 import { toast } from 'sonner';
 import { dataService } from '@/services/data-service';
-import { useLiveQuery } from 'dexie-react-hooks';
 import { formatCurrency } from '@/lib/utils';
 import { Loader2 } from 'lucide-react';
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { PageHeader } from '@/components/layout/PageHeader';
+import { ProductIntakeCombobox } from '@/components/stock/ProductIntakeCombobox';
 
 export default function NewStockIntakePage() {
     const router = useRouter();
@@ -39,58 +26,39 @@ export default function NewStockIntakePage() {
     const [items, setItems] = useState<StockIntakeItem[]>([]);
     const [isSaving, setIsSaving] = useState(false);
     const [isMounted, setIsMounted] = useState(false);
-    const [comboboxOpen, setComboboxOpen] = useState(false);
-    const [searchQuery, setSearchQuery] = useState('');
 
     useEffect(() => {
         setInvoiceDate(new Date());
         setIsMounted(true);
     }, []);
 
-    const products = useLiveQuery(() => dataService.getAll<Product>('products'), []);
-
-    const filteredProducts = useMemo(() => {
-        if (!products) return [];
-        if (!searchQuery) return products;
-        const lowerQuery = searchQuery.toLowerCase();
-        return products.filter(p => 
-            p.name.toLowerCase().includes(lowerQuery) ||
-            (p.barcodes && p.barcodes.some(b => b.includes(lowerQuery)))
-        );
-    }, [products, searchQuery]);
-
-    const handleAddProduct = (productId: string) => {
-        const product = products?.find(p => String(p.id!) === productId);
-        if (product) {
-            const existingItemIndex = items.findIndex(item => item.productId === product.id);
-            if (existingItemIndex > -1) {
-                // Product already in list, just increase quantity
-                const newItems = [...items];
-                newItems[existingItemIndex].quantity += 1;
-                setItems(newItems);
-                toast.info(`Quantité de "${product.name}" augmentée.`);
-            } else {
-                // Add new product to list
-                setItems(prev => [
-                    ...prev,
-                    {
-                        id: uuidv4(),
-                        productId: product.id as number,
-                        name: product.name,
-                        barcodes: product.barcodes || [],
-                        category: product.category,
-                        quantity: 1,
-                        quantityDamaged: 0,
-                        purchasePrice: product.purchasePrice,
-                        price: product.price,
-                        isNew: false,
-                    }
-                ]);
-            }
+    const handleAddProduct = (product: any) => {
+        const existingItemIndex = items.findIndex(item => item.productId === product.id);
+        if (existingItemIndex > -1) {
+            const newItems = [...items];
+            newItems[existingItemIndex].quantity += 1;
+            setItems(newItems);
+            toast.info(`Quantité de "${product.name}" augmentée.`);
+        } else {
+            setItems(prev => [
+                ...prev,
+                {
+                    id: uuidv4(),
+                    productId: product.id as number,
+                    name: product.name,
+                    barcodes: product.barcodes || [],
+                    category: product.category,
+                    quantity: 1,
+                    quantityDamaged: 0,
+                    purchasePrice: product.purchasePrice,
+                    price: product.price,
+                    isNew: false,
+                }
+            ]);
         }
     };
     
-    const handleAddNewItem = (name: string = '') => {
+    const handleAddNewItem = (name: string) => {
         const newItem: StockIntakeItem = {
             id: uuidv4(),
             name: name,
@@ -202,69 +170,12 @@ export default function NewStockIntakePage() {
              <Card>
                 <CardContent className="p-6 space-y-4">
                     <h3 className="font-semibold text-lg">Articles Reçus</h3>
-                    <div>
-                       <Popover open={comboboxOpen} onOpenChange={setComboboxOpen}>
-                            <PopoverTrigger asChild>
-                                <Button
-                                    variant="outline"
-                                    role="combobox"
-                                    aria-expanded={comboboxOpen}
-                                    className="w-full justify-between"
-                                >
-                                    Rechercher un produit ou en créer un nouveau...
-                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
-                                <Command>
-                                    <CommandInput 
-                                        placeholder="Rechercher par nom ou code-barres..." 
-                                        onValueChange={setSearchQuery} 
-                                    />
-                                    <CommandList>
-                                        <CommandEmpty>
-                                            <div className="text-center p-4 text-sm">
-                                                Aucun produit trouvé.
-                                                {searchQuery && (
-                                                <Button 
-                                                    variant="link" 
-                                                    className="mt-1"
-                                                    onClick={() => {
-                                                        handleAddNewItem(searchQuery);
-                                                        setComboboxOpen(false);
-                                                        setSearchQuery('');
-                                                    }}>
-                                                    <Plus className="mr-2 h-4 w-4" />
-                                                    Créer le produit "{searchQuery}"
-                                                </Button>
-                                                )}
-                                            </div>
-                                        </CommandEmpty>
-                                        <CommandGroup>
-                                            {filteredProducts?.map((product) => (
-                                                <CommandItem
-                                                    key={product.id}
-                                                    value={String(product.id)}
-                                                    onSelect={(currentValue) => {
-                                                        handleAddProduct(currentValue);
-                                                        setComboboxOpen(false);
-                                                        setSearchQuery('');
-                                                    }}
-                                                >
-                                                    <div>
-                                                        <p>{product.name}</p>
-                                                        <p className="text-xs text-muted-foreground">
-                                                            Stock: {product.quantity} | Prix Achat: {formatCurrency(product.purchasePrice)}
-                                                        </p>
-                                                    </div>
-                                                </CommandItem>
-                                            ))}
-                                        </CommandGroup>
-                                    </CommandList>
-                                </Command>
-                            </PopoverContent>
-                        </Popover>
-                    </div>
+                    
+                    <ProductIntakeCombobox 
+                        onProductSelected={handleAddProduct}
+                        onNewProductCreated={handleAddNewItem}
+                    />
+                    
                      <div className="overflow-x-auto">
                         <table className="w-full text-sm">
                             <thead>
