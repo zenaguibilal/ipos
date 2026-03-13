@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -55,7 +55,7 @@ export function BreadClientForm({ isOpen, onOpenChange, client }: BreadClientFor
         }
     }, [client, isOpen]);
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = useCallback(async (e: React.FormEvent) => {
         e.preventDefault();
         if (!formState.nom) {
             toast.error("Le nom du client est requis.");
@@ -88,9 +88,9 @@ export function BreadClientForm({ isOpen, onOpenChange, client }: BreadClientFor
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [formState, client, onOpenChange]);
 
-    const handleDelete = async () => {
+    const handleDelete = useCallback(async () => {
         if (!client || !client.id) return;
         setIsLoading(true);
         try {
@@ -104,7 +104,7 @@ export function BreadClientForm({ isOpen, onOpenChange, client }: BreadClientFor
             setIsLoading(false);
             setDeleteAlertOpen(false);
         }
-    };
+    }, [client, onOpenChange]);
     
     const handleDayToggle = (day: keyof typeof BREAD_WEEK_DAY_LABELS_FULL) => {
         setFormState(prev => ({

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,17 +34,26 @@ export function BreadOrderCard({ order, isSelected, onToggleSelection }: BreadOr
 
     const isModified = order.quantite_origine !== undefined && order.quantite !== order.quantite_origine;
 
+    const handleQuantityChange = useCallback(async (newQuantity: number) => {
+        try {
+            await dataService.updateBreadOrderQuantity(order.id!, newQuantity);
+            toast.success(`Quantité mise à jour pour ${order.client.nom}.`);
+        } catch (error) {
+            toast.error("Erreur lors de la mise à jour de la quantité.");
+        }
+    }, [order.id, order.client.nom]);
+
     useEffect(() => {
         if (debouncedQuantity !== order.quantite) {
             handleQuantityChange(debouncedQuantity);
         }
-    }, [debouncedQuantity]);
+    }, [debouncedQuantity, order.quantite, handleQuantityChange]);
     
     useEffect(() => {
         setQuantity(order.quantite);
     }, [order.quantite]);
 
-    const handleStatusChange = async (newStatus: BreadOrder['statut']) => {
+    const handleStatusChange = useCallback(async (newStatus: BreadOrder['statut']) => {
         if (newStatus === order.statut) return;
         try {
             await dataService.updateBreadOrderStatus(order.id!, newStatus);
@@ -52,16 +61,7 @@ export function BreadOrderCard({ order, isSelected, onToggleSelection }: BreadOr
         } catch (error) {
             toast.error("Erreur lors de la mise à jour du statut.");
         }
-    };
-    
-    const handleQuantityChange = async (newQuantity: number) => {
-        try {
-            await dataService.updateBreadOrderQuantity(order.id!, newQuantity);
-            toast.success(`Quantité mise à jour pour ${order.client.nom}.`);
-        } catch (error) {
-            toast.error("Erreur lors de la mise à jour de la quantité.");
-        }
-    }
+    }, [order.id, order.statut, order.client.nom]);
     
     const CurrentIcon = statusConfig[order.statut].icon;
 
