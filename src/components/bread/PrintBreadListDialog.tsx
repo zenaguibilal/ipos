@@ -22,11 +22,11 @@ interface PrintBreadListDialogProps {
     currentDate: string;
 }
 
-const statusLabels: Record<BreadOrder['statut'], string> = {
-    en_attente: 'En attente',
-    livre: 'Livré',
-    paye: 'Payé (non livré)',
-    finalise: 'Payé & Livré',
+const getStatusLabel = (order: BreadOrder) => {
+    if (order.est_paye && order.est_livre) return 'Payé & Livré';
+    if (order.est_paye) return 'Payé (non livré)';
+    if (order.est_livre) return 'Livré (non payé)';
+    return 'En attente';
 };
 
 const PrintableList = React.forwardRef<HTMLDivElement, PrintBreadListDialogProps>(({ orders, currentDate }, ref) => {
@@ -53,7 +53,7 @@ const PrintableList = React.forwardRef<HTMLDivElement, PrintBreadListDialogProps
                         <tr key={order.id} className="[&>td]:border [&>td]:border-gray-300 [&>td]:p-2">
                             <td>{order.client.nom}</td>
                             <td className="text-center font-bold">{order.quantite}</td>
-                            <td>{statusLabels[order.statut]}</td>
+                            <td>{getStatusLabel(order)}</td>
                         </tr>
                     ))}
                 </tbody>

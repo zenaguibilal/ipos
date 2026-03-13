@@ -1106,7 +1106,8 @@ class DataService {
             date,
             quantite,
             quantite_origine: quantite,
-            statut: 'en_attente',
+            est_paye: false,
+            est_livre: false,
             vente_id: null
           });
         }
@@ -1129,18 +1130,19 @@ class DataService {
             date,
             quantite: quantity,
             quantite_origine: quantity,
-            statut: 'en_attente',
+            est_paye: false,
+            est_livre: false,
             vente_id: null
         } as BreadOrder);
     });
   }
 
-  async updateBreadOrderStatus(orderId: number, newStatus: BreadOrder['statut']): Promise<void> {
-    await db.commandes_pain.update(orderId, { statut: newStatus });
+  async updateBreadOrderDeliveryStatus(orderId: number, est_livre: boolean): Promise<void> {
+    await db.commandes_pain.update(orderId, { est_livre });
   }
 
   async updateBreadOrderQuantity(orderId: number, newQuantity: number): Promise<void> {
-    await db.transaction('rw', db.commandes_pain, async () => {
+    return db.transaction('rw', db.commandes_pain, async () => {
       const order = await db.commandes_pain.get(orderId);
       if (!order) return;
       const updateData: Partial<BreadOrder> = { quantite: newQuantity };
@@ -1189,8 +1191,7 @@ class DataService {
             });
         }
         
-        const newStatus = order.statut === 'livre' ? 'finalise' : 'paye';
-        await db.commandes_pain.update(order.id!, { vente_id: saleId, statut: newStatus });
+        await db.commandes_pain.update(order.id!, { vente_id: saleId, est_paye: true });
       }
     });
   }

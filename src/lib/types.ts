@@ -332,7 +332,8 @@ export interface BreadOrder {
     date: string; // YYYY-MM-DD
     quantite: number;
     quantite_origine?: number;
-    statut: 'en_attente' | 'livre' | 'paye' | 'finalise';
+    est_paye: boolean;
+    est_livre: boolean;
     vente_id: number | null;
     createdAt?: Date;
     updatedAt?: Date;

@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import type { BreadOrder, BreadOrderWithClient } from '@/lib/types';
+import type { BreadOrderWithClient } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { dataService } from '@/services/data-service';
@@ -24,8 +24,8 @@ export function BreadOrderCard({ order, isSelected, onToggleSelection }: BreadOr
     const debouncedQuantity = useDebounce(quantity, 500);
 
     const isModified = order.quantite_origine !== undefined && order.quantite !== order.quantite_origine;
-    const isPaid = useMemo(() => !!order.vente_id, [order.vente_id]);
-    const isDelivered = useMemo(() => order.statut === 'livre' || order.statut === 'finalise', [order.statut]);
+    const isPaid = order.est_paye;
+    const isDelivered = order.est_livre;
 
     const handleQuantityChange = useCallback(async (newQuantity: number) => {
         try {
@@ -47,23 +47,13 @@ export function BreadOrderCard({ order, isSelected, onToggleSelection }: BreadOr
     }, [order.quantite]);
 
     const handleDeliveryToggle = useCallback(async (delivered: boolean) => {
-        let newStatus: BreadOrder['statut'];
-
-        if (isPaid) {
-            newStatus = delivered ? 'finalise' : 'paye';
-        } else {
-            newStatus = delivered ? 'livre' : 'en_attente';
-        }
-
-        if (newStatus === order.statut) return;
-
         try {
-            await dataService.updateBreadOrderStatus(order.id!, newStatus);
-            toast.success(`Statut mis à jour pour ${order.client.nom}`);
+            await dataService.updateBreadOrderDeliveryStatus(order.id!, delivered);
+            toast.success(`Statut de livraison mis à jour pour ${order.client.nom}`);
         } catch (error) {
-            toast.error("Erreur lors de la mise à jour du statut.");
+            toast.error("Erreur lors de la mise à jour du statut de livraison.");
         }
-    }, [order.id, order.statut, order.client.nom, isPaid]);
+    }, [order.id, order.client.nom]);
     
     return (
         <Card className={cn(
