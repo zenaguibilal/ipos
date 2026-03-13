@@ -5,14 +5,13 @@ import type { Product, Supplier } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Edit, Trash2, AlertCircle, PackageX, CalendarClock } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, AlertCircle, PackageX, CalendarClock, AlertTriangle } from 'lucide-react';
 import Image from 'next/image';
 import placeholderImages from '@/lib/placeholder-images.json';
 import { cn, formatCurrency } from '@/lib/utils';
 import { Checkbox } from '../ui/checkbox';
 import { useMemo } from 'react';
 import { differenceInDays } from 'date-fns';
-import { fr } from 'date-fns/locale';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 
 interface ProductTableProps {
@@ -133,7 +132,7 @@ export function ProductTable({ products, onEdit, onDelete, selectedProducts, onT
                                             <TooltipProvider>
                                                 <Tooltip>
                                                     <TooltipTrigger>
-                                                        <alerttriangle className="h-3 w-3 text-yellow-500" />
+                                                        <AlertTriangle className="h-3 w-3 text-yellow-500" />
                                                     </TooltipTrigger>
                                                     <TooltipContent>
                                                         <p>Prix d'achat non mis à jour depuis plus de 30 jours.</p>

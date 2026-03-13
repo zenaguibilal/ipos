@@ -8,7 +8,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import type { Product, ProductImportAnalysis, Supplier } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, LayoutGrid, List, Printer, Trash2, PackageCheck, PackageX, AlertTriangle, Archive, SortAsc, FileDown, FileUp, Building, Package } from 'lucide-react';
+import { Plus, Search, LayoutGrid, List, Printer, Trash2, PackageCheck, PackageX, AlertTriangle, Archive, SortAsc, FileDown, FileUp, Building } from 'lucide-react';
 import { ProductCard } from '@/components/products/product-card';
 import { ProductTable } from '@/components/products/product-table';
 import { ProductCardSkeleton } from '@/components/products/product-card-skeleton';
@@ -18,6 +18,7 @@ import { DeleteProductDialog } from '@/components/products/delete-product-dialog
 import { DeleteMultipleProductsDialog } from '@/components/products/DeleteMultipleProductsDialog';
 import { PrintLabelsDialog } from '@/components/products/PrintLabelsDialog';
 import { ProductImportPreviewDialog } from '@/components/products/ProductImportPreviewDialog';
+import { InventoryStats } from '@/components/products/InventoryStats';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,8 +32,6 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import Papa from 'papaparse';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-
 
 type ViewMode = 'grid' | 'list';
 type StockStatus = 'all' | 'in_stock' | 'low_stock' | 'out_of_stock';
@@ -54,62 +53,6 @@ const sortOptions: { [key: string]: string } = {
     'createdAt_desc': 'Plus récents',
     'createdAt_asc': 'Plus anciens',
 };
-
-const productCategories = ['Boissons', 'Conserves', 'Produits laitiers', 'Épicerie', 'Hygiène', 'Nettoyage', 'Surgelés', 'Autres'];
-
-const InventoryStats = ({ products, isLoading }: { products: Product[] | undefined, isLoading: boolean }) => {
-    const stats = useMemo(() => {
-        if (!products) return { total: 0, low: 0, out: 0 };
-        return {
-            total: products.length,
-            low: products.filter(p => p.quantity > 0 && p.quantity <= p.minStockLevel).length,
-            out: products.filter(p => p.quantity <= 0).length,
-        };
-    }, [products]);
-
-    if (isLoading) {
-        return (
-             <div className="grid gap-4 md:grid-cols-3">
-                <Card><CardHeader><Skeleton className="h-6 w-3/4" /></CardHeader><CardContent><Skeleton className="h-8 w-1/2" /></CardContent></Card>
-                <Card><CardHeader><Skeleton className="h-6 w-3/4" /></CardHeader><CardContent><Skeleton className="h-8 w-1/2" /></CardContent></Card>
-                <Card><CardHeader><Skeleton className="h-6 w-3/4" /></CardHeader><CardContent><Skeleton className="h-8 w-1/2" /></CardContent></Card>
-            </div>
-        )
-    }
-
-    return (
-        <div className="grid gap-4 md:grid-cols-3">
-            <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Total Produits</CardTitle>
-                    <Package className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                    <div className="text-2xl font-bold">{stats.total}</div>
-                </CardContent>
-            </Card>
-            <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Stock Faible</CardTitle>
-                    <AlertTriangle className="h-4 w-4 text-yellow-500" />
-                </CardHeader>
-                <CardContent>
-                    <div className="text-2xl font-bold text-yellow-500">{stats.low}</div>
-                </CardContent>
-            </Card>
-            <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">En Rupture</CardTitle>
-                    <PackageX className="h-4 w-4 text-destructive" />
-                </CardHeader>
-                <CardContent>
-                    <div className="text-2xl font-bold text-destructive">{stats.out}</div>
-                </CardContent>
-            </Card>
-        </div>
-    );
-};
-
 
 export default function ProductsPage() {
     const [searchQuery, setSearchQuery] = useState('');
@@ -466,7 +409,7 @@ export default function ProductsPage() {
                 isOpen={isProductDialogOpen}
                 onOpenChange={setIsProductDialogOpen}
                 product={selectedProduct}
-                categories={productCategories}
+                categories={categories || []}
                 suppliers={suppliers || []}
             />
             <DeleteProductDialog 
