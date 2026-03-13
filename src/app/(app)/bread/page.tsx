@@ -16,6 +16,7 @@ import type { BreadOrderWithClient } from '@/lib/types';
 import { toast } from 'sonner';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle } from 'lucide-react';
+import Link from 'next/link';
 
 export default function BreadPage() {
     const [currentDate, setCurrentDate] = useState(new Date());
@@ -77,7 +78,7 @@ export default function BreadPage() {
                     <AlertTriangle className="h-4 w-4" />
                     <AlertTitle>Prix du pain non défini !</AlertTitle>
                     <AlertDescription>
-                        Veuillez définir un prix pour le pain dans les <a href="/profile" className="font-bold underline">paramètres</a> pour pouvoir convertir les commandes en ventes.
+                        Veuillez définir un prix pour le pain dans les <Link href="/profile" className="font-bold underline">paramètres</Link> pour pouvoir convertir les commandes en ventes.
                     </AlertDescription>
                 </Alert>
             )}

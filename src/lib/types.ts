@@ -83,6 +83,7 @@ export interface Sale {
     payments: SalePayment[];
     customerId?: number;
     customerName?: string;
+    clientPainId?: number;
     createdAt?: Date;
     updatedAt?: Date;
     dueDate?: Date;

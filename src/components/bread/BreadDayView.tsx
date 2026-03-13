@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import type { BreadOrderWithClient } from '@/lib/types';
 import { BreadOrderCard } from './BreadOrderCard';
@@ -37,10 +38,11 @@ export function BreadDayView({ orders, currentDate, breadPrice }: BreadDayViewPr
     };
 
     const handleSelectAll = () => {
-        if (selectedOrders.size === orders.length) {
+        const unbilledOrders = orders.filter(o => !o.vente_id);
+        if (selectedOrders.size === unbilledOrders.length) {
             setSelectedOrders(new Set());
         } else {
-            setSelectedOrders(new Set(orders.map(o => o.id!)));
+            setSelectedOrders(new Set(unbilledOrders.map(o => o.id!)));
         }
     };
     
@@ -69,7 +71,8 @@ export function BreadDayView({ orders, currentDate, breadPrice }: BreadDayViewPr
     };
 
     const isAllSelected = useMemo(() => {
-        return orders.length > 0 && selectedOrders.size === orders.length;
+        const unbilledOrders = orders.filter(o => !o.vente_id);
+        return unbilledOrders.length > 0 && selectedOrders.size === unbilledOrders.length;
     }, [orders, selectedOrders]);
 
     if (orders.length === 0) {

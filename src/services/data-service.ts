@@ -1099,7 +1099,7 @@ class DataService {
 
         let quantite: number | undefined;
 
-        if (client.type_recurrence === 'quotidien') {
+        if (client.type_recurrence === 'quotidien' && client.quantite_defaut) {
           quantite = client.quantite_defaut;
         } else if (client.type_recurrence === 'jours_specifiques' && client.jours_semaine) {
           const jourConfig = client.jours_semaine[jourActuel];
@@ -1181,7 +1181,8 @@ class DataService {
           payments: [],
           customerId: mainCustomer?.id,
           customerName: mainCustomer ? `${mainCustomer.firstName} ${mainCustomer.lastName}` : clientPain.nom,
-          invoiceNumber: `INV-${Date.now().toString(36).toUpperCase()}-${order.id}`,
+          clientPainId: clientPain.id,
+          invoiceNumber: `INV-PAIN-${Date.now().toString(36).toUpperCase()}-${order.id}`,
           createdAt: new Date(),
           updatedAt: new Date(),
         };

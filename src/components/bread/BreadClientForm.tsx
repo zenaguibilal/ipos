@@ -13,10 +13,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { ConfirmAlertDialog } from '@/components/ui/ConfirmAlertDialog';
 
-const initialFormState = {
+const initialFormState: Omit<BreadClient, 'id' | 'createdAt' | 'updatedAt'> = {
     nom: '',
     actif: true,
-    type_recurrence: 'quotidien' as BreadClient['type_recurrence'],
+    type_recurrence: 'quotidien',
     quantite_defaut: 10,
     jours_semaine: {
         lundi:    { actif: true, quantite: 10 },
@@ -29,7 +29,7 @@ const initialFormState = {
     }
 };
 
-const joursSemaineLabels = {
+const joursSemaineLabels: Record<keyof NonNullable<BreadClient['jours_semaine']>, string> = {
     lundi: 'Lundi',
     mardi: 'Mardi',
     mercredi: 'Mercredi',

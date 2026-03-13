@@ -31,7 +31,7 @@ const statusLabels = {
 const PrintableList = React.forwardRef<HTMLDivElement, PrintBreadListDialogProps>(({ orders, currentDate }, ref) => {
     const companyProfile = useLiveQuery(() => dataService.getCompanyProfile());
     const totalQuantity = orders.reduce((acc, order) => acc + order.quantite, 0);
-    const formattedDate = format(new Date(currentDate), 'EEEE d MMMM yyyy', { locale: fr });
+    const formattedDate = format(new Date(currentDate.replace(/-/g, '/')), 'EEEE d MMMM yyyy', { locale: fr });
     
     return (
         <div ref={ref} className="p-4 bg-white text-black font-sans">
