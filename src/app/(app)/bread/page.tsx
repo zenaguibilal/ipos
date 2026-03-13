@@ -17,23 +17,30 @@ import { toast } from 'sonner';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function BreadPage() {
-    const [currentDate, setCurrentDate] = useState(new Date());
+    const [currentDate, setCurrentDate] = useState<Date | undefined>(undefined);
     const [isGenerating, setIsGenerating] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
 
-    const formattedDate = formatDateToYYYYMMDD(currentDate);
+    useEffect(() => {
+        setCurrentDate(new Date());
+    }, []);
+
+    const formattedDate = currentDate ? formatDateToYYYYMMDD(currentDate) : '';
 
     const orders = useLiveQuery<BreadOrderWithClient[]>(
-        () => dataService.getBreadOrdersForDate(formattedDate),
+        () => formattedDate ? dataService.getBreadOrdersForDate(formattedDate) : Promise.resolve([]),
         [formattedDate],
-        []
+        undefined
     );
 
     const breadPriceSetting = useLiveQuery(() => dataService.getCompanyProfile().then(p => p?.prix_pain));
 
     useEffect(() => {
+        if (!formattedDate) return;
+
         const checkAndGenerateOrders = async () => {
             setIsLoading(true);
             const ordersExist = await dataService.checkIfBreadOrdersExist(formattedDate);
@@ -55,10 +62,46 @@ export default function BreadPage() {
     }, [formattedDate]);
     
     const handleDateChange = (days: number) => {
-        setCurrentDate(prev => addDays(prev, days));
+        setCurrentDate(prev => prev ? addDays(prev, days) : new Date());
     };
 
-    const isToday = useMemo(() => formatDateToYYYYMMDD(new Date()) === formattedDate, [formattedDate]);
+    const isToday = useMemo(() => {
+        if (!currentDate) return false;
+        return formatDateToYYYYMMDD(new Date()) === formattedDate;
+    }, [currentDate, formattedDate]);
+
+    if (!currentDate) {
+        return (
+            <div className="p-4 sm:p-6 space-y-6">
+                <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
+                    <div>
+                        <Skeleton className="h-8 w-64 mb-2" />
+                        <Skeleton className="h-5 w-48" />
+                    </div>
+                    <div className="flex gap-2">
+                        <Skeleton className="h-10 w-28" />
+                        <Skeleton className="h-10 w-28" />
+                        <Skeleton className="h-10 w-28" />
+                    </div>
+                </div>
+                 <div className="grid gap-4 md:grid-cols-3">
+                    <Skeleton className="h-24 w-full" />
+                    <Skeleton className="h-24 w-full" />
+                    <Skeleton className="h-24 w-full" />
+                </div>
+                <div className="grid lg:grid-cols-3 gap-6 items-start">
+                    <div className="lg:col-span-2">
+                        <div className="flex justify-center items-center h-64">
+                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                        </div>
+                    </div>
+                    <div className="lg:col-span-1">
+                        <Skeleton className="h-[400px] w-full" />
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     const showLoadingState = isLoading || isGenerating || orders === undefined;
 
