@@ -1,4 +1,5 @@
 
+
 export interface Product {
     id?: number | string; // string for custom products
     name: string;
@@ -9,6 +10,10 @@ export interface Product {
     minStockLevel: number;
     barcodes?: string[];
     imageUrl?: string;
+    unite?: 'Pièce' | 'Kg' | 'Litre' | 'Boîte' | 'Carton' | 'Sachet' | 'Bouteille';
+    dateExpiration?: Date;
+    fournisseurId?: number;
+    dateMajPrix?: Date;
     createdAt?: Date;
     updatedAt?: Date;
 }
@@ -19,6 +24,7 @@ export interface Customer {
     lastName: string;
     searchName?: string;
     phone?: string;
+    address?: string;
     settlementDay?: number;
     creditLimit?: number;
     totalSpent: number;
@@ -26,6 +32,8 @@ export interface Customer {
     lastActivityDate?: Date;
     createdAt?: Date;
     updatedAt?: Date;
+    debtStatus?: 'none' | 'due_soon' | 'overdue';
+    isOverLimit?: boolean;
 }
 
 export interface SaleItem {
@@ -75,9 +83,9 @@ export interface Sale {
     payments: SalePayment[];
     customerId?: number;
     customerName?: string;
+    clientPainId?: number;
     createdAt?: Date;
     updatedAt?: Date;
-    breadOrderDate?: string;
     dueDate?: Date;
 }
 
@@ -86,6 +94,8 @@ export interface Payment {
     customerId: number;
     customerName?: string;
     amount: number;
+    paymentDate: Date;
+    notes?: string;
     createdAt?: Date;
     updatedAt?: Date;
 }
@@ -97,15 +107,12 @@ export interface Draft {
   customerName: string;
   items: CartItem[];
   total: number;
+  discount: {
+      type: 'fixed' | 'percentage';
+      value: number;
+  };
   notes?: string;
 }
-
-
-export interface CustomerWithSalesData extends Customer {
-    id: number; // Make id mandatory here
-    isReminderDue?: boolean;
-}
-
 
 export interface ChartData {
   date: string;
@@ -141,8 +148,6 @@ export interface CompanyProfile {
     rcNumber?: string;
     syncUrl?: string;
     lastSyncDate?: string;
-    breadPrice?: number;
-    breadPurchasePrice?: number;
     goldPricePerGram?: number;
     updatedAt?: Date;
 }
@@ -154,6 +159,7 @@ export interface StockIntakeItem {
     name: string;
     category?: string;
     quantity: number;
+    quantityDamaged: number;
     purchasePrice: number;
     price: number;
     isNew: boolean;
@@ -168,6 +174,7 @@ export interface StockIntake {
         productId?: number;
         productName: string;
         quantityReceived: number;
+        quantityDamaged: number;
         purchasePrice: number;
     }[];
     totalValue: number;
@@ -196,35 +203,6 @@ export interface ProductReturn {
     createdAt?: Date;
     updatedAt?: Date;
     notes?: string;
-}
-
-export interface BreadCustomer {
-    id?: number;
-    name: string;
-    isActive: boolean;
-    defaultOrderQuantity: number;
-    createdAt?: Date;
-    updatedAt?: Date;
-}
-
-// Represents the order information for a customer on a given day
-export interface BreadOrder extends BreadCustomer {
-    id: number;
-    todaysOrder?: DailyBreadOrder & { saleId?: number };
-}
-
-
-export interface DailyBreadOrder {
-    id?: number;
-    breadCustomerId: number;
-    customerName: string;
-    quantity: number;
-    date: string; // YYYY-MM-DD
-    createdAt?: Date;
-    updatedAt?: Date;
-    saleId?: number;
-    isPaid: boolean;
-    isDelivered: boolean;
 }
 
 export type ExpenseCategory = 'Loyer' | 'Salaires' | 'Fournisseurs' | 'Services Publics' | 'Marketing' | 'Maintenance' | 'Autre';
@@ -318,4 +296,16 @@ export interface GlobalActivityItem {
 export interface ZakatData {
     inventoryValue: number;
     totalReceivables: number;
+}
+
+export interface Supplier {
+    id?: number;
+    name: string;
+    contactPerson?: string;
+    phone?: string;
+    email?: string;
+    address?: string;
+    balance: number; // Solde de la dette envers le fournisseur
+    createdAt?: Date;
+    updatedAt?: Date;
 }

@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { dataService } from '@/services/data-service';
 import { useDebounce } from '@/hooks/useDebounce';
-import type { Customer, CustomerWithSalesData } from '@/lib/types';
+import type { Customer } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, Search, Users, FileDown, Filter } from 'lucide-react';
@@ -34,7 +34,7 @@ export default function CustomersPage() {
     
     const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
-    const customers = useLiveQuery<CustomerWithSalesData[]>(
+    const customers = useLiveQuery<Customer[]>(
         () => dataService.getCustomers({ query: debouncedSearchQuery, status: filterStatus }),
         [debouncedSearchQuery, filterStatus],
         []

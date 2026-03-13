@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import type { CustomerWithSalesData } from '@/lib/types';
+import type { Customer } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -15,12 +15,12 @@ import { format, formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
 interface CustomerCardProps {
-    customer: CustomerWithSalesData;
-    onEdit: (customer: CustomerWithSalesData) => void;
-    onDelete: (customer: CustomerWithSalesData) => void;
+    customer: Customer;
+    onEdit: (customer: Customer) => void;
+    onDelete: (customer: Customer) => void;
 }
 
-const DebtStatusIcon = ({ status }: { status: CustomerWithSalesData['debtStatus']}) => {
+const DebtStatusIcon = ({ status }: { status: Customer['debtStatus']}) => {
     switch (status) {
         case 'overdue':
             return (

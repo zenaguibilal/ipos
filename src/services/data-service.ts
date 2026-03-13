@@ -3,7 +3,7 @@
 'use client';
 
 import { db, PosDatabase } from '@/lib/database';
-import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, Notification, InventoryLog, CustomerWithSalesData, ImportAnalysis, DashboardData, StockIntakeItem, CartItem, TopProduct, TopCustomer, GlobalActivityItem, ProductImportAnalysis, ZakatData, CostingItem, Draft, SaleItem, Supplier } from '@/lib/types';
+import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, Notification, InventoryLog, DashboardData, StockIntakeItem, CartItem, TopProduct, TopCustomer, GlobalActivityItem, ProductImportAnalysis, ZakatData, CostingItem, Draft, SaleItem, Supplier, ImportAnalysis } from '@/lib/types';
 import { initialData, type DB, type CollectionName } from './initial-data';
 import Dexie from 'dexie';
 import { startOfDay, endOfDay, subDays } from 'date-fns';
@@ -337,6 +337,7 @@ class DataService {
     const combined = [...sales, ...payments, ...returns];
     
     const getActivityDate = (item: Sale | Payment | ProductReturn): Date => {
+        if ('paymentDate' in item) return new Date(item.paymentDate);
         return new Date(item.createdAt!);
     };
 
@@ -354,7 +355,7 @@ class DataService {
         return { customer, unpaidSales };
     }
 
-  async getCustomers(params: { query?: string; status?: 'all' | 'has_debt' | 'overdue' | 'over_limit', sortBy?: string }): Promise<CustomerWithSalesData[]> {
+  async getCustomers(params: { query?: string; status?: 'all' | 'has_debt' | 'overdue' | 'over_limit', sortBy?: string }): Promise<Customer[]> {
     const { query, status = 'all', sortBy = 'lastName_asc' } = params;
     let collection: Dexie.Collection<Customer, number> | Customer[] = db.customers;
 
@@ -366,7 +367,7 @@ class DataService {
     let customersArray = await collection.toArray();
     
     const now = new Date();
-    const customerWithData: CustomerWithSalesData[] = customersArray.map(c => {
+    const customerWithData: Customer[] = customersArray.map(c => {
         let debtStatus: Customer['debtStatus'] = 'none';
         if (c.outstandingBalance > 0) {
             const dueDate = c.lastActivityDate && c.settlementDay ? new Date(new Date(c.lastActivityDate).getTime() + c.settlementDay * 24 * 60 * 60 * 1000) : null;
@@ -382,7 +383,7 @@ class DataService {
         return { ...c, id: c.id!, debtStatus, isOverLimit };
     });
     
-    let filteredCustomers: CustomerWithSalesData[];
+    let filteredCustomers: Customer[];
 
     switch (status) {
         case 'has_debt':
@@ -708,8 +709,7 @@ class DataService {
   async addPayment(paymentData: Omit<Payment, 'id' | 'createdAt' | 'updatedAt'>): Promise<number> {
       return db.transaction('rw', db.payments, db.customers, async () => {
           const id = await db.payments.add({
-              ...paymentData,
-              createdAt: paymentData.paymentDate
+              ...paymentData
           } as Payment);
           await db.customers.where('id').equals(paymentData.customerId).modify(c => {
               c.outstandingBalance = Math.max(0, c.outstandingBalance - paymentData.amount);
@@ -1035,6 +1035,7 @@ class DataService {
             customers: await this.getAll('customers'),
             sales: await this.getAll('sales'),
             expenses: await this.getAll('expenses'),
+            suppliers: await this.getAll('suppliers'),
         };
 
         const response = await fetch(profile.syncUrl, {

@@ -2,12 +2,12 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { CustomerWithSalesData } from '@/lib/types';
+import type { Customer } from '@/lib/types';
 import { Users, AlertTriangle, UserX } from 'lucide-react';
 import { useMemo } from 'react';
 
 interface CustomerStatsProps {
-  customers: CustomerWithSalesData[] | undefined;
+  customers: Customer[] | undefined;
   isLoading: boolean;
 }
 

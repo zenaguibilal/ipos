@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie';
-import type { Product, Customer, Sale, Payment, StockIntake, ProductReturn, Cart, CompanyProfile, BreadCustomer, DailyBreadOrder, Expense, Setting, Notification, InventoryLog, Draft } from './types';
+import type { Product, Customer, Sale, Payment, StockIntake, ProductReturn, Cart, CompanyProfile, Expense, Setting, Notification, InventoryLog, Draft, Supplier } from './types';
 
 export class PosDatabase extends Dexie {
     products!: Table<Product, number>;
@@ -11,31 +11,29 @@ export class PosDatabase extends Dexie {
     carts!: Table<Cart, string>;
     drafts!: Table<Draft, number>;
     companyProfile!: Table<CompanyProfile, number>;
-    breadCustomers!: Table<BreadCustomer, number>;
-    dailyBreadOrders!: Table<DailyBreadOrder, number>;
     expenses!: Table<Expense, number>;
     settings!: Table<Setting, string>;
     notifications!: Table<Notification, number>;
     inventoryLogs!: Table<InventoryLog, number>;
+    suppliers!: Table<Supplier, number>;
 
     constructor() {
         super('posDB');
-        this.version(23).stores({
+        this.version(25).stores({
             products: '++id, name, *barcodes, category, price, quantity, [category+name]',
             customers: '++id, searchName, createdAt, lastName, firstName, [lastName+firstName], phone, outstandingBalance, lastActivityDate',
-            sales: '++id, &invoiceNumber, createdAt, customerId, customerName, paymentStatus, breadOrderDate, dueDate',
-            payments: '++id, createdAt, customerId',
+            sales: '++id, &invoiceNumber, createdAt, customerId, customerName, paymentStatus, dueDate, clientPainId',
+            payments: '++id, createdAt, customerId, paymentDate',
             stockIntakes: '++id, &invoiceNumber, supplier, createdAt',
             returns: '++id, createdAt, originalSaleId, customerId',
             carts: '&id',
             drafts: '++id, date',
             companyProfile: 'id', // Singleton table
-            breadCustomers: '++id, &name',
-            dailyBreadOrders: '++id, &[breadCustomerId+date], date',
             expenses: '++id, category, expenseDate, [category+expenseDate]',
             settings: '&id', // Key-value store for UI state and preferences
             notifications: '++id, createdAt, isRead, type, [type+isRead]',
             inventoryLogs: '++id, productId, createdAt, reason',
+            suppliers: '++id, &name',
         }).upgrade(tx => {
             // Dexie upgrade functions are declarative of the target version structure.
             // This is for version 22, ensuring searchName is populated. It runs if the client db version is < 22.
