@@ -261,17 +261,15 @@ class DataService {
     let collection = db.products.toCollection();
 
     if (category) {
-      collection = collection.filter(p => p.category === category);
+      collection = collection.where('category').equals(category);
     }
 
     if(supplierId) {
-        collection = collection.filter(p => p.fournisseurId === supplierId);
+        collection = collection.where('fournisseurId').equals(supplierId);
     }
     
-    let productsArray = await collection.toArray();
-
     if (stockStatus !== 'all') {
-        productsArray = productsArray.filter(p => {
+        collection = collection.filter(p => {
             switch (stockStatus) {
                 case 'in_stock':
                     return p.quantity > p.minStockLevel;
@@ -287,11 +285,13 @@ class DataService {
     
     if (query) {
       const lowerQuery = query.toLowerCase();
-      productsArray = productsArray.filter(p => 
+      collection = collection.filter(p => 
         p.name.toLowerCase().includes(lowerQuery) || 
         p.barcodes?.some(b => b.includes(lowerQuery))
       );
     }
+    
+    const productsArray = await collection.toArray();
     
     const [sortField, sortOrder] = sortBy.split('_');
     productsArray.sort((a, b) => {
@@ -357,14 +357,23 @@ class DataService {
 
   async getCustomers(params: { query?: string; status?: 'all' | 'has_debt' | 'overdue' | 'over_limit', sortBy?: string }): Promise<Customer[]> {
     const { query, status = 'all', sortBy = 'lastName_asc' } = params;
-    let collection: Dexie.Collection<Customer, number> | Customer[] = db.customers;
+    let collection = db.customers.toCollection();
 
     if (query) {
         const lowerQuery = query.toLowerCase();
         collection = collection.filter(c => c.searchName?.toLowerCase().includes(lowerQuery) || c.phone?.includes(lowerQuery));
     }
     
-    let customersArray = await collection.toArray();
+    switch (status) {
+        case 'has_debt':
+            collection = collection.filter(c => c.outstandingBalance > 0);
+            break;
+        case 'over_limit':
+            collection = collection.filter(c => c.creditLimit !== undefined && c.outstandingBalance > c.creditLimit);
+            break;
+    }
+    
+    const customersArray = await collection.toArray();
     
     const now = new Date();
     const customerWithData: Customer[] = customersArray.map(c => {
@@ -383,21 +392,10 @@ class DataService {
         return { ...c, id: c.id!, debtStatus, isOverLimit };
     });
     
-    let filteredCustomers: Customer[];
+    let filteredCustomers = customerWithData;
 
-    switch (status) {
-        case 'has_debt':
-            filteredCustomers = customerWithData.filter(c => c.outstandingBalance > 0);
-            break;
-        case 'overdue':
-             filteredCustomers = customerWithData.filter(c => c.debtStatus === 'overdue');
-            break;
-        case 'over_limit':
-             filteredCustomers = customerWithData.filter(c => c.isOverLimit);
-            break;
-        default:
-             filteredCustomers = customerWithData;
-            break;
+    if (status === 'overdue') {
+        filteredCustomers = customerWithData.filter(c => c.debtStatus === 'overdue');
     }
 
     const [sortField, sortOrder] = sortBy.split('_');
@@ -1045,6 +1043,21 @@ class DataService {
         
         await this.updateCompanyProfile({ lastSyncDate: new Date().toISOString() });
     }
+}
+
+interface DB {
+    products: Product[];
+    customers: Customer[];
+    sales: Sale[];
+    payments: Payment[];
+    stockIntakes: StockIntake[];
+    returns: ProductReturn[];
+    expenses: Expense[];
+    notifications: Notification[];
+    settings: Setting[];
+    inventoryLogs: InventoryLog[];
+    suppliers: Supplier[];
+    companyProfile?: CompanyProfile;
 }
 
 export const dataService = new DataService();
