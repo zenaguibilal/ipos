@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertTriangle, ArrowRight, Minus, Plus } from 'lucide-react';
+import { PageHeader } from '@/components/layout/PageHeader';
 
 const ZAKAT_RATE = 0.025;
 const NISAB_GOLD_GRAMS = 85;
@@ -78,10 +79,10 @@ export default function ZakatPage() {
 
     return (
         <div className="p-4 sm:p-6 space-y-6">
-            <header>
-                <h1 className="text-2xl font-bold">Calculateur de Zakat Commerciale</h1>
-                <p className="text-muted-foreground">Estimez la Zakat due sur vos actifs commerciaux.</p>
-            </header>
+            <PageHeader
+                title="Calculateur de Zakat Commerciale"
+                description="Estimez la Zakat due sur vos actifs commerciaux."
+            />
 
             {!companyProfile?.goldPricePerGram && (
                  <Alert variant="destructive">

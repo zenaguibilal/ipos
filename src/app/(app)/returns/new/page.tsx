@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/utils';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
+import { PageHeader } from '@/components/layout/PageHeader';
 
 type ReturnItemState = ReturnItem & { originalQuantity: number, returnQuantity: number };
 
@@ -119,23 +120,22 @@ export default function NewReturnPage() {
 
     return (
         <div className="p-4 sm:p-6 space-y-6">
-            <header className="flex flex-col sm:flex-row gap-4 justify-between items-start">
+            <PageHeader
+                title="Nouveau Retour de Produit"
+                description="Enregistrez un retour sur la base d'une vente existante."
+            >
                 <div className="flex items-center gap-4">
                      <Button variant="outline" size="icon" asChild>
                         <Link href="/returns"><ArrowLeft className="h-4 w-4" /></Link>
                      </Button>
-                     <div>
-                        <h1 className="text-2xl font-bold">Nouveau Retour de Produit</h1>
-                        <p className="text-muted-foreground">Enregistrez un retour sur la base d'une vente existante.</p>
-                     </div>
+                    {foundSale && (
+                        <Button onClick={handleSaveReturn} disabled={isSaving || !hasItemsToReturn}>
+                            {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                            {isSaving ? 'Enregistrement...' : 'Enregistrer le Retour'}
+                        </Button>
+                    )}
                 </div>
-                {foundSale && (
-                    <Button onClick={handleSaveReturn} disabled={isSaving || !hasItemsToReturn}>
-                        {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                        {isSaving ? 'Enregistrement...' : 'Enregistrer le Retour'}
-                    </Button>
-                )}
-            </header>
+            </PageHeader>
 
             <Card>
                 <CardHeader>

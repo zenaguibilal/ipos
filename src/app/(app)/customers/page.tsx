@@ -1,15 +1,14 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { dataService } from '@/services/data-service';
 import { useDebounce } from '@/hooks/useDebounce';
 import type { Customer } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, Users, FileDown, Filter } from 'lucide-react';
+import { Plus, Search, Users, FileDown } from 'lucide-react';
 import { CustomerCard } from '@/components/customers/customer-card';
-import { CustomerCardSkeleton } from '@/components/customers/customer-card-skeleton';
 import { CustomerDialog } from '@/components/customers/customer-dialog';
 import { DeleteCustomerDialog } from '@/components/customers/delete-customer-dialog';
 import { ImportPreviewDialog } from '@/components/customers/import-preview-dialog';
@@ -18,6 +17,9 @@ import Papa from 'papaparse';
 import type { ImportAnalysis } from '@/lib/types';
 import { CustomerStats } from '@/components/customers/CustomerStats';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { PageHeader } from '@/components/layout/PageHeader';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { Skeleton } from '@/components/ui/skeleton';
 
 type FilterStatus = 'all' | 'has_debt' | 'overdue' | 'over_limit';
 
@@ -87,28 +89,27 @@ export default function CustomersPage() {
     };
     
     const renderSkeletons = () => (
-        [...Array(6)].map((_, i) => <CustomerCardSkeleton key={i} />)
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[...Array(6)].map((_, i) => <Card key={i}><CardHeader><Skeleton className="h-6 w-32" /></CardHeader><CardContent><Skeleton className="h-24 w-full" /></CardContent><CardFooter><Skeleton className="h-10 w-full" /></CardFooter></Card>)}
+        </div>
     );
 
     const renderContent = () => {
         if (isLoading) {
-            return (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {renderSkeletons()}
-                </div>
-            );
+            return renderSkeletons();
         }
 
         if (customers.length === 0) {
             return (
-                <div className="text-center py-16">
-                    <Users className="mx-auto h-16 w-16 text-muted-foreground" />
-                    <h3 className="text-xl font-semibold mt-4">Aucun client trouvé</h3>
-                    <p className="text-muted-foreground mt-2">Commencez par ajouter votre premier client ou ajustez vos filtres.</p>
-                     <Button className="mt-4" onClick={() => { setSelectedCustomer(null); setIsCustomerDialogOpen(true); }}>
+                <EmptyState
+                    icon={Users}
+                    title="Aucun client trouvé"
+                    description="Commencez par ajouter votre premier client ou ajustez vos filtres."
+                >
+                     <Button onClick={() => { setSelectedCustomer(null); setIsCustomerDialogOpen(true); }}>
                         <Plus className="mr-2 h-4 w-4" /> Ajouter un client
                     </Button>
-                </div>
+                </EmptyState>
             );
         }
         
@@ -128,23 +129,20 @@ export default function CustomersPage() {
 
     return (
         <div className="p-4 sm:p-6 space-y-6">
-            <header className="flex flex-col sm:flex-row gap-4 justify-between items-center">
-                <div>
-                    <h1 className="text-2xl font-bold">Gestion des Clients</h1>
-                    <p className="text-muted-foreground">Recherchez, ajoutez et gérez vos clients.</p>
-                </div>
-                 <div className="flex gap-2 w-full sm:w-auto">
-                    <Button asChild variant="outline" className="w-full sm:w-auto">
-                        <label htmlFor="csv-importer">
-                            <FileDown className="mr-2 h-4 w-4" /> Importer
-                            <input type="file" id="csv-importer" accept=".csv" className="sr-only" onChange={handleFileSelected} />
-                        </label>
-                    </Button>
-                    <Button className="w-full sm:w-auto" onClick={() => { setSelectedCustomer(null); setIsCustomerDialogOpen(true); }}>
-                        <Plus className="mr-2 h-4 w-4" /> Ajouter
-                    </Button>
-                </div>
-            </header>
+            <PageHeader
+                title="Gestion des Clients"
+                description="Recherchez, ajoutez et gérez vos clients."
+            >
+                <Button asChild variant="outline">
+                    <label htmlFor="csv-importer">
+                        <FileDown className="mr-2 h-4 w-4" /> Importer
+                        <input type="file" id="csv-importer" accept=".csv" className="sr-only" onChange={handleFileSelected} />
+                    </label>
+                </Button>
+                <Button onClick={() => { setSelectedCustomer(null); setIsCustomerDialogOpen(true); }}>
+                    <Plus className="mr-2 h-4 w-4" /> Ajouter
+                </Button>
+            </PageHeader>
 
             <CustomerStats customers={customers} isLoading={isLoading} />
 
@@ -161,7 +159,6 @@ export default function CustomersPage() {
                  <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button variant="outline" className="w-full sm:w-auto">
-                            <Filter className="mr-2 h-4 w-4" />
                             Filtrer
                         </Button>
                     </DropdownMenuTrigger>

@@ -16,6 +16,7 @@ import { Package, Truck, Wallet, Check, Loader2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { PageHeader } from '@/components/layout/PageHeader';
 
 export default function CostingPage() {
     const [selectedIntakeId, setSelectedIntakeId] = useState<string | null>(null);
@@ -119,10 +120,10 @@ export default function CostingPage() {
 
     return (
         <div className="p-4 sm:p-6 space-y-6">
-            <header>
-                <h1 className="text-2xl font-bold">Calcul des Coûts par Réception</h1>
-                <p className="text-muted-foreground">Calculez le coût final de chaque produit d'une réception en incluant les frais de transport.</p>
-            </header>
+            <PageHeader 
+                title="Calcul des Coûts par Réception"
+                description="Calculez le coût final de chaque produit d'une réception en incluant les frais de transport."
+            />
 
             <Card>
                 <CardHeader>

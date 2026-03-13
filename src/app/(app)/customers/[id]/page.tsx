@@ -16,6 +16,7 @@ import { SaleDetailsDialog } from '@/components/sales/SaleDetailsDialog';
 import { ReturnDetailsDialog } from '@/components/returns/ReturnDetailsDialog';
 import type { Sale, ProductReturn, Customer } from '@/lib/types';
 import { PrintStatementDialog } from '@/components/customers/PrintStatementDialog';
+import { PageHeader } from '@/components/layout/PageHeader';
 
 
 export default function CustomerDetailPage() {
@@ -82,15 +83,15 @@ export default function CustomerDetailPage() {
 
     return (
         <div className="p-4 sm:p-6 space-y-6">
-            <header className="flex items-center gap-4">
+             <div className="flex items-center gap-4">
                  <Button variant="outline" size="icon" asChild>
                     <Link href="/customers"><ArrowLeft className="h-4 w-4" /></Link>
                  </Button>
-                 <div>
-                    <h1 className="text-2xl font-bold">{customer.firstName} {customer.lastName}</h1>
-                    <p className="text-muted-foreground">ID Client: {customer.id}</p>
-                 </div>
-            </header>
+                 <PageHeader 
+                    title={`${customer.firstName} ${customer.lastName}`}
+                    description={`ID Client: ${customer.id}`}
+                 />
+            </div>
 
             <div className="grid md:grid-cols-3 gap-6">
                 <div className="md:col-span-2">

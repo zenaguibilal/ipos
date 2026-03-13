@@ -7,13 +7,15 @@ import { dataService } from '@/services/data-service';
 import { useDebounce } from '@/hooks/useDebounce';
 import type { Sale } from '@/lib/types';
 import { Input } from '@/components/ui/input';
-import { Search } from 'lucide-react';
+import { Search, History } from 'lucide-react';
 import { DateRangePicker } from '@/components/dashboard/date-range-picker';
 import { useDateRange } from '@/hooks/useDateRange';
 import { SalesHistoryCard } from '@/components/sales/SalesHistoryCard';
 import { SaleDetailsDialog } from '@/components/sales/SaleDetailsDialog';
 import { CancelSaleDialog } from '@/components/sales/CancelSaleDialog';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PageHeader } from '@/components/layout/PageHeader';
+import { EmptyState } from '@/components/ui/EmptyState';
 
 export default function SalesHistoryPage() {
     const [searchQuery, setSearchQuery] = useState('');
@@ -47,24 +49,23 @@ export default function SalesHistoryPage() {
     };
     
     const renderSkeletons = () => (
-        [...Array(6)].map((_, i) => <Skeleton key={i} className="h-48 w-full rounded-lg" />)
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-48 w-full rounded-lg" />)}
+        </div>
     );
 
     const renderContent = () => {
         if (isLoading) {
-            return (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {renderSkeletons()}
-                </div>
-            );
+            return renderSkeletons();
         }
 
         if (sales.length === 0) {
             return (
-                <div className="text-center py-16">
-                    <h3 className="text-xl font-semibold">Aucune vente trouvée</h3>
-                    <p className="text-muted-foreground mt-2">Essayez d'ajuster votre recherche ou vos filtres.</p>
-                </div>
+                <EmptyState
+                    icon={History}
+                    title="Aucune vente trouvée"
+                    description="Essayez d'ajuster votre recherche ou vos filtres."
+                />
             );
         }
         
@@ -84,12 +85,10 @@ export default function SalesHistoryPage() {
 
     return (
         <div className="p-4 sm:p-6 space-y-6">
-            <header className="flex flex-col sm:flex-row gap-4 justify-between items-center">
-                <div>
-                    <h1 className="text-2xl font-bold">Historique des Ventes</h1>
-                    <p className="text-muted-foreground">Recherchez et consultez toutes les transactions.</p>
-                </div>
-            </header>
+            <PageHeader
+                title="Historique des Ventes"
+                description="Recherchez et consultez toutes les transactions."
+            />
 
             <div className="flex flex-col sm:flex-row gap-2">
                 <div className="relative flex-grow">

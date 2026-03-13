@@ -16,6 +16,7 @@ import { AlertTriangle, X } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Notification } from '@/lib/types';
 import { useDateRange } from '@/hooks/useDateRange';
+import { PageHeader } from '@/components/layout/PageHeader';
 
 
 export default function DashboardPage() {
@@ -59,13 +60,12 @@ export default function DashboardPage() {
     return (
         <div className="p-4 sm:p-6 space-y-6">
             
-            <header className="flex flex-col sm:flex-row gap-4 justify-between items-center">
-                <div>
-                    <h1 className="text-2xl font-bold">Tableau de Bord</h1>
-                    <p className="text-muted-foreground">Aperçu des performances de votre activité.</p>
-                </div>
+            <PageHeader 
+                title="Tableau de Bord"
+                description="Aperçu des performances de votre activité."
+            >
                 <DateRangePicker date={dateRange} setDate={setDateRange} />
-            </header>
+            </PageHeader>
             
             {unreadAlerts && unreadAlerts.length > 0 && (
                 <div className="space-y-3">

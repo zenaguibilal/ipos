@@ -6,14 +6,15 @@ import { CompanyProfileForm } from "@/components/profile/company-profile-form";
 import { BackupAndRestore } from "@/components/profile/BackupAndRestore";
 import { SyncData } from "@/components/profile/SyncData";
 import { User, Database, RefreshCw } from 'lucide-react';
+import { PageHeader } from "@/components/layout/PageHeader";
 
 export default function ProfilePage() {
     return (
         <div className="p-4 sm:p-6 space-y-6">
-            <header>
-                <h1 className="text-2xl font-bold">Profil & Paramètres</h1>
-                <p className="text-muted-foreground">Gérez les informations de votre entreprise et les données de l'application.</p>
-            </header>
+            <PageHeader 
+                title="Profil & Paramètres"
+                description="Gérez les informations de votre entreprise et les données de l'application."
+            />
 
             <Tabs defaultValue="profile" className="w-full">
                 <TabsList className="grid w-full grid-cols-3">

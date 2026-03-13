@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import placeholderImages from '@/lib/placeholder-images.json';
 import { cn, formatCurrency } from '@/lib/utils';
 import { Checkbox } from '../ui/checkbox';
-import { differenceInDays, format } from 'date-fns';
+import { differenceInDays } from 'date-fns';
 
 interface ProductCardProps {
     product: Product;

@@ -8,10 +8,9 @@ import { useDebounce } from '@/hooks/useDebounce';
 import type { Product, ProductImportAnalysis, Supplier } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, LayoutGrid, List, Printer, Trash2, PackageCheck, PackageX, AlertTriangle, Archive, SortAsc, FileDown, FileUp, Building } from 'lucide-react';
+import { Plus, Search, LayoutGrid, List, Printer, Trash2, PackageCheck, PackageX, AlertTriangle, Archive, SortAsc, FileDown, FileUp, Building, Package } from 'lucide-react';
 import { ProductCard } from '@/components/products/product-card';
 import { ProductTable } from '@/components/products/product-table';
-import { ProductCardSkeleton } from '@/components/products/product-card-skeleton';
 import { ProductTableSkeleton } from '@/components/products/product-table-skeleton';
 import { ProductDialog } from '@/components/products/product-dialog';
 import { DeleteProductDialog } from '@/components/products/delete-product-dialog';
@@ -32,6 +31,9 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import Papa from 'papaparse';
+import { PageHeader } from '@/components/layout/PageHeader';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { Card, CardContent, CardFooter, CardHeader, Skeleton } from '@/components/ui/card';
 
 type ViewMode = 'grid' | 'list';
 type StockStatus = 'all' | 'in_stock' | 'low_stock' | 'out_of_stock';
@@ -184,30 +186,33 @@ export default function ProductsPage() {
     };
     
     const renderSkeletons = () => (
-        [...Array(8)].map((_, i) => <ProductCardSkeleton key={i} />)
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {[...Array(8)].map((_, i) => (
+                <Card key={i}>
+                    <CardHeader className="p-0"><Skeleton className="rounded-t-lg aspect-[4/3]" /></CardHeader>
+                    <CardContent className="p-4 space-y-2"><Skeleton className="h-5 w-3/4" /><Skeleton className="h-4 w-1/2" /></CardContent>
+                    <CardFooter className="p-4 pt-0"><Skeleton className="h-10 w-full" /></CardFooter>
+                </Card>
+            ))}
+        </div>
     );
 
     const renderContent = () => {
         if (isLoading) {
-            if (viewMode === 'grid') {
-                return (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                        {renderSkeletons()}
-                    </div>
-                )
-            }
-            return <ProductTableSkeleton />;
+            return viewMode === 'grid' ? renderSkeletons() : <ProductTableSkeleton />;
         }
 
         if (!products || products.length === 0) {
             return (
-                <div className="text-center py-16">
-                    <h3 className="text-xl font-semibold">Aucun produit trouvé</h3>
-                    <p className="text-muted-foreground mt-2">Essayez d'ajuster votre recherche ou vos filtres, ou ajoutez un nouveau produit.</p>
-                     <Button className="mt-4" onClick={() => setIsProductDialogOpen(true)}>
+                <EmptyState
+                    icon={Package}
+                    title="Aucun produit trouvé"
+                    description="Essayez d'ajuster votre recherche ou vos filtres, ou ajoutez un nouveau produit."
+                >
+                     <Button onClick={() => setIsProductDialogOpen(true)}>
                         <Plus className="mr-2 h-4 w-4" /> Ajouter un produit
                     </Button>
-                </div>
+                </EmptyState>
             );
         }
         
@@ -246,26 +251,23 @@ export default function ProductsPage() {
 
     return (
         <div className="p-4 sm:p-6 space-y-6">
-            <header className="flex flex-col sm:flex-row gap-4 justify-between items-center">
-                <div>
-                    <h1 className="text-2xl font-bold">Gestion des Produits</h1>
-                    <p className="text-muted-foreground">Recherchez, filtrez et gérez votre inventaire.</p>
-                </div>
-                 <div className="flex gap-2 w-full sm:w-auto">
-                    <Button onClick={handleExport} variant="outline" className="w-full sm:w-auto">
-                        <FileUp className="mr-2 h-4 w-4" /> Exporter
-                    </Button>
-                    <Button asChild variant="outline" className="w-full sm:w-auto">
-                        <label htmlFor="csv-importer">
-                            <FileDown className="mr-2 h-4 w-4" /> Importer
-                            <input type="file" id="csv-importer" accept=".csv" className="sr-only" onChange={handleFileSelected} />
-                        </label>
-                    </Button>
-                    <Button className="w-full sm:w-auto" onClick={() => { setSelectedProduct(null); setIsProductDialogOpen(true); }}>
-                        <Plus className="mr-2 h-4 w-4" /> Ajouter
-                    </Button>
-                </div>
-            </header>
+            <PageHeader
+                title="Gestion des Produits"
+                description="Recherchez, filtrez et gérez votre inventaire."
+            >
+                <Button onClick={handleExport} variant="outline">
+                    <FileUp className="mr-2 h-4 w-4" /> Exporter
+                </Button>
+                <Button asChild variant="outline">
+                    <label htmlFor="csv-importer">
+                        <FileDown className="mr-2 h-4 w-4" /> Importer
+                        <input type="file" id="csv-importer" accept=".csv" className="sr-only" onChange={handleFileSelected} />
+                    </label>
+                </Button>
+                <Button onClick={() => { setSelectedProduct(null); setIsProductDialogOpen(true); }}>
+                    <Plus className="mr-2 h-4 w-4" /> Ajouter
+                </Button>
+            </PageHeader>
 
             <InventoryStats products={products} isLoading={isLoading} />
 
