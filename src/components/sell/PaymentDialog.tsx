@@ -2,7 +2,7 @@
 
 'use client';
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription
@@ -15,15 +15,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import type { Cart, SalePayment, Customer, Product } from '@/lib/types';
-import { Loader2, Printer, CreditCard, Banknote, AlertTriangle } from 'lucide-react';
+import { Loader2, CreditCard, Banknote, AlertTriangle } from 'lucide-react';
 import { dataService } from '@/services/data-service';
 import { formatCurrency, calculateCartTotals } from '@/lib/utils';
-import { Receipt } from './Receipt';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/database';
 import { cn } from '@/lib/utils';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Separator } from '@/components/ui/separator';
+import { SaleCompletionScreen } from './SaleCompletionScreen';
 
 interface PaymentDialogProps {
     isOpen: boolean;
@@ -41,7 +41,6 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, onSaleFinalized }: P
     const [dueDate, setDueDate] = useState<Date | undefined>();
     
     const [isLoading, setIsLoading] = useState(false);
-    const receiptRef = useRef<HTMLDivElement>(null);
     const [lastSale, setLastSale] = useState<any>(null);
 
     const [showLossAlert, setShowLossAlert] = useState(false);
@@ -97,29 +96,6 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, onSaleFinalized }: P
             setCashAmount('0');
         }
     }
-    
-    const handlePrint = (thermal: boolean) => {
-        const printableContent = document.getElementById('receipt-for-print');
-        const receiptElement = receiptRef.current;
-    
-        if (!printableContent || !receiptElement) {
-          toast.error("Erreur: Impossible de préparer le reçu pour l'impression.");
-          return;
-        }
-    
-        const receiptClone = receiptElement.cloneNode(true) as HTMLDivElement;
-        
-        document.documentElement.classList.toggle('thermal', thermal);
-        receiptClone.classList.add(thermal ? 'thermal-receipt' : 'a4-receipt');
-        
-        printableContent.innerHTML = '';
-        printableContent.appendChild(receiptClone);
-        
-        setTimeout(() => {
-            window.print();
-            document.documentElement.classList.remove('thermal');
-        }, 100);
-    };
 
     const handleFinalizeSale = async () => {
         if (paymentMode === 'mixed' && (cashAmountNum + creditAmountNum !== total)) {
@@ -200,7 +176,9 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, onSaleFinalized }: P
 
             <Dialog open={isOpen && !showLossAlert} onOpenChange={(open) => !open && closeAndReset()}>
                 <DialogContent className="sm:max-w-lg">
-                    {!lastSale ? (
+                    {lastSale ? (
+                        <SaleCompletionScreen sale={lastSale} onClose={closeAndReset} />
+                    ) : (
                         <>
                             <DialogHeader>
                                 <DialogTitle>Finaliser la vente</DialogTitle>
@@ -289,29 +267,6 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, onSaleFinalized }: P
                                     {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                     Valider la vente
                                 </Button>
-                            </DialogFooter>
-                        </>
-                    ) : (
-                        <>
-                             <DialogHeader>
-                                <DialogTitle>Vente Réussie</DialogTitle>
-                                <DialogDescription>
-                                    Imprimez le reçu pour le client ou fermez pour commencer une nouvelle vente.
-                                </DialogDescription>
-                            </DialogHeader>
-                            <div className="py-4 my-4 max-h-[50vh] overflow-y-auto bg-gray-100 dark:bg-gray-800 rounded-lg">
-                                <Receipt sale={lastSale} ref={receiptRef} />
-                            </div>
-                            <DialogFooter className="sm:justify-between flex-col sm:flex-row gap-2">
-                                <div className="flex gap-2">
-                                    <Button variant="outline" onClick={() => handlePrint(true)}>
-                                        <Printer className="mr-2 h-4 w-4"/> Thermique
-                                    </Button>
-                                    <Button variant="outline" onClick={() => handlePrint(false)}>
-                                        <Printer className="mr-2 h-4 w-4"/> A4
-                                    </Button>
-                                </div>
-                                <Button onClick={closeAndReset}>Fermer</Button>
                             </DialogFooter>
                         </>
                     )}

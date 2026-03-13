@@ -18,20 +18,9 @@ export function safeToDate(date: Date | string): Date {
     return new Date(date);
 }
 
-/**
- * Safely formats a number to one decimal place.
- * @param value The number to format.
- * @returns A string representation of the number with one decimal place, or '0.0' if the input is invalid.
- */
-export function formatNumber(value: number): string {
-  if (typeof value !== 'number' || isNaN(value)) {
-    return '0.0';
-  }
-  return value.toFixed(1);
-}
-
 export function formatCurrency(value: number, currency = 'DA') {
-  return `${formatNumber(value)} ${currency}`;
+  const formattedValue = (typeof value !== 'number' || isNaN(value)) ? '0.0' : value.toFixed(1);
+  return `${formattedValue} ${currency}`;
 }
 
 type CalculableCart = Pick<Cart, 'items' | 'discount'> | Pick<Draft, 'items' | 'discount'>;
