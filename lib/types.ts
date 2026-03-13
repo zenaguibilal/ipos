@@ -114,12 +114,6 @@ export interface Draft {
   notes?: string;
 }
 
-export interface ChartData {
-  date: string;
-  revenue: number;
-  profit?: number;
-}
-
 export interface TopProduct {
     id: number;
     name: string;
@@ -149,6 +143,7 @@ export interface CompanyProfile {
     syncUrl?: string;
     lastSyncDate?: string;
     goldPricePerGram?: number;
+    prix_pain?: number;
     updatedAt?: Date;
 }
 
@@ -308,4 +303,41 @@ export interface Supplier {
     balance: number; // Solde de la dette envers le fournisseur
     createdAt?: Date;
     updatedAt?: Date;
+}
+
+// =================== Bread Types ===================
+
+export interface BreadClient {
+    id?: number;
+    nom: string;
+    actif: boolean;
+    type_recurrence: 'quotidien' | 'jours_specifiques' | 'aucun';
+    quantite_defaut?: number;
+    jours_semaine?: {
+        lundi:    { actif: boolean, quantite: number },
+        mardi:    { actif: boolean, quantite: number },
+        mercredi: { actif: boolean, quantite: number },
+        jeudi:    { actif: boolean, quantite: number },
+        vendredi: { actif: boolean, quantite: number },
+        samedi:   { actif: boolean, quantite: number },
+        dimanche: { actif: boolean, quantite: number }
+    };
+    createdAt?: Date;
+    updatedAt?: Date;
+}
+
+export interface BreadOrder {
+    id?: number;
+    client_pain_id: number;
+    date: string; // YYYY-MM-DD
+    quantite: number;
+    quantite_origine?: number;
+    statut: 'en_attente' | 'livre' | 'paye';
+    vente_id: number | null;
+    createdAt?: Date;
+    updatedAt?: Date;
+}
+
+export interface BreadOrderWithClient extends BreadOrder {
+    client: BreadClient;
 }
