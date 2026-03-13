@@ -1,18 +1,19 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import type { BreadOrderWithClient } from '@/lib/types';
+import { Label } from '@/components/ui/label';
+import type { BreadOrder, BreadOrderWithClient } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { dataService } from '@/services/data-service';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useDebounce } from '@/hooks/useDebounce';
-import { useEffect } from 'react';
-import { AlertTriangle, BookMarked, Check, X } from 'lucide-react';
+import { AlertTriangle, BookMarked, Check, ChevronDown, X } from 'lucide-react';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
+
 
 interface BreadOrderCardProps {
     order: BreadOrderWithClient;
@@ -20,11 +21,12 @@ interface BreadOrderCardProps {
     onToggleSelection: (orderId: number) => void;
 }
 
-const statusConfig = {
-    en_attente: { label: 'En attente', color: 'bg-gray-500', next: 'livre' as const },
-    livre: { label: 'Livré', color: 'bg-blue-500', next: 'paye' as const },
-    paye: { label: 'Payé', color: 'bg-green-500', next: 'en_attente' as const },
+const statusConfig: Record<BreadOrder['statut'], { label: string, color: string, icon: React.ElementType }> = {
+    en_attente: { label: 'En attente', color: 'bg-gray-500 hover:bg-gray-600', icon: X },
+    livre: { label: 'Livré', color: 'bg-blue-500 hover:bg-blue-600', icon: Check },
+    paye: { label: 'Payé', color: 'bg-green-500 hover:bg-green-600', icon: BookMarked },
 };
+
 
 export function BreadOrderCard({ order, isSelected, onToggleSelection }: BreadOrderCardProps) {
     const [quantity, setQuantity] = useState(order.quantite);
@@ -42,10 +44,11 @@ export function BreadOrderCard({ order, isSelected, onToggleSelection }: BreadOr
         setQuantity(order.quantite);
     }, [order.quantite]);
 
-    const handleStatusChange = async () => {
-        const nextStatus = statusConfig[order.statut].next;
+    const handleStatusChange = async (newStatus: BreadOrder['statut']) => {
+        if (newStatus === order.statut) return;
         try {
-            await dataService.updateBreadOrderStatus(order.id!, nextStatus);
+            await dataService.updateBreadOrderStatus(order.id!, newStatus);
+            toast.success(`Statut mis à jour pour ${order.client.nom}`);
         } catch (error) {
             toast.error("Erreur lors de la mise à jour du statut.");
         }
@@ -59,6 +62,8 @@ export function BreadOrderCard({ order, isSelected, onToggleSelection }: BreadOr
             toast.error("Erreur lors de la mise à jour de la quantité.");
         }
     }
+    
+    const CurrentIcon = statusConfig[order.statut].icon;
 
     return (
         <Card className={cn("flex flex-col transition-all duration-200", isSelected && "ring-2 ring-primary", order.vente_id && "opacity-60")}>
@@ -86,16 +91,29 @@ export function BreadOrderCard({ order, isSelected, onToggleSelection }: BreadOr
                  )}
             </CardContent>
             <CardFooter className="p-2">
-                <Button 
-                    onClick={handleStatusChange} 
-                    className={cn("w-full", statusConfig[order.statut].color)}
-                    disabled={!!order.vente_id}
-                >
-                    {order.statut === 'en_attente' && <X className="mr-2 h-4 w-4" />}
-                    {order.statut === 'livre' && <Check className="mr-2 h-4 w-4" />}
-                    {order.statut === 'paye' && <BookMarked className="mr-2 h-4 w-4" />}
-                    {statusConfig[order.statut].label}
-                </Button>
+                 <DropdownMenu>
+                    <DropdownMenuTrigger asChild disabled={!!order.vente_id}>
+                        <Button className={cn("w-full justify-between", statusConfig[order.statut].color)}>
+                            <span className="flex items-center">
+                                <CurrentIcon className="mr-2 h-4 w-4" />
+                                {statusConfig[order.statut].label}
+                            </span>
+                            <ChevronDown className="h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)]">
+                        {Object.entries(statusConfig).map(([statusKey, config]) => (
+                            <DropdownMenuItem 
+                                key={statusKey} 
+                                onClick={() => handleStatusChange(statusKey as BreadOrder['statut'])}
+                                disabled={order.statut === statusKey}
+                            >
+                                <config.icon className="mr-2 h-4 w-4" />
+                                {config.label}
+                            </DropdownMenuItem>
+                        ))}
+                    </DropdownMenuContent>
+                </DropdownMenu>
             </CardFooter>
         </Card>
     );
