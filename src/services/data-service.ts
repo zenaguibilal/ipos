@@ -1,4 +1,3 @@
-
 'use client';
 
 import { db, PosDatabase } from '@/lib/database';
@@ -97,7 +96,7 @@ class DataService {
             if (typeof product.id === 'number') {
                 const dbProduct = await db.products.get(product.id);
                 if (dbProduct && newQuantity > dbProduct.quantity) {
-                    throw new Error(`Stock limité pour ${product.name}. Quantité disponible: ${dbProduct.quantity}.`);
+                    throw new Error(`Stock limité pour "${product.name}". Quantité disponible: ${dbProduct.quantity}.`);
                 }
             }
             newItems[existingItemIndex] = { ...existingItem, cartQuantity: newQuantity, flash: true };
@@ -105,7 +104,7 @@ class DataService {
             if (typeof product.id === 'number') {
                  const dbProduct = await db.products.get(product.id);
                 if (dbProduct && quantity > dbProduct.quantity) {
-                    throw new Error(`Stock insuffisant pour ${product.name}. Quantité disponible: ${dbProduct.quantity}.`);
+                    throw new Error(`Stock insuffisant pour "${product.name}". Quantité disponible: ${dbProduct.quantity}.`);
                 }
             }
             const newItem: CartItem = { ...product, cartQuantity: quantity, flash: true };
@@ -479,7 +478,7 @@ class DataService {
         for (const item of items) {
             if (typeof item.id !== 'number') continue;
             const product = await db.products.get(item.id);
-            if (!product || product.quantity < item.quantity) throw new Error(`Stock insuffisant pour ${product?.name || 'produit inconnu'}.`);
+            if (!product || product.quantity < item.quantity) throw new Error(`Stock insuffisant pour "${product?.name || 'produit inconnu'}".`);
         }
         
         const newDebt = total - amountPaid;
@@ -525,7 +524,7 @@ class DataService {
                 if (!isNotified) {
                     await db.notifications.add({
                         type: 'low-stock',
-                        message: `Le stock pour ${product.name} est bas (${newQuantity} restants).`,
+                        message: `Le stock pour "${product.name}" est bas (${newQuantity} restants).`,
                         isRead: false,
                         createdAt: new Date(),
                         relatedId: product.id,
@@ -637,7 +636,7 @@ class DataService {
                     }
                 }
 
-                if (!productId) throw new Error(`ID de produit manquant pour ${item.name}`);
+                if (!productId) throw new Error(`ID de produit manquant pour "${item.name}"`);
                 
                 const product = await db.products.get(productId);
                 const newQuantity = (product?.quantity || 0) + quantityToAdd;

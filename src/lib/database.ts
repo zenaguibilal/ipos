@@ -1,5 +1,3 @@
-
-
 import Dexie, { type Table } from 'dexie';
 import type { Product, Customer, Sale, Payment, StockIntake, ProductReturn, Cart, CompanyProfile, Expense, Setting, Notification, InventoryLog, Draft, Supplier, BreadClient, BreadOrder } from './types';
 
@@ -45,7 +43,7 @@ export class PosDatabase extends Dexie {
             // This is for version 22, ensuring searchName is populated. It runs if the client db version is < 22.
             return tx.table('customers').toCollection().modify(customer => {
                 if (customer.firstName && customer.lastName && !customer.searchName) {
-                   customer.searchName = `${customer.firstName.toLowerCase()} ${customer.lastName.toLowerCase()}`;
+                   customer.searchName = `${'\'\'\''}${customer.firstName.toLowerCase()} ${customer.lastName.toLowerCase()}'\'\'\'`;
                 }
             });
         }).upgrade(tx => {
@@ -99,7 +97,7 @@ export class PosDatabase extends Dexie {
         // Hooks to auto-generate searchName for customers
         this.customers.hook('creating', (primKey, obj) => {
             if(typeof obj.firstName === 'string' && typeof obj.lastName === 'string') {
-                obj.searchName = `${obj.firstName.toLowerCase()} ${obj.lastName.toLowerCase()}`;
+                obj.searchName = `${'\'\'\''}${obj.firstName.toLowerCase()} ${obj.lastName.toLowerCase()}'\'\'\'`;
             }
         });
 
@@ -108,7 +106,7 @@ export class PosDatabase extends Dexie {
                 const newFirstName = Object.hasOwn(modifications, 'firstName') ? (modifications as any).firstName : obj.firstName;
                 const newLastName = Object.hasOwn(modifications, 'lastName') ? (modifications as any).lastName : obj.lastName;
                 if (typeof newFirstName === 'string' && typeof newLastName === 'string') {
-                    (modifications as any).searchName = `${newFirstName.toLowerCase()} ${newLastName.toLowerCase()}`;
+                    (modifications as any).searchName = `${'\'\'\''}${newFirstName.toLowerCase()} ${newLastName.toLowerCase()}'\'\'\'`;
                 }
             }
         });
