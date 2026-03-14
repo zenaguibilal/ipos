@@ -1,3 +1,4 @@
+
 import Dexie, { type Table } from 'dexie';
 import type { Product, Customer, Sale, Payment, StockIntake, ProductReturn, Cart, CompanyProfile, Expense, Setting, Notification, InventoryLog, Draft, Supplier, BreadClient, BreadOrder } from './types';
 
@@ -62,13 +63,10 @@ export class PosDatabase extends Dexie {
                             break;
                         case 'paye':
                             order.est_paye = true;
-                            order.est_livre = false;
-                            break;
-                        case 'finalise':
-                            order.est_paye = true;
-                            order.est_livre = true;
+                            order.est_livre = false; // Safe default, delivery is now tracked separately
                             break;
                         default:
+                             // If status is unknown, determine 'paid' status based on if a sale was generated
                             order.est_paye = !!order.vente_id;
                             order.est_livre = false;
                     }
