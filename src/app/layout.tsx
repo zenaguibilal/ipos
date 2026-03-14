@@ -48,14 +48,13 @@ export const metadata: Metadata = {
     icon: "/icon.svg",
     shortcut: "/icon.svg",
     apple: "/icon.svg",
-  }
+  },
+  // Added for PWA manifest
+  backgroundColor: "#1a120c",
 };
 
 export const viewport: Viewport = {
-  themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#fdfaf6' },
-    { media: '(prefers-color-scheme: dark)', color: '#1a120c' },
-  ],
+  themeColor: "#f97316",
 };
 
 
