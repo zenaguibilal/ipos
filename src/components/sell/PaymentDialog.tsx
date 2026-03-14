@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -250,9 +248,9 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, onSaleFinalized }: P
                                             <Label>Date d'échéance (optionnel)</Label>
                                             <DatePicker date={dueDate} setDate={setDueDate}/>
                                         </div>
-                                         <div className={cn("text-center py-2 luxury-glass border", creditUsage > 90 ? "border-destructive/30" : "border-amber-500/20")}>
+                                         <div className={cn("text-center py-2 luxury-glass border", creditUsage > 90 ? "border-destructive/30" : "border-chart-secondary/20")}>
                                             <Label>NOUVEAU SOLDE CLIENT</Label>
-                                            <p className={cn("text-2xl font-bold", creditUsage > 90 ? "text-destructive" : "text-amber-400")}>{formatCurrency(newTotalOutstanding)}</p>
+                                            <p className={cn("text-2xl font-bold", creditUsage > 90 ? "text-destructive" : "text-chart-secondary")}>{formatCurrency(newTotalOutstanding)}</p>
                                             <p className="text-xs text-muted-foreground">
                                                (Disponible: {formatCurrency(creditAvailable - debtFromThisSale)})
                                             </p>

@@ -38,7 +38,7 @@ export function BreadStats({ orders }: BreadStatsProps) {
                     <Truck className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold text-[hsl(var(--chart-quaternary))]">{stats.delivered}</div>
+                    <div className="text-2xl font-bold text-chart-quaternary">{stats.delivered}</div>
                 </CardContent>
             </Card>
             <Card>
@@ -47,7 +47,7 @@ export function BreadStats({ orders }: BreadStatsProps) {
                     <CheckCircle className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold text-[hsl(var(--chart-secondary))]">{stats.remaining}</div>
+                    <div className="text-2xl font-bold text-chart-secondary">{stats.remaining}</div>
                 </CardContent>
             </Card>
         </div>

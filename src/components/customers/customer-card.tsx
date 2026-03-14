@@ -117,7 +117,7 @@ const CustomerCardComponent = ({ customer, onEdit, onDelete }: CustomerCardProps
                          <span className="font-semibold ml-auto">{typeof customer.creditLimit === 'number' ? formatCurrency(customer.creditLimit) : 'N/A'}</span>
                     </div>
                     {customer.creditLimit && customer.creditLimit > 0 && (
-                        <Progress value={creditUsage} className={cn("h-1.5", creditUsage > 100 ? "bg-destructive" : creditUsage > 90 ? "bg-orange-500" : "")} />
+                        <Progress value={creditUsage} className={cn("h-1.5", creditUsage > 100 ? "[&>div]:bg-destructive" : creditUsage > 90 ? "[&>div]:bg-chart-secondary" : "")} />
                     )}
                  </div>
                  <div className="flex items-center text-sm">

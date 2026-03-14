@@ -52,6 +52,13 @@ const config: Config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        chart: {
+          primary: "hsl(var(--chart-primary))",
+          secondary: "hsl(var(--chart-secondary))",
+          tertiary: "hsl(var(--chart-tertiary))",
+          quaternary: "hsl(var(--chart-quaternary))",
+          quinary: "hsl(var(--chart-quinary))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
