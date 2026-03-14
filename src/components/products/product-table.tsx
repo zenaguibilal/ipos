@@ -158,3 +158,4 @@ export function ProductTable({ products, onEdit, onDelete, selectedProducts, onT
         </div>
     );
 }
+
