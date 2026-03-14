@@ -1,3 +1,4 @@
+
 'use client';
 
 import { db, PosDatabase } from '@/lib/database';
