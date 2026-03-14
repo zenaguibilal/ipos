@@ -37,6 +37,7 @@ L'interface principale de caisse, conçue pour être rapide, intuitive et effica
     -   **Finalisation de la Vente :** Un dialogue de paiement complet qui gère plusieurs modes de paiement : Espèces, Carte, Crédit (pour les clients enregistrés) et Mixte. Le système calcule automatiquement la monnaie à rendre et met à jour le solde du client en cas de vente à crédit.
     -   **Raccourcis Clavier :** Optimisé pour la vitesse avec des raccourcis (F1, F2, F9, etc.) pour la recherche, la sélection de client et le paiement.
     -   **Impression de Reçus :** Génère un reçu détaillé à la fin de la vente, avec options d'impression pour imprimante thermique (80mm) ou format A4 standard.
+    -   **Paiement de Dettes :** Si un client avec un solde impayé est sélectionné, un bouton "Payer Dette" apparaît, permettant d'enregistrer un paiement pour ce client directement depuis l'interface de vente.
 
 ---
 
@@ -158,4 +159,3 @@ La page de configuration globale de l'application.
         -   **Restauration :** Restaurer l'état de l'application à partir d'un fichier de sauvegarde (cette action écrase toutes les données actuelles).
     -   **Zone de Danger :** Une option pour réinitialiser complètement l'application et supprimer toutes les données, avec une double confirmation pour éviter les erreurs.
     -   **Synchronisation :** Synchroniser manuellement les données clés avec une feuille de calcul Google Sheet via une URL de script Google Apps.
-
