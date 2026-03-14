@@ -11,11 +11,14 @@ import { useCarts } from '@/hooks/useCarts';
 import { Button } from '@/components/ui/button';
 import { CustomerCombobox } from '@/components/sell/CustomerCombobox';
 import { CartTabs } from '@/components/sell/CartTabs';
-import { PackageSearch } from 'lucide-react';
+import { PackageSearch, HandCoins } from 'lucide-react';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { DraftsDialog } from '@/components/sell/DraftsDialog';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { dataService } from '@/services/data-service';
+import { AddPaymentDialog } from '@/components/payments/AddPaymentDialog';
 
 export default function SellPage() {
     const {
@@ -38,10 +41,16 @@ export default function SellPage() {
 
     const [isProductSheetOpen, setIsProductSheetOpen] = useState(false);
     const [isDraftsDialogOpen, setIsDraftsDialogOpen] = useState(false);
+    const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+
     const productSearchRef = useRef<{ focus: () => void }>(null);
     const customerComboboxRef = useRef<HTMLButtonElement>(null);
     const paymentButtonRef = useRef<HTMLButtonElement>(null);
 
+    const selectedCustomer = useLiveQuery(() => 
+        activeCart?.customerId ? dataService.getCustomerById(activeCart.customerId) : Promise.resolve(null),
+        [activeCart?.customerId]
+    );
 
     const handleSaveDraft = async () => {
         if (!activeCart || activeCart.items.length === 0) {
@@ -150,6 +159,16 @@ export default function SellPage() {
                                         onSelectCustomer={setCartCustomer}
                                     />
                                 </div>
+                                {selectedCustomer && selectedCustomer.outstandingBalance > 0 && (
+                                    <Button 
+                                        variant="outline" 
+                                        className="h-auto" 
+                                        onClick={() => setIsPaymentDialogOpen(true)}
+                                    >
+                                        <HandCoins className="mr-2 h-4 w-4 text-primary" />
+                                        Payer Dette
+                                    </Button>
+                                )}
                                 <div className="md:hidden">
                                     <Sheet open={isProductSheetOpen} onOpenChange={setIsProductSheetOpen}>
                                         <SheetTrigger asChild>
@@ -202,6 +221,14 @@ export default function SellPage() {
                 onOpenChange={setIsDraftsDialogOpen}
                 onLoadDraft={handleLoadDraft}
             />
+            {selectedCustomer && (
+                 <AddPaymentDialog 
+                    isOpen={isPaymentDialogOpen}
+                    onOpenChange={setIsPaymentDialogOpen}
+                    customer={selectedCustomer}
+                    outstandingBalance={selectedCustomer.outstandingBalance}
+                />
+            )}
         </>
     );
 }
