@@ -6,9 +6,8 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Trash2, ShoppingCart } from 'lucide-react';
 import Image from 'next/image';
-import placeholderImages from '@/lib/placeholder-images.json';
 import { cn } from '@/lib/utils';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, getPlaceholder } from '@/lib/utils';
 import { Card, CardContent } from '../ui/card';
 
 
@@ -17,16 +16,6 @@ interface CartDisplayProps {
     onQuantityChange: (itemId: number | string, newQuantity: number) => void;
     onRemoveItem: (itemId: number | string) => void;
 }
-
-type Placeholder = { url: string; width: number; height: number; hint: string };
-const placeholders = placeholderImages as Record<string, Placeholder>;
-const getPlaceholder = (category?: string): Placeholder => {
-    if (category && placeholders[category]) {
-        return placeholders[category];
-    }
-    return placeholders.default;
-};
-
 
 export function CartDisplay({ cart, onQuantityChange, onRemoveItem }: CartDisplayProps) {
     

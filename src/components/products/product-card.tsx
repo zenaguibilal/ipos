@@ -8,8 +8,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { MoreHorizontal, Edit, Trash2, CalendarClock } from 'lucide-react';
 import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
-import placeholderImages from '@/lib/placeholder-images.json';
-import { cn, formatCurrency } from '@/lib/utils';
+import { cn, formatCurrency, getPlaceholder } from '@/lib/utils';
 import { Checkbox } from '../ui/checkbox';
 import { differenceInDays } from 'date-fns';
 
@@ -20,16 +19,6 @@ interface ProductCardProps {
     isSelected: boolean;
     onToggleSelection: () => void;
 }
-
-type Placeholder = { url: string; width: number; height: number; hint: string };
-const placeholders = placeholderImages as Record<string, Placeholder>;
-
-const getPlaceholder = (category?: string): Placeholder => {
-    if (category && placeholders[category]) {
-        return placeholders[category];
-    }
-    return placeholders.default;
-};
 
 const ProductCardComponent = ({ product, onEdit, onDelete, isSelected, onToggleSelection }: ProductCardProps) => {
     const placeholder = getPlaceholder(product.category);

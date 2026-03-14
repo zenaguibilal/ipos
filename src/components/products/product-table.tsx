@@ -7,8 +7,7 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { MoreHorizontal, Edit, Trash2, AlertCircle, PackageX, CalendarClock } from 'lucide-react';
 import Image from 'next/image';
-import placeholderImages from '@/lib/placeholder-images.json';
-import { cn, formatCurrency } from '@/lib/utils';
+import { cn, formatCurrency, getPlaceholder } from '@/lib/utils';
 import { Checkbox } from '../ui/checkbox';
 import { useMemo } from 'react';
 import { differenceInDays } from 'date-fns';
@@ -23,16 +22,6 @@ interface ProductTableProps {
     onToggleSelectAll: () => void;
     suppliers: Supplier[];
 }
-
-type Placeholder = { url: string; width: number; height: number; hint: string };
-const placeholders = placeholderImages as Record<string, Placeholder>;
-
-const getPlaceholder = (category?: string): Placeholder => {
-    if (category && placeholders[category]) {
-        return placeholders[category];
-    }
-    return placeholders.default;
-};
 
 export function ProductTable({ products, onEdit, onDelete, selectedProducts, onToggleProductSelection, onToggleSelectAll, suppliers }: ProductTableProps) {
     const supplierMap = useMemo(() => new Map(suppliers.map(s => [s.id, s.name])), [suppliers]);

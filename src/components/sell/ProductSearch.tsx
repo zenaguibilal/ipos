@@ -9,26 +9,16 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Barcode, PackagePlus } from 'lucide-react';
 import Image from 'next/image';
-import placeholderImages from '@/lib/placeholder-images.json';
 import { Button } from '../ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Label } from '../ui/label';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, getPlaceholder } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
 interface ProductSearchProps {
     onProductSelect: (product: Product, quantity: number) => void;
 }
-
-type Placeholder = { url: string; width: number; height: number; hint: string };
-const placeholders = placeholderImages as Record<string, Placeholder>;
-const getPlaceholder = (category?: string): Placeholder => {
-    if (category && placeholders[category]) {
-        return placeholders[category];
-    }
-    return placeholders.default;
-};
 
 const CustomProductDialog = ({ onAdd }: { onAdd: (name: string, price: number) => void }) => {
     const [open, setOpen] = useState(false);
