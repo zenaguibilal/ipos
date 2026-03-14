@@ -43,7 +43,6 @@
   }
  
   .dark {
-     /* Same as root for forced dark mode */
     --background: 28 20% 6%;
     --foreground: 30 25% 90%;
 
