@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import React, { useState, useMemo, forwardRef, useImperativeHandle, useRef } from 'react';
@@ -106,21 +104,25 @@ export const ProductSearch = forwardRef<{focus: () => void}, ProductSearchProps>
     
     const filteredProducts = useMemo(() => {
         if (!products) return [];
+
+        const lowercasedQuery = query.toLowerCase().trim();
+        // If there's no search query, don't show any products.
+        if (!lowercasedQuery) {
+            return [];
+        }
         
         let categoryFiltered = products;
         if (selectedCategory !== 'all') {
             categoryFiltered = products.filter(p => p.category === selectedCategory);
         }
 
-        const lowercasedQuery = query.toLowerCase().trim();
-        if (!lowercasedQuery) {
-            return categoryFiltered;
-        }
-        
-        return categoryFiltered.filter(p => 
+        const results = categoryFiltered.filter(p => 
             p.name.toLowerCase().includes(lowercasedQuery) ||
             p.barcodes?.some(b => b.includes(lowercasedQuery))
         );
+
+        return results.slice(0, 10);
+
     }, [query, products, selectedCategory]);
 
     const addCustomProduct = (name: string, price: number) => {
@@ -196,7 +198,11 @@ export const ProductSearch = forwardRef<{focus: () => void}, ProductSearchProps>
                     ))}
                      {filteredProducts.length === 0 && (
                         <div className="text-center text-muted-foreground py-8">
-                            <p>Aucun produit trouvé pour votre recherche.</p>
+                            {query.trim() ? (
+                                <p>Aucun produit trouvé pour votre recherche.</p>
+                            ) : (
+                                <p>Commencez à taper pour rechercher des produits.</p>
+                            )}
                         </div>
                      )}
                 </div>
