@@ -86,13 +86,13 @@
   }
   body {
     @apply bg-background text-foreground;
-    position: relative;
   }
 
   .dark body {
     background: linear-gradient(160deg, hsl(20, 36%, 8%) 0%, hsl(30, 43%, 5%) 100%);
     background-size: 200% 200%;
     animation: warm-gradient 15s ease infinite;
+    position: relative;
   }
 
   .dark body::after {

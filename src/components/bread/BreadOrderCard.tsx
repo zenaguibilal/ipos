@@ -99,7 +99,7 @@ export function BreadOrderCard({ order, isSelected, onToggleSelection }: BreadOr
                         checked={isDelivered} 
                         onCheckedChange={handleDeliveryToggle} 
                     />
-                    <Label htmlFor={`delivered-${order.id}`} className={cn("transition-colors", isDelivered && "text-blue-400 font-semibold")}>Livré</Label>
+                    <Label htmlFor={`delivered-${order.id}`} className={cn("transition-colors", isDelivered && "text-[hsl(var(--chart-quaternary))] font-semibold")}>Livré</Label>
                 </div>
             </CardFooter>
         </Card>
