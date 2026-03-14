@@ -59,7 +59,8 @@ export default function SellPage() {
         }
         try {
             await saveActiveCartAsDraft();
-            toast.success("Brouillon enregistré avec succès.");
+            await clearCart();
+            toast.success("Brouillon enregistré avec succès. Le panier a été vidé.");
         } catch (error) {
             toast.error("Erreur lors de l'enregistrement du brouillon.");
         }
