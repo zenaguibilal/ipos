@@ -162,7 +162,8 @@ export interface StockIntakeItem {
 
 export interface StockIntake {
     id?: number;
-    supplier: string;
+    supplierId: number;
+    supplierName: string;
     invoiceNumber: string;
     invoiceDate: Date;
     items: {

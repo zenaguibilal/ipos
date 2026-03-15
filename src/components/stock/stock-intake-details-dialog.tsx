@@ -37,7 +37,7 @@ export function StockIntakeDetailsDialog({
                 <DialogHeader>
                     <DialogTitle>Détails de la réception</DialogTitle>
                     <DialogDescription>
-                        Fournisseur: <span className="font-semibold">{intake.supplier}</span> | Facture n°:{' '}
+                        Fournisseur: <span className="font-semibold">{intake.supplierName}</span> | Facture n°:{' '}
                         <span className="font-mono">{intake.invoiceNumber}</span>
                     </DialogDescription>
                 </DialogHeader>

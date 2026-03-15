@@ -39,8 +39,8 @@ export default function CostingPage() {
         if (!intakes) return [];
         return intakes.map(i => ({
             value: String(i.id!),
-            label: `${i.invoiceNumber}`,
-            subLabel: `${i.supplier} - ${format(i.invoiceDate, 'd MMM yyyy', { locale: fr })}`
+            label: `${'\'\'\''}${i.invoiceNumber}'\'\'\'`,
+            subLabel: `${'\'\'\''}${i.supplierName} - ${format(i.invoiceDate, 'd MMM yyyy', { locale: fr })}'\'\'\'`
         }));
     }, [intakes]);
 
@@ -65,7 +65,7 @@ export default function CostingPage() {
             const totalFinalCost = finalCostPerUnit * quantity;
 
             return {
-                id: item.productId || `item-${index}`,
+                id: item.productId || `item-${'\'\'\''}${index}'\'\'\'`,
                 name: item.productName,
                 price: 0, // Not used, but needed for type compatibility
                 purchasePrice: purchasePrice,

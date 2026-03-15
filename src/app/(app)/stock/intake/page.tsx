@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Trash2, Save, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Trash2, Save, AlertTriangle, ChevronsUpDown, Plus } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
@@ -17,15 +17,30 @@ import { formatCurrency } from '@/lib/utils';
 import { Loader2 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { ProductIntakeCombobox } from '@/components/stock/ProductIntakeCombobox';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 
 export default function NewStockIntakePage() {
     const router = useRouter();
-    const [supplier, setSupplier] = useState('');
+    const [supplierName, setSupplierName] = useState('');
+    const [supplierSearch, setSupplierSearch] = useState('');
+    const [supplierPopoverOpen, setSupplierPopoverOpen] = useState(false);
+    
     const [invoiceNumber, setInvoiceNumber] = useState('');
     const [invoiceDate, setInvoiceDate] = useState<Date | undefined>();
     const [items, setItems] = useState<StockIntakeItem[]>([]);
     const [isSaving, setIsSaving] = useState(false);
     const [isMounted, setIsMounted] = useState(false);
+
+    const suppliers = useLiveQuery(() => dataService.getSuppliers(), []);
+
+    const supplierOptions = useMemo(() => {
+        if (!suppliers) return [];
+        if (!supplierSearch) return suppliers;
+        return suppliers.filter(s => s.name.toLowerCase().includes(supplierSearch.toLowerCase()));
+    }, [suppliers, supplierSearch]);
+
 
     useEffect(() => {
         setInvoiceDate(new Date());
@@ -38,7 +53,7 @@ export default function NewStockIntakePage() {
             const newItems = [...items];
             newItems[existingItemIndex].quantity += 1;
             setItems(newItems);
-            toast.info(`Quantité de "${product.name}" augmentée.`);
+            toast.info(`Quantité de "${'\'\'\''}${product.name}'\'\'\'" augmentée.`);
         } else {
             setItems(prev => [
                 ...prev,
@@ -95,7 +110,7 @@ export default function NewStockIntakePage() {
     const totalValue = items.reduce((acc, item) => acc + (item.quantity * item.purchasePrice), 0);
 
     const handleSave = async () => {
-        if (!supplier) {
+        if (!supplierName) {
             toast.error("Veuillez remplir le nom du fournisseur.");
             return;
         }
@@ -106,22 +121,22 @@ export default function NewStockIntakePage() {
 
         for (const item of items) {
             if (!item.name || item.quantity <= 0 || item.purchasePrice < 0) {
-                toast.error(`Veuillez remplir les informations pour l'article "${item.name || 'Nouvel article'}". La quantité doit être > 0 et le prix d'achat >= 0.`);
+                toast.error(`Veuillez remplir les informations pour l'article "${'\'\'\''}${item.name || 'Nouvel article'}'\'\'\'". La quantité doit être > 0 et le prix d'achat >= 0.`);
                 return;
             }
              if (item.quantityDamaged > item.quantity) {
-                toast.error(`La quantité endommagée ne peut pas dépasser la quantité reçue pour "${item.name}".`);
+                toast.error(`La quantité endommagée ne peut pas dépasser la quantité reçue pour "${'\'\'\''}${item.name}'\'\'\'".`);
                 return;
             }
             if (item.isNew && item.price <= 0) {
-                toast.error(`Veuillez définir un prix de vente pour le nouvel article "${item.name}".`);
+                toast.error(`Veuillez définir un prix de vente pour le nouvel article "${'\'\'\''}${item.name}'\'\'\'".`);
                 return;
             }
         }
 
         setIsSaving(true);
         try {
-            const intakeData = { supplier, invoiceNumber, invoiceDate: invoiceDate || new Date() };
+            const intakeData = { supplierName, invoiceNumber, invoiceDate: invoiceDate || new Date() };
             await dataService.addStockIntake(intakeData, items);
             toast.success("Réception de stock enregistrée avec succès !");
             router.push('/stock');
@@ -154,7 +169,55 @@ export default function NewStockIntakePage() {
                 <CardContent className="p-6 grid md:grid-cols-3 gap-6">
                     <div className="space-y-2">
                         <Label htmlFor="supplier">Fournisseur</Label>
-                        <Input id="supplier" value={supplier} onChange={e => setSupplier(e.target.value)} placeholder="Nom du fournisseur" />
+                         <Popover open={supplierPopoverOpen} onOpenChange={setSupplierPopoverOpen}>
+                            <PopoverTrigger asChild>
+                                <Button
+                                    variant="outline"
+                                    role="combobox"
+                                    className="w-full justify-between"
+                                >
+                                    {supplierName || "Sélectionner ou créer un fournisseur..."}
+                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
+                                <Command>
+                                    <CommandInput 
+                                        placeholder="Rechercher ou créer..." 
+                                        onValueChange={setSupplierSearch}
+                                    />
+                                    <CommandList>
+                                        <CommandEmpty>
+                                            <Button 
+                                                variant="link" 
+                                                className="w-full"
+                                                onClick={() => {
+                                                    setSupplierName(supplierSearch);
+                                                    setSupplierPopoverOpen(false);
+                                                }}>
+                                                <Plus className="mr-2 h-4 w-4" />
+                                                Créer le fournisseur "{supplierSearch}"
+                                            </Button>
+                                        </CommandEmpty>
+                                        <CommandGroup>
+                                            {supplierOptions?.map((supplier) => (
+                                                <CommandItem
+                                                    key={supplier.id}
+                                                    value={supplier.name}
+                                                    onSelect={(currentValue) => {
+                                                        const selectedName = suppliers?.find(s => s.name.toLowerCase() === currentValue)?.name || '';
+                                                        setSupplierName(selectedName);
+                                                        setSupplierPopoverOpen(false);
+                                                    }}
+                                                >
+                                                    {supplier.name}
+                                                </CommandItem>
+                                            ))}
+                                        </CommandGroup>
+                                    </CommandList>
+                                </Command>
+                            </PopoverContent>
+                        </Popover>
                     </div>
                      <div className="space-y-2">
                         <Label htmlFor="invoiceNumber">N° de Facture/Bon (Optionnel)</Label>

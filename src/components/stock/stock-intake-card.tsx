@@ -21,7 +21,7 @@ const StockIntakeCardComponent = ({ intake, onViewDetails }: StockIntakeCardProp
             <CardHeader>
                 <div className="flex justify-between items-start">
                     <div>
-                        <CardTitle className="text-lg">{intake.supplier}</CardTitle>
+                        <CardTitle className="text-lg">{intake.supplierName}</CardTitle>
                         <CardDescription className="font-mono text-xs">{intake.invoiceNumber}</CardDescription>
                     </div>
                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onViewDetails(intake)}>

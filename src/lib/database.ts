@@ -21,12 +21,12 @@ export class PosDatabase extends Dexie {
 
     constructor() {
         super('posDB');
-        this.version(28).stores({
+        this.version(29).stores({
             products: '++id, name, *barcodes, category, price, quantity, [category+name], fournisseurId',
             customers: '++id, searchName, createdAt, lastName, firstName, [lastName+firstName], phone, outstandingBalance, lastActivityDate',
             sales: '++id, &invoiceNumber, createdAt, customerId, customerName, paymentStatus, dueDate',
             payments: '++id, createdAt, customerId, paymentDate',
-            stockIntakes: '++id, &invoiceNumber, supplier, createdAt',
+            stockIntakes: '++id, &invoiceNumber, supplierId, createdAt',
             returns: '++id, createdAt, originalSaleId, customerId',
             carts: '&id',
             drafts: '++id, date',
@@ -71,6 +71,23 @@ export class PosDatabase extends Dexie {
                     delete (order as any).statut;
                 }
             });
+        }).upgrade(async tx => {
+            const stockIntakesToMigrate = await tx.table('stockIntakes').toArray();
+            for (const intake of stockIntakesToMigrate) {
+                if (typeof (intake as any).supplier === 'string') {
+                    const supplierName = (intake as any).supplier;
+                    let supplier = await tx.table('suppliers').where('name').equalsIgnoreCase(supplierName).first();
+                    if (!supplier) {
+                        const supplierId = await tx.table('suppliers').add({ name: supplierName, balance: 0 });
+                        supplier = { id: supplierId, name: supplierName };
+                    }
+                    await tx.table('stockIntakes').update(intake.id, {
+                        supplierId: supplier.id,
+                        supplierName: supplier.name,
+                        supplier: undefined
+                    });
+                }
+            }
         });
 
         // Hooks to add/update timestamps
