@@ -21,8 +21,8 @@ interface SalesHistoryCardProps {
 const SalesHistoryCardComponent = ({ sale, onViewDetails, onCancelSale }: SalesHistoryCardProps) => {
 
     const paymentStatusMap = {
-        paid: { text: 'Payé', icon: CheckCircle, color: 'text-green-600' },
-        partial: { text: 'Partiel', icon: AlertCircle, color: 'text-yellow-600' },
+        paid: { text: 'Payé', icon: CheckCircle, color: 'text-chart-quaternary' },
+        partial: { text: 'Partiel', icon: AlertCircle, color: 'text-chart-secondary' },
         unpaid: { text: 'Impayé', icon: Clock, color: 'text-destructive' },
     };
     const status = paymentStatusMap[sale.paymentStatus];
