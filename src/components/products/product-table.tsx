@@ -105,7 +105,7 @@ export function ProductTable({ products, onEdit, onDelete, selectedProducts, onT
                                                 <span>{product.quantity}</span>
                                             </div>
                                         ) : product.quantity <= product.minStockLevel ? (
-                                            <div className="flex items-center justify-center gap-1 text-yellow-600 dark:text-yellow-500">
+                                            <div className="flex items-center justify-center gap-1 text-chart-secondary">
                                                 <AlertCircle className="h-4 w-4" />
                                                 <span>{product.quantity}</span>
                                             </div>
@@ -121,7 +121,7 @@ export function ProductTable({ products, onEdit, onDelete, selectedProducts, onT
                                             <TooltipProvider>
                                                 <Tooltip>
                                                     <TooltipTrigger>
-                                                        <AlertCircle className="h-3 w-3 text-yellow-500" />
+                                                        <AlertCircle className="h-3 w-3 text-chart-secondary" />
                                                     </TooltipTrigger>
                                                     <TooltipContent>
                                                         <p>Prix d'achat non mis à jour depuis plus de 30 jours.</p>

@@ -49,7 +49,7 @@ const ProductCardComponent = ({ product, onEdit, onDelete, isSelected, onToggleS
                     {product.quantity <= 0 ? (
                         <Badge variant="destructive">En Rupture</Badge>
                     ) : product.quantity <= product.minStockLevel ? (
-                        <Badge variant="outline" className="border-yellow-500 text-yellow-500 bg-yellow-500/10">Stock Faible</Badge>
+                        <Badge variant="outline" className="border-chart-secondary text-chart-secondary bg-chart-secondary/10">Stock Faible</Badge>
                     ) : null}
                      {expirationStatus && (
                         <Badge className={expirationStatus.color}>
