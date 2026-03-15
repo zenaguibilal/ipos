@@ -40,8 +40,8 @@ const DebtStatusIcon = ({ status }: { status: Customer['debtStatus']}) => {
                 <TooltipProvider>
                     <Tooltip>
                         <TooltipTrigger asChild>
-                            <div className="absolute top-3 right-12 p-1 bg-yellow-500/20 rounded-full">
-                                <Hourglass className="h-4 w-4 text-yellow-500" />
+                            <div className="absolute top-3 right-12 p-1 bg-chart-secondary/20 rounded-full">
+                                <Hourglass className="h-4 w-4 text-chart-secondary" />
                             </div>
                         </TooltipTrigger>
                         <TooltipContent><p>Échéance proche</p></TooltipContent>

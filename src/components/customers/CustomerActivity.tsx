@@ -3,7 +3,7 @@
 import React from 'react';
 import type { Sale, Payment, ProductReturn } from '@/lib/types';
 import { Timeline, TimelineItem, TimelineConnector, TimelineHeader, TimelineIcon, TimelineTitle, TimelineBody } from '@/components/ui/timeline';
-import { safeToDate, formatCurrency } from '@/lib/utils';
+import { safeToDate, formatCurrency, cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { HandCoins, ShoppingBag, Receipt, Undo2 } from 'lucide-react';
@@ -63,11 +63,11 @@ export function CustomerActivity({ activity, onSaleClick, onReturnClick }: Custo
                 >
                     <div className="flex justify-between items-center mb-2">
                         <span className="font-semibold text-lg">{formatCurrency(item.total)}</span>
-                         <span className={`px-2 py-1 text-xs rounded-full font-semibold ${
-                            item.paymentStatus === 'paid' ? 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300' :
-                            item.paymentStatus === 'partial' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300' :
-                            'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300'
-                        }`}>
+                         <span className={cn('px-2 py-1 text-xs rounded-full font-semibold', {
+                            'bg-chart-quaternary/10 text-chart-quaternary': item.paymentStatus === 'paid',
+                            'bg-chart-secondary/10 text-chart-secondary': item.paymentStatus === 'partial',
+                            'bg-destructive/10 text-destructive': item.paymentStatus === 'unpaid',
+                         })}>
                             {item.paymentStatus === 'paid' ? 'Payé' : item.paymentStatus === 'partial' ? 'Partiel' : 'Impayé'}
                         </span>
                     </div>
@@ -84,17 +84,17 @@ export function CustomerActivity({ activity, onSaleClick, onReturnClick }: Custo
                {!isLast && <TimelineConnector />}
               <TimelineHeader>
                 <TimelineIcon>
-                  <Undo2 className="h-5 w-5 text-orange-600" />
+                  <Undo2 className="h-5 w-5 text-chart-secondary" />
                 </TimelineIcon>
                 <TimelineTitle>Retour sur Facture #{item.originalInvoiceNumber}</TimelineTitle>
                  <span className="text-sm text-muted-foreground ml-auto">{formattedDate}</span>
               </TimelineHeader>
                <TimelineBody>
                 <div 
-                  className="p-4 bg-orange-100/50 rounded-lg hover:bg-orange-100/80 dark:bg-orange-900/30 dark:hover:bg-orange-900/50 transition-colors cursor-pointer"
+                  className="p-4 bg-chart-secondary/10 rounded-lg hover:bg-chart-secondary/20 transition-colors cursor-pointer"
                   onClick={() => onReturnClick(item)}
                 >
-                     <p className="font-semibold text-lg text-orange-700 dark:text-orange-300">- {formatCurrency(item.totalReturnValue)}</p>
+                     <p className="font-semibold text-lg text-chart-secondary">- {formatCurrency(item.totalReturnValue)}</p>
                      <p className="text-sm text-muted-foreground">Remboursé: {formatCurrency(item.amountRefunded)} | {item.items.length} article(s) retourné(s).</p>
                 </div>
               </TimelineBody>
@@ -106,14 +106,14 @@ export function CustomerActivity({ activity, onSaleClick, onReturnClick }: Custo
                {!isLast && <TimelineConnector />}
               <TimelineHeader>
                 <TimelineIcon>
-                  <HandCoins className="h-5 w-5 text-green-600" />
+                  <HandCoins className="h-5 w-5 text-chart-quaternary" />
                 </TimelineIcon>
                 <TimelineTitle>Paiement reçu</TimelineTitle>
                  <span className="text-sm text-muted-foreground ml-auto">{formattedDate}</span>
               </TimelineHeader>
                <TimelineBody>
-                <div className="p-4 bg-green-100/50 dark:bg-green-900/30 rounded-lg">
-                     <p className="font-semibold text-lg text-green-700 dark:text-green-300">{formatCurrency(item.amount)}</p>
+                <div className="p-4 bg-chart-quaternary/10 rounded-lg">
+                     <p className="font-semibold text-lg text-chart-quaternary">{formatCurrency(item.amount)}</p>
                      <p className="text-sm text-muted-foreground">{item.notes || 'Paiement enregistré.'}</p>
                 </div>
               </TimelineBody>

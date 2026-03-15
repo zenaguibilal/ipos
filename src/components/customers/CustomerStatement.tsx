@@ -48,7 +48,7 @@ export const CustomerStatement: React.FC<CustomerStatementProps> = ({ customer, 
                 </div>
                  <div className="text-center">
                     <p className="text-sm uppercase text-gray-600">Solde Actuel</p>
-                    <p className="text-2xl font-bold text-red-600">{formatCurrency(customer.outstandingBalance)}</p>
+                    <p className="text-2xl font-bold text-destructive">{formatCurrency(customer.outstandingBalance)}</p>
                 </div>
             </section>
 
