@@ -21,12 +21,12 @@ export class PosDatabase extends Dexie {
 
     constructor() {
         super('posDB');
-        this.version(27).stores({
-            products: '++id, name, *barcodes, category, price, quantity, [category+name]',
+        this.version(29).stores({
+            products: '++id, name, *barcodes, category, price, quantity, [category+name], fournisseurId',
             customers: '++id, searchName, createdAt, lastName, firstName, [lastName+firstName], phone, outstandingBalance, lastActivityDate',
             sales: '++id, &invoiceNumber, createdAt, customerId, customerName, paymentStatus, dueDate',
             payments: '++id, createdAt, customerId, paymentDate',
-            stockIntakes: '++id, &invoiceNumber, supplier, createdAt',
+            stockIntakes: '++id, &invoiceNumber, supplierId, createdAt',
             returns: '++id, createdAt, originalSaleId, customerId',
             carts: '&id',
             drafts: '++id, date',
@@ -37,7 +37,7 @@ export class PosDatabase extends Dexie {
             inventoryLogs: '++id, productId, createdAt, reason',
             suppliers: '++id, &name',
             clients_pain: '++id, nom, actif, type_recurrence',
-            commandes_pain: '++id, [client_pain_id+date], date, statut',
+            commandes_pain: '++id, [client_pain_id+date], date, est_paye, est_livre',
         }).upgrade(tx => {
             // Dexie upgrade functions are declarative of the target version structure.
             // This is for version 22, ensuring searchName is populated. It runs if the client db version is < 22.
@@ -46,6 +46,48 @@ export class PosDatabase extends Dexie {
                    customer.searchName = `${customer.firstName.toLowerCase()} ${customer.lastName.toLowerCase()}`;
                 }
             });
+        }).upgrade(tx => {
+            // This is for version 28, migrating 'statut' to 'est_paye' and 'est_livre'
+            return tx.table('commandes_pain').toCollection().modify(order => {
+                const oldStatut = (order as any).statut;
+                if (oldStatut !== undefined) {
+                    switch(oldStatut) {
+                        case 'en_attente':
+                            order.est_paye = false;
+                            order.est_livre = false;
+                            break;
+                        case 'livre':
+                            order.est_paye = false;
+                            order.est_livre = true;
+                            break;
+                        case 'paye':
+                            order.est_paye = true;
+                            order.est_livre = true; 
+                            break;
+                        default:
+                            order.est_paye = !!order.vente_id;
+                            order.est_livre = false;
+                    }
+                    delete (order as any).statut;
+                }
+            });
+        }).upgrade(async tx => {
+            const stockIntakesToMigrate = await tx.table('stockIntakes').toArray();
+            for (const intake of stockIntakesToMigrate) {
+                if (typeof (intake as any).supplier === 'string') {
+                    const supplierName = (intake as any).supplier;
+                    let supplier = await tx.table('suppliers').where('name').equalsIgnoreCase(supplierName).first();
+                    if (!supplier) {
+                        const supplierId = await tx.table('suppliers').add({ name: supplierName, balance: 0 });
+                        supplier = { id: supplierId, name: supplierName };
+                    }
+                    await tx.table('stockIntakes').update(intake.id, {
+                        supplierId: supplier.id,
+                        supplierName: supplier.name,
+                        supplier: undefined
+                    });
+                }
+            }
         });
 
         // Hooks to add/update timestamps

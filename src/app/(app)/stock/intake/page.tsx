@@ -53,7 +53,7 @@ export default function NewStockIntakePage() {
             const newItems = [...items];
             newItems[existingItemIndex].quantity += 1;
             setItems(newItems);
-            toast.info(`Quantité de "${'\'\'\''}${product.name}'\'\'\'" augmentée.`);
+            toast.info(`Quantité de "${product.name}" augmentée.`);
         } else {
             setItems(prev => [
                 ...prev,
@@ -121,15 +121,15 @@ export default function NewStockIntakePage() {
 
         for (const item of items) {
             if (!item.name || item.quantity <= 0 || item.purchasePrice < 0) {
-                toast.error(`Veuillez remplir les informations pour l'article "${'\'\'\''}${item.name || 'Nouvel article'}'\'\'\'". La quantité doit être > 0 et le prix d'achat >= 0.`);
+                toast.error(`Veuillez remplir les informations pour l'article "${item.name || 'Nouvel article'}". La quantité doit être > 0 et le prix d'achat >= 0.`);
                 return;
             }
              if (item.quantityDamaged > item.quantity) {
-                toast.error(`La quantité endommagée ne peut pas dépasser la quantité reçue pour "${'\'\'\''}${item.name}'\'\'\'".`);
+                toast.error(`La quantité endommagée ne peut pas dépasser la quantité reçue pour "${item.name}".`);
                 return;
             }
             if (item.isNew && item.price <= 0) {
-                toast.error(`Veuillez définir un prix de vente pour le nouvel article "${'\'\'\''}${item.name}'\'\'\'".`);
+                toast.error(`Veuillez définir un prix de vente pour le nouvel article "${item.name}".`);
                 return;
             }
         }
