@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ArrowLeft, Search, Save, Loader2, Info } from 'lucide-react';
 import { toast } from 'sonner';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, cn } from '@/lib/utils';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -251,7 +251,7 @@ export default function NewReturnPage() {
                                 </div>
                                 <div className="flex justify-between text-lg font-bold border-t pt-2 mt-2">
                                     <span>Impact sur le solde client</span>
-                                    <span className={totalReturnValue - amountRefunded > 0 ? 'text-green-600' : 'text-destructive'}>
+                                    <span className={cn(totalReturnValue - amountRefunded >= 0 ? 'text-chart-quaternary' : 'text-destructive')}>
                                         {totalReturnValue - amountRefunded >= 0 ? `- ${formatCurrency(totalReturnValue - amountRefunded)}` : `+ ${formatCurrency(Math.abs(totalReturnValue - amountRefunded))}`}
                                     </span>
                                 </div>
