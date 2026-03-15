@@ -47,10 +47,10 @@ export function CustomerStats({ customers, isLoading }: CustomerStatsProps) {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">En Retard de Paiement</CardTitle>
-          <AlertTriangle className="h-4 w-4 text-yellow-500" />
+          <AlertTriangle className="h-4 w-4 text-chart-secondary" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold text-yellow-500">{stats.overdue}</div>
+          <div className="text-2xl font-bold text-chart-secondary">{stats.overdue}</div>
         </CardContent>
       </Card>
       <Card>
