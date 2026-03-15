@@ -125,27 +125,27 @@ export default function ZakatPage() {
                      <CardContent className="space-y-4">
                         <div className="flex items-center justify-between p-4 bg-muted/30 rounded-lg">
                             <Label className="text-base text-muted-foreground">Nisab (seuil de 85g d'or)</Label>
-                            <span className="text-lg font-bold text-amber-400">{formatCurrency(nisabAmount)}</span>
+                            <span className="text-lg font-bold text-chart-secondary">{formatCurrency(nisabAmount)}</span>
                         </div>
 
                         <div className="flex items-center justify-center p-4">
                             {isZakatDue ? (
                                 <div className="text-center">
-                                    <p className="text-green-400">L'assiette de la Zakat a dépassé le Nisab.</p>
+                                    <p className="text-chart-quaternary">L'assiette de la Zakat a dépassé le Nisab.</p>
                                     <p className="text-sm text-muted-foreground">La Zakat est donc applicable.</p>
                                 </div>
                             ) : (
                                 <div className="text-center">
-                                    <p className="text-amber-400">L'assiette de la Zakat n'a pas atteint le Nisab.</p>
+                                    <p className="text-chart-secondary">L'assiette de la Zakat n'a pas atteint le Nisab.</p>
                                      <p className="text-sm text-muted-foreground">La Zakat n'est pas due cette année.</p>
                                 </div>
                             )}
                         </div>
 
-                        <div className="p-6 rounded-lg bg-green-500/10 border border-green-500/20 text-center">
-                            <Label className="text-lg font-semibold text-green-300">Montant de la Zakat à payer</Label>
-                            <p className="text-4xl font-bold text-white mt-2">{formatCurrency(zakatAmount)}</p>
-                            {isZakatDue && <p className="text-sm text-green-400/80 mt-1">({formatCurrency(zakatBase)} x 2.5%)</p>}
+                        <div className="p-6 rounded-lg bg-chart-quaternary/10 border border-chart-quaternary/20 text-center">
+                            <Label className="text-lg font-semibold text-chart-quaternary">Montant de la Zakat à payer</Label>
+                            <p className="text-4xl font-bold text-chart-quaternary mt-2">{formatCurrency(zakatAmount)}</p>
+                            {isZakatDue && <p className="text-sm text-chart-quaternary/80 mt-1">({formatCurrency(zakatBase)} x 2.5%)</p>}
                         </div>
                     </CardContent>
                 </Card>
