@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import { CartDisplay } from '@/components/sell/CartDisplay';
@@ -19,6 +17,7 @@ import { DraftsDialog } from '@/components/sell/DraftsDialog';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { dataService } from '@/services/data-service';
 import { AddPaymentDialog } from '@/components/payments/AddPaymentDialog';
+import { CartTotalBar } from '@/components/sell/CartTotalBar';
 
 export default function SellPage() {
     const {
@@ -118,12 +117,9 @@ export default function SellPage() {
 
     if (isLoading || !activeCart) {
         return (
-            <div className="h-screen flex flex-col p-4 gap-4">
-                <div className="flex gap-4">
-                    <Skeleton className="h-12 flex-grow" />
-                    <Skeleton className="h-12 w-48" />
-                </div>
-                 <div className="grid md:grid-cols-3 gap-4 flex-grow">
+            <div className="h-full flex flex-col p-4 gap-4">
+                <Skeleton className="h-12 flex-grow" />
+                <div className="grid md:grid-cols-3 gap-4 flex-grow">
                     <Skeleton className="md:col-span-2 h-full" />
                     <Skeleton className="h-full" />
                 </div>
@@ -138,8 +134,10 @@ export default function SellPage() {
 
     return (
         <>
-            <div className="h-screen flex flex-col p-4">
-                <div className="grid md:grid-cols-3 gap-4 flex-grow min-h-0">
+            <div className="h-full flex flex-col">
+                <CartTotalBar cart={activeCart} customer={selectedCustomer || undefined} />
+
+                <div className="grid md:grid-cols-3 gap-4 flex-grow min-h-0 p-4">
                     {/* Main column */}
                     <div className="md:col-span-2 flex flex-col gap-4">
                         <div className="flex flex-col sm:flex-row gap-4">
