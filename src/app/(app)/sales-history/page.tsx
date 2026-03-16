@@ -32,8 +32,7 @@ export default function SalesHistoryPage() {
             from: dateRange?.from,
             to: dateRange?.to
         }),
-        [debouncedSearchQuery, dateRange],
-        []
+        [debouncedSearchQuery, dateRange]
     );
 
     const isLoading = sales === undefined || !isMounted;
@@ -59,7 +58,7 @@ export default function SalesHistoryPage() {
             return renderSkeletons();
         }
 
-        if (sales.length === 0) {
+        if (!sales || sales.length === 0) {
             return (
                 <EmptyState
                     icon={History}

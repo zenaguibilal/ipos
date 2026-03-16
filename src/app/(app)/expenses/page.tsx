@@ -39,8 +39,7 @@ export default function ExpensesPage() {
             from: dateRange?.from,
             to: dateRange?.to
         }),
-        [selectedCategory, dateRange],
-        []
+        [selectedCategory, dateRange]
     );
     
     const categories = useLiveQuery(() => dataService.getExpenseCategories(), [], []);
@@ -70,7 +69,7 @@ export default function ExpensesPage() {
             return renderSkeletons();
         }
 
-        if (expenses.length === 0) {
+        if (!expenses || expenses.length === 0) {
             return (
                 <EmptyState
                     icon={Filter}
@@ -133,7 +132,7 @@ export default function ExpensesPage() {
                             checked={selectedCategory === 'all'}
                             onCheckedChange={() => setSelectedCategory('all')}
                         >Toutes</DropdownMenuCheckboxItem>
-                         {categories.map(cat => (
+                         {categories && categories.map(cat => (
                              <DropdownMenuCheckboxItem
                                 key={cat}
                                 checked={selectedCategory === cat}

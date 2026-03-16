@@ -1,6 +1,6 @@
 'use client';
 
-import { db, PosDatabase } from '@/lib/database';
+import { getDb, PosDatabase } from '@/lib/database';
 import type { CompanyProfile } from '@/lib/types';
 
 const SYNC_QUEUE_KEY = 'ipos_sync_queue';
@@ -53,7 +53,7 @@ class GoogleSheetsService {
 
   async loadScriptUrl() {
     try {
-      const profile = await db.companyProfile.get(1);
+      const profile = await getDb().companyProfile.get(1);
       this.scriptUrl = profile?.syncUrl || null;
       if (this.scriptUrl) {
         this.processSyncQueue();
@@ -99,6 +99,7 @@ class GoogleSheetsService {
   }
   
   async syncTable(table: string) {
+    const db = getDb();
     if (!TABLES_TO_SYNC.includes(table as any)) {
       return { success: true, message: 'Skipped' };
     }
@@ -165,7 +166,7 @@ class GoogleSheetsService {
       }
     }
     const lastSync = new Date().toISOString();
-    await db.companyProfile.where({id: 1}).modify({ lastSyncDate: lastSync });
+    await getDb().companyProfile.where({id: 1}).modify({ lastSyncDate: lastSync });
     return { success: true, results, lastSync };
   }
 

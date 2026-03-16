@@ -32,8 +32,7 @@ export default function StockPage() {
             from: dateRange?.from,
             to: dateRange?.to
         }),
-        [debouncedSearchQuery, dateRange],
-        []
+        [debouncedSearchQuery, dateRange]
     );
 
     const isLoading = stockIntakes === undefined || !isMounted;
@@ -54,7 +53,7 @@ export default function StockPage() {
             return renderSkeletons();
         }
 
-        if (stockIntakes.length === 0) {
+        if (!stockIntakes || stockIntakes.length === 0) {
             return (
                 <EmptyState
                     icon={Archive}

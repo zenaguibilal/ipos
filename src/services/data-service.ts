@@ -1,6 +1,6 @@
 'use client';
 
-import { db, PosDatabase } from '@/lib/database';
+import { getDb, PosDatabase } from '@/lib/database';
 import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, Notification, InventoryLog, DashboardData, StockIntakeItem, CartItem, TopProduct, TopCustomer, GlobalActivityItem, ProductImportAnalysis, ZakatData, CostingItem, Draft, SaleItem, Supplier, ImportAnalysis, BreadClient, BreadOrder, BreadOrderWithClient, DB } from '@/lib/types';
 import type { CollectionName } from './initial-data';
 import Dexie, { TableName } from 'dexie';
@@ -24,11 +24,11 @@ class DataService {
   // ====================================================================
   
   async getAll<T>(table: GenericTableName): Promise<T[]> {
-    return db.table(table).toArray();
+    return getDb().table(table).toArray();
   }
 
   async getById<T>(table: GenericTableName, id: number | string): Promise<T | undefined> {
-    return db.table(table).get(id);
+    return getDb().table(table).get(id);
   }
   
   // ====================================================================
@@ -40,6 +40,7 @@ class DataService {
   }
 
   async setSetting(id: string, value: any): Promise<string> {
+    const db = getDb();
     return db.transaction('rw', db.settings, async () => {
         const result = await db.settings.put({ id, value });
         const record = await db.settings.get(id);
@@ -58,6 +59,7 @@ class DataService {
   }
   
   async updateCompanyProfile(profileData: Partial<Omit<CompanyProfile, 'id'>>): Promise<number> {
+    const db = getDb();
     return db.transaction('rw', db.companyProfile, async () => {
         const currentProfile = await db.companyProfile.get(1);
         const dataToSave: CompanyProfile = { id: 1, ...currentProfile, ...profileData, updatedAt: new Date() };
@@ -76,18 +78,21 @@ class DataService {
   }
 
   async saveCart(cart: Cart): Promise<string> {
+    const db = getDb();
     return db.transaction('rw', db.carts, () => {
         return db.carts.put(cart);
     });
   }
 
   async deleteCart(id: string): Promise<void> {
+    const db = getDb();
     return db.transaction('rw', db.carts, () => {
         return db.carts.delete(id);
     });
   }
 
   async addProductToCart(cartId: string, product: Product, quantity: number): Promise<void> {
+    const db = getDb();
     return db.transaction('rw', db.carts, db.products, async () => {
         const cart = await db.carts.get(cartId);
         if (!cart) throw new Error("Panier non trouvé.");
@@ -121,6 +126,7 @@ class DataService {
   }
 
   async updateCartItemQuantity(cartId: string, itemId: string | number, newQuantity: number): Promise<{capped: boolean, maxQuantity?: number}> {
+      const db = getDb();
       return db.transaction('rw', db.carts, db.products, async () => {
         const cart = await db.carts.get(cartId);
         if (!cart) throw new Error("Panier non trouvé.");
@@ -153,6 +159,7 @@ class DataService {
   }
 
   async removeCartItem(cartId: string, itemId: string | number): Promise<void> {
+    const db = getDb();
     return db.transaction('rw', db.carts, async () => {
         const cart = await db.carts.get(cartId);
         if (!cart) return;
@@ -162,12 +169,14 @@ class DataService {
   }
   
   async clearCart(cartId: string): Promise<void> {
+    const db = getDb();
     return db.transaction('rw', db.carts, async () => {
         await db.carts.update(cartId, { items: [], customerId: null, customerName: '', discount: { type: 'fixed', value: 0 } });
     });
   }
 
   async setCartCustomer(cartId: string, customer: Customer | null): Promise<void> {
+    const db = getDb();
     return db.transaction('rw', db.carts, async () => {
         const customerId = customer ? customer.id! : null;
         const customerName = customer ? `${customer.firstName} ${customer.lastName}` : '';
@@ -176,6 +185,7 @@ class DataService {
   }
 
   async setCartDiscount(cartId: string, discount: { type: 'fixed' | 'percentage'; value: number }): Promise<void> {
+      const db = getDb();
       return db.transaction('rw', db.carts, async (tx) => {
         const cart = await db.carts.get(cartId);
         if (!cart) return;
@@ -196,6 +206,7 @@ class DataService {
   }
 
   async removeFlashFromCartItems(cartId: string): Promise<void> {
+    const db = getDb();
     return db.transaction('rw', db.carts, async () => {
         const cart = await db.carts.get(cartId);
         if (!cart || !cart.items.some(i => i.flash)) return;
@@ -209,10 +220,11 @@ class DataService {
   // ====================================================================
   
   async getProductByBarcode(barcode: string): Promise<Product | undefined> {
-    return db.products.where('barcodes').equals(barcode).first();
+    return getDb().products.where('barcodes').equals(barcode).first();
   }
 
   async addProduct(product: Omit<Product, 'id'>): Promise<number> {
+      const db = getDb();
       return db.transaction('rw', db.products, db.inventoryLogs, async () => {
           const productWithTs = { ...product, createdAt: new Date(), updatedAt: new Date() };
           const newId = await db.products.add(productWithTs as Product);
@@ -232,6 +244,7 @@ class DataService {
   }
 
   async updateProduct(id: number, productData: Partial<Omit<Product, 'id'>>): Promise<number> {
+      const db = getDb();
       return db.transaction('rw', db.products, db.inventoryLogs, async () => {
         const oldProduct = await db.products.get(id);
         if (!oldProduct) throw new Error("Produit non trouvé pour la mise à jour.");
@@ -255,6 +268,7 @@ class DataService {
   }
 
   async deleteProduct(id: number): Promise<void> {
+      const db = getDb();
       return db.transaction('rw', db.products, db.inventoryLogs, async () => {
           await db.inventoryLogs.where({ productId: id }).delete();
           await db.products.delete(id);
@@ -263,6 +277,7 @@ class DataService {
   }
 
   async deleteProducts(ids: number[]): Promise<void> {
+    const db = getDb();
     return db.transaction('rw', db.products, db.inventoryLogs, async () => {
         await db.inventoryLogs.where('productId').anyOf(ids).delete();
         await db.products.bulkDelete(ids);
@@ -271,6 +286,7 @@ class DataService {
   }
 
   async getProducts(params: { query?: string; category?: string; supplierId?: number; stockStatus?: 'all' | 'in_stock' | 'low_stock' | 'out_of_stock', sortBy?: string }): Promise<Product[]> {
+    const db = getDb();
     const { query, category, supplierId, stockStatus = 'all', sortBy = 'name_asc' } = params;
 
     let collection: Dexie.Collection<Product, number> = db.products.toCollection();
@@ -317,11 +333,11 @@ class DataService {
 
   async getProductsByIds(ids: number[]): Promise<Product[]> {
     if (!Array.isArray(ids) || ids.length === 0) return [];
-    return db.products.where('id').anyOf(ids).toArray();
+    return getDb().products.where('id').anyOf(ids).toArray();
   }
 
   async getProductCategories(): Promise<string[]> {
-    const keys = await db.products.orderBy('category').uniqueKeys();
+    const keys = await getDb().products.orderBy('category').uniqueKeys();
     return keys.filter(k => k) as string[];
   }
   
@@ -337,6 +353,7 @@ class DataService {
   }
 
   async getCustomerActivity(customerId: number): Promise<(Sale | Payment | ProductReturn)[]> {
+    const db = getDb();
     if (!customerId) return [];
     const sales = await db.sales.where({ customerId }).toArray();
     const payments = await db.payments.where({ customerId }).toArray();
@@ -352,6 +369,7 @@ class DataService {
   }
 
     async getCustomerStatementData(customerId: number): Promise<{ customer: Customer, unpaidSales: Sale[]}> {
+        const db = getDb();
         const customer = await this.getCustomerById(customerId);
         if (!customer) throw new Error("Client non trouvé");
 
@@ -363,6 +381,7 @@ class DataService {
     }
 
   async getCustomers(params: { query?: string; status?: 'all' | 'has_debt' | 'overdue' | 'over_limit', sortBy?: string, limit?: number }): Promise<Customer[]> {
+    const db = getDb();
     const { query, status = 'all', sortBy = 'lastName_asc', limit } = params;
     let collection: Dexie.Collection<Customer, number> = db.customers.toCollection();
 
@@ -434,6 +453,7 @@ class DataService {
   }
 
   async addCustomer(customer: Omit<Customer, 'id' | 'totalSpent' | 'outstandingBalance' | 'lastActivityDate'>): Promise<number> {
+    const db = getDb();
     return db.transaction('rw', db.customers, async () => {
         const data = {
             ...customer,
@@ -450,6 +470,7 @@ class DataService {
   }
 
   async updateCustomer(id: number, customer: Partial<Omit<Customer, 'id'>>): Promise<number> {
+      const db = getDb();
       return db.transaction('rw', db.customers, async () => {
           const data = { ...customer, updatedAt: new Date() };
           const result = await db.customers.update(id, data);
@@ -460,6 +481,7 @@ class DataService {
   }
 
   async deleteCustomer(id: number): Promise<void> {
+    const db = getDb();
     return db.transaction('rw', db.customers, db.sales, db.payments, db.returns, async () => {
         const customer = await db.customers.get(id);
         if (!customer) return;
@@ -489,6 +511,7 @@ class DataService {
   // Sales - Complex logic is handled atomically
   // ====================================================================
   async getSales(params: { query?: string; from?: Date; to?: Date }): Promise<Sale[]> {
+    const db = getDb();
     const { query, from, to } = params;
     let collection = (from && to) ? db.sales.where('createdAt').between(from, to, true, true) : db.sales.toCollection();
     let salesArray = await collection.reverse().toArray();
@@ -503,10 +526,11 @@ class DataService {
   }
   
   async getSaleByInvoiceNumber(invoiceNumber: string): Promise<Sale | undefined> {
-    return db.sales.where('invoiceNumber').equals(invoiceNumber).first();
+    return getDb().sales.where('invoiceNumber').equals(invoiceNumber).first();
   }
 
   async addSale(saleData: Omit<Sale, 'id' | 'invoiceNumber' | 'paymentStatus' | 'remainingBalance'> & { items: SaleItem[] }): Promise<number> {
+    const db = getDb();
     return db.transaction('rw', db.sales, db.products, db.customers, db.notifications, db.inventoryLogs, async () => {
         const { items, customerId, total, amountPaid } = saleData;
 
@@ -595,6 +619,7 @@ class DataService {
   }
 
   async deleteSale(id: number): Promise<void> {
+    const db = getDb();
     return db.transaction('rw', db.sales, db.products, db.customers, db.inventoryLogs, async () => {
         const sale = await db.sales.get(id);
         if (!sale) throw new Error("Vente non trouvée.");
@@ -638,6 +663,7 @@ class DataService {
   // ====================================================================
 
   async saveDraft(cart: Cart, notes?: string): Promise<number> {
+    const db = getDb();
     return db.transaction('rw', db.drafts, async () => {
         const { total } = calculateCartTotals(cart);
 
@@ -660,11 +686,11 @@ class DataService {
   }
 
   async getDrafts(): Promise<Draft[]> {
-    return db.drafts.orderBy('date').reverse().toArray();
+    return getDb().drafts.orderBy('date').reverse().toArray();
   }
 
   async deleteDraft(id: number): Promise<void> {
-    await db.drafts.delete(id);
+    await getDb().drafts.delete(id);
     sheetsService.addToQueue('drafts', 'delete', { id });
   }
 
@@ -672,6 +698,7 @@ class DataService {
   // Stock Intake - All writes are transactional
   // ====================================================================
    async addStockIntake(intakeData: { supplierName: string, invoiceNumber: string, invoiceDate?: Date }, items: StockIntakeItem[]): Promise<number> {
+        const db = getDb();
         return db.transaction('rw', db.products, db.stockIntakes, db.inventoryLogs, db.suppliers, async () => {
             const { supplierName, invoiceNumber, invoiceDate } = intakeData;
 
@@ -772,6 +799,7 @@ class DataService {
     }
 
     async applyNewPurchasePrices(costingItems: CostingItem[]): Promise<void> {
+        const db = getDb();
         return db.transaction('rw', db.products, async () => {
             for (const item of costingItems) {
                 if (item.productId && typeof item.productId === 'number') {
@@ -788,6 +816,7 @@ class DataService {
     }
   
   async getStockIntakes(params: { query?: string; from?: Date; to?: Date }): Promise<StockIntake[]> {
+    const db = getDb();
     const { query, from, to } = params;
     let collection = (from && to) ? db.stockIntakes.where('createdAt').between(from, to, true, true) : db.stockIntakes.toCollection();
     let intakesArray = await collection.reverse().toArray();
@@ -801,6 +830,7 @@ class DataService {
   }
   
   async addPayment(paymentData: Omit<Payment, 'id' | 'createdAt' | 'updatedAt'>): Promise<number> {
+      const db = getDb();
       return db.transaction('rw', db.payments, db.customers, async () => {
           const data = {
               ...paymentData,
@@ -824,6 +854,7 @@ class DataService {
   }
 
   async getReturns(params: { query?: string; from?: Date; to?: Date }): Promise<ProductReturn[]> {
+    const db = getDb();
     const { query, from, to } = params;
     let collection = (from && to) ? db.returns.where('createdAt').between(from, to, true, true) : db.returns.toCollection();
     let returnsArray = await collection.reverse().toArray();
@@ -837,6 +868,7 @@ class DataService {
   }
   
   async addReturn(returnData: Omit<ProductReturn, 'id'>): Promise<number> {
+      const db = getDb();
       return db.transaction('rw', db.returns, db.products, db.customers, db.inventoryLogs, async () => {
           const data = { ...returnData, createdAt: new Date(), updatedAt: new Date() } as ProductReturn;
           const returnId = await db.returns.add(data);
@@ -873,6 +905,7 @@ class DataService {
   }
 
     async deleteReturn(id: number): Promise<void> {
+        const db = getDb();
         return db.transaction('rw', db.returns, db.products, db.customers, db.inventoryLogs, async () => {
             const productReturn = await db.returns.get(id);
             if (!productReturn) throw new Error("Retour non trouvé.");
@@ -906,6 +939,7 @@ class DataService {
     }
 
   async getExpenses(params: { category?: string; from?: Date; to?: Date }): Promise<Expense[]> {
+    const db = getDb();
     const { category, from, to } = params;
     let collection;
     if(category && from && to) collection = db.expenses.where('[category+expenseDate]').between([category, from], [category, to]);
@@ -916,11 +950,12 @@ class DataService {
   }
   
   async getExpenseCategories(): Promise<string[]> {
-    const keys = await db.expenses.orderBy('category').uniqueKeys();
+    const keys = await getDb().expenses.orderBy('category').uniqueKeys();
     return keys.filter(k => k) as string[];
   }
 
   async addExpense(expense: Omit<Expense, 'id'>): Promise<number> { 
+    const db = getDb();
     return db.transaction('rw', db.expenses, async () => {
         const data = { ...expense, createdAt: new Date(), updatedAt: new Date() } as Expense;
         const newId = await db.expenses.add(data);
@@ -930,6 +965,7 @@ class DataService {
     }); 
   }
   async updateExpense(id: number, expenseData: Partial<Omit<Expense, 'id'>>): Promise<number> { 
+    const db = getDb();
     return db.transaction('rw', db.expenses, async () => {
         const data = { ...expenseData, updatedAt: new Date() };
         const result = await db.expenses.update(id, data);
@@ -939,22 +975,25 @@ class DataService {
     }); 
   }
   async deleteExpense(id: number): Promise<void> { 
+    const db = getDb();
     return db.transaction('rw', db.expenses, async () => {
         await db.expenses.delete(id);
         sheetsService.addToQueue('expenses', 'delete', { id });
     }); 
   }
-  async getUnreadLowStockAlerts(): Promise<Notification[]> { return db.notifications.orderBy('createdAt').reverse().filter(n => n.type === 'low-stock' && !n.isRead).toArray(); }
-  async markNotificationAsRead(notificationId: number): Promise<number> { return db.transaction('rw', db.notifications, () => db.notifications.update(notificationId, { isRead: true })); }
-  async clearReadNotifications(): Promise<void> { return db.transaction('rw', db.notifications, () => db.notifications.where({ isRead: true }).delete()); }
+  async getUnreadLowStockAlerts(): Promise<Notification[]> { return getDb().notifications.orderBy('createdAt').reverse().filter(n => n.type === 'low-stock' && !n.isRead).toArray(); }
+  async markNotificationAsRead(notificationId: number): Promise<number> { const db = getDb(); return db.transaction('rw', db.notifications, () => db.notifications.update(notificationId, { isRead: true })); }
+  async clearReadNotifications(): Promise<void> { const db = getDb(); return db.transaction('rw', db.notifications, () => db.notifications.where({ isRead: true }).delete()); }
 
   async getZakatData(): Promise<ZakatData> {
+      const db = getDb();
       const inventoryValue = await this.getInventoryValue();
       const totalReceivables = (await db.customers.toArray()).reduce((acc, c) => acc + c.outstandingBalance, 0);
       return { inventoryValue, totalReceivables };
   }
 
   async getDashboardData(params: { from: Date; to: Date }): Promise<DashboardData> {
+    const db = getDb();
     const { from, to } = params;
     const sales = await db.sales.where('createdAt').between(from, to, true, true).reverse().toArray();
     const expenses = await db.expenses.where('expenseDate').between(from, to, true, true).toArray();
@@ -991,10 +1030,11 @@ class DataService {
   }
 
   async getInventoryValue(): Promise<number> {
-      return (await db.products.toArray()).reduce((acc, p) => acc + (p.purchasePrice * p.quantity || 0), 0);
+      return (await getDb().products.toArray()).reduce((acc, p) => acc + (p.purchasePrice * p.quantity || 0), 0);
   }
 
   async getGlobalActivity(limit: number = 10): Promise<GlobalActivityItem[]> {
+    const db = getDb();
     const sales = await db.sales.orderBy('createdAt').reverse().limit(limit).toArray();
     const intakes = await db.stockIntakes.orderBy('createdAt').reverse().limit(limit).toArray();
     const returns = await db.returns.orderBy('createdAt').reverse().limit(limit).toArray();
@@ -1009,6 +1049,7 @@ class DataService {
   }
 
   async exportData(): Promise<string> {
+    const db = getDb();
     const data: Partial<DB> = {};
     const tables: (keyof DB)[] = ['products', 'customers', 'sales', 'payments', 'stockIntakes', 'returns', 'expenses', 'notifications', 'settings', 'inventoryLogs', 'suppliers', 'clients_pain', 'commandes_pain', 'carts', 'drafts', 'companyProfile'];
     await db.transaction('r', ...db.tables, async () => {
@@ -1025,6 +1066,7 @@ class DataService {
   }
 
   async importData(jsonString: string): Promise<void> {
+      const db = getDb();
       const data: Partial<DB> = JSON.parse(jsonString);
       const tables: (keyof DB)[] = ['products', 'customers', 'sales', 'payments', 'stockIntakes', 'returns', 'expenses', 'notifications', 'settings', 'inventoryLogs', 'suppliers', 'clients_pain', 'commandes_pain', 'carts', 'drafts', 'companyProfile'];
       return db.transaction('rw', ...db.tables, async () => {
@@ -1046,6 +1088,7 @@ class DataService {
   }
 
   async restoreTables(data: Partial<DB>, tables: string[], onProgress: (progress: any) => void): Promise<void> {
+    const db = getDb();
     const total = tables.length;
     let current = 0;
     const done: { table: string; success: boolean; error?: string }[] = [];
@@ -1088,6 +1131,7 @@ class DataService {
 
 
   async resetDatabase(): Promise<void> {
+    const db = getDb();
     return db.transaction('rw', ...db.tables, async () => {
         for (const table of db.tables) await table.clear();
         
@@ -1095,6 +1139,7 @@ class DataService {
   }
 
     async analyzeCustomerImport(data: any[]): Promise<ImportAnalysis> {
+        const db = getDb();
         const existingCustomers = await db.customers.toArray();
         const existingPhones = new Set(existingCustomers.map(c => c.phone).filter(Boolean));
         const analysis: ImportAnalysis = {
@@ -1129,6 +1174,7 @@ class DataService {
     }
 
     async processCustomerImport(toAdd: any[], toUpdate: any[]): Promise<void> {
+        const db = getDb();
         return db.transaction('rw', db.customers, async () => {
             const customersToAdd = toAdd.map(c => ({
                 firstName: c.firstName,
@@ -1160,6 +1206,7 @@ class DataService {
     }
 
     async analyzeProductImport(data: any[]): Promise<ProductImportAnalysis> {
+        const db = getDb();
         const existingProducts = await db.products.toArray();
         const existingNames = new Set(existingProducts.map(p => p.name.toLowerCase()));
         const existingBarcodes = new Set(existingProducts.flatMap(p => p.barcodes || []));
@@ -1213,6 +1260,7 @@ class DataService {
     }
 
     async processProductImport(toAdd: any[], toUpdate: any[]): Promise<void> {
+        const db = getDb();
         return db.transaction('rw', db.products, async () => {
             await db.products.bulkAdd(toAdd);
             for (const p of toUpdate) {
@@ -1252,14 +1300,15 @@ class DataService {
   // ====================================================================
 
   async getBreadClients(): Promise<BreadClient[]> {
-    return db.clients_pain.orderBy('nom').toArray();
+    return getDb().clients_pain.orderBy('nom').toArray();
   }
 
   async getManualBreadClients(): Promise<BreadClient[]> {
-    return db.clients_pain.where('type_recurrence').equals('aucun').and(c => c.actif === true).sortBy('nom');
+    return getDb().clients_pain.where('type_recurrence').equals('aucun').and(c => c.actif === true).sortBy('nom');
   }
 
   async addBreadClient(client: BreadClient): Promise<number> {
+    const db = getDb();
     return db.transaction('rw', db.clients_pain, async () => {
         const data = { ...client, createdAt: new Date(), updatedAt: new Date() };
         const newId = await db.clients_pain.add(data);
@@ -1270,6 +1319,7 @@ class DataService {
   }
 
   async updateBreadClient(id: number, data: Partial<BreadClient>): Promise<number> {
+    const db = getDb();
     return db.transaction('rw', db.clients_pain, async () => {
         const dataWithTs = { ...data, updatedAt: new Date() };
         const result = await db.clients_pain.update(id, dataWithTs);
@@ -1280,6 +1330,7 @@ class DataService {
   }
 
   async deleteBreadClient(id: number): Promise<void> {
+    const db = getDb();
     return db.transaction('rw', db.clients_pain, db.commandes_pain, async () => {
       await db.commandes_pain.where({ client_pain_id: id }).delete();
       await db.clients_pain.delete(id);
@@ -1288,6 +1339,7 @@ class DataService {
   }
 
   async getBreadOrdersForDate(date: string): Promise<BreadOrderWithClient[]> {
+    const db = getDb();
     const orders = await db.commandes_pain.where({ date }).toArray();
     const clientIds = [...new Set(orders.map(o => o.client_pain_id))];
     const clients = await db.clients_pain.where('id').anyOf(clientIds).toArray();
@@ -1300,10 +1352,11 @@ class DataService {
   }
   
   async checkIfBreadOrdersExist(date: string): Promise<boolean> {
-    return (await db.commandes_pain.where({ date }).count()) > 0;
+    return (await getDb().commandes_pain.where({ date }).count()) > 0;
   }
 
   async createDayOrders(date: string): Promise<void> {
+    const db = getDb();
     return db.transaction('rw', db.clients_pain, db.commandes_pain, async () => {
       const jourActuel = BREAD_WEEK_DAYS[new Date(date.replace(/-/g, '/')).getUTCDay()] as keyof NonNullable<BreadClient['jours_semaine']>;
       
@@ -1344,6 +1397,7 @@ class DataService {
   }
 
   async addManualBreadOrder(clientId: number, date: string, quantity: number): Promise<void> {
+    const db = getDb();
     return db.transaction('rw', db.commandes_pain, async () => {
         const existing = await db.commandes_pain.where({ client_pain_id: clientId, date }).first();
         if (existing) {
@@ -1367,12 +1421,14 @@ class DataService {
   }
 
   async updateBreadOrderDeliveryStatus(orderId: number, est_livre: boolean): Promise<void> {
+    const db = getDb();
     await db.commandes_pain.update(orderId, { est_livre, updatedAt: new Date() });
     const record = await db.commandes_pain.get(orderId);
     if(record) sheetsService.addToQueue('commandes_pain', 'upsert', record);
   }
 
   async updateBreadOrderQuantity(orderId: number, newQuantity: number): Promise<void> {
+    const db = getDb();
     return db.transaction('rw', db.commandes_pain, async () => {
       const order = await db.commandes_pain.get(orderId);
       if (!order) return;
@@ -1387,6 +1443,7 @@ class DataService {
   }
 
   async convertBreadOrdersToSales(orderIds: number[], breadPrice: number): Promise<void> {
+    const db = getDb();
     return db.transaction('rw', db.sales, db.commandes_pain, db.customers, db.products, db.inventoryLogs, db.notifications, async () => {
       const ordersToConvert = await db.commandes_pain.where('id').anyOf(orderIds).and(o => !o.vente_id).toArray();
       const breadProductSaleItem: SaleItem = { id: 'pain', name: 'Pain', price: breadPrice, purchasePrice: 0, quantity: 0 };

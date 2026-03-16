@@ -34,8 +34,7 @@ export default function ReturnsPage() {
             from: dateRange?.from,
             to: dateRange?.to
         }),
-        [debouncedSearchQuery, dateRange],
-        []
+        [debouncedSearchQuery, dateRange]
     );
 
     const isLoading = returns === undefined || !isMounted;
@@ -61,7 +60,7 @@ export default function ReturnsPage() {
             return renderSkeletons();
         }
 
-        if (returns.length === 0) {
+        if (!returns || returns.length === 0) {
             return (
                 <EmptyState
                     icon={Undo2}
