@@ -89,49 +89,61 @@ C'est le cœur de l'architecture hors ligne.
 
 - **État du Panier :** Le hook `useCarts` gère plusieurs paniers en utilisant `React.useState`. L'état est temporaire et **non persistant** lors du rechargement de la page, conformément aux exigences.
 - **Finalisation d'une Vente :**
-    - La fonction `handleFinalizeSale` est l'opération la plus critique.
+    - La fonction `handleFinalizeSale` (via `dataService.addSale`) est l'opération la plus critique.
     - Elle appelle `db.transaction()`, une fonctionnalité puissante de Dexie.
-    - À l'intérieur du bloc de transaction, elle effectue deux actions principales de manière atomique :
-        1.  Décrémente le stock pour chaque produit vendu.
-        2.  Crée un nouvel enregistrement de vente.
-    - L'utilisation d'une transaction garantit que les deux opérations réussissent ensemble ou échouent ensemble. Cela empêche les incohérences de données (par exemple, vendre un produit sans réduire son stock).
+    - À l'intérieur du bloc de transaction, elle effectue plusieurs actions principales de manière atomique :
+        1.  Crée un nouvel enregistrement de vente dans la table `sales`.
+        2.  Pour chaque article vendu, décrémente le stock dans la table `products`.
+        3.  Crée un journal d'inventaire (`inventoryLogs`) pour chaque article.
+        4.  Met à jour le solde impayé et le total dépensé du client dans la table `customers` si un client est associé.
+    - L'utilisation d'une transaction garantit que toutes les opérations réussissent ou échouent ensemble, empêchant les incohérences de données (par exemple, vendre un produit sans réduire son stock).
 
-### B. Réception de Stock (`/stock/intake`)
+### B. Gestion des Retours (`/returns`)
 
-Cette page est essentielle pour la gestion de l'inventaire en amont. Elle permet d'enregistrer de manière structurée l'arrivée de nouvelles marchandises provenant des fournisseurs.
+-   **Processus de Retour :** Permet d'enregistrer un retour basé sur une vente existante. L'utilisateur recherche une facture, sélectionne les articles à retourner et spécifie la quantité.
+-   **Transaction Atomique (`dataService.addReturn`):**
+    -   Crée un enregistrement `ProductReturn`.
+    -   Si un article est marqué pour être réintégré, met à jour la quantité dans la table `products`.
+    -   Crée un journal d'inventaire (`inventoryLogs`) avec la raison `return`.
+    -   Ajuste le solde du client (`outstandingBalance`) en fonction de la valeur du retour et du montant remboursé.
+-   **Annulation :** L'annulation d'un retour (`dataService.deleteReturn`) exécute une transaction inverse pour restaurer l'état précédent du stock et du solde client.
 
--   **Interface de Saisie :** L'utilisateur commence par saisir les informations de base de la réception : le nom du fournisseur, le numéro de la facture ou du bon de livraison, et la date.
--   **Ajout d'Articles :**
-    -   Un champ de recherche intelligent (`Combobox`) permet de trouver rapidement des produits existants par nom ou code-barres.
-    -   Si un produit n'est pas trouvé, l'interface offre la possibilité de le **créer à la volée** en saisissant simplement son nom. Ce nouveau produit est marqué comme `isNew: true`.
-    -   Pour chaque article (existant ou nouveau), l'utilisateur saisit la quantité reçue et le **prix d'achat unitaire**. Pour les nouveaux produits, le prix de vente est également requis.
--   **Transaction Atomique de Sauvegarde :**
-    -   La fonction `addStockIntake` dans `data-service.ts` orchestre l'opération.
-    -   Elle utilise une transaction Dexie (`db.transaction()`) pour garantir que toutes les opérations suivantes réussissent ou échouent ensemble.
+### C. Réception de Stock (`/stock/intake`)
+
+Cette page est essentielle pour la gestion de l'inventaire en amont.
+
+-   **Interface de Saisie :** L'utilisateur peut sélectionner un fournisseur existant ou en créer un nouveau, puis ajouter des produits existants ou créer des articles à la volée.
+-   **Transaction Atomique de Sauvegarde (`dataService.addStockIntake`):**
+    -   Utilise `db.transaction()` pour garantir la cohérence des données.
     -   À l'intérieur de la transaction :
-        1.  Un enregistrement `StockIntake` est créé pour l'historique.
-        2.  Pour chaque article **nouveau** (`isNew: true`), un nouvel enregistrement est créé dans la table `products`.
-        3.  Pour chaque article **existant**, la quantité (`quantity`) et le prix d'achat (`purchasePrice`) sont mis à jour dans la table `products`.
-        4.  Un enregistrement est ajouté dans la table `inventoryLogs` pour chaque produit affecté, traçant l'augmentation du stock avec la raison `stock_intake`.
+        1.  Crée ou récupère un enregistrement de `suppliers`.
+        2.  Crée un enregistrement `StockIntake` pour l'historique.
+        3.  Pour chaque article **nouveau**, un nouvel enregistrement est créé dans la table `products`.
+        4.  Pour chaque article, la quantité (`quantity`) et le prix d'achat (`purchasePrice`) sont mis à jour dans `products`.
+        5.  Un enregistrement est ajouté dans `inventoryLogs` pour chaque produit, traçant l'augmentation du stock avec la raison `stock_intake`.
 
-Ce processus robuste garantit que l'inventaire est toujours à jour et que chaque entrée de stock est traçable.
+### D. Calcul des Coûts (`/costing`)
 
-### C. Calcul des Coûts (`/costing`)
+Cet outil d'analyse financière prolonge la fonctionnalité de réception de stock.
 
-Cette page est un outil d'analyse financière qui prolonge la fonctionnalité de réception de stock. Elle permet de calculer le **coût de revient unitaire final** d'un produit en y répartissant des frais annexes, comme le transport.
+-   **Logique de Calcul :** Le système répartit des frais annexes (comme le transport) sur chaque article d'une réception, proportionnellement à sa valeur d'achat.
+-   **Mise à Jour des Prix :** Une fonction `applyNewPurchasePrices` met à jour le champ `purchasePrice` de chaque produit concerné, garantissant que les futurs calculs de bénéfices seront basés sur le coût réel d'acquisition.
 
--   **Sélection de la Réception :** L'utilisateur sélectionne une réception de stock existante.
--   **Saisie des Frais :** Il saisit ensuite le coût total du transport associé à cette réception.
--   **Calcul Automatique :**
-    -   Le système calcule la **part des frais de transport** à allouer à chaque article, proportionnellement à sa valeur d'achat par rapport à la valeur totale de la réception.
-        - `Part du transport pour l'article = (Coût total transport * Valeur de l'article) / Valeur totale de la réception`
-    -   Il calcule ensuite le **coût final unitaire** pour chaque produit :
-        - `Coût final unitaire = Prix d'achat unitaire + (Part du transport / Quantité)`
--   **Mise à Jour des Prix d'Achat :** L'utilisateur peut appliquer ces nouveaux coûts. Une fonction `applyNewPurchasePrices` met alors à jour le champ `purchasePrice` de chaque produit concerné dans la base de données. Cela garantit que les futurs calculs de bénéfices seront basés sur le coût réel d'acquisition.
+### E. Gestion des Commandes de Pain (`/bread`)
 
-### D. Sauvegarde et Restauration (`/profile`)
+Un module spécialisé pour gérer les commandes récurrentes de pain.
 
-- **Sauvegarde :** La fonction `handleBackup` récupère toutes les données de toutes les tables Dexie, les transforme en une chaîne JSON et déclenche le téléchargement d'un fichier.
-- **Restauration :** La fonction `handleRestore` lit un fichier JSON sélectionné par l'utilisateur, vide complètement toutes les tables de la base de données, puis insère en masse les données du fichier de sauvegarde. C'est une opération destructrice mais efficace pour la gestion des données locales.
+-   **Tables dédiées :** Utilise les tables `clients_pain` et `commandes_pain` pour séparer cette logique.
+-   **Génération Automatique :** La fonction `createDayOrders` s'exécute au chargement de la page pour un jour donné. Elle vérifie les clients actifs et leurs règles de récurrence (`quotidien` ou `jours_specifiques`) pour créer automatiquement les `BreadOrder` du jour s'ils n'existent pas.
+-   **Conversion en Vente (`dataService.convertBreadOrdersToSales`):**
+    -   C'est une transaction atomique qui prend un tableau d'IDs de `BreadOrder`.
+    -   Pour chaque commande, elle crée une nouvelle `Sale`.
+    -   Elle met à jour le `outstandingBalance` du client principal (s'il est lié) dans la table `customers`.
+    -   Elle marque la `BreadOrder` comme payée (`est_paye: true`) et y associe l'ID de la nouvelle vente (`vente_id`).
+
+### F. Sauvegarde et Restauration (`/profile`)
+
+- **Sauvegarde :** La fonction `handleBackup` (via `dataService.exportData`) récupère toutes les données de toutes les tables Dexie, les transforme en une chaîne JSON et déclenche le téléchargement d'un fichier.
+- **Restauration :** La fonction `handleRestore` (via `BackupPreview` et `dataService.restoreTables`) lit un fichier JSON, permet à l'utilisateur de prévisualiser et sélectionner les tables à restaurer, puis vide complètement ces tables et insère en masse les données du fichier de sauvegarde.
 
 Cette architecture offre une expérience robuste, rapide et entièrement hors ligne en traitant la base de données IndexedDB du navigateur comme la base de données principale.
