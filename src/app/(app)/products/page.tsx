@@ -229,7 +229,7 @@ export default function ProductsPage() {
                             onEdit={handleEditProduct} 
                             onDelete={handleDeleteProduct}
                             isSelected={selectedProducts.has(p.id)}
-                            onToggleSelection={() => handleToggleSelection(p.id)}
+                            onToggleSelection={() => handleToggleSelection(p.id as number)}
                         />
                     ))}
                 </div>
