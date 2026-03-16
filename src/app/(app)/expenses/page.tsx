@@ -20,7 +20,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { DateRangePicker } from '@/components/dashboard/date-range-picker';
 import { useDateRange } from '@/hooks/useDateRange';
-import { Card, CardContent, CardHeader, CardTitle, Skeleton } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { formatCurrency } from '@/lib/utils';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -30,7 +31,7 @@ export default function ExpensesPage() {
     const [isExpenseDialogOpen, setIsExpenseDialogOpen] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
-    const { dateRange, setDateRange, isMounted } = useDateRange(29);
+    const { dateRange, setDate: setDateRange, isMounted } = useDateRange(29);
 
     const expenses = useLiveQuery(
         () => dataService.getExpenses({ 
