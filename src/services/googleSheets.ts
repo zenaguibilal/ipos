@@ -1,15 +1,16 @@
 'use client';
 
 import { db, PosDatabase } from '@/lib/database';
+import type { CompanyProfile } from '@/lib/types';
 
 const SYNC_QUEUE_KEY = 'ipos_sync_queue';
 
 export const TABLES_TO_SYNC: (keyof PosDatabase)[] = [
-  'products', 'customers', 'suppliers',
-  'sales', 'stockIntakes', 'returns',
-  'payments', 'expenses', 'drafts',
-  'inventoryLogs', 'clients_pain', 'commandes_pain',
-  'companyProfile', 'settings'
+    'products', 'customers', 'suppliers',
+    'sales', 'stockIntakes', 'returns',
+    'payments', 'expenses', 'drafts',
+    'inventoryLogs', 'clients_pain', 'commandes_pain',
+    'companyProfile', 'settings'
 ];
 
 interface QueueItem {
@@ -19,7 +20,6 @@ interface QueueItem {
     record: any;
     attempts: number;
 }
-
 
 class GoogleSheetsService {
   scriptUrl: string | null = null;
@@ -46,7 +46,6 @@ class GoogleSheetsService {
       this.isOnline = false;
     });
     
-    // Initial processing in case we start online
     if (this.isOnline) {
       this.processSyncQueue();
     }
@@ -65,22 +64,19 @@ class GoogleSheetsService {
   }
 
   async sendToSheets(table: string, action: 'upsert' | 'delete', record: any) {
-    if (!this.scriptUrl || !this.isOnline) return;
+    if (!this.scriptUrl) return;
 
-    // Use 'no-cors' for simple requests to Apps Script web apps deployed to be accessible by anyone
     const response = await fetch(this.scriptUrl, {
       method: 'POST',
       mode: 'no-cors', 
       body: JSON.stringify({ table, action, record }),
-      headers: { 'Content-Type': 'text/plain' } // Use text/plain for no-cors
+      headers: { 'Content-Type': 'text/plain' }
     });
     
-    // For 'no-cors' requests, we can't read the response body. We assume success if the request doesn't throw.
     if (response.type === 'opaque') {
         return { success: true };
     }
 
-    // If not opaque, we might be able to read it (e.g., same-origin or proper CORS setup)
     const result = await response.json();
     if (!result.success) {
       throw new Error(result.error || 'Sync request failed');
@@ -119,7 +115,7 @@ class GoogleSheetsService {
         toAddRemote.push(local);
       } else {
         const localTime = new Date(local.updatedAt || local.createdAt || 0).getTime();
-        const remoteTime = new Date(remote.updated_at || remote.created_at || 0).getTime();
+        const remoteTime = new Date(remote.updatedAt || remote.createdAt || 0).getTime();
 
         if (remoteTime > localTime) {
           toUpdateLocal.push(remote);
