@@ -19,7 +19,7 @@ function DashboardSkeleton() {
   return (
     <div className="space-y-8">
       {/* Header Skeleton */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="space-y-2">
           <Skeleton className="h-10 w-64" />
           <Skeleton className="h-5 w-48" />
@@ -35,23 +35,21 @@ function DashboardSkeleton() {
         <Skeleton className="h-40 rounded-2xl" />
       </div>
 
-      {/* Main Content Skeleton */}
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <Skeleton className="h-96 rounded-2xl" />
-        </div>
-        <div className="space-y-8">
-          <Skeleton className="h-64 rounded-2xl" />
-          <Skeleton className="h-64 rounded-2xl" />
-        </div>
+      {/* Main Chart Skeleton */}
+      <div>
+        <Skeleton className="h-96 rounded-2xl" />
       </div>
-       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-        <div className="lg:col-span-1">
-          <Skeleton className="h-80 rounded-2xl" />
-        </div>
-        <div className="lg:col-span-2">
-          <Skeleton className="h-80 rounded-2xl" />
-        </div>
+
+      {/* Double Row Skeleton 1 */}
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+        <Skeleton className="h-80 rounded-2xl" />
+        <Skeleton className="h-80 rounded-2xl" />
+      </div>
+
+      {/* Double Row Skeleton 2 */}
+       <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+        <Skeleton className="h-80 rounded-2xl" />
+        <Skeleton className="h-80 rounded-2xl" />
       </div>
     </div>
   );
@@ -119,25 +117,21 @@ export default function DashboardPage() {
                         />
                     </div>
     
-                    {/* Main Chart & Side Cards */}
-                    <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-                        <div className="lg:col-span-2">
-                           <RevenueChart data={data.chartData} />
-                        </div>
-                        <div className="space-y-8">
-                            <StockAlertsCard alerts={data.stockAlerts} />
-                            <RecentActivityCard activities={data.recentActivity} />
-                        </div>
+                    {/* Main Chart */}
+                    <div>
+                       <RevenueChart data={data.chartData} />
+                    </div>
+
+                    {/* First Double Row */}
+                    <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+                        <StockAlertsCard alerts={data.stockAlerts} />
+                        <RecentActivityCard activities={data.recentActivity} />
                     </div>
     
-                    {/* Bottom Row Cards */}
-                    <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-                         <div className="lg:col-span-1">
-                            <TopProductsCard products={data.topProducts} />
-                        </div>
-                        <div className="lg:col-span-2">
-                            <ExpensesPieChart data={data.expensesData} />
-                        </div>
+                    {/* Second Double Row */}
+                    <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+                         <TopProductsCard products={data.topProducts} />
+                         <ExpensesPieChart data={data.expensesData} />
                     </div>
                 </div>
             )}
