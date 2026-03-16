@@ -7,7 +7,7 @@ import { ThemeProvider } from '@/components/layout/theme-provider';
 const APP_NAME = "iPOS";
 const APP_DEFAULT_TITLE = "iPOS - Point de Vente";
 const APP_TITLE_TEMPLATE = "%s - iPOS";
-const APP_DESCRIPTION = "Votre solution de point de vente élégante, puissante et intuitive.";
+const APP_DESCRIPTION = "Application de point de vente hors ligne pour épicerie";
 
 const inter = Inter({ subsets: ['latin'] });
 
