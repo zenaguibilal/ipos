@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -228,7 +229,7 @@ export default function ProductsPage() {
                             onEdit={handleEditProduct} 
                             onDelete={handleDeleteProduct}
                             isSelected={selectedProducts.has(p.id)}
-                            onToggleSelection={() => handleToggleSelection(p.id!)}
+                            onToggleSelection={() => handleToggleSelection(p.id)}
                         />
                     ))}
                 </div>
