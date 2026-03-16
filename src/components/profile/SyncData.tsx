@@ -36,7 +36,7 @@ export function SyncData() {
         <>
             <CardContent>
                 {!canSync && (
-                    <div className="p-4 border-l-4 border-yellow-500 bg-yellow-500/10 rounded-r-lg text-yellow-700 dark:text-yellow-300">
+                    <div className="p-4 border-l-4 border-chart-secondary bg-chart-secondary/10 rounded-r-lg text-chart-secondary">
                         <div className="flex items-start gap-3">
                             <AlertTriangle className="h-5 w-5 mt-0.5" />
                             <div>
