@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useDateRange } from '@/hooks/useDateRange';
@@ -57,7 +58,7 @@ function DashboardSkeleton() {
 }
 
 export default function DashboardPage() {
-    const { dateRange, setDateRange } = useDateRange(6); // Default to last 7 days
+    const { dateRange, setDate } = useDateRange(6);
     const { data, isLoading, error } = useDashboardData(dateRange);
     const { theme } = useTheme();
 
@@ -83,7 +84,7 @@ export default function DashboardPage() {
                             <h1 className="text-4xl font-bold text-primary orange-glow">Tableau de Bord</h1>
                             <p className="text-lg text-muted-foreground">Bienvenue sur iPOS, aperçu de votre activité.</p>
                         </div>
-                        <DateRangePicker date={dateRange} setDate={setDateRange} />
+                        <DateRangePicker date={dateRange} setDate={setDate} />
                     </header>
     
                     {/* KPI Cards */}
@@ -112,7 +113,7 @@ export default function DashboardPage() {
                          <KPICard 
                             title="Valeur du Stock" 
                             value={data.kpis.inventoryValue.current} 
-                            subtitle={`${data.kpis.inventoryValue.productCount} produits en stock`}
+                            subtitle={`${data.kpis.inventoryValue.productCount} produits`}
                             icon={Archive}
                             format="currency"
                         />

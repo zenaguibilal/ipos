@@ -1,8 +1,9 @@
+
 'use client';
 import { useTheme } from 'next-themes';
 import { cn } from '@/lib/utils';
 import type { Product } from '@/lib/types';
-import { Bell, ArrowRight } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 
 export function StockAlertsCard({ alerts }: { alerts: Product[] }) {

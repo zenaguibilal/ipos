@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useTheme } from 'next-themes';
@@ -17,7 +18,7 @@ export function KPICard({ title, value, change, subtitle, icon: Icon, format }: 
     const { theme } = useTheme();
     const cardClass = theme === 'light' ? 'glass-card-light' : 'glass-card-dark';
     
-    const hasChange = typeof change === 'number';
+    const hasChange = typeof change === 'number' && isFinite(change);
     const isPositive = hasChange && change >= 0;
 
     return (
@@ -39,8 +40,8 @@ export function KPICard({ title, value, change, subtitle, icon: Icon, format }: 
                         "flex items-center gap-1",
                         isPositive ? "text-success" : "text-destructive"
                     )}>
-                        {isPositive ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />}
-                        <span>{Math.abs(change).toFixed(1)}% vs. hier</span>
+                        {change !== 0 && (isPositive ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />)}
+                        <span>{Math.abs(change).toFixed(1)}% vs. période préc.</span>
                     </div>
                 ) : (
                     <span>{subtitle}</span>

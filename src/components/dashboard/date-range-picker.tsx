@@ -1,8 +1,9 @@
+
 "use client"
 
 import * as React from "react"
 import { CalendarIcon } from "lucide-react"
-import { format, startOfDay, subDays, startOfMonth, endOfMonth, endOfDay } from "date-fns"
+import { format, startOfDay, subDays, startOfMonth, endOfMonth, endOfDay, startOfYear, endOfYear } from "date-fns"
 import { fr } from "date-fns/locale"
 import { DateRange } from "react-day-picker"
 
@@ -28,28 +29,8 @@ interface DateRangePickerProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 export function DateRangePicker({ className, date, setDate }: DateRangePickerProps) {
-  const [preset, setPreset] = React.useState<string>("last30");
+  const [preset, setPreset] = React.useState<string>("last7");
   const popoverCloseRef = React.useRef<HTMLButtonElement>(null);
-
-
-  React.useEffect(() => {
-    // Synchronize preset with date changes
-    const now = new Date();
-    if (date?.from && date.to) {
-        if (date.from.getTime() === startOfDay(now).getTime() && date.to.getTime() === endOfDay(now).getTime()) {
-            setPreset("today");
-        } else if (date.from.getTime() === startOfDay(subDays(now, 6)).getTime() && date.to.getTime() === endOfDay(now).getTime()) {
-            setPreset("last7");
-        } else if (date.from.getTime() === startOfDay(subDays(now, 29)).getTime() && date.to.getTime() === endOfDay(now).getTime()) {
-            setPreset("last30");
-        } else if (date.from.getTime() === startOfMonth(now).getTime() && date.to.getTime() === endOfMonth(now).getTime()) {
-            setPreset("thisMonth");
-        } else {
-            setPreset("custom");
-        }
-    }
-  }, [date]);
-
 
   const handlePresetChange = (value: string) => {
     setPreset(value)
@@ -62,11 +43,11 @@ export function DateRangePicker({ className, date, setDate }: DateRangePickerPro
       case "last7":
         newRange = { from: startOfDay(subDays(now, 6)), to: endOfDay(now) }
         break
-      case "last30":
-        newRange = { from: startOfDay(subDays(now, 29)), to: endOfDay(now) }
-        break
       case "thisMonth":
         newRange = { from: startOfMonth(now), to: endOfMonth(now) }
+        break
+      case "thisYear":
+        newRange = { from: startOfYear(now), to: endOfYear(now) }
         break
       default:
         // do nothing for custom
@@ -78,16 +59,14 @@ export function DateRangePicker({ className, date, setDate }: DateRangePickerPro
   }
 
   const handleDateChange = (newDate?: DateRange) => {
-    if (newDate?.from && newDate.to) {
-        newDate.from = startOfDay(newDate.from);
-        newDate.to = endOfDay(newDate.to);
-        setDate(newDate);
-        popoverCloseRef.current?.click();
-    } else {
-        // Handle single day selection or clearing
-        setDate(newDate);
+    if (newDate?.from && !newDate.to) {
+      newDate.to = newDate.from;
     }
+    if (newDate) setDate(newDate);
     setPreset("custom")
+    if (newDate?.from && newDate.to) {
+        popoverCloseRef.current?.click();
+    }
   }
 
   return (
@@ -98,7 +77,7 @@ export function DateRangePicker({ className, date, setDate }: DateRangePickerPro
             id="date"
             variant={"outline"}
             className={cn(
-              "w-auto justify-start text-left font-normal",
+              "w-auto justify-start text-left font-normal bg-card/50",
               !date && "text-muted-foreground"
             )}
           >
@@ -128,11 +107,11 @@ export function DateRangePicker({ className, date, setDate }: DateRangePickerPro
                     <SelectValue placeholder="Sélectionner une période" />
                     </SelectTrigger>
                     <SelectContent>
-                    <SelectItem value="today">Aujourd'hui</SelectItem>
-                    <SelectItem value="last7">7 derniers jours</SelectItem>
-                    <SelectItem value="last30">30 derniers jours</SelectItem>
-                    <SelectItem value="thisMonth">Ce mois-ci</SelectItem>
-                    <SelectItem value="custom">Personnalisé</SelectItem>
+                      <SelectItem value="today">Aujourd'hui</SelectItem>
+                      <SelectItem value="last7">7 derniers jours</SelectItem>
+                      <SelectItem value="thisMonth">Ce mois-ci</SelectItem>
+                      <SelectItem value="thisYear">Cette année</SelectItem>
+                      <SelectItem value="custom">Personnalisé</SelectItem>
                     </SelectContent>
                 </Select>
                 </div>

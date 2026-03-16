@@ -1,5 +1,4 @@
 
-
 export interface Product {
     id?: number | string; // string for custom products
     name: string;

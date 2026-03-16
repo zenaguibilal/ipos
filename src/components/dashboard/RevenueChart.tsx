@@ -1,3 +1,4 @@
+
 'use client';
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 import { useTheme } from 'next-themes';
@@ -30,13 +31,11 @@ export function RevenueChart({ data }: { data: DashboardChartData[] }) {
             <div className="flex justify-between items-center mb-4">
                 <h3 className="text-xl font-semibold">Revenus & Bénéfices</h3>
                 <Select value={timeframe} onValueChange={setTimeframe} disabled>
-                    <SelectTrigger className="w-[120px] h-9">
+                    <SelectTrigger className="w-[120px] h-9 bg-card/50">
                         <SelectValue placeholder="Période" />
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="day">Jour</SelectItem>
-                        <SelectItem value="week">Semaine</SelectItem>
-                        <SelectItem value="month">Mois</SelectItem>
                     </SelectContent>
                 </Select>
             </div>

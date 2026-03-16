@@ -1,6 +1,7 @@
+
 'use client';
 import { useMemo } from 'react';
-import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend } from 'recharts';
+import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
 import { useTheme } from 'next-themes';
 import { formatCurrency } from '@/lib/utils';
 import { cn } from '@/lib/utils';
@@ -18,21 +19,6 @@ const CustomTooltip = ({ active, payload }: any) => {
   return null;
 };
 
-const renderLegend = (props: any) => {
-    const { payload } = props;
-    return (
-        <ul className="text-sm space-y-2 max-h-52 overflow-y-auto">
-            {payload.map((entry: any, index: number) => (
-                <li key={`item-${index}`} className="flex items-center gap-2">
-                    <span className="h-3 w-3 rounded-full" style={{ backgroundColor: entry.color }} />
-                    <span className="text-muted-foreground">{entry.value}</span>
-                    <span className="font-semibold ml-auto">{formatCurrency(entry.payload.value)}</span>
-                </li>
-            ))}
-        </ul>
-    );
-};
-
 export function ExpensesPieChart({ data }: { data: DashboardExpenseData[] }) {
     const { theme } = useTheme();
     const cardClass = theme === 'light' ? 'glass-card-light' : 'glass-card-dark';
@@ -40,11 +26,11 @@ export function ExpensesPieChart({ data }: { data: DashboardExpenseData[] }) {
     const totalExpenses = useMemo(() => data.reduce((sum, item) => sum + item.value, 0), [data]);
 
     const COLORS = [
-        'hsl(var(--primary))',
-        'hsl(27, 95%, 65%))',
-        'hsl(27, 95%, 75%))',
-        'hsl(var(--success))',
-        '#8884d8',
+        'hsl(var(--chart-primary))',
+        'hsl(var(--chart-secondary))',
+        'hsl(var(--chart-tertiary))',
+        'hsl(var(--chart-quaternary))',
+        'hsl(var(--chart-quinary))',
         '#82ca9d',
     ];
 
@@ -81,13 +67,15 @@ export function ExpensesPieChart({ data }: { data: DashboardExpenseData[] }) {
                         </PieChart>
                     </ResponsiveContainer>
                     <div className="pr-4">
-                        <Legend content={renderLegend} payload={data.map((entry, index) => ({
-                            value: entry.name,
-                            type: 'circle',
-                            id: entry.name,
-                            color: COLORS[index % COLORS.length],
-                            payload: entry,
-                        }))}/>
+                       <ul className="text-sm space-y-2 max-h-52 overflow-y-auto">
+                          {data.map((entry: any, index: number) => (
+                              <li key={`item-${index}`} className="flex items-center gap-2">
+                                  <span className="h-3 w-3 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
+                                  <span className="text-muted-foreground">{entry.name}</span>
+                                  <span className="font-semibold ml-auto">{formatCurrency(entry.value)}</span>
+                              </li>
+                          ))}
+                      </ul>
                     </div>
                 </div>
             ) : (

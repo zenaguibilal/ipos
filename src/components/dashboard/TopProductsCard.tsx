@@ -1,8 +1,8 @@
+
 'use client';
 import { useTheme } from 'next-themes';
-import { cn, formatCurrency } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import type { Product } from '@/lib/types';
-import { Trophy } from 'lucide-react';
 import Image from 'next/image';
 import { getPlaceholder } from '@/lib/utils';
 

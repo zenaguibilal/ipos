@@ -8,7 +8,7 @@
     --background: 24 20% 97%; /* #f8f4f0 */
     --foreground: 240 10% 15%; /* #1a1a2e */
  
-    --card: 24 20% 100%; /* rgba(255, 255, 255, 0.7) */
+    --card: 0 0% 100%;
     --card-foreground: 240 10% 15%;
  
     --popover: 0 0% 100%;
@@ -21,7 +21,7 @@
     --secondary-foreground: 215.4 16.3% 46.9%;
  
     --muted: 210 40% 96.1%;
-    --muted-foreground: 240 5% 45%; /* rgba(26, 26, 46, 0.6) */
+    --muted-foreground: 240 5% 45%;
  
     --accent: 210 40% 96.1%;
     --accent-foreground: 222.2 47.4% 11.2%;
@@ -36,14 +36,20 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 26 94% 48%;
  
-    --radius: 1rem;
+    --radius: 1.5rem;
+
+    --chart-primary: 26 94% 48%;
+    --chart-secondary: 28 80% 70%;
+    --chart-tertiary: 10 70% 65%;
+    --chart-quaternary: 150 60% 55%;
+    --chart-quinary: 280 92% 62%;
   }
  
   .dark {
     --background: 240 21% 5%; /* #0a0a0f */
     --foreground: 0 0% 100%; /* #ffffff */
 
-    --card: 240 21% 5%; /* rgba(255, 255, 255, 0.05) is handled by glass effect*/
+    --card: 240 21% 8%;
     --card-foreground: 0 0% 100%;
  
     --popover: 240 21% 5%;
@@ -70,6 +76,12 @@
     --border: 27 95% 53%;
     --input: 240 5% 15%;
     --ring: 27 95% 53%;
+
+    --chart-primary: 27 95% 53%;
+    --chart-secondary: 28 80% 70%;
+    --chart-tertiary: 10 70% 65%;
+    --chart-quaternary: 150 60% 55%;
+    --chart-quinary: 280 92% 62%;
   }
 }
  
@@ -135,7 +147,7 @@
     text-shadow: 0 0 20px hsl(var(--primary) / 0.5);
   }
 
-  /* Keep old styles for other pages */
+  /* Old luxury glass style - now adapted to new theme */
    .luxury-glass {
     @apply rounded-3xl border shadow-xl transition-all duration-300;
     background-color: hsl(var(--card) / 0.7);

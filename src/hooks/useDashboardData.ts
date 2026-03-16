@@ -1,11 +1,12 @@
+
 'use client';
 
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useMemo, useState, useEffect } from 'react';
 import { dataService } from '@/services/data-service';
 import type { DateRange } from 'react-day-picker';
-import type { DashboardDataType, DashboardChartData, DashboardExpenseData, GlobalActivityItem, Product } from '@/lib/types';
-import { differenceInDays, subDays, format } from 'date-fns';
+import type { DashboardDataType, Product } from '@/lib/types';
+import { differenceInDays, subDays, format, startOfDay, endOfDay } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
 const INITIAL_DATA: DashboardDataType = {
@@ -29,7 +30,6 @@ export function useDashboardData(dateRange?: DateRange) {
     const from = dateRange?.from;
     const to = dateRange?.to;
 
-    // Use a single, optimized query
     const liveData = useLiveQuery(async () => {
         if (!from || !to) return null;
         
@@ -37,9 +37,9 @@ export function useDashboardData(dateRange?: DateRange) {
         setError(null);
 
         try {
-            const periodDays = differenceInDays(to, from) + 1;
-            const prevFrom = subDays(from, periodDays);
-            const prevTo = subDays(to, periodDays);
+            const periodDays = differenceInDays(to, from);
+            const prevFrom = startOfDay(subDays(from, periodDays + 1));
+            const prevTo = endOfDay(subDays(from, 1));
             
             const [
                 currentSales,
@@ -48,7 +48,8 @@ export function useDashboardData(dateRange?: DateRange) {
                 expenses,
                 recentSales,
                 recentIntakes,
-                recentCustomers
+                recentCustomers,
+                recentReturns
             ] = await Promise.all([
                 dataService.getSales({ from, to }),
                 dataService.getSales({ from: prevFrom, to: prevTo }),
@@ -56,30 +57,34 @@ export function useDashboardData(dateRange?: DateRange) {
                 dataService.getExpenses({ from, to }),
                 dataService.getSales({ from: subDays(new Date(), 7), to: new Date() }),
                 dataService.getStockIntakes({ from: subDays(new Date(), 7), to: new Date() }),
-                dataService.getCustomers({ sortBy: 'createdAt_desc' })
+                dataService.getCustomers({ sortBy: 'createdAt_desc', limit: 5 }),
+                dataService.getReturns({ from: subDays(new Date(), 7), to: new Date() }),
             ]);
 
             return { 
                 currentSales, previousSales, products, expenses, 
-                recentSales, recentIntakes, recentCustomers 
+                recentSales, recentIntakes, recentCustomers, recentReturns 
             };
         } catch (e) {
             console.error("Dashboard data fetching error:", e);
             setError("Impossible de charger les données du tableau de bord.");
-            setIsLoading(false);
             return null;
         }
 
     }, [from, to], null);
 
     const processedData = useMemo<DashboardDataType>(() => {
+        if (liveData === null && error) {
+            setIsLoading(false);
+            return INITIAL_DATA;
+        }
         if (!liveData) {
             return INITIAL_DATA;
         }
-
+        
         const { 
             currentSales, previousSales, products, expenses, 
-            recentSales, recentIntakes, recentCustomers 
+            recentSales, recentIntakes, recentCustomers, recentReturns 
         } = liveData;
 
         // --- KPIs ---
@@ -110,21 +115,19 @@ export function useDashboardData(dateRange?: DateRange) {
         };
 
         // --- Chart Data ---
-        const chartData: DashboardChartData[] = [];
         const daysInRange = differenceInDays(to!, from!) + 1;
-        const groupKeyFormat = daysInRange > 7 ? 'MMM' : 'd MMM';
         const dataByDay: { [key: string]: { revenu: number, benefice: number, date: Date } } = {};
 
         for (let i = 0; i < daysInRange; i++) {
             const date = subDays(to!, i);
-            const key = format(date, groupKeyFormat, { locale: fr });
+            const key = format(date, 'd MMM', { locale: fr });
             if (!dataByDay[key]) {
-                dataByDay[key] = { revenu: 0, benefice: 0, date: date };
+                dataByDay[key] = { revenu: 0, benefice: 0, date };
             }
         }
         
         currentSales.forEach(sale => {
-            const key = format(sale.createdAt!, groupKeyFormat, { locale: fr });
+            const key = format(sale.createdAt!, 'd MMM', { locale: fr });
             if (dataByDay[key]) {
                 dataByDay[key].revenu += sale.total;
                 const saleProfit = sale.items.reduce((acc, item) => acc + (item.price - item.purchasePrice) * item.quantity, 0);
@@ -133,10 +136,9 @@ export function useDashboardData(dateRange?: DateRange) {
         });
         
         const sortedChartData = Object.entries(dataByDay)
-            .sort(([_, a], [__, b]) => a.date.getTime() - b.date.getTime())
+            .sort(([, a], [, b]) => a.date.getTime() - b.date.getTime())
             .map(([key, value]) => ({ date: key, jour: key, revenu: value.revenu, benefice: value.benefice }));
         
-
         // --- Stock Alerts ---
         const stockAlerts = products
           .filter(p => p.quantity <= p.minStockLevel)
@@ -144,22 +146,23 @@ export function useDashboardData(dateRange?: DateRange) {
           .slice(0, 5);
 
         // --- Recent Activity ---
-        const activity: GlobalActivityItem[] = [
-            ...recentSales.map(s => ({ type: 'sale', date: s.createdAt!, id: s.id!, description: `Vente #${s.invoiceNumber}`, details: s.customerName || 'Client de passage', amount: s.total, amountClass: 'text-primary' } as GlobalActivityItem)),
-            ...recentIntakes.map(i => ({ type: 'stock_intake', date: i.createdAt!, id: i.id!, description: `Réception de ${i.supplierName}`, details: `${i.items.length} article(s)`, amount: i.totalValue, amountClass: 'text-success' } as GlobalActivityItem)),
-            ...recentCustomers.slice(0,5).map(c => ({ type: 'customer', date: c.createdAt!, id: c.id!, description: `Nouveau client`, details: `${c.firstName} ${c.lastName}` } as GlobalActivityItem)),
+        const activity = [
+            ...recentSales.map(s => ({ type: 'sale', date: s.createdAt!, id: s.id!, description: `Vente #${s.invoiceNumber}`, details: s.customerName || 'Client de passage', amount: s.total, amountClass: 'text-primary' })),
+            ...recentIntakes.map(i => ({ type: 'stock_intake', date: i.createdAt!, id: i.id!, description: `Réception de ${i.supplierName}`, details: `${i.items.length} article(s)`, amount: i.totalValue, amountClass: 'text-success' })),
+            ...recentReturns.map(r => ({ type: 'return', date: r.createdAt!, id: r.id!, description: `Retour sur facture #${r.originalInvoiceNumber}`, details: `${r.items.length} article(s)`, amount: -r.totalReturnValue, amountClass: 'text-destructive' })),
+            ...recentCustomers.map(c => ({ type: 'customer', date: c.createdAt!, id: c.id!, description: `Nouveau client`, details: `${c.firstName} ${c.lastName}` })),
         ];
-        const recentActivity = activity.sort((a,b) => b.date.getTime() - a.date.getTime()).slice(0, 5);
+        const recentActivity = activity.sort((a,b) => b.date.getTime() - a.date.getTime()).slice(0, 8);
 
         // --- Top Products ---
         const productSales = new Map<number, { product: Product; totalVendu: number }>();
         currentSales.forEach(sale => {
             sale.items.forEach(item => {
                 if (typeof item.id === 'number') {
-                    const existing = productSales.get(item.id) || { product: products.find(p => p.id === item.id)!, totalVendu: 0 };
-                    if(existing.product) {
-                        productSales.set(item.id, { ...existing, totalVendu: existing.totalVendu + item.quantity });
-                    }
+                    const product = products.find(p => p.id === item.id);
+                    if (!product) return;
+                    const existing = productSales.get(item.id) || { product, totalVendu: 0 };
+                    productSales.set(item.id, { ...existing, totalVendu: existing.totalVendu + item.quantity });
                 }
             });
         });
@@ -169,7 +172,7 @@ export function useDashboardData(dateRange?: DateRange) {
             .map(p => ({...p.product, totalVendu: p.totalVendu}));
 
         // --- Expenses ---
-        const expensesData: DashboardExpenseData[] = Object.entries(
+        const expensesData = Object.entries(
             expenses.reduce((acc, d) => {
                 acc[d.category] = (acc[d.category] || 0) + d.amount;
                 return acc;
@@ -179,7 +182,13 @@ export function useDashboardData(dateRange?: DateRange) {
         setIsLoading(false);
         return { kpis, chartData: sortedChartData, stockAlerts, recentActivity, topProducts, expensesData };
 
-    }, [liveData]);
+    }, [liveData, error]);
+
+    useEffect(() => {
+        if (!dateRange?.from || !dateRange?.to) {
+            setIsLoading(true);
+        }
+    }, [dateRange]);
 
     return { data: processedData, isLoading, error };
 }
