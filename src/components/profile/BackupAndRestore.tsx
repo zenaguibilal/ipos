@@ -18,17 +18,19 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { dataService } from '@/services/data-service';
+import { BackupPreview } from './BackupPreview';
+import type { DB } from '@/lib/types';
+
 
 export function BackupAndRestore() {
     const [isBackingUp, setIsBackingUp] = useState(false);
-    const [isRestoring, setIsRestoring] = useState(false);
     const [isResetting, setIsResetting] = useState(false);
-    const [isRestoreAlertOpen, setIsRestoreAlertOpen] = useState(false);
     const [isResetAlertOpen, setIsResetAlertOpen] = useState(false);
-    const [restoreFile, setRestoreFile] = useState<File | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [resetConfirmationCode, setResetConfirmationCode] = useState('');
 
+    const [backupData, setBackupData] = useState<Partial<DB> | null>(null);
+    const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
     const handleBackup = async () => {
         setIsBackingUp(true);
@@ -60,8 +62,22 @@ export function BackupAndRestore() {
         const file = event.target.files?.[0];
         if (file) {
             if (file.type === 'application/json' || file.name.endsWith('.json')) {
-                setRestoreFile(file);
-                setIsRestoreAlertOpen(true);
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const jsonString = e.target?.result as string;
+                        const data = JSON.parse(jsonString);
+                        if (typeof data === 'object' && data !== null && Object.keys(data).length > 0) {
+                            setBackupData(data);
+                            setIsPreviewOpen(true);
+                        } else {
+                            toast.error("Fichier de sauvegarde invalide ou vide.");
+                        }
+                    } catch (error) {
+                        toast.error("Erreur lors de l'analyse du fichier JSON.");
+                    }
+                };
+                reader.readAsText(file);
             } else {
                 toast.error("Veuillez sélectionner un fichier de sauvegarde JSON valide (`.json`).");
             }
@@ -70,38 +86,15 @@ export function BackupAndRestore() {
             event.target.value = '';
         }
     };
-
-    const executeRestore = async () => {
-        if (!restoreFile) return;
-
-        setIsRestoring(true);
-        toast.info("Restauration en cours... Ne quittez pas cette page.");
-
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-            try {
-                const jsonString = e.target?.result as string;
-                await dataService.importData(jsonString);
-
-                toast.success("Restauration terminée avec succès !", {
-                    description: "L'application va maintenant se recharger."
-                });
-
-                setTimeout(() => window.location.reload(), 2000);
-
-            } catch (error) {
-                console.error("Erreur lors de la restauration:", error);
-                toast.error("Erreur lors de la restauration. Vérifiez le fichier de sauvegarde.", { duration: 10000 });
-                setIsRestoring(false);
-            }
-        };
-        reader.onerror = () => {
-             toast.error("Erreur de lecture du fichier.");
-             setIsRestoring(false);
-        };
-
-        reader.readAsText(restoreFile);
-    };
+    
+    const handleRestoreComplete = () => {
+        setIsPreviewOpen(false);
+        setBackupData(null);
+        toast.success("Restauration terminée avec succès !", {
+            description: "L'application va maintenant se recharger."
+        });
+        setTimeout(() => window.location.reload(), 2000);
+    }
 
     const executeReset = async () => {
         setIsResetting(true);
@@ -133,6 +126,13 @@ export function BackupAndRestore() {
 
     return (
         <>
+            {isPreviewOpen && backupData && (
+                <BackupPreview 
+                    backupData={backupData}
+                    onClose={() => setIsPreviewOpen(false)}
+                    onComplete={handleRestoreComplete}
+                />
+            )}
             <input 
                 type="file" 
                 ref={fileInputRef} 
@@ -150,18 +150,18 @@ export function BackupAndRestore() {
                  <div className="space-y-2">
                     <h4 className="font-semibold">Restaurer une sauvegarde</h4>
                     <p className="text-sm text-muted-foreground">
-                        <span className="font-bold text-destructive">Attention:</span> Cette action écrasera toutes les données actuelles de l'application.
+                        <span className="font-bold text-destructive">Attention:</span> Ouvre une interface pour prévisualiser, modifier et restaurer.
                     </p>
                 </div>
             </CardContent>
             <CardFooter className="grid sm:grid-cols-2 gap-4 border-t pt-6">
-                <Button onClick={handleBackup} disabled={isBackingUp || isRestoring || isResetting} className="w-full">
+                <Button onClick={handleBackup} disabled={isBackingUp || isResetting} className="w-full">
                     {isBackingUp ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
                     {isBackingUp ? 'Sauvegarde...' : 'Télécharger la sauvegarde'}
                 </Button>
-                <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isBackingUp || isRestoring || isResetting} className="w-full">
-                     {isRestoring ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
-                    {isRestoring ? 'Restauration...' : 'Restaurer depuis un fichier'}
+                <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isBackingUp || isResetting} className="w-full">
+                    <Upload className="mr-2 h-4 w-4" />
+                    Restaurer depuis un fichier
                 </Button>
             </CardFooter>
             
@@ -171,35 +171,12 @@ export function BackupAndRestore() {
                     <p className="text-sm text-destructive/90 mt-1 mb-4">
                         L'action ci-dessous est irréversible. Assurez-vous d'avoir une sauvegarde récente avant de continuer.
                     </p>
-                    <Button variant="destructive" onClick={() => handleOpenResetAlert(true)} disabled={isBackingUp || isRestoring || isResetting}>
+                    <Button variant="destructive" onClick={() => handleOpenResetAlert(true)} disabled={isBackingUp || isResetting}>
                         {isResetting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
                         {isResetting ? 'Réinitialisation...' : 'Réinitialiser l\'application'}
                     </Button>
                 </div>
             </div>
-
-            <AlertDialog open={isRestoreAlertOpen} onOpenChange={setIsRestoreAlertOpen}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle className="flex items-center gap-2">
-                            <AlertTriangle className="h-6 w-6 text-destructive" />
-                            Êtes-vous absolument sûr ?
-                        </AlertDialogTitle>
-                        <AlertDialogDescription>
-                            Cette action est <span className="font-bold">irréversible</span> et remplacera <span className="font-bold">toutes</span> les données actuelles par le contenu du fichier <span className="font-mono bg-muted px-1 py-0.5 rounded">{restoreFile?.name}</span>.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => setRestoreFile(null)}>Annuler</AlertDialogCancel>
-                        <AlertDialogAction 
-                            onClick={executeRestore} 
-                            className="bg-destructive hover:bg-destructive/90"
-                        >
-                            Confirmer et écraser les données
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
 
              <AlertDialog open={isResetAlertOpen} onOpenChange={handleOpenResetAlert}>
                 <AlertDialogContent>

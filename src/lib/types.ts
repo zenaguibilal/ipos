@@ -376,3 +376,22 @@ export interface DashboardDataType {
   topProducts: (Product & { totalVendu: number })[];
   expensesData: DashboardExpenseData[];
 }
+
+export interface DB {
+    products: Product[];
+    customers: Customer[];
+    sales: Sale[];
+    payments: Payment[];
+    stockIntakes: StockIntake[];
+    returns: ProductReturn[];
+    carts: Cart[];
+    drafts: Draft[];
+    companyProfile: CompanyProfile;
+    expenses: Expense[];
+    settings: Setting[];
+    notifications: Notification[];
+    inventoryLogs: InventoryLog[];
+    suppliers: Supplier[];
+    clients_pain: BreadClient[];
+    commandes_pain: BreadOrder[];
+}

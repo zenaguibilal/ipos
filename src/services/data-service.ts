@@ -1,16 +1,16 @@
 'use client';
 
 import { db, PosDatabase } from '@/lib/database';
-import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, Notification, InventoryLog, DashboardData, StockIntakeItem, CartItem, TopProduct, TopCustomer, GlobalActivityItem, ProductImportAnalysis, ZakatData, CostingItem, Draft, SaleItem, Supplier, ImportAnalysis, BreadClient, BreadOrder, BreadOrderWithClient } from '@/lib/types';
+import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, Notification, InventoryLog, DashboardData, StockIntakeItem, CartItem, TopProduct, TopCustomer, GlobalActivityItem, ProductImportAnalysis, ZakatData, CostingItem, Draft, SaleItem, Supplier, ImportAnalysis, BreadClient, BreadOrder, BreadOrderWithClient, DB } from '@/lib/types';
 import type { CollectionName } from './initial-data';
-import Dexie from 'dexie';
+import Dexie, { TableName } from 'dexie';
 import { subDays } from 'date-fns';
 import Papa from 'papaparse';
 import { calculateCartTotals } from '@/lib/utils';
 import { BREAD_WEEK_DAYS } from '@/lib/constants';
 import { sheetsService } from './googleSheets';
 
-type TableName = keyof Pick<PosDatabase, 
+type GenericTableName = keyof Pick<PosDatabase, 
     'products' | 'customers' | 'sales' | 'payments' | 
     'stockIntakes' | 'returns' | 'drafts' | 'companyProfile' | 
     'carts' | 'expenses' | 'settings' | 'notifications' | 'inventoryLogs' | 
@@ -23,11 +23,11 @@ class DataService {
   // Generic Read/Write Methods (Read methods don't need transactions)
   // ====================================================================
   
-  async getAll<T>(table: TableName): Promise<T[]> {
+  async getAll<T>(table: GenericTableName): Promise<T[]> {
     return db.table(table).toArray();
   }
 
-  async getById<T>(table: TableName, id: number | string): Promise<T | undefined> {
+  async getById<T>(table: GenericTableName, id: number | string): Promise<T | undefined> {
     return db.table(table).get(id);
   }
   
@@ -43,7 +43,7 @@ class DataService {
     return db.transaction('rw', db.settings, async () => {
         const result = await db.settings.put({ id, value });
         const record = await db.settings.get(id);
-        sheetsService.addToQueue('settings', 'upsert', record);
+        if(record) sheetsService.addToQueue('settings', 'upsert', record);
         return result;
     });
   }
@@ -217,7 +217,7 @@ class DataService {
           const productWithTs = { ...product, createdAt: new Date(), updatedAt: new Date() };
           const newId = await db.products.add(productWithTs as Product);
           const record = await db.products.get(newId);
-          sheetsService.addToQueue('products', 'upsert', record);
+          if(record) sheetsService.addToQueue('products', 'upsert', record);
 
           await db.inventoryLogs.add({
               productId: newId,
@@ -239,7 +239,7 @@ class DataService {
         const dataWithTs = { ...productData, updatedAt: new Date() };
         const result = await db.products.update(id, dataWithTs);
         const updatedRecord = await db.products.get(id);
-        sheetsService.addToQueue('products', 'upsert', updatedRecord);
+        if(updatedRecord) sheetsService.addToQueue('products', 'upsert', updatedRecord);
 
         if (productData.quantity !== undefined && oldProduct.quantity !== productData.quantity) {
              await db.inventoryLogs.add({
@@ -362,13 +362,17 @@ class DataService {
         return { customer, unpaidSales };
     }
 
-  async getCustomers(params: { query?: string; status?: 'all' | 'has_debt' | 'overdue' | 'over_limit', sortBy?: string }): Promise<Customer[]> {
-    const { query, status = 'all', sortBy = 'lastName_asc' } = params;
+  async getCustomers(params: { query?: string; status?: 'all' | 'has_debt' | 'overdue' | 'over_limit', sortBy?: string, limit?: number }): Promise<Customer[]> {
+    const { query, status = 'all', sortBy = 'lastName_asc', limit } = params;
     let collection: Dexie.Collection<Customer, number> = db.customers.toCollection();
 
     if (query) {
         const lowerQuery = query.toLowerCase();
         collection = collection.filter(c => c.searchName?.toLowerCase().includes(lowerQuery) || c.phone?.includes(lowerQuery));
+    }
+
+    if(limit) {
+      collection = collection.limit(limit);
     }
     
     let customersArray = await collection.toArray();
@@ -413,12 +417,16 @@ class DataService {
         const bValue = (b as any)[sortField];
 
         let comparison = 0;
-        if (aValue > bValue) comparison = 1;
-        else if (aValue < bValue) comparison = -1;
-
-        if (sortField.includes('Date')) {
-            if (!aValue) return 1;
-            if (!bValue) return -1;
+        if(sortField.includes('Date')) {
+            const dateA = aValue ? new Date(aValue).getTime() : 0;
+            const dateB = bValue ? new Date(bValue).getTime() : 0;
+            if (dateA > dateB) comparison = 1;
+            else if (dateA < dateB) comparison = -1;
+        } else if (typeof aValue === 'string') {
+            comparison = aValue.localeCompare(bValue);
+        } else {
+             if (aValue > bValue) comparison = 1;
+             else if (aValue < bValue) comparison = -1;
         }
 
         return sortOrder === 'desc' ? comparison * -1 : comparison;
@@ -436,7 +444,7 @@ class DataService {
         } as Customer;
         const newId = await db.customers.add(data);
         const record = await db.customers.get(newId);
-        sheetsService.addToQueue('customers', 'upsert', record);
+        if(record) sheetsService.addToQueue('customers', 'upsert', record);
         return newId;
     });
   }
@@ -446,7 +454,7 @@ class DataService {
           const data = { ...customer, updatedAt: new Date() };
           const result = await db.customers.update(id, data);
           const record = await db.customers.get(id);
-          sheetsService.addToQueue('customers', 'upsert', record);
+          if(record) sheetsService.addToQueue('customers', 'upsert', record);
           return result;
       });
   }
@@ -532,7 +540,7 @@ class DataService {
         } as Sale;
         const saleId = await db.sales.add(saleToSave);
         const record = await db.sales.get(saleId);
-        sheetsService.addToQueue('sales', 'upsert', record);
+        if(record) sheetsService.addToQueue('sales', 'upsert', record);
 
 
         // Update stock, logs, and check for low stock notifications
@@ -544,7 +552,7 @@ class DataService {
             const newQuantity = product.quantity - item.quantity;
             await db.products.update(item.id, { quantity: newQuantity, updatedAt: new Date() });
             const updatedProduct = await db.products.get(item.id);
-            sheetsService.addToQueue('products', 'upsert', updatedProduct);
+            if(updatedProduct) sheetsService.addToQueue('products', 'upsert', updatedProduct);
 
             
             await db.inventoryLogs.add({
@@ -579,7 +587,7 @@ class DataService {
                 c.updatedAt = new Date();
             });
             const updatedCustomer = await db.customers.get(customerId);
-            sheetsService.addToQueue('customers', 'upsert', updatedCustomer);
+            if(updatedCustomer) sheetsService.addToQueue('customers', 'upsert', updatedCustomer);
         }
         
         return saleId;
@@ -597,7 +605,7 @@ class DataService {
                 const newQuantity = (product?.quantity || 0) + item.quantity;
                 await db.products.update(item.id, { quantity: newQuantity, updatedAt: new Date() });
                 const updatedProduct = await db.products.get(item.id);
-                sheetsService.addToQueue('products', 'upsert', updatedProduct);
+                if(updatedProduct) sheetsService.addToQueue('products', 'upsert', updatedProduct);
 
                 await db.inventoryLogs.add({
                     productId: item.id,
@@ -617,7 +625,7 @@ class DataService {
                 c.updatedAt = new Date();
             });
             const updatedCustomer = await db.customers.get(sale.customerId);
-            sheetsService.addToQueue('customers', 'upsert', updatedCustomer);
+            if(updatedCustomer) sheetsService.addToQueue('customers', 'upsert', updatedCustomer);
         }
 
         await db.sales.delete(id);
@@ -646,7 +654,7 @@ class DataService {
         };
         const newId = await db.drafts.add(draft as Draft);
         const record = await db.drafts.get(newId);
-        sheetsService.addToQueue('drafts', 'upsert', record);
+        if(record) sheetsService.addToQueue('drafts', 'upsert', record);
         return newId;
     });
   }
@@ -672,11 +680,11 @@ class DataService {
             if (!supplier) {
                 const supplierId = await db.suppliers.add({ name: supplierName, balance: 0, createdAt: new Date(), updatedAt: new Date() } as Supplier);
                 supplier = await db.suppliers.get(supplierId);
-                sheetsService.addToQueue('suppliers', 'upsert', supplier);
+                if(supplier) sheetsService.addToQueue('suppliers', 'upsert', supplier);
             } else {
                  await db.suppliers.update(supplier.id!, { updatedAt: new Date() });
                  supplier = await db.suppliers.get(supplier.id!);
-                 sheetsService.addToQueue('suppliers', 'upsert', supplier);
+                 if(supplier) sheetsService.addToQueue('suppliers', 'upsert', supplier);
             }
 
 
@@ -718,7 +726,7 @@ class DataService {
                     };
                     productId = await db.products.add(newProduct);
                     const newProductRecord = await db.products.get(productId);
-                    sheetsService.addToQueue('products', 'upsert', newProductRecord);
+                    if(newProductRecord) sheetsService.addToQueue('products', 'upsert', newProductRecord);
 
                 } else if (productId) {
                     const product = await db.products.get(productId);
@@ -738,7 +746,7 @@ class DataService {
                     ...productUpdateData 
                 });
                 const updatedProduct = await db.products.get(productId);
-                sheetsService.addToQueue('products', 'upsert', updatedProduct);
+                if(updatedProduct) sheetsService.addToQueue('products', 'upsert', updatedProduct);
 
                 await db.inventoryLogs.add({
                     productId, change: quantityToAdd, newQuantity,
@@ -757,7 +765,7 @@ class DataService {
             // Step 4: Update the intake with processed items and queue for sync
             await db.stockIntakes.update(intakeId, { items: persistedItems });
             const intakeRecord = await db.stockIntakes.get(intakeId);
-            sheetsService.addToQueue('stockIntakes', 'upsert', intakeRecord);
+            if(intakeRecord) sheetsService.addToQueue('stockIntakes', 'upsert', intakeRecord);
 
             return intakeId;
         });
@@ -773,7 +781,7 @@ class DataService {
                         updatedAt: new Date()
                     });
                     const record = await db.products.get(item.productId);
-                    sheetsService.addToQueue('products', 'upsert', record);
+                    if(record) sheetsService.addToQueue('products', 'upsert', record);
                 }
             }
         });
@@ -801,7 +809,7 @@ class DataService {
           } as Payment;
           const id = await db.payments.add(data);
           const record = await db.payments.get(id);
-          sheetsService.addToQueue('payments', 'upsert', record);
+          if(record) sheetsService.addToQueue('payments', 'upsert', record);
 
           await db.customers.where('id').equals(paymentData.customerId).modify(c => {
               c.outstandingBalance = Math.max(0, c.outstandingBalance - paymentData.amount);
@@ -809,7 +817,7 @@ class DataService {
               c.updatedAt = new Date();
           });
           const updatedCustomer = await db.customers.get(paymentData.customerId);
-          sheetsService.addToQueue('customers', 'upsert', updatedCustomer);
+          if(updatedCustomer) sheetsService.addToQueue('customers', 'upsert', updatedCustomer);
 
           return id;
       });
@@ -833,7 +841,7 @@ class DataService {
           const data = { ...returnData, createdAt: new Date(), updatedAt: new Date() } as ProductReturn;
           const returnId = await db.returns.add(data);
           const record = await db.returns.get(returnId);
-          sheetsService.addToQueue('returns', 'upsert', record);
+          if(record) sheetsService.addToQueue('returns', 'upsert', record);
 
           for (const item of returnData.items) {
               if (item.productId && item.wasRestocked) {
@@ -841,7 +849,7 @@ class DataService {
                   const newQuantity = (product?.quantity || 0) + item.quantity;
                   await db.products.update(item.productId, { quantity: newQuantity, updatedAt: new Date() });
                   const updatedProduct = await db.products.get(item.productId);
-                  sheetsService.addToQueue('products', 'upsert', updatedProduct);
+                  if(updatedProduct) sheetsService.addToQueue('products', 'upsert', updatedProduct);
 
                    await db.inventoryLogs.add({
                         productId: item.productId, change: item.quantity, newQuantity,
@@ -858,7 +866,7 @@ class DataService {
                   c.updatedAt = new Date();
               });
               const updatedCustomer = await db.customers.get(returnData.customerId);
-              sheetsService.addToQueue('customers', 'upsert', updatedCustomer);
+              if(updatedCustomer) sheetsService.addToQueue('customers', 'upsert', updatedCustomer);
           }
           return returnId;
       });
@@ -874,7 +882,7 @@ class DataService {
                     const newQuantity = (product?.quantity || 0) - item.quantity;
                     await db.products.update(item.productId, { quantity: newQuantity, updatedAt: new Date() });
                     const updatedProduct = await db.products.get(item.productId);
-                    sheetsService.addToQueue('products', 'upsert', updatedProduct);
+                    if(updatedProduct) sheetsService.addToQueue('products', 'upsert', updatedProduct);
 
                      await db.inventoryLogs.add({
                         productId: item.productId, change: -item.quantity, newQuantity,
@@ -890,7 +898,7 @@ class DataService {
                     c.updatedAt = new Date();
                  });
                  const updatedCustomer = await db.customers.get(productReturn.customerId);
-                 sheetsService.addToQueue('customers', 'upsert', updatedCustomer);
+                 if(updatedCustomer) sheetsService.addToQueue('customers', 'upsert', updatedCustomer);
             }
             await db.returns.delete(id);
             sheetsService.addToQueue('returns', 'delete', { id });
@@ -917,7 +925,7 @@ class DataService {
         const data = { ...expense, createdAt: new Date(), updatedAt: new Date() } as Expense;
         const newId = await db.expenses.add(data);
         const record = await db.expenses.get(newId);
-        sheetsService.addToQueue('expenses', 'upsert', record);
+        if(record) sheetsService.addToQueue('expenses', 'upsert', record);
         return newId;
     }); 
   }
@@ -926,7 +934,7 @@ class DataService {
         const data = { ...expenseData, updatedAt: new Date() };
         const result = await db.expenses.update(id, data);
         const record = await db.expenses.get(id);
-        sheetsService.addToQueue('expenses', 'upsert', record);
+        if(record) sheetsService.addToQueue('expenses', 'upsert', record);
         return result;
     }); 
   }
@@ -1002,29 +1010,82 @@ class DataService {
 
   async exportData(): Promise<string> {
     const data: Partial<DB> = {};
-    const tables: CollectionName[] = ['products', 'customers', 'sales', 'payments', 'stockIntakes', 'returns', 'expenses', 'notifications', 'settings', 'inventoryLogs', 'suppliers', 'clients_pain', 'commandes_pain'];
+    const tables: (keyof DB)[] = ['products', 'customers', 'sales', 'payments', 'stockIntakes', 'returns', 'expenses', 'notifications', 'settings', 'inventoryLogs', 'suppliers', 'clients_pain', 'commandes_pain', 'carts', 'drafts', 'companyProfile'];
     await db.transaction('r', ...db.tables, async () => {
-        for (const tableName of tables) data[tableName] = await db.table(tableName).toArray();
-        const profile = await db.companyProfile.get(1);
-        if(profile) data.companyProfile = profile;
+        for (const tableName of tables) {
+            if (tableName === 'companyProfile') {
+                const profile = await db.companyProfile.get(1);
+                if(profile) (data as any)[tableName] = profile;
+            } else {
+                (data as any)[tableName] = await db.table(tableName).toArray();
+            }
+        }
     });
     return JSON.stringify(data, null, 2);
   }
 
   async importData(jsonString: string): Promise<void> {
       const data: Partial<DB> = JSON.parse(jsonString);
-      const tables: (CollectionName | 'companyProfile')[] = ['products', 'customers', 'sales', 'payments', 'stockIntakes', 'returns', 'expenses', 'notifications', 'settings', 'inventoryLogs', 'suppliers', 'clients_pain', 'commandes_pain', 'companyProfile'];
+      const tables: (keyof DB)[] = ['products', 'customers', 'sales', 'payments', 'stockIntakes', 'returns', 'expenses', 'notifications', 'settings', 'inventoryLogs', 'suppliers', 'clients_pain', 'commandes_pain', 'carts', 'drafts', 'companyProfile'];
       return db.transaction('rw', ...db.tables, async () => {
-          for (const tableName of tables) await db.table(tableName)?.clear();
           for (const tableName of tables) {
+              const table = db.table(tableName);
+              if(table) await table.clear();
+              
               const tableData = data[tableName as keyof DB];
               if (tableData) {
-                  if (tableName === 'companyProfile' && !Array.isArray(tableData)) await db.companyProfile.put(tableData as CompanyProfile);
-                  else if (Array.isArray(tableData)) await db.table(tableName).bulkAdd(tableData);
+                  if (tableName === 'companyProfile' && !Array.isArray(tableData)) {
+                      await db.companyProfile.put(tableData as CompanyProfile);
+                  }
+                  else if (Array.isArray(tableData)) {
+                      await table.bulkAdd(tableData);
+                  }
               }
           }
       });
   }
+
+  async restoreTables(data: Partial<DB>, tables: string[], onProgress: (progress: any) => void): Promise<void> {
+    const total = tables.length;
+    let current = 0;
+    const done: { table: string; success: boolean; error?: string }[] = [];
+
+    for (const tableName of tables) {
+        current++;
+        onProgress({ current, total, currentTable: tableName, done });
+        
+        const table = db[tableName as GenericTableName];
+        if (!table) {
+            done.push({ table: tableName, success: false, error: "Table non trouvée" });
+            continue;
+        }
+
+        try {
+            await db.transaction('rw', table, async () => {
+                await table.clear();
+                const tableData = data[tableName as keyof typeof data];
+                if (tableData) {
+                    if (Array.isArray(tableData)) {
+                        if (tableData.length > 0) {
+                            await table.bulkPut(tableData);
+                        }
+                    } else if (tableName === 'companyProfile' && typeof tableData === 'object') {
+                        // Handle singleton table
+                        await (db.companyProfile as any).put(tableData);
+                    }
+                }
+            });
+            done.push({ table: tableName, success: true });
+        } catch (error: any) {
+            console.error(`Error restoring table ${tableName}:`, error);
+            done.push({ table: tableName, success: false, error: error.message });
+        }
+
+        onProgress({ current, total, currentTable: tableName, done });
+        await new Promise(r => setTimeout(r, 200));
+    }
+  }
+
 
   async resetDatabase(): Promise<void> {
     return db.transaction('rw', ...db.tables, async () => {
@@ -1203,7 +1264,7 @@ class DataService {
         const data = { ...client, createdAt: new Date(), updatedAt: new Date() };
         const newId = await db.clients_pain.add(data);
         const record = await db.clients_pain.get(newId);
-        sheetsService.addToQueue('clients_pain', 'upsert', record);
+        if(record) sheetsService.addToQueue('clients_pain', 'upsert', record);
         return newId;
     });
   }
@@ -1213,7 +1274,7 @@ class DataService {
         const dataWithTs = { ...data, updatedAt: new Date() };
         const result = await db.clients_pain.update(id, dataWithTs);
         const record = await db.clients_pain.get(id);
-        sheetsService.addToQueue('clients_pain', 'upsert', record);
+        if(record) sheetsService.addToQueue('clients_pain', 'upsert', record);
         return result;
     });
   }
@@ -1301,14 +1362,14 @@ class DataService {
         } as BreadOrder;
         const newId = await db.commandes_pain.add(data);
         const record = await db.commandes_pain.get(newId);
-        sheetsService.addToQueue('commandes_pain', 'upsert', record);
+        if(record) sheetsService.addToQueue('commandes_pain', 'upsert', record);
     });
   }
 
   async updateBreadOrderDeliveryStatus(orderId: number, est_livre: boolean): Promise<void> {
     await db.commandes_pain.update(orderId, { est_livre, updatedAt: new Date() });
     const record = await db.commandes_pain.get(orderId);
-    sheetsService.addToQueue('commandes_pain', 'upsert', record);
+    if(record) sheetsService.addToQueue('commandes_pain', 'upsert', record);
   }
 
   async updateBreadOrderQuantity(orderId: number, newQuantity: number): Promise<void> {
@@ -1321,7 +1382,7 @@ class DataService {
       }
       await db.commandes_pain.update(orderId, updateData);
       const record = await db.commandes_pain.get(orderId);
-      sheetsService.addToQueue('commandes_pain', 'upsert', record);
+      if(record) sheetsService.addToQueue('commandes_pain', 'upsert', record);
     });
   }
 
@@ -1355,7 +1416,7 @@ class DataService {
 
         const saleId = await db.sales.add(saleDataForDb);
         const saleRecord = await db.sales.get(saleId);
-        sheetsService.addToQueue('sales', 'upsert', saleRecord);
+        if(saleRecord) sheetsService.addToQueue('sales', 'upsert', saleRecord);
 
 
         if (mainCustomer) {
@@ -1366,32 +1427,15 @@ class DataService {
                 c.updatedAt = new Date();
             });
             const customerRecord = await db.customers.get(mainCustomer.id!);
-            sheetsService.addToQueue('customers', 'upsert', customerRecord);
+            if(customerRecord) sheetsService.addToQueue('customers', 'upsert', customerRecord);
         }
         
         await db.commandes_pain.update(order.id!, { vente_id: saleId, est_paye: true, updatedAt: new Date() });
         const orderRecord = await db.commandes_pain.get(order.id!);
-        sheetsService.addToQueue('commandes_pain', 'upsert', orderRecord);
+        if(orderRecord) sheetsService.addToQueue('commandes_pain', 'upsert', orderRecord);
       }
     });
   }
-}
-
-interface DB {
-    products: Product[];
-    customers: Customer[];
-    sales: Sale[];
-    payments: Payment[];
-    stockIntakes: StockIntake[];
-    returns: ProductReturn[];
-    expenses: Expense[];
-    notifications: Notification[];
-    settings: Setting[];
-    inventoryLogs: InventoryLog[];
-    suppliers: Supplier[];
-    clients_pain: BreadClient[];
-    commandes_pain: BreadOrder[];
-    companyProfile?: CompanyProfile;
 }
 
 export const dataService = new DataService();

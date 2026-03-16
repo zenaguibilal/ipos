@@ -5,83 +5,72 @@
 
 @layer base {
   :root {
-    --background: 24 20% 97%; /* #f8f4f0 */
-    --foreground: 240 10% 15%; /* #1a1a2e */
+    --background: 28 20% 6%; /* #1a120c */
+    --foreground: 30 25% 90%; /* Light beige */
+
+    --card: 28 20% 8%;
+    --card-foreground: 30 25% 90%;
  
-    --card: 0 0% 100%;
-    --card-foreground: 240 10% 15%;
+    --popover: 28 20% 6%;
+    --popover-foreground: 30 25% 90%;
  
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 34 100% 65%; /* #ffb74d - Bright Amber */
+    --primary-foreground: 28 30% 10%;
+
+    --secondary: 30 15% 20%;
+    --secondary-foreground: 30 25% 90%;
  
-    --primary: 26 94% 48%; /* #ea6c0a */
-    --primary-foreground: 0 0% 100%;
+    --muted: 30 15% 20%;
+    --muted-foreground: 30 20% 65%;
  
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 215.4 16.3% 46.9%;
+    --accent: 30 15% 25%;
+    --accent-foreground: 30 25% 95%;
  
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 240 5% 45%;
- 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
- 
-    --destructive: 355 72% 51%; /* #dc2626 */
+    --destructive: 0 60% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 142 71% 31%; /* #16a34a */
-    --success-foreground: 0 0% 100%;
-
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 26 94% 48%;
+    --border: 34 100% 65%;
+    --input: 30 15% 20%;
+    --ring: 34 100% 75%;
  
     --radius: 1.5rem;
-
-    --chart-primary: 26 94% 48%;
-    --chart-secondary: 28 80% 70%;
-    --chart-tertiary: 10 70% 65%;
-    --chart-quaternary: 150 60% 55%;
-    --chart-quinary: 280 92% 62%;
   }
  
   .dark {
-    --background: 240 21% 5%; /* #0a0a0f */
-    --foreground: 0 0% 100%; /* #ffffff */
+     /* Same as root for forced dark mode */
+    --background: 28 20% 6%;
+    --foreground: 30 25% 90%;
 
-    --card: 240 21% 8%;
-    --card-foreground: 0 0% 100%;
+    --card: 28 20% 8%;
+    --card-foreground: 30 25% 90%;
  
-    --popover: 240 21% 5%;
-    --popover-foreground: 0 0% 100%;
+    --popover: 28 20% 6%;
+    --popover-foreground: 30 25% 90%;
  
-    --primary: 27 95% 53%; /* #f97316 */
-    --primary-foreground: 240 10% 15%;
+    --primary: 34 100% 65%;
+    --primary-foreground: 28 30% 10%;
     
-    --secondary: 240 5% 15%;
-    --secondary-foreground: 0 0% 95%;
- 
-    --muted: 240 5% 15%;
-    --muted-foreground: 0 0% 60%;
- 
-    --accent: 240 5% 18%;
-    --accent-foreground: 0 0% 98%;
- 
-    --destructive: 0 63% 51%; /* #ef4444 */
-    --destructive-foreground: 0 0% 100%;
-
-    --success: 142 71% 41%; /* #22c55e */
-    --success-foreground: 0 0% 100%;
-
-    --border: 27 95% 53%;
-    --input: 240 5% 15%;
-    --ring: 27 95% 53%;
-
-    --chart-primary: 27 95% 53%;
+    --chart-primary: 34 100% 65%;
     --chart-secondary: 28 80% 70%;
     --chart-tertiary: 10 70% 65%;
     --chart-quaternary: 150 60% 55%;
     --chart-quinary: 280 92% 62%;
+
+    --secondary: 30 15% 20%;
+    --secondary-foreground: 30 25% 90%;
+ 
+    --muted: 30 15% 20%;
+    --muted-foreground: 30 20% 65%;
+ 
+    --accent: 30 15% 25%;
+    --accent-foreground: 30 25% 95%;
+ 
+    --destructive: 0 70% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 34 100% 65%;
+    --input: 30 15% 20%;
+    --ring: 34 100% 75%;
   }
 }
  
@@ -91,64 +80,29 @@
   }
   body {
     @apply bg-background text-foreground;
+    background: linear-gradient(160deg, hsl(20, 36%, 8%) 0%, hsl(30, 43%, 5%) 100%);
+    background-size: 200% 200%;
+    animation: warm-gradient 15s ease infinite;
+    position: relative;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100vw;
+    height: 100vh;
+    background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMCIgaGVpZ2h0PSIzMCI+PHJlY3Qgd2lkdGg9IjMwIiBoZWlnaHQ9IjMwIiBmaWxsPSJub25lIi8+PHJlY3QgeD0iMTQiIHk9IjE0IiB3aWR0aD0iMSIgaGVpZ2h0PSIxIiBmaWxsPSJoc2woMzAgMjAlIDY1JCAvIDAuMDUpIi8+PC9zdmc+');
+    z-index: -1;
+    pointer-events: none;
   }
 }
 
 @layer components {
-  /* New dashboard styles */
-  .bg-dark {
-    background: radial-gradient(
-      ellipse at 0% 0%,
-      hsl(var(--primary) / 0.1) 0%,
-      hsl(var(--background)) 50%
-    );
-    min-height: 100vh;
-  }
-  .bg-light {
-    background: radial-gradient(
-      ellipse at 0% 0%,
-      hsl(var(--primary) / 0.1) 0%,
-      hsl(var(--background)) 50%
-    );
-    min-height: 100vh;
-  }
-
-  .glass-card {
-    @apply rounded-2xl border transition-all duration-300;
-  }
-
-  .glass-card-light {
-    background-color: rgba(255, 255, 255, 0.7);
-    border-color: hsl(var(--primary) / 0.3);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    box-shadow: 0 8px 32px hsl(var(--primary) / 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.8);
-  }
-  .glass-card-light:hover {
-    border-color: hsl(var(--primary) / 0.6);
-    box-shadow: 0 12px 40px hsl(var(--primary) / 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.9);
-    transform: translateY(-4px);
-  }
-
-  .glass-card-dark {
-    background-color: rgba(255, 255, 255, 0.05);
-    border-color: hsl(var(--primary) / 0.2);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
-  }
-  .glass-card-dark:hover {
-    border-color: hsl(var(--primary) / 0.5);
-    box-shadow: 0 8px 32px hsl(var(--primary) / 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15);
-    transform: translateY(-4px);
-  }
-  
-  .orange-glow {
-    text-shadow: 0 0 20px hsl(var(--primary) / 0.5);
-  }
-
-  /* Old luxury glass style - now adapted to new theme */
-   .luxury-glass {
+  .luxury-glass {
     @apply rounded-3xl border shadow-xl transition-all duration-300;
     background-color: hsl(var(--card) / 0.7);
     border-color: hsl(var(--border) / 0.15);
@@ -168,7 +122,7 @@
   height: 10px;
 }
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: hsl(var(--background) / 0.5);
 }
 ::-webkit-scrollbar-thumb {
   background: hsl(var(--primary) / 0.3);
@@ -181,29 +135,83 @@
   background-clip: content-box;
 }
 
+
 /* Common print styles */
 @media print {
-    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: #fff !important; }
-    .print-hide { display: none !important; }
-    body > *:not(#receipt-for-print):not(.print-dialog-content) { display: none !important; }
+    body {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        background: #fff !important;
+    }
+
+    .print-hide {
+        display: none !important;
+    }
+
+    /* Hide everything except the specific print area */
+    body > *:not(#receipt-for-print):not(.print-dialog-content) {
+        display: none !important;
+    }
 }
-#receipt-for-print { display: none; }
+
+/* Print container for receipts */
+#receipt-for-print {
+    display: none; /* Hidden by default */
+}
 @media print {
-    #receipt-for-print { display: block !important; visibility: visible !important; position: absolute; left: 0; top: 0; margin: 0; padding: 0; width: 100%; }
-    #receipt-for-print * { visibility: visible !important; }
+    #receipt-for-print {
+        display: block !important;
+        visibility: visible !important;
+        position: absolute;
+        left: 0;
+        top: 0;
+        margin: 0;
+        padding: 0;
+        width: 100%;
+    }
+    #receipt-for-print * {
+       visibility: visible !important;
+    }
 }
-@page { size: a4; margin: 1cm; }
-.a4-receipt { page-break-before: always; }
-@page thermal-page { size: 80mm auto; margin: 3mm; }
-html.thermal, body.thermal { width: 80mm; background: white !important; }
+
+
+/* A4 Print Specific Styles */
+@page {
+    size: a4;
+    margin: 1cm;
+}
+.a4-receipt {
+    page-break-before: always;
+}
+
+
+/* Thermal Print Specific Styles */
+@page thermal-page {
+    size: 80mm auto;
+    margin: 3mm;
+}
+html.thermal, body.thermal {
+    width: 80mm;
+    background: white !important;
+}
 .thermal-receipt {
-    page: thermal-page; page-break-before: always; font-family: 'Courier New', Courier, monospace !important;
-    width: 100% !important; color: black !important; background: white !important;
-    box-shadow: none !important; border: none !important; font-size: 10pt !important; line-height: 1.2 !important;
+    page: thermal-page;
+    page-break-before: always;
+    font-family: 'Courier New', Courier, monospace !important;
+    width: 100% !important;
+    color: black !important;
+    background: white !important;
+    box-shadow: none !important;
+    border: none !important;
+    font-size: 10pt !important;
+    line-height: 1.2 !important;
 }
 .thermal-receipt * {
-    font-family: 'Courier New', Courier, monospace !important; color: black !important; background: transparent !important;
-    font-size: 10pt !important; line-height: 1.2 !important;
+    font-family: 'Courier New', Courier, monospace !important;
+    color: black !important;
+    background: transparent !important;
+    font-size: 10pt !important;
+    line-height: 1.2 !important;
 }
 .thermal-receipt .text-lg { font-size: 12pt !important; }
 .thermal-receipt .text-base { font-size: 10pt !important; }
@@ -212,14 +220,38 @@ html.thermal, body.thermal { width: 80mm; background: white !important; }
 .thermal-receipt .border-dashed { border-style: dashed !important; }
 .thermal-receipt .border-black { border-color: black !important; }
 .thermal-receipt .font-bold { font-weight: 700 !important; }
-.barcode-label { break-inside: avoid; }
+
+
+/* Barcode Label Printing Styles */
+.barcode-label {
+    break-inside: avoid;
+}
+
 @media print {
     .print-dialog-content {
-        display: block !important; position: static !important; width: 100% !important; max-width: none !important;
-        height: auto !important; max-height: none !important; border: none !important; box-shadow: none !important;
-        padding: 0 !important; margin: 0 !important; transform: none !important; animation: none !important;
+        display: block !important;
+        position: static !important;
+        width: 100% !important;
+        max-width: none !important;
+        height: auto !important;
+        max-height: none !important;
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        transform: none !important;
+        animation: none !important;
     }
-    .print-dialog-content #label-print-area-wrapper { overflow: visible !important; }
-    .print-dialog-content #label-print-area { display: block !important; overflow: visible !important; background: transparent !important; padding: 0 !important; }
-    .label-sheet { gap: 0 !important; }
+    .print-dialog-content #label-print-area-wrapper {
+        overflow: visible !important;
+    }
+    .print-dialog-content #label-print-area {
+        display: block !important;
+        overflow: visible !important;
+        background: transparent !important;
+        padding: 0 !important;
+    }
+    .label-sheet {
+        gap: 0 !important;
+    }
 }
