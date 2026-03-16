@@ -1,45 +1,65 @@
 'use client';
 
 import { useSync } from '@/hooks/useSync';
+import { Button } from '@/components/ui/button';
+import { RefreshCw, Wifi, WifiOff, Check, AlertTriangle, Loader2 } from 'lucide-react';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
 
 export const SyncIndicator = () => {
   const { syncStatus, syncNow } = useSync();
 
-  let statusText = '';
-  let statusClass = '';
-
-  if (syncStatus.isSyncing) {
-    statusText = 'Synchronisation...';
-  } else if (syncStatus.pendingItems > 0) {
-    statusText = `${syncStatus.pendingItems} en attente`;
-  } else if (syncStatus.lastSync) {
-    statusText = `Sync: ${new Date(syncStatus.lastSync).toLocaleTimeString('fr-FR')}`;
+  const getStatusInfo = () => {
+    if (syncStatus.isSyncing) {
+        return { text: 'Sync...', icon: <Loader2 className="h-4 w-4 animate-spin text-primary" />, color: 'text-primary' };
+    }
+    if (syncStatus.error) {
+        return { text: 'Erreur', icon: <AlertTriangle className="h-4 w-4 text-destructive" />, color: 'text-destructive', tooltip: syncStatus.error };
+    }
+    if (syncStatus.pendingItems > 0) {
+        return { text: `${syncStatus.pendingItems} en attente`, icon: <RefreshCw className="h-4 w-4 text-chart-secondary" />, color: 'text-chart-secondary' };
+    }
+    if (syncStatus.lastSync) {
+        const timeAgo = format(new Date(syncStatus.lastSync), 'HH:mm', { locale: fr });
+        return { text: `Sync: ${timeAgo}`, icon: <Check className="h-4 w-4 text-success" />, color: 'text-success' };
+    }
+    return { text: syncStatus.isOnline ? 'En ligne' : 'Hors ligne', icon: syncStatus.isOnline ? <Wifi className="h-4 w-4 text-success" /> : <WifiOff className="h-4 w-4 text-muted-foreground" />, color: syncStatus.isOnline ? 'text-success' : 'text-muted-foreground' };
   }
 
-  if (syncStatus.error) {
-    statusClass = 'text-destructive';
-    statusText = 'Erreur Sync';
-  }
-
+  const { text, icon, color, tooltip } = getStatusInfo();
 
   return (
-    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-      <span
-        className={cn('h-2.5 w-2.5 rounded-full border', syncStatus.isOnline ? 'bg-success border-green-400' : 'bg-destructive border-red-400')}
-        title={syncStatus.isOnline ? 'En ligne' : 'Hors ligne'}
-      />
-      
-      {statusText && <span title={syncStatus.error ?? statusText}>{statusText}</span>}
+    <div className="flex items-center gap-2">
+        <TooltipProvider>
+            <Tooltip>
+                <TooltipTrigger asChild>
+                     <div className={cn("flex items-center gap-1.5 text-xs font-medium", color)}>
+                        {icon}
+                        <span className="hidden sm:inline">{text}</span>
+                    </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                    {tooltip || text}
+                </TooltipContent>
+            </Tooltip>
+        </TooltipProvider>
 
-      <button
-        onClick={syncNow}
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() => syncNow()}
         disabled={syncStatus.isSyncing || !syncStatus.isOnline}
-        title="Synchroniser avec Google Sheets"
-        className="text-muted-foreground hover:text-foreground transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+        className="h-8 w-8 rounded-full"
       >
-        <svg className={cn('h-4 w-4', syncStatus.isSyncing && 'animate-spin')} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-      </button>
+        <RefreshCw className={cn("h-4 w-4 text-muted-foreground", syncStatus.isSyncing && "animate-spin")} />
+      </Button>
     </div>
   );
 };

@@ -15,7 +15,7 @@ export function SyncData() {
     const companyProfile = useLiveQuery(() => dataService.getCompanyProfile());
 
     const handleSync = async () => {
-        toast.info("Lancement de la synchronisation...");
+        toast.info("Lancement de la synchronisation complète...");
         try {
             await syncNow();
             toast.success("Synchronisation terminée avec succès !");
@@ -48,6 +48,11 @@ export function SyncData() {
                  {syncStatus.lastSync && (
                     <p className="text-sm text-muted-foreground mt-4">
                         Dernière synchronisation réussie le : <span className="font-semibold">{format(new Date(syncStatus.lastSync), 'd MMMM yyyy à HH:mm', { locale: fr })}</span>
+                    </p>
+                )}
+                 {syncStatus.error && (
+                    <p className="text-sm text-destructive mt-4">
+                        Erreur de synchronisation: {syncStatus.error}
                     </p>
                 )}
             </CardContent>
