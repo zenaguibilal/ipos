@@ -3,6 +3,7 @@ import './globals.css';
 import { Toaster } from '@/components/ui/sonner';
 import { Inter } from 'next/font/google';
 import { ThemeProvider } from '@/components/layout/theme-provider';
+import { PwaHandler } from '@/components/PwaHandler';
 
 const APP_NAME = "iPOS";
 const APP_DEFAULT_TITLE = "iPOS - Point de Vente";
@@ -60,7 +61,9 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#f97316",
+  themeColor: "#ffb74d",
+  width: "device-width",
+  initialScale: 1,
 };
 
 
@@ -72,7 +75,7 @@ export default function RootLayout({
   return (
     <html lang="fr" suppressHydrationWarning>
       <head>
-          <meta name="msapplication-TileColor" content="#f97316" />
+          <meta name="msapplication-TileColor" content="#ffb74d" />
           <meta name="msapplication-TileImage" content="/icons/icon-144x144.png" />
       </head>
       <body className={inter.className}>
@@ -85,6 +88,7 @@ export default function RootLayout({
           {children}
           <Toaster richColors />
           <div id="receipt-for-print" className="hidden"></div>
+          <PwaHandler />
         </ThemeProvider>
       </body>
     </html>

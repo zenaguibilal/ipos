@@ -1,13 +1,11 @@
 {
   "name": "iPOS - Point de Vente",
   "short_name": "iPOS",
-  "description": "Application de point de vente hors ligne pour épicerie",
   "start_url": "/",
   "display": "standalone",
-  "orientation": "portrait-primary",
-  "background_color": "#0a0a0f",
-  "theme_color": "#f97316",
-  "categories": ["business", "productivity"],
+  "background_color": "#1a120c",
+  "theme_color": "#ffb74d",
+  "description": "Application de point de vente hors ligne pour épicerie",
   "icons": [
     {
       "src": "/icons/icon-72x72.png",
@@ -62,18 +60,6 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
-    }
-  ],
-  "shortcuts": [
-    {
-      "name": "Nouvelle Vente",
-      "url": "/sell",
-      "icons": [{ "src": "/icons/icon-96x96.png", "sizes": "96x96" }]
-    },
-    {
-      "name": "Tableau de Bord",
-      "url": "/dashboard",
-      "icons": [{ "src": "/icons/icon-96x96.png", "sizes": "96x96" }]
     }
   ]
 }
