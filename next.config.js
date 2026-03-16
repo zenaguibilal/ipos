@@ -7,9 +7,6 @@ const withPWA = require("@ducanh2912/next-pwa")({
 });
 
 const nextConfig = {
-    devIndicators: {
-        allowedDevOrigins: ["https://*.cloudworkstations.dev"],
-    },
     images: {
         remotePatterns: [
             {
