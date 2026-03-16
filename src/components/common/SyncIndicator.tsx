@@ -12,9 +12,22 @@ import {
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { toast } from 'sonner';
 
 export const SyncIndicator = () => {
   const { syncStatus, syncNow } = useSync();
+
+  const handleSync = async () => {
+    toast.info("Lancement de la synchronisation...");
+    try {
+        await syncNow();
+        toast.success("Synchronisation terminée avec succès !");
+    } catch (error: any) {
+        toast.error("Échec de la synchronisation.", {
+            description: error.message || "Veuillez vérifier votre connexion et l'URL du script."
+        });
+    }
+  };
 
   const getStatusInfo = () => {
     if (syncStatus.isSyncing) {
@@ -54,7 +67,7 @@ export const SyncIndicator = () => {
       <Button
         variant="ghost"
         size="icon"
-        onClick={() => syncNow()}
+        onClick={handleSync}
         disabled={syncStatus.isSyncing || !syncStatus.isOnline}
         className="h-8 w-8 rounded-full"
       >
