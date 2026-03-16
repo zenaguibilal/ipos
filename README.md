@@ -17,17 +17,17 @@ Toutes les données de l'application (produits, ventes, clients, etc.) sont stoc
 
 iPOS est une solution tout-en-un qui couvre tous les aspects de la gestion de votre commerce :
 
--   **📊 Tableau de Bord Analytique :** Vue d'ensemble en temps réel des KPIs (Revenu, Bénéfice, Ventes), graphiques, alertes de stock et activité récente.
--   **🛒 Point de Vente (POS) Rapide :** Interface de caisse optimisée pour la vitesse avec gestion multi-paniers, recherche par code-barres, gestion des clients (y compris les dettes) et remises.
+-   **📊 Tableau de Bord Analytique :** Vue d'ensemble en temps réel des indicateurs de performance (Revenu, Bénéfice, Ventes), graphiques, alertes de stock et activité récente.
+-   **🛒 Point de Vente (POS) Rapide :** Interface de caisse optimisée pour la vitesse avec gestion multi-paniers, recherche par code-barres, gestion des clients (y compris les dettes) et impression de reçus.
 -   **📦 Gestion d'Inventaire Complète :** Catalogue de produits avec gestion des catégories, prix d'achat/vente, stock minimum, dates d'expiration et support pour l'import/export CSV.
--   **👥 Gestion des Clients (CRM) :** Suivi détaillé de l'historique d'achat, gestion des crédits, des plafonds et des paiements.
--   **🍞 Module de Commandes Spécialisé :** Un système puissant pour gérer les commandes récurrentes (ex: pain) avec génération automatique, suivi de livraison et de paiement.
+-   **👥 Gestion des Clients (CRM) :** Suivi détaillé de l'historique d'achat, gestion des crédits, des plafonds et des paiements, avec impression de relevés de compte.
+-   **🍞 Module de Commandes Spécialisé :** Un système puissant pour gérer les commandes récurrentes (ex: pain) avec génération automatique, suivi de livraison et conversion en ventes.
 -   **📈 Gestion de Stock Avancée :**
-    -   **Réceptions de Stock :** Enregistrez les livraisons des fournisseurs et mettez à jour l'inventaire.
+    -   **Réceptions de Stock :** Enregistrez les livraisons des fournisseurs et mettez à jour l'inventaire de manière atomique.
     -   **Calcul des Coûts :** Outil financier pour répartir les frais (ex: transport) sur les produits et déterminer le coût de revient final.
 -   **💸 Suivi des Dépenses :** Enregistrez et catégorisez toutes les charges de l'entreprise.
 -   **🕋 Calculateur de Zakat :** Un outil pour estimer la Zakat commerciale due sur les actifs de l'entreprise.
--   **🔄 Historique & Retours :** Consultez l'historique complet des ventes et gérez les retours de produits de manière structurée.
+-   **🔄 Historique & Retours :** Consultez l'historique complet des ventes et gérez les retours de produits de manière structurée et atomique.
 -   **⚙️ Paramètres & Données :**
     -   Personnalisez les informations de votre entreprise pour les reçus.
     -   **Sauvegarde et Restauration** locale de toutes vos données via un fichier JSON.
@@ -40,11 +40,12 @@ iPOS est une solution tout-en-un qui couvre tous les aspects de la gestion de vo
 
 L'application est conçue autour d'une architecture **100% hors ligne**, offrant une réactivité et une disponibilité maximales.
 
--   **Framework :** [Next.js](https://nextjs.org/) (avec App Router)
--   **Stockage de Données :** [IndexedDB](https://developer.mozilla.org/fr/docs/Web/API/IndexedDB_API) via [Dexie.js](https://dexie.org/), une surcouche puissante qui permet des requêtes complexes et performantes.
+-   **Framework :** [Next.js](https://nextjs.org/) (avec App Router) pour une interface utilisateur réactive et structurée.
+-   **Stockage de Données :** [IndexedDB](https://developer.mozilla.org/fr/docs/Web/API/IndexedDB_API) via [Dexie.js](https://dexie.org/), une surcouche puissante qui sert de base de données principale locale, permettant des requêtes complexes et performantes.
+-   **Mises à jour en temps réel :** Le hook `useLiveQuery` de `dexie-react-hooks` s'abonne aux changements de la base de données et met à jour l'interface utilisateur automatiquement, créant une expérience fluide et réactive.
 -   **Interface Utilisateur :**
-    -   Composants React construits avec [ShadCN UI](https://ui.shadcn.com/).
-    -   Styling via [Tailwind CSS](https://tailwindcss.com/).
+    -   Composants React réutilisables construits avec [ShadCN UI](https://ui.shadcn.com/).
+    -   Styling via [Tailwind CSS](https://tailwindcss.com/) pour un design moderne et personnalisable.
 -   **PWA :** Configurée comme une Progressive Web App pour une installation sur ordinateur et mobile et une utilisation hors ligne complète.
 
 ---
