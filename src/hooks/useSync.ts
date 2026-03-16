@@ -18,22 +18,35 @@ export const useSync = () => {
   const companyProfile = useLiveQuery<CompanyProfile | null>(() => dataService.getCompanyProfile());
   
   const [syncStatus, setSyncStatus] = useState<SyncStatus>({
-    isOnline: navigator.onLine,
+    isOnline: false,
     isSyncing: false,
-    lastSync: companyProfile?.lastSyncDate || null,
+    lastSync: null,
     pendingItems: 0,
     error: null,
   });
 
   useEffect(() => {
-    sheetsService.loadScriptUrl();
+    sheetsService.init();
+    const lastSyncFromDb = companyProfile?.lastSyncDate || null;
+
     const interval = setInterval(() => {
+      const currentStatus = sheetsService.getStatus();
       setSyncStatus(prev => ({
         ...prev,
-        ...sheetsService.getStatus(),
-        lastSync: companyProfile?.lastSyncDate || prev.lastSync
+        ...currentStatus,
+        lastSync: companyProfile?.lastSyncDate || prev.lastSync || lastSyncFromDb,
       }));
     }, 5000);
+
+    // Initial status check
+     const initialStatus = sheetsService.getStatus();
+      setSyncStatus(prev => ({
+        ...prev,
+        ...initialStatus,
+        lastSync: lastSyncFromDb,
+        pendingItems: initialStatus.pendingItems,
+      }));
+
     return () => clearInterval(interval);
   }, [companyProfile]);
 

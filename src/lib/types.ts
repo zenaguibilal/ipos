@@ -1,4 +1,5 @@
 
+
 export interface Product {
     id?: number | string; // string for custom products
     name: string;
@@ -111,6 +112,8 @@ export interface Draft {
       value: number;
   };
   notes?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export interface TopProduct {

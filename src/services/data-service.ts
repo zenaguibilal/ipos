@@ -8,6 +8,7 @@ import { subDays } from 'date-fns';
 import Papa from 'papaparse';
 import { calculateCartTotals } from '@/lib/utils';
 import { BREAD_WEEK_DAYS } from '@/lib/constants';
+import { sheetsService } from './googleSheets';
 
 type TableName = keyof Pick<PosDatabase, 
     'products' | 'customers' | 'sales' | 'payments' | 
@@ -39,8 +40,11 @@ class DataService {
   }
 
   async setSetting(id: string, value: any): Promise<string> {
-    return db.transaction('rw', db.settings, () => {
-        return db.settings.put({ id, value });
+    return db.transaction('rw', db.settings, async () => {
+        const result = await db.settings.put({ id, value });
+        const record = await db.settings.get(id);
+        sheetsService.addToQueue('settings', 'upsert', record);
+        return result;
     });
   }
 
@@ -56,8 +60,10 @@ class DataService {
   async updateCompanyProfile(profileData: Partial<Omit<CompanyProfile, 'id'>>): Promise<number> {
     return db.transaction('rw', db.companyProfile, async () => {
         const currentProfile = await db.companyProfile.get(1);
-        const dataToSave: CompanyProfile = { id: 1, ...currentProfile, ...profileData };
-        return db.companyProfile.put(dataToSave);
+        const dataToSave: CompanyProfile = { id: 1, ...currentProfile, ...profileData, updatedAt: new Date() };
+        const result = await db.companyProfile.put(dataToSave);
+        sheetsService.addToQueue('companyProfile', 'upsert', dataToSave);
+        return result;
     });
   }
   
@@ -208,7 +214,11 @@ class DataService {
 
   async addProduct(product: Omit<Product, 'id'>): Promise<number> {
       return db.transaction('rw', db.products, db.inventoryLogs, async () => {
-          const newId = await db.products.add(product as Product);
+          const productWithTs = { ...product, createdAt: new Date(), updatedAt: new Date() };
+          const newId = await db.products.add(productWithTs as Product);
+          const record = await db.products.get(newId);
+          sheetsService.addToQueue('products', 'upsert', record);
+
           await db.inventoryLogs.add({
               productId: newId,
               change: product.quantity,
@@ -225,8 +235,11 @@ class DataService {
       return db.transaction('rw', db.products, db.inventoryLogs, async () => {
         const oldProduct = await db.products.get(id);
         if (!oldProduct) throw new Error("Produit non trouvé pour la mise à jour.");
-
-        const result = await db.products.update(id, productData);
+        
+        const dataWithTs = { ...productData, updatedAt: new Date() };
+        const result = await db.products.update(id, dataWithTs);
+        const updatedRecord = await db.products.get(id);
+        sheetsService.addToQueue('products', 'upsert', updatedRecord);
 
         if (productData.quantity !== undefined && oldProduct.quantity !== productData.quantity) {
              await db.inventoryLogs.add({
@@ -244,14 +257,16 @@ class DataService {
   async deleteProduct(id: number): Promise<void> {
       return db.transaction('rw', db.products, db.inventoryLogs, async () => {
           await db.inventoryLogs.where({ productId: id }).delete();
-          return db.products.delete(id);
+          await db.products.delete(id);
+          sheetsService.addToQueue('products', 'delete', { id });
       });
   }
 
   async deleteProducts(ids: number[]): Promise<void> {
     return db.transaction('rw', db.products, db.inventoryLogs, async () => {
         await db.inventoryLogs.where('productId').anyOf(ids).delete();
-        return db.products.bulkDelete(ids);
+        await db.products.bulkDelete(ids);
+        ids.forEach(id => sheetsService.addToQueue('products', 'delete', { id }));
     });
   }
 
@@ -411,17 +426,29 @@ class DataService {
   }
 
   async addCustomer(customer: Omit<Customer, 'id' | 'totalSpent' | 'outstandingBalance' | 'lastActivityDate'>): Promise<number> {
-    return db.transaction('rw', db.customers, () => {
-        return db.customers.add({
+    return db.transaction('rw', db.customers, async () => {
+        const data = {
             ...customer,
             totalSpent: 0,
             outstandingBalance: 0,
-        } as Customer);
+            createdAt: new Date(),
+            updatedAt: new Date()
+        } as Customer;
+        const newId = await db.customers.add(data);
+        const record = await db.customers.get(newId);
+        sheetsService.addToQueue('customers', 'upsert', record);
+        return newId;
     });
   }
 
   async updateCustomer(id: number, customer: Partial<Omit<Customer, 'id'>>): Promise<number> {
-      return db.transaction('rw', db.customers, () => db.customers.update(id, customer));
+      return db.transaction('rw', db.customers, async () => {
+          const data = { ...customer, updatedAt: new Date() };
+          const result = await db.customers.update(id, data);
+          const record = await db.customers.get(id);
+          sheetsService.addToQueue('customers', 'upsert', record);
+          return result;
+      });
   }
 
   async deleteCustomer(id: number): Promise<void> {
@@ -437,7 +464,8 @@ class DataService {
         }
         await db.payments.where({ customerId: id }).delete();
         await db.returns.where({ customerId: id }).delete();
-        return db.customers.delete(id);
+        await db.customers.delete(id);
+        sheetsService.addToQueue('customers', 'delete', { id });
     });
   }
 
@@ -494,12 +522,18 @@ class DataService {
             }
         }
 
-        const saleId = await db.sales.add({
+        const saleToSave = {
             ...saleData,
             invoiceNumber: `INV-${Date.now().toString(36).toUpperCase()}`,
             paymentStatus: amountPaid >= total ? 'paid' : amountPaid > 0 ? 'partial' : 'unpaid',
             remainingBalance: newDebt > 0 ? newDebt : 0,
-        } as Sale);
+            createdAt: new Date(),
+            updatedAt: new Date()
+        } as Sale;
+        const saleId = await db.sales.add(saleToSave);
+        const record = await db.sales.get(saleId);
+        sheetsService.addToQueue('sales', 'upsert', record);
+
 
         // Update stock, logs, and check for low stock notifications
         for (const item of items) {
@@ -508,7 +542,10 @@ class DataService {
             if (!product) continue;
             
             const newQuantity = product.quantity - item.quantity;
-            await db.products.update(item.id, { quantity: newQuantity });
+            await db.products.update(item.id, { quantity: newQuantity, updatedAt: new Date() });
+            const updatedProduct = await db.products.get(item.id);
+            sheetsService.addToQueue('products', 'upsert', updatedProduct);
+
             
             await db.inventoryLogs.add({
                 productId: item.id,
@@ -539,7 +576,10 @@ class DataService {
                 c.outstandingBalance = (c.outstandingBalance || 0) + (newDebt > 0 ? newDebt : 0);
                 c.totalSpent = (c.totalSpent || 0) + total;
                 c.lastActivityDate = new Date();
+                c.updatedAt = new Date();
             });
+            const updatedCustomer = await db.customers.get(customerId);
+            sheetsService.addToQueue('customers', 'upsert', updatedCustomer);
         }
         
         return saleId;
@@ -555,7 +595,10 @@ class DataService {
             if (typeof item.id === 'number') {
                 const product = await db.products.get(item.id);
                 const newQuantity = (product?.quantity || 0) + item.quantity;
-                await db.products.update(item.id, { quantity: newQuantity });
+                await db.products.update(item.id, { quantity: newQuantity, updatedAt: new Date() });
+                const updatedProduct = await db.products.get(item.id);
+                sheetsService.addToQueue('products', 'upsert', updatedProduct);
+
                 await db.inventoryLogs.add({
                     productId: item.id,
                     change: item.quantity,
@@ -571,10 +614,14 @@ class DataService {
             await db.customers.where({ id: sale.customerId }).modify(c => {
                 c.outstandingBalance -= sale.remainingBalance;
                 if (c.outstandingBalance < 0) c.outstandingBalance = 0;
+                c.updatedAt = new Date();
             });
+            const updatedCustomer = await db.customers.get(sale.customerId);
+            sheetsService.addToQueue('customers', 'upsert', updatedCustomer);
         }
 
         await db.sales.delete(id);
+        sheetsService.addToQueue('sales', 'delete', { id });
     });
   }
   
@@ -583,7 +630,7 @@ class DataService {
   // ====================================================================
 
   async saveDraft(cart: Cart, notes?: string): Promise<number> {
-    return db.transaction('rw', db.drafts, () => {
+    return db.transaction('rw', db.drafts, async () => {
         const { total } = calculateCartTotals(cart);
 
         const draft: Omit<Draft, 'id'> = {
@@ -594,8 +641,13 @@ class DataService {
             total,
             discount: cart.discount,
             notes,
+            createdAt: new Date(),
+            updatedAt: new Date()
         };
-        return db.drafts.add(draft as Draft);
+        const newId = await db.drafts.add(draft as Draft);
+        const record = await db.drafts.get(newId);
+        sheetsService.addToQueue('drafts', 'upsert', record);
+        return newId;
     });
   }
 
@@ -604,7 +656,8 @@ class DataService {
   }
 
   async deleteDraft(id: number): Promise<void> {
-    return db.drafts.delete(id);
+    await db.drafts.delete(id);
+    sheetsService.addToQueue('drafts', 'delete', { id });
   }
 
   // ====================================================================
@@ -617,20 +670,29 @@ class DataService {
             // Step 1: Find or create the supplier
             let supplier = await db.suppliers.where('name').equalsIgnoreCase(supplierName).first();
             if (!supplier) {
-                const supplierId = await db.suppliers.add({ name: supplierName, balance: 0 });
-                supplier = { id: supplierId, name: supplierName, balance: 0 };
+                const supplierId = await db.suppliers.add({ name: supplierName, balance: 0, createdAt: new Date(), updatedAt: new Date() } as Supplier);
+                supplier = await db.suppliers.get(supplierId);
+                sheetsService.addToQueue('suppliers', 'upsert', supplier);
+            } else {
+                 await db.suppliers.update(supplier.id!, { updatedAt: new Date() });
+                 supplier = await db.suppliers.get(supplier.id!);
+                 sheetsService.addToQueue('suppliers', 'upsert', supplier);
             }
+
 
             // Step 2: Create the main stock intake record
             const totalValue = items.reduce((acc, item) => acc + item.purchasePrice * item.quantity, 0);
-            const intakeId = await db.stockIntakes.add({
-                supplierId: supplier.id!,
-                supplierName: supplier.name,
+            const intakeToSave = {
+                supplierId: supplier!.id!,
+                supplierName: supplier!.name,
                 invoiceNumber: invoiceNumber,
                 invoiceDate: invoiceDate || new Date(),
                 totalValue,
-                items: [] // Will be populated at the end
-            } as unknown as StockIntake);
+                items: [], // Will be populated at the end
+                createdAt: new Date(),
+                updatedAt: new Date()
+            } as unknown as StockIntake;
+            const intakeId = await db.stockIntakes.add(intakeToSave);
             
             const persistedItems: StockIntake['items'] = [];
 
@@ -641,16 +703,23 @@ class DataService {
 
                 let productId: number | undefined = item.productId;
                 let productUpdateData: Partial<Product> = {
-                    fournisseurId: supplier.id // Always update the supplier for the product
+                    fournisseurId: supplier!.id, // Always update the supplier for the product
+                    updatedAt: new Date()
                 };
 
                 if (item.isNew) {
-                    productId = await db.products.add({
+                    const newProduct: Product = {
                         name: item.name, category: item.category, price: item.price,
                         purchasePrice: item.purchasePrice, quantity: 0, minStockLevel: 10, barcodes: item.barcodes,
                         dateMajPrix: new Date(),
-                        fournisseurId: supplier.id
-                    } as Product);
+                        fournisseurId: supplier!.id,
+                        createdAt: new Date(),
+                        updatedAt: new Date()
+                    };
+                    productId = await db.products.add(newProduct);
+                    const newProductRecord = await db.products.get(productId);
+                    sheetsService.addToQueue('products', 'upsert', newProductRecord);
+
                 } else if (productId) {
                     const product = await db.products.get(productId);
                     if (product && product.purchasePrice !== item.purchasePrice) {
@@ -668,7 +737,9 @@ class DataService {
                     purchasePrice: item.purchasePrice,
                     ...productUpdateData 
                 });
-                
+                const updatedProduct = await db.products.get(productId);
+                sheetsService.addToQueue('products', 'upsert', updatedProduct);
+
                 await db.inventoryLogs.add({
                     productId, change: quantityToAdd, newQuantity,
                     reason: 'stock_intake', relatedId: intakeId,
@@ -683,8 +754,11 @@ class DataService {
                     purchasePrice: item.purchasePrice
                 });
             }
-            // Step 4: Update the intake with processed items
+            // Step 4: Update the intake with processed items and queue for sync
             await db.stockIntakes.update(intakeId, { items: persistedItems });
+            const intakeRecord = await db.stockIntakes.get(intakeId);
+            sheetsService.addToQueue('stockIntakes', 'upsert', intakeRecord);
+
             return intakeId;
         });
     }
@@ -695,8 +769,11 @@ class DataService {
                 if (item.productId && typeof item.productId === 'number') {
                     await db.products.update(item.productId, { 
                         purchasePrice: item.finalCostPerUnit,
-                        dateMajPrix: new Date()
+                        dateMajPrix: new Date(),
+                        updatedAt: new Date()
                     });
+                    const record = await db.products.get(item.productId);
+                    sheetsService.addToQueue('products', 'upsert', record);
                 }
             }
         });
@@ -717,13 +794,23 @@ class DataService {
   
   async addPayment(paymentData: Omit<Payment, 'id' | 'createdAt' | 'updatedAt'>): Promise<number> {
       return db.transaction('rw', db.payments, db.customers, async () => {
-          const id = await db.payments.add({
-              ...paymentData
-          } as Payment);
+          const data = {
+              ...paymentData,
+              createdAt: new Date(),
+              updatedAt: new Date()
+          } as Payment;
+          const id = await db.payments.add(data);
+          const record = await db.payments.get(id);
+          sheetsService.addToQueue('payments', 'upsert', record);
+
           await db.customers.where('id').equals(paymentData.customerId).modify(c => {
               c.outstandingBalance = Math.max(0, c.outstandingBalance - paymentData.amount);
               c.lastActivityDate = new Date();
+              c.updatedAt = new Date();
           });
+          const updatedCustomer = await db.customers.get(paymentData.customerId);
+          sheetsService.addToQueue('customers', 'upsert', updatedCustomer);
+
           return id;
       });
   }
@@ -743,12 +830,19 @@ class DataService {
   
   async addReturn(returnData: Omit<ProductReturn, 'id'>): Promise<number> {
       return db.transaction('rw', db.returns, db.products, db.customers, db.inventoryLogs, async () => {
-          const returnId = await db.returns.add(returnData as ProductReturn);
+          const data = { ...returnData, createdAt: new Date(), updatedAt: new Date() } as ProductReturn;
+          const returnId = await db.returns.add(data);
+          const record = await db.returns.get(returnId);
+          sheetsService.addToQueue('returns', 'upsert', record);
+
           for (const item of returnData.items) {
               if (item.productId && item.wasRestocked) {
                   const product = await db.products.get(item.productId);
                   const newQuantity = (product?.quantity || 0) + item.quantity;
-                  await db.products.update(item.productId, { quantity: newQuantity });
+                  await db.products.update(item.productId, { quantity: newQuantity, updatedAt: new Date() });
+                  const updatedProduct = await db.products.get(item.productId);
+                  sheetsService.addToQueue('products', 'upsert', updatedProduct);
+
                    await db.inventoryLogs.add({
                         productId: item.productId, change: item.quantity, newQuantity,
                         reason: 'return', relatedId: returnId,
@@ -761,7 +855,10 @@ class DataService {
               await db.customers.where('id').equals(returnData.customerId).modify(c => {
                   c.outstandingBalance = Math.max(0, c.outstandingBalance - balanceEffect);
                   c.lastActivityDate = new Date();
+                  c.updatedAt = new Date();
               });
+              const updatedCustomer = await db.customers.get(returnData.customerId);
+              sheetsService.addToQueue('customers', 'upsert', updatedCustomer);
           }
           return returnId;
       });
@@ -775,7 +872,10 @@ class DataService {
                 if (item.productId && item.wasRestocked) {
                     const product = await db.products.get(item.productId);
                     const newQuantity = (product?.quantity || 0) - item.quantity;
-                    await db.products.update(item.productId, { quantity: newQuantity });
+                    await db.products.update(item.productId, { quantity: newQuantity, updatedAt: new Date() });
+                    const updatedProduct = await db.products.get(item.productId);
+                    sheetsService.addToQueue('products', 'upsert', updatedProduct);
+
                      await db.inventoryLogs.add({
                         productId: item.productId, change: -item.quantity, newQuantity,
                         reason: 'cancellation', relatedId: `return-${id}`,
@@ -785,9 +885,15 @@ class DataService {
             }
             if (productReturn.customerId) {
                 const balanceEffect = productReturn.totalReturnValue - productReturn.amountRefunded;
-                 await db.customers.where('id').equals(productReturn.customerId).modify(c => { c.outstandingBalance += balanceEffect; });
+                 await db.customers.where('id').equals(productReturn.customerId).modify(c => { 
+                    c.outstandingBalance += balanceEffect;
+                    c.updatedAt = new Date();
+                 });
+                 const updatedCustomer = await db.customers.get(productReturn.customerId);
+                 sheetsService.addToQueue('customers', 'upsert', updatedCustomer);
             }
             await db.returns.delete(id);
+            sheetsService.addToQueue('returns', 'delete', { id });
         });
     }
 
@@ -806,9 +912,30 @@ class DataService {
     return keys.filter(k => k) as string[];
   }
 
-  async addExpense(expense: Omit<Expense, 'id'>): Promise<number> { return db.transaction('rw', db.expenses, () => db.expenses.add(expense as Expense)); }
-  async updateExpense(id: number, expenseData: Partial<Omit<Expense, 'id'>>): Promise<number> { return db.transaction('rw', db.expenses, () => db.expenses.update(id, expenseData)); }
-  async deleteExpense(id: number): Promise<void> { return db.transaction('rw', db.expenses, () => db.expenses.delete(id)); }
+  async addExpense(expense: Omit<Expense, 'id'>): Promise<number> { 
+    return db.transaction('rw', db.expenses, async () => {
+        const data = { ...expense, createdAt: new Date(), updatedAt: new Date() } as Expense;
+        const newId = await db.expenses.add(data);
+        const record = await db.expenses.get(newId);
+        sheetsService.addToQueue('expenses', 'upsert', record);
+        return newId;
+    }); 
+  }
+  async updateExpense(id: number, expenseData: Partial<Omit<Expense, 'id'>>): Promise<number> { 
+    return db.transaction('rw', db.expenses, async () => {
+        const data = { ...expenseData, updatedAt: new Date() };
+        const result = await db.expenses.update(id, data);
+        const record = await db.expenses.get(id);
+        sheetsService.addToQueue('expenses', 'upsert', record);
+        return result;
+    }); 
+  }
+  async deleteExpense(id: number): Promise<void> { 
+    return db.transaction('rw', db.expenses, async () => {
+        await db.expenses.delete(id);
+        sheetsService.addToQueue('expenses', 'delete', { id });
+    }); 
+  }
   async getUnreadLowStockAlerts(): Promise<Notification[]> { return db.notifications.orderBy('createdAt').reverse().filter(n => n.type === 'low-stock' && !n.isRead).toArray(); }
   async markNotificationAsRead(notificationId: number): Promise<number> { return db.transaction('rw', db.notifications, () => db.notifications.update(notificationId, { isRead: true })); }
   async clearReadNotifications(): Promise<void> { return db.transaction('rw', db.notifications, () => db.notifications.where({ isRead: true }).delete()); }
@@ -1072,17 +1199,30 @@ class DataService {
   }
 
   async addBreadClient(client: BreadClient): Promise<number> {
-    return db.transaction('rw', db.clients_pain, () => db.clients_pain.add(client));
+    return db.transaction('rw', db.clients_pain, async () => {
+        const data = { ...client, createdAt: new Date(), updatedAt: new Date() };
+        const newId = await db.clients_pain.add(data);
+        const record = await db.clients_pain.get(newId);
+        sheetsService.addToQueue('clients_pain', 'upsert', record);
+        return newId;
+    });
   }
 
   async updateBreadClient(id: number, data: Partial<BreadClient>): Promise<number> {
-    return db.transaction('rw', db.clients_pain, () => db.clients_pain.update(id, data));
+    return db.transaction('rw', db.clients_pain, async () => {
+        const dataWithTs = { ...data, updatedAt: new Date() };
+        const result = await db.clients_pain.update(id, dataWithTs);
+        const record = await db.clients_pain.get(id);
+        sheetsService.addToQueue('clients_pain', 'upsert', record);
+        return result;
+    });
   }
 
   async deleteBreadClient(id: number): Promise<void> {
     return db.transaction('rw', db.clients_pain, db.commandes_pain, async () => {
       await db.commandes_pain.where({ client_pain_id: id }).delete();
       await db.clients_pain.delete(id);
+      sheetsService.addToQueue('clients_pain', 'delete', { id });
     });
   }
 
@@ -1148,31 +1288,40 @@ class DataService {
         if (existing) {
             throw new Error("Ce client a déjà une commande pour ce jour. Veuillez modifier la commande existante.");
         }
-        await db.commandes_pain.add({
+        const data = {
             client_pain_id: clientId,
             date,
             quantite: quantity,
             quantite_origine: quantity,
             est_paye: false,
             est_livre: false,
-            vente_id: null
-        } as BreadOrder);
+            vente_id: null,
+            createdAt: new Date(),
+            updatedAt: new Date()
+        } as BreadOrder;
+        const newId = await db.commandes_pain.add(data);
+        const record = await db.commandes_pain.get(newId);
+        sheetsService.addToQueue('commandes_pain', 'upsert', record);
     });
   }
 
   async updateBreadOrderDeliveryStatus(orderId: number, est_livre: boolean): Promise<void> {
-    await db.commandes_pain.update(orderId, { est_livre });
+    await db.commandes_pain.update(orderId, { est_livre, updatedAt: new Date() });
+    const record = await db.commandes_pain.get(orderId);
+    sheetsService.addToQueue('commandes_pain', 'upsert', record);
   }
 
   async updateBreadOrderQuantity(orderId: number, newQuantity: number): Promise<void> {
     return db.transaction('rw', db.commandes_pain, async () => {
       const order = await db.commandes_pain.get(orderId);
       if (!order) return;
-      const updateData: Partial<BreadOrder> = { quantite: newQuantity };
+      const updateData: Partial<BreadOrder> = { quantite: newQuantity, updatedAt: new Date() };
       if (order.quantite_origine === undefined) {
         updateData.quantite_origine = order.quantite;
       }
       await db.commandes_pain.update(orderId, updateData);
+      const record = await db.commandes_pain.get(orderId);
+      sheetsService.addToQueue('commandes_pain', 'upsert', record);
     });
   }
 
@@ -1205,16 +1354,24 @@ class DataService {
         };
 
         const saleId = await db.sales.add(saleDataForDb);
+        const saleRecord = await db.sales.get(saleId);
+        sheetsService.addToQueue('sales', 'upsert', saleRecord);
+
 
         if (mainCustomer) {
             await db.customers.where('id').equals(mainCustomer.id!).modify(c => {
                 c.outstandingBalance = (c.outstandingBalance || 0) + total;
                 c.totalSpent = (c.totalSpent || 0) + total;
                 c.lastActivityDate = new Date();
+                c.updatedAt = new Date();
             });
+            const customerRecord = await db.customers.get(mainCustomer.id!);
+            sheetsService.addToQueue('customers', 'upsert', customerRecord);
         }
         
-        await db.commandes_pain.update(order.id!, { vente_id: saleId, est_paye: true });
+        await db.commandes_pain.update(order.id!, { vente_id: saleId, est_paye: true, updatedAt: new Date() });
+        const orderRecord = await db.commandes_pain.get(order.id!);
+        sheetsService.addToQueue('commandes_pain', 'upsert', orderRecord);
       }
     });
   }
