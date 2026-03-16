@@ -78,8 +78,8 @@ export const ProductSearch = forwardRef<{focus: () => void}, ProductSearchProps>
         },
     }));
     
-    const products = useLiveQuery(() => getDb().products.toArray(), []);
-    const categories = useLiveQuery(() => dataService.getProductCategories(), [], []);
+    const products = useLiveQuery(() => getDb().products.toArray());
+    const categories = useLiveQuery(() => dataService.getProductCategories());
 
     const handleBarcodeScanned = async (scannedBarcode: string) => {
         if (!scannedBarcode.trim()) return;

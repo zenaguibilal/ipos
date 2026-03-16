@@ -1,10 +1,14 @@
 // public/sw.js
 const CACHE_NAME = 'ipos-v1';
 
+// Add assets that should always be cached
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
-  // Add other critical assets you want to cache initially
+  '/offline',
+  '/icons/icon-192x192.png',
+  '/icons/icon-512x512.png',
+  '/icon.svg',
 ];
 
 self.addEventListener('install', (event) => {
@@ -19,41 +23,55 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(
-        keys
-          .filter(key => key !== CACHE_NAME)
-          .map(key => caches.delete(key))
-      )
-    )
+    caches.keys().then(cacheNames => {
+      return Promise.all(
+        cacheNames
+          .filter(name => name !== CACHE_NAME)
+          .map(name => caches.delete(name))
+      );
+    })
   );
   self.clients.claim();
 });
 
 self.addEventListener('fetch', (event) => {
-  if (event.request.method !== 'GET' || event.request.url.includes('google.com')) {
-    // Don't cache non-GET requests or Google API calls
+  if (event.request.method !== 'GET' || event.request.url.startsWith('chrome-extension://')) {
     return;
   }
 
+  // Network First strategy for API calls or dynamic content if needed
+  // For this app, we'll use a Cache First, then Network strategy
+  
   event.respondWith(
     caches.match(event.request).then(cachedResponse => {
-      // Return from cache if found
+      // Return the cached response if it exists
       if (cachedResponse) {
         return cachedResponse;
       }
-
-      // Otherwise, fetch from network
+      
+      // Otherwise, fetch from the network
       return fetch(event.request).then(networkResponse => {
-        // Optional: Cache the new response
-        // Be careful with what you cache. Caching everything can lead to issues.
-        // For a full offline app, you'd have a more sophisticated strategy here.
-        return networkResponse;
-      }).catch(() => {
-        // If fetch fails (offline), return a fallback page
-        // You might want to cache an '/offline' page during install.
-        return caches.match('/'); 
-      });
+          // Optionally, cache the new response
+          return caches.open(CACHE_NAME).then(cache => {
+            // Be careful not to cache everything, especially large or sensitive data
+            // Here we just cache the request if it was successful
+            if (networkResponse.ok) {
+              cache.put(event.request, networkResponse.clone());
+            }
+            return networkResponse;
+          });
+        })
+        .catch(() => {
+          // If the network fails, and there's no cache, serve a fallback page
+          return caches.match('/offline');
+        });
     })
   );
+});
+
+// Listen for messages from the client to skip waiting
+self.addEventListener('message', (event) => {
+    if (event.data && event.data.type === 'SKIP_WAITING') {
+        self.skipWaiting();
+    }
 });

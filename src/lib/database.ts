@@ -132,14 +132,18 @@ export class PosDatabase extends Dexie {
     }
 }
 
-let db: PosDatabase;
+let dbInstance: PosDatabase;
 
 export function getDb(): PosDatabase {
-    if (typeof window === 'undefined') {
-        throw new Error("Dexie can only be used on the client.");
+  if (typeof window !== 'undefined') {
+    if (!dbInstance) {
+      dbInstance = new PosDatabase();
     }
-    if (!db) {
-        db = new PosDatabase();
-    }
-    return db;
+    return dbInstance;
+  }
+  // This is a server-side mock. It's not a real Dexie instance.
+  // It's designed to not crash during SSR when components are rendered.
+  // `useLiveQuery` knows not to execute the query function on the server.
+  // Direct calls to this mock would fail, which is intended.
+  return new Dexie() as unknown as PosDatabase;
 }

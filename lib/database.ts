@@ -1,3 +1,5 @@
+'use client';
+
 import Dexie, { type Table } from 'dexie';
 import type { Product, Customer, Sale, Payment, StockIntake, ProductReturn, Cart, CompanyProfile, Expense, Setting, Notification, InventoryLog, Draft, Supplier, BreadClient, BreadOrder } from './types';
 
@@ -29,7 +31,7 @@ export class PosDatabase extends Dexie {
             stockIntakes: '++id, &invoiceNumber, supplierId, createdAt',
             returns: '++id, createdAt, originalSaleId, customerId',
             carts: '&id',
-            drafts: '++id, date',
+            drafts: '++id, date, createdAt, updatedAt',
             companyProfile: 'id', // Singleton table
             expenses: '++id, category, expenseDate, [category+expenseDate]',
             settings: '&id', // Key-value store for UI state and preferences
@@ -40,7 +42,7 @@ export class PosDatabase extends Dexie {
             commandes_pain: '++id, [client_pain_id+date], date, est_paye, est_livre',
         }).upgrade(tx => {
             // Dexie upgrade functions are declarative of the target version structure.
-            // This is for version 22, ensuring searchName is populated. It runs if the client db version is < 22.
+            // This is for version 22, ensuring searchName is populated. It runs if the client db version < 22.
             return tx.table('customers').toCollection().modify(customer => {
                 if (customer.firstName && customer.lastName && !customer.searchName) {
                    customer.searchName = `${customer.firstName.toLowerCase()} ${customer.lastName.toLowerCase()}`;
@@ -130,4 +132,18 @@ export class PosDatabase extends Dexie {
     }
 }
 
-export const db = new PosDatabase();
+let dbInstance: PosDatabase;
+
+export function getDb(): PosDatabase {
+  if (typeof window !== 'undefined') {
+    if (!dbInstance) {
+      dbInstance = new PosDatabase();
+    }
+    return dbInstance;
+  }
+  // This is a server-side mock. It's not a real Dexie instance.
+  // It's designed to not crash during SSR when components are rendered.
+  // `useLiveQuery` knows not to execute the query function on the server.
+  // Direct calls to this mock would fail, which is intended.
+  return new Dexie() as unknown as PosDatabase;
+}

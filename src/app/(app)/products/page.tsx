@@ -88,8 +88,7 @@ export default function ProductsPage() {
             stockStatus: stockStatus,
             sortBy: sortBy,
         }),
-        [debouncedSearchQuery, selectedCategory, selectedSupplier, stockStatus, sortBy],
-        []
+        [debouncedSearchQuery, selectedCategory, selectedSupplier, stockStatus, sortBy]
     );
     
     const categories = useLiveQuery(() => dataService.getProductCategories(), [], []);

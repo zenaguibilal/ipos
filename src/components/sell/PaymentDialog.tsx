@@ -45,8 +45,7 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, onSaleFinalized }: P
     const [lossItems, setLossItems] = useState<Product[]>([]);
 
     const customer = useLiveQuery(() => 
-        cart.customerId ? getDb().customers.get(cart.customerId) : Promise.resolve(undefined), 
-        [cart.customerId]
+        cart.customerId ? getDb().customers.get(cart.customerId) : Promise.resolve(undefined)
     );
 
     const { subtotal, discountAmount, total } = calculateCartTotals(cart);
@@ -75,7 +74,7 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, onSaleFinalized }: P
             setLastSale(null);
             setIsLoading(false);
         }
-    }, [isOpen]);
+    }, [isOpen, cart.items, total]);
 
     const initializePayment = () => {
         setPaymentMode('cash');
