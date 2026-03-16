@@ -77,6 +77,7 @@ export default function RootLayout({
       <head>
           <meta name="msapplication-TileColor" content="#ffb74d" />
           <meta name="msapplication-TileImage" content="/icons/icon-144x144.png" />
+          <link rel="manifest" href="/manifest.json" />
       </head>
       <body className={inter.className}>
         <ThemeProvider

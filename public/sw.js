@@ -3,14 +3,12 @@ const CACHE_NAME = 'ipos-v1';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
-  '/offline',
-  '/icon.svg',
+  // Add other critical assets like main CSS/JS files if needed
 ];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
-      console.log('[SW] Pre-caching offline page and core assets');
       return cache.addAll(STATIC_ASSETS);
     })
   );
@@ -18,7 +16,6 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activate');
   event.waitUntil(
     caches.keys().then(keys =>
       Promise.all(
@@ -32,27 +29,29 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  if (event.request.method !== 'GET') {
+  if (event.request.method !== 'GET' || event.request.url.startsWith('chrome-extension://')) {
     return;
   }
 
-  // For navigation requests, use a network-first strategy.
-  if (event.request.mode === 'navigate') {
-    event.respondWith(
-      fetch(event.request).catch(() => caches.match('/offline'))
-    );
-    return;
-  }
-
-  // For other requests (assets), use a cache-first strategy.
   event.respondWith(
     caches.match(event.request).then(cachedResponse => {
-      // Return the cached response if it's found.
+      // Return cached response if found
       if (cachedResponse) {
         return cachedResponse;
       }
-      // If not in cache, fetch from the network.
-      return fetch(event.request);
+      
+      // Otherwise, fetch from network
+      return fetch(event.request).catch(() => {
+        // If network fails, return a fallback page (e.g., the root page)
+        // This is crucial for offline navigation to pages not initially cached
+        return caches.match('/');
+      });
     })
   );
+});
+
+self.addEventListener('message', (event) => {
+    if (event.data && event.data.type === 'SKIP_WAITING') {
+        self.skipWaiting();
+    }
 });

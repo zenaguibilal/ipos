@@ -132,4 +132,14 @@ export class PosDatabase extends Dexie {
     }
 }
 
-export const db = new PosDatabase();
+let db: PosDatabase;
+
+export function getDb(): PosDatabase {
+    if (typeof window === 'undefined') {
+        throw new Error("Dexie can only be used on the client.");
+    }
+    if (!db) {
+        db = new PosDatabase();
+    }
+    return db;
+}

@@ -4,30 +4,47 @@ import { toast } from 'sonner';
 
 export const PwaHandler = () => {
     useEffect(() => {
-        if (typeof window !== 'undefined' && 'serviceWorker' in navigator && window.workbox !== undefined) {
-            const wb = window.workbox;
-            
-            const showUpdateToast = () => {
-                 toast.info("Une nouvelle version est disponible !", {
-                    action: {
-                        label: "Recharger",
-                        onClick: () => wb.messageSW({ type: 'SKIP_WAITING' })
-                    },
-                    duration: Infinity,
-                 });
-            };
+        if (
+            typeof window !== 'undefined' &&
+            'serviceWorker' in navigator &&
+            process.env.NODE_ENV === 'production'
+        ) {
+            const wb = navigator.serviceWorker;
 
-            // A common listener for all service worker states
-            wb.addEventListener('waiting', showUpdateToast);
-            wb.addEventListener('externalwaiting', showUpdateToast);
-            
-            // Reload the page when the new service worker has taken control
-            wb.addEventListener('controlling', () => {
-                window.location.reload();
+            wb.register('/sw.js').then(registration => {
+                console.log('SW registered:', registration.scope);
+                
+                // Logic to handle updates
+                registration.addEventListener('updatefound', () => {
+                    const newWorker = registration.installing;
+                    if (newWorker) {
+                        newWorker.addEventListener('statechange', () => {
+                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                // New content is available, show a toast
+                                toast.info("Une nouvelle version est disponible !", {
+                                    action: {
+                                        label: "Recharger",
+                                        onClick: () => {
+                                            newWorker.postMessage({ type: 'SKIP_WAITING' });
+                                        }
+                                    },
+                                    duration: Infinity,
+                                });
+                            }
+                        });
+                    }
+                });
+            }).catch(err => {
+                console.error('SW registration failed:', err);
             });
 
-            // Register the service worker
-            wb.register();
+            let refreshing = false;
+            wb.addEventListener('controllerchange', () => {
+                if (!refreshing) {
+                    window.location.reload();
+                    refreshing = true;
+                }
+            });
         }
     }, []);
     return null;
