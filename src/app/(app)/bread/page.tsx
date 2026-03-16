@@ -33,7 +33,7 @@ export default function BreadPage() {
     const orders = useLiveQuery<BreadOrderWithClient[]>(
         () => formattedDate ? dataService.getBreadOrdersForDate(formattedDate) : Promise.resolve([]),
         [formattedDate],
-        undefined
+        []
     );
 
     const breadPriceSetting = useLiveQuery(() => dataService.getCompanyProfile().then(p => p?.prix_pain));
