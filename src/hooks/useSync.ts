@@ -67,7 +67,7 @@ export const useSync = () => {
         isSyncing: false,
         error: error.message,
       }));
-      throw error;
+      throw error; // Re-throw the error to be caught by the calling component
     }
   };
 

@@ -27,7 +27,7 @@ class GoogleSheetsService {
   initialized: boolean = false;
 
   constructor() {
-    // Constructor must be safe to run on the server
+    // Constructor must be safe to run on the server.
   }
 
   init() {
@@ -66,6 +66,7 @@ class GoogleSheetsService {
   async sendToSheets(table: string, action: 'upsert' | 'delete', record: any) {
     if (!this.scriptUrl) return;
 
+    // Use 'no-cors' mode and text/plain for Apps Script web apps to avoid CORS preflight issues.
     const response = await fetch(this.scriptUrl, {
       method: 'POST',
       mode: 'no-cors', 
@@ -73,10 +74,14 @@ class GoogleSheetsService {
       headers: { 'Content-Type': 'text/plain' }
     });
     
+    // With no-cors, the response will be opaque, so we can't read the body.
+    // We have to assume success if the request doesn't throw.
+    // The actual success/failure is handled by the script's logic, but we can't see it.
     if (response.type === 'opaque') {
         return { success: true };
     }
 
+    // This part is unlikely to be reached with no-cors, but kept for robustness.
     const result = await response.json();
     if (!result.success) {
       throw new Error(result.error || 'Sync request failed');
