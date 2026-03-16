@@ -145,5 +145,5 @@ export function getDb(): PosDatabase {
   // It's designed to not crash during SSR when components are rendered.
   // `useLiveQuery` knows not to execute the query function on the server.
   // Direct calls to this mock would fail, which is intended.
-  return new Dexie() as unknown as PosDatabase;
+  return new Dexie('posDB') as unknown as PosDatabase;
 }
