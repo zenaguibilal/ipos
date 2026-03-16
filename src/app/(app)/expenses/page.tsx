@@ -31,7 +31,7 @@ export default function ExpensesPage() {
     const [isExpenseDialogOpen, setIsExpenseDialogOpen] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
-    const { dateRange, setDate: setDateRange, isMounted } = useDateRange(29);
+    const { dateRange, setDate, isMounted } = useDateRange(29);
 
     const expenses = useLiveQuery(
         () => dataService.getExpenses({ 
@@ -143,7 +143,7 @@ export default function ExpensesPage() {
                     </DropdownMenuContent>
                 </DropdownMenu>
 
-                <DateRangePicker date={dateRange} setDate={setDateRange} />
+                <DateRangePicker date={dateRange} setDate={setDate} />
             </div>
             
             <div>

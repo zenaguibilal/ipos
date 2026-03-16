@@ -21,7 +21,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 export default function StockPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const debouncedSearchQuery = useDebounce(searchQuery, 300);
-    const { dateRange, setDateRange, isMounted } = useDateRange(29);
+    const { dateRange, setDate, isMounted } = useDateRange(29);
     
     const [selectedIntake, setSelectedIntake] = useState<StockIntake | null>(null);
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
@@ -102,7 +102,7 @@ export default function StockPage() {
                         onChange={e => setSearchQuery(e.target.value)}
                     />
                 </div>
-                <DateRangePicker date={dateRange} setDate={setDateRange} />
+                <DateRangePicker date={dateRange} setDate={setDate} />
             </div>
             
             <div>{renderContent()}</div>
