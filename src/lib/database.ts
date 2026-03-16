@@ -32,24 +32,21 @@ export class PosDatabase extends Dexie {
             returns: '++id, createdAt, originalSaleId, customerId',
             carts: '&id',
             drafts: '++id, date, createdAt, updatedAt',
-            companyProfile: 'id', // Singleton table
+            companyProfile: 'id',
             expenses: '++id, category, expenseDate, [category+expenseDate]',
-            settings: '&id', // Key-value store for UI state and preferences
+            settings: '&id',
             notifications: '++id, createdAt, isRead, type, [type+isRead]',
             inventoryLogs: '++id, productId, createdAt, reason',
             suppliers: '++id, &name',
             clients_pain: '++id, nom, actif, type_recurrence',
             commandes_pain: '++id, [client_pain_id+date], date, est_paye, est_livre',
         }).upgrade(tx => {
-            // Dexie upgrade functions are declarative of the target version structure.
-            // This is for version 22, ensuring searchName is populated. It runs if the client db version < 22.
             return tx.table('customers').toCollection().modify(customer => {
                 if (customer.firstName && customer.lastName && !customer.searchName) {
                    customer.searchName = `${customer.firstName.toLowerCase()} ${customer.lastName.toLowerCase()}`;
                 }
             });
         }).upgrade(tx => {
-            // This is for version 28, migrating 'statut' to 'est_paye' and 'est_livre'
             return tx.table('commandes_pain').toCollection().modify(order => {
                 const oldStatut = (order as any).statut;
                 if (oldStatut !== undefined) {
@@ -64,7 +61,7 @@ export class PosDatabase extends Dexie {
                             break;
                         case 'paye':
                             order.est_paye = true;
-                            order.est_livre = true; 
+                            order.est_livre = true;
                             break;
                         default:
                             order.est_paye = !!order.vente_id;
@@ -92,10 +89,9 @@ export class PosDatabase extends Dexie {
             }
         });
 
-        // Hooks to add/update timestamps
         this.tables.forEach(table => {
             if (['settings', 'carts'].includes(table.name)) return;
-            
+
             table.hook('creating', (primKey, obj, trans) => {
                 const now = new Date();
                 if ((obj as any).createdAt === undefined) {
@@ -112,8 +108,7 @@ export class PosDatabase extends Dexie {
                 }
             });
         });
-        
-        // Hooks to auto-generate searchName for customers
+
         this.customers.hook('creating', (primKey, obj) => {
             if(typeof obj.firstName === 'string' && typeof obj.lastName === 'string') {
                 obj.searchName = `${obj.firstName.toLowerCase()} ${obj.lastName.toLowerCase()}`;
@@ -132,7 +127,7 @@ export class PosDatabase extends Dexie {
     }
 }
 
-let dbInstance: PosDatabase;
+let dbInstance: PosDatabase | undefined;
 
 export function getDb(): PosDatabase {
   if (typeof window !== 'undefined') {
@@ -141,9 +136,23 @@ export function getDb(): PosDatabase {
     }
     return dbInstance;
   }
-  // This is a server-side mock. It's not a real Dexie instance.
-  // It's designed to not crash during SSR when components are rendered.
-  // `useLiveQuery` knows not to execute the query function on the server.
-  // Direct calls to this mock would fail, which is intended.
-  return new Dexie('posDB') as unknown as PosDatabase;
+  // ✅ إصلاح SSR — إرجاع mock آمن بدون استدعاء Dexie
+  return {
+    products: { toArray: async () => [], where: () => ({ toArray: async () => [] }) },
+    customers: { toArray: async () => [], where: () => ({ toArray: async () => [] }) },
+    sales: { toArray: async () => [], where: () => ({ toArray: async () => [] }) },
+    payments: { toArray: async () => [], where: () => ({ toArray: async () => [] }) },
+    stockIntakes: { toArray: async () => [], where: () => ({ toArray: async () => [] }) },
+    returns: { toArray: async () => [], where: () => ({ toArray: async () => [] }) },
+    carts: { toArray: async () => [], where: () => ({ toArray: async () => [] }) },
+    drafts: { toArray: async () => [], where: () => ({ toArray: async () => [] }) },
+    companyProfile: { toArray: async () => [], where: () => ({ toArray: async () => [] }) },
+    expenses: { toArray: async () => [], where: () => ({ toArray: async () => [] }) },
+    settings: { toArray: async () => [], where: () => ({ toArray: async () => [] }) },
+    notifications: { toArray: async () => [], where: () => ({ toArray: async () => [] }) },
+    inventoryLogs: { toArray: async () => [], where: () => ({ toArray: async () => [] }) },
+    suppliers: { toArray: async () => [], where: () => ({ toArray: async () => [] }) },
+    clients_pain: { toArray: async () => [], where: () => ({ toArray: async () => [] }) },
+    commandes_pain: { toArray: async () => [], where: () => ({ toArray: async () => [] }) },
+  } as unknown as PosDatabase;
 }
