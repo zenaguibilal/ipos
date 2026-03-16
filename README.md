@@ -1,23 +1,59 @@
-# iPOS - Point de Vente 100% Hors Ligne
+# iPOS - Système de Point de Vente 100% Hors Ligne
 
-**iPOS** est un système de Point de Vente (POS) moderne, conçu pour une gestion agile et entièrement autonome des petits commerces. Cette version est une application **100% hors ligne** qui s'appuie exclusivement sur la base de données IndexedDB de votre navigateur pour la persistance des données.
+**iPOS** est un système de Point de Vente (POS) complet, moderne et performant, conçu pour la gestion autonome des commerces de détail. C'est une **Progressive Web App (PWA)** qui fonctionne entièrement hors ligne, garantissant rapidité et fiabilité, même sans connexion internet.
 
-Elle offre une expérience utilisateur rapide, réactive et fonctionnelle qui ne nécessite aucune connexion internet. L'application centralise les opérations critiques de vente, de gestion des stocks et de suivi des clients dans une interface intuitive unique.
+---
 
-**IMPORTANT : Ceci est une application locale et hors ligne. Toutes vos données sont stockées exclusivement dans votre navigateur sur cet appareil. Il n'y a pas de synchronisation cloud ni de compte utilisateur.**
+## ⚠️ Important : Vos Données Sont Locales
 
-## Caractéristiques Principales
+Toutes les données de l'application (produits, ventes, clients, etc.) sont stockées **exclusivement dans la base de données IndexedDB de votre navigateur**, sur votre appareil actuel.
 
-- **Gestion des Ventes :** Interface de caisse rapide avec gestion multi-paniers, recherche de produits et finalisation des transactions.
-- **Gestion de l'Inventaire :** Suivi en temps réel des quantités de produits, gestion des prix d'achat/vente et alertes de stock bas.
-- **Suivi des Clients et des Dettes :** Base de données clients avec historique des achats et un système de gestion de crédit qui calcule automatiquement les soldes impayés.
-- **Réception de Stock :** Module pour enregistrer les livraisons des fournisseurs, mettre à jour l'inventaire et les prix d'achat.
-- **Tableau de Bord Analytique :** Fournit des indicateurs de performance clés (chiffre d'affaires, bénéfice net, valeur du stock) et des visualisations.
-- **Sauvegarde et Restauration :** Vous pouvez télécharger une sauvegarde complète des données de votre application sous forme de fichier JSON et la restaurer ultérieurement.
+-   **Pas de Cloud, Pas de Compte :** Il n'y a pas de synchronisation cloud automatique ni de compte utilisateur. Votre vie privée est totale.
+-   **Responsabilité de Sauvegarde :** Vous êtes seul responsable de la sauvegarde de vos données. Utilisez la fonction de **Sauvegarde et Restauration** disponible dans les paramètres pour exporter vos données et les conserver en lieu sûr.
 
-## Technologies Utilisées
+---
 
-- **Framework :** Next.js (React)
-- **Stockage de Données :** IndexedDB (via Dexie.js)
-- **Styling :** Tailwind CSS & ShadCN UI
-- **PWA :** Conçu pour une installation sur ordinateur et mobile et une utilisation hors ligne.
+## ✨ Fonctionnalités Principales
+
+iPOS est une solution tout-en-un qui couvre tous les aspects de la gestion de votre commerce :
+
+-   **📊 Tableau de Bord Analytique :** Vue d'ensemble en temps réel des KPIs (Revenu, Bénéfice, Ventes), graphiques, alertes de stock et activité récente.
+-   **🛒 Point de Vente (POS) Rapide :** Interface de caisse optimisée pour la vitesse avec gestion multi-paniers, recherche par code-barres, gestion des clients (y compris les dettes) et remises.
+-   **📦 Gestion d'Inventaire Complète :** Catalogue de produits avec gestion des catégories, prix d'achat/vente, stock minimum, dates d'expiration et support pour l'import/export CSV.
+-   **👥 Gestion des Clients (CRM) :** Suivi détaillé de l'historique d'achat, gestion des crédits, des plafonds et des paiements.
+-   **🍞 Module de Commandes Spécialisé :** Un système puissant pour gérer les commandes récurrentes (ex: pain) avec génération automatique, suivi de livraison et de paiement.
+-   **📈 Gestion de Stock Avancée :**
+    -   **Réceptions de Stock :** Enregistrez les livraisons des fournisseurs et mettez à jour l'inventaire.
+    -   **Calcul des Coûts :** Outil financier pour répartir les frais (ex: transport) sur les produits et déterminer le coût de revient final.
+-   **💸 Suivi des Dépenses :** Enregistrez et catégorisez toutes les charges de l'entreprise.
+-   **🕋 Calculateur de Zakat :** Un outil pour estimer la Zakat commerciale due sur les actifs de l'entreprise.
+-   **🔄 Historique & Retours :** Consultez l'historique complet des ventes et gérez les retours de produits de manière structurée.
+-   **⚙️ Paramètres & Données :**
+    -   Personnalisez les informations de votre entreprise pour les reçus.
+    -   **Sauvegarde et Restauration** locale de toutes vos données via un fichier JSON.
+    -   **Synchronisation Manuelle** avec Google Sheets (via un script Google Apps).
+    -   **Installation de l'application (PWA)** pour une expérience de bureau native.
+
+---
+
+## 🚀 Architecture & Technologie
+
+L'application est conçue autour d'une architecture **100% hors ligne**, offrant une réactivité et une disponibilité maximales.
+
+-   **Framework :** [Next.js](https://nextjs.org/) (avec App Router)
+-   **Stockage de Données :** [IndexedDB](https://developer.mozilla.org/fr/docs/Web/API/IndexedDB_API) via [Dexie.js](https://dexie.org/), une surcouche puissante qui permet des requêtes complexes et performantes.
+-   **Interface Utilisateur :**
+    -   Composants React construits avec [ShadCN UI](https://ui.shadcn.com/).
+    -   Styling via [Tailwind CSS](https://tailwindcss.com/).
+-   **PWA :** Configurée comme une Progressive Web App pour une installation sur ordinateur et mobile et une utilisation hors ligne complète.
+
+---
+
+## 🛠️ Démarrage
+
+1.  **Accès :** Ouvrez simplement l'URL de l'application dans un navigateur moderne (Chrome, Firefox, Edge).
+2.  **Installation (Recommandé) :**
+    -   Dans les paramètres de l'application (`Profil & Paramètres → Installation`), cliquez sur "Installer l'application".
+    -   Ou utilisez l'icône d'installation qui apparaît dans la barre d'adresse de votre navigateur.
+3.  **Utilisation :** Commencez à ajouter vos produits et à réaliser des ventes. Tout est sauvegardé automatiquement sur votre appareil.
+4.  **Sauvegarde :** N'oubliez pas de faire des sauvegardes régulières de vos données depuis la page des paramètres !
