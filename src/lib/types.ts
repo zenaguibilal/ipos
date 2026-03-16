@@ -343,3 +343,34 @@ export interface BreadOrder {
 export interface BreadOrderWithClient extends BreadOrder {
     client: BreadClient;
 }
+
+
+// =================== New Dashboard Types ===================
+
+export interface DashboardKPIS {
+  revenue: { current: number; vs: number };
+  profit: { current: number; vs: number };
+  sales: { current: number; vs: number };
+  inventoryValue: { current: number; productCount: number };
+}
+
+export interface DashboardChartData {
+  date: string;
+  jour: string;
+  revenu: number;
+  benefice: number;
+}
+
+export interface DashboardExpenseData {
+  name: string;
+  value: number;
+}
+
+export interface DashboardDataType {
+  kpis: DashboardKPIS;
+  chartData: DashboardChartData[];
+  stockAlerts: Product[];
+  recentActivity: GlobalActivityItem[];
+  topProducts: (Product & { totalVendu: number })[];
+  expensesData: DashboardExpenseData[];
+}
