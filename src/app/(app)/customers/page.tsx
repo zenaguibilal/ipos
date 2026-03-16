@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -20,6 +21,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMe
 import { PageHeader } from '@/components/layout/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/card';
 
 type FilterStatus = 'all' | 'has_debt' | 'overdue' | 'over_limit';
 
@@ -38,8 +40,7 @@ export default function CustomersPage() {
 
     const customers = useLiveQuery<Customer[]>(
         () => dataService.getCustomers({ query: debouncedSearchQuery, status: filterStatus }),
-        [debouncedSearchQuery, filterStatus],
-        []
+        [debouncedSearchQuery, filterStatus]
     );
     
     const isLoading = customers === undefined;
@@ -99,7 +100,7 @@ export default function CustomersPage() {
             return renderSkeletons();
         }
 
-        if (customers.length === 0) {
+        if (!customers || customers.length === 0) {
             return (
                 <EmptyState
                     icon={Users}
