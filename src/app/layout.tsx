@@ -5,7 +5,7 @@ import { Inter } from 'next/font/google';
 import { ThemeProvider } from '@/components/layout/theme-provider';
 
 const APP_NAME = "iPOS";
-const APP_DEFAULT_TITLE = "iPOS - Point de Vente de Luxe";
+const APP_DEFAULT_TITLE = "iPOS - Point de Vente";
 const APP_TITLE_TEMPLATE = "%s - iPOS";
 const APP_DESCRIPTION = "Votre solution de point de vente élégante, puissante et intuitive.";
 
@@ -21,7 +21,7 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "default",
+    statusBarStyle: "black-translucent",
     title: APP_DEFAULT_TITLE,
   },
   formatDetection: {
@@ -35,6 +35,7 @@ export const metadata: Metadata = {
       template: APP_TITLE_TEMPLATE,
     },
     description: APP_DESCRIPTION,
+    images: ["/icons/icon-512x512.png"]
   },
   twitter: {
     card: "summary",
@@ -43,14 +44,19 @@ export const metadata: Metadata = {
       template: APP_TITLE_TEMPLATE,
     },
     description: APP_DESCRIPTION,
+    images: ["/icons/icon-512x512.png"]
   },
   icons: {
-    icon: "/icon.svg",
+    icon: [
+      { url: '/icon.svg', type: 'image/svg+xml' },
+      { url: '/icons/favicon-32x32.png', type: 'image/png', sizes: '32x32' },
+      { url: '/icons/favicon-16x16.png', type: 'image/png', sizes: '16x16' },
+    ],
     shortcut: "/icon.svg",
-    apple: "/icon.svg",
+    apple: [
+      { url: '/icons/apple-touch-icon.png', sizes: '180x180' },
+    ],
   },
-  // Added for PWA manifest
-  backgroundColor: "#1a120c",
 };
 
 export const viewport: Viewport = {
@@ -65,7 +71,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr" suppressHydrationWarning>
-      <head />
+      <head>
+          <meta name="msapplication-TileColor" content="#f97316" />
+          <meta name="msapplication-TileImage" content="/icons/icon-144x144.png" />
+      </head>
       <body className={inter.className}>
         <ThemeProvider
           attribute="class"

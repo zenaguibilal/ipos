@@ -17,6 +17,7 @@ import {
   Calculator,
   Wheat,
 } from 'lucide-react';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -62,7 +63,7 @@ export function AppHeader() {
                   href="/dashboard"
                   className="flex items-center gap-2 font-semibold"
               >
-                  <span className="text-2xl">💎</span>
+                  <Image src="/icon.svg" alt="iPOS logo" width={32} height={32} />
                   <span className="hidden sm:inline-block text-xl font-semibold">iPOS</span>
               </Link>
           </div>
