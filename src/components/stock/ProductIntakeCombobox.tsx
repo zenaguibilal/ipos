@@ -1,7 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
+import { useState, useMemo, useEffect } from 'react';
 import { dataService } from '@/services/data-service';
 import type { Product } from '@/lib/types';
 import {
@@ -29,8 +28,11 @@ interface ProductIntakeComboboxProps {
 export function ProductIntakeCombobox({ onProductSelected, onNewProductCreated }: ProductIntakeComboboxProps) {
     const [comboboxOpen, setComboboxOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    const [products, setProducts] = useState<Product[]>([]);
 
-    const products = useLiveQuery(() => dataService.getAll<Product>('products'), []);
+    useEffect(() => {
+        dataService.getAll<Product>('products').then(setProducts);
+    }, []);
 
     const filteredProducts = useMemo(() => {
         if (!products) return [];

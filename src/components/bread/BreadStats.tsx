@@ -4,12 +4,14 @@ import { useMemo } from 'react';
 import type { BreadOrderWithClient } from '@/lib/types';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Package, Truck, CheckCircle } from 'lucide-react';
+import { Skeleton } from '../ui/skeleton';
 
 interface BreadStatsProps {
     orders?: BreadOrderWithClient[];
+    isLoading: boolean;
 }
 
-export function BreadStats({ orders }: BreadStatsProps) {
+export function BreadStats({ orders, isLoading }: BreadStatsProps) {
     const stats = useMemo(() => {
         if (!orders) return { ordered: 0, delivered: 0, remaining: 0 };
         const ordered = orders.reduce((sum, o) => sum + o.quantite, 0);
@@ -20,6 +22,16 @@ export function BreadStats({ orders }: BreadStatsProps) {
             remaining: ordered - delivered,
         };
     }, [orders]);
+
+    if(isLoading) {
+        return (
+            <div className="grid gap-4 md:grid-cols-3">
+                <Skeleton className="h-24 w-full" />
+                <Skeleton className="h-24 w-full" />
+                <Skeleton className="h-24 w-full" />
+            </div>
+        )
+    }
 
     return (
         <div className="grid gap-4 md:grid-cols-3">

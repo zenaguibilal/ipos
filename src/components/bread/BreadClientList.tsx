@@ -1,7 +1,6 @@
 'use client';
 
-import { useState } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
+import { useState, useEffect } from 'react';
 import { dataService } from '@/services/data-service';
 import type { BreadClient } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -16,8 +15,15 @@ import { BREAD_WEEK_DAY_LABELS, BREAD_WEEK_DAYS } from '@/lib/constants';
 export function BreadClientList() {
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [selectedClient, setSelectedClient] = useState<BreadClient | null>(null);
+    const [clients, setClients] = useState<BreadClient[] | undefined>(undefined);
 
-    const clients = useLiveQuery(() => dataService.getBreadClients(), []);
+    const loadClients = () => {
+        dataService.getBreadClients().then(setClients);
+    }
+    
+    useEffect(() => {
+        loadClients();
+    }, []);
 
     const handleEdit = (client: BreadClient) => {
         setSelectedClient(client);
@@ -28,6 +34,13 @@ export function BreadClientList() {
         setSelectedClient(null);
         setIsFormOpen(true);
     };
+
+    const handleFormClose = (isOpen: boolean) => {
+        setIsFormOpen(isOpen);
+        if (!isOpen) {
+            loadClients();
+        }
+    }
     
     const isLoading = clients === undefined;
 
@@ -83,7 +96,7 @@ export function BreadClientList() {
 
             <BreadClientForm 
                 isOpen={isFormOpen}
-                onOpenChange={setIsFormOpen}
+                onOpenChange={handleFormClose}
                 client={selectedClient}
             />
         </>

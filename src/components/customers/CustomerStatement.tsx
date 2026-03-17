@@ -1,11 +1,10 @@
 'use client';
 
-import React from 'react';
-import type { Customer, Sale } from '@/lib/types';
+import React, { useState, useEffect } from 'react';
+import type { Customer, Sale, CompanyProfile } from '@/lib/types';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { formatCurrency, safeToDate } from '@/lib/utils';
-import { useLiveQuery } from 'dexie-react-hooks';
 import { dataService } from '@/services/data-service';
 
 interface CustomerStatementProps {
@@ -14,7 +13,11 @@ interface CustomerStatementProps {
 }
 
 export const CustomerStatement: React.FC<CustomerStatementProps> = ({ customer, unpaidSales }) => {
-    const companyProfile = useLiveQuery(() => dataService.getCompanyProfile());
+    const [companyProfile, setCompanyProfile] = useState<CompanyProfile | null>(null);
+
+    useEffect(() => {
+        dataService.getCompanyProfile().then(setCompanyProfile);
+    }, []);
 
     return (
         <div className="p-4 bg-white text-black font-sans">

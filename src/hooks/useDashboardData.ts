@@ -3,7 +3,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { dataService } from '@/services/data-service';
 import type { DateRange } from 'react-day-picker';
-import type { DashboardDataType, Product, Sale, StockIntake, Customer, ProductReturn, Expense, GlobalActivityItem } from '@/lib/types';
+import type { Product, Sale, StockIntake, Customer, ProductReturn, Expense, GlobalActivityItem, DashboardDataType } from '@/lib/types';
 import { differenceInDays, subDays, format, startOfDay, endOfDay } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
@@ -162,10 +162,10 @@ export function useDashboardData(dateRange?: DateRange) {
 
         // --- Recent Activity ---
         const activity: GlobalActivityItem[] = [
-            ...recentSales.map(s => ({ type: 'sale', date: s.createdAt!, id: s.id!, description: `Vente #${s.invoiceNumber}`, details: s.customerName || 'Client de passage', amount: s.total, amountClass: 'text-primary' })),
-            ...recentIntakes.map(i => ({ type: 'stock_intake', date: i.createdAt!, id: i.id!, description: `Réception de ${i.supplierName}`, details: `${i.items.length} article(s)`, amount: i.totalValue, amountClass: 'text-[hsl(var(--chart-quaternary))]' })),
-            ...recentReturns.map(r => ({ type: 'return', date: r.createdAt!, id: r.id!, description: `Retour sur facture #${r.originalInvoiceNumber}`, details: `${r.items.length} article(s) retourné(s)`, amount: r.totalReturnValue, amountClass: 'text-destructive' })),
-            ...recentCustomers.map(c => ({ type: 'customer', date: c.createdAt!, id: c.id!, description: 'Nouveau client', details: `${c.firstName} ${c.lastName}` })),
+            ...recentSales.map(s => ({ type: 'sale', date: s.createdAt!, id: s.id!, description: `Vente #${s.invoiceNumber}`, details: s.customerName || 'Client de passage', amount: s.total, amountClass: 'text-primary' } as GlobalActivityItem)),
+            ...recentIntakes.map(i => ({ type: 'stock_intake', date: i.createdAt!, id: i.id!, description: `Réception de ${i.supplierName}`, details: `${i.items.length} article(s)`, amount: i.totalValue, amountClass: 'text-[hsl(var(--chart-quaternary))]' } as GlobalActivityItem)),
+            ...recentReturns.map(r => ({ type: 'return', date: r.createdAt!, id: r.id!, description: `Retour sur facture #${r.originalInvoiceNumber}`, details: `${r.items.length} article(s) retourné(s)`, amount: r.totalReturnValue, amountClass: 'text-destructive' } as GlobalActivityItem)),
+            ...recentCustomers.map(c => ({ type: 'customer', date: c.createdAt!, id: c.id!, description: 'Nouveau client', details: `${c.firstName} ${c.lastName}` } as GlobalActivityItem)),
         ];
         const recentActivity = activity.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 8);
 

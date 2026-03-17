@@ -1,6 +1,5 @@
 'use client';
 
-import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { CardContent, CardFooter } from '@/components/ui/card';
@@ -15,7 +14,7 @@ import { dataService } from '@/services/data-service';
 
 export function CompanyProfileForm() {
     const [isMounted, setIsMounted] = useState(false);
-    const companyProfile = useLiveQuery(() => dataService.getCompanyProfile());
+    const [companyProfile, setCompanyProfile] = useState<CompanyProfile | null>(null);
 
     const [formState, setFormState] = useState<Partial<CompanyProfile>>({});
     const [isSaving, setIsSaving] = useState(false);
@@ -23,17 +22,15 @@ export function CompanyProfileForm() {
 
     useEffect(() => {
         setIsMounted(true);
-    }, []);
-
-    useEffect(() => {
-        if (isMounted) {
-            if (companyProfile) {
-                setFormState(companyProfile);
-            } else if (companyProfile === null) { 
+        dataService.getCompanyProfile().then(profile => {
+            setCompanyProfile(profile);
+            if (profile) {
+                setFormState(profile);
+            } else {
                 setFormState({ companyName: "Mon Magasin", country: "Algérie" });
             }
-        }
-    }, [companyProfile, isMounted]);
+        });
+    }, []);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { id, value } = e.target;

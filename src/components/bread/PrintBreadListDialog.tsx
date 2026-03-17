@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -11,8 +11,7 @@ import {
     DialogFooter,
 } from '@/components/ui/dialog';
 import { Printer } from 'lucide-react';
-import type { BreadOrder, BreadOrderWithClient } from '@/lib/types';
-import { useLiveQuery } from 'dexie-react-hooks';
+import type { BreadOrder, BreadOrderWithClient, CompanyProfile } from '@/lib/types';
 import { dataService } from '@/services/data-service';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -29,15 +28,14 @@ const getStatusLabel = (order: BreadOrder) => {
     return 'En attente';
 };
 
-const PrintableList = React.forwardRef<HTMLDivElement, PrintBreadListDialogProps>(({ orders, currentDate }, ref) => {
-    const companyProfile = useLiveQuery(() => dataService.getCompanyProfile());
+const PrintableList = React.forwardRef<HTMLDivElement, PrintBreadListDialogProps & { profile: CompanyProfile | null }>(({ orders, currentDate, profile }, ref) => {
     const totalQuantity = orders.reduce((acc, order) => acc + order.quantite, 0);
     const formattedDate = format(new Date(currentDate.replace(/-/g, '/')), 'EEEE d MMMM yyyy', { locale: fr });
     
     return (
         <div ref={ref} className="p-4 bg-white text-black font-sans">
             <header className="text-center mb-4">
-                <h1 className="text-xl font-bold">{companyProfile?.companyName || 'Liste de Commandes'}</h1>
+                <h1 className="text-xl font-bold">{profile?.companyName || 'Liste de Commandes'}</h1>
                 <h2 className="text-lg">Commandes de Pain du {formattedDate}</h2>
             </header>
             <table className="w-full text-sm border-collapse border border-gray-400">
@@ -72,7 +70,14 @@ PrintableList.displayName = 'PrintableList';
 
 export function PrintBreadListDialog({ orders, currentDate }: PrintBreadListDialogProps) {
     const [isOpen, setIsOpen] = React.useState(false);
+    const [profile, setProfile] = useState<CompanyProfile | null>(null);
     const printRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if(isOpen) {
+            dataService.getCompanyProfile().then(setProfile);
+        }
+    }, [isOpen]);
 
     const handlePrint = () => {
         const printableContent = document.getElementById('receipt-for-print');
@@ -102,7 +107,7 @@ export function PrintBreadListDialog({ orders, currentDate }: PrintBreadListDial
                     </DialogHeader>
                     <div id="label-print-area-wrapper" className="flex-grow overflow-y-auto bg-muted/50 p-4 rounded-md">
                         <div id="label-print-area" className="bg-white mx-auto" style={{ width: '210mm', minHeight: '297mm', padding: '1cm' }}>
-                            <PrintableList ref={printRef} orders={orders} currentDate={currentDate} />
+                            <PrintableList ref={printRef} orders={orders} currentDate={currentDate} profile={profile} />
                         </div>
                     </div>
                     <DialogFooter className="print-hide pt-4">

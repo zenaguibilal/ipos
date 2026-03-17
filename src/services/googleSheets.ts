@@ -1,6 +1,6 @@
 'use client';
 
-import { getDb } from '@/lib/database';
+import * as storage from '@/lib/storage';
 import type { CompanyProfile, DB } from '@/lib/types';
 
 const SYNC_QUEUE_KEY = 'ipos_sync_queue';
@@ -53,7 +53,7 @@ class GoogleSheetsService {
 
   async loadScriptUrl() {
     try {
-      const profile = await getDb().companyProfile.get(1);
+      const profile = await storage.getById<CompanyProfile>('companyProfile', 1);
       this.scriptUrl = profile?.syncUrl || null;
       if (this.scriptUrl) {
         this.processSyncQueue();
@@ -66,7 +66,6 @@ class GoogleSheetsService {
   async sendToSheets(table: string, action: 'upsert' | 'delete', record: any) {
     if (!this.scriptUrl) return;
 
-    // Use 'no-cors' mode and text/plain for Apps Script web apps to avoid CORS preflight issues.
     const response = await fetch(this.scriptUrl, {
       method: 'POST',
       mode: 'no-cors', 
@@ -74,14 +73,10 @@ class GoogleSheetsService {
       headers: { 'Content-Type': 'text/plain' }
     });
     
-    // With no-cors, the response will be opaque, so we can't read the body.
-    // We have to assume success if the request doesn't throw.
-    // The actual success/failure is handled by the script's logic, but we can't see it.
     if (response.type === 'opaque') {
         return { success: true };
     }
 
-    // This part is unlikely to be reached with no-cors, but kept for robustness.
     const result = await response.json();
     if (!result.success) {
       throw new Error(result.error || 'Sync request failed');
@@ -99,11 +94,10 @@ class GoogleSheetsService {
   }
   
   async syncTable(table: string) {
-    const db = getDb();
-    if (!TABLES_TO_SYNC.includes(table as any)) {
-      return { success: true, message: 'Skipped' };
+    if (!storage.TABLES.hasOwnProperty(table)) {
+        return { success: true, message: 'Skipped' };
     }
-    const localRecords = await db.table(table).toArray();
+    const localRecords = await storage.getAll(table as storage.TableName);
     const remoteRecords = await this.fetchFromSheets(table);
 
     const localMap = new Map(localRecords.map((r: any) => [String(r.id), r]));
@@ -139,8 +133,8 @@ class GoogleSheetsService {
       }
     }
 
-    if (toUpdateLocal.length > 0) await db.table(table).bulkPut(toUpdateLocal);
-    if (toAddLocal.length > 0) await db.table(table).bulkPut(toAddLocal);
+    if (toUpdateLocal.length > 0) await storage.bulkPut(table as storage.TableName, toUpdateLocal);
+    if (toAddLocal.length > 0) await storage.bulkPut(table as storage.TableName, toAddLocal);
     for (const record of [...toUpdateRemote, ...toAddRemote]) {
       await this.sendToSheets(table, 'upsert', record);
     }
@@ -166,21 +160,24 @@ class GoogleSheetsService {
       }
     }
     const lastSync = new Date().toISOString();
-    await getDb().companyProfile.where({id: 1}).modify({ lastSyncDate: lastSync });
+    await storage.update('companyProfile', 1, { lastSyncDate: lastSync });
     return { success: true, results, lastSync };
   }
 
-  async addToQueue(table: string, action: 'upsert' | 'delete', record: any) {
+  addToQueue(table: string, action: 'upsert' | 'delete', record: any) {
     if (this.isOnline && this.scriptUrl) {
-      try {
-        await this.sendToSheets(table, action, record);
-        return;
-      } catch (e) {
+      this.sendToSheets(table, action, record).catch(e => {
         console.warn('Live sync failed, adding to queue.', e);
-      }
+        this.pushToQueue({ id: Date.now(), table, action, record, attempts: 0 });
+      });
+      return;
     }
+    this.pushToQueue({ id: Date.now(), table, action, record, attempts: 0 });
+  }
+  
+  private pushToQueue(item: QueueItem) {
     const queue = this.loadQueue();
-    queue.push({ id: Date.now(), table, action, record, attempts: 0 });
+    queue.push(item);
     this.saveQueue(queue);
   }
 
@@ -190,23 +187,18 @@ class GoogleSheetsService {
     const queue = this.loadQueue();
     if (queue.length === 0) return;
 
-    const processedIds: number[] = [];
-
+    let success = true;
     for (const item of queue) {
       try {
         await this.sendToSheets(item.table, item.action, item.record);
-        processedIds.push(item.id);
       } catch {
         item.attempts++;
-        if (item.attempts >= 3) {
-          processedIds.push(item.id);
-        }
+        success = false;
       }
     }
-
-    if (processedIds.length > 0) {
-      this.saveQueue(queue.filter(i => !processedIds.includes(i.id)));
-    }
+    
+    const newQueue = queue.filter(item => item.attempts < 3);
+    this.saveQueue(newQueue);
   }
 
   getStatus() {

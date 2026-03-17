@@ -54,7 +54,7 @@ export function BackupPreview({ backupData, onClose, onComplete }: { backupData:
     current: 0,
     total: 0,
     currentTable: '',
-    done: []
+    done: [] as { table: string; success: boolean; error?: string }[],
   });
 
   const handleEditTable = (tableName: string) => {
@@ -77,7 +77,7 @@ export function BackupPreview({ backupData, onClose, onComplete }: { backupData:
     try {
         await dataService.restoreTables(
             editedData as Partial<DB>, 
-            tablesToRestore as (keyof DB)[], 
+            tablesToRestore, 
             (progress) => setRestoreProgress(progress)
         );
         toast.success("Restauration terminée !");

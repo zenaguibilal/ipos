@@ -1,8 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, forwardRef, useImperativeHandle, useRef } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '@/lib/database';
+import React, { useState, useMemo, forwardRef, useImperativeHandle, useRef, useEffect } from 'react';
 import { dataService } from '@/services/data-service';
 import type { Product } from '@/lib/types';
 import { Input } from '@/components/ui/input';
@@ -71,6 +69,8 @@ export const ProductSearch = forwardRef<{focus: () => void}, ProductSearchProps>
     const [query, setQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('all');
     const inputRef = useRef<HTMLInputElement>(null);
+    const [products, setProducts] = useState<Product[]>([]);
+    const [categories, setCategories] = useState<string[]>([]);
 
     useImperativeHandle(ref, () => ({
         focus: () => {
@@ -78,8 +78,10 @@ export const ProductSearch = forwardRef<{focus: () => void}, ProductSearchProps>
         },
     }));
     
-    const products = useLiveQuery(() => db.instance.products.toArray());
-    const categories = useLiveQuery(() => dataService.getProductCategories());
+    useEffect(() => {
+        dataService.getAll<Product>('products').then(setProducts);
+        dataService.getProductCategories().then(setCategories);
+    }, []);
 
     const handleBarcodeScanned = async (scannedBarcode: string) => {
         if (!scannedBarcode.trim()) return;
@@ -96,7 +98,6 @@ export const ProductSearch = forwardRef<{focus: () => void}, ProductSearchProps>
         if (!products) return [];
 
         const lowercasedQuery = query.toLowerCase().trim();
-        // If there's no search query, don't show any products.
         if (!lowercasedQuery) {
             return [];
         }

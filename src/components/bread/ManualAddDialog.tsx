@@ -1,7 +1,6 @@
 'use client';
 
-import { useState } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -10,17 +9,25 @@ import { Label } from '@/components/ui/label';
 import { dataService } from '@/services/data-service';
 import { toast } from 'sonner';
 import { Plus } from 'lucide-react';
+import type { BreadClient } from '@/lib/types';
 
 interface ManualAddDialogProps {
     currentDate: string;
+    onOrderAdded: () => void;
 }
 
-export function ManualAddDialog({ currentDate }: ManualAddDialogProps) {
+export function ManualAddDialog({ currentDate, onOrderAdded }: ManualAddDialogProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [selectedClientId, setSelectedClientId] = useState<string>('');
     const [quantity, setQuantity] = useState(10);
+    const [manualClients, setManualClients] = useState<BreadClient[]>([]);
+
+    useEffect(() => {
+        if(isOpen) {
+            dataService.getManualBreadClients().then(setManualClients);
+        }
+    }, [isOpen]);
     
-    const manualClients = useLiveQuery(() => dataService.getManualBreadClients(), []);
 
     const handleAdd = async () => {
         if (!selectedClientId) {
@@ -38,6 +45,7 @@ export function ManualAddDialog({ currentDate }: ManualAddDialogProps) {
             setIsOpen(false);
             setSelectedClientId('');
             setQuantity(10);
+            onOrderAdded();
         } catch(error: any) {
             toast.error("Erreur lors de l'ajout.", { description: error.message });
         }

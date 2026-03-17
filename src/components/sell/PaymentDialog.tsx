@@ -16,8 +16,6 @@ import type { Cart, SalePayment, Customer, Product } from '@/lib/types';
 import { Loader2, CreditCard, Banknote, AlertTriangle } from 'lucide-react';
 import { dataService } from '@/services/data-service';
 import { formatCurrency, calculateCartTotals } from '@/lib/utils';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '@/lib/database';
 import { cn } from '@/lib/utils';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Separator } from '@/components/ui/separator';
@@ -44,9 +42,7 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, onSaleFinalized }: P
     const [showLossAlert, setShowLossAlert] = useState(false);
     const [lossItems, setLossItems] = useState<Product[]>([]);
 
-    const customer = useLiveQuery(() => 
-        cart.customerId ? db.instance.customers.get(cart.customerId) : Promise.resolve(undefined)
-    );
+    const [customer, setCustomer] = useState<Customer | undefined>(undefined);
 
     const { subtotal, discountAmount, total } = calculateCartTotals(cart);
 
@@ -61,6 +57,14 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, onSaleFinalized }: P
     const creditUsage = customer?.creditLimit && customer.creditLimit > 0 ? (newTotalOutstanding / customer.creditLimit) * 100 : 0;
 
     useEffect(() => {
+        if(cart.customerId) {
+            dataService.getById<Customer>('customers', cart.customerId).then(setCustomer);
+        } else {
+            setCustomer(undefined);
+        }
+    }, [cart.customerId]);
+
+    useEffect(() => {
         if (isOpen) {
             const itemsSoldAtLoss = cart.items.filter(item => item.price < item.purchasePrice);
             if (itemsSoldAtLoss.length > 0) {
@@ -70,7 +74,6 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, onSaleFinalized }: P
                 initializePayment();
             }
         } else {
-            // Reset state on close
             setLastSale(null);
             setIsLoading(false);
         }
@@ -128,9 +131,8 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, onSaleFinalized }: P
         };
 
         try {
-            const newSaleId = await dataService.addSale(saleData);
-            const saleFromDb = await dataService.getById('sales', newSaleId);
-            setLastSale({ ...saleFromDb, change: change > 0 ? change : 0 });
+            const newSale = await dataService.addSale(saleData);
+            setLastSale({ ...newSale, change: change > 0 ? change : 0 });
             toast.success("Vente finalisée avec succès !");
             onSaleFinalized();
         } catch (error: any) {

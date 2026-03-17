@@ -1,9 +1,6 @@
-
-
 'use client';
 
-import { useEffect, useCallback } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
+import { useEffect, useState, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { dataService } from '@/services/data-service';
 import type { Cart, Product, Customer, Draft } from '@/lib/types';
@@ -21,53 +18,69 @@ const createNewCart = (name: string): Cart => ({
 });
 
 export const useCarts = () => {
-    const carts = useLiveQuery(() => dataService.getAll<Cart>('carts'));
-    const activeCartIdSetting = useLiveQuery(() => dataService.getSetting(ACTIVE_CART_ID_KEY));
+    const [carts, setCarts] = useState<Cart[]>([]);
+    const [activeCartId, setActiveCartIdState] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+
+    const activeCart = carts?.find(c => c.id === activeCartId);
     
-    const activeCartId = activeCartIdSetting?.value;
-    const isLoading = carts === undefined || activeCartIdSetting === undefined;
+    const loadCarts = useCallback(async () => {
+        setIsLoading(true);
+        const [loadedCarts, activeIdSetting] = await Promise.all([
+            dataService.getAll<Cart>('carts'),
+            dataService.getSetting(ACTIVE_CART_ID_KEY)
+        ]);
+
+        if (loadedCarts.length === 0) {
+            const newCart = createNewCart('Panier 1');
+            await dataService.saveCart(newCart);
+            await dataService.setSetting(ACTIVE_CART_ID_KEY, newCart.id);
+            setCarts([newCart]);
+            setActiveCartIdState(newCart.id);
+        } else {
+            setCarts(loadedCarts);
+            if (activeIdSetting?.value && loadedCarts.some(c => c.id === activeIdSetting.value)) {
+                setActiveCartIdState(activeIdSetting.value);
+            } else {
+                setActiveCartIdState(loadedCarts[0].id);
+                await dataService.setSetting(ACTIVE_CART_ID_KEY, loadedCarts[0].id);
+            }
+        }
+        setIsLoading(false);
+    }, []);
 
     useEffect(() => {
-        if (carts === undefined) return;
-        const initializeCarts = async () => {
-            if (carts.length === 0) {
-                const newCart = createNewCart('Panier 1');
-                await dataService.saveCart(newCart);
-                await dataService.setSetting(ACTIVE_CART_ID_KEY, newCart.id);
-            } else if (!activeCartId || !carts.some(c => c.id === activeCartId)) {
-                await dataService.setSetting(ACTIVE_CART_ID_KEY, carts[0].id);
-            }
-        };
-        initializeCarts();
-    }, [carts, activeCartId]);
+        loadCarts();
+    }, [loadCarts]);
 
     const setActiveCartId = useCallback(async (id: string) => {
         await dataService.setSetting(ACTIVE_CART_ID_KEY, id);
+        setActiveCartIdState(id);
     }, []);
 
-    const activeCart = carts?.find(c => c.id === activeCartId);
-
     const addCart = useCallback(async () => {
-        if(!carts) return;
+        if(carts === undefined) return;
         const newCart = createNewCart(`Panier ${carts.length + 1}`);
         await dataService.saveCart(newCart);
+        setCarts(prev => [...prev, newCart]);
         await setActiveCartId(newCart.id);
     }, [carts, setActiveCartId]);
 
     const removeCart = useCallback(async (cartId: string) => {
-        if (!carts) return;
-        
         await dataService.deleteCart(cartId);
-
-        if (carts.length === 1 && carts[0].id === cartId) {
-            // It was the last cart, create a new one
+        
+        const remainingCarts = carts.filter(c => c.id !== cartId);
+        
+        if (remainingCarts.length === 0) {
             const newCart = createNewCart('Panier 1');
             await dataService.saveCart(newCart);
+            setCarts([newCart]);
             await setActiveCartId(newCart.id);
-        } else if (activeCartId === cartId) {
-            // It was not the last cart, but it was active
-            const remainingCarts = carts.filter(c => c.id !== cartId);
-            await setActiveCartId(remainingCarts[0]?.id || '');
+        } else {
+             setCarts(remainingCarts);
+            if (activeCartId === cartId) {
+                await setActiveCartId(remainingCarts[0].id);
+            }
         }
     }, [carts, activeCartId, setActiveCartId]);
     
@@ -75,10 +88,11 @@ export const useCarts = () => {
         if(!activeCartId) return;
         try {
             await dataService.addProductToCart(activeCartId, product, quantity);
+            await loadCarts(); // Reload carts to reflect changes
         } catch (e: any) {
             toast.error(e.message || "Erreur lors de l'ajout du produit.");
         }
-    }, [activeCartId]);
+    }, [activeCartId, loadCarts]);
     
     const updateCartItemQuantity = useCallback(async (itemId: string | number, newQuantity: number) => {
         if (!activeCartId || !activeCart) return;
@@ -88,25 +102,29 @@ export const useCarts = () => {
                 const item = activeCart.items.find(i => i.id === itemId);
                 toast.warning(`Stock limité`, { description: `Maximum ${result.maxQuantity} unités pour ${item?.name}.` });
             }
+            await loadCarts();
         } catch (e: any) {
              toast.error(e.message || "Erreur lors de la mise à jour de la quantité.");
         }
-    }, [activeCartId, activeCart]);
+    }, [activeCartId, activeCart, loadCarts]);
 
     const removeCartItem = useCallback(async (itemId: string | number) => {
         if (!activeCartId) return;
         await dataService.removeCartItem(activeCartId, itemId);
-    }, [activeCartId]);
+        await loadCarts();
+    }, [activeCartId, loadCarts]);
 
     const clearCart = useCallback(async () => {
         if (!activeCartId) return;
         await dataService.clearCart(activeCartId);
-    }, [activeCartId]);
+        await loadCarts();
+    }, [activeCartId, loadCarts]);
     
     const setCartCustomer = useCallback(async (customer: Customer | null) => {
         if (!activeCartId) return;
         await dataService.setCartCustomer(activeCartId, customer);
-    }, [activeCartId]);
+        await loadCarts();
+    }, [activeCartId, loadCarts]);
 
     const setCartDiscount = useCallback(async (discount: { type: 'fixed' | 'percentage'; value: number }) => {
         if (!activeCartId || !activeCart) return;
@@ -115,7 +133,8 @@ export const useCarts = () => {
         if (discount.type === 'fixed' && value > subtotal) toast.warning("La remise est plafonnée au sous-total.");
         if (discount.type === 'percentage' && (value < 0 || value > 100)) toast.warning("Le pourcentage de remise doit être compris entre 0 et 100.");
         await dataService.setCartDiscount(activeCartId, discount);
-    }, [activeCartId, activeCart]);
+        await loadCarts();
+    }, [activeCartId, activeCart, loadCarts]);
 
     const saveActiveCartAsDraft = useCallback(async (notes?: string) => {
         if (!activeCart) throw new Error("Aucun panier actif à sauvegarder.");
@@ -140,18 +159,20 @@ export const useCarts = () => {
 
         await dataService.saveCart(updatedCart as Cart);
         await dataService.deleteDraft(draftId);
+        await loadCarts();
         toast.success(`Brouillon chargé dans ${activeCart?.name}.`);
 
-    }, [activeCart, activeCartId]);
+    }, [activeCart, activeCartId, loadCarts]);
 
     useEffect(() => {
         if (activeCart && activeCart.items.some(i => i.flash)) {
-            const timer = setTimeout(() => {
-                dataService.removeFlashFromCartItems(activeCart.id);
+            const timer = setTimeout(async () => {
+                await dataService.removeFlashFromCartItems(activeCart.id);
+                await loadCarts();
             }, 700);
             return () => clearTimeout(timer);
         }
-    }, [activeCart]);
+    }, [activeCart, loadCarts]);
 
     return {
         carts: carts ?? [],

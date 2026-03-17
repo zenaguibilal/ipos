@@ -1,6 +1,6 @@
-
 'use client';
 
+import { useState, useEffect } from 'react';
 import {
     Dialog,
     DialogContent,
@@ -22,7 +22,6 @@ import type { Draft } from '@/lib/types';
 import { formatCurrency } from '@/lib/utils';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { useLiveQuery } from 'dexie-react-hooks';
 import { dataService } from '@/services/data-service';
 import { Download, Trash2 } from 'lucide-react';
 import {
@@ -44,10 +43,17 @@ interface DraftsDialogProps {
 }
 
 export function DraftsDialog({ isOpen, onOpenChange, onLoadDraft }: DraftsDialogProps) {
-    const drafts = useLiveQuery(() => dataService.getDrafts());
+    const [drafts, setDrafts] = useState<Draft[]>([]);
+
+    useEffect(() => {
+        if (isOpen) {
+            dataService.getDrafts().then(setDrafts);
+        }
+    }, [isOpen]);
 
     const handleDelete = async (id: number) => {
         await dataService.deleteDraft(id);
+        setDrafts(prev => prev.filter(d => d.id !== id));
     };
 
     return (
@@ -72,7 +78,7 @@ export function DraftsDialog({ isOpen, onOpenChange, onLoadDraft }: DraftsDialog
                         <TableBody>
                             {drafts && drafts.length > 0 ? drafts.map((draft) => (
                                 <TableRow key={draft.id}>
-                                    <TableCell>{format(draft.date, 'd MMM yyyy, HH:mm', { locale: fr })}</TableCell>
+                                    <TableCell>{format(new Date(draft.date), 'd MMM yyyy, HH:mm', { locale: fr })}</TableCell>
                                     <TableCell>{draft.customerName || 'Client de passage'}</TableCell>
                                     <TableCell className="text-right">{formatCurrency(draft.total)}</TableCell>
                                     <TableCell className="text-right">

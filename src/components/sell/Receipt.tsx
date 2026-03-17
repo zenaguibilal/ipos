@@ -1,11 +1,9 @@
-
 'use client';
 
 import React from 'react';
 import type { CompanyProfile, Sale } from '@/lib/types';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { useLiveQuery } from 'dexie-react-hooks';
 import { dataService } from '@/services/data-service';
 import { formatCurrency } from '@/lib/utils';
 import QRCode from 'qrcode';
@@ -48,16 +46,20 @@ const getReceiptInfo = (companyProfile?: CompanyProfile) => ({
 });
 
 export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(({ sale }, ref) => {
-    const companyProfile = useLiveQuery(() => dataService.getCompanyProfile());
+    const [companyProfile, setCompanyProfile] = useState<CompanyProfile | null>(null);
     const [qrCodeUrl, setQrCodeUrl] = useState('');
     
+    useEffect(() => {
+        dataService.getCompanyProfile().then(setCompanyProfile);
+    }, []);
+
     const receiptInfo = getReceiptInfo(companyProfile ?? undefined);
 
     useEffect(() => {
         if (!sale?.createdAt) return;
         const details = [
             `Facture: ${sale.invoiceNumber}`,
-            `Date: ${format(sale.createdAt, 'Pp', { locale: fr })}`,
+            `Date: ${format(new Date(sale.createdAt), 'Pp', { locale: fr })}`,
             `Total: ${formatCurrency(sale.total)}`
         ].join('\n');
         
@@ -91,7 +93,7 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(({ sale },
                 </div>
                 <div className="flex justify-between">
                     <span>{receiptInfo.dateLabel}</span>
-                    <span>{format(sale.createdAt, 'Pp', { locale: fr })}</span>
+                    <span>{format(new Date(sale.createdAt), 'Pp', { locale: fr })}</span>
                 </div>
                  {sale.customerName && (
                     <div className="flex justify-between">
