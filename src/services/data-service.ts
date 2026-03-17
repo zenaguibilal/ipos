@@ -1,6 +1,6 @@
 'use client';
 
-import { getDb, PosDatabase, type Collection } from '@/lib/database';
+import { getDb, db, type GenericTableName, type Collection } from '@/lib/database';
 import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, Notification, InventoryLog, DashboardData, StockIntakeItem, CartItem, TopProduct, TopCustomer, GlobalActivityItem, ProductImportAnalysis, ZakatData, CostingItem, Draft, SaleItem, Supplier, ImportAnalysis, BreadClient, BreadOrder, BreadOrderWithClient, DB } from '@/lib/types';
 import type { CollectionName } from './initial-data';
 import { subDays } from 'date-fns';
@@ -8,13 +8,6 @@ import Papa from 'papaparse';
 import { calculateCartTotals } from '@/lib/utils';
 import { BREAD_WEEK_DAYS } from '@/lib/constants';
 import { sheetsService } from './googleSheets';
-
-type GenericTableName = keyof Pick<PosDatabase, 
-    'products' | 'customers' | 'sales' | 'payments' | 
-    'stockIntakes' | 'returns' | 'drafts' | 'companyProfile' | 
-    'carts' | 'expenses' | 'settings' | 'notifications' | 'inventoryLogs' | 
-    'suppliers' | 'clients_pain' | 'commandes_pain'
->;
 
 class DataService {
   
@@ -285,13 +278,12 @@ class DataService {
   }
 
   async getProducts(params: { query?: string; category?: string; supplierId?: number; stockStatus?: 'all' | 'in_stock' | 'low_stock' | 'out_of_stock', sortBy?: string }): Promise<Product[]> {
-    const db = getDb();
     const { query, category, supplierId, stockStatus = 'all', sortBy = 'name_asc' } = params;
 
-    let collection: Collection<Product, number> = db.products.toCollection();
+    let collection: Collection<Product, number> = getDb().products.toCollection();
 
     if (category) {
-      collection = db.products.where('category').equals(category);
+      collection = getDb().products.where('category').equals(category);
     }
     
     if (stockStatus !== 'all') {
@@ -368,11 +360,10 @@ class DataService {
   }
 
     async getCustomerStatementData(customerId: number): Promise<{ customer: Customer, unpaidSales: Sale[]}> {
-        const db = getDb();
         const customer = await this.getCustomerById(customerId);
         if (!customer) throw new Error("Client non trouvé");
 
-        const unpaidSales = await db.sales.where({ customerId })
+        const unpaidSales = await getDb().sales.where({ customerId })
             .and(sale => sale.paymentStatus !== 'paid')
             .sortBy('createdAt');
         
@@ -380,9 +371,8 @@ class DataService {
     }
 
   async getCustomers(params: { query?: string; status?: 'all' | 'has_debt' | 'overdue' | 'over_limit', sortBy?: string, limit?: number }): Promise<Customer[]> {
-    const db = getDb();
     const { query, status = 'all', sortBy = 'lastName_asc', limit } = params;
-    let collection: Collection<Customer, number> = db.customers.toCollection();
+    let collection: Collection<Customer, number> = getDb().customers.toCollection();
 
     if (query) {
         const lowerQuery = query.toLowerCase();
@@ -510,9 +500,8 @@ class DataService {
   // Sales - Complex logic is handled atomically
   // ====================================================================
   async getSales(params: { query?: string; from?: Date; to?: Date }): Promise<Sale[]> {
-    const db = getDb();
     const { query, from, to } = params;
-    let collection = (from && to) ? db.sales.where('createdAt').between(from, to, true, true) : db.sales.toCollection();
+    let collection = (from && to) ? getDb().sales.where('createdAt').between(from, to, true, true) : getDb().sales.toCollection();
     let salesArray = await collection.reverse().toArray();
     if (query) {
         const lowerQuery = query.toLowerCase();
@@ -815,9 +804,8 @@ class DataService {
     }
   
   async getStockIntakes(params: { query?: string; from?: Date; to?: Date }): Promise<StockIntake[]> {
-    const db = getDb();
     const { query, from, to } = params;
-    let collection = (from && to) ? db.stockIntakes.where('createdAt').between(from, to, true, true) : db.stockIntakes.toCollection();
+    let collection = (from && to) ? getDb().stockIntakes.where('createdAt').between(from, to, true, true) : getDb().stockIntakes.toCollection();
     let intakesArray = await collection.reverse().toArray();
     if (query) {
         const lowerQuery = query.toLowerCase();
@@ -853,9 +841,8 @@ class DataService {
   }
 
   async getReturns(params: { query?: string; from?: Date; to?: Date }): Promise<ProductReturn[]> {
-    const db = getDb();
     const { query, from, to } = params;
-    let collection = (from && to) ? db.returns.where('createdAt').between(from, to, true, true) : db.returns.toCollection();
+    let collection = (from && to) ? getDb().returns.where('createdAt').between(from, to, true, true) : getDb().returns.toCollection();
     let returnsArray = await collection.reverse().toArray();
     if (query) {
         const lowerQuery = query.toLowerCase();
@@ -938,13 +925,12 @@ class DataService {
     }
 
   async getExpenses(params: { category?: string; from?: Date; to?: Date }): Promise<Expense[]> {
-    const db = getDb();
     const { category, from, to } = params;
     let collection;
-    if(category && from && to) collection = db.expenses.where('[category+expenseDate]').between([category, from], [category, to]);
-    else if (category) collection = db.expenses.where({ category });
-    else if (from && to) collection = db.expenses.where('expenseDate').between(from, to);
-    else collection = db.expenses.toCollection();
+    if(category && from && to) collection = getDb().expenses.where('[category+expenseDate]').between([category, from], [category, to]);
+    else if (category) collection = getDb().expenses.where({ category });
+    else if (from && to) collection = getDb().expenses.where('expenseDate').between(from, to);
+    else collection = getDb().expenses.toCollection();
     return collection.reverse().toArray();
   }
   
@@ -985,17 +971,15 @@ class DataService {
   async clearReadNotifications(): Promise<void> { const db = getDb(); return db.transaction('rw', db.notifications, () => db.notifications.where({ isRead: true }).delete()); }
 
   async getZakatData(): Promise<ZakatData> {
-      const db = getDb();
       const inventoryValue = await this.getInventoryValue();
-      const totalReceivables = (await db.customers.toArray()).reduce((acc, c) => acc + c.outstandingBalance, 0);
+      const totalReceivables = (await getDb().customers.toArray()).reduce((acc, c) => acc + c.outstandingBalance, 0);
       return { inventoryValue, totalReceivables };
   }
 
   async getDashboardData(params: { from: Date; to: Date }): Promise<DashboardData> {
-    const db = getDb();
     const { from, to } = params;
-    const sales = await db.sales.where('createdAt').between(from, to, true, true).reverse().toArray();
-    const expenses = await db.expenses.where('expenseDate').between(from, to, true, true).toArray();
+    const sales = await getDb().sales.where('createdAt').between(from, to, true, true).reverse().toArray();
+    const expenses = await getDb().expenses.where('expenseDate').between(from, to, true, true).toArray();
     let totalRevenue = 0, totalProfit = 0;
     const productStats = new Map<number, { name: string; totalRevenue: number; unitsSold: number; totalProfit: number }>();
     const customerStats = new Map<number, { name: string; totalSpent: number }>();
@@ -1041,7 +1025,7 @@ class DataService {
     const activity: GlobalActivityItem[] = [
         ...sales.map(s => ({ type: 'sale', date: s.createdAt!, id: s.id!, description: `Vente #${s.invoiceNumber}`, details: s.customerName || 'Client de passage', amount: s.total, amountClass: 'text-primary' } as GlobalActivityItem)),
         ...intakes.map(i => ({ type: 'stock_intake', date: i.createdAt!, id: i.id!, description: `Réception de ${i.supplierName}`, details: `${i.items.length} article(s)`, amount: i.totalValue, amountClass: 'text-[hsl(var(--chart-quaternary))]' } as GlobalActivityItem)),
-        ...returns.map(r => ({ type: 'return', date: r.createdAt!, id: r.id!, description: `Retour sur facture #${r.originalInvoiceNumber}`, details: `${i.items.length} article(s) retourné(s)`, amount: r.totalReturnValue, amountClass: 'text-destructive' } as GlobalActivityItem)),
+        ...returns.map(r => ({ type: 'return', date: r.createdAt!, id: r.id!, description: `Retour sur facture #${r.originalInvoiceNumber}`, details: `${r.items.length} article(s) retourné(s)`, amount: r.totalReturnValue, amountClass: 'text-destructive' } as GlobalActivityItem)),
         ...customers.map(c => ({ type: 'customer', date: c.createdAt!, id: c.id!, description: `Nouveau client`, details: `${c.firstName} ${c.lastName}` } as GlobalActivityItem)),
     ];
     return activity.sort((a,b) => b.date.getTime() - a.date.getTime()).slice(0, limit);
@@ -1338,10 +1322,9 @@ class DataService {
   }
 
   async getBreadOrdersForDate(date: string): Promise<BreadOrderWithClient[]> {
-    const db = getDb();
-    const orders = await db.commandes_pain.where({ date }).toArray();
+    const orders = await getDb().commandes_pain.where({ date }).toArray();
     const clientIds = [...new Set(orders.map(o => o.client_pain_id))];
-    const clients = await db.clients_pain.where('id').anyOf(clientIds).toArray();
+    const clients = await getDb().clients_pain.where('id').anyOf(clientIds).toArray();
     const clientMap = new Map(clients.map(c => [c.id!, c]));
 
     return orders.map(order => ({

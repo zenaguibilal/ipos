@@ -169,20 +169,30 @@ export class PosDatabase extends Dexie {
         Object.hasOwn(modifications, 'firstName') ||
         Object.hasOwn(modifications, 'lastName')
       ) {
-        const newFirst = Object.hasOwn(modifications, 'firstName')
+        const newFirstName = Object.hasOwn(modifications, 'firstName')
           ? (modifications as any).firstName
           : obj.firstName;
-        const newLast = Object.hasOwn(modifications, 'lastName')
+        const newLastName = Object.hasOwn(modifications, 'lastName')
           ? (modifications as any).lastName
           : obj.lastName;
-        if (typeof newFirst === 'string' && typeof newLast === 'string') {
+        if (
+          typeof newFirstName === 'string' &&
+          typeof newLastName === 'string'
+        ) {
           (modifications as any).searchName =
-            `${newFirst.toLowerCase()} ${newLast.toLowerCase()}`;
+            `${newFirstName.toLowerCase()} ${newLastName.toLowerCase()}`;
         }
       }
     });
   }
 }
+
+export type GenericTableName = keyof Pick<PosDatabase, 
+    'products' | 'customers' | 'sales' | 'payments' | 
+    'stockIntakes' | 'returns' | 'drafts' | 'companyProfile' | 
+    'carts' | 'expenses' | 'settings' | 'notifications' | 'inventoryLogs' | 
+    'suppliers' | 'clients_pain' | 'commandes_pain'
+>;
 
 // ─── Singleton — نقطة الوصول الوحيدة ─────────────
 let _dbInstance: PosDatabase | undefined;

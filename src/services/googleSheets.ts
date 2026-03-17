@@ -1,11 +1,11 @@
 'use client';
 
-import { getDb, PosDatabase } from '@/lib/database';
-import type { CompanyProfile } from '@/lib/types';
+import { getDb } from '@/lib/database';
+import type { CompanyProfile, DB } from '@/lib/types';
 
 const SYNC_QUEUE_KEY = 'ipos_sync_queue';
 
-export const TABLES_TO_SYNC: (keyof PosDatabase)[] = [
+export const TABLES_TO_SYNC: (keyof DB)[] = [
     'products', 'customers', 'suppliers',
     'sales', 'stockIntakes', 'returns',
     'payments', 'expenses', 'drafts',
