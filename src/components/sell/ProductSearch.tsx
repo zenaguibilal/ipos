@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, forwardRef, useImperativeHandle, useRef } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { getDb } from '@/lib/database';
+import { db } from '@/lib/database';
 import { dataService } from '@/services/data-service';
 import type { Product } from '@/lib/types';
 import { Input } from '@/components/ui/input';
@@ -78,7 +78,7 @@ export const ProductSearch = forwardRef<{focus: () => void}, ProductSearchProps>
         },
     }));
     
-    const products = useLiveQuery(() => getDb().products.toArray());
+    const products = useLiveQuery(() => db.instance.products.toArray());
     const categories = useLiveQuery(() => dataService.getProductCategories());
 
     const handleBarcodeScanned = async (scannedBarcode: string) => {

@@ -2,7 +2,7 @@
 
 import React, { useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { getDb } from '@/lib/database';
+import { db } from '@/lib/database';
 import { Combobox, ComboboxOption } from '@/components/ui/combobox';
 import type { Customer } from '@/lib/types';
 import { formatCurrency } from '@/lib/utils';
@@ -20,7 +20,7 @@ const WalkInCustomerOption: ComboboxOption = {
 
 export const CustomerCombobox = React.forwardRef<HTMLButtonElement, CustomerComboboxProps>(({ customerId, onSelectCustomer }, ref) => {
     
-    const customers = useLiveQuery(() => getDb().customers.orderBy('lastName').toArray());
+    const customers = useLiveQuery(() => db.instance.customers.orderBy('lastName').toArray());
 
     const customerOptions = useMemo<ComboboxOption[]>(() => {
         if (!customers) return [WalkInCustomerOption];

@@ -1,6 +1,14 @@
 'use client';
 
-import Dexie, { type Table } from 'dexie';
+/**
+ * ╔══════════════════════════════════════════════════╗
+ * ║  iPOS — ملف قاعدة البيانات المركزي              ║
+ * ║  هذا الملف الوحيد المسموح فيه باستخدام Dexie   ║
+ * ║  لا تستورد Dexie في أي ملف آخر                 ║
+ * ╚══════════════════════════════════════════════════╝
+ */
+
+import Dexie, { type Table, type Collection } from 'dexie';
 import type {
   Product,
   Customer,
@@ -20,7 +28,9 @@ import type {
   BreadOrder,
 } from './types';
 
-// ─── تعريف قاعدة البيانات ─────────────────────────────────
+export type { Collection };
+
+// ─── تعريف قاعدة البيانات ─────────────────────────
 export class PosDatabase extends Dexie {
   products!: Table<Product, number>;
   customers!: Table<Customer, number>;
@@ -40,6 +50,7 @@ export class PosDatabase extends Dexie {
   commandes_pain!: Table<BreadOrder, number>;
 
   constructor() {
+    // ✅ الاسم إلزامي دائماً
     super('posDB');
 
     this.version(29).stores({
@@ -62,11 +73,7 @@ export class PosDatabase extends Dexie {
     })
     .upgrade(tx => {
       return tx.table('customers').toCollection().modify(customer => {
-        if (
-          customer.firstName &&
-          customer.lastName &&
-          !customer.searchName
-        ) {
+        if (customer.firstName && customer.lastName && !customer.searchName) {
           customer.searchName =
             `${customer.firstName.toLowerCase()} ${customer.lastName.toLowerCase()}`;
         }
@@ -98,8 +105,8 @@ export class PosDatabase extends Dexie {
       });
     })
     .upgrade(async tx => {
-      const stockIntakesToMigrate = await tx.table('stockIntakes').toArray();
-      for (const intake of stockIntakesToMigrate) {
+      const intakes = await tx.table('stockIntakes').toArray();
+      for (const intake of intakes) {
         if (typeof (intake as any).supplier === 'string') {
           const supplierName = (intake as any).supplier;
           let supplier = await tx
@@ -122,7 +129,7 @@ export class PosDatabase extends Dexie {
       }
     });
 
-    // ─── Hooks : timestamps تلقائية ───────────────────────
+    // ─── Hooks : timestamps ───────────────────────
     this.tables.forEach(table => {
       if (['settings', 'carts'].includes(table.name)) return;
 
@@ -146,7 +153,7 @@ export class PosDatabase extends Dexie {
       });
     });
 
-    // ─── Hooks : searchName تلقائية للعملاء ──────────────
+    // ─── Hooks : searchName للعملاء ───────────────
     this.customers.hook('creating', (_primKey, obj) => {
       if (
         typeof obj.firstName === 'string' &&
@@ -162,30 +169,41 @@ export class PosDatabase extends Dexie {
         Object.hasOwn(modifications, 'firstName') ||
         Object.hasOwn(modifications, 'lastName')
       ) {
-        const newFirstName = Object.hasOwn(modifications, 'firstName')
+        const newFirst = Object.hasOwn(modifications, 'firstName')
           ? (modifications as any).firstName
           : obj.firstName;
-        const newLastName = Object.hasOwn(modifications, 'lastName')
+        const newLast = Object.hasOwn(modifications, 'lastName')
           ? (modifications as any).lastName
           : obj.lastName;
-        if (
-          typeof newFirstName === 'string' &&
-          typeof newLastName === 'string'
-        ) {
+        if (typeof newFirst === 'string' && typeof newLast === 'string') {
           (modifications as any).searchName =
-            `${newFirstName.toLowerCase()} ${newLastName.toLowerCase()}`;
+            `${newFirst.toLowerCase()} ${newLast.toLowerCase()}`;
         }
       }
     });
   }
 }
 
-// ─── Singleton ────────────────────────────────────────────
-let dbInstance: PosDatabase | undefined;
+// ─── Singleton — نقطة الوصول الوحيدة ─────────────
+let _dbInstance: PosDatabase | undefined;
 
+/**
+ * الدالة الوحيدة للوصول لقاعدة البيانات
+ * استخدمها في كل مكان بدلاً من new PosDatabase()
+ */
 export function getDb(): PosDatabase {
-  if (!dbInstance) {
-    dbInstance = new PosDatabase();
+  if (!_dbInstance) {
+    _dbInstance = new PosDatabase();
   }
-  return dbInstance;
+  return _dbInstance;
 }
+
+/**
+ * للاستخدام في useLiveQuery فقط
+ * export مباشر للـ instance
+ */
+export const db = {
+  get instance(): PosDatabase {
+    return getDb();
+  }
+};

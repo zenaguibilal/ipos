@@ -17,7 +17,7 @@ import { Loader2, CreditCard, Banknote, AlertTriangle } from 'lucide-react';
 import { dataService } from '@/services/data-service';
 import { formatCurrency, calculateCartTotals } from '@/lib/utils';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { getDb } from '@/lib/database';
+import { db } from '@/lib/database';
 import { cn } from '@/lib/utils';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Separator } from '@/components/ui/separator';
@@ -45,7 +45,7 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, onSaleFinalized }: P
     const [lossItems, setLossItems] = useState<Product[]>([]);
 
     const customer = useLiveQuery(() => 
-        cart.customerId ? getDb().customers.get(cart.customerId) : Promise.resolve(undefined)
+        cart.customerId ? db.instance.customers.get(cart.customerId) : Promise.resolve(undefined)
     );
 
     const { subtotal, discountAmount, total } = calculateCartTotals(cart);

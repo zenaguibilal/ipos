@@ -1,9 +1,8 @@
 'use client';
 
-import { getDb, PosDatabase } from '@/lib/database';
+import { getDb, PosDatabase, type Collection } from '@/lib/database';
 import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, Notification, InventoryLog, DashboardData, StockIntakeItem, CartItem, TopProduct, TopCustomer, GlobalActivityItem, ProductImportAnalysis, ZakatData, CostingItem, Draft, SaleItem, Supplier, ImportAnalysis, BreadClient, BreadOrder, BreadOrderWithClient, DB } from '@/lib/types';
 import type { CollectionName } from './initial-data';
-import Dexie, { TableName } from 'dexie';
 import { subDays } from 'date-fns';
 import Papa from 'papaparse';
 import { calculateCartTotals } from '@/lib/utils';
@@ -289,7 +288,7 @@ class DataService {
     const db = getDb();
     const { query, category, supplierId, stockStatus = 'all', sortBy = 'name_asc' } = params;
 
-    let collection: Dexie.Collection<Product, number> = db.products.toCollection();
+    let collection: Collection<Product, number> = db.products.toCollection();
 
     if (category) {
       collection = db.products.where('category').equals(category);
@@ -383,7 +382,7 @@ class DataService {
   async getCustomers(params: { query?: string; status?: 'all' | 'has_debt' | 'overdue' | 'over_limit', sortBy?: string, limit?: number }): Promise<Customer[]> {
     const db = getDb();
     const { query, status = 'all', sortBy = 'lastName_asc', limit } = params;
-    let collection: Dexie.Collection<Customer, number> = db.customers.toCollection();
+    let collection: Collection<Customer, number> = db.customers.toCollection();
 
     if (query) {
         const lowerQuery = query.toLowerCase();
