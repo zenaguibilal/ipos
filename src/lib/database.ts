@@ -130,29 +130,11 @@ export class PosDatabase extends Dexie {
 let dbInstance: PosDatabase | undefined;
 
 export function getDb(): PosDatabase {
-  if (typeof window !== 'undefined') {
-    if (!dbInstance) {
-      dbInstance = new PosDatabase();
-    }
-    return dbInstance;
+  if (typeof window === 'undefined') {
+    throw new Error('getDb() must only be called on the client side.');
   }
-  // ✅ إصلاح SSR — إرجاع mock آمن بدون استدعاء Dexie
-  return {
-    products: { toArray: async () => [], where: () => ({ toArray: async () => [] }) },
-    customers: { toArray: async () => [], where: () => ({ toArray: async () => [] }) },
-    sales: { toArray: async () => [], where: () => ({ toArray: async () => [] }) },
-    payments: { toArray: async () => [], where: () => ({ toArray: async () => [] }) },
-    stockIntakes: { toArray: async () => [], where: () => ({ toArray: async () => [] }) },
-    returns: { toArray: async () => [], where: () => ({ toArray: async () => [] }) },
-    carts: { toArray: async () => [], where: () => ({ toArray: async () => [] }) },
-    drafts: { toArray: async () => [], where: () => ({ toArray: async () => [] }) },
-    companyProfile: { toArray: async () => [], where: () => ({ toArray: async () => [] }) },
-    expenses: { toArray: async () => [], where: () => ({ toArray: async () => [] }) },
-    settings: { toArray: async () => [], where: () => ({ toArray: async () => [] }) },
-    notifications: { toArray: async () => [], where: () => ({ toArray: async () => [] }) },
-    inventoryLogs: { toArray: async () => [], where: () => ({ toArray: async () => [] }) },
-    suppliers: { toArray: async () => [], where: () => ({ toArray: async () => [] }) },
-    clients_pain: { toArray: async () => [], where: () => ({ toArray: async () => [] }) },
-    commandes_pain: { toArray: async () => [], where: () => ({ toArray: async () => [] }) },
-  } as unknown as PosDatabase;
+  if (!dbInstance) {
+    dbInstance = new PosDatabase();
+  }
+  return dbInstance;
 }
