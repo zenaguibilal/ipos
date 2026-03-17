@@ -1,11 +1,9 @@
-
 'use client';
 
-import { useLiveQuery } from 'dexie-react-hooks';
 import { useMemo, useState, useEffect } from 'react';
 import { dataService } from '@/services/data-service';
 import type { DateRange } from 'react-day-picker';
-import type { DashboardDataType, Product } from '@/lib/types';
+import type { DashboardDataType, Product, Sale, StockIntake, Customer, ProductReturn, Expense, GlobalActivityItem } from '@/lib/types';
 import { differenceInDays, subDays, format, startOfDay, endOfDay } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
@@ -23,61 +21,77 @@ const INITIAL_DATA: DashboardDataType = {
   expensesData: [],
 };
 
+type FetchedData = {
+    currentSales: Sale[];
+    previousSales: Sale[];
+    products: Product[];
+    expenses: Expense[];
+    recentSales: Sale[];
+    recentIntakes: StockIntake[];
+    recentCustomers: Customer[];
+    recentReturns: ProductReturn[];
+} | null;
+
 export function useDashboardData(dateRange?: DateRange) {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [liveData, setLiveData] = useState<FetchedData>(null);
 
     const from = dateRange?.from;
     const to = dateRange?.to;
 
-    const liveData = useLiveQuery(async () => {
-        if (!from || !to) return null;
-        
-        setIsLoading(true);
-        setError(null);
-
-        try {
-            const periodDays = differenceInDays(to, from);
-            const prevFrom = startOfDay(subDays(from, periodDays + 1));
-            const prevTo = endOfDay(subDays(from, 1));
-            
-            const [
-                currentSales,
-                previousSales,
-                products,
-                expenses,
-                recentSales,
-                recentIntakes,
-                recentCustomers,
-                recentReturns
-            ] = await Promise.all([
-                dataService.getSales({ from, to }),
-                dataService.getSales({ from: prevFrom, to: prevTo }),
-                dataService.getAll<Product>('products'),
-                dataService.getExpenses({ from, to }),
-                dataService.getSales({ from: subDays(new Date(), 7), to: new Date() }),
-                dataService.getStockIntakes({ from: subDays(new Date(), 7), to: new Date() }),
-                dataService.getCustomers({ sortBy: 'createdAt_desc', limit: 5 }),
-                dataService.getReturns({ from: subDays(new Date(), 7), to: new Date() }),
-            ]);
-
-            return { 
-                currentSales, previousSales, products, expenses, 
-                recentSales, recentIntakes, recentCustomers, recentReturns 
-            };
-        } catch (e) {
-            console.error("Dashboard data fetching error:", e);
-            setError("Impossible de charger les données du tableau de bord.");
-            return null;
+    useEffect(() => {
+        if (!from || !to) {
+            setIsLoading(true);
+            setLiveData(null);
+            return;
         }
 
-    }, [from, to], null);
+        const fetchData = async () => {
+            setIsLoading(true);
+            setError(null);
+            try {
+                const periodDays = differenceInDays(to, from);
+                const prevFrom = startOfDay(subDays(from, periodDays + 1));
+                const prevTo = endOfDay(subDays(from, 1));
+                
+                const [
+                    currentSales,
+                    previousSales,
+                    products,
+                    expenses,
+                    recentSales,
+                    recentIntakes,
+                    recentCustomers,
+                    recentReturns
+                ] = await Promise.all([
+                    dataService.getSales({ from, to }),
+                    dataService.getSales({ from: prevFrom, to: prevTo }),
+                    dataService.getAll<Product>('products'),
+                    dataService.getExpenses({ from, to }),
+                    dataService.getSales({ from: subDays(new Date(), 7), to: new Date() }),
+                    dataService.getStockIntakes({ from: subDays(new Date(), 7), to: new Date() }),
+                    dataService.getCustomers({ sortBy: 'createdAt_desc', limit: 5 }),
+                    dataService.getReturns({ from: subDays(new Date(), 7), to: new Date() }),
+                ]);
+
+                setLiveData({ 
+                    currentSales, previousSales, products, expenses, 
+                    recentSales, recentIntakes, recentCustomers, recentReturns 
+                });
+            } catch (e) {
+                console.error("Dashboard data fetching error:", e);
+                setError("Impossible de charger les données du tableau de bord.");
+                setLiveData(null);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchData();
+    }, [from, to]);
 
     const processedData = useMemo<DashboardDataType>(() => {
-        if (liveData === null && error) {
-            setIsLoading(false);
-            return INITIAL_DATA;
-        }
         if (!liveData) {
             return INITIAL_DATA;
         }
@@ -88,12 +102,12 @@ export function useDashboardData(dateRange?: DateRange) {
         } = liveData;
 
         // --- KPIs ---
-        const calculateMetrics = (sales: any[]) => {
+        const calculateMetrics = (sales: Sale[]) => {
             let revenue = 0;
             let profit = 0;
             for (const sale of sales) {
                 revenue += sale.total;
-                const saleProfit = sale.items.reduce((acc: number, item: any) => acc + (item.price - item.purchasePrice) * item.quantity, 0);
+                const saleProfit = sale.items.reduce((acc, item) => acc + (item.price - item.purchasePrice) * item.quantity, 0);
                 profit += isNaN(saleProfit) ? 0 : saleProfit;
             }
             return { revenue, profit, salesCount: sales.length };
@@ -127,7 +141,8 @@ export function useDashboardData(dateRange?: DateRange) {
         }
         
         currentSales.forEach(sale => {
-            const key = format(sale.createdAt!, 'd MMM', { locale: fr });
+            const saleDate = sale.createdAt ? new Date(sale.createdAt) : new Date();
+            const key = format(saleDate, 'd MMM', { locale: fr });
             if (dataByDay[key]) {
                 dataByDay[key].revenu += sale.total;
                 const saleProfit = sale.items.reduce((acc, item) => acc + (item.price - item.purchasePrice) * item.quantity, 0);
@@ -146,13 +161,13 @@ export function useDashboardData(dateRange?: DateRange) {
           .slice(0, 5);
 
         // --- Recent Activity ---
-        const activity = [
+        const activity: GlobalActivityItem[] = [
             ...recentSales.map(s => ({ type: 'sale', date: s.createdAt!, id: s.id!, description: `Vente #${s.invoiceNumber}`, details: s.customerName || 'Client de passage', amount: s.total, amountClass: 'text-primary' })),
-            ...recentIntakes.map(i => ({ type: 'stock_intake', date: i.createdAt!, id: i.id!, description: `Réception de ${i.supplierName}`, details: `${i.items.length} article(s)`, amount: i.totalValue, amountClass: 'text-success' })),
-            ...recentReturns.map(r => ({ type: 'return', date: r.createdAt!, id: r.id!, description: `Retour sur facture #${r.originalInvoiceNumber}`, details: `${r.items.length} article(s)`, amount: -r.totalReturnValue, amountClass: 'text-destructive' })),
-            ...recentCustomers.map(c => ({ type: 'customer', date: c.createdAt!, id: c.id!, description: `Nouveau client`, details: `${c.firstName} ${c.lastName}` })),
+            ...recentIntakes.map(i => ({ type: 'stock_intake', date: i.createdAt!, id: i.id!, description: `Réception de ${i.supplierName}`, details: `${i.items.length} article(s)`, amount: i.totalValue, amountClass: 'text-[hsl(var(--chart-quaternary))]' })),
+            ...recentReturns.map(r => ({ type: 'return', date: r.createdAt!, id: r.id!, description: `Retour sur facture #${r.originalInvoiceNumber}`, details: `${r.items.length} article(s) retourné(s)`, amount: r.totalReturnValue, amountClass: 'text-destructive' })),
+            ...recentCustomers.map(c => ({ type: 'customer', date: c.createdAt!, id: c.id!, description: 'Nouveau client', details: `${c.firstName} ${c.lastName}` })),
         ];
-        const recentActivity = activity.sort((a,b) => b.date.getTime() - a.date.getTime()).slice(0, 8);
+        const recentActivity = activity.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 8);
 
         // --- Top Products ---
         const productSales = new Map<number, { product: Product; totalVendu: number }>();
@@ -179,16 +194,9 @@ export function useDashboardData(dateRange?: DateRange) {
             }, {} as Record<string, number>)
         ).map(([name, value]) => ({ name, value }));
         
-        setIsLoading(false);
         return { kpis, chartData: sortedChartData, stockAlerts, recentActivity, topProducts, expensesData };
 
-    }, [liveData, error]);
-
-    useEffect(() => {
-        if (!dateRange?.from || !dateRange?.to) {
-            setIsLoading(true);
-        }
-    }, [dateRange]);
+    }, [liveData, error, from, to]);
 
     return { data: processedData, isLoading, error };
 }

@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { sheetsService } from '@/services/googleSheets';
 import type { CompanyProfile } from '@/lib/types';
-import { useLiveQuery } from 'dexie-react-hooks';
 import { dataService } from '@/services/data-service';
 
 interface SyncStatus {
@@ -15,8 +14,17 @@ interface SyncStatus {
 }
 
 export const useSync = () => {
-  const companyProfile = useLiveQuery<CompanyProfile | null>(() => dataService.getCompanyProfile());
+  const [companyProfile, setCompanyProfile] = useState<CompanyProfile | null>(null);
   
+  // This effect fetches the profile when the hook mounts.
+  useEffect(() => {
+      const fetchProfile = async () => {
+          const profile = await dataService.getCompanyProfile();
+          setCompanyProfile(profile);
+      };
+      fetchProfile();
+  }, []);
+
   const [syncStatus, setSyncStatus] = useState<SyncStatus>({
     isOnline: false,
     isSyncing: false,
@@ -25,6 +33,7 @@ export const useSync = () => {
     error: null,
   });
 
+  // This effect manages the sync status and polling.
   useEffect(() => {
     sheetsService.init();
     const lastSyncFromDb = companyProfile?.lastSyncDate || null;
@@ -48,12 +57,16 @@ export const useSync = () => {
       }));
 
     return () => clearInterval(interval);
-  }, [companyProfile]);
+  }, [companyProfile]); // It depends on companyProfile to get the latest lastSyncDate
 
   const syncNow = async () => {
     setSyncStatus(prev => ({ ...prev, isSyncing: true, error: null }));
     try {
       const result = await sheetsService.fullSync();
+      // After a sync, re-fetch the profile to get the new lastSyncDate
+      const updatedProfile = await dataService.getCompanyProfile();
+      setCompanyProfile(updatedProfile);
+
       setSyncStatus(prev => ({
         ...prev,
         isSyncing: false,
