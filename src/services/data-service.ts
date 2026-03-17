@@ -1,7 +1,7 @@
 'use client';
 
 import * as storage from '@/lib/storage';
-import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, Notification, InventoryLog, StockIntakeItem, SaleItem, TopProduct, ZakatData, CostingItem, Draft, Supplier, ImportAnalysis, BreadClient, BreadOrder, BreadOrderWithClient, DB, ProductImportAnalysis, GlobalActivityItem } from '@/lib/types';
+import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, Notification, InventoryLog, StockIntakeItem, SaleItem, TopProduct, ZakatData, CostingItem, Draft, Supplier, ImportAnalysis, BreadClient, BreadOrder, BreadOrderWithClient, DB, ProductImportAnalysis, GlobalActivityItem, DashboardDataType } from '@/lib/types';
 import { subDays, parseISO } from 'date-fns';
 import Papa from 'papaparse';
 import { calculateCartTotals } from '@/lib/utils';
@@ -285,19 +285,19 @@ class DataService {
       return this.getById<Customer>('customers', id);
   }
 
-  async getCustomerActivity(customerId: number): Promise<(Sale | Payment | ProductReturn)[]> {
+  async getCustomerActivity(customerId: number): Promise<GlobalActivityItem[]> {
     if (!customerId) return [];
     const sales = await storage.where<Sale>('sales', 'customerId', customerId);
     const payments = await storage.where<Payment>('payments', 'customerId', customerId);
     const returns = await storage.where<ProductReturn>('returns', 'customerId', customerId);
-    const combined = [...sales, ...payments, ...returns];
-    
-    const getActivityDate = (item: Sale | Payment | ProductReturn): Date => {
-        if ('paymentDate' in item) return parseISO(item.paymentDate as unknown as string);
-        return parseISO(item.createdAt! as unknown as string);
-    };
 
-    return combined.sort((a, b) => getActivityDate(b).getTime() - getActivityDate(a).getTime());
+    const activity: GlobalActivityItem[] = [
+        ...sales.map(s => ({ type: 'sale', date: s.createdAt!, id: s.id!, description: `Vente #${s.invoiceNumber}`, details: s.customerName || 'Client de passage', amount: s.total, amountClass: 'text-primary' } as GlobalActivityItem)),
+        ...returns.map(r => ({ type: 'return', date: r.createdAt!, id: r.id!, description: `Retour sur facture #${r.originalInvoiceNumber}`, details: `${r.items.length} article(s) retourné(s)`, amount: r.totalReturnValue, amountClass: 'text-destructive' } as GlobalActivityItem)),
+        ...payments.map(p => ({ type: 'payment', date: p.paymentDate, id: p.id!, description: 'Paiement reçu', details: p.notes || '', amount: p.amount, amountClass: 'text-chart-quaternary' } as unknown as GlobalActivityItem)),
+    ];
+
+    return activity.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }
 
     async getCustomerStatementData(customerId: number): Promise<{ customer: Customer, unpaidSales: Sale[]}> {

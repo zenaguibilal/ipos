@@ -2,6 +2,7 @@
 
 import * as storage from '@/lib/storage';
 import type { CompanyProfile, DB } from '@/lib/types';
+import type { TableName } from '@/lib/storage';
 
 const SYNC_QUEUE_KEY = 'ipos_sync_queue';
 
@@ -94,10 +95,11 @@ class GoogleSheetsService {
   }
   
   async syncTable(table: string) {
-    if (!storage.TABLES.hasOwnProperty(table)) {
+    const tableName = table as TableName;
+    if (!Object.values(storage.TABLES).includes(tableName)) {
         return { success: true, message: 'Skipped' };
     }
-    const localRecords = await storage.getAll(table as storage.TableName);
+    const localRecords = await storage.getAll(tableName);
     const remoteRecords = await this.fetchFromSheets(table);
 
     const localMap = new Map(localRecords.map((r: any) => [String(r.id), r]));
@@ -133,8 +135,8 @@ class GoogleSheetsService {
       }
     }
 
-    if (toUpdateLocal.length > 0) await storage.bulkPut(table as storage.TableName, toUpdateLocal);
-    if (toAddLocal.length > 0) await storage.bulkPut(table as storage.TableName, toAddLocal);
+    if (toUpdateLocal.length > 0) await storage.bulkPut(tableName, toUpdateLocal);
+    if (toAddLocal.length > 0) await storage.bulkPut(tableName, toAddLocal);
     for (const record of [...toUpdateRemote, ...toAddRemote]) {
       await this.sendToSheets(table, 'upsert', record);
     }

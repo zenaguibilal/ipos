@@ -196,7 +196,7 @@ export function useDashboardData(dateRange?: DateRange) {
         
         return { kpis, chartData: sortedChartData, stockAlerts, recentActivity, topProducts, expensesData };
 
-    }, [liveData, error, from, to]);
+    }, [liveData]);
 
     return { data: processedData, isLoading, error };
 }
