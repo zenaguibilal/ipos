@@ -61,7 +61,7 @@ export function CompanyProfileForm() {
         }
     };
 
-    const isLoading = !isMounted || companyProfile === undefined;
+    const isLoading = !isMounted || companyProfile === null;
 
     return (
         <form onSubmit={handleUpdateProfile}>

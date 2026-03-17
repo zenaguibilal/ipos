@@ -13,10 +13,9 @@ import type { BreadClient } from '@/lib/types';
 
 interface ManualAddDialogProps {
     currentDate: string;
-    onOrderAdded: () => void;
 }
 
-export function ManualAddDialog({ currentDate, onOrderAdded }: ManualAddDialogProps) {
+export function ManualAddDialog({ currentDate }: ManualAddDialogProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [selectedClientId, setSelectedClientId] = useState<string>('');
     const [quantity, setQuantity] = useState(10);
@@ -45,7 +44,7 @@ export function ManualAddDialog({ currentDate, onOrderAdded }: ManualAddDialogPr
             setIsOpen(false);
             setSelectedClientId('');
             setQuantity(10);
-            onOrderAdded();
+            // This component doesn't need to trigger a re-fetch, the parent will.
         } catch(error: any) {
             toast.error("Erreur lors de l'ajout.", { description: error.message });
         }

@@ -58,9 +58,10 @@ export function openDB(): Promise<IDBDatabase> {
       // إنشاء جميع الجداول
       Object.values(TABLES).forEach(tableName => {
         if (!db.objectStoreNames.contains(tableName)) {
+           const isAutoIncrement = !['carts', 'settings', 'companyProfile'].includes(tableName);
           const store = db.createObjectStore(tableName, {
             keyPath: 'id',
-            autoIncrement: true,
+            autoIncrement: isAutoIncrement,
           })
 
           // indexes لكل جدول
