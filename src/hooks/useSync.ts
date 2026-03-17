@@ -16,12 +16,12 @@ interface SyncStatus {
 export const useSync = () => {
   const [companyProfile, setCompanyProfile] = useState<CompanyProfile | null>(null);
   
-  // This effect fetches the profile when the hook mounts.
+  const fetchProfile = async () => {
+      const profile = await dataService.getCompanyProfile();
+      setCompanyProfile(profile);
+  };
+  
   useEffect(() => {
-      const fetchProfile = async () => {
-          const profile = await dataService.getCompanyProfile();
-          setCompanyProfile(profile);
-      };
       fetchProfile();
   }, []);
 
@@ -33,37 +33,28 @@ export const useSync = () => {
     error: null,
   });
 
-  // This effect manages the sync status and polling.
   useEffect(() => {
     sheetsService.init();
-    const lastSyncFromDb = companyProfile?.lastSyncDate || null;
-
-    const interval = setInterval(() => {
-      const currentStatus = sheetsService.getStatus();
-      setSyncStatus(prev => ({
-        ...prev,
-        ...currentStatus,
-        lastSync: companyProfile?.lastSyncDate || prev.lastSync || lastSyncFromDb,
-      }));
-    }, 5000);
-
-    // Initial status check
-     const initialStatus = sheetsService.getStatus();
-      setSyncStatus(prev => ({
-        ...prev,
-        ...initialStatus,
-        lastSync: lastSyncFromDb,
-        pendingItems: initialStatus.pendingItems,
-      }));
+    
+    const updateStatus = () => {
+        const currentStatus = sheetsService.getStatus();
+        setSyncStatus(prev => ({
+            ...prev,
+            ...currentStatus,
+            lastSync: companyProfile?.lastSyncDate || prev.lastSync,
+        }));
+    };
+    
+    const interval = setInterval(updateStatus, 5000);
+    updateStatus();
 
     return () => clearInterval(interval);
-  }, [companyProfile]); // It depends on companyProfile to get the latest lastSyncDate
+  }, [companyProfile]);
 
   const syncNow = async () => {
     setSyncStatus(prev => ({ ...prev, isSyncing: true, error: null }));
     try {
       const result = await sheetsService.fullSync();
-      // After a sync, re-fetch the profile to get the new lastSyncDate
       const updatedProfile = await dataService.getCompanyProfile();
       setCompanyProfile(updatedProfile);
 
@@ -80,7 +71,7 @@ export const useSync = () => {
         isSyncing: false,
         error: error.message,
       }));
-      throw error; // Re-throw the error to be caught by the calling component
+      throw error;
     }
   };
 

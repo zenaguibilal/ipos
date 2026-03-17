@@ -1,6 +1,7 @@
 'use client';
 
 import * as storage from '@/lib/storage';
+import type { TableName } from '@/lib/storage';
 import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, Notification, InventoryLog, StockIntakeItem, SaleItem, TopProduct, ZakatData, CostingItem, Draft, Supplier, ImportAnalysis, BreadClient, BreadOrder, BreadOrderWithClient, DB, ProductImportAnalysis, GlobalActivityItem, DashboardDataType } from '@/lib/types';
 import { subDays, parseISO, format } from 'date-fns';
 import Papa from 'papaparse';
@@ -14,18 +15,12 @@ class DataService {
   // Generic Read/Write Methods
   // ====================================================================
   
-  async getAll<T>(table: storage.TableName): Promise<T[]> {
+  async getAll<T>(table: TableName): Promise<T[]> {
     return storage.getAll<T>(table);
   }
 
-  async getById<T>(table: storage.TableName, id: number | string): Promise<T | undefined> {
-    if (typeof id === 'string') {
-        if (table === 'carts' || table === 'settings') {
-             const allItems = await storage.getAll<any>(table);
-             return allItems.find(item => item.id === id);
-        }
-    }
-    return storage.getById<T>(table, id as number);
+  async getById<T>(table: TableName, id: IDBValidKey): Promise<T | undefined> {
+    return storage.getById<T>(table, id);
   }
   
   // ====================================================================
@@ -33,13 +28,12 @@ class DataService {
   // ====================================================================
   
   async getSetting(id: string): Promise<Setting | undefined> {
-    const settings = await this.getAll<Setting>('settings');
-    return settings.find(s => s.id === id);
+    return storage.getById<Setting>('settings', id);
   }
 
   async setSetting(id: string, value: any): Promise<string> {
-    const record = { id, value };
-    await storage.bulkPut('settings', [record]); // Using bulkPut for upsert-like behavior with non-autoincrement keys
+    const record: Setting = { id, value };
+    await storage.update('settings', id, record); // This will add if not exists due to implementation
     sheetsService.addToQueue('settings', 'upsert', record);
     return id;
   }
@@ -49,8 +43,8 @@ class DataService {
   // ====================================================================
 
   async getCompanyProfile(): Promise<CompanyProfile | null> {
-    const profiles = await storage.getAll<CompanyProfile>('companyProfile');
-    return profiles[0] ?? null;
+    const profile = await storage.getById<CompanyProfile>('companyProfile', 1);
+    return profile ?? null;
   }
   
   async updateCompanyProfile(profileData: Partial<Omit<CompanyProfile, 'id'>>): Promise<number> {
@@ -66,32 +60,16 @@ class DataService {
   // ====================================================================
   
   async getCart(id: string): Promise<Cart | undefined> {
-    const carts = await this.getAll<Cart>('carts');
-    return carts.find(c => c.id === id);
+    return storage.getById<Cart>('carts', id);
   }
 
   async saveCart(cart: Cart): Promise<string> {
-    const carts = await this.getAll<Cart>('carts');
-    const existingIndex = carts.findIndex(c => c.id === cart.id);
-    if (existingIndex > -1) {
-        carts[existingIndex] = cart;
-    } else {
-        carts.push(cart);
-    }
-    await storage.clearTable('carts');
-    if (carts.length > 0) {
-        await storage.bulkPut('carts', carts);
-    }
+    await storage.update('carts', cart.id, cart);
     return cart.id;
   }
 
   async deleteCart(id: string): Promise<void> {
-    const carts = await this.getAll<Cart>('carts');
-    const updatedCarts = carts.filter(c => c.id !== id);
-    await storage.clearTable('carts');
-    if(updatedCarts.length > 0) {
-        await storage.bulkPut('carts', updatedCarts);
-    }
+    await storage.remove('carts', id);
   }
 
   async addProductToCart(cartId: string, product: Product, quantity: number): Promise<void> {
@@ -204,7 +182,6 @@ class DataService {
             newQuantity: product.quantity,
             reason: 'stock_intake',
             relatedId: `init-${newProduct.id as number}`,
-            createdAt: new Date(),
         });
       sheetsService.addToQueue('products', 'upsert', newProduct);
       return newProduct;
@@ -220,7 +197,6 @@ class DataService {
           change: (productData.quantity || 0) - oldProduct.quantity,
           newQuantity: productData.quantity,
           reason: 'manual_adjustment',
-          createdAt: new Date(),
         });
     }
     if (updatedProduct) sheetsService.addToQueue('products', 'upsert', updatedProduct);
@@ -230,7 +206,7 @@ class DataService {
   async deleteProduct(id: number): Promise<void> {
       const logs = await storage.where<InventoryLog>('inventoryLogs', 'productId', id);
       for(const log of logs) {
-        if(log.id) await storage.remove('inventoryLogs', log.id as number);
+        if(log.id) await storage.remove('inventoryLogs', log.id);
       }
       await storage.remove('products', id);
       sheetsService.addToQueue('products', 'delete', { id });
@@ -284,7 +260,11 @@ class DataService {
         } else if (typeof aVal === 'number' && typeof bVal === 'number') {
           comparison = aVal - bVal;
         } else if (aVal instanceof Date && bVal instanceof Date) {
-          comparison = aVal.getTime() - bVal.getTime();
+          comparison = new Date(aVal).getTime() - new Date(bVal).getTime();
+        } else if (aVal && !bVal) {
+            return -1;
+        } else if (!aVal && bVal) {
+            return 1;
         }
 
         return sortOrder === 'desc' ? comparison * -1 : comparison;
@@ -324,9 +304,9 @@ class DataService {
     const returns = await storage.where<ProductReturn>('returns', 'customerId', customerId);
 
     const activity: GlobalActivityItem[] = [];
-    sales.forEach(s => s.createdAt && activity.push({ type: 'sale', date: s.createdAt, id: s.id!, description: `Vente #${s.invoiceNumber}`, details: s.customerName || 'Client de passage', amount: s.total, amountClass: 'text-primary' }));
-    returns.forEach(r => r.createdAt && activity.push({ type: 'return', date: r.createdAt, id: r.id!, description: `Retour sur facture #${r.originalInvoiceNumber}`, details: `${r.items.length} article(s) retourné(s)`, amount: r.totalReturnValue, amountClass: 'text-destructive' }));
-    payments.forEach(p => p.paymentDate && activity.push({ type: 'payment', date: p.paymentDate, id: p.id!, description: 'Paiement reçu', details: p.notes || '', amount: p.amount, amountClass: 'text-chart-quaternary' }));
+    sales.forEach(s => s.createdAt && activity.push({ type: 'sale', date: new Date(s.createdAt), id: s.id!, description: `Vente #${s.invoiceNumber}`, details: s.customerName || 'Client de passage', amount: s.total, amountClass: 'text-primary' }));
+    returns.forEach(r => r.createdAt && activity.push({ type: 'return', date: new Date(r.createdAt), id: r.id!, description: `Retour sur facture #${r.originalInvoiceNumber}`, details: `${r.items.length} article(s) retourné(s)`, amount: r.totalReturnValue, amountClass: 'text-destructive' }));
+    payments.forEach(p => p.paymentDate && activity.push({ type: 'payment', date: new Date(p.paymentDate), id: p.id!, description: 'Paiement reçu', details: p.notes || '', amount: p.amount, amountClass: 'text-chart-quaternary' }));
 
     return activity.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }
@@ -349,7 +329,7 @@ class DataService {
 
     if (query) {
         const lowerQuery = query.toLowerCase();
-        customers = customers.filter(c => c.searchName?.toLowerCase().includes(lowerQuery) || c.phone?.includes(lowerQuery));
+        customers = customers.filter(c => (c.firstName + ' ' + c.lastName).toLowerCase().includes(lowerQuery) || c.phone?.includes(lowerQuery));
     }
     
     const now = new Date();
@@ -455,6 +435,7 @@ class DataService {
   // ====================================================================
   // Bread
   // ====================================================================
+  
   async getBreadClients(): Promise<BreadClient[]> {
     const clients = await storage.getAll<BreadClient>('clients_pain');
     return clients.sort((a, b) => a.nom.localeCompare(b.nom));
@@ -597,9 +578,7 @@ class DataService {
 
             const client = await this.getById<BreadClient>('clients_pain', order.client_pain_id);
             
-            // This is non-transactional but will fix the compilation error
             const newSale = await this.addSale({
-                invoiceNumber: `PAIN-${order.date}-${order.id}`,
                 items: [saleItem],
                 subtotal: total,
                 total,
@@ -609,14 +588,13 @@ class DataService {
                 payments: [],
                 clientPainId: order.client_pain_id,
                 customerName: client?.nom,
-                createdAt: new Date(),
             });
 
             await this.updateBreadOrder(order.id!, { vente_id: newSale.id, est_paye: true });
 
             if(client?.nom){
                const allCustomers = await this.getAll<Customer>('customers');
-               const mainCustomer = allCustomers.find(c => c.searchName === client.nom.toLowerCase());
+               const mainCustomer = allCustomers.find(c => (c.firstName + ' ' + c.lastName).toLowerCase() === client.nom.toLowerCase());
                if (mainCustomer && mainCustomer.id) {
                    const newBalance = mainCustomer.outstandingBalance + total;
                    await this.updateCustomer(mainCustomer.id, {
@@ -634,8 +612,498 @@ class DataService {
     if (updatedOrder) sheetsService.addToQueue('commandes_pain', 'upsert', updatedOrder);
     return updatedOrder;
   }
+  
+  async getSaleByInvoiceNumber(invoiceNumber: string): Promise<Sale | undefined> {
+    const sales = await this.getAll<Sale>('sales');
+    return sales.find(s => s.invoiceNumber === invoiceNumber);
+  }
 
-  // Omitted for brevity: Sales, Drafts, Stock, Payments, Returns, Expenses, etc.
+  async addSale(saleData: Omit<Sale, 'id' | 'invoiceNumber' | 'remainingBalance' | 'paymentStatus'> & { amountPaid: number }): Promise<Sale> {
+      const salesCount = await storage.count('sales');
+      const invoiceNumber = `INV-${new Date().getFullYear()}-${(salesCount + 1).toString().padStart(5, '0')}`;
+      const remainingBalance = saleData.total - saleData.amountPaid;
+      const paymentStatus = remainingBalance <= 0 ? 'paid' : (saleData.amountPaid > 0 ? 'partial' : 'unpaid');
+      
+      const newSaleData = { ...saleData, invoiceNumber, remainingBalance, paymentStatus };
+      const newSale = await storage.add<Sale>('sales', newSaleData);
+      
+      for(const item of newSale.items) {
+          if (typeof item.id === 'number') {
+              const product = await this.getById<Product>('products', item.id);
+              if (product) {
+                  const newQuantity = product.quantity - item.quantity;
+                  await storage.update('products', item.id, { quantity: newQuantity });
+                  await storage.add('inventoryLogs', {
+                      productId: item.id,
+                      change: -item.quantity,
+                      newQuantity: newQuantity,
+                      reason: 'sale',
+                      relatedId: newSale.id
+                  });
+              }
+          }
+      }
+      
+      if (newSale.customerId) {
+          const customer = await this.getById<Customer>('customers', newSale.customerId);
+          if (customer) {
+              await storage.update('customers', newSale.customerId, {
+                  outstandingBalance: customer.outstandingBalance + newSale.remainingBalance,
+                  totalSpent: customer.totalSpent + newSale.total,
+                  lastActivityDate: new Date(),
+              });
+          }
+      }
+      
+      sheetsService.addToQueue('sales', 'upsert', newSale);
+      return newSale;
+  }
+  
+    async deleteSale(saleId: number): Promise<void> {
+        const sale = await this.getById<Sale>('sales', saleId);
+        if (!sale) return;
+
+        for (const item of sale.items) {
+             if (typeof item.id === 'number') {
+                const product = await this.getById<Product>('products', item.id);
+                if (product) {
+                    const newQuantity = product.quantity + item.quantity;
+                    await storage.update('products', item.id, { quantity: newQuantity });
+                    await storage.add('inventoryLogs', {
+                        productId: item.id,
+                        change: item.quantity,
+                        newQuantity: newQuantity,
+                        reason: 'cancellation',
+                        relatedId: sale.id
+                    });
+                }
+            }
+        }
+        
+        if (sale.customerId) {
+            const customer = await this.getById<Customer>('customers', sale.customerId);
+            if (customer) {
+                await storage.update('customers', sale.customerId, {
+                    outstandingBalance: customer.outstandingBalance - sale.remainingBalance,
+                    totalSpent: customer.totalSpent - sale.total,
+                });
+            }
+        }
+
+        await storage.remove('sales', saleId);
+        sheetsService.addToQueue('sales', 'delete', { id: saleId });
+    }
+  
+    async addPayment(paymentData: Omit<Payment, 'id'>): Promise<Payment> {
+        const newPayment = await storage.add<Payment>('payments', paymentData);
+        
+        const customer = await this.getById<Customer>('customers', newPayment.customerId);
+        if(customer) {
+            await storage.update('customers', newPayment.customerId, {
+                outstandingBalance: customer.outstandingBalance - newPayment.amount,
+                lastActivityDate: new Date(),
+            });
+        }
+        
+        sheetsService.addToQueue('payments', 'upsert', newPayment);
+        return newPayment;
+    }
+    
+    async getSales({ from, to, query }: { from?: Date, to?: Date, query?: string }): Promise<Sale[]> {
+        let sales = await this.getAll<Sale>('sales');
+        
+        if (from && to) {
+            sales = sales.filter(s => {
+                if(!s.createdAt) return false;
+                const saleDate = new Date(s.createdAt);
+                return saleDate >= from && saleDate <= to;
+            });
+        }
+        
+        if (query) {
+            const lowerQuery = query.toLowerCase();
+            sales = sales.filter(s => 
+                s.invoiceNumber.toLowerCase().includes(lowerQuery) || 
+                s.customerName?.toLowerCase().includes(lowerQuery)
+            );
+        }
+        
+        return sales.sort((a,b) => (b.createdAt ? new Date(b.createdAt).getTime() : 0) - (a.createdAt ? new Date(a.createdAt).getTime() : 0));
+    }
+    
+    // ====================================================================
+    // Drafts
+    // ====================================================================
+    async getDrafts(): Promise<Draft[]> {
+        return (await this.getAll<Draft>('drafts')).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    }
+    
+    async saveDraft(cart: Cart, notes?: string): Promise<Draft> {
+        const { total } = calculateCartTotals(cart);
+        const draftData: Omit<Draft, 'id'> = {
+            date: new Date(),
+            customerId: cart.customerId,
+            customerName: cart.customerName,
+            items: cart.items,
+            total,
+            discount: cart.discount,
+            notes,
+        };
+        const newDraft = await storage.add<Draft>('drafts', draftData);
+        sheetsService.addToQueue('drafts', 'upsert', newDraft);
+        return newDraft;
+    }
+    
+    async deleteDraft(id: number): Promise<void> {
+        await storage.remove('drafts', id);
+        sheetsService.addToQueue('drafts', 'delete', { id });
+    }
+    
+    // ====================================================================
+    // Stock Intakes
+    // ====================================================================
+    async addStockIntake(intakeData: { supplierName: string; invoiceNumber: string; invoiceDate: Date }, items: StockIntakeItem[]): Promise<StockIntake> {
+        let supplier = (await this.getAll<Supplier>('suppliers')).find(s => s.name.toLowerCase() === intakeData.supplierName.toLowerCase());
+        if(!supplier) {
+            supplier = await storage.add('suppliers', { name: intakeData.supplierName, balance: 0 });
+        }
+        
+        const intakeItems = [];
+        for (const item of items) {
+            if(item.isNew) {
+                const newProduct = await this.addProduct({
+                    name: item.name,
+                    category: item.category,
+                    price: item.price,
+                    purchasePrice: item.purchasePrice,
+                    quantity: item.quantity - item.quantityDamaged,
+                    minStockLevel: 10, // default
+                    barcodes: item.barcodes,
+                    unite: 'Pièce',
+                    fournisseurId: supplier.id,
+                });
+                item.productId = newProduct.id as number;
+            } else {
+                const product = await this.getById<Product>('products', item.productId!);
+                if (product) {
+                    const newQuantity = product.quantity + item.quantity - item.quantityDamaged;
+                    await this.updateProduct(item.productId!, { 
+                        quantity: newQuantity,
+                        purchasePrice: item.purchasePrice,
+                        dateMajPrix: new Date(),
+                        fournisseurId: supplier.id,
+                    });
+                     await storage.add('inventoryLogs', {
+                        productId: item.productId!,
+                        change: item.quantity - item.quantityDamaged,
+                        newQuantity: newQuantity,
+                        reason: 'stock_intake'
+                    });
+                }
+            }
+            intakeItems.push({
+                productId: item.productId,
+                productName: item.name,
+                quantityReceived: item.quantity,
+                quantityDamaged: item.quantityDamaged,
+                purchasePrice: item.purchasePrice,
+            });
+        }
+        
+        const totalValue = intakeItems.reduce((acc, item) => acc + (item.purchasePrice * item.quantityReceived), 0);
+        
+        const newIntakeData = {
+            ...intakeData,
+            supplierId: supplier.id!,
+            items: intakeItems,
+            totalValue
+        };
+        
+        const newIntake = await storage.add<StockIntake>('stockIntakes', newIntakeData);
+        sheetsService.addToQueue('stockIntakes', 'upsert', newIntake);
+        return newIntake;
+    }
+    
+    async getStockIntakes({ from, to, query }: { from?: Date, to?: Date, query?: string }): Promise<StockIntake[]> {
+        let intakes = await this.getAll<StockIntake>('stockIntakes');
+        if (from && to) {
+            intakes = intakes.filter(i => {
+                if(!i.invoiceDate) return false;
+                const intakeDate = new Date(i.invoiceDate);
+                return intakeDate >= from && intakeDate <= to;
+            });
+        }
+        if(query) {
+            const lowerQuery = query.toLowerCase();
+            intakes = intakes.filter(i => i.supplierName.toLowerCase().includes(lowerQuery) || i.invoiceNumber.toLowerCase().includes(lowerQuery));
+        }
+        return intakes.sort((a,b) => (b.invoiceDate ? new Date(b.invoiceDate).getTime() : 0) - (a.invoiceDate ? new Date(a.invoiceDate).getTime() : 0));
+    }
+    
+    // ====================================================================
+    // Returns
+    // ====================================================================
+    async addReturn(returnData: Omit<ProductReturn, 'id'>): Promise<ProductReturn> {
+        const newReturn = await storage.add<ProductReturn>('returns', returnData);
+        
+        for (const item of newReturn.items) {
+            if(item.productId && item.wasRestocked) {
+                const product = await this.getById<Product>('products', item.productId);
+                if(product) {
+                    const newQuantity = product.quantity + item.quantity;
+                    await this.updateProduct(item.productId, { quantity: newQuantity });
+                    await storage.add('inventoryLogs', {
+                        productId: item.productId,
+                        change: item.quantity,
+                        newQuantity: newQuantity,
+                        reason: 'return',
+                        relatedId: newReturn.id,
+                    });
+                }
+            }
+        }
+        
+        if (newReturn.customerId) {
+            const customer = await this.getById<Customer>('customers', newReturn.customerId);
+            if (customer) {
+                const balanceChange = newReturn.totalReturnValue - newReturn.amountRefunded;
+                await this.updateCustomer(newReturn.customerId, {
+                    outstandingBalance: customer.outstandingBalance - balanceChange,
+                    lastActivityDate: new Date(),
+                });
+            }
+        }
+        sheetsService.addToQueue('returns', 'upsert', newReturn);
+        return newReturn;
+    }
+    
+    async deleteReturn(returnId: number): Promise<void> {
+        const pr = await this.getById<ProductReturn>('returns', returnId);
+        if (!pr) return;
+
+        for (const item of pr.items) {
+            if (item.productId && item.wasRestocked) {
+                const product = await this.getById<Product>('products', item.productId);
+                if (product) {
+                    const newQuantity = product.quantity - item.quantity;
+                    await storage.update('products', item.productId, { quantity: newQuantity });
+                }
+            }
+        }
+        
+        if (pr.customerId) {
+            const customer = await this.getById<Customer>('customers', pr.customerId);
+            if (customer) {
+                const balanceChange = pr.totalReturnValue - pr.amountRefunded;
+                await storage.update('customers', pr.customerId, { outstandingBalance: customer.outstandingBalance + balanceChange });
+            }
+        }
+        
+        await storage.remove('returns', returnId);
+        sheetsService.addToQueue('returns', 'delete', { id: returnId });
+    }
+    
+    async getReturns({ from, to, query }: { from?: Date, to?: Date, query?: string }): Promise<ProductReturn[]> {
+         let returns = await this.getAll<ProductReturn>('returns');
+        if (from && to) {
+            returns = returns.filter(r => {
+                if (!r.createdAt) return false;
+                const returnDate = new Date(r.createdAt);
+                return returnDate >= from && returnDate <= to;
+            });
+        }
+        if (query) {
+            const lowerQuery = query.toLowerCase();
+            returns = returns.filter(r => 
+                r.originalInvoiceNumber.toLowerCase().includes(lowerQuery) || 
+                r.customerName?.toLowerCase().includes(lowerQuery)
+            );
+        }
+        return returns.sort((a, b) => (b.createdAt ? new Date(b.createdAt).getTime() : 0) - (a.createdAt ? new Date(a.createdAt).getTime() : 0));
+    }
+    
+    // ====================================================================
+    // Expenses
+    // ====================================================================
+    async addExpense(expense: Omit<Expense, 'id'>): Promise<Expense> {
+        const newExpense = await storage.add<Expense>('expenses', expense);
+        sheetsService.addToQueue('expenses', 'upsert', newExpense);
+        return newExpense;
+    }
+    
+    async updateExpense(id: number, expenseData: Partial<Omit<Expense, 'id'>>): Promise<Expense | undefined> {
+        const updatedExpense = await storage.update<Expense>('expenses', id, expenseData);
+        if (updatedExpense) sheetsService.addToQueue('expenses', 'upsert', updatedExpense);
+        return updatedExpense;
+    }
+    
+    async deleteExpense(id: number): Promise<void> {
+        await storage.remove('expenses', id);
+        sheetsService.addToQueue('expenses', 'delete', { id });
+    }
+    
+    async getExpenseCategories(): Promise<string[]> {
+        const expenses = await this.getAll<Expense>('expenses');
+        return Array.from(new Set(expenses.map(e => e.category)));
+    }
+    
+    async getExpenses({ from, to, category }: { from?: Date, to?: Date, category?: string }): Promise<Expense[]> {
+        let expenses = await this.getAll<Expense>('expenses');
+        if (from && to) {
+            expenses = expenses.filter(e => {
+                const expenseDate = new Date(e.expenseDate);
+                return expenseDate >= from && expenseDate <= to;
+            });
+        }
+        if (category) {
+            expenses = expenses.filter(e => e.category === category);
+        }
+        return expenses.sort((a,b) => new Date(b.expenseDate).getTime() - new Date(a.expenseDate).getTime());
+    }
+    
+    // ====================================================================
+    // Costing
+    // ====================================================================
+    async applyNewPurchasePrices(costingItems: CostingItem[]): Promise<void> {
+        for (const item of costingItems) {
+            if(item.productId) {
+                await this.updateProduct(item.productId, { 
+                    purchasePrice: item.finalCostPerUnit,
+                    dateMajPrix: new Date()
+                });
+            }
+        }
+    }
+    
+    // ====================================================================
+    // Data Import/Export & Backup/Restore
+    // ====================================================================
+    async exportData(): Promise<string> {
+        const data = await storage.exportAllData();
+        return JSON.stringify(data, null, 2);
+    }
+    
+    async restoreTables(backupData: Partial<DB>, tablesToRestore: string[], onProgress: (progress: any) => void): Promise<void> {
+        const total = tablesToRestore.length;
+        let current = 0;
+        
+        for (const tableName of tablesToRestore) {
+            current++;
+            try {
+                if (backupData[tableName as keyof typeof backupData]) {
+                    const records = backupData[tableName as keyof typeof backupData] as any[];
+                    await storage.clearTable(tableName as TableName);
+                    await storage.bulkPut(tableName as TableName, records);
+                    onProgress({ current, total, currentTable: tableName, done: [{ table: tableName, success: true }]});
+                }
+            } catch (e: any) {
+                onProgress({ current, total, currentTable: tableName, done: [{ table: tableName, success: false, error: e.message }]});
+            }
+        }
+    }
+    
+    async resetDatabase(): Promise<void> {
+        await storage.clearAllData();
+    }
+    
+    async analyzeCustomerImport(data: any[]): Promise<ImportAnalysis> {
+        const allCustomers = await this.getAll<Customer>('customers');
+        const analysis: ImportAnalysis = {
+            customersToAdd: [], customersToUpdate: [], skippedRows: [], errorRows: [], totalRows: data.length
+        };
+        
+        for (const row of data) {
+            if (!row.firstName || !row.lastName) {
+                analysis.errorRows.push(row);
+                continue;
+            }
+            const existingCustomer = allCustomers.find(c => c.firstName === row.firstName && c.lastName === row.lastName);
+            if (existingCustomer) {
+                analysis.customersToUpdate.push({ ...row, id: existingCustomer.id });
+            } else {
+                analysis.customersToAdd.push(row);
+            }
+        }
+        return analysis;
+    }
+
+    async processCustomerImport(toAdd: any[], toUpdate: any[]): Promise<void> {
+        if(toAdd.length > 0) {
+           for (const row of toAdd) {
+               await this.addCustomer(this.mapRowToCustomer(row));
+           }
+        }
+        if(toUpdate.length > 0) {
+            for (const row of toUpdate) {
+                await this.updateCustomer(row.id, this.mapRowToCustomer(row));
+            }
+        }
+    }
+    
+    private mapRowToCustomer(row: any) {
+        return {
+            firstName: row.firstName,
+            lastName: row.lastName,
+            phone: row.phone || '',
+            address: row.address || '',
+            creditLimit: parseFloat(row.creditLimit) || undefined,
+            settlementDay: parseInt(row.settlementDay) || undefined,
+        };
+    }
+    
+     async analyzeProductImport(data: any[]): Promise<ProductImportAnalysis> {
+        const allProducts = await this.getAll<Product>('products');
+        const analysis: ProductImportAnalysis = {
+            productsToAdd: [], productsToUpdate: [], skippedRows: [], errorRows: [], totalRows: data.length
+        };
+
+        for (const row of data) {
+            if (!row.name || !row.price) {
+                analysis.errorRows.push(row);
+                continue;
+            }
+            const existingProduct = allProducts.find(p => p.name.toLowerCase() === row.name.toLowerCase());
+            if (existingProduct) {
+                analysis.productsToUpdate.push({ ...row, id: existingProduct.id });
+            } else {
+                analysis.productsToAdd.push(row);
+            }
+        }
+        return analysis;
+    }
+
+    async processProductImport(toAdd: any[], toUpdate: any[]): Promise<void> {
+        for (const row of toAdd) await this.addProduct(this.mapRowToProduct(row));
+        for (const row of toUpdate) await this.updateProduct(row.id, this.mapRowToProduct(row));
+    }
+    
+    private mapRowToProduct(row: any): Omit<Product, 'id'> {
+        return {
+            name: row.name,
+            category: row.category || 'Non classé',
+            price: parseFloat(row.price) || 0,
+            purchasePrice: parseFloat(row.purchasePrice) || 0,
+            quantity: parseInt(row.quantity) || 0,
+            minStockLevel: parseInt(row.minStockLevel) || 10,
+            barcodes: row.barcodes ? String(row.barcodes).split(',').map(b => b.trim()) : [],
+            unite: row.unite || 'Pièce',
+        };
+    }
+    
+    async exportProductsToCSV(): Promise<string> {
+        const products = await this.getAll<Product>('products');
+        return Papa.unparse(products);
+    }
+    
+    async getZakatData(): Promise<ZakatData> {
+        const products = await this.getAll<Product>('products');
+        const customers = await this.getAll<Customer>('customers');
+
+        const inventoryValue = products.reduce((acc, p) => acc + (p.purchasePrice * p.quantity), 0);
+        const totalReceivables = customers.reduce((acc, c) => acc + c.outstandingBalance, 0);
+
+        return { inventoryValue, totalReceivables };
+    }
 }
 
 export const dataService = new DataService();

@@ -7,13 +7,10 @@
  * ║  هذا الملف الوحيد المسموح فيه بـ IndexedDB     ║
  * ╚══════════════════════════════════════════════════╝
  */
-import type { TableName } from './types';
-export type { TableName };
 
 const DB_NAME    = 'iPOS'
 const DB_VERSION = 1
 
-// ─── أسماء الجداول ────────────────────────────────
 export const TABLES = {
   products:       'products',
   customers:      'customers',
@@ -31,8 +28,9 @@ export const TABLES = {
   suppliers:      'suppliers',
   clients_pain:   'clients_pain',
   commandes_pain: 'commandes_pain',
-} as const;
+} as const
 
+export type TableName = keyof typeof TABLES
 
 // ─── فتح قاعدة البيانات ───────────────────────────
 let _db: IDBDatabase | null = null
@@ -41,13 +39,13 @@ export function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
 
     if (typeof window === 'undefined') {
-      // This should not be called on the server.
-      // Components using this should be client components with checks.
-      return reject(new Error('IndexedDB can only be accessed in the browser.'));
+      reject(new Error('IndexedDB not available on server'))
+      return
     }
 
     if (_db) {
-      return resolve(_db);
+      resolve(_db)
+      return
     }
 
     const request = indexedDB.open(DB_NAME, DB_VERSION)
@@ -55,7 +53,6 @@ export function openDB(): Promise<IDBDatabase> {
     request.onupgradeneeded = (event) => {
       const db = (event.target as IDBOpenDBRequest).result
 
-      // إنشاء جميع الجداول
       Object.values(TABLES).forEach(tableName => {
         if (!db.objectStoreNames.contains(tableName)) {
            const isAutoIncrement = !['carts', 'settings', 'companyProfile'].includes(tableName);
@@ -64,7 +61,6 @@ export function openDB(): Promise<IDBDatabase> {
             autoIncrement: isAutoIncrement,
           })
 
-          // indexes لكل جدول
           switch (tableName) {
             case 'products':
               store.createIndex('name',     'name',     { unique: false })
@@ -101,13 +97,13 @@ export function openDB(): Promise<IDBDatabase> {
               store.createIndex('name', 'name', { unique: true })
               break
             case 'clients_pain':
-              store.createIndex('actif',          'actif',          { unique: false })
-              store.createIndex('type_recurrence','type_recurrence', { unique: false })
+              store.createIndex('actif',           'actif',           { unique: false })
+              store.createIndex('type_recurrence', 'type_recurrence', { unique: false })
               break
             case 'commandes_pain':
-              store.createIndex('date',         'date',         { unique: false })
-              store.createIndex('est_paye',     'est_paye',     { unique: false })
-              store.createIndex('est_livre',    'est_livre',    { unique: false })
+              store.createIndex('date',          'date',          { unique: false })
+              store.createIndex('est_paye',      'est_paye',      { unique: false })
+              store.createIndex('est_livre',     'est_livre',     { unique: false })
               store.createIndex('client_pain_id','client_pain_id',{ unique: false })
               break
           }
@@ -170,7 +166,9 @@ export async function add<T extends { id?: IDBValidKey }>(
     createdAt: (item as any).createdAt ?? now,
     updatedAt: now,
   }
-  const id = await promisify<IDBValidKey>(store.add(newItem));
+  const id = await promisify<IDBValidKey>(
+    store.add(newItem)
+  )
   return { ...newItem, id } as unknown as T
 }
 
@@ -216,7 +214,9 @@ export async function bulkAdd<T extends { id?: IDBValidKey }>(
       createdAt: (item as any).createdAt ?? now,
       updatedAt: now,
     }
-    const id = await promisify<IDBValidKey>(store.add(newItem));
+    const id = await promisify<IDBValidKey>(
+      store.add(newItem)
+    )
     results.push({ ...newItem, id } as unknown as T)
   }
 
@@ -242,7 +242,7 @@ export async function clearTable(table: TableName): Promise<void> {
   await promisify(store.clear())
 }
 
-export async function where<T>(
+export async function whereEqual<T>(
   table: TableName,
   indexName: string,
   value: unknown
@@ -253,10 +253,11 @@ export async function where<T>(
 
   if (store.indexNames.contains(indexName)) {
     const index = store.index(indexName)
-    return promisify<T[]>(index.getAll(value as IDBValidKey))
+    return promisify<T[]>(
+      index.getAll(value as IDBValidKey)
+    )
   }
 
-  // fallback : filter يدوي
   const all = await promisify<T[]>(store.getAll())
   return all.filter(item => (item as any)[indexName] === value)
 }
@@ -266,7 +267,6 @@ export async function count(table: TableName): Promise<number> {
   return promisify<number>(store.count())
 }
 
-// ─── نسخة احتياطية كاملة ──────────────────────────
 export async function exportAllData(): Promise<Record<string, unknown[]>> {
   const backup: Record<string, unknown[]> = {}
   for (const table of Object.keys(TABLES) as TableName[]) {
