@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
 import { dataService } from '@/services/data-service';
 import type { Product } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
@@ -18,10 +17,13 @@ interface PrintLabelsDialogProps {
 }
 
 export function PrintLabelsDialog({ isOpen, onOpenChange, productIds }: PrintLabelsDialogProps) {
-  const products = useLiveQuery(
-    () => dataService.getProductsByIds(productIds), 
-    [JSON.stringify(productIds)] // Stabilize dependency
-  );
+  const [products, setProducts] = useState<Product[] | undefined>(undefined);
+  
+  useEffect(() => {
+    if (isOpen) {
+        dataService.getProductsByIds(productIds).then(setProducts);
+    }
+  }, [isOpen, productIds]);
   
   const [labelQuantities, setLabelQuantities] = useState<Record<number, number>>({});
 

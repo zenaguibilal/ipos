@@ -1,11 +1,8 @@
-
-
 'use client';
 
-import { useState } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
+import { useState, useEffect, useCallback } from 'react';
 import { dataService } from '@/services/data-service';
-import type { Expense } from '@/lib/types';
+import type { Expense, ExpenseCategory } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Plus, Filter } from 'lucide-react';
 import { ExpenseCard } from '@/components/expenses/ExpenseCard';
@@ -34,18 +31,25 @@ export default function ExpensesPage() {
     const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
     const { dateRange, setDate, isMounted } = useDateRange(29);
 
-    const expenses = useLiveQuery(
-        () => dataService.getExpenses({ 
+    const [expenses, setExpenses] = useState<Expense[] | undefined>(undefined);
+    const [categories, setCategories] = useState<ExpenseCategory[]>([]);
+
+    const loadData = useCallback(() => {
+        dataService.getExpenses({ 
             category: selectedCategory === 'all' ? undefined : selectedCategory,
             from: dateRange?.from,
             to: dateRange?.to
-        }),
-        [selectedCategory, dateRange]
-    );
+        }).then(setExpenses);
+        dataService.getExpenseCategories().then(setCategories);
+    }, [selectedCategory, dateRange]);
+
+    useEffect(() => {
+        if(isMounted) {
+            loadData();
+        }
+    }, [isMounted, loadData]);
     
-    const categories = useLiveQuery(() => dataService.getExpenseCategories(), [], []);
-    
-    const isLoading = expenses === undefined || categories === undefined || !isMounted;
+    const isLoading = expenses === undefined || !isMounted;
 
     const handleEditExpense = (expense: Expense) => {
         setSelectedExpense(expense);
@@ -55,6 +59,16 @@ export default function ExpensesPage() {
     const handleDeleteExpense = (expense: Expense) => {
         setSelectedExpense(expense);
         setIsDeleteDialogOpen(true);
+    };
+    
+    const handleDialogClose = (open: boolean) => {
+        setIsExpenseDialogOpen(open);
+        if (!open) loadData();
+    };
+
+    const handleDeleteDialogClose = (open: boolean) => {
+        setIsDeleteDialogOpen(open);
+        if (!open) loadData();
     };
 
     const totalExpenses = expenses ? expenses.reduce((acc, expense) => acc + expense.amount, 0) : 0;
@@ -152,12 +166,12 @@ export default function ExpensesPage() {
 
             <ExpenseDialog 
                 isOpen={isExpenseDialogOpen}
-                onOpenChange={setIsExpenseDialogOpen}
+                onOpenChange={handleDialogClose}
                 expense={selectedExpense}
             />
             <DeleteExpenseDialog 
                 isOpen={isDeleteDialogOpen}
-                onOpenChange={setIsDeleteDialogOpen}
+                onOpenChange={handleDeleteDialogClose}
                 expense={selectedExpense}
             />
         </div>

@@ -129,7 +129,7 @@ export function useDashboardData(dateRange?: DateRange) {
         };
 
         // --- Chart Data ---
-        const daysInRange = differenceInDays(to!, from!) + 1;
+        const daysInRange = to && from ? differenceInDays(to, from) + 1 : 0;
         const dataByDay: { [key: string]: { revenu: number, benefice: number, date: Date } } = {};
 
         for (let i = 0; i < daysInRange; i++) {

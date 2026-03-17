@@ -1,7 +1,6 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import { useLiveQuery } from 'dexie-react-hooks';
 import { dataService } from '@/services/data-service';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -10,11 +9,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Skeleton } from '@/components/ui/skeleton';
 import { CustomerMetrics } from '@/components/customers/CustomerMetrics';
 import { CustomerActivity } from '@/components/customers/CustomerActivity';
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { AddPaymentDialog } from '@/components/payments/AddPaymentDialog';
 import { SaleDetailsDialog } from '@/components/sales/SaleDetailsDialog';
 import { ReturnDetailsDialog } from '@/components/returns/ReturnDetailsDialog';
-import type { Sale, ProductReturn, Customer } from '@/lib/types';
+import type { Sale, ProductReturn, Customer, GlobalActivityItem } from '@/lib/types';
 import { PrintStatementDialog } from '@/components/customers/PrintStatementDialog';
 import { PageHeader } from '@/components/layout/PageHeader';
 
@@ -30,15 +29,22 @@ export default function CustomerDetailPage() {
     const [selectedReturn, setSelectedReturn] = useState<ProductReturn | null>(null);
     const [isReturnDetailsOpen, setIsReturnDetailsOpen] = useState(false);
 
-    const customer = useLiveQuery<Customer | undefined>(
-        () => dataService.getCustomerById(customerId),
-        [customerId]
-    );
+    const [customer, setCustomer] = useState<Customer | undefined>(undefined);
+    const [activity, setActivity] = useState<GlobalActivityItem[] | undefined>(undefined);
 
-    const activity = useLiveQuery(
-        () => dataService.getCustomerActivity(customerId), 
-        [customerId], []
-    );
+    const loadData = useCallback(async () => {
+        if (isNaN(customerId)) return;
+        const [customerData, activityData] = await Promise.all([
+            dataService.getCustomerById(customerId),
+            dataService.getCustomerActivity(customerId),
+        ]);
+        setCustomer(customerData);
+        setActivity(activityData);
+    }, [customerId]);
+
+    useEffect(() => {
+        loadData();
+    }, [loadData]);
 
 
     const isLoading = customer === undefined || activity === undefined;
@@ -104,7 +110,7 @@ export default function CustomerDetailPage() {
                         </CardHeader>
                         <CardContent>
                             <CustomerActivity 
-                                activity={activity} 
+                                activity={activity || []} 
                                 onSaleClick={handleSaleClick}
                                 onReturnClick={handleReturnClick}
                             />
@@ -135,7 +141,10 @@ export default function CustomerDetailPage() {
             
              <AddPaymentDialog 
                 isOpen={isPaymentDialogOpen}
-                onOpenChange={setIsPaymentDialogOpen}
+                onOpenChange={(open) => {
+                    setIsPaymentDialogOpen(open);
+                    if (!open) loadData();
+                }}
                 customer={customer}
                 outstandingBalance={customer.outstandingBalance}
             />

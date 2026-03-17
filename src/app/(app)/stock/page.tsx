@@ -1,9 +1,6 @@
-
-
 'use client';
 
-import { useState } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
+import { useState, useEffect, useCallback } from 'react';
 import { dataService } from '@/services/data-service';
 import { useDebounce } from '@/hooks/useDebounce';
 import type { StockIntake } from '@/lib/types';
@@ -27,14 +24,20 @@ export default function StockPage() {
     const [selectedIntake, setSelectedIntake] = useState<StockIntake | null>(null);
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
-    const stockIntakes = useLiveQuery(
-        () => dataService.getStockIntakes({ 
+    const [stockIntakes, setStockIntakes] = useState<StockIntake[] | undefined>(undefined);
+
+    const loadStockIntakes = useCallback(() => {
+        if (!isMounted) return;
+        dataService.getStockIntakes({ 
             query: debouncedSearchQuery,
             from: dateRange?.from,
             to: dateRange?.to
-        }),
-        [debouncedSearchQuery, dateRange]
-    );
+        }).then(setStockIntakes);
+    }, [isMounted, debouncedSearchQuery, dateRange]);
+
+    useEffect(() => {
+        loadStockIntakes();
+    }, [loadStockIntakes]);
 
     const isLoading = stockIntakes === undefined || !isMounted;
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useLiveQuery } from 'dexie-react-hooks';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { CardContent, CardFooter } from '@/components/ui/card';
 import { Loader2, RefreshCw, AlertTriangle } from 'lucide-react';
@@ -9,10 +9,16 @@ import { dataService } from '@/services/data-service';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useSync } from '@/hooks/useSync';
+import type { CompanyProfile } from '@/lib/types';
 
 export function SyncData() {
     const { syncStatus, syncNow } = useSync();
-    const companyProfile = useLiveQuery(() => dataService.getCompanyProfile());
+    const [companyProfile, setCompanyProfile] = useState<CompanyProfile | null>(null);
+
+    useEffect(() => {
+        dataService.getCompanyProfile().then(setCompanyProfile);
+    }, [syncStatus.lastSync]);
+
 
     const handleSync = async () => {
         toast.info("Lancement de la synchronisation complète...");

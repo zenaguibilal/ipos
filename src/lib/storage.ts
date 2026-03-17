@@ -153,13 +153,13 @@ export async function getAll<T>(table: TableName): Promise<T[]> {
 
 export async function getById<T>(
   table: TableName,
-  id: number | string
+  id: IDBValidKey
 ): Promise<T | undefined> {
   const store = await getStore(table)
   return promisify<T>(store.get(id))
 }
 
-export async function add<T extends { id?: number | string }>(
+export async function add<T extends { id?: IDBValidKey }>(
   table: TableName,
   item: Omit<T, 'id'>
 ): Promise<T> {
@@ -174,9 +174,9 @@ export async function add<T extends { id?: number | string }>(
   return { ...newItem, id } as unknown as T
 }
 
-export async function update<T extends { id: number | string }>(
+export async function update<T extends { id: IDBValidKey }>(
   table: TableName,
-  id: number | string,
+  id: IDBValidKey,
   changes: Partial<T>
 ): Promise<T | undefined> {
   const store = await getStore(table, 'readwrite')
@@ -194,13 +194,13 @@ export async function update<T extends { id: number | string }>(
 
 export async function remove(
   table: TableName,
-  id: number | string
+  id: IDBValidKey
 ): Promise<void> {
   const store = await getStore(table, 'readwrite')
   await promisify(store.delete(id))
 }
 
-export async function bulkAdd<T extends { id?: number | string }>(
+export async function bulkAdd<T extends { id?: IDBValidKey }>(
   table: TableName,
   items: Omit<T, 'id'>[]
 ): Promise<T[]> {
@@ -223,7 +223,7 @@ export async function bulkAdd<T extends { id?: number | string }>(
   return results
 }
 
-export async function bulkPut<T extends { id: number | string }>(
+export async function bulkPut<T extends { id: IDBValidKey }>(
   table: TableName,
   items: T[]
 ): Promise<void> {

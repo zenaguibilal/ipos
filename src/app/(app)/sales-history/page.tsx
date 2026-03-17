@@ -1,9 +1,6 @@
-
-
 'use client';
 
-import { useState } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
+import { useState, useEffect, useCallback } from 'react';
 import { dataService } from '@/services/data-service';
 import { useDebounce } from '@/hooks/useDebounce';
 import type { Sale } from '@/lib/types';
@@ -27,14 +24,20 @@ export default function SalesHistoryPage() {
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
     const [isCancelOpen, setIsCancelOpen] = useState(false);
 
-    const sales = useLiveQuery(
-        () => dataService.getSales({ 
+    const [sales, setSales] = useState<Sale[] | undefined>(undefined);
+
+    const loadSales = useCallback(() => {
+        if (!isMounted) return;
+        dataService.getSales({ 
             query: debouncedSearchQuery,
             from: dateRange?.from,
             to: dateRange?.to
-        }),
-        [debouncedSearchQuery, dateRange]
-    );
+        }).then(setSales);
+    }, [isMounted, debouncedSearchQuery, dateRange]);
+
+    useEffect(() => {
+        loadSales();
+    }, [loadSales]);
 
     const isLoading = sales === undefined || !isMounted;
 
@@ -46,6 +49,13 @@ export default function SalesHistoryPage() {
     const handleCancelSale = (sale: Sale) => {
         setSelectedSale(sale);
         setIsCancelOpen(true);
+    };
+
+    const handleCancelDialogClose = (open: boolean) => {
+        setIsCancelOpen(open);
+        if (!open) {
+            loadSales();
+        }
     };
     
     const renderSkeletons = () => (
@@ -114,7 +124,7 @@ export default function SalesHistoryPage() {
             />
             <CancelSaleDialog 
                 isOpen={isCancelOpen}
-                onOpenChange={setIsCancelOpen}
+                onOpenChange={handleCancelDialogClose}
                 sale={selectedSale}
             />
         </div>

@@ -1,8 +1,6 @@
-
 'use client';
 
-import { useState, useMemo } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
+import { useState, useMemo, useEffect } from 'react';
 import { dataService } from '@/services/data-service';
 import type { CompanyProfile, ZakatData } from '@/lib/types';
 import { formatCurrency } from '@/lib/utils';
@@ -21,8 +19,13 @@ export default function ZakatPage() {
     const [cashOnHand, setCashOnHand] = useState('');
     const [debts, setDebts] = useState('');
 
-    const zakatData = useLiveQuery<ZakatData | undefined>(() => dataService.getZakatData(), []);
-    const companyProfile = useLiveQuery<CompanyProfile | null>(() => dataService.getCompanyProfile(), []);
+    const [zakatData, setZakatData] = useState<ZakatData | undefined>(undefined);
+    const [companyProfile, setCompanyProfile] = useState<CompanyProfile | null | undefined>(undefined);
+    
+    useEffect(() => {
+        dataService.getZakatData().then(setZakatData);
+        dataService.getCompanyProfile().then(setCompanyProfile);
+    }, []);
 
     const isLoading = zakatData === undefined || companyProfile === undefined;
 

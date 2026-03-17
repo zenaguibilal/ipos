@@ -14,10 +14,10 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { DraftsDialog } from '@/components/sell/DraftsDialog';
-import { useLiveQuery } from 'dexie-react-hooks';
 import { dataService } from '@/services/data-service';
 import { AddPaymentDialog } from '@/components/payments/AddPaymentDialog';
 import { CartTotalBar } from '@/components/sell/CartTotalBar';
+import type { Customer } from '@/lib/types';
 
 export default function SellPage() {
     const {
@@ -41,15 +41,19 @@ export default function SellPage() {
     const [isProductSheetOpen, setIsProductSheetOpen] = useState(false);
     const [isDraftsDialogOpen, setIsDraftsDialogOpen] = useState(false);
     const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+    const [selectedCustomer, setSelectedCustomer] = useState<Customer | null | undefined>(undefined);
 
     const productSearchRef = useRef<{ focus: () => void }>(null);
     const customerComboboxRef = useRef<HTMLButtonElement>(null);
     const paymentButtonRef = useRef<HTMLButtonElement>(null);
 
-    const selectedCustomer = useLiveQuery(() => 
-        activeCart?.customerId ? dataService.getCustomerById(activeCart.customerId) : Promise.resolve(null),
-        [activeCart?.customerId]
-    );
+    useEffect(() => {
+        if (activeCart?.customerId) {
+            dataService.getCustomerById(activeCart.customerId).then(setSelectedCustomer);
+        } else {
+            setSelectedCustomer(null);
+        }
+    }, [activeCart?.customerId]);
 
     const handleSaveDraft = async () => {
         if (!activeCart || activeCart.items.length === 0) {
@@ -115,7 +119,7 @@ export default function SellPage() {
         };
     }, [handleKeyDown]);
 
-    if (isLoading || !activeCart) {
+    if (isLoading || !activeCart || selectedCustomer === undefined) {
         return (
             <div className="h-full flex flex-col p-4 gap-4">
                 <Skeleton className="h-12 flex-grow" />

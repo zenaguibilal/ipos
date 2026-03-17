@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
 import { dataService } from '@/services/data-service';
 import { formatDateToYYYYMMDD } from '@/lib/utils';
 import { addDays, subDays, format } from 'date-fns';
@@ -12,7 +11,7 @@ import { BreadClientList } from '@/components/bread/BreadClientList';
 import { BreadDayView } from '@/components/bread/BreadDayView';
 import { BreadStats } from '@/components/bread/BreadStats';
 import { Loader2 } from 'lucide-react';
-import type { BreadOrderWithClient } from '@/lib/types';
+import type { BreadOrderWithClient, CompanyProfile } from '@/lib/types';
 import { toast } from 'sonner';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle } from 'lucide-react';
@@ -23,6 +22,8 @@ export default function BreadPage() {
     const [currentDate, setCurrentDate] = useState<Date | undefined>(undefined);
     const [isGenerating, setIsGenerating] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
+    const [orders, setOrders] = useState<BreadOrderWithClient[] | undefined>(undefined);
+    const [breadPriceSetting, setBreadPriceSetting] = useState<number | undefined>(undefined);
 
     useEffect(() => {
         setCurrentDate(new Date());
@@ -30,34 +31,34 @@ export default function BreadPage() {
 
     const formattedDate = currentDate ? formatDateToYYYYMMDD(currentDate) : '';
 
-    const orders = useLiveQuery<BreadOrderWithClient[]>(
-        () => formattedDate ? dataService.getBreadOrdersForDate(formattedDate) : Promise.resolve([]),
-        [formattedDate]
-    );
-
-    const breadPriceSetting = useLiveQuery(() => dataService.getCompanyProfile().then(p => p?.prix_pain));
+    const fetchOrders = async (date: string) => {
+      if (!date) return;
+      setIsLoading(true);
+      const ordersExist = await dataService.checkIfBreadOrdersExist(date);
+      if (!ordersExist) {
+          setIsGenerating(true);
+          try {
+              await dataService.createDayOrders(date);
+          } catch (error) {
+              console.error("Failed to generate daily orders:", error);
+              toast.error("Erreur lors de la génération des commandes du jour.");
+          } finally {
+              setIsGenerating(false);
+          }
+      }
+      const fetchedOrders = await dataService.getBreadOrdersForDate(date);
+      setOrders(fetchedOrders);
+      setIsLoading(false);
+    };
 
     useEffect(() => {
-        if (!formattedDate) return;
-
-        const checkAndGenerateOrders = async () => {
-            setIsLoading(true);
-            const ordersExist = await dataService.checkIfBreadOrdersExist(formattedDate);
-            if (!ordersExist) {
-                setIsGenerating(true);
-                try {
-                    await dataService.createDayOrders(formattedDate);
-                } catch (error) {
-                    console.error("Failed to generate daily orders:", error);
-                    toast.error("Erreur lors de la génération des commandes du jour.");
-                } finally {
-                    setIsGenerating(false);
-                }
-            }
-            setIsLoading(false);
-        };
-
-        checkAndGenerateOrders();
+      dataService.getCompanyProfile().then(p => setBreadPriceSetting(p?.prix_pain));
+    }, []);
+    
+    useEffect(() => {
+        if (formattedDate) {
+            fetchOrders(formattedDate);
+        }
     }, [formattedDate]);
     
     const handleDateChange = (days: number) => {
@@ -125,7 +126,7 @@ export default function BreadPage() {
                 </Alert>
             )}
 
-            <BreadStats orders={orders} />
+            <BreadStats orders={orders} isLoading={showLoadingState}/>
 
             <div className="grid lg:grid-cols-3 gap-6 items-start">
                 <div className="lg:col-span-2">

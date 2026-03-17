@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
 import { dataService } from '@/services/data-service';
 import type { StockIntake, CostingItem } from '@/lib/types';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
@@ -24,15 +23,20 @@ export default function CostingPage() {
     const [isMounted, setIsMounted] = useState(false);
     const [isApplyingCosts, setIsApplyingCosts] = useState(false);
 
+    const [intakes, setIntakes] = useState<StockIntake[] | undefined>(undefined);
+    const [selectedIntake, setSelectedIntake] = useState<StockIntake | undefined>(undefined);
+
     useEffect(() => {
         setIsMounted(true);
+        dataService.getStockIntakes({}).then(setIntakes);
     }, []);
 
-    const intakes = useLiveQuery(() => dataService.getStockIntakes({}), [], []);
-
-    const selectedIntake = useLiveQuery(() => {
-        if (!selectedIntakeId) return undefined;
-        return dataService.getById<StockIntake>('stockIntakes', parseInt(selectedIntakeId));
+    useEffect(() => {
+      if (selectedIntakeId) {
+        dataService.getById<StockIntake>('stockIntakes', parseInt(selectedIntakeId)).then(setSelectedIntake);
+      } else {
+        setSelectedIntake(undefined);
+      }
     }, [selectedIntakeId]);
 
     const intakeOptions = useMemo<ComboboxOption[]>(() => {

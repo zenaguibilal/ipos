@@ -1,9 +1,6 @@
-
-
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
+import { useState, useEffect, useCallback } from 'react';
 import { dataService } from '@/services/data-service';
 import { useDebounce } from '@/hooks/useDebounce';
 import type { Product, ProductImportAnalysis, Supplier } from '@/lib/types';
@@ -80,26 +77,47 @@ export default function ProductsPage() {
 
     const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
-    const products = useLiveQuery(
-        () => dataService.getProducts({ 
+    const [products, setProducts] = useState<Product[] | undefined>(undefined);
+    const [categories, setCategories] = useState<string[] | undefined>(undefined);
+    const [suppliers, setSuppliers] = useState<Supplier[] | undefined>(undefined);
+    
+    const loadProducts = useCallback(() => {
+        dataService.getProducts({ 
             query: debouncedSearchQuery, 
             category: selectedCategory === 'all' ? undefined : selectedCategory,
             supplierId: selectedSupplier === 'all' ? undefined : parseInt(selectedSupplier),
             stockStatus: stockStatus,
             sortBy: sortBy,
-        }),
-        [debouncedSearchQuery, selectedCategory, selectedSupplier, stockStatus, sortBy]
-    );
-    
-    const categories = useLiveQuery(() => dataService.getProductCategories(), [], []);
-    const suppliers = useLiveQuery(() => dataService.getSuppliers(), [], []);
+        }).then(setProducts);
+    }, [debouncedSearchQuery, selectedCategory, selectedSupplier, stockStatus, sortBy]);
+
+    useEffect(() => {
+        loadProducts();
+        dataService.getProductCategories().then(setCategories);
+        dataService.getSuppliers().then(setSuppliers);
+    }, [loadProducts]);
     
     const isLoading = products === undefined || categories === undefined || suppliers === undefined;
 
     useEffect(() => {
-        // Clear selection when filters change
         setSelectedProducts(new Set());
     }, [debouncedSearchQuery, selectedCategory, stockStatus, selectedSupplier]);
+
+    const handleDialogClose = (open: boolean) => {
+        setIsProductDialogOpen(open);
+        if(!open) loadProducts();
+    };
+
+    const handleDeleteDialogClose = (open: boolean) => {
+        setIsDeleteDialogOpen(open);
+        if(!open) loadProducts();
+    };
+
+    const handleBulkDeleteSuccess = () => {
+        setIsBulkDeleteDialogOpen(false);
+        setSelectedProducts(new Set());
+        loadProducts();
+    };
 
     const handleEditProduct = (product: Product) => {
         setSelectedProduct(product);
@@ -158,6 +176,7 @@ export default function ProductsPage() {
             toast.success("Importation des produits terminée avec succès !");
             setIsProductImportPreviewOpen(false);
             setProductImportAnalysis(null);
+            loadProducts();
         } catch (error) {
             console.error("Product import failed:", error);
             toast.error("Une erreur est survenue lors de l'importation.");
@@ -410,14 +429,14 @@ export default function ProductsPage() {
 
             <ProductDialog 
                 isOpen={isProductDialogOpen}
-                onOpenChange={setIsProductDialogOpen}
+                onOpenChange={handleDialogClose}
                 product={selectedProduct}
                 categories={categories || []}
                 suppliers={suppliers || []}
             />
             <DeleteProductDialog 
                 isOpen={isDeleteDialogOpen}
-                onOpenChange={setIsDeleteDialogOpen}
+                onOpenChange={handleDeleteDialogClose}
                 product={selectedProduct}
             />
             <PrintLabelsDialog
@@ -429,7 +448,7 @@ export default function ProductsPage() {
                 isOpen={isBulkDeleteDialogOpen}
                 onOpenChange={setIsBulkDeleteDialogOpen}
                 productIds={Array.from(selectedProducts)}
-                onSuccess={() => setSelectedProducts(new Set())}
+                onSuccess={handleBulkDeleteSuccess}
             />
              <ProductImportPreviewDialog
                 isOpen={isProductImportPreviewOpen}

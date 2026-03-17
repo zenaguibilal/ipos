@@ -1,9 +1,6 @@
-
-
 'use client';
 
-import { useState } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
+import { useState, useCallback, useEffect } from 'react';
 import { dataService } from '@/services/data-service';
 import { useDebounce } from '@/hooks/useDebounce';
 import type { Customer } from '@/lib/types';
@@ -39,10 +36,15 @@ export default function CustomersPage() {
     
     const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
-    const customers = useLiveQuery<Customer[]>(
-        () => dataService.getCustomers({ query: debouncedSearchQuery, status: filterStatus }),
-        [debouncedSearchQuery, filterStatus]
-    );
+    const [customers, setCustomers] = useState<Customer[] | undefined>(undefined);
+
+    const loadCustomers = useCallback(() => {
+        dataService.getCustomers({ query: debouncedSearchQuery, status: filterStatus }).then(setCustomers);
+    }, [debouncedSearchQuery, filterStatus]);
+
+    useEffect(() => {
+        loadCustomers();
+    }, [loadCustomers]);
     
     const isLoading = customers === undefined;
 
@@ -55,6 +57,16 @@ export default function CustomersPage() {
         setSelectedCustomer(customer);
         setIsDeleteDialogOpen(true);
     };
+    
+    const handleDialogClose = (open: boolean) => {
+        setIsCustomerDialogOpen(open);
+        if(!open) loadCustomers();
+    }
+    
+    const handleDeleteDialogClose = (open: boolean) => {
+        setIsDeleteDialogOpen(open);
+        if(!open) loadCustomers();
+    }
 
     const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -82,6 +94,7 @@ export default function CustomersPage() {
             toast.success("Importation des clients terminée avec succès !");
             setIsImportPreviewOpen(false);
             setImportAnalysis(null);
+            loadCustomers();
         } catch (error) {
             console.error("Customer import failed:", error);
             toast.error("Une erreur est survenue lors de l'importation.");
@@ -181,12 +194,12 @@ export default function CustomersPage() {
 
             <CustomerDialog 
                 isOpen={isCustomerDialogOpen}
-                onOpenChange={setIsCustomerDialogOpen}
+                onOpenChange={handleDialogClose}
                 customer={selectedCustomer}
             />
             <DeleteCustomerDialog 
                 isOpen={isDeleteDialogOpen}
-                onOpenChange={setIsDeleteDialogOpen}
+                onOpenChange={handleDeleteDialogClose}
                 customer={selectedCustomer}
             />
             <ImportPreviewDialog

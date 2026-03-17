@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { DatePicker } from '@/components/ui/date-picker';
-import type { StockIntakeItem } from '@/lib/types';
+import type { StockIntakeItem, Supplier } from '@/lib/types';
 import { v4 as uuidv4 } from 'uuid';
 import { toast } from 'sonner';
 import { dataService } from '@/services/data-service';
@@ -17,7 +17,6 @@ import { formatCurrency } from '@/lib/utils';
 import { Loader2 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { ProductIntakeCombobox } from '@/components/stock/ProductIntakeCombobox';
-import { useLiveQuery } from 'dexie-react-hooks';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 
@@ -33,7 +32,11 @@ export default function NewStockIntakePage() {
     const [isSaving, setIsSaving] = useState(false);
     const [isMounted, setIsMounted] = useState(false);
 
-    const suppliers = useLiveQuery(() => dataService.getSuppliers(), []);
+    const [suppliers, setSuppliers] = useState<Supplier[] | undefined>(undefined);
+
+    useEffect(() => {
+      dataService.getSuppliers().then(setSuppliers);
+    }, []);
 
     const supplierOptions = useMemo(() => {
         if (!suppliers) return [];
