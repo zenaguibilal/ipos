@@ -2,7 +2,6 @@
 
 import { useState, useMemo } from 'react';
 import { dataService } from '@/services/data-service';
-import type { CompanyProfile, ZakatData } from '@/lib/types';
 import { formatCurrency } from '@/lib/utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -53,9 +52,8 @@ export default function ZakatPage() {
                     type="number"
                     className="w-48 h-10 text-right text-lg font-semibold"
                     placeholder={placeholder}
-                    value={onChange ? (value === 0 ? '' : String(value)) : undefined}
+                    value={onChange ? (value === 0 ? '' : String(value)) : String(value)}
                     onChange={(e) => onChange?.(e.target.value)}
-                    defaultValue={value}
                 />
             ) : (
                 <span className={`text-lg font-bold ${className}`}>{formatCurrency(value)}</span>

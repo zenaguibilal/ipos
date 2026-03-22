@@ -2,7 +2,6 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { Customer } from '@/lib/types';
 import { Users, AlertTriangle, UserX } from 'lucide-react';
 import { useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
