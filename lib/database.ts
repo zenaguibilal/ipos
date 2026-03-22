@@ -23,10 +23,10 @@ export class PosDatabase extends Dexie {
 
     constructor() {
         super('posDB');
-        this.version(29).stores({
-            products: '++id, name, *barcodes, category, price, quantity, [category+name], fournisseurId',
+        this.version(30).stores({
+            products: '++id, name, *barcodes, category, price, quantity, [category+name], fournisseurId, createdAt',
             customers: '++id, searchName, createdAt, lastName, firstName, [lastName+firstName], phone, outstandingBalance, lastActivityDate',
-            sales: '++id, &invoiceNumber, createdAt, customerId, customerName, paymentStatus, dueDate',
+            sales: '++id, &invoiceNumber, createdAt, customerId, customerName, paymentStatus, dueDate, items.id',
             payments: '++id, createdAt, customerId, paymentDate',
             stockIntakes: '++id, &invoiceNumber, supplierId, createdAt',
             returns: '++id, createdAt, originalSaleId, customerId',
@@ -42,7 +42,6 @@ export class PosDatabase extends Dexie {
             commandes_pain: '++id, [client_pain_id+date], date, est_paye, est_livre',
         }).upgrade(tx => {
             // Dexie upgrade functions are declarative of the target version structure.
-            // This is for version 22, ensuring searchName is populated. It runs if the client db version < 22.
             return tx.table('customers').toCollection().modify(customer => {
                 if (customer.firstName && customer.lastName && !customer.searchName) {
                    customer.searchName = `${customer.firstName.toLowerCase()} ${customer.lastName.toLowerCase()}`;
@@ -81,7 +80,7 @@ export class PosDatabase extends Dexie {
                     let supplier = await tx.table('suppliers').where('name').equalsIgnoreCase(supplierName).first();
                     if (!supplier) {
                         const supplierId = await tx.table('suppliers').add({ name: supplierName, balance: 0 });
-                        supplier = { id: supplierId, name: supplierName };
+                        supplier = { id: supplierId, name: supplierName, balance: 0 };
                     }
                     await tx.table('stockIntakes').update(intake.id, {
                         supplierId: supplier.id,

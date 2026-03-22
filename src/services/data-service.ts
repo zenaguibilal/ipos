@@ -58,7 +58,7 @@ class DataService {
   }
 
   async addProductToCart(cartId: string, product: Product, quantity: number): Promise<void> {
-    await this.db.transaction('rw', this.db.carts, this.db.products, async () => {
+    return this.db.transaction('rw', this.db.carts, this.db.products, async () => {
         const cart = await this.db.carts.get(cartId);
         if (!cart) throw new Error("Panier non trouvé.");
 
@@ -164,6 +164,16 @@ class DataService {
 
   async addProduct(productData: Omit<Product, 'id'>): Promise<Product> {
     return this.db.transaction('rw', this.db.products, this.db.inventoryLogs, async () => {
+      
+      if(productData.price <= 0 || productData.quantity < 0) {
+        throw new Error("Le prix doit être positif et la quantité ne peut pas être négative.");
+      }
+      
+      if(productData.barcodes && productData.barcodes.length > 0) {
+        const existing = await this.db.products.where('barcodes').anyOf(productData.barcodes).first();
+        if(existing) throw new Error(`Le code-barres ${existing.barcodes![0]} est déjà utilisé pour le produit "${existing.name}".`);
+      }
+
       const newProductId = await this.db.products.add(productData);
       await this.db.inventoryLogs.add({
             productId: newProductId,
@@ -181,6 +191,19 @@ class DataService {
 
   async updateProduct(id: number, productData: Partial<Omit<Product, 'id'>>): Promise<void> {
     return this.db.transaction('rw', this.db.products, this.db.inventoryLogs, async () => {
+      
+        if (productData.price !== undefined && productData.price <= 0) {
+            throw new Error("Le prix doit être un nombre positif.");
+        }
+        if (productData.quantity !== undefined && productData.quantity < 0) {
+            throw new Error("La quantité ne peut pas être négative.");
+        }
+
+        if(productData.barcodes && productData.barcodes.length > 0) {
+            const existing = await this.db.products.where('barcodes').anyOf(productData.barcodes).and(p => p.id !== id).first();
+            if(existing) throw new Error(`Le code-barres ${existing.barcodes![0]} est déjà utilisé pour le produit "${existing.name}".`);
+        }
+
         const oldProduct = await this.db.products.get(id);
         if (oldProduct && productData.quantity !== undefined && oldProduct.quantity !== productData.quantity) {
             await this.db.inventoryLogs.add({
@@ -198,7 +221,11 @@ class DataService {
   }
 
   async deleteProduct(id: number): Promise<void> {
-    return this.db.transaction('rw', this.db.products, this.db.inventoryLogs, async () => {
+    return this.db.transaction('rw', this.db.products, this.db.inventoryLogs, this.db.sales, async () => {
+        const salesCount = await this.db.sales.where('items.id').equals(id).count();
+        if (salesCount > 0) {
+            throw new Error("Suppression impossible : ce produit est inclus dans des ventes existantes.");
+        }
         await this.db.inventoryLogs.where({productId: id}).delete();
         await this.db.products.delete(id);
         sheetsService.addToQueue('products', 'delete', { id });
@@ -206,7 +233,14 @@ class DataService {
   }
 
   async deleteProducts(ids: number[]): Promise<void> {
-    return this.db.transaction('rw', this.db.products, this.db.inventoryLogs, async () => {
+     return this.db.transaction('rw', this.db.products, this.db.inventoryLogs, this.db.sales, async () => {
+        for (const id of ids) {
+             const salesCount = await this.db.sales.where('items.id').equals(id).count();
+            if (salesCount > 0) {
+                const product = await this.db.products.get(id);
+                throw new Error(`Suppression impossible : le produit "${product?.name}" est inclus dans des ventes existantes.`);
+            }
+        }
         await this.db.inventoryLogs.where('productId').anyOf(ids).delete();
         await this.db.products.bulkDelete(ids);
         ids.forEach(id => sheetsService.addToQueue('products', 'delete', { id }));
@@ -216,11 +250,14 @@ class DataService {
   async getProducts(params: { query?: string; category?: string; supplierId?: number; stockStatus?: 'all' | 'in_stock' | 'low_stock' | 'out_of_stock', sortBy?: string }): Promise<Product[]> {
     const { query, category, supplierId, stockStatus = 'all', sortBy = 'createdAt_desc' } = params;
     
-    let collection = this.db.products.toCollection();
+    let collection;
 
-    if (category) {
-        collection = collection.filter(p => p.category === category);
+    if(category) {
+        collection = this.db.products.where('category').equals(category);
+    } else {
+        collection = this.db.products.toCollection();
     }
+    
     if (stockStatus !== 'all') {
         collection = collection.filter(p => {
             switch (stockStatus) {
@@ -231,9 +268,11 @@ class DataService {
             }
         });
     }
+
     if(supplierId) {
         collection = collection.filter(p => p.fournisseurId === supplierId);
     }
+
     if (query) {
       const lowerQuery = query.toLowerCase();
       collection = collection.filter(p => 
@@ -243,8 +282,8 @@ class DataService {
     }
     
     const [sortField] = sortBy.split('_');
+    const sortOrder = sortBy.endsWith('desc') ? -1 : 1;
     
-    // Dexie doesn't support dynamic sort direction easily, so we sort in memory
     const products = await collection.toArray();
     
     products.sort((a, b) => {
@@ -262,7 +301,7 @@ class DataService {
         } else if (!aVal && bVal) {
             return 1;
         }
-        return sortBy.endsWith('desc') ? comparison * -1 : comparison;
+        return comparison * sortOrder;
     });
 
     return products;
@@ -410,8 +449,10 @@ class DataService {
     }
 
     async processCustomerImport(toAdd: any[], toUpdate: any[]): Promise<void> {
-        for (const row of toAdd) await this.addCustomer(this.mapRowToCustomer(row));
-        for (const row of toUpdate) await this.updateCustomer(row.id, this.mapRowToCustomer(row));
+        return this.db.transaction('rw', this.db.customers, async () => {
+          for (const row of toAdd) await this.addCustomer(this.mapRowToCustomer(row));
+          for (const row of toUpdate) await this.updateCustomer(row.id, this.mapRowToCustomer(row));
+        });
     }
     
     private mapRowToCustomer(row: any) {
@@ -429,15 +470,24 @@ class DataService {
         for (const row of data) {
             if (!row.name || !row.price) { analysis.errorRows.push(row); continue; }
             const existingProduct = allProducts.find(p => p.name.toLowerCase() === row.name.toLowerCase());
-            if (existingProduct) analysis.productsToUpdate.push({ ...row, id: existingProduct.id });
-            else analysis.productsToAdd.push(row);
+            if (existingProduct) {
+              analysis.productsToUpdate.push({ ...row, id: existingProduct.id });
+            } else {
+              analysis.productsToAdd.push(row);
+            }
         }
         return analysis;
     }
 
     async processProductImport(toAdd: any[], toUpdate: any[]): Promise<void> {
-        for (const row of toAdd) await this.addProduct(this.mapRowToProduct(row));
-        for (const row of toUpdate) await this.updateProduct(row.id, this.mapRowToProduct(row));
+      return this.db.transaction('rw', this.db.products, this.db.inventoryLogs, async () => {
+        for (const row of toAdd) {
+            await this.addProduct(this.mapRowToProduct(row));
+        }
+        for (const row of toUpdate) {
+            await this.updateProduct(row.id, this.mapRowToProduct(row));
+        }
+      });
     }
     
     private mapRowToProduct(row: any): Omit<Product, 'id'> {
