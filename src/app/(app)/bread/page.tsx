@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { dataService } from '@/services/data-service';
 import { formatDateToYYYYMMDD } from '@/lib/utils';
 import { addDays, format } from 'date-fns';
@@ -21,7 +21,6 @@ import { useLiveQuery } from 'dexie-react-hooks';
 
 export default function BreadPage() {
     const [currentDate, setCurrentDate] = useState(new Date());
-    const [isGenerating, setIsGenerating] = useState(false);
 
     const formattedDate = useMemo(() => formatDateToYYYYMMDD(currentDate), [currentDate]);
 
@@ -30,32 +29,22 @@ export default function BreadPage() {
         return profile?.prix_pain;
     }, []);
 
-    const orders = useLiveQuery(() => 
-        dataService.getBreadOrdersForDate(formattedDate),
-        [formattedDate]
-    );
-
-    useEffect(() => {
-        const generateOrders = async () => {
-            if (formattedDate) {
-                setIsGenerating(true);
-                try {
-                    const ordersExist = await dataService.checkIfBreadOrdersExist(formattedDate);
-                    if (!ordersExist) {
-                        await dataService.createDayOrders(formattedDate);
-                    }
-                } catch (error) {
-                    console.error("Failed to generate daily orders:", error);
-                    toast.error("Erreur lors de la génération des commandes du jour.");
-                } finally {
-                    setIsGenerating(false);
-                }
+    const orders = useLiveQuery(async () => {
+        if (!formattedDate) return [];
+        // This logic ensures orders are created for the day if they don't exist.
+        const ordersExist = await dataService.checkIfBreadOrdersExist(formattedDate);
+        if (!ordersExist) {
+            try {
+                await dataService.createDayOrders(formattedDate);
+            } catch (error) {
+                 console.error("Failed to generate daily orders:", error);
+                 toast.error("Erreur lors de la génération automatique des commandes.");
             }
-        };
-        generateOrders();
+        }
+        return dataService.getBreadOrdersForDate(formattedDate);
     }, [formattedDate]);
-    
-    const isLoading = orders === undefined || isGenerating;
+
+    const isLoading = orders === undefined;
     
     const handleDateChange = (days: number) => {
         setCurrentDate(prev => addDays(prev, days));
@@ -63,7 +52,7 @@ export default function BreadPage() {
 
     const isToday = useMemo(() => formatDateToYYYYMMDD(new Date()) === formattedDate, [formattedDate]);
 
-    if (isLoading && orders === undefined) {
+    if (isLoading) {
         return (
             <div className="p-4 sm:p-6 space-y-6">
                 <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
