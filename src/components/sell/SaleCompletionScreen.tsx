@@ -1,12 +1,14 @@
+
 'use client';
 
-import { useRef } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Printer } from 'lucide-react';
 import { toast } from 'sonner';
-import type { Sale } from '@/lib/types';
+import type { Sale, CompanyProfile } from '@/lib/types';
 import { Receipt } from './Receipt';
+import { dataService } from '@/services/data-service';
 
 interface SaleCompletionScreenProps {
   sale: Sale & { change?: number };
@@ -15,6 +17,11 @@ interface SaleCompletionScreenProps {
 
 export function SaleCompletionScreen({ sale, onClose }: SaleCompletionScreenProps) {
   const receiptRef = useRef<HTMLDivElement>(null);
+  const [profile, setProfile] = useState<CompanyProfile | null>(null);
+
+  useEffect(() => {
+    dataService.getCompanyProfile().then(setProfile);
+  }, []);
 
   const handlePrint = (thermal: boolean) => {
     const printableContent = document.getElementById('receipt-for-print');
@@ -48,7 +55,7 @@ export function SaleCompletionScreen({ sale, onClose }: SaleCompletionScreenProp
         </DialogDescription>
       </DialogHeader>
       <div className="py-4 my-4 max-h-[50vh] overflow-y-auto bg-gray-100 dark:bg-gray-800 rounded-lg">
-        <Receipt sale={sale} ref={receiptRef} />
+        <Receipt sale={sale} profile={profile} ref={receiptRef} />
       </div>
       <DialogFooter className="sm:justify-between flex-col sm:flex-row gap-2">
         <div className="flex gap-2">

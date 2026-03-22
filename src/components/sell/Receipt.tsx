@@ -1,16 +1,16 @@
+
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import type { CompanyProfile, Sale } from '@/lib/types';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { dataService } from '@/services/data-service';
 import { formatCurrency } from '@/lib/utils';
 import QRCode from 'qrcode';
-import { useEffect, useState } from 'react';
 
 interface ReceiptProps {
   sale: Sale & { change?: number };
+  profile: CompanyProfile | null;
 }
 
 const paymentMethodLabels = {
@@ -19,7 +19,6 @@ const paymentMethodLabels = {
     other: 'Autre'
 };
 
-// Helper function to generate receipt strings, making the component cleaner
 const getReceiptInfo = (companyProfile?: CompanyProfile) => ({
     title: "REÇU DE VENTE",
     shopName: companyProfile?.companyName || "iPOS Store",
@@ -45,15 +44,10 @@ const getReceiptInfo = (companyProfile?: CompanyProfile) => ({
     thankYou: "Merci de votre visite !",
 });
 
-export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(({ sale }, ref) => {
-    const [companyProfile, setCompanyProfile] = useState<CompanyProfile | null>(null);
+export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(({ sale, profile }, ref) => {
     const [qrCodeUrl, setQrCodeUrl] = useState('');
     
-    useEffect(() => {
-        dataService.getCompanyProfile().then(setCompanyProfile);
-    }, []);
-
-    const receiptInfo = getReceiptInfo(companyProfile ?? undefined);
+    const receiptInfo = getReceiptInfo(profile ?? undefined);
 
     useEffect(() => {
         if (!sale?.createdAt) return;

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { dataService } from '@/services/data-service';
@@ -127,11 +128,11 @@ class GoogleSheetsService {
     // Applying changes needs to be done carefully via dataService to trigger logic
     if (toUpdateLocal.length > 0) {
         for(const record of toUpdateLocal) {
-          if(record.id) await dataService.update(tableName, record.id, record);
+          if(record.id) await dataService.update(tableName as any, record.id, record);
         }
     }
      if (toAddLocal.length > 0) {
-         for(const record of toAddLocal) await dataService.add(tableName, record);
+         for(const record of toAddLocal) await dataService.add(tableName as any, record);
      }
     for (const record of [...toUpdateRemote, ...toAddRemote]) {
       await this.sendToSheets(tableName, 'upsert', record);

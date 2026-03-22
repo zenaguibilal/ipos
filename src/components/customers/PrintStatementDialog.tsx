@@ -1,8 +1,9 @@
+
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { dataService } from '@/services/data-service';
-import type { Customer, Sale } from '@/lib/types';
+import type { Customer, Sale, CompanyProfile } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Printer } from 'lucide-react';
@@ -17,25 +18,39 @@ interface PrintStatementDialogProps {
 
 export function PrintStatementDialog({ isOpen, onOpenChange, customer }: PrintStatementDialogProps) {
     const [statementData, setStatementData] = useState<{ customer: Customer; unpaidSales: Sale[] } | null>(null);
+    const [profile, setProfile] = useState<CompanyProfile | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const printRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         if (isOpen && customer?.id) {
             setIsLoading(true);
-            dataService.getCustomerStatementData(customer.id)
-                .then(data => {
-                    setStatementData(data);
-                    setIsLoading(false);
-                })
-                .catch(err => {
-                    console.error("Failed to load statement data:", err);
-                    setIsLoading(false);
-                });
+            Promise.all([
+                dataService.getCustomerStatementData(customer.id),
+                dataService.getCompanyProfile()
+            ]).then(([data, companyProfile]) => {
+                setStatementData(data);
+                setProfile(companyProfile);
+                setIsLoading(false);
+            }).catch(err => {
+                console.error("Failed to load statement data:", err);
+                setIsLoading(false);
+            });
         }
     }, [isOpen, customer]);
 
   const handlePrint = () => {
-    window.print();
+    const printableContent = document.getElementById('receipt-for-print');
+    const statementElement = printRef.current;
+    if (!printableContent || !statementElement) return;
+    
+    const contentClone = statementElement.cloneNode(true) as HTMLDivElement;
+    contentClone.classList.add('a4-receipt');
+
+    printableContent.innerHTML = '';
+    printableContent.appendChild(contentClone);
+    
+    setTimeout(() => window.print(), 100);
   };
   
   if (!customer) return null;
@@ -51,16 +66,16 @@ export function PrintStatementDialog({ isOpen, onOpenChange, customer }: PrintSt
         </DialogHeader>
         
         <div id="label-print-area-wrapper" className="flex-grow overflow-y-auto bg-muted/50 p-4 rounded-md">
-            <div id="label-print-area" className="bg-white mx-auto" style={{ width: '210mm', minHeight: '297mm', padding: '1cm' }}>
+            <div id="label-print-area" className="bg-white mx-auto" style={{ width: '210mm', minHeight: '297mm' }}>
                 {isLoading ? (
-                    <div className="space-y-8">
+                    <div className="space-y-8 p-4">
                         <Skeleton className="h-20 w-full" />
                         <Skeleton className="h-10 w-1/2" />
                         <Skeleton className="h-64 w-full" />
                         <Skeleton className="h-20 w-full" />
                     </div>
                 ) : statementData ? (
-                    <CustomerStatement customer={statementData.customer} unpaidSales={statementData.unpaidSales} />
+                    <CustomerStatement ref={printRef} customer={statementData.customer} unpaidSales={statementData.unpaidSales} profile={profile} />
                 ) : (
                     <p>Impossible de charger les données du relevé.</p>
                 )}
