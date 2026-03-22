@@ -1,21 +1,13 @@
 'use client';
 
-/**
- * ╔══════════════════════════════════════════════════╗
- * ║  iPOS — طبقة التخزين المركزية                   ║
- * ║  IndexedDB مباشرة بدون Dexie                    ║
- * ║  هذا الملف الوحيد المسموح فيه بـ IndexedDB     ║
- * ╚══════════════════════════════════════════════════╝
- */
-
 import { TABLES, type TableName } from './types';
 
-const DB_NAME = 'iPOS_DB';
+const DB_NAME = 'iPOS_DB_NATIVE';
 const DB_VERSION = 1;
 
 let dbPromise: Promise<IDBDatabase> | null = null;
 
-export function openDB(): Promise<IDBDatabase> {
+function openDB(): Promise<IDBDatabase> {
     if (typeof window === 'undefined') {
         // This is a server-side mock. It will never resolve.
         return new Promise(() => {});
@@ -45,7 +37,7 @@ export function openDB(): Promise<IDBDatabase> {
                     switch (tableName) {
                         case 'products':
                             store.createIndex('name', 'name', { unique: false });
-                            store.createIndex('barcodes', 'barcodes', { multiEntry: true });
+                            if (!store.indexNames.contains('barcodes')) store.createIndex('barcodes', 'barcodes', { multiEntry: true });
                             store.createIndex('category', 'category', { unique: false });
                             store.createIndex('fournisseurId', 'fournisseurId', { unique: false });
                             break;
@@ -101,21 +93,21 @@ export function openDB(): Promise<IDBDatabase> {
     return dbPromise;
 }
 
-export function promisify<T>(request: IDBRequest<T>): Promise<T> {
+function promisify<T>(request: IDBRequest<T>): Promise<T> {
   return new Promise((resolve, reject) => {
     request.onsuccess = () => resolve(request.result);
     request.onerror  = () => reject(request.error);
   });
 }
 
-export async function getAll<T>(table: TableName): Promise<T[]> {
+async function getAll<T>(table: TableName): Promise<T[]> {
   const db = await openDB();
   const tx = db.transaction(table, 'readonly');
   const store = tx.objectStore(table);
   return promisify<T[]>(store.getAll());
 }
 
-export async function getById<T>(table: TableName, id: IDBValidKey): Promise<T | undefined> {
+async function getById<T>(table: TableName, id: IDBValidKey): Promise<T | undefined> {
   if (id === undefined || id === null) return undefined;
   const db = await openDB();
   const tx = db.transaction(table, 'readonly');
@@ -123,7 +115,7 @@ export async function getById<T>(table: TableName, id: IDBValidKey): Promise<T |
   return promisify<T>(store.get(id));
 }
 
-export async function add<T extends { id?: IDBValidKey }>(table: TableName, item: Omit<T, 'id'>): Promise<T> {
+async function add<T extends { id?: IDBValidKey }>(table: TableName, item: Omit<T, 'id'>): Promise<T> {
   const db = await openDB();
   const tx = db.transaction(table, 'readwrite');
   const store = tx.objectStore(table);
@@ -134,32 +126,57 @@ export async function add<T extends { id?: IDBValidKey }>(table: TableName, item
     updatedAt: now,
   };
   const id = await promisify<IDBValidKey>(store.add(newItem));
+  await promisify(tx.done);
   return { ...newItem, id } as T;
 }
 
-export async function update<T extends { id: IDBValidKey }>(table: TableName, id: IDBValidKey, changes: Partial<T>): Promise<T | undefined> {
+async function update<T>(table: TableName, id: IDBValidKey, changes: Partial<T>): Promise<T | undefined> {
   const db = await openDB();
   const tx = db.transaction(table, 'readwrite');
   const store = tx.objectStore(table);
-  const existing = await promisify<T>(store.get(id));
+  const existing = await promisify<any>(store.get(id));
   if (!existing) return undefined;
   const updated = {
     ...existing,
     ...changes,
+    id: existing.id,
     updatedAt: new Date(),
   };
   await promisify(store.put(updated));
-  return updated;
+  await promisify(tx.done);
+  return updated as T;
 }
 
-export async function remove(table: TableName, id: IDBValidKey): Promise<void> {
+async function put(table: TableName, item: any): Promise<any> {
+    const db = await openDB();
+    const tx = db.transaction(table, 'readwrite');
+    const store = tx.objectStore(table);
+    const id = await promisify(store.put(item));
+    await promisify(tx.done);
+    return { ...item, id };
+}
+
+async function remove(table: TableName, id: IDBValidKey): Promise<void> {
   const db = await openDB();
   const tx = db.transaction(table, 'readwrite');
   const store = tx.objectStore(table);
   await promisify(store.delete(id));
+  await promisify(tx.done);
 }
 
-export async function where<T>(table: TableName, indexName: string, value: any): Promise<T[]> {
+async function removeMultiple(table: TableName, ids: IDBValidKey[]): Promise<void> {
+    if (ids.length === 0) return;
+    const db = await openDB();
+    const tx = db.transaction(table, 'readwrite');
+    const store = tx.objectStore(table);
+    for (const id of ids) {
+        store.delete(id);
+    }
+    await promisify(tx.done);
+}
+
+
+async function where<T>(table: TableName, indexName: string, value: any): Promise<T[]> {
   const db = await openDB();
   const store = db.transaction(table, 'readonly').objectStore(table);
   if (!store.indexNames.contains(indexName)) {
@@ -177,15 +194,15 @@ export async function where<T>(table: TableName, indexName: string, value: any):
   return promisify(index.getAll(value));
 }
 
-export async function clearTable(table: TableName): Promise<void> {
+async function clearTable(table: TableName): Promise<void> {
   const db = await openDB();
   const tx = db.transaction(table, 'readwrite');
   await promisify(tx.objectStore(table).clear());
   await promisify(tx.done);
 }
 
-export async function resetDatabase(): Promise<void> {
-    const db = await dbPromise;
+async function resetDatabase(): Promise<void> {
+    const db = dbPromise ? await dbPromise : null;
     if (db) {
         db.close();
     }
@@ -202,3 +219,22 @@ export async function resetDatabase(): Promise<void> {
         }
     });
 }
+
+export const db = {
+    open: openDB,
+    promisify,
+    getAll,
+    getById,
+    add,
+    update,
+    put,
+    remove,
+    removeMultiple,
+    where,
+    clearTable,
+    resetDatabase,
+    transaction: async (tables: TableName[], mode: IDBTransactionMode) => {
+        const db = await openDB();
+        return db.transaction(tables, mode);
+    }
+};
