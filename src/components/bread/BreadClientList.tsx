@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { dataService } from '@/services/data-service';
 import type { BreadClient } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -12,18 +12,22 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BREAD_WEEK_DAY_LABELS, BREAD_WEEK_DAYS } from '@/lib/constants';
 
-export function BreadClientList() {
+interface BreadClientListProps {
+    onDataChange: () => void;
+}
+
+export function BreadClientList({ onDataChange }: BreadClientListProps) {
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [selectedClient, setSelectedClient] = useState<BreadClient | null>(null);
     const [clients, setClients] = useState<BreadClient[] | undefined>(undefined);
 
-    const loadClients = () => {
+    const loadClients = useCallback(() => {
         dataService.getBreadClients().then(setClients);
-    }
+    }, []);
     
     useEffect(() => {
         loadClients();
-    }, []);
+    }, [loadClients]);
 
     const handleEdit = (client: BreadClient) => {
         setSelectedClient(client);
@@ -38,6 +42,7 @@ export function BreadClientList() {
     const handleFormClose = (isOpen: boolean) => {
         setIsFormOpen(isOpen);
         if (!isOpen) {
+            onDataChange();
             loadClients();
         }
     }
@@ -98,6 +103,7 @@ export function BreadClientList() {
                 isOpen={isFormOpen}
                 onOpenChange={handleFormClose}
                 client={selectedClient}
+                onDataChange={onDataChange}
             />
         </>
     );

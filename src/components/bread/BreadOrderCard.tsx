@@ -17,9 +17,10 @@ interface BreadOrderCardProps {
     order: BreadOrderWithClient;
     isSelected: boolean;
     onToggleSelection: (orderId: number) => void;
+    onDataChange: () => void;
 }
 
-export function BreadOrderCard({ order, isSelected, onToggleSelection }: BreadOrderCardProps) {
+export function BreadOrderCard({ order, isSelected, onToggleSelection, onDataChange }: BreadOrderCardProps) {
     const [quantity, setQuantity] = useState(order.quantite);
     const debouncedQuantity = useDebounce(quantity, 500);
 
@@ -31,10 +32,11 @@ export function BreadOrderCard({ order, isSelected, onToggleSelection }: BreadOr
         try {
             await dataService.updateBreadOrderQuantity(order.id!, newQuantity);
             toast.success(`Quantité mise à jour pour ${order.client.nom}.`);
+            onDataChange();
         } catch (error) {
             toast.error("Erreur lors de la mise à jour de la quantité.");
         }
-    }, [order.id, order.client.nom]);
+    }, [order.id, order.client.nom, onDataChange]);
 
     useEffect(() => {
         if (debouncedQuantity !== order.quantite) {
@@ -50,10 +52,11 @@ export function BreadOrderCard({ order, isSelected, onToggleSelection }: BreadOr
         try {
             await dataService.updateBreadOrderDeliveryStatus(order.id!, delivered);
             toast.success(`Statut de livraison mis à jour pour ${order.client.nom}`);
+            onDataChange();
         } catch (error) {
             toast.error("Erreur lors de la mise à jour du statut de livraison.");
         }
-    }, [order.id, order.client.nom]);
+    }, [order.id, order.client.nom, onDataChange]);
     
     return (
         <Card className={cn(

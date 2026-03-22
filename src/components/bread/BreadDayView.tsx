@@ -19,9 +19,10 @@ interface BreadDayViewProps {
     orders: BreadOrderWithClient[];
     currentDate: string;
     breadPrice: number;
+    onDataChange: () => void;
 }
 
-export function BreadDayView({ orders, currentDate, breadPrice }: BreadDayViewProps) {
+export function BreadDayView({ orders, currentDate, breadPrice, onDataChange }: BreadDayViewProps) {
     const [selectedOrders, setSelectedOrders] = useState<Set<number>>(new Set());
     const [isConverting, setIsConverting] = useState(false);
 
@@ -63,6 +64,7 @@ export function BreadDayView({ orders, currentDate, breadPrice }: BreadDayViewPr
             await dataService.convertBreadOrdersToSales(Array.from(selectedOrders), breadPrice);
             toast.success(`${selectedOrders.size} commande(s) convertie(s) en ventes.`);
             setSelectedOrders(new Set());
+            onDataChange();
         } catch (error: any) {
             toast.error("Erreur lors de la conversion en ventes.", { description: error.message });
         } finally {
@@ -87,7 +89,7 @@ export function BreadDayView({ orders, currentDate, breadPrice }: BreadDayViewPr
                         title="Aucune commande pour aujourd'hui"
                         description="Aucun client n'a de commande récurrente pour ce jour. Vous pouvez en ajouter une manuellement."
                     >
-                        <ManualAddDialog currentDate={currentDate} />
+                        <ManualAddDialog currentDate={currentDate} onAdd={onDataChange} />
                     </EmptyState>
                 </CardContent>
             </Card>
@@ -110,7 +112,7 @@ export function BreadDayView({ orders, currentDate, breadPrice }: BreadDayViewPr
                             {isConverting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                             Convertir en Vente
                         </Button>
-                        <ManualAddDialog currentDate={currentDate} />
+                        <ManualAddDialog currentDate={currentDate} onAdd={onDataChange} />
                         <PrintBreadListDialog orders={orders} currentDate={currentDate}/>
                     </div>
                 </div>
@@ -124,6 +126,7 @@ export function BreadDayView({ orders, currentDate, breadPrice }: BreadDayViewPr
                                 order={order}
                                 isSelected={selectedOrders.has(order.id!)}
                                 onToggleSelection={handleToggleSelection}
+                                onDataChange={onDataChange}
                             />
                         ))}
                     </div>

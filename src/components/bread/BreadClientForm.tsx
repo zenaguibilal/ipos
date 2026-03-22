@@ -34,9 +34,10 @@ interface BreadClientFormProps {
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
     client: BreadClient | null;
+    onDataChange: () => void;
 }
 
-export function BreadClientForm({ isOpen, onOpenChange, client }: BreadClientFormProps) {
+export function BreadClientForm({ isOpen, onOpenChange, client, onDataChange }: BreadClientFormProps) {
     const [formState, setFormState] = useState(initialFormState);
     const [isLoading, setIsLoading] = useState(false);
     const [isDeleteAlertOpen, setDeleteAlertOpen] = useState(false);
@@ -81,6 +82,7 @@ export function BreadClientForm({ isOpen, onOpenChange, client }: BreadClientFor
                 await dataService.addBreadClient(dataToSave as BreadClient);
                 toast.success(`Client "${formState.nom}" ajouté.`);
             }
+            onDataChange();
             onOpenChange(false);
         } catch (error) {
             toast.error("Une erreur est survenue.");
@@ -88,7 +90,7 @@ export function BreadClientForm({ isOpen, onOpenChange, client }: BreadClientFor
         } finally {
             setIsLoading(false);
         }
-    }, [formState, client, onOpenChange]);
+    }, [formState, client, onOpenChange, onDataChange]);
 
     const handleDelete = useCallback(async () => {
         if (!client || !client.id) return;
@@ -96,6 +98,7 @@ export function BreadClientForm({ isOpen, onOpenChange, client }: BreadClientFor
         try {
             await dataService.deleteBreadClient(client.id);
             toast.success(`Client "${client.nom}" supprimé.`);
+            onDataChange();
             onOpenChange(false);
         } catch (error) {
             toast.error("Erreur lors de la suppression du client.");
@@ -104,7 +107,7 @@ export function BreadClientForm({ isOpen, onOpenChange, client }: BreadClientFor
             setIsLoading(false);
             setDeleteAlertOpen(false);
         }
-    }, [client, onOpenChange]);
+    }, [client, onOpenChange, onDataChange]);
     
     const handleDayToggle = (day: keyof typeof BREAD_WEEK_DAY_LABELS_FULL) => {
         setFormState(prev => ({

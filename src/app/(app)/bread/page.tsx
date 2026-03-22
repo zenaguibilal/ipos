@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { dataService } from '@/services/data-service';
 import { formatDateToYYYYMMDD } from '@/lib/utils';
 import { addDays, subDays, format } from 'date-fns';
@@ -31,7 +31,7 @@ export default function BreadPage() {
 
     const formattedDate = currentDate ? formatDateToYYYYMMDD(currentDate) : '';
 
-    const fetchOrders = async (date: string) => {
+    const fetchOrders = useCallback(async (date: string) => {
       if (!date) return;
       setIsLoading(true);
       const ordersExist = await dataService.checkIfBreadOrdersExist(date);
@@ -49,7 +49,13 @@ export default function BreadPage() {
       const fetchedOrders = await dataService.getBreadOrdersForDate(date);
       setOrders(fetchedOrders);
       setIsLoading(false);
-    };
+    }, []);
+
+    const handleDataChange = useCallback(() => {
+        if(formattedDate) {
+            fetchOrders(formattedDate);
+        }
+    }, [formattedDate, fetchOrders]);
 
     useEffect(() => {
       dataService.getCompanyProfile().then(p => setBreadPriceSetting(p?.prix_pain));
@@ -59,7 +65,7 @@ export default function BreadPage() {
         if (formattedDate) {
             fetchOrders(formattedDate);
         }
-    }, [formattedDate]);
+    }, [formattedDate, fetchOrders]);
     
     const handleDateChange = (days: number) => {
         setCurrentDate(prev => prev ? addDays(prev, days) : new Date());
@@ -139,12 +145,13 @@ export default function BreadPage() {
                             orders={orders || []} 
                             currentDate={formattedDate} 
                             breadPrice={breadPriceSetting || 0}
+                            onDataChange={handleDataChange}
                         />
                     )}
                 </div>
 
                 <div className="lg:col-span-1">
-                    <BreadClientList />
+                    <BreadClientList onDataChange={handleDataChange}/>
                 </div>
             </div>
         </div>
