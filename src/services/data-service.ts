@@ -253,7 +253,7 @@ class DataService {
     let collection;
 
     if(category) {
-        collection = this.db.products.where('category').equals(category);
+        collection = this.db.products.where({ category });
     } else {
         collection = this.db.products.toCollection();
     }
@@ -361,16 +361,42 @@ class DataService {
         collection = collection.filter(c => (c.searchName || '').toLowerCase().includes(lowerQuery) || c.phone?.includes(lowerQuery));
     }
     
-    let customers = await collection.sortBy(sortBy.split('_')[0]);
+    let customers = await collection.toArray();
+    
+    // Efficiently get all unpaid sales once
+    const unpaidSales = await this.db.sales.where('paymentStatus').notEqual('paid').toArray();
+    const unpaidSalesByCustomer = new Map<number, Sale[]>();
+    for (const sale of unpaidSales) {
+        if (sale.customerId) {
+            if (!unpaidSalesByCustomer.has(sale.customerId)) {
+                unpaidSalesByCustomer.set(sale.customerId, []);
+            }
+            unpaidSalesByCustomer.get(sale.customerId)!.push(sale);
+        }
+    }
     
     const now = new Date();
     const customerWithData: Customer[] = customers.map(c => {
         let debtStatus: Customer['debtStatus'] = 'none';
-        if (c.outstandingBalance > 0 && c.lastActivityDate && c.settlementDay) {
-            const dueDate = new Date(new Date(c.lastActivityDate).getTime() + c.settlementDay * 24 * 60 * 60 * 1000);
-            if(now > dueDate) debtStatus = 'overdue';
-            else if (subDays(dueDate, 7) <= now) debtStatus = 'due_soon';
+
+        if (c.outstandingBalance > 0 && c.settlementDay) {
+            const customerUnpaidSales = unpaidSalesByCustomer.get(c.id!);
+            if (customerUnpaidSales && customerUnpaidSales.length > 0) {
+                // Find the oldest unpaid sale for this customer
+                const oldestUnpaidSale = customerUnpaidSales.reduce((oldest, current) => 
+                    safeToDate(oldest.createdAt!).getTime() < safeToDate(current.createdAt!).getTime() ? oldest : current
+                );
+                
+                const dueDate = new Date(safeToDate(oldestUnpaidSale.createdAt!).getTime() + c.settlementDay * 24 * 60 * 60 * 1000);
+                
+                if (now > dueDate) {
+                    debtStatus = 'overdue';
+                } else if (subDays(dueDate, 7) <= now) {
+                    debtStatus = 'due_soon';
+                }
+            }
         }
+        
         const isOverLimit = c.creditLimit ? c.outstandingBalance > c.creditLimit : false;
         return { ...c, id: c.id!, debtStatus, isOverLimit };
     });
@@ -386,9 +412,21 @@ class DataService {
         });
     }
 
-    if(sortBy.endsWith('_desc')) {
-      filteredCustomers.reverse();
+    const sortField = sortBy.split('_')[0] as keyof Customer;
+    if (sortField) {
+        filteredCustomers.sort((a, b) => {
+            const aVal = (a as any)[sortField];
+            const bVal = (b as any)[sortField];
+            let comparison = 0;
+            if(typeof aVal === 'string' && typeof bVal === 'string') {
+                comparison = aVal.localeCompare(bVal);
+            } else if (typeof aVal === 'number' && typeof bVal === 'number') {
+                comparison = aVal - bVal;
+            }
+            return sortBy.endsWith('_desc') ? -comparison : comparison;
+        });
     }
+
     return limit ? filteredCustomers.slice(0, limit) : filteredCustomers;
   }
 
@@ -964,7 +1002,7 @@ class DataService {
     async getExpenses(params: { category?: string; from?: Date, to?: Date }): Promise<Expense[]> {
         let collection;
         if(params.from && params.to) {
-            collection = this.db.expenses.where('expenseDate').between(params.from, params.to);
+            collection = this.db.expenses.where('expenseDate').between(params.from, params.to, true, true);
         } else {
             collection = this.db.expenses.toCollection();
         }
