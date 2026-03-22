@@ -33,7 +33,7 @@ export class PosDatabase extends Dexie {
             carts: '&id',
             drafts: '++id, date, createdAt, updatedAt',
             companyProfile: 'id', // Singleton table
-            expenses: '++id, category, expenseDate, [category+expenseDate]',
+            expenses: '++id, category, expenseDate',
             settings: '&id', // Key-value store for UI state and preferences
             notifications: '++id, createdAt, isRead, type, [type+isRead]',
             inventoryLogs: '++id, productId, createdAt, reason',
@@ -52,7 +52,7 @@ export class PosDatabase extends Dexie {
         });
 
         this.version(29).stores({
-            products: '++id, name, *barcodes, category, price, quantity, [category+name], fournisseurId, createdAt',
+            products: '++id, name, *barcodes, category, price, quantity, [category+name], fournisseurId',
             customers: '++id, searchName, createdAt, lastName, firstName, [lastName+firstName], phone, outstandingBalance, lastActivityDate',
             sales: '++id, &invoiceNumber, createdAt, customerId, customerName, paymentStatus, dueDate',
             payments: '++id, createdAt, customerId, paymentDate',
@@ -167,3 +167,5 @@ export function getDb(): PosDatabase {
   }
   return dbInstance;
 }
+
+    

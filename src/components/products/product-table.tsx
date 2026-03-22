@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { Product, Supplier } from '@/lib/types';
@@ -159,3 +158,4 @@ export function ProductTable({ products, onEdit, onDelete, selectedProducts, onT
     );
 }
 
+    

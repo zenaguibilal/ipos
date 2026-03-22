@@ -99,3 +99,5 @@ const ProductCardComponent = ({ product, onEdit, onDelete, isSelected, onToggleS
 }
 
 export const ProductCard = React.memo(ProductCardComponent);
+
+    

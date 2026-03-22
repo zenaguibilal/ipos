@@ -90,6 +90,17 @@ export default function ProductsPage() {
     const suppliers = useLiveQuery(() => dataService.getSuppliers());
 
     const isLoading = products === undefined;
+
+    useEffect(() => {
+        const savedViewMode = localStorage.getItem('product_view_mode') as ViewMode;
+        if (savedViewMode) {
+            setViewMode(savedViewMode);
+        }
+    }, []);
+
+    useEffect(() => {
+        localStorage.setItem('product_view_mode', viewMode);
+    }, [viewMode]);
     
     useEffect(() => {
         setSelectedProducts(new Set());
@@ -100,9 +111,13 @@ export default function ProductsPage() {
         setIsProductDialogOpen(true);
     };
 
-    const handleDeleteProduct = (product: Product) => {
-        setSelectedProduct(product);
-        setIsDeleteDialogOpen(true);
+    const handleDeleteProduct = async (product: Product) => {
+        try {
+            await dataService.deleteProduct(product.id as number);
+            toast.success(`Produit "${product.name}" supprimé.`);
+        } catch (e: any) {
+            toast.error("Suppression impossible", { description: e.message });
+        }
     };
 
     const handleToggleSelection = (productId: number) => {
@@ -133,9 +148,13 @@ export default function ProductsPage() {
                 header: true,
                 skipEmptyLines: true,
                 complete: async (results) => {
-                    const analysis = await dataService.analyzeProductImport(results.data);
-                    setProductImportAnalysis(analysis);
-                    setIsProductImportPreviewOpen(true);
+                    try {
+                        const analysis = await dataService.analyzeProductImport(results.data);
+                        setProductImportAnalysis(analysis);
+                        setIsProductImportPreviewOpen(true);
+                    } catch (e: any) {
+                        toast.error("Erreur d'analyse CSV", { description: e.message });
+                    }
                 },
                 error: (error) => {
                     toast.error("Erreur lors de l'analyse du fichier CSV.", { description: error.message });
@@ -152,9 +171,9 @@ export default function ProductsPage() {
             toast.success("Importation des produits terminée avec succès !");
             setIsProductImportPreviewOpen(false);
             setProductImportAnalysis(null);
-        } catch (error) {
+        } catch (error: any) {
             console.error("Product import failed:", error);
-            toast.error("Une erreur est survenue lors de l'importation.");
+            toast.error("Une erreur est survenue lors de l'importation.", { description: error.message });
         } finally {
             setIsImporting(false);
         }
@@ -220,7 +239,10 @@ export default function ProductsPage() {
                             key={p.id} 
                             product={p} 
                             onEdit={handleEditProduct} 
-                            onDelete={handleDeleteProduct}
+                            onDelete={() => {
+                                setSelectedProduct(p);
+                                setIsDeleteDialogOpen(true);
+                            }}
                             isSelected={selectedProducts.has(p.id)}
                             onToggleSelection={() => handleToggleSelection(p.id as number)}
                         />
@@ -233,7 +255,10 @@ export default function ProductsPage() {
             <ProductTable 
                 products={products}
                 onEdit={handleEditProduct}
-                onDelete={handleDeleteProduct}
+                onDelete={(p) => {
+                    setSelectedProduct(p);
+                    setIsDeleteDialogOpen(true);
+                }}
                 selectedProducts={selectedProducts}
                 onToggleProductSelection={handleToggleSelection}
                 onToggleSelectAll={handleToggleSelectAll}
@@ -413,6 +438,7 @@ export default function ProductsPage() {
                 isOpen={isDeleteDialogOpen}
                 onOpenChange={setIsDeleteDialogOpen}
                 product={selectedProduct}
+                onConfirmDelete={handleDeleteProduct}
             />
             <PrintLabelsDialog
                 isOpen={isPrintDialogOpen}
@@ -435,3 +461,5 @@ export default function ProductsPage() {
         </div>
     );
 }
+
+    
