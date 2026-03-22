@@ -463,20 +463,42 @@ class DataService {
     }
     
      async analyzeProductImport(data: any[]): Promise<ProductImportAnalysis> {
-        const allProducts = await this.getAll<Product>('products');
-        const analysis: ProductImportAnalysis = {
-            productsToAdd: [], productsToUpdate: [], skippedRows: [], errorRows: [], totalRows: data.length
-        };
-        for (const row of data) {
-            if (!row.name || !row.price) { analysis.errorRows.push(row); continue; }
-            const existingProduct = allProducts.find(p => p.name.toLowerCase() === row.name.toLowerCase());
-            if (existingProduct) {
-              analysis.productsToUpdate.push({ ...row, id: existingProduct.id });
-            } else {
-              analysis.productsToAdd.push(row);
+        return this.db.transaction('r', this.db.products, async () => {
+            const allProducts = await this.getAll<Product>('products');
+            const productMapByName = new Map(allProducts.map(p => [p.name.toLowerCase(), p]));
+            const productMapByBarcode = new Map();
+            allProducts.forEach(p => p.barcodes?.forEach(b => productMapByBarcode.set(b, p)));
+            
+            const analysis: ProductImportAnalysis = {
+                productsToAdd: [], productsToUpdate: [], skippedRows: [], errorRows: [], totalRows: data.length
+            };
+            
+            for (const row of data) {
+                if (!row.name || !row.price) { analysis.errorRows.push(row); continue; }
+                
+                const barcodes = row.barcodes ? String(row.barcodes).split(',').map(b => b.trim()) : [];
+                
+                let existingProduct;
+                if(barcodes.length > 0) {
+                   existingProduct = barcodes.map((b: string) => productMapByBarcode.get(b)).find(Boolean);
+                }
+                if (!existingProduct) {
+                   existingProduct = productMapByName.get(row.name.toLowerCase());
+                }
+
+                if (existingProduct) {
+                    analysis.productsToUpdate.push({ ...row, id: existingProduct.id });
+                } else {
+                    const barcodeClash = barcodes.some((b: string) => productMapByBarcode.has(b));
+                    if(barcodeClash) {
+                        analysis.errorRows.push({ ...row, error: "Le code-barres existe déjà pour un autre produit." });
+                        continue;
+                    }
+                    analysis.productsToAdd.push(row);
+                }
             }
-        }
-        return analysis;
+            return analysis;
+        });
     }
 
     async processProductImport(toAdd: any[], toUpdate: any[]): Promise<void> {
@@ -758,14 +780,16 @@ class DataService {
   
     // Payments
     async addPayment(paymentData: Omit<Payment, 'id'>): Promise<Payment> {
-        const id = await this.db.payments.add(paymentData);
-        const newPayment = {...paymentData, id};
-        await this.db.customers.where({id: newPayment.customerId}).modify(c => {
-            c.outstandingBalance -= newPayment.amount;
-            c.lastActivityDate = new Date();
+        return this.db.transaction('rw', this.db.payments, this.db.customers, async () => {
+            const id = await this.db.payments.add(paymentData);
+            const newPayment = { ...paymentData, id };
+            await this.db.customers.where({ id: newPayment.customerId }).modify(c => {
+                c.outstandingBalance -= newPayment.amount;
+                c.lastActivityDate = new Date();
+            });
+            sheetsService.addToQueue('payments', 'upsert', newPayment);
+            return newPayment;
         });
-        sheetsService.addToQueue('payments', 'upsert', newPayment);
-        return newPayment;
     }
     
     // Drafts
