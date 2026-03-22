@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { CardContent, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Download, Upload, Loader2, AlertTriangle, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -139,33 +139,33 @@ export function BackupAndRestore() {
                 accept=".json"
                 onChange={handleFileSelect}
             />
-            <CardContent className="grid sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                    <h4 className="font-semibold">Télécharger une sauvegarde</h4>
-                    <p className="text-sm text-muted-foreground">
-                        Créez un fichier JSON contenant toutes les données de votre application. Conservez ce fichier en lieu sûr.
-                    </p>
-                </div>
-                 <div className="space-y-2">
-                    <h4 className="font-semibold">Restaurer une sauvegarde</h4>
-                    <p className="text-sm text-muted-foreground">
-                        <span className="font-bold text-destructive">Attention:</span> Ouvre une interface pour prévisualiser et restaurer les données, ce qui écrasera les données actuelles des tables sélectionnées.
-                    </p>
-                </div>
-            </CardContent>
-            <CardFooter className="grid sm:grid-cols-2 gap-4 border-t pt-6">
-                <Button onClick={handleBackup} disabled={isBackingUp || isResetting} className="w-full">
-                    {isBackingUp ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-                    {isBackingUp ? 'Sauvegarde...' : 'Télécharger la sauvegarde'}
-                </Button>
-                <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isBackingUp || isResetting} className="w-full">
-                    <Upload className="mr-2 h-4 w-4" />
-                    Restaurer depuis un fichier
-                </Button>
-            </CardFooter>
-            
-            <div className="px-6 pb-6">
-                <div className="p-4 border-l-4 border-destructive bg-destructive/10 rounded-r-lg">
+            <CardContent className="space-y-6">
+                <Card className="bg-muted/30">
+                    <CardHeader>
+                        <CardTitle>Télécharger une sauvegarde</CardTitle>
+                        <CardDescription>Créez un fichier JSON contenant toutes les données de votre application. Conservez ce fichier en lieu sûr.</CardDescription>
+                    </CardHeader>
+                    <CardFooter>
+                         <Button onClick={handleBackup} disabled={isBackingUp || isResetting}>
+                            {isBackingUp ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                            {isBackingUp ? 'Sauvegarde...' : 'Télécharger la sauvegarde'}
+                        </Button>
+                    </CardFooter>
+                </Card>
+                 <Card className="bg-muted/30">
+                    <CardHeader>
+                        <CardTitle>Restaurer une sauvegarde</CardTitle>
+                        <CardDescription><span className="font-bold text-destructive">Attention:</span> Ouvre une interface pour prévisualiser et restaurer les données, ce qui écrasera les données actuelles des tables sélectionnées.</CardDescription>
+                    </CardHeader>
+                    <CardFooter>
+                        <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isBackingUp || isResetting}>
+                            <Upload className="mr-2 h-4 w-4" />
+                            Restaurer depuis un fichier
+                        </Button>
+                    </CardFooter>
+                </Card>
+
+                 <div className="p-4 border-l-4 border-destructive bg-destructive/10 rounded-r-lg">
                     <h4 className="font-bold text-destructive">Zone de Danger</h4>
                     <p className="text-sm text-destructive/90 mt-1 mb-4">
                         L'action ci-dessous est irréversible. Assurez-vous d'avoir une sauvegarde récente avant de continuer.
@@ -175,8 +175,8 @@ export function BackupAndRestore() {
                         {isResetting ? 'Réinitialisation...' : 'Réinitialiser l\'application'}
                     </Button>
                 </div>
-            </div>
-
+            </CardContent>
+            
              <AlertDialog open={isResetAlertOpen} onOpenChange={handleOpenResetAlert}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
