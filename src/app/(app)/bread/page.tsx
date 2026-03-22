@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { dataService } from '@/services/data-service';
 import { formatDateToYYYYMMDD } from '@/lib/utils';
 import { addDays, format } from 'date-fns';
@@ -29,23 +29,31 @@ export default function BreadPage() {
         return profile?.prix_pain;
     }, []);
 
-    const orders = useLiveQuery(async () => {
-        if (!formattedDate) return [];
-        // This logic ensures orders are created for the day if they don't exist.
-        const ordersExist = await dataService.checkIfBreadOrdersExist(formattedDate);
-        if (!ordersExist) {
-            try {
-                await dataService.createDayOrders(formattedDate);
-            } catch (error) {
-                 console.error("Failed to generate daily orders:", error);
-                 toast.error("Erreur lors de la génération automatique des commandes.");
-            }
-        }
-        return dataService.getBreadOrdersForDate(formattedDate);
-    }, [formattedDate]);
+    // Step 1: Just READ the data reactively.
+    const orders = useLiveQuery(
+        () => dataService.getBreadOrdersForDate(formattedDate),
+        [formattedDate]
+    );
 
     const isLoading = orders === undefined;
-    
+
+    // Step 2: Handle order creation as a side-effect after the initial data load.
+    useEffect(() => {
+        // Only run if the query has finished (orders is not undefined)
+        if (orders !== undefined) {
+            // Check if there are no orders for this specific date
+            dataService.checkIfBreadOrdersExist(formattedDate).then(ordersExist => {
+                if (!ordersExist) {
+                    // Fire-and-forget: The UI will update reactively via useLiveQuery
+                    dataService.createDayOrders(formattedDate).catch(error => {
+                        console.error("Failed to auto-generate daily orders:", error);
+                        toast.error("Erreur lors de la génération automatique des commandes.");
+                    });
+                }
+            });
+        }
+    }, [formattedDate, orders]); // Rerun when date changes or after the initial order query completes.
+
     const handleDateChange = (days: number) => {
         setCurrentDate(prev => addDays(prev, days));
     };
