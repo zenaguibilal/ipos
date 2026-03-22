@@ -1,13 +1,5 @@
 'use client';
 
-/**
- * ╔══════════════════════════════════════════════════╗
- * ║  iPOS — طبقة التخزين المركزية                   ║
- * ║  IndexedDB مباشرة بدون Dexie                    ║
- * ║  هذا الملف الوحيد المسموح فيه بـ IndexedDB     ║
- * ╚══════════════════════════════════════════════════╝
- */
-
 import { TABLES, type TableName } from './types';
 
 const DB_NAME = 'iPOS_DB_NATIVE';

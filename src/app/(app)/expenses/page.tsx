@@ -35,12 +35,19 @@ export default function ExpensesPage() {
     const [categories, setCategories] = useState<ExpenseCategory[]>([]);
 
     const loadData = useCallback(() => {
-        dataService.getExpenses({ 
-            category: selectedCategory === 'all' ? undefined : selectedCategory,
-            from: dateRange?.from,
-            to: dateRange?.to
-        }).then(setExpenses);
-        dataService.getExpenseCategories().then(setCategories);
+        setIsLoading(true);
+        Promise.all([
+            dataService.getExpenses({ 
+                category: selectedCategory === 'all' ? undefined : selectedCategory,
+                from: dateRange?.from,
+                to: dateRange?.to
+            }),
+            dataService.getExpenseCategories()
+        ]).then(([expenseData, categoryData]) => {
+            setExpenses(expenseData);
+            setCategories(categoryData as ExpenseCategory[]);
+            setIsLoading(false);
+        });
     }, [selectedCategory, dateRange]);
 
     useEffect(() => {
@@ -49,7 +56,7 @@ export default function ExpensesPage() {
         }
     }, [isMounted, loadData]);
     
-    const isLoading = expenses === undefined || !isMounted;
+    const [isLoading, setIsLoading] = useState(true);
 
     const handleEditExpense = (expense: Expense) => {
         setSelectedExpense(expense);

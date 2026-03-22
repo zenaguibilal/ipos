@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { dataService } from '@/services/data-service';
 import { useDebounce } from '@/hooks/useDebounce';
-import type { StockIntake } from '@/lib/types';
+import type { StockIntake, Supplier } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Search, Plus, Archive } from 'lucide-react';
@@ -25,21 +25,29 @@ export default function StockPage() {
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
     const [stockIntakes, setStockIntakes] = useState<StockIntake[] | undefined>(undefined);
+    const [suppliers, setSuppliers] = useState<Supplier[] | undefined>(undefined);
+    const [isLoading, setIsLoading] = useState(true);
 
     const loadStockIntakes = useCallback(() => {
         if (!isMounted) return;
-        dataService.getStockIntakes({ 
-            query: debouncedSearchQuery,
-            from: dateRange?.from,
-            to: dateRange?.to
-        }).then(setStockIntakes);
+        setIsLoading(true);
+        Promise.all([
+            dataService.getStockIntakes({ 
+                query: debouncedSearchQuery,
+                from: dateRange?.from,
+                to: dateRange?.to
+            }),
+            dataService.getSuppliers()
+        ]).then(([intakeData, supplierData]) => {
+            setStockIntakes(intakeData);
+            setSuppliers(supplierData);
+            setIsLoading(false);
+        });
     }, [isMounted, debouncedSearchQuery, dateRange]);
 
     useEffect(() => {
         loadStockIntakes();
     }, [loadStockIntakes]);
-
-    const isLoading = stockIntakes === undefined || !isMounted;
 
     const handleViewDetails = (intake: StockIntake) => {
         setSelectedIntake(intake);
@@ -78,6 +86,7 @@ export default function StockPage() {
                         key={s.id} 
                         intake={s}
                         onViewDetails={handleViewDetails}
+                        suppliers={suppliers || []}
                     />
                 ))}
             </div>

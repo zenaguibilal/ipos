@@ -27,21 +27,24 @@ export default function ReturnsPage() {
     const [isCancelOpen, setIsCancelOpen] = useState(false);
 
     const [returns, setReturns] = useState<ProductReturn[] | undefined>(undefined);
+    const [isLoading, setIsLoading] = useState(true);
 
     const loadReturns = useCallback(() => {
         if (!isMounted) return;
+        setIsLoading(true);
         dataService.getReturns({ 
             query: debouncedSearchQuery,
             from: dateRange?.from,
             to: dateRange?.to
-        }).then(setReturns);
+        }).then(data => {
+            setReturns(data);
+            setIsLoading(false);
+        });
     }, [isMounted, debouncedSearchQuery, dateRange]);
 
     useEffect(() => {
         loadReturns();
     }, [loadReturns]);
-
-    const isLoading = returns === undefined || !isMounted;
 
     const handleViewDetails = (pr: ProductReturn) => {
         setSelectedReturn(pr);

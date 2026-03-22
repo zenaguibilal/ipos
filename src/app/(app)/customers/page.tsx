@@ -62,20 +62,16 @@ export default function CustomersPage() {
     };
     
     const handleDialogClose = (open: boolean) => {
+        setIsCustomerDialogOpen(open);
         if (!open) {
-            setIsCustomerDialogOpen(false);
             loadCustomers();
-        } else {
-            setIsCustomerDialogOpen(true);
         }
     }
     
     const handleDeleteDialogClose = (open: boolean) => {
+        setIsDeleteDialogOpen(open);
         if (!open) {
-            setIsDeleteDialogOpen(false);
             loadCustomers();
-        } else {
-            setIsDeleteDialogOpen(true);
         }
     }
 

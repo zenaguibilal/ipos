@@ -20,10 +20,13 @@ export function BreadClientList({ onDataChange }: BreadClientListProps) {
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [selectedClient, setSelectedClient] = useState<BreadClient | null>(null);
     const [clients, setClients] = useState<BreadClient[] | undefined>(undefined);
+    const [isLoading, setIsLoading] = useState(true);
 
     const loadClients = useCallback(async () => {
+        setIsLoading(true);
         const loadedClients = await dataService.getBreadClients();
         setClients(loadedClients);
+        setIsLoading(false);
     }, []);
     
     useEffect(() => {
@@ -48,8 +51,6 @@ export function BreadClientList({ onDataChange }: BreadClientListProps) {
         }
     }
     
-    const isLoading = clients === undefined;
-
     const getRecurrenceBadge = (client: BreadClient) => {
         switch (client.type_recurrence) {
             case 'quotidien':

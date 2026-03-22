@@ -779,7 +779,7 @@ class DataService {
         }
         
         const totalValue = intakeItems.reduce((acc, item) => acc + (item.purchasePrice * item.quantityReceived), 0);
-        const newIntakeData: Omit<StockIntake, 'id'> = { ...intakeData, supplierId: supplier.id!, supplierName: intakeData.supplierName, items: intakeItems, totalValue, createdAt: new Date(), updatedAt: new Date() };
+        const newIntakeData: Omit<StockIntake, 'id'> = { ...intakeData, supplierId: supplier.id!, items: intakeItems, totalValue, createdAt: new Date(), updatedAt: new Date() };
         const newIntakeId = await db.promisify(intakesStore.add(newIntakeData));
         await db.promisify(tx.done);
         
@@ -793,7 +793,9 @@ class DataService {
         if (from && to) intakes = intakes.filter(i => { if(!i.invoiceDate) return false; const intakeDate = new Date(i.invoiceDate); return intakeDate >= startOfDay(from) && intakeDate <= endOfDay(to); });
         if(query) {
             const lowerQuery = query.toLowerCase();
-            intakes = intakes.filter(i => i.supplierName.toLowerCase().includes(lowerQuery) || i.invoiceNumber.toLowerCase().includes(lowerQuery));
+            const suppliers = await this.getSuppliers();
+            const supplierMap = new Map(suppliers.map(s => [s.id, s.name]));
+            intakes = intakes.filter(i => (supplierMap.get(i.supplierId) || '').toLowerCase().includes(lowerQuery) || i.invoiceNumber.toLowerCase().includes(lowerQuery));
         }
         return intakes;
     }
@@ -961,7 +963,9 @@ class DataService {
 
       const activity: GlobalActivityItem[] = [];
       sales.forEach(s => s.createdAt && activity.push({ type: 'sale', date: new Date(s.createdAt), id: s.id!, description: `Vente #${s.invoiceNumber}`, details: s.customerName || 'Client de passage', amount: s.total, amountClass: 'text-primary' }));
-      intakes.forEach(i => i.createdAt && activity.push({ type: 'stock_intake', date: new Date(i.createdAt), id: i.id!, description: `Réception de ${i.supplierName}`, details: `${i.items.length} article(s)`, amount: i.totalValue, amountClass: 'text-yellow-400' }));
+      const suppliers = await this.getSuppliers();
+      const supplierMap = new Map(suppliers.map(s => [s.id, s.name]));
+      intakes.forEach(i => i.createdAt && activity.push({ type: 'stock_intake', date: new Date(i.createdAt), id: i.id!, description: `Réception de ${supplierMap.get(i.supplierId) || 'fournisseur inconnu'}`, details: `${i.items.length} article(s)`, amount: i.totalValue, amountClass: 'text-yellow-400' }));
       returns.forEach(r => r.createdAt && activity.push({ type: 'return', date: new Date(r.createdAt), id: r.id!, description: `Retour sur facture #${r.originalInvoiceNumber}`, details: `${r.items.length} article(s) retourné(s)`, amount: r.totalReturnValue, amountClass: 'text-destructive' }));
       customers.forEach(c => c.createdAt && activity.push({ type: 'customer', date: new Date(c.createdAt), id: c.id!, description: `Nouveau client`, details: `${c.firstName} ${c.lastName}`}));
       

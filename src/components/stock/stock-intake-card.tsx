@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import type { StockIntake } from '@/lib/types';
+import type { StockIntake, Supplier } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { FileText } from 'lucide-react';
@@ -12,16 +12,19 @@ import { safeToDate, formatCurrency } from '@/lib/utils';
 interface StockIntakeCardProps {
     intake: StockIntake;
     onViewDetails: (intake: StockIntake) => void;
+    suppliers: Supplier[];
 }
 
-const StockIntakeCardComponent = ({ intake, onViewDetails }: StockIntakeCardProps) => {
+const StockIntakeCardComponent = ({ intake, onViewDetails, suppliers }: StockIntakeCardProps) => {
+
+    const supplierName = suppliers.find(s => s.id === intake.supplierId)?.name || 'Fournisseur inconnu';
 
     return (
         <Card className="transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
             <CardHeader>
                 <div className="flex justify-between items-start">
                     <div>
-                        <CardTitle className="text-lg">{intake.supplierName}</CardTitle>
+                        <CardTitle className="text-lg">{supplierName}</CardTitle>
                         <CardDescription className="font-mono text-xs">{intake.invoiceNumber}</CardDescription>
                     </div>
                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onViewDetails(intake)}>

@@ -25,21 +25,24 @@ export default function SalesHistoryPage() {
     const [isCancelOpen, setIsCancelOpen] = useState(false);
 
     const [sales, setSales] = useState<Sale[] | undefined>(undefined);
+    const [isLoading, setIsLoading] = useState(true);
 
     const loadSales = useCallback(() => {
         if (!isMounted) return;
+        setIsLoading(true);
         dataService.getSales({ 
             query: debouncedSearchQuery,
             from: dateRange?.from,
             to: dateRange?.to
-        }).then(setSales);
+        }).then(data => {
+            setSales(data);
+            setIsLoading(false);
+        });
     }, [isMounted, debouncedSearchQuery, dateRange]);
 
     useEffect(() => {
         loadSales();
     }, [loadSales]);
-
-    const isLoading = sales === undefined || !isMounted;
 
     const handleViewDetails = (sale: Sale) => {
         setSelectedSale(sale);

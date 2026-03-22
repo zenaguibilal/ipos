@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { dataService } from '@/services/data-service';
-import type { StockIntake, CostingItem } from '@/lib/types';
+import type { StockIntake, CostingItem, Supplier } from '@/lib/types';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,13 +23,18 @@ export default function CostingPage() {
     const [isApplyingCosts, setIsApplyingCosts] = useState(false);
 
     const [intakes, setIntakes] = useState<StockIntake[] | undefined>(undefined);
+    const [suppliers, setSuppliers] = useState<Supplier[] | undefined>(undefined);
     const [selectedIntake, setSelectedIntake] = useState<StockIntake | undefined>(undefined);
     const [isLoading, setIsLoading] = useState(true);
 
     const loadIntakes = useCallback(() => {
         setIsLoading(true);
-        dataService.getStockIntakes({}).then(data => {
-            setIntakes(data);
+        Promise.all([
+            dataService.getStockIntakes({}),
+            dataService.getSuppliers()
+        ]).then(([intakeData, supplierData]) => {
+            setIntakes(intakeData);
+            setSuppliers(supplierData);
             setIsLoading(false);
         });
     }, []);
@@ -51,13 +56,14 @@ export default function CostingPage() {
     }, [selectedIntakeId]);
 
     const intakeOptions = useMemo<ComboboxOption[]>(() => {
-        if (!intakes) return [];
+        if (!intakes || !suppliers) return [];
+        const supplierMap = new Map(suppliers.map(s => [s.id, s.name]));
         return intakes.map(i => ({
             value: String(i.id!),
-            label: i.invoiceNumber,
-            subLabel: `${i.supplierName} - ${format(i.invoiceDate, 'd MMM yyyy', { locale: fr })}`
+            label: i.invoiceNumber || `Réception du ${format(i.invoiceDate, 'd MMM', { locale: fr })}`,
+            subLabel: `${supplierMap.get(i.supplierId) || 'Fournisseur inconnu'} - ${format(i.invoiceDate, 'd MMM yyyy', { locale: fr })}`
         }));
-    }, [intakes]);
+    }, [intakes, suppliers]);
 
     const { costingResults, totalPurchaseValue } = useMemo(() => {
         if (!selectedIntake) {
