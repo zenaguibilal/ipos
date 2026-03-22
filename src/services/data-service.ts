@@ -993,7 +993,7 @@ class DataService {
         allStockIntakes.forEach(si => si.createdAt && activity.push({ type: 'stock_intake', date: safeToDate(si.createdAt), id: si.id!, description: `Réception de stock`, details: `Facture: ${si.invoiceNumber}`, amount: si.totalValue, amountClass: 'text-yellow-500' }));
         allReturns.forEach(r => r.createdAt && activity.push({ type: 'return', date: safeToDate(r.createdAt), id: r.id!, description: `Retour sur facture #${r.originalInvoiceNumber}`, details: `${r.items.length} article(s) retourné(s)`, amount: -r.totalReturnValue, amountClass: 'text-destructive' }));
         allCustomers.forEach(c => c.createdAt && activity.push({ type: 'customer', date: safeToDate(c.createdAt), id: c.id!, description: `Nouveau client`, details: `${c.firstName} ${c.lastName}`, amount: undefined }));
-        allPayments.forEach(p => p.createdAt && activity.push({ type: 'payment', date: safeToDate(p.createdAt), id: p.id!, description: `Paiement reçu`, details: p.customerName || 'Client inconnu', amount: p.amount, amountClass: 'text-green-500' }));
+        allPayments.forEach(p => p.paymentDate && activity.push({ type: 'payment', date: safeToDate(p.paymentDate), id: p.id!, description: `Paiement reçu`, details: p.customerName || 'Client inconnu', amount: p.amount, amountClass: 'text-green-500' }));
         
         return activity.sort((a,b) => b.date.getTime() - a.date.getTime()).slice(0, limit);
     }
