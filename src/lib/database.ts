@@ -3,7 +3,7 @@
 import { TABLES, type TableName } from './types';
 
 const DB_NAME = 'iPOS_DB_NATIVE';
-const DB_VERSION = 2;
+const DB_VERSION = 1;
 
 let dbPromise: Promise<IDBDatabase> | null = null;
 

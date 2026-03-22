@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { dataService } from '@/services/data-service';
 import { Combobox, ComboboxOption } from '@/components/ui/combobox';
 import type { Customer } from '@/lib/types';
@@ -21,12 +21,15 @@ export const CustomerCombobox = React.forwardRef<HTMLButtonElement, CustomerComb
     
     const [customers, setCustomers] = useState<Customer[]>([]);
 
-    useEffect(() => {
-        dataService.getAll<Customer>('customers').then(allCustomers => {
-            const sorted = allCustomers.sort((a,b) => (a.lastName || '').localeCompare(b.lastName || ''));
-            setCustomers(sorted);
-        });
+    const loadCustomers = useCallback(async () => {
+      const allCustomers = await dataService.getAll<Customer>('customers');
+      const sorted = allCustomers.sort((a,b) => (a.lastName || '').localeCompare(b.lastName || ''));
+      setCustomers(sorted);
     }, []);
+
+    useEffect(() => {
+        loadCustomers();
+    }, [loadCustomers]);
 
     const customerOptions = useMemo<ComboboxOption[]>(() => {
         if (!customers) return [WalkInCustomerOption];

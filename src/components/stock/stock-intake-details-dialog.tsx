@@ -19,6 +19,7 @@ import {
 import { Button } from '@/components/ui/button';
 import type { StockIntake } from '@/lib/types';
 import { formatCurrency } from '@/lib/utils';
+import { useMemo } from 'react';
 
 export function StockIntakeDetailsDialog({
     isOpen,
@@ -29,6 +30,14 @@ export function StockIntakeDetailsDialog({
     onOpenChange: (open: boolean) => void;
     intake: StockIntake | null;
 }) {
+
+    const supplierName = useMemo(() => {
+        if (!intake) return '';
+        // Note: The `supplierName` might not be on the intake object if it's from an older schema version.
+        // The display here is just for showing what's available.
+        return intake.supplierName || 'Fournisseur inconnu';
+    }, [intake]);
+
     if (!intake) return null;
 
     return (
@@ -37,7 +46,7 @@ export function StockIntakeDetailsDialog({
                 <DialogHeader>
                     <DialogTitle>Détails de la réception</DialogTitle>
                     <DialogDescription>
-                        Fournisseur: <span className="font-semibold">{intake.supplierName}</span> | Facture n°:{' '}
+                        Fournisseur: <span className="font-semibold">{supplierName}</span> | Facture n°:{' '}
                         <span className="font-mono">{intake.invoiceNumber}</span>
                     </DialogDescription>
                 </DialogHeader>

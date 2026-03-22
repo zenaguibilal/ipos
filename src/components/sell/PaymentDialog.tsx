@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription
@@ -56,13 +56,17 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, onSaleFinalized }: P
     const creditAvailable = (customer?.creditLimit ?? 0) - (customer?.outstandingBalance ?? 0);
     const creditUsage = customer?.creditLimit && customer.creditLimit > 0 ? (newTotalOutstanding / customer.creditLimit) * 100 : 0;
 
-    useEffect(() => {
+    const loadCustomer = useCallback(async () => {
         if(cart.customerId) {
-            dataService.getById<Customer>('customers', cart.customerId).then(setCustomer);
+            setCustomer(await dataService.getById<Customer>('customers', cart.customerId));
         } else {
             setCustomer(undefined);
         }
     }, [cart.customerId]);
+
+    useEffect(() => {
+        loadCustomer();
+    }, [loadCustomer]);
 
     useEffect(() => {
         if (isOpen) {

@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Printer } from 'lucide-react';
@@ -19,9 +18,13 @@ export function SaleCompletionScreen({ sale, onClose }: SaleCompletionScreenProp
   const receiptRef = useRef<HTMLDivElement>(null);
   const [profile, setProfile] = useState<CompanyProfile | null>(null);
 
-  useEffect(() => {
-    dataService.getCompanyProfile().then(setProfile);
+  const loadProfile = useCallback(async () => {
+    setProfile(await dataService.getCompanyProfile());
   }, []);
+
+  useEffect(() => {
+    loadProfile();
+  }, [loadProfile]);
 
   const handlePrint = (thermal: boolean) => {
     const printableContent = document.getElementById('receipt-for-print');

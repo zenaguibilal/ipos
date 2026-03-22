@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, forwardRef, useImperativeHandle, useRef, useEffect } from 'react';
+import React, { useState, useMemo, forwardRef, useImperativeHandle, useRef, useEffect, useCallback } from 'react';
 import { dataService } from '@/services/data-service';
 import type { Product } from '@/lib/types';
 import { Input } from '@/components/ui/input';
@@ -78,10 +78,18 @@ export const ProductSearch = forwardRef<{focus: () => void}, ProductSearchProps>
         },
     }));
     
-    useEffect(() => {
-        dataService.getAll<Product>('products').then(setProducts);
-        dataService.getProductCategories().then(setCategories);
+    const loadData = useCallback(async () => {
+        const [prods, cats] = await Promise.all([
+            dataService.getAll<Product>('products'),
+            dataService.getProductCategories()
+        ]);
+        setProducts(prods);
+        setCategories(cats);
     }, []);
+
+    useEffect(() => {
+        loadData();
+    }, [loadData]);
 
     const handleBarcodeScanned = async (scannedBarcode: string) => {
         if (!scannedBarcode.trim()) return;

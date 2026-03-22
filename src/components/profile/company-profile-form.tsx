@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { CardContent, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -13,24 +13,25 @@ import { dataService } from '@/services/data-service';
 
 
 export function CompanyProfileForm() {
-    const [isMounted, setIsMounted] = useState(false);
-    const [companyProfile, setCompanyProfile] = useState<CompanyProfile | null>(null);
-
+    const [isLoading, setIsLoading] = useState(true);
     const [formState, setFormState] = useState<Partial<CompanyProfile>>({});
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
-        setIsMounted(true);
-        dataService.getCompanyProfile().then(profile => {
-            setCompanyProfile(profile);
-            if (profile) {
-                setFormState(profile);
-            } else {
-                setFormState({ companyName: "Mon Magasin", country: "Algérie" });
-            }
-        });
+    const loadProfile = useCallback(async () => {
+        setIsLoading(true);
+        const profile = await dataService.getCompanyProfile();
+        if (profile) {
+            setFormState(profile);
+        } else {
+            setFormState({ companyName: "Mon Magasin", country: "Algérie" });
+        }
+        setIsLoading(false);
     }, []);
+
+    useEffect(() => {
+        loadProfile();
+    }, [loadProfile]);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { id, value } = e.target;
@@ -60,8 +61,6 @@ export function CompanyProfileForm() {
             setIsSaving(false);
         }
     };
-
-    const isLoading = !isMounted || companyProfile === null;
 
     return (
         <form onSubmit={handleUpdateProfile}>

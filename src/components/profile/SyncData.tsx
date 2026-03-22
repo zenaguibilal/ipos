@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { CardContent, CardFooter } from '@/components/ui/card';
 import { Loader2, RefreshCw, AlertTriangle } from 'lucide-react';
@@ -15,15 +15,21 @@ export function SyncData() {
     const { syncStatus, syncNow } = useSync();
     const [companyProfile, setCompanyProfile] = useState<CompanyProfile | null>(null);
 
+    const loadProfile = useCallback(async () => {
+        const profile = await dataService.getCompanyProfile();
+        setCompanyProfile(profile);
+    }, []);
+
     useEffect(() => {
-        dataService.getCompanyProfile().then(setCompanyProfile);
-    }, [syncStatus.lastSync]);
+        loadProfile();
+    }, [loadProfile, syncStatus.lastSync]);
 
 
     const handleSync = async () => {
         toast.info("Lancement de la synchronisation complète...");
         try {
             await syncNow();
+            await loadProfile(); // Reload profile to get latest sync date
             toast.success("Synchronisation terminée avec succès !");
         } catch (error: any) {
             console.error("Erreur lors de la synchronisation:", error);
@@ -51,9 +57,9 @@ export function SyncData() {
                         </div>
                     </div>
                 )}
-                 {syncStatus.lastSync && (
+                 {companyProfile?.lastSyncDate && (
                     <p className="text-sm text-muted-foreground mt-4">
-                        Dernière synchronisation réussie le : <span className="font-semibold">{format(new Date(syncStatus.lastSync), 'd MMMM yyyy à HH:mm', { locale: fr })}</span>
+                        Dernière synchronisation réussie le : <span className="font-semibold">{format(new Date(companyProfile.lastSyncDate), 'd MMMM yyyy à HH:mm', { locale: fr })}</span>
                     </p>
                 )}
                  {syncStatus.error && (

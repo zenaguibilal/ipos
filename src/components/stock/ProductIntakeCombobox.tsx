@@ -32,11 +32,15 @@ export function ProductIntakeCombobox({ onProductSelected, onNewProductCreated }
     const debouncedSearchQuery = useDebounce(searchQuery, 200);
     const [products, setProducts] = useState<Product[]>([]);
 
-    useEffect(() => {
+    const loadProducts = useCallback(async () => {
         if(comboboxOpen) {
-            dataService.getAll<Product>('products').then(setProducts);
+            setProducts(await dataService.getAll<Product>('products'));
         }
     }, [comboboxOpen]);
+
+    useEffect(() => {
+        loadProducts();
+    }, [loadProducts]);
 
     const filteredProducts = useMemo(() => {
         if (!products) return [];
@@ -103,7 +107,7 @@ export function ProductIntakeCombobox({ onProductSelected, onNewProductCreated }
                                 <CommandItem
                                     key={product.id}
                                     value={String(product.id)}
-                                    onSelect={handleSelect}
+                                    onSelect={() => handleSelect(String(product.id))}
                                 >
                                     <div>
                                         <p>{product.name}</p>

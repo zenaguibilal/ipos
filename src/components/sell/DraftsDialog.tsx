@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
     Dialog,
     DialogContent,
@@ -45,11 +45,15 @@ interface DraftsDialogProps {
 export function DraftsDialog({ isOpen, onOpenChange, onLoadDraft }: DraftsDialogProps) {
     const [drafts, setDrafts] = useState<Draft[]>([]);
 
-    useEffect(() => {
-        if (isOpen) {
-            dataService.getDrafts().then(setDrafts);
+    const loadDrafts = useCallback(async () => {
+        if(isOpen) {
+            setDrafts(await dataService.getDrafts());
         }
     }, [isOpen]);
+
+    useEffect(() => {
+        loadDrafts();
+    }, [loadDrafts]);
 
     const handleDelete = async (id: number) => {
         await dataService.deleteDraft(id);
