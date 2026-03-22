@@ -8,14 +8,9 @@ import { useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { dataService } from '@/services/data-service';
 
-interface CustomerStatsProps {
-  customers: Customer[] | undefined;
-  isLoading: boolean;
-}
+export function CustomerStats() {
 
-export function CustomerStats({ customers: initialCustomers, isLoading: isInitialLoading }: CustomerStatsProps) {
-
-  const customers = useLiveQuery(() => dataService.getCustomers({}), [], initialCustomers);
+  const customers = useLiveQuery(() => dataService.getCustomers({}));
   const isLoading = customers === undefined;
 
   const stats = useMemo(() => {

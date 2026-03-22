@@ -52,7 +52,7 @@ export default function ZakatPage() {
                     type="number"
                     className="w-48 h-10 text-right text-lg font-semibold"
                     placeholder={placeholder}
-                    value={onChange ? (value === 0 ? '' : String(value)) : undefined}
+                    value={onChange ? (value === 0 ? '' : String(value)) : String(value)}
                     onChange={(e) => onChange?.(e.target.value)}
                 />
             ) : (

@@ -143,7 +143,7 @@ export default function CustomersPage() {
                 </Button>
             </PageHeader>
 
-            <CustomerStats customers={customers} isLoading={isLoading} />
+            <CustomerStats />
 
             <div className="flex flex-col sm:flex-row gap-2">
                 <div className="relative flex-grow">
