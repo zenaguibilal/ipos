@@ -75,7 +75,6 @@ class DataService {
             }
         }
 
-        // If we're here, stock is sufficient.
         if (existingItem) {
             existingItem.cartQuantity = newCartQuantity;
             existingItem.flash = true;
@@ -133,7 +132,7 @@ class DataService {
   async setCartCustomer(cartId: string, customer: Customer | null): Promise<void> {
     return this.db.carts.where({id: cartId}).modify(cart => {
         cart.customerId = customer ? customer.id! : null;
-        cart.customerName = customer ? `${''\''.concat(customer.firstName, ' ', customer.lastName)}` : '';
+        cart.customerName = customer ? `${customer.firstName} ${customer.lastName}` : '';
     });
   }
 
@@ -627,7 +626,6 @@ class DataService {
     async addSale(saleData: Omit<Sale, 'id' | 'invoiceNumber' | 'remainingBalance' | 'paymentStatus'> & { amountPaid: number }): Promise<Sale> {
         return this.db.transaction('rw', this.db.sales, this.db.products, this.db.inventoryLogs, this.db.customers, async () => {
             
-            // 1. Pre-sale validation
             for (const item of saleData.items) {
                 if (typeof item.id === 'number') {
                     const product = await this.db.products.get(item.id);
@@ -640,7 +638,6 @@ class DataService {
                 }
             }
 
-            // 2. Create Sale Record
             const salesCount = await this.db.sales.count();
             const invoiceNumber = `INV-${new Date().getFullYear()}-${(salesCount + 1).toString().padStart(5, '0')}`;
             const remainingBalance = saleData.total - saleData.amountPaid;
@@ -649,12 +646,10 @@ class DataService {
 
             const saleId = await this.db.sales.add(newSaleData);
             
-            // 3. Update Inventory
             for(const item of newSaleData.items) {
                 if (typeof item.id === 'number') {
-                    // We already fetched the product, but we do it again inside the transaction for safety
                     const product = await this.db.products.get(item.id); 
-                    if (product) { // Should always be true because of pre-validation
+                    if (product) {
                         const newQuantity = product.quantity - item.quantity;
                         await this.db.products.update(item.id, { quantity: newQuantity });
                         await this.db.inventoryLogs.add({ 
@@ -669,7 +664,6 @@ class DataService {
                 }
             }
             
-            // 4. Update Customer Balance
             if (newSaleData.customerId) {
                 const customer = await this.db.customers.get(newSaleData.customerId);
                 if (customer?.id) {
@@ -1033,7 +1027,7 @@ class DataService {
             const customer = customerMap.get(Number(customerId));
             return {
                 id: Number(customerId),
-                name: customer ? `${''\''.concat(customer.firstName, ' ', customer.lastName)}` : 'Client Inconnu',
+                name: customer ? `${customer.firstName} ${customer.lastName}` : 'Client Inconnu',
                 totalSpent,
             };
         }).sort((a, b) => b.totalSpent - a.totalSpent).slice(0, 5);
@@ -1060,7 +1054,7 @@ class DataService {
         allSales.forEach(s => s.createdAt && activity.push({ type: 'sale', date: safeToDate(s.createdAt), id: s.id!, description: `Vente #${s.invoiceNumber}`, details: s.customerName || 'Client de passage', amount: s.total, amountClass: 'text-primary' }));
         allStockIntakes.forEach(si => si.createdAt && activity.push({ type: 'stock_intake', date: safeToDate(si.createdAt), id: si.id!, description: `Réception de stock`, details: `Facture: ${si.invoiceNumber}`, amount: si.totalValue, amountClass: 'text-yellow-500' }));
         allReturns.forEach(r => r.createdAt && activity.push({ type: 'return', date: safeToDate(r.createdAt), id: r.id!, description: `Retour sur facture #${r.originalInvoiceNumber}`, details: `${r.items.length} article(s) retourné(s)`, amount: -r.totalReturnValue, amountClass: 'text-destructive' }));
-        allCustomers.forEach(c => c.createdAt && activity.push({ type: 'customer', date: safeToDate(c.createdAt), id: c.id!, description: `Nouveau client`, details: `${''\''.concat(c.firstName, ' ', c.lastName)}`, amount: undefined }));
+        allCustomers.forEach(c => c.createdAt && activity.push({ type: 'customer', date: safeToDate(c.createdAt), id: c.id!, description: `Nouveau client`, details: `${c.firstName} ${c.lastName}`, amount: undefined }));
         allPayments.forEach(p => p.paymentDate && activity.push({ type: 'payment', date: safeToDate(p.paymentDate), id: p.id!, description: `Paiement reçu`, details: p.customerName || 'Client inconnu', amount: p.amount, amountClass: 'text-green-500' }));
         
         return activity.sort((a,b) => b.date.getTime() - a.date.getTime()).slice(0, limit);
