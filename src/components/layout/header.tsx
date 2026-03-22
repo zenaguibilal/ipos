@@ -15,6 +15,7 @@ import {
   HandHeart,
   Calculator,
   Wheat,
+  LayoutDashboard,
 } from 'lucide-react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
@@ -36,6 +37,7 @@ import { ThemeToggle } from './theme-toggle';
 import { SyncIndicator } from '../common/SyncIndicator';
 
 const navLinks = [
+  { href: '/dashboard', label: 'Tableau de bord', icon: LayoutDashboard },
   { href: '/sell', label: 'Point de Vente', icon: ShoppingCart },
   { href: '/bread', label: 'Commandes de Pain', icon: Wheat },
   { href: '/products', label: 'Produits', icon: Package },
@@ -58,7 +60,7 @@ export function AppHeader() {
       <div className="flex-1 flex justify-start">
          <div className="flex items-baseline gap-2">
               <Link
-                  href="/sell"
+                  href="/dashboard"
                   className="flex items-center gap-2 font-semibold"
               >
                   <Image src="/icon.svg" alt="iPOS logo" width={32} height={32} />

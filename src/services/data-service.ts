@@ -1,7 +1,7 @@
 'use client';
 
 import { db } from '@/lib/database';
-import type { TableName, Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, InventoryLog, StockIntakeItem, ZakatData, CostingItem, Draft, Supplier, ImportAnalysis, BreadClient, BreadOrder, BreadOrderWithClient, DB, ProductImportAnalysis, GlobalActivityItem } from '@/lib/types';
+import type { TableName, Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, InventoryLog, StockIntakeItem, ZakatData, CostingItem, Draft, Supplier, ImportAnalysis, BreadClient, BreadOrder, BreadOrderWithClient, DB, ProductImportAnalysis, GlobalActivityItem, DashboardData } from '@/lib/types';
 import { subDays, endOfDay, startOfDay } from 'date-fns';
 import Papa from 'papaparse';
 import { calculateCartTotals, formatCurrency } from '@/lib/utils';
@@ -120,7 +120,7 @@ class DataService {
     const cart = await this.getCart(cartId);
     if (!cart) return;
     cart.customerId = customer ? customer.id! : null;
-    cart.customerName = customer ? `${'\'\'\''} ${customer.lastName}` : '';
+    cart.customerName = customer ? `${customer.firstName} ${customer.lastName}` : '';
     await this.saveCart(cart);
   }
 
@@ -789,7 +789,7 @@ class DataService {
     }
     
     async getStockIntakes({ from, to, query }: { from?: Date, to?: Date, query?: string }): Promise<StockIntake[]> {
-        let intakes = (await this.getAll<StockIntake>('stockIntakes')).sort((a,b) => new Date(b.invoiceDate).getTime() - new Date(a.invoiceDate).getTime());
+         let intakes = (await this.getAll<StockIntake>('stockIntakes')).sort((a,b) => new Date(b.invoiceDate).getTime() - new Date(a.invoiceDate).getTime());
         if (from && to) intakes = intakes.filter(i => { if(!i.invoiceDate) return false; const intakeDate = new Date(i.invoiceDate); return intakeDate >= startOfDay(from) && intakeDate <= endOfDay(to); });
         if(query) {
             const lowerQuery = query.toLowerCase();
@@ -950,6 +950,97 @@ class DataService {
     
     async resetDatabase(): Promise<void> {
         await db.resetDatabase();
+    }
+
+    async getDashboardData(from: Date, to: Date): Promise<DashboardData> {
+        const [allSales, allProducts, allExpenses, allCustomers, allStockIntakes, allReturns, allPayments] = await Promise.all([
+            this.getAll<Sale>('sales'),
+            this.getAll<Product>('products'),
+            this.getAll<Expense>('expenses'),
+            this.getAll<Customer>('customers'),
+            this.getAll<StockIntake>('stockIntakes'),
+            this.getAll<ProductReturn>('returns'),
+            this.getAll<Payment>('payments'),
+        ]);
+
+        const sales = allSales.filter(s => {
+            if (!s.createdAt) return false;
+            const saleDate = new Date(s.createdAt);
+            return saleDate >= from && saleDate <= to;
+        });
+        
+        const expenses = allExpenses.filter(e => {
+            const expenseDate = new Date(e.expenseDate);
+            return expenseDate >= from && expenseDate <= to;
+        });
+
+        const totalRevenue = sales.reduce((sum, s) => sum + (s.total || 0), 0);
+        const totalProfit = sales.reduce((sum, s) => {
+            const saleProfit = (s.items || []).reduce((itemSum, item) => 
+                itemSum + ((item.price || 0) - (item.purchasePrice || 0)) * (item.quantity || 0), 0);
+            return sum + saleProfit;
+        }, 0);
+        const totalExpenses = expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+        const inventoryValue = allProducts.reduce((sum, p) => sum + ((p.purchasePrice || 0) * (p.quantity || 0)), 0);
+
+        const productSales: { [key: number]: { revenue: number, profit: number, units: number } } = {};
+        for (const sale of sales) {
+            for (const item of sale.items || []) {
+                if (typeof item.id !== 'number') continue;
+                if (!productSales[item.id]) productSales[item.id] = { revenue: 0, profit: 0, units: 0 };
+                productSales[item.id].revenue += (item.price || 0) * (item.quantity || 0);
+                productSales[item.id].profit += ((item.price || 0) - (item.purchasePrice || 0)) * (item.quantity || 0);
+                productSales[item.id].units += item.quantity || 0;
+            }
+        }
+        
+        const topProducts = Object.entries(productSales).map(([id, data]) => ({
+            id: Number(id),
+            name: allProducts.find(p => p.id === Number(id))?.name || 'Produit Inconnu',
+            totalRevenue: data.revenue,
+            totalProfit: data.profit,
+            unitsSold: data.units,
+        })).sort((a, b) => b.totalRevenue - a.totalRevenue).slice(0, 5);
+        
+        const lowStockProducts = allProducts.filter(p => p.quantity > 0 && p.quantity <= p.minStockLevel).sort((a,b) => a.quantity - b.quantity).slice(0, 5);
+        
+        const recentActivity = await this.getGlobalActivity(10, { allSales, allStockIntakes, allReturns, allCustomers, allPayments });
+
+        return {
+            stats: {
+                totalRevenue,
+                totalProfit,
+                salesCount: sales.length,
+                inventoryValue,
+                totalExpenses,
+            },
+            sales,
+            expenses,
+            topProducts,
+            topCustomers: [], // This was not fully implemented before
+            lowStockProducts,
+            recentActivity,
+        };
+    }
+    
+    async getGlobalActivity(limit: number, preloadedData?: { allSales: Sale[], allStockIntakes: StockIntake[], allReturns: ProductReturn[], allCustomers: Customer[], allPayments: Payment[] }): Promise<GlobalActivityItem[]> {
+        const { allSales, allStockIntakes, allReturns, allCustomers, allPayments } = preloadedData ?? await Promise.all([
+            this.getAll<Sale>('sales'),
+            this.getAll<StockIntake>('stockIntakes'),
+            this.getAll<ProductReturn>('returns'),
+            this.getAll<Customer>('customers'),
+            this.getAll<Payment>('payments')
+        ]);
+        
+        const activity: GlobalActivityItem[] = [];
+
+        allSales.forEach(s => s.createdAt && activity.push({ type: 'sale', date: new Date(s.createdAt), id: s.id!, description: `Vente #${s.invoiceNumber}`, details: s.customerName || 'Client de passage', amount: s.total, amountClass: 'text-primary' }));
+        allStockIntakes.forEach(si => si.createdAt && activity.push({ type: 'stock_intake', date: new Date(si.createdAt), id: si.id!, description: `Réception de stock`, details: `Facture: ${si.invoiceNumber}`, amount: si.totalValue, amountClass: 'text-yellow-500' }));
+        allReturns.forEach(r => r.createdAt && activity.push({ type: 'return', date: new Date(r.createdAt), id: r.id!, description: `Retour sur facture #${r.originalInvoiceNumber}`, details: `${r.items.length} article(s) retourné(s)`, amount: -r.totalReturnValue, amountClass: 'text-destructive' }));
+        allCustomers.forEach(c => c.createdAt && activity.push({ type: 'customer', date: new Date(c.createdAt), id: c.id!, description: `Nouveau client`, details: `${c.firstName} ${c.lastName}`, amount: undefined }));
+        allPayments.forEach(p => p.createdAt && activity.push({ type: 'payment', date: new Date(p.createdAt), id: p.id!, description: `Paiement reçu`, details: p.customerName || 'Client inconnu', amount: p.amount, amountClass: 'text-green-500' }));
+        
+        return activity.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, limit);
     }
 }
 
