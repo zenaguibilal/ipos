@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { getDb } from '@/lib/database';
@@ -799,7 +800,7 @@ class DataService {
                 if (typeof item.id === 'number') {
                     await this.db.products.where({id: item.id}).modify(p => p.quantity += item.quantity);
                     const updatedProduct = await this.db.products.get(item.id);
-                    await this.db.inventoryLogs.add({ productId: item.id, change: item.quantity, newQuantity: updatedProduct!.quantity, reason: 'cancellation', relatedId: sale.id, createdAt: new Date() });
+                    await this.db.inventoryLogs.add({ productId: item.id, change: item.quantity, newQuantity: updatedProduct!.quantity, reason: 'cancellation', relatedId: `cancel-sale-${sale.id}`, createdAt: new Date() });
                 }
             }
             
@@ -876,7 +877,6 @@ class DataService {
     // Stock Intake
     async addStockIntake(intakeData: { supplierName: string; invoiceNumber: string; invoiceDate: Date }, items: StockIntakeItem[]): Promise<StockIntake> {
         return this.db.transaction('rw', this.db.suppliers, this.db.products, this.db.inventoryLogs, this.db.stockIntakes, async (tx) => {
-            // 1. Get or create supplier
             let supplier = await tx.table('suppliers').where('name').equalsIgnoreCase(intakeData.supplierName).first();
             if (!supplier) {
                 const newSupplierData = { name: intakeData.supplierName, balance: 0 };
@@ -884,7 +884,6 @@ class DataService {
                 supplier = { ...newSupplierData, id, balance: 0 };
             }
     
-            // 2. Create a placeholder intake record to get an ID
             const tempIntakeData: Omit<StockIntake, 'id'> = {
                 ...intakeData,
                 supplierId: supplier.id!,
@@ -897,7 +896,6 @@ class DataService {
             const finalIntakeItems = [];
             let finalTotalValue = 0;
     
-            // 3. Process all items
             for (const item of items) {
                 const quantityChange = item.quantity - item.quantityDamaged;
                 finalTotalValue += item.quantity * item.purchasePrice;
@@ -905,7 +903,6 @@ class DataService {
                 let finalQuantity = 0;
     
                 if (item.isNew) {
-                    // Create new product
                     const newProductData: Omit<Product, 'id'> = {
                         name: item.name, category: item.category, price: item.price,
                         purchasePrice: item.purchasePrice, quantity: quantityChange,
@@ -915,19 +912,16 @@ class DataService {
                     productId = await tx.table('products').add(newProductData);
                     finalQuantity = quantityChange;
                 } else if (productId) {
-                    // Atomically update existing product
-                    const updatedRows = await tx.table('products').where({ id: productId }).modify(product => {
+                    await tx.table('products').where({ id: productId }).modify(product => {
                         product.quantity += quantityChange;
                         product.purchasePrice = item.purchasePrice;
                         product.dateMajPrix = new Date();
                         product.fournisseurId = supplier.id;
                         finalQuantity = product.quantity;
                     });
-                    if (updatedRows === 0) throw new Error(`Produit avec ID ${productId} non trouvé.`);
                 }
     
                 if (productId) {
-                    // Add inventory log with the correct relatedId
                     await tx.table('inventoryLogs').add({
                         productId: productId,
                         change: quantityChange,
@@ -945,13 +939,11 @@ class DataService {
                 }
             }
     
-            // 4. Update the intake record with final items and total value
             await tx.table('stockIntakes').update(intakeId, {
                 items: finalIntakeItems,
                 totalValue: finalTotalValue
             });
     
-            // 5. Update supplier balance
             await tx.table('suppliers').update(supplier.id!, {
                 balance: (supplier.balance || 0) + finalTotalValue
             });
