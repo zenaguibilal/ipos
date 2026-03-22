@@ -9,7 +9,7 @@ import { fr } from 'date-fns/locale';
 import { HandCoins, ShoppingBag, Receipt, Undo2 } from 'lucide-react';
 
 interface CustomerActivityProps {
-  activity: GlobalActivityItem[];
+  activity: any[];
   onSaleClick: (sale: Sale) => void;
   onReturnClick: (pr: ProductReturn) => void;
 }
@@ -34,7 +34,7 @@ export function CustomerActivity({ activity, onSaleClick, onReturnClick }: Custo
         
         if (item.type === 'sale') {
            const Icon = ShoppingBag;
-           const sale = item as unknown as Sale;
+           const sale = item as Sale;
            const title = `Vente #${sale.invoiceNumber}`;
           return (
             <TimelineItem key={`sale-${item.id}`}>
@@ -62,14 +62,14 @@ export function CustomerActivity({ activity, onSaleClick, onReturnClick }: Custo
                         </span>
                     </div>
                      <p className="text-sm text-muted-foreground">
-                        {sale.items.length} article(s). {sale.paymentStatus !== 'paid' && `Solde restant: ${formatCurrency(sale.remainingBalance)}`}
+                        {(sale.items?.length || 0)} article(s). {sale.paymentStatus !== 'paid' && `Solde restant: ${formatCurrency(sale.remainingBalance)}`}
                     </p>
                 </div>
               </TimelineBody>
             </TimelineItem>
           );
         } else if (item.type === 'return') {
-            const pr = item as unknown as ProductReturn;
+            const pr = item as ProductReturn;
            return (
              <TimelineItem key={`return-${item.id}`}>
                {!isLast && <TimelineConnector />}
@@ -86,13 +86,13 @@ export function CustomerActivity({ activity, onSaleClick, onReturnClick }: Custo
                   onClick={() => onReturnClick(pr)}
                 >
                      <p className="font-semibold text-lg text-chart-secondary">- {formatCurrency(pr.totalReturnValue)}</p>
-                     <p className="text-sm text-muted-foreground">Remboursé: {formatCurrency(pr.amountRefunded)} | {pr.items.length} article(s) retourné(s).</p>
+                     <p className="text-sm text-muted-foreground">Remboursé: {formatCurrency(pr.amountRefunded)} | {(pr.items?.length || 0)} article(s) retourné(s).</p>
                 </div>
               </TimelineBody>
             </TimelineItem>
           );
         } else if (item.type === 'payment') {
-          const payment = item as unknown as Payment;
+          const payment = item as Payment;
           return (
              <TimelineItem key={`payment-${item.id}`}>
                {!isLast && <TimelineConnector />}

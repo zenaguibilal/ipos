@@ -271,18 +271,21 @@ class DataService {
       return this.getById<Customer>('customers', id);
   }
 
-  async getCustomerActivity(customerId: number): Promise<GlobalActivityItem[]> {
+  async getCustomerActivity(customerId: number): Promise<any[]> {
     if (!customerId) return [];
     const [sales, payments, returns] = await Promise.all([
           this.db.sales.where({customerId}).toArray(),
           this.db.payments.where({customerId}).toArray(),
           this.db.returns.where({customerId}).toArray(),
     ]);
-    const activity: GlobalActivityItem[] = [];
-    sales.forEach(s => s.createdAt && activity.push({ type: 'sale', date: new Date(s.createdAt), id: s.id!, description: `Vente #${s.invoiceNumber}`, details: s.customerName || 'Client de passage', amount: s.total, amountClass: 'text-primary' }));
-    returns.forEach(r => r.createdAt && activity.push({ type: 'return', date: new Date(r.createdAt), id: r.id!, description: `Retour sur facture #${r.originalInvoiceNumber}`, details: `${r.items.length} article(s) retourné(s)`, amount: r.totalReturnValue, amountClass: 'text-destructive' }));
-    payments.forEach(p => p.paymentDate && activity.push({ type: 'payment', date: new Date(p.paymentDate), id: p.id!, description: 'Paiement reçu', details: p.notes || '', amount: p.amount, amountClass: 'text-chart-quaternary' }));
-    return activity.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    
+    const salesActivity = sales.map(s => ({ ...s, type: 'sale', date: safeToDate(s.createdAt!) }));
+    const returnsActivity = returns.map(r => ({ ...r, type: 'return', date: safeToDate(r.createdAt!) }));
+    const paymentsActivity = payments.map(p => ({ ...p, type: 'payment', date: safeToDate(p.paymentDate!) }));
+
+    const activity: any[] = [...salesActivity, ...returnsActivity, ...paymentsActivity];
+    
+    return activity.filter(item => item.date && !isNaN(item.date.getTime())).sort((a,b) => b.date.getTime() - a.date.getTime());
   }
 
   async getCustomerStatementData(customerId: number): Promise<{ customer: Customer, unpaidSales: Sale[]}> {
