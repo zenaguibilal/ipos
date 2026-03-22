@@ -1,29 +1,18 @@
 'use client';
 
 import React from 'react';
-import type { Sale, Payment, ProductReturn } from '@/lib/types';
+import type { Sale, Payment, ProductReturn, GlobalActivityItem } from '@/lib/types';
 import { Timeline, TimelineItem, TimelineConnector, TimelineHeader, TimelineIcon, TimelineTitle, TimelineBody } from '@/components/ui/timeline';
 import { safeToDate, formatCurrency, cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { HandCoins, ShoppingBag, Receipt, Undo2 } from 'lucide-react';
 
-type ActivityItem = Sale | Payment | ProductReturn;
-
 interface CustomerActivityProps {
-  activity: ActivityItem[];
+  activity: GlobalActivityItem[];
   onSaleClick: (sale: Sale) => void;
   onReturnClick: (pr: ProductReturn) => void;
 }
-
-const isSale = (item: ActivityItem): item is Sale => 'invoiceNumber' in item;
-const isPayment = (item: ActivityItem): item is Payment => 'paymentDate' in item;
-const isReturn = (item: ActivityItem): item is ProductReturn => 'originalInvoiceNumber' in item;
-
-const getActivityDate = (item: ActivityItem): Date => {
-  if (isPayment(item)) return safeToDate(item.paymentDate);
-  return safeToDate(item.createdAt!);
-};
 
 export function CustomerActivity({ activity, onSaleClick, onReturnClick }: CustomerActivityProps) {
   if (activity.length === 0) {
@@ -40,12 +29,13 @@ export function CustomerActivity({ activity, onSaleClick, onReturnClick }: Custo
     <Timeline>
       {activity.map((item, index) => {
         const isLast = index === activity.length - 1;
-        const activityDate = getActivityDate(item);
+        const activityDate = safeToDate(item.date);
         const formattedDate = format(activityDate, 'd MMM yyyy, HH:mm', { locale: fr });
         
-        if (isSale(item)) {
+        if (item.type === 'sale') {
            const Icon = ShoppingBag;
-           const title = `Achat - Facture #${item.invoiceNumber}`;
+           const title = item.description;
+           const sale = item as unknown as Sale;
           return (
             <TimelineItem key={`sale-${item.id}`}>
               {!isLast && <TimelineConnector />}
@@ -59,26 +49,27 @@ export function CustomerActivity({ activity, onSaleClick, onReturnClick }: Custo
               <TimelineBody>
                 <div 
                   className="p-4 bg-muted/50 rounded-lg hover:bg-muted transition-colors cursor-pointer"
-                  onClick={() => onSaleClick(item)}
+                  onClick={() => onSaleClick(sale)}
                 >
                     <div className="flex justify-between items-center mb-2">
-                        <span className="font-semibold text-lg">{formatCurrency(item.total)}</span>
+                        <span className="font-semibold text-lg">{formatCurrency(sale.total)}</span>
                          <span className={cn('px-2 py-1 text-xs rounded-full font-semibold', {
-                            'bg-chart-quaternary/10 text-chart-quaternary': item.paymentStatus === 'paid',
-                            'bg-chart-secondary/10 text-chart-secondary': item.paymentStatus === 'partial',
-                            'bg-destructive/10 text-destructive': item.paymentStatus === 'unpaid',
+                            'bg-chart-quaternary/10 text-chart-quaternary': sale.paymentStatus === 'paid',
+                            'bg-chart-secondary/10 text-chart-secondary': sale.paymentStatus === 'partial',
+                            'bg-destructive/10 text-destructive': sale.paymentStatus === 'unpaid',
                          })}>
-                            {item.paymentStatus === 'paid' ? 'Payé' : item.paymentStatus === 'partial' ? 'Partiel' : 'Impayé'}
+                            {sale.paymentStatus === 'paid' ? 'Payé' : sale.paymentStatus === 'partial' ? 'Partiel' : 'Impayé'}
                         </span>
                     </div>
                      <p className="text-sm text-muted-foreground">
-                        {item.items.length} article(s). {item.paymentStatus !== 'paid' && `Solde restant: ${formatCurrency(item.remainingBalance)}`}
+                        {sale.items.length} article(s). {sale.paymentStatus !== 'paid' && `Solde restant: ${formatCurrency(sale.remainingBalance)}`}
                     </p>
                 </div>
               </TimelineBody>
             </TimelineItem>
           );
-        } else if (isReturn(item)) {
+        } else if (item.type === 'return') {
+            const pr = item as unknown as ProductReturn;
            return (
              <TimelineItem key={`return-${item.id}`}>
                {!isLast && <TimelineConnector />}
@@ -86,21 +77,22 @@ export function CustomerActivity({ activity, onSaleClick, onReturnClick }: Custo
                 <TimelineIcon>
                   <Undo2 className="h-5 w-5 text-chart-secondary" />
                 </TimelineIcon>
-                <TimelineTitle>Retour sur Facture #{item.originalInvoiceNumber}</TimelineTitle>
+                <TimelineTitle>{pr.originalInvoiceNumber}</TimelineTitle>
                  <span className="text-sm text-muted-foreground ml-auto">{formattedDate}</span>
               </TimelineHeader>
                <TimelineBody>
                 <div 
                   className="p-4 bg-chart-secondary/10 rounded-lg hover:bg-chart-secondary/20 transition-colors cursor-pointer"
-                  onClick={() => onReturnClick(item)}
+                  onClick={() => onReturnClick(pr)}
                 >
-                     <p className="font-semibold text-lg text-chart-secondary">- {formatCurrency(item.totalReturnValue)}</p>
-                     <p className="text-sm text-muted-foreground">Remboursé: {formatCurrency(item.amountRefunded)} | {item.items.length} article(s) retourné(s).</p>
+                     <p className="font-semibold text-lg text-chart-secondary">- {formatCurrency(pr.totalReturnValue)}</p>
+                     <p className="text-sm text-muted-foreground">Remboursé: {formatCurrency(pr.amountRefunded)} | {pr.items.length} article(s) retourné(s).</p>
                 </div>
               </TimelineBody>
             </TimelineItem>
           );
-        } else if (isPayment(item)) {
+        } else if (item.type === 'payment') {
+          const payment = item as unknown as Payment;
           return (
              <TimelineItem key={`payment-${item.id}`}>
                {!isLast && <TimelineConnector />}
@@ -113,8 +105,8 @@ export function CustomerActivity({ activity, onSaleClick, onReturnClick }: Custo
               </TimelineHeader>
                <TimelineBody>
                 <div className="p-4 bg-chart-quaternary/10 rounded-lg">
-                     <p className="font-semibold text-lg text-chart-quaternary">{formatCurrency(item.amount)}</p>
-                     <p className="text-sm text-muted-foreground">{item.notes || 'Paiement enregistré.'}</p>
+                     <p className="font-semibold text-lg text-chart-quaternary">{formatCurrency(payment.amount)}</p>
+                     <p className="text-sm text-muted-foreground">{payment.notes || 'Paiement enregistré.'}</p>
                 </div>
               </TimelineBody>
             </TimelineItem>

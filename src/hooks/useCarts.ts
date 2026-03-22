@@ -50,7 +50,7 @@ export const useCarts = () => {
             }
         } catch (error) {
             console.error("Failed to load carts:", error);
-            // Handle error, maybe set a default state
+            toast.error("Erreur critique: impossible de charger les paniers.");
         } finally {
             setIsLoading(false);
         }
@@ -95,7 +95,7 @@ export const useCarts = () => {
         if(!activeCartId) return;
         try {
             await dataService.addProductToCart(activeCartId, product, quantity);
-            await loadCarts(); // Reload carts to reflect changes
+            await loadCarts();
         } catch (e: any) {
             toast.error(e.message || "Erreur lors de l'ajout du produit.");
         }

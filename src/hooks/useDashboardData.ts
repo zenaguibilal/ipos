@@ -47,19 +47,13 @@ export function useDashboardData(dateRange?: DateRange) {
                 previousSales,
                 products,
                 expenses,
-                recentSales,
-                recentIntakes,
-                recentCustomers,
-                recentReturns
+                recentActivity,
             ] = await Promise.all([
                 dataService.getSales({ from, to }),
                 dataService.getSales({ from: prevFrom, to: prevTo }),
                 dataService.getAll<Product>('products'),
                 dataService.getExpenses({ from, to }),
-                dataService.getSales({ from: subDays(new Date(), 7), to: new Date() }),
-                dataService.getStockIntakes({ from: subDays(new Date(), 7), to: new Date() }),
-                dataService.getCustomers({ sortBy: 'createdAt_desc', limit: 5 }),
-                dataService.getReturns({ from: subDays(new Date(), 7), to: new Date() }),
+                dataService.getGlobalActivity({ limit: 8 }),
             ]);
 
             // Process data
@@ -118,14 +112,6 @@ export function useDashboardData(dateRange?: DateRange) {
               .filter(p => p.quantity <= p.minStockLevel)
               .sort((a, b) => a.quantity - b.quantity)
               .slice(0, 5);
-
-            const activity: GlobalActivityItem[] = [
-                ...recentSales.map(s => ({ type: 'sale', date: new Date(s.createdAt!), id: s.id!, description: `Vente #${s.invoiceNumber}`, details: s.customerName || 'Client de passage', amount: s.total, amountClass: 'text-primary' } as GlobalActivityItem)),
-                ...recentIntakes.map(i => ({ type: 'stock_intake', date: new Date(i.createdAt!), id: i.id!, description: `Réception de ${i.supplierName}`, details: `${i.items.length} article(s)`, amount: i.totalValue, amountClass: 'text-[hsl(var(--chart-quaternary))]' } as GlobalActivityItem)),
-                ...recentReturns.map(r => ({ type: 'return', date: new Date(r.createdAt!), id: r.id!, description: `Retour sur facture #${r.originalInvoiceNumber}`, details: `${r.items.length} article(s) retourné(s)`, amount: r.totalReturnValue, amountClass: 'text-destructive' } as GlobalActivityItem)),
-                ...recentCustomers.map(c => ({ type: 'customer', date: new Date(c.createdAt!), id: c.id!, description: 'Nouveau client', details: `${c.firstName} ${c.lastName}` } as GlobalActivityItem)),
-            ];
-            const recentActivity = activity.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 8);
 
             const productSales = new Map<number, { product: Product; totalVendu: number }>();
             currentSales.forEach(sale => {

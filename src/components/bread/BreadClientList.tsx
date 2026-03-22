@@ -21,8 +21,9 @@ export function BreadClientList({ onDataChange }: BreadClientListProps) {
     const [selectedClient, setSelectedClient] = useState<BreadClient | null>(null);
     const [clients, setClients] = useState<BreadClient[] | undefined>(undefined);
 
-    const loadClients = useCallback(() => {
-        dataService.getBreadClients().then(setClients);
+    const loadClients = useCallback(async () => {
+        const loadedClients = await dataService.getBreadClients();
+        setClients(loadedClients);
     }, []);
     
     useEffect(() => {

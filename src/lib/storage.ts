@@ -10,15 +10,14 @@
 
 import { TABLES, type TableName } from './types';
 
-const DB_NAME = 'iPOS';
+const DB_NAME = 'iPOS_DB';
 const DB_VERSION = 1;
 
 let dbPromise: Promise<IDBDatabase> | null = null;
 
 export function openDB(): Promise<IDBDatabase> {
     if (typeof window === 'undefined') {
-        // This is a server-side mock. It will never resolve, which is fine
-        // because it should never be called on the server.
+        // This is a server-side mock. It will never resolve.
         return new Promise(() => {});
     }
     if (dbPromise) {
@@ -33,18 +32,22 @@ export function openDB(): Promise<IDBDatabase> {
 
             Object.values(TABLES).forEach(tableName => {
                 if (!db.objectStoreNames.contains(tableName)) {
-                    const isAutoIncrement = !['carts', 'settings', 'companyProfile'].includes(tableName);
-                    const store = db.createObjectStore(tableName, {
-                        keyPath: 'id',
-                        autoIncrement: isAutoIncrement,
-                    });
+                    let keyPath = 'id';
+                    let autoIncrement = true;
+                    if (['carts', 'settings'].includes(tableName)) {
+                        autoIncrement = false;
+                    } else if (tableName === 'companyProfile') {
+                        autoIncrement = false;
+                    }
+                    
+                    const store = db.createObjectStore(tableName, { keyPath, autoIncrement });
 
-                    // Define indexes for each table
                     switch (tableName) {
                         case 'products':
                             store.createIndex('name', 'name', { unique: false });
+                            store.createIndex('barcodes', 'barcodes', { multiEntry: true });
                             store.createIndex('category', 'category', { unique: false });
-                            store.createIndex('barcodes_idx', 'barcodes', { multiEntry: true });
+                            store.createIndex('fournisseurId', 'fournisseurId', { unique: false });
                             break;
                         case 'customers':
                             store.createIndex('searchName', 'searchName', { unique: false });
@@ -52,10 +55,9 @@ export function openDB(): Promise<IDBDatabase> {
                             store.createIndex('firstName', 'firstName', { unique: false });
                             break;
                         case 'sales':
-                            store.createIndex('customerId', 'customerId', { unique: false });
-                            store.createIndex('paymentStatus', 'paymentStatus', { unique: false });
-                            store.createIndex('createdAt', 'createdAt', { unique: false });
                             store.createIndex('invoiceNumber', 'invoiceNumber', { unique: true });
+                            store.createIndex('createdAt', 'createdAt', { unique: false });
+                            store.createIndex('customerId', 'customerId', { unique: false });
                             break;
                         case 'payments':
                             store.createIndex('customerId', 'customerId', { unique: false });
@@ -64,12 +66,8 @@ export function openDB(): Promise<IDBDatabase> {
                             store.createIndex('supplierId', 'supplierId', { unique: false });
                             break;
                         case 'expenses':
-                            store.createIndex('category', 'category', { unique: false });
-                            store.createIndex('expenseDate', 'expenseDate', { unique: false });
-                            break;
-                        case 'notifications':
-                            store.createIndex('isRead', 'isRead', { unique: false });
-                            store.createIndex('type', 'type', { unique: false });
+                             store.createIndex('expenseDate', 'expenseDate', { unique: false });
+                             store.createIndex('category', 'category', { unique: false });
                             break;
                         case 'inventoryLogs':
                             store.createIndex('productId', 'productId', { unique: false });
@@ -79,12 +77,9 @@ export function openDB(): Promise<IDBDatabase> {
                             break;
                         case 'clients_pain':
                             store.createIndex('actif', 'actif', { unique: false });
-                            store.createIndex('type_recurrence', 'type_recurrence', { unique: false });
                             break;
                         case 'commandes_pain':
                             store.createIndex('date', 'date', { unique: false });
-                            store.createIndex('est_paye', 'est_paye', { unique: false });
-                            store.createIndex('est_livre', 'est_livre', { unique: false });
                             store.createIndex('client_pain_id', 'client_pain_id', { unique: false });
                             break;
                     }
@@ -113,8 +108,6 @@ export function promisify<T>(request: IDBRequest<T>): Promise<T> {
   });
 }
 
-// --- Basic CRUD ---
-
 export async function getAll<T>(table: TableName): Promise<T[]> {
   const db = await openDB();
   const tx = db.transaction(table, 'readonly');
@@ -123,6 +116,7 @@ export async function getAll<T>(table: TableName): Promise<T[]> {
 }
 
 export async function getById<T>(table: TableName, id: IDBValidKey): Promise<T | undefined> {
+  if (id === undefined || id === null) return undefined;
   const db = await openDB();
   const tx = db.transaction(table, 'readonly');
   const store = tx.objectStore(table);
@@ -167,7 +161,7 @@ export async function remove(table: TableName, id: IDBValidKey): Promise<void> {
 
 export async function where<T>(table: TableName, indexName: string, value: any): Promise<T[]> {
   const db = await openDB();
-  const store = db.transaction(table).objectStore(table);
+  const store = db.transaction(table, 'readonly').objectStore(table);
   if (!store.indexNames.contains(indexName)) {
     console.warn(`Index '${indexName}' does not exist on table '${table}'. Performing a full table scan.`);
     const allItems = await getAll<any>(table);
@@ -187,4 +181,24 @@ export async function clearTable(table: TableName): Promise<void> {
   const db = await openDB();
   const tx = db.transaction(table, 'readwrite');
   await promisify(tx.objectStore(table).clear());
+  await promisify(tx.done);
+}
+
+export async function resetDatabase(): Promise<void> {
+    const db = await dbPromise;
+    if (db) {
+        db.close();
+    }
+    await new Promise<void>((resolve, reject) => {
+        const deleteRequest = indexedDB.deleteDatabase(DB_NAME);
+        deleteRequest.onsuccess = () => {
+            dbPromise = null;
+            resolve();
+        };
+        deleteRequest.onerror = (e) => reject((e.target as IDBOpenDBRequest).error);
+        deleteRequest.onblocked = () => {
+            console.warn("Delete blocked");
+            reject(new Error("La suppression de la base de données est bloquée."));
+        }
+    });
 }

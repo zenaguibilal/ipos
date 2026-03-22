@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { dataService } from '@/services/data-service';
 import type { Product } from '@/lib/types';
 import {
@@ -19,6 +19,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { ChevronsUpDown, Plus } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
+import { useDebounce } from '@/hooks/useDebounce';
 
 interface ProductIntakeComboboxProps {
     onProductSelected: (product: Product) => void;
@@ -28,21 +29,24 @@ interface ProductIntakeComboboxProps {
 export function ProductIntakeCombobox({ onProductSelected, onNewProductCreated }: ProductIntakeComboboxProps) {
     const [comboboxOpen, setComboboxOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    const debouncedSearchQuery = useDebounce(searchQuery, 200);
     const [products, setProducts] = useState<Product[]>([]);
 
     useEffect(() => {
-        dataService.getAll<Product>('products').then(setProducts);
-    }, []);
+        if(comboboxOpen) {
+            dataService.getAll<Product>('products').then(setProducts);
+        }
+    }, [comboboxOpen]);
 
     const filteredProducts = useMemo(() => {
         if (!products) return [];
-        if (!searchQuery) return products;
-        const lowerQuery = searchQuery.toLowerCase();
+        if (!debouncedSearchQuery) return products.slice(0, 50); // Limit initial list size
+        const lowerQuery = debouncedSearchQuery.toLowerCase();
         return products.filter(p => 
             p.name.toLowerCase().includes(lowerQuery) ||
             (p.barcodes && p.barcodes.some(b => b.includes(lowerQuery)))
         );
-    }, [products, searchQuery]);
+    }, [products, debouncedSearchQuery]);
 
     const handleSelect = (productId: string) => {
         const product = products?.find(p => String(p.id!) === productId);
@@ -76,6 +80,7 @@ export function ProductIntakeCombobox({ onProductSelected, onNewProductCreated }
                 <Command>
                     <CommandInput 
                         placeholder="Rechercher par nom ou code-barres..." 
+                        value={searchQuery}
                         onValueChange={setSearchQuery} 
                     />
                     <CommandList>

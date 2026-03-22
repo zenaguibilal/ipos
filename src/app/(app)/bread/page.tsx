@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { dataService } from '@/services/data-service';
 import { formatDateToYYYYMMDD } from '@/lib/utils';
-import { addDays, subDays, format } from 'date-fns';
+import { addDays, format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -11,7 +11,7 @@ import { BreadClientList } from '@/components/bread/BreadClientList';
 import { BreadDayView } from '@/components/bread/BreadDayView';
 import { BreadStats } from '@/components/bread/BreadStats';
 import { Loader2 } from 'lucide-react';
-import type { BreadOrderWithClient, CompanyProfile } from '@/lib/types';
+import type { BreadOrderWithClient } from '@/lib/types';
 import { toast } from 'sonner';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle } from 'lucide-react';
@@ -29,26 +29,32 @@ export default function BreadPage() {
         setCurrentDate(new Date());
     }, []);
 
-    const formattedDate = currentDate ? formatDateToYYYYMMDD(currentDate) : '';
+    const formattedDate = useMemo(() => currentDate ? formatDateToYYYYMMDD(currentDate) : '', [currentDate]);
 
     const fetchOrders = useCallback(async (date: string) => {
       if (!date) return;
       setIsLoading(true);
-      const ordersExist = await dataService.checkIfBreadOrdersExist(date);
-      if (!ordersExist) {
-          setIsGenerating(true);
-          try {
-              await dataService.createDayOrders(date);
-          } catch (error) {
-              console.error("Failed to generate daily orders:", error);
-              toast.error("Erreur lors de la génération des commandes du jour.");
-          } finally {
-              setIsGenerating(false);
-          }
+      try {
+        const ordersExist = await dataService.checkIfBreadOrdersExist(date);
+        if (!ordersExist) {
+            setIsGenerating(true);
+            try {
+                await dataService.createDayOrders(date);
+            } catch (error) {
+                console.error("Failed to generate daily orders:", error);
+                toast.error("Erreur lors de la génération des commandes du jour.");
+            } finally {
+                setIsGenerating(false);
+            }
+        }
+        const fetchedOrders = await dataService.getBreadOrdersForDate(date);
+        setOrders(fetchedOrders);
+      } catch (error) {
+          console.error("Failed to fetch orders:", error);
+          toast.error("Erreur lors de la récupération des commandes.");
+      } finally {
+          setIsLoading(false);
       }
-      const fetchedOrders = await dataService.getBreadOrdersForDate(date);
-      setOrders(fetchedOrders);
-      setIsLoading(false);
     }, []);
 
     const handleDataChange = useCallback(() => {
@@ -56,9 +62,9 @@ export default function BreadPage() {
             fetchOrders(formattedDate);
         }
     }, [formattedDate, fetchOrders]);
-
+    
     useEffect(() => {
-      dataService.getCompanyProfile().then(p => setBreadPriceSetting(p?.prix_pain));
+        dataService.getCompanyProfile().then(p => setBreadPriceSetting(p?.prix_pain));
     }, []);
     
     useEffect(() => {

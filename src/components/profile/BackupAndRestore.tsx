@@ -150,7 +150,7 @@ export function BackupAndRestore() {
                  <div className="space-y-2">
                     <h4 className="font-semibold">Restaurer une sauvegarde</h4>
                     <p className="text-sm text-muted-foreground">
-                        <span className="font-bold text-destructive">Attention:</span> Ouvre une interface pour prévisualiser, modifier et restaurer.
+                        <span className="font-bold text-destructive">Attention:</span> Ouvre une interface pour prévisualiser et restaurer les données, ce qui écrasera les données actuelles des tables sélectionnées.
                     </p>
                 </div>
             </CardContent>

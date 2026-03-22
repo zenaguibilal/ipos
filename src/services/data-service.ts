@@ -1,7 +1,7 @@
 'use client';
 
-import { openDB, promisify, add, getById, getAll, update, remove, where, clearTable } from '@/lib/storage';
-import type { TableName, Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, Notification, InventoryLog, StockIntakeItem, ZakatData, CostingItem, Draft, Supplier, ImportAnalysis, BreadClient, BreadOrder, BreadOrderWithClient, DB, ProductImportAnalysis, GlobalActivityItem, DashboardDataType } from '@/lib/types';
+import { openDB, promisify, add, getById, getAll, update, remove, where, clearTable, resetDatabase as resetDB } from '@/lib/storage';
+import type { TableName, Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, InventoryLog, StockIntakeItem, ZakatData, CostingItem, Draft, Supplier, ImportAnalysis, BreadClient, BreadOrder, BreadOrderWithClient, DB, ProductImportAnalysis, GlobalActivityItem, DashboardDataType } from '@/lib/types';
 import { subDays } from 'date-fns';
 import Papa from 'papaparse';
 import { calculateCartTotals } from '@/lib/utils';
@@ -11,10 +11,12 @@ import { sheetsService } from './googleSheets';
 class DataService {
   
   async getAll<T>(table: TableName): Promise<T[]> {
+    if (typeof window === 'undefined') return [];
     return getAll<T>(table);
   }
 
   async getById<T>(table: TableName, id: any): Promise<T | undefined> {
+    if (typeof window === 'undefined') return undefined;
     if (id === undefined || id === null) return undefined;
     return getById<T>(table, id);
   }
@@ -155,37 +157,62 @@ class DataService {
   }
 
   async getProductByBarcode(barcode: string): Promise<Product | undefined> {
-    const products = await where<Product>('products', 'barcodes_idx', barcode);
+    const products = await where<Product>('products', 'barcodes', barcode);
     return products[0];
   }
 
   async addProduct(productData: Omit<Product, 'id'>): Promise<Product> {
-      const newProduct = await add<Product>('products', productData);
-      await add<InventoryLog>('inventoryLogs', {
-            productId: newProduct.id as number,
+      const db = await openDB();
+      const tx = db.transaction(['products', 'inventoryLogs'], 'readwrite');
+      const productsStore = tx.objectStore('products');
+      const logsStore = tx.objectStore('inventoryLogs');
+
+      const now = new Date();
+      const newItem = {
+        ...productData,
+        createdAt: (productData as any).createdAt ?? now,
+        updatedAt: now,
+      };
+
+      const newProductId = await promisify(productsStore.add(newItem));
+
+      await promisify(logsStore.add({
+            productId: newProductId as number,
             change: productData.quantity,
             newQuantity: productData.quantity,
             reason: 'stock_intake',
-            relatedId: `init-${newProduct.id as number}`,
-        });
+            relatedId: `init-${newProductId as number}`,
+            createdAt: now,
+        }));
+      
+      await promisify(tx.done);
+      const newProduct = { ...newItem, id: newProductId };
       sheetsService.addToQueue('products', 'upsert', newProduct);
       return newProduct;
   }
 
   async updateProduct(id: number, productData: Partial<Omit<Product, 'id'>>): Promise<Product | undefined> {
     const oldProduct = await this.getById<Product>('products', id);
-    const updatedProduct = await update<Product>('products', id, productData);
-    
-    if (updatedProduct && oldProduct && productData.quantity !== undefined && oldProduct.quantity !== productData.quantity) {
-        await add<InventoryLog>('inventoryLogs', {
+    if (oldProduct && productData.quantity !== undefined && oldProduct.quantity !== productData.quantity) {
+        const db = await openDB();
+        const tx = db.transaction(['products', 'inventoryLogs'], 'readwrite');
+        const logsStore = tx.objectStore('inventoryLogs');
+        const updatedProduct = await update<Product>('products', id, productData);
+        await promisify(logsStore.add({
           productId: id,
           change: (productData.quantity || 0) - oldProduct.quantity,
           newQuantity: productData.quantity!,
           reason: 'manual_adjustment',
-        });
+          createdAt: new Date(),
+        }));
+        await promisify(tx.done);
+        if (updatedProduct) sheetsService.addToQueue('products', 'upsert', updatedProduct);
+        return updatedProduct;
+    } else {
+        const updatedProduct = await update<Product>('products', id, productData);
+        if (updatedProduct) sheetsService.addToQueue('products', 'upsert', updatedProduct);
+        return updatedProduct;
     }
-    if (updatedProduct) sheetsService.addToQueue('products', 'upsert', updatedProduct);
-    return updatedProduct;
   }
 
   async deleteProduct(id: number): Promise<void> {
@@ -196,7 +223,7 @@ class DataService {
       const logsStore = tx.objectStore('inventoryLogs');
       const productsStore = tx.objectStore('products');
       for(const logId of logIds) {
-        logsStore.delete(logId);
+        if(logId) logsStore.delete(logId);
       }
       productsStore.delete(id);
       await promisify(tx.done);
@@ -353,14 +380,29 @@ class DataService {
   }
 
   async addCustomer(customer: Omit<Customer, 'id' | 'totalSpent' | 'outstandingBalance' | 'lastActivityDate'>): Promise<Customer> {
-      const data = { ...customer, totalSpent: 0, outstandingBalance: 0 };
+      const data = { 
+        ...customer, 
+        totalSpent: 0, 
+        outstandingBalance: 0,
+        searchName: `${customer.firstName.toLowerCase()} ${customer.lastName.toLowerCase()}`
+      };
       const newCustomer = await add<Customer>('customers', data);
       sheetsService.addToQueue('customers', 'upsert', newCustomer);
       return newCustomer;
   }
 
   async updateCustomer(id: number, customerData: Partial<Omit<Customer, 'id'>>): Promise<Customer | undefined> {
-      const updatedCustomer = await update<Customer>('customers', id, customerData);
+      const existingCustomer = await this.getById<Customer>('customers', id);
+      if(!existingCustomer) return;
+      
+      const updatedData = {...customerData};
+      if(customerData.firstName || customerData.lastName) {
+        const newFirstName = customerData.firstName || existingCustomer.firstName;
+        const newLastName = customerData.lastName || existingCustomer.lastName;
+        updatedData.searchName = `${newFirstName.toLowerCase()} ${newLastName.toLowerCase()}`;
+      }
+      
+      const updatedCustomer = await update<Customer>('customers', id, updatedData);
       if (updatedCustomer) sheetsService.addToQueue('customers', 'upsert', updatedCustomer);
       return updatedCustomer;
   }
@@ -457,7 +499,8 @@ class DataService {
     }
   
     async getBreadClients(): Promise<BreadClient[]> {
-        return this.getAll<BreadClient>('clients_pain');
+        const clients = await this.getAll<BreadClient>('clients_pain');
+        return clients.sort((a, b) => a.nom.localeCompare(b.nom));
     }
 
     async addBreadClient(client: Omit<BreadClient, 'id'>): Promise<BreadClient> {
@@ -504,8 +547,9 @@ class DataService {
   async updateBreadOrderQuantity(orderId: number, newQuantity: number): Promise<BreadOrder | undefined> {
     const order = await this.getById<BreadOrder>('commandes_pain', orderId);
     if (!order) return undefined;
-    const updated = await update<BreadOrder>('commandes_pain', orderId, { quantite: newQuantity, quantite_origine: order.quantite });
-    if (updated) sheetsService.addToQueue('commandes_pain', 'upsert', {id: orderId, quantite: newQuantity, quantite_origine: order.quantite});
+    const quantite_origine = order.quantite_origine === undefined ? order.quantite : order.quantite_origine;
+    const updated = await update<BreadOrder>('commandes_pain', orderId, { quantite: newQuantity, quantite_origine });
+    if (updated) sheetsService.addToQueue('commandes_pain', 'upsert', {id: orderId, quantite: newQuantity, quantite_origine });
     return updated;
   }
 
@@ -523,8 +567,13 @@ class DataService {
   async createDayOrders(date: string): Promise<void> {
     const dayOfWeek = BREAD_WEEK_DAYS[new Date(date.replace(/-/g, '/')).getUTCDay()];
     const activeClients = (await this.getAll<BreadClient>('clients_pain')).filter(c => c.actif);
+    const existingOrders = await where<BreadOrder>('commandes_pain', 'date', date);
+    const existingClientIds = new Set(existingOrders.map(o => o.client_pain_id));
+
     const ordersToCreate: Omit<BreadOrder, 'id'>[] = [];
     for (const client of activeClients) {
+      if (existingClientIds.has(client.id!)) continue;
+      
       let quantity: number | undefined;
       if (client.type_recurrence === 'quotidien') quantity = client.quantite_defaut;
       else if (client.type_recurrence === 'jours_specifiques' && client.jours_semaine?.[dayOfWeek]?.actif) {
@@ -542,7 +591,6 @@ class DataService {
           await promisify(store.add(order));
       }
       await promisify(tx.done);
-      // Note: Batching for sheetsService would be better here
       ordersToCreate.forEach(o => sheetsService.addToQueue('commandes_pain', 'upsert', o));
     }
   }
@@ -564,11 +612,13 @@ class DataService {
     const salesStore = tx.objectStore('sales');
     const ordersStore = tx.objectStore('commandes_pain');
     const customersStore = tx.objectStore('customers');
+    const logsStore = tx.objectStore('inventoryLogs');
 
-    const breadProducts = await promisify(productsStore.index('name').getAll('Pain'));
+    const breadProducts = await where<Product>('products', 'name', 'Pain');
     const breadProduct = breadProducts[0];
     if (!breadProduct) throw new Error("Le produit 'Pain' n'a pas été trouvé.");
-
+    if (!breadProduct.id || typeof breadProduct.id !== 'number') throw new Error("ID du produit 'Pain' invalide.");
+    
     for (const orderId of orderIds) {
         const order = await promisify(ordersStore.get(orderId));
         if (order && !order.vente_id) {
@@ -576,12 +626,13 @@ class DataService {
             const salesCount = await promisify(salesStore.count());
             const invoiceNumber = `INV-${new Date().getFullYear()}-${(salesCount + 1).toString().padStart(5, '0')}`;
             
-            const saleData = { 
+            const saleTotal = breadPrice * order.quantite;
+            const saleData: Omit<Sale, 'id'> = { 
                 items: [{ id: breadProduct.id!, name: "Pain", price: breadPrice, purchasePrice: breadProduct.purchasePrice, quantity: order.quantite }], 
-                subtotal: breadPrice * order.quantite,
-                total: breadPrice * order.quantite,
+                subtotal: saleTotal,
+                total: saleTotal,
                 amountPaid: 0, payments: [], clientPainId: order.client_pain_id, 
-                customerName: client?.nom, invoiceNumber, remainingBalance: breadPrice * order.quantite, 
+                customerName: client?.nom, invoiceNumber, remainingBalance: saleTotal, 
                 paymentStatus: 'unpaid' as const, createdAt: new Date(), updatedAt: new Date()
             };
             const saleId = await promisify(salesStore.add(saleData));
@@ -589,8 +640,13 @@ class DataService {
             await promisify(ordersStore.put({ ...order, vente_id: saleId, est_paye: true }));
             sheetsService.addToQueue('commandes_pain', 'upsert', { ...order, vente_id: saleId, est_paye: true });
 
+            const newProductQuantity = breadProduct.quantity - order.quantite;
+            await promisify(productsStore.put({...breadProduct, quantity: newProductQuantity }));
+            await promisify(logsStore.add({ productId: breadProduct.id, change: -order.quantite, newQuantity: newProductQuantity, reason: 'sale', relatedId: saleId, createdAt: new Date() }));
+
+
             if (client?.nom) {
-                const allCustomers = await promisify(customersStore.getAll());
+                const allCustomers = await this.getAll<Customer>('customers');
                 const mainCustomer = allCustomers.find((c: Customer) => (c.firstName + ' ' + c.lastName).toLowerCase() === client.nom.toLowerCase());
                 if (mainCustomer && mainCustomer.id) {
                    await promisify(customersStore.put({...mainCustomer, outstandingBalance: mainCustomer.outstandingBalance + saleData.total, lastActivityDate: new Date() }));
@@ -725,7 +781,11 @@ class DataService {
         const intakesStore = tx.objectStore('stockIntakes');
         
         let supplier = (await where<Supplier>('suppliers', 'name', intakeData.supplierName))[0];
-        if(!supplier) supplier = await add<Supplier>('suppliers', { name: intakeData.supplierName, balance: 0 });
+        if(!supplier) {
+            const newSupplierData = { name: intakeData.supplierName, balance: 0 };
+            const newId = await promisify(suppliersStore.add(newSupplierData));
+            supplier = { ...newSupplierData, id: newId as number };
+        }
         
         const intakeItems = [];
         for (const item of items) {
@@ -744,8 +804,9 @@ class DataService {
         }
         
         const totalValue = intakeItems.reduce((acc, item) => acc + (item.purchasePrice * item.quantityReceived), 0);
-        const newIntakeData: Omit<StockIntake, 'id'> = { ...intakeData, supplierId: supplier.id!, supplierName: intakeData.supplierName, items: intakeItems, totalValue };
-        const newIntake = await add<StockIntake>('stockIntakes', newIntakeData);
+        const newIntakeData: Omit<StockIntake, 'id'> = { ...intakeData, supplierId: supplier.id!, supplierName: intakeData.supplierName, items: intakeItems, totalValue, createdAt: new Date(), updatedAt: new Date() };
+        const newIntakeId = await promisify(intakesStore.add(newIntakeData));
+        const newIntake = { ...newIntakeData, id: newIntakeId as number };
         sheetsService.addToQueue('stockIntakes', 'upsert', newIntake);
         await promisify(tx.done);
         return newIntake;
@@ -769,9 +830,9 @@ class DataService {
         for (const item of newReturn.items) {
             if(item.productId && item.wasRestocked) {
                 const product = await this.getById<Product>('products', item.productId);
-                if(product) {
+                if(product && product.id) {
                     const newQuantity = product.quantity + item.quantity;
-                    await this.updateProduct(item.productId, { quantity: newQuantity });
+                    await this.updateProduct(product.id as number, { quantity: newQuantity });
                     await add<InventoryLog>('inventoryLogs', { productId: item.productId, change: item.quantity, newQuantity, reason: 'return', relatedId: newReturn.id });
                 }
             }
@@ -792,14 +853,19 @@ class DataService {
         const pr = await this.getById<ProductReturn>('returns', returnId);
         if (!pr) return;
         const db = await openDB();
-        const tx = db.transaction(['returns', 'products', 'customers'], 'readwrite');
+        const tx = db.transaction(['returns', 'products', 'customers', 'inventoryLogs'], 'readwrite');
         const productsStore = tx.objectStore('products');
         const customersStore = tx.objectStore('customers');
+        const logsStore = tx.objectStore('inventoryLogs');
 
         for (const item of pr.items) {
             if (item.productId && item.wasRestocked) {
                 const product = await promisify(productsStore.get(item.productId));
-                if (product) await promisify(productsStore.put({ ...product, quantity: product.quantity - item.quantity }));
+                if (product) {
+                    const newQuantity = product.quantity - item.quantity;
+                    await promisify(productsStore.put({ ...product, quantity: newQuantity }));
+                    await promisify(logsStore.add({ productId: item.productId, change: -item.quantity, newQuantity, reason: 'cancellation', relatedId: `cancel-return-${returnId}`, createdAt: new Date() }));
+                }
             }
         }
         if (pr.customerId) {
@@ -881,29 +947,54 @@ class DataService {
         const total = tablesToRestore.length;
         let current = 0;
         const done: { table: string; success: boolean; error?: string }[] = [];
+        
         for (const tableName of tablesToRestore) {
             current++;
+            onProgress({ current, total, currentTable: tableName, done });
             try {
                 if (backupData[tableName as keyof typeof backupData]) {
-                    const records = backupData[tableName as keyof typeof backupData] as any[];
                     await clearTable(tableName as TableName);
-                    for (const record of records) {
-                        await add(tableName as TableName, record);
+                    const records = backupData[tableName as keyof typeof backupData] as any[];
+                    if (records.length > 0) {
+                        const db = await openDB();
+                        const tx = db.transaction(tableName, 'readwrite');
+                        const store = tx.objectStore(tableName);
+                        for (const record of records) {
+                            // Don't auto-generate createdAt/updatedAt for restores
+                            await promisify(store.put(record));
+                        }
+                        await promisify(tx.done);
                     }
                     done.push({ table: tableName, success: true });
-                    onProgress({ current, total, currentTable: tableName, done });
                 }
             } catch (e: any) {
                 done.push({ table: tableName, success: false, error: e.message });
+            } finally {
                 onProgress({ current, total, currentTable: tableName, done });
             }
         }
     }
     
     async resetDatabase(): Promise<void> {
-        const db = await openDB();
-        db.close();
-        await promisify(indexedDB.deleteDatabase('iPOS'));
+        await resetDB();
+    }
+    
+    async getGlobalActivity(options: { limit?: number } = {}): Promise<GlobalActivityItem[]> {
+      const { limit = 10 } = options;
+      const [sales, intakes, returns, customers] = await Promise.all([
+        this.getSales({}),
+        this.getStockIntakes({}),
+        this.getReturns({}),
+        this.getCustomers({}),
+      ]);
+
+      const activity: GlobalActivityItem[] = [];
+      sales.forEach(s => s.createdAt && activity.push({ type: 'sale', date: new Date(s.createdAt), id: s.id!, description: `Vente #${s.invoiceNumber}`, details: s.customerName || 'Client de passage', amount: s.total, amountClass: 'text-primary' }));
+      intakes.forEach(i => i.createdAt && activity.push({ type: 'stock_intake', date: new Date(i.createdAt), id: i.id!, description: `Réception de ${i.supplierName}`, details: `${i.items.length} article(s)`, amount: i.totalValue, amountClass: 'text-yellow-400' }));
+      returns.forEach(r => r.createdAt && activity.push({ type: 'return', date: new Date(r.createdAt), id: r.id!, description: `Retour sur facture #${r.originalInvoiceNumber}`, details: `${r.items.length} article(s) retourné(s)`, amount: r.totalReturnValue, amountClass: 'text-destructive' }));
+      customers.forEach(c => c.createdAt && activity.push({ type: 'customer', date: new Date(c.createdAt), id: c.id!, description: `Nouveau client`, details: `${c.firstName} ${c.lastName}`}));
+      
+      return activity.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, limit);
     }
 }
 
