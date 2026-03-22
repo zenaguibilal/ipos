@@ -95,7 +95,6 @@ export default function ExpenseDialog({ isOpen, onOpenChange, expense }: Expense
         } catch (err) {
             setError("Une erreur est survenue.");
             toast.error("Échec de l'opération.");
-            console.error(err);
         } finally {
             setIsLoading(false);
         }

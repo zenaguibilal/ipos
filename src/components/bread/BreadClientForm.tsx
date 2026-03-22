@@ -84,7 +84,6 @@ export function BreadClientForm({ isOpen, onOpenChange, client }: BreadClientFor
             onOpenChange(false);
         } catch (error) {
             toast.error("Une erreur est survenue.");
-            console.error(error);
         } finally {
             setIsLoading(false);
         }
@@ -99,7 +98,6 @@ export function BreadClientForm({ isOpen, onOpenChange, client }: BreadClientFor
             onOpenChange(false);
         } catch (error) {
             toast.error("Erreur lors de la suppression du client.");
-            console.error(error);
         } finally {
             setIsLoading(false);
             setDeleteAlertOpen(false);

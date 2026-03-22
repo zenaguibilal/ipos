@@ -23,7 +23,7 @@ export function BarcodeLabel({ product }: BarcodeLabelProps) {
           margin: 0,
         });
       } catch (e) {
-        console.error("Erreur de génération du code-barres:", e);
+        
       }
     }
   }, [product.barcodes]);

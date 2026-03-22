@@ -1,7 +1,7 @@
 'use client';
 
 import Dexie, { type Table } from 'dexie';
-import type { Product, Customer, Sale, Payment, StockIntake, ProductReturn, Cart, CompanyProfile, Expense, Setting, Notification, InventoryLog, Draft, Supplier, BreadClient, BreadOrder } from './types';
+import type { Product, Customer, Sale, Payment, StockIntake, ProductReturn, Cart, CompanyProfile, Expense, Setting, InventoryLog, Draft, Supplier, BreadClient, BreadOrder } from './types';
 
 export class PosDatabase extends Dexie {
     products!: Table<Product, number>;
@@ -15,7 +15,6 @@ export class PosDatabase extends Dexie {
     companyProfile!: Table<CompanyProfile, number>;
     expenses!: Table<Expense, number>;
     settings!: Table<Setting, string>;
-    notifications!: Table<Notification, number>;
     inventoryLogs!: Table<InventoryLog, number>;
     suppliers!: Table<Supplier, number>;
     clients_pain!: Table<BreadClient, number>;
@@ -35,7 +34,6 @@ export class PosDatabase extends Dexie {
             companyProfile: 'id', // Singleton table
             expenses: '++id, category, expenseDate',
             settings: '&id', // Key-value store for UI state and preferences
-            notifications: '++id, createdAt, isRead, type, [type+isRead]',
             inventoryLogs: '++id, productId, createdAt, reason',
             suppliers: '++id, &name',
             clients_pain: '++id, nom, actif, type_recurrence',
