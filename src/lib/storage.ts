@@ -3,7 +3,7 @@
 import { TABLES, type TableName } from './types';
 
 const DB_NAME = 'iPOS_DB_NATIVE';
-const DB_VERSION = 1;
+const DB_VERSION = 2; // Incremented version to trigger upgrade
 
 let dbPromise: Promise<IDBDatabase> | null = null;
 
@@ -21,8 +21,10 @@ function openDB(): Promise<IDBDatabase> {
 
         request.onupgradeneeded = (event) => {
             const db = (event.target as IDBOpenDBRequest).result;
+            const tx = (event.target as IDBOpenDBRequest).transaction;
 
             Object.values(TABLES).forEach(tableName => {
+                let store: IDBObjectStore;
                 if (!db.objectStoreNames.contains(tableName)) {
                     let keyPath = 'id';
                     let autoIncrement = true;
@@ -31,50 +33,87 @@ function openDB(): Promise<IDBDatabase> {
                     } else if (tableName === 'companyProfile') {
                         autoIncrement = false;
                     }
-                    
-                    const store = db.createObjectStore(tableName, { keyPath, autoIncrement });
+                    store = db.createObjectStore(tableName, { keyPath, autoIncrement });
+                } else {
+                    store = tx!.objectStore(tableName);
+                }
 
-                    switch (tableName) {
-                        case 'products':
-                            store.createIndex('name', 'name', { unique: false });
-                            if (!store.indexNames.contains('barcodes')) store.createIndex('barcodes', 'barcodes', { multiEntry: true });
-                            store.createIndex('category', 'category', { unique: false });
-                            store.createIndex('fournisseurId', 'fournisseurId', { unique: false });
-                            break;
-                        case 'customers':
-                            store.createIndex('searchName', 'searchName', { unique: false });
-                            store.createIndex('lastName', 'lastName', { unique: false });
-                            store.createIndex('firstName', 'firstName', { unique: false });
-                            break;
-                        case 'sales':
-                            store.createIndex('invoiceNumber', 'invoiceNumber', { unique: true });
-                            store.createIndex('createdAt', 'createdAt', { unique: false });
-                            store.createIndex('customerId', 'customerId', { unique: false });
-                            break;
-                        case 'payments':
-                            store.createIndex('customerId', 'customerId', { unique: false });
-                            break;
-                        case 'stockIntakes':
-                            store.createIndex('supplierId', 'supplierId', { unique: false });
-                            break;
-                        case 'expenses':
-                             store.createIndex('expenseDate', 'expenseDate', { unique: false });
-                             store.createIndex('category', 'category', { unique: false });
-                            break;
-                        case 'inventoryLogs':
-                            store.createIndex('productId', 'productId', { unique: false });
-                            break;
-                        case 'suppliers':
-                            store.createIndex('name', 'name', { unique: true });
-                            break;
-                        case 'clients_pain':
-                            store.createIndex('actif', 'actif', { unique: false });
-                            break;
-                        case 'commandes_pain':
-                            store.createIndex('date', 'date', { unique: false });
-                            store.createIndex('client_pain_id', 'client_pain_id', { unique: false });
-                            break;
-                    }
+                // Add indexes based on old Dexie schema for performance
+                switch (tableName) {
+                    case 'products':
+                        if (!store.indexNames.contains('name')) store.createIndex('name', 'name', { unique: false });
+                        if (!store.indexNames.contains('barcodes')) store.createIndex('barcodes', 'barcodes', { multiEntry: true });
+                        if (!store.indexNames.contains('category')) store.createIndex('category', 'category', { unique: false });
+                        if (!store.indexNames.contains('fournisseurId')) store.createIndex('fournisseurId', 'fournisseurId', { unique: false });
+                        if (!store.indexNames.contains('category_name')) store.createIndex('category_name', ['category', 'name'], { unique: false });
+                        break;
+                    case 'customers':
+                        if (!store.indexNames.contains('searchName')) store.createIndex('searchName', 'searchName', { unique: false });
+                        if (!store.indexNames.contains('lastName')) store.createIndex('lastName', 'lastName', { unique: false });
+                        if (!store.indexNames.contains('firstName')) store.createIndex('firstName', 'firstName', { unique: false });
+                        if (!store.indexNames.contains('createdAt')) store.createIndex('createdAt', 'createdAt', { unique: false });
+                        if (!store.indexNames.contains('phone')) store.createIndex('phone', 'phone', { unique: false });
+                        if (!store.indexNames.contains('outstandingBalance')) store.createIndex('outstandingBalance', 'outstandingBalance', { unique: false });
+                        if (!store.indexNames.contains('lastActivityDate')) store.createIndex('lastActivityDate', 'lastActivityDate', { unique: false });
+                        if (!store.indexNames.contains('lastName_firstName')) store.createIndex('lastName_firstName', ['lastName', 'firstName'], { unique: false });
+                        break;
+                    case 'sales':
+                        if (!store.indexNames.contains('invoiceNumber')) store.createIndex('invoiceNumber', 'invoiceNumber', { unique: true });
+                        if (!store.indexNames.contains('createdAt')) store.createIndex('createdAt', 'createdAt', { unique: false });
+                        if (!store.indexNames.contains('customerId')) store.createIndex('customerId', 'customerId', { unique: false });
+                        if (!store.indexNames.contains('customerName')) store.createIndex('customerName', 'customerName', { unique: false });
+                        if (!store.indexNames.contains('paymentStatus')) store.createIndex('paymentStatus', 'paymentStatus', { unique: false });
+                        if (!store.indexNames.contains('dueDate')) store.createIndex('dueDate', 'dueDate', { unique: false });
+                        break;
+                    case 'payments':
+                        if (!store.indexNames.contains('customerId')) store.createIndex('customerId', 'customerId', { unique: false });
+                        if (!store.indexNames.contains('createdAt')) store.createIndex('createdAt', 'createdAt', { unique: false });
+                        if (!store.indexNames.contains('paymentDate')) store.createIndex('paymentDate', 'paymentDate', { unique: false });
+                        break;
+                    case 'stockIntakes':
+                        if (!store.indexNames.contains('supplierId')) store.createIndex('supplierId', 'supplierId', { unique: false });
+                        if (!store.indexNames.contains('createdAt')) store.createIndex('createdAt', 'createdAt', { unique: false });
+                        if (!store.indexNames.contains('invoiceNumber')) store.createIndex('invoiceNumber', 'invoiceNumber', { unique: false });
+                        break;
+                    case 'returns':
+                        if (!store.indexNames.contains('createdAt')) store.createIndex('createdAt', 'createdAt', { unique: false });
+                        if (!store.indexNames.contains('originalSaleId')) store.createIndex('originalSaleId', 'originalSaleId', { unique: false });
+                        if (!store.indexNames.contains('customerId')) store.createIndex('customerId', 'customerId', { unique: false });
+                        break;
+                    case 'drafts':
+                         if (!store.indexNames.contains('date')) store.createIndex('date', 'date', { unique: false });
+                         if (!store.indexNames.contains('createdAt')) store.createIndex('createdAt', 'createdAt', { unique: false });
+                         if (!store.indexNames.contains('updatedAt')) store.createIndex('updatedAt', 'updatedAt', { unique: false });
+                        break;
+                    case 'expenses':
+                         if (!store.indexNames.contains('expenseDate')) store.createIndex('expenseDate', 'expenseDate', { unique: false });
+                         if (!store.indexNames.contains('category')) store.createIndex('category', 'category', { unique: false });
+                         if (!store.indexNames.contains('category_expenseDate')) store.createIndex('category_expenseDate', ['category', 'expenseDate'], { unique: false });
+                        break;
+                    case 'inventoryLogs':
+                        if (!store.indexNames.contains('productId')) store.createIndex('productId', 'productId', { unique: false });
+                        if (!store.indexNames.contains('createdAt')) store.createIndex('createdAt', 'createdAt', { unique: false });
+                        if (!store.indexNames.contains('reason')) store.createIndex('reason', 'reason', { unique: false });
+                        break;
+                    case 'suppliers':
+                        if (!store.indexNames.contains('name')) store.createIndex('name', 'name', { unique: true });
+                        break;
+                    case 'clients_pain':
+                        if (!store.indexNames.contains('actif')) store.createIndex('actif', 'actif', { unique: false });
+                        break;
+                    case 'commandes_pain':
+                        if (!store.indexNames.contains('date')) store.createIndex('date', 'date', { unique: false });
+                        if (!store.indexNames.contains('client_pain_id')) store.createIndex('client_pain_id', 'client_pain_id', { unique: false });
+                        if (!store.indexNames.contains('client_pain_id_date')) store.createIndex('client_pain_id_date', ['client_pain_id', 'date'], { unique: false });
+                        if (!store.indexNames.contains('est_paye')) store.createIndex('est_paye', 'est_paye', { unique: false });
+                        if (!store.indexNames.contains('est_livre')) store.createIndex('est_livre', 'est_livre', { unique: false });
+                        break;
+                    case 'notifications':
+                        if (!store.indexNames.contains('createdAt')) store.createIndex('createdAt', 'createdAt', { unique: false });
+                        if (!store.indexNames.contains('isRead')) store.createIndex('isRead', 'isRead', { unique: false });
+                        if (!store.indexNames.contains('type')) store.createIndex('type', 'type', { unique: false });
+                        if (!store.indexNames.contains('type_isRead')) store.createIndex('type_isRead', ['type', 'isRead'], { unique: false });
+                        break;
                 }
             });
         };
