@@ -1,5 +1,4 @@
 
-
 export interface Product {
     id?: number | string; // string for custom products
     name: string;
@@ -112,20 +111,8 @@ export interface Draft {
       value: number;
   };
   notes?: string;
-}
-
-export interface TopProduct {
-    id: number;
-    name: string;
-    totalRevenue: number;
-    unitsSold: number;
-    totalProfit: number;
-}
-
-export interface TopCustomer {
-    id: number;
-    name: string;
-    totalSpent: number;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export interface CompanyProfile {
@@ -162,7 +149,8 @@ export interface StockIntakeItem {
 
 export interface StockIntake {
     id?: number;
-    supplier: string;
+    supplierId: number;
+    supplierName?: string;
     invoiceNumber: string;
     invoiceDate: Date;
     items: {
@@ -254,12 +242,28 @@ export interface DashboardStats {
     totalExpenses: number;
 }
 
+export interface TopProduct {
+    id: number;
+    name: string;
+    totalRevenue: number;
+    unitsSold: number;
+    totalProfit: number;
+}
+
+export interface TopCustomer {
+    id: number;
+    name: string;
+    totalSpent: number;
+}
+
 export interface DashboardData {
     stats: DashboardStats;
     sales: Sale[];
     expenses: Expense[];
     topProducts: TopProduct[];
     topCustomers: TopCustomer[];
+    lowStockProducts: Product[];
+    recentActivity: GlobalActivityItem[];
 }
 
 export interface ImportAnalysis {
@@ -279,7 +283,7 @@ export interface ProductImportAnalysis {
 }
 
 export interface GlobalActivityItem {
-    type: 'sale' | 'stock_intake' | 'return' | 'customer';
+    type: 'sale' | 'stock_intake' | 'return' | 'customer' | 'payment';
     date: Date;
     id: number | string;
     description: string;
@@ -332,7 +336,8 @@ export interface BreadOrder {
     date: string; // YYYY-MM-DD
     quantite: number;
     quantite_origine?: number;
-    statut: 'en_attente' | 'livre' | 'paye';
+    est_paye: boolean;
+    est_livre: boolean;
     vente_id: number | null;
     createdAt?: Date;
     updatedAt?: Date;
@@ -340,4 +345,23 @@ export interface BreadOrder {
 
 export interface BreadOrderWithClient extends BreadOrder {
     client: BreadClient;
+}
+
+export interface DB {
+    products: Product[];
+    customers: Customer[];
+    sales: Sale[];
+    payments: Payment[];
+    stockIntakes: StockIntake[];
+    returns: ProductReturn[];
+    carts: Cart[];
+    drafts: Draft[];
+    companyProfile: CompanyProfile;
+    expenses: Expense[];
+    settings: Setting[];
+    notifications: Notification[];
+    inventoryLogs: InventoryLog[];
+    suppliers: Supplier[];
+    clients_pain: BreadClient[];
+    commandes_pain: BreadOrder[];
 }
