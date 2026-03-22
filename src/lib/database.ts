@@ -23,6 +23,34 @@ export class PosDatabase extends Dexie {
 
     constructor() {
         super('posDB');
+        this.version(30).stores({
+            products: '++id, name, *barcodes, category, price, quantity, [category+name], fournisseurId, createdAt',
+            customers: '++id, searchName, createdAt, lastName, firstName, [lastName+firstName], phone, outstandingBalance, lastActivityDate',
+            sales: '++id, &invoiceNumber, createdAt, customerId, customerName, paymentStatus, dueDate',
+            payments: '++id, createdAt, customerId, paymentDate',
+            stockIntakes: '++id, &invoiceNumber, supplierId, createdAt',
+            returns: '++id, createdAt, originalSaleId, customerId',
+            carts: '&id',
+            drafts: '++id, date, createdAt, updatedAt',
+            companyProfile: 'id', // Singleton table
+            expenses: '++id, category, expenseDate, [category+expenseDate]',
+            settings: '&id', // Key-value store for UI state and preferences
+            notifications: '++id, createdAt, isRead, type, [type+isRead]',
+            inventoryLogs: '++id, productId, createdAt, reason',
+            suppliers: '++id, &name',
+            clients_pain: '++id, nom, actif, type_recurrence',
+            commandes_pain: '++id, [client_pain_id+date], date, est_paye, est_livre',
+        }).upgrade(tx => {
+            // This upgrade is for version 30, adding a standalone index for expenseDate for performance.
+            // No data migration is needed, just schema update.
+            // The previous upgrade functions are kept for clients on older versions.
+            return tx.table('customers').toCollection().modify(customer => {
+                if (customer.firstName && customer.lastName && !customer.searchName) {
+                   customer.searchName = `${customer.firstName.toLowerCase()} ${customer.lastName.toLowerCase()}`;
+                }
+            });
+        });
+
         this.version(29).stores({
             products: '++id, name, *barcodes, category, price, quantity, [category+name], fournisseurId, createdAt',
             customers: '++id, searchName, createdAt, lastName, firstName, [lastName+firstName], phone, outstandingBalance, lastActivityDate',

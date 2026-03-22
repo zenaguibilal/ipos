@@ -271,22 +271,23 @@ class DataService {
       return this.getById<Customer>('customers', id);
   }
 
-  async getCustomerActivity(customerId: number): Promise<any[]> {
+  async getCustomerActivity(customerId: number): Promise<(Sale | Payment | ProductReturn)[]> {
     if (!customerId) return [];
     const [sales, payments, returns] = await Promise.all([
-          this.db.sales.where({customerId}).toArray(),
-          this.db.payments.where({customerId}).toArray(),
-          this.db.returns.where({customerId}).toArray(),
+        this.db.sales.where({ customerId }).toArray(),
+        this.db.payments.where({ customerId }).toArray(),
+        this.db.returns.where({ customerId }).toArray(),
     ]);
-    
-    const salesActivity = sales.map(s => ({ ...s, type: 'sale', date: safeToDate(s.createdAt!) }));
-    const returnsActivity = returns.map(r => ({ ...r, type: 'return', date: safeToDate(r.createdAt!) }));
-    const paymentsActivity = payments.map(p => ({ ...p, type: 'payment', date: safeToDate(p.paymentDate!) }));
 
-    const activity: any[] = [...salesActivity, ...returnsActivity, ...paymentsActivity];
-    
-    return activity.filter(item => item.date && !isNaN(item.date.getTime())).sort((a,b) => b.date.getTime() - a.date.getTime());
-  }
+    const activity: ({ type: string, date: Date } & (Sale | Payment | ProductReturn))[] = [
+        ...sales.map(s => ({ ...s, type: 'sale', date: safeToDate(s.createdAt!) })),
+        ...returns.map(r => ({ ...r, type: 'return', date: safeToDate(r.createdAt!) })),
+        ...payments.map(p => ({ ...p, type: 'payment', date: safeToDate(p.paymentDate!) })),
+    ];
+
+    return activity.filter(item => item.date && !isNaN(item.date.getTime()))
+                   .sort((a, b) => b.date.getTime() - a.date.getTime());
+}
 
   async getCustomerStatementData(customerId: number): Promise<{ customer: Customer, unpaidSales: Sale[]}> {
       const customer = await this.getCustomerById(customerId);
@@ -928,12 +929,13 @@ class DataService {
         const allProducts = await this.db.products.toArray();
 
         const totalRevenue = sales.reduce((sum, s) => sum + (s.total || 0), 0);
-        const totalProfit = sales.reduce((sum, s) => {
+        const salesProfit = sales.reduce((sum, s) => {
             const saleProfit = (s.items || []).reduce((itemSum, item) => 
                 itemSum + ((item.price || 0) - (item.purchasePrice || 0)) * (item.quantity || 0), 0);
             return sum + saleProfit;
         }, 0);
         const totalExpenses = expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+        const totalProfit = salesProfit - totalExpenses;
         const inventoryValue = allProducts.reduce((sum, p) => sum + ((p.purchasePrice || 0) * (p.quantity || 0)), 0);
 
         const productSales: { [key: number]: { revenue: number, profit: number, units: number } } = {};
@@ -973,7 +975,7 @@ class DataService {
             };
         }).sort((a, b) => b.totalSpent - a.totalSpent).slice(0, 5);
         
-        const lowStockProducts = allProducts.filter(p => p.quantity > 0 && p.quantity <= p.minStockLevel).sort((a,b) => a.quantity - b.quantity).slice(0, 5);
+        const lowStockProducts = allProducts.filter(p => p.quantity <= p.minStockLevel).sort((a,b) => a.quantity - b.quantity).slice(0, 5);
         const recentActivity = await this.getGlobalActivity(10);
 
         return {
