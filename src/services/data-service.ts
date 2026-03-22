@@ -58,30 +58,32 @@ class DataService {
   }
 
   async addProductToCart(cartId: string, product: Product, quantity: number): Promise<void> {
-    // Optimistic UI update first
-    await this.db.carts.where({ id: cartId }).modify(cart => {
-        const existingItemIndex = cart.items.findIndex(item => item.id === product.id);
-        if (existingItemIndex > -1) {
-            cart.items[existingItemIndex].cartQuantity += quantity;
-            cart.items[existingItemIndex].flash = true;
-        } else {
-            cart.items.push({ ...product, cartQuantity: quantity, flash: true });
-        }
-    });
+    await this.db.transaction('rw', this.db.carts, this.db.products, async () => {
+        const cart = await this.db.carts.get(cartId);
+        if (!cart) throw new Error("Panier non trouvé.");
 
-    // Then, validate stock without blocking UI
-    if (typeof product.id === 'number') {
-        const dbProduct = await this.getById<Product>('products', product.id);
-        if (!dbProduct || dbProduct.quantity < quantity) {
-            // Revert if stock is insufficient
-            await this.db.carts.where({ id: cartId }).modify(cart => {
-                const itemToRevert = cart.items.find(item => item.id === product.id);
-                if(itemToRevert) itemToRevert.cartQuantity -= quantity;
-                cart.items = cart.items.filter(item => item.cartQuantity > 0);
-            });
-            throw new Error(`Stock insuffisant pour ${product.name}. Disponible: ${dbProduct?.quantity || 0}`);
+        const existingItem = cart.items.find(item => item.id === product.id);
+        const newCartQuantity = (existingItem?.cartQuantity || 0) + quantity;
+
+        if (typeof product.id === 'number') {
+            const dbProduct = await this.db.products.get(product.id);
+            if (!dbProduct) {
+                throw new Error(`Produit "${product.name}" non trouvé.`);
+            }
+            if (dbProduct.quantity < newCartQuantity) {
+                throw new Error(`Stock insuffisant pour ${product.name}. Demandé: ${newCartQuantity}, Disponible: ${dbProduct.quantity}.`);
+            }
         }
-    }
+
+        // If we're here, stock is sufficient.
+        if (existingItem) {
+            existingItem.cartQuantity = newCartQuantity;
+            existingItem.flash = true;
+        } else {
+            cart.items.push({ ...product, cartQuantity: newCartQuantity, flash: true });
+        }
+        await this.db.carts.put(cart);
+    });
   }
 
   async updateCartItemQuantity(cartId: string, itemId: string | number, newQuantity: number): Promise<{capped: boolean, maxQuantity?: number}> {
@@ -131,7 +133,7 @@ class DataService {
   async setCartCustomer(cartId: string, customer: Customer | null): Promise<void> {
     return this.db.carts.where({id: cartId}).modify(cart => {
         cart.customerId = customer ? customer.id! : null;
-        cart.customerName = customer ? `${customer.firstName} ${customer.lastName}` : '';
+        cart.customerName = customer ? `${''\''.concat(customer.firstName, ' ', customer.lastName)}` : '';
     });
   }
 
@@ -1031,7 +1033,7 @@ class DataService {
             const customer = customerMap.get(Number(customerId));
             return {
                 id: Number(customerId),
-                name: customer ? `${customer.firstName} ${customer.lastName}` : 'Client Inconnu',
+                name: customer ? `${''\''.concat(customer.firstName, ' ', customer.lastName)}` : 'Client Inconnu',
                 totalSpent,
             };
         }).sort((a, b) => b.totalSpent - a.totalSpent).slice(0, 5);
@@ -1058,7 +1060,7 @@ class DataService {
         allSales.forEach(s => s.createdAt && activity.push({ type: 'sale', date: safeToDate(s.createdAt), id: s.id!, description: `Vente #${s.invoiceNumber}`, details: s.customerName || 'Client de passage', amount: s.total, amountClass: 'text-primary' }));
         allStockIntakes.forEach(si => si.createdAt && activity.push({ type: 'stock_intake', date: safeToDate(si.createdAt), id: si.id!, description: `Réception de stock`, details: `Facture: ${si.invoiceNumber}`, amount: si.totalValue, amountClass: 'text-yellow-500' }));
         allReturns.forEach(r => r.createdAt && activity.push({ type: 'return', date: safeToDate(r.createdAt), id: r.id!, description: `Retour sur facture #${r.originalInvoiceNumber}`, details: `${r.items.length} article(s) retourné(s)`, amount: -r.totalReturnValue, amountClass: 'text-destructive' }));
-        allCustomers.forEach(c => c.createdAt && activity.push({ type: 'customer', date: safeToDate(c.createdAt), id: c.id!, description: `Nouveau client`, details: `${c.firstName} ${c.lastName}`, amount: undefined }));
+        allCustomers.forEach(c => c.createdAt && activity.push({ type: 'customer', date: safeToDate(c.createdAt), id: c.id!, description: `Nouveau client`, details: `${''\''.concat(c.firstName, ' ', c.lastName)}`, amount: undefined }));
         allPayments.forEach(p => p.paymentDate && activity.push({ type: 'payment', date: safeToDate(p.paymentDate), id: p.id!, description: `Paiement reçu`, details: p.customerName || 'Client inconnu', amount: p.amount, amountClass: 'text-green-500' }));
         
         return activity.sort((a,b) => b.date.getTime() - a.date.getTime()).slice(0, limit);

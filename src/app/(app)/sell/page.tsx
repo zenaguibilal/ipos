@@ -17,7 +17,7 @@ import { DraftsDialog } from '@/components/sell/DraftsDialog';
 import { dataService } from '@/services/data-service';
 import { AddPaymentDialog } from '@/components/payments/AddPaymentDialog';
 import { CartTotalBar } from '@/components/sell/CartTotalBar';
-import type { Customer } from '@/lib/types';
+import type { Customer, Product } from '@/lib/types';
 import { useLiveQuery } from 'dexie-react-hooks';
 
 export default function SellPage() {
@@ -128,7 +128,7 @@ export default function SellPage() {
         );
     }
     
-    const handleProductSelected = (product: any, quantity: number) => {
+    const handleProductSelected = (product: Product, quantity: number) => {
         addProductToCart(product, quantity);
         setIsProductSheetOpen(false);
     }
