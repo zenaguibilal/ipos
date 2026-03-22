@@ -48,15 +48,9 @@ export const metadata: Metadata = {
     images: ["/icons/icon-512x512.png"]
   },
   icons: {
-    icon: [
-      { url: '/icon.svg', type: 'image/svg+xml' },
-      { url: '/icons/favicon-32x32.png', type: 'image/png', sizes: '32x32' },
-      { url: '/icons/favicon-16x16.png', type: 'image/png', sizes: '16x16' },
-    ],
-    shortcut: "/icon.svg",
-    apple: [
-      { url: '/icons/apple-touch-icon.png', sizes: '180x180' },
-    ],
+    icon: '/icon.svg',
+    shortcut: '/favicon.ico',
+    apple: '/icons/apple-touch-icon.png',
   },
 };
 
@@ -77,11 +71,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr" suppressHydrationWarning>
-      <head>
-          <meta name="msapplication-TileColor" content="#ffb74d" />
-          <meta name="msapplication-TileImage" content="/icons/icon-144x144.png" />
-          <link rel="manifest" href="/manifest.json" />
-      </head>
+      <head />
       <body className={inter.className}>
         <ThemeProvider
           attribute="class"
