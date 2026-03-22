@@ -13,7 +13,6 @@ import { cn } from '@/lib/utils';
 
 const navLinks = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/sell', label: 'Vente', icon: ShoppingCart },
   { href: '/products', label: 'Produits', icon: Package },
   { href: '/customers', label: 'Clients', icon: Users2 },
   { href: '/sales-history', label: 'Historique', icon: History },
@@ -23,9 +22,9 @@ export function BottomNavBar() {
   const pathname = usePathname();
 
   return (
-    <div className="fixed bottom-0 left-0 z-30 w-full border-t border-primary/10 bg-background/80 backdrop-blur-xl md:hidden print-hide">
-      <nav className="grid grid-cols-5 items-center justify-around h-16">
-        {navLinks.map(link => (
+    <div className="fixed bottom-0 left-0 z-30 w-full border-t bg-background/80 backdrop-blur-xl md:hidden print-hide">
+      <div className="grid grid-cols-5 items-stretch justify-around h-16">
+        {navLinks.slice(0, 2).map(link => (
           <Link
             key={link.href}
             href={link.href}
@@ -38,7 +37,29 @@ export function BottomNavBar() {
             <span className="text-[10px] text-center">{link.label}</span>
           </Link>
         ))}
-      </nav>
+
+        <div className="flex items-center justify-center">
+            <Link href="/sell" className="-mt-8">
+                 <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg ring-4 ring-background">
+                    <ShoppingCart className="h-7 w-7" />
+                 </div>
+            </Link>
+        </div>
+
+        {navLinks.slice(2).map(link => (
+          <Link
+            key={link.href}
+            href={link.href}
+            className={cn(
+              'flex flex-col items-center justify-center gap-1 text-muted-foreground transition-colors hover:text-primary h-full',
+              (pathname.startsWith(link.href)) ? 'text-primary' : ''
+            )}
+          >
+            <link.icon className="h-5 w-5" />
+            <span className="text-[10px] text-center">{link.label}</span>
+          </Link>
+        ))}
+      </div>
     </div>
   );
 }

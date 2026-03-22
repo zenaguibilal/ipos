@@ -1,4 +1,3 @@
-
 import type { Config } from 'tailwindcss';
 
 const config: Config = {
@@ -35,10 +34,6 @@ const config: Config = {
         destructive: {
           DEFAULT: "hsl(var(--destructive))",
           foreground: "hsl(var(--destructive-foreground))",
-        },
-        success: {
-          DEFAULT: "hsl(var(--success))",
-          foreground: "hsl(var(--success-foreground))",
         },
         muted: {
           DEFAULT: "hsl(var(--muted))",
@@ -82,17 +77,11 @@ const config: Config = {
           '0%, 100%': { backgroundPosition: '0% 50%' },
           '50%': { backgroundPosition: '100% 50%' },
         },
-        "flash": {
-          "0%": { backgroundColor: "transparent" },
-          "50%": { backgroundColor: "hsl(var(--primary) / 0.1)" },
-          "100%": { backgroundColor: "transparent" },
-        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "warm-gradient": "warm-gradient 15s ease infinite",
-        "flash": "flash 0.7s ease-out",
       },
     },
   },

@@ -14,7 +14,6 @@ import {
   Wallet,
   HandHeart,
   Calculator,
-  Wheat,
   LayoutDashboard,
 } from 'lucide-react';
 import Image from 'next/image';
@@ -38,10 +37,8 @@ import { SyncIndicator } from '../common/SyncIndicator';
 
 const navLinks = [
   { href: '/dashboard', label: 'Tableau de bord', icon: LayoutDashboard },
-  { href: '/sell', label: 'Point de Vente', icon: ShoppingCart },
-  { href: '/bread', label: 'Commandes de Pain', icon: Wheat },
-  { href: '/products', label: 'Produits', icon: Package },
   { href: '/stock', label: 'Stock', icon: Archive },
+  { href: '/products', label: 'Produits', icon: Package },
   { href: '/customers', label: 'Clients', icon: Users2 },
   { href: '/sales-history', label: 'Ventes', icon: History },
   { href: '/returns', label: 'Retours', icon: Undo2 },
@@ -54,9 +51,12 @@ export function AppHeader() {
   const router = useRouter();
   const pathname = usePathname();
 
+  const mainActionLinks = [
+    { href: '/sell', label: 'Point de Vente', icon: ShoppingCart },
+  ];
 
   return (
-    <header className="flex h-16 items-center gap-4 bg-background/80 px-4 sm:px-6 print-hide sticky top-0 z-30 border-b border-primary/10 backdrop-blur-xl">
+    <header className="flex h-16 items-center gap-4 bg-background/80 px-4 sm:px-6 print-hide sticky top-0 z-30 border-b backdrop-blur-xl">
       <div className="flex-1 flex justify-start">
          <div className="flex items-baseline gap-2">
               <Link
@@ -71,7 +71,27 @@ export function AppHeader() {
 
         <div className="flex-1 flex justify-center">
             <TooltipProvider>
-                <nav className="hidden md:flex items-center gap-1 rounded-full border border-primary/10 bg-black/20 p-1">
+                <nav className="hidden md:flex items-center gap-1 rounded-full border bg-black/20 p-1">
+                    {mainActionLinks.map(link => (
+                         <Tooltip key={link.href} delayDuration={0}>
+                            <TooltipTrigger asChild>
+                                <Button 
+                                    asChild
+                                    variant={pathname.startsWith(link.href) ? "secondary" : "ghost"}
+                                    className="rounded-full relative h-10 px-6 text-base"
+                                >
+                                    <Link href={link.href}>
+                                        <link.icon className="h-5 w-5 mr-2" />
+                                        {link.label}
+                                    </Link>
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                                <p>{link.label}</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    ))}
+                    <div className="h-6 w-px bg-border/50 mx-2" />
                     {navLinks.map(link => (
                         <Tooltip key={link.href} delayDuration={0}>
                             <TooltipTrigger asChild>
