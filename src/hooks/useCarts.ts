@@ -23,27 +23,36 @@ export const useCarts = () => {
     const db = getDb();
     const [activeCartId, setActiveCartIdState] = useState<string | null>(null);
 
-    const carts = useLiveQuery(async () => {
-        const allCarts = await db.carts.toArray();
-        if (allCarts.length === 0) {
-            const newCart = createNewCart('Panier 1');
-            await db.carts.add(newCart);
-            await dataService.setSetting(ACTIVE_CART_ID_KEY, newCart.id);
-            setActiveCartIdState(newCart.id);
-            return [newCart];
-        }
-        return allCarts;
-    }, []);
+    // Step 1: Just fetch the carts reactively.
+    const carts = useLiveQuery(() => db.carts.toArray(), []);
 
+    // Step 2: Handle the case where no carts exist.
     useEffect(() => {
-        dataService.getSetting(ACTIVE_CART_ID_KEY).then(setting => {
-            if (setting && setting.value && carts?.some(c => c.id === setting.value)) {
-                setActiveCartIdState(setting.value);
-            } else if (carts && carts.length > 0) {
-                setActiveCartIdState(carts[0].id);
-            }
-        });
-    }, [carts]);
+        if (carts && carts.length === 0) {
+            const firstCart = createNewCart('Panier 1');
+            db.carts.add(firstCart).then(id => {
+                // When adding is successful, set it as the active one.
+                dataService.setSetting(ACTIVE_CART_ID_KEY, id);
+                setActiveCartIdState(id as string);
+            });
+        }
+    }, [carts, db.carts]);
+
+    // Step 3: Determine the active cart ID once carts are loaded.
+    useEffect(() => {
+        if (!activeCartId && carts && carts.length > 0) {
+            dataService.getSetting(ACTIVE_CART_ID_KEY).then(setting => {
+                const validStoredId = setting && setting.value && carts.some(c => c.id === setting.value);
+                if (validStoredId) {
+                    setActiveCartIdState(setting.value);
+                } else {
+                    // Fallback to the first cart if the stored one is invalid
+                    setActiveCartIdState(carts[0].id);
+                }
+            });
+        }
+    }, [carts, activeCartId]);
+
 
     const activeCart = carts?.find(c => c.id === activeCartId);
 
@@ -60,14 +69,15 @@ export const useCarts = () => {
     }, [carts, setActiveCartId]);
 
     const removeCart = useCallback(async (cartId: string) => {
-        if (!carts) return;
+        if (!carts || carts.length <= 1) {
+            toast.warning("Impossible de supprimer le dernier panier.");
+            return;
+        }
         await dataService.deleteCart(cartId);
         
         const remainingCarts = carts.filter(c => c.id !== cartId);
         if (activeCartId === cartId && remainingCarts.length > 0) {
             await setActiveCartId(remainingCarts[0].id);
-        } else if (remainingCarts.length === 0) {
-            // This case should be handled by the useLiveQuery logic which will create a new cart
         }
     }, [carts, activeCartId, setActiveCartId]);
     
@@ -148,6 +158,6 @@ export const useCarts = () => {
         setCartDiscount,
         saveActiveCartAsDraft,
         loadDraftToCart,
-        isLoading: carts === undefined,
+        isLoading: carts === undefined || !activeCart,
     };
 };
