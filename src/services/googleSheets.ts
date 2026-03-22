@@ -1,7 +1,7 @@
 'use client';
 
 import { dataService } from '@/services/data-service';
-import type { CompanyProfile, DB, TableName } from '@/lib/types';
+import type { CompanyProfile, TableName } from '@/lib/types';
 import { TABLES } from '@/lib/types';
 
 const SYNC_QUEUE_KEY = 'ipos_sync_queue';
@@ -126,7 +126,9 @@ class GoogleSheetsService {
     
     // Applying changes needs to be done carefully via dataService to trigger logic
     if (toUpdateLocal.length > 0) {
-        for(const record of toUpdateLocal) await dataService.update(tableName, record.id, record);
+        for(const record of toUpdateLocal) {
+          if(record.id) await dataService.update(tableName, record.id, record);
+        }
     }
      if (toAddLocal.length > 0) {
          for(const record of toAddLocal) await dataService.add(tableName, record);
