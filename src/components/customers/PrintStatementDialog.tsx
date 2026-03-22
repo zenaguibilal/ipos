@@ -33,7 +33,6 @@ export function PrintStatementDialog({ isOpen, onOpenChange, customer }: PrintSt
                 setProfile(companyProfile);
                 setIsLoading(false);
             }).catch(err => {
-                console.error("Failed to load statement data:", err);
                 setIsLoading(false);
             });
         }

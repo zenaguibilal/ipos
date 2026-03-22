@@ -3,7 +3,7 @@
 'use client';
 
 import { getDb } from '@/lib/database';
-import type { TableName, Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, InventoryLog, StockIntakeItem, ZakatData, CostingItem, Draft, Supplier, ImportAnalysis, BreadClient, BreadOrder, BreadOrderWithClient, DB, ProductImportAnalysis, GlobalActivityItem, DashboardData, TopCustomer } from '@/lib/types';
+import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, InventoryLog, StockIntakeItem, ZakatData, CostingItem, Draft, Supplier, ImportAnalysis, BreadClient, BreadOrder, BreadOrderWithClient, DB, ProductImportAnalysis, GlobalActivityItem, DashboardData, TopCustomer } from '@/lib/types';
 import { subDays, endOfDay, startOfDay, parseISO } from 'date-fns';
 import Papa from 'papaparse';
 import { calculateCartTotals, formatCurrency, safeToDate } from '@/lib/utils';
@@ -16,11 +16,11 @@ class DataService {
   }
 
   // Generic methods
-  async getAll<T>(table: TableName): Promise<T[]> {
+  async getAll<T>(table: keyof DB): Promise<T[]> {
     return this.db.table<T>(table).toArray();
   }
 
-  async getById<T>(table: TableName, id: any): Promise<T | undefined> {
+  async getById<T>(table: keyof DB, id: any): Promise<T | undefined> {
     return this.db.table<T>(table).get(id);
   }
   
@@ -881,11 +881,11 @@ class DataService {
     
     // Stock Intake
     async addStockIntake(intakeData: { supplierName: string; invoiceNumber: string; invoiceDate: Date }, items: StockIntakeItem[]): Promise<StockIntake> {
-        return this.db.transaction('rw', this.db.suppliers, this.db.products, this.db.inventoryLogs, this.db.stockIntakes, async (tx) => {
-            let supplier = await tx.table('suppliers').where('name').equalsIgnoreCase(intakeData.supplierName).first();
+        return this.db.transaction('rw', this.db.suppliers, this.db.products, this.db.inventoryLogs, this.db.stockIntakes, async () => {
+            let supplier = await this.db.suppliers.where('name').equalsIgnoreCase(intakeData.supplierName).first();
             if (!supplier) {
                 const newSupplierData = { name: intakeData.supplierName, balance: 0 };
-                const id = await tx.table('suppliers').add(newSupplierData);
+                const id = await this.db.suppliers.add(newSupplierData);
                 supplier = { ...newSupplierData, id, balance: 0 };
                  sheetsService.addToQueue('suppliers', 'upsert', supplier);
             }
@@ -897,7 +897,7 @@ class DataService {
                 items: [],
                 totalValue: 0,
             };
-            const intakeId = await tx.table('stockIntakes').add(tempIntakeData as StockIntake);
+            const intakeId = await this.db.stockIntakes.add(tempIntakeData as StockIntake);
     
             const finalIntakeItems = [];
             let finalTotalValue = 0;
@@ -915,24 +915,24 @@ class DataService {
                         minStockLevel: 10, barcodes: item.barcodes, unite: 'Pièce' as const,
                         fournisseurId: supplier.id, dateMajPrix: new Date(),
                     };
-                    productId = await tx.table('products').add(newProductData);
+                    productId = await this.db.products.add(newProductData);
                     finalQuantity = quantityChange;
                     const newProduct = { ...newProductData, id: productId };
                     sheetsService.addToQueue('products', 'upsert', newProduct);
                 } else if (productId) {
-                    await tx.table('products').where({ id: productId }).modify(product => {
+                    await this.db.products.where({ id: productId }).modify(product => {
                         product.quantity += quantityChange;
                         product.purchasePrice = item.purchasePrice;
                         product.dateMajPrix = new Date();
                         product.fournisseurId = supplier.id;
                         finalQuantity = product.quantity;
                     });
-                    const updatedProduct = await tx.table('products').get(productId);
+                    const updatedProduct = await this.db.products.get(productId);
                     if(updatedProduct) sheetsService.addToQueue('products', 'upsert', updatedProduct);
                 }
     
                 if (productId) {
-                    await tx.table('inventoryLogs').add({
+                    await this.db.inventoryLogs.add({
                         productId: productId,
                         change: quantityChange,
                         newQuantity: finalQuantity,
@@ -949,16 +949,16 @@ class DataService {
                 }
             }
     
-            await tx.table('stockIntakes').update(intakeId, {
+            await this.db.stockIntakes.update(intakeId, {
                 items: finalIntakeItems,
                 totalValue: finalTotalValue
             });
     
-            await tx.table('suppliers').update(supplier.id!, {
+            await this.db.suppliers.update(supplier.id!, {
                 balance: (supplier.balance || 0) + finalTotalValue
             });
     
-            const finalIntake = await tx.table('stockIntakes').get(intakeId);
+            const finalIntake = await this.db.stockIntakes.get(intakeId);
             if(finalIntake) sheetsService.addToQueue('stockIntakes', 'upsert', finalIntake);
             return finalIntake!;
         });
@@ -1097,8 +1097,8 @@ class DataService {
     // Backup & Restore
     async exportData(): Promise<string> {
         const data: Partial<DB> = {};
-        const tables = this.db.tables.map(t => t.name as TableName);
-        for (const tableName of tables) {
+        const tableNames = this.db.tables.map(t => t.name as keyof DB);
+        for (const tableName of tableNames) {
             data[tableName] = await this.db.table(tableName).toArray();
         }
         const exportFile = {
@@ -1151,7 +1151,7 @@ class DataService {
     }
     
     async resetDatabase(): Promise<void> {
-        const tables = this.db.tables.map(t => t.name);
+        const tables = this.db.tables.map(t => t.name as keyof DB);
         await Promise.all(tables.map(t => this.db.table(t).clear()));
     }
     
@@ -1241,5 +1241,3 @@ class DataService {
 }
 
 export const dataService = new DataService();
-
-    

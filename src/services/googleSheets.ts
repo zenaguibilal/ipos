@@ -3,14 +3,13 @@
 'use client';
 
 import { dataService } from '@/services/data-service';
-import type { CompanyProfile, TableName } from '@/lib/types';
-import { TABLES } from '@/lib/types';
+import type { CompanyProfile, DB } from '@/lib/types';
 import { getDb } from '@/lib/database';
 
 const SYNC_QUEUE_KEY = 'ipos_sync_queue';
 
 // Define which tables are eligible for a full sync
-export const TABLES_TO_SYNC: TableName[] = [
+export const TABLES_TO_SYNC: (keyof DB)[] = [
     'products', 'customers', 'suppliers',
     'sales', 'stockIntakes', 'returns',
     'payments', 'expenses', 'drafts',
@@ -109,12 +108,12 @@ class GoogleSheetsService {
     return result.records || [];
   }
   
-  async syncTable(tableName: TableName) {
+  async syncTable(tableName: keyof DB) {
     if (!this.isOnline || !this.scriptUrl) {
       throw new Error("Pas de connexion ou URL de script non configurée.");
     }
     // 'carts' is transient and should not be synced.
-    if (!Object.values(TABLES).includes(tableName as any) || ['carts'].includes(tableName)) {
+    if (tableName === 'carts') {
       return { success: true, message: `Tableau ignoré: ${tableName}` };
     }
 
