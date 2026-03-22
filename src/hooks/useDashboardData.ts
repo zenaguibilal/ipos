@@ -61,8 +61,13 @@ export function useDashboardData(dateRange?: DateRange) {
                 let revenue = 0;
                 let profit = 0;
                 for (const sale of sales) {
-                    revenue += sale.total;
-                    const saleProfit = sale.items.reduce((acc, item) => acc + (item.price - item.purchasePrice) * item.quantity, 0);
+                    revenue += sale.total || 0;
+                    const saleProfit = (sale.items || []).reduce((acc, item) => {
+                        const cost = item.purchasePrice || 0;
+                        const price = item.price || 0;
+                        const quantity = item.quantity || 0;
+                        return acc + (price - cost) * quantity;
+                    }, 0);
                     profit += isNaN(saleProfit) ? 0 : saleProfit;
                 }
                 return { revenue, profit, salesCount: sales.length };
@@ -78,7 +83,7 @@ export function useDashboardData(dateRange?: DateRange) {
                 profit: { current: currentMetrics.profit, vs: calcVs(currentMetrics.profit, previousMetrics.profit) },
                 sales: { current: currentMetrics.salesCount, vs: calcVs(currentMetrics.salesCount, previousMetrics.salesCount) },
                 inventoryValue: { 
-                    current: products.reduce((acc, p) => acc + ((p.purchasePrice || 0) * (p.quantity || 0)), 0),
+                    current: (products || []).reduce((acc, p) => acc + ((p.purchasePrice || 0) * (p.quantity || 0)), 0),
                     productCount: products.length
                 },
             };
@@ -98,8 +103,13 @@ export function useDashboardData(dateRange?: DateRange) {
                 const saleDate = sale.createdAt ? new Date(sale.createdAt) : new Date();
                 const key = format(saleDate, 'd MMM', { locale: fr });
                 if (dataByDay[key]) {
-                    dataByDay[key].revenu += sale.total;
-                    const saleProfit = sale.items.reduce((acc, item) => acc + (item.price - item.purchasePrice) * item.quantity, 0);
+                    dataByDay[key].revenu += sale.total || 0;
+                    const saleProfit = (sale.items || []).reduce((acc, item) => {
+                        const cost = item.purchasePrice || 0;
+                        const price = item.price || 0;
+                        const quantity = item.quantity || 0;
+                        return acc + (price - cost) * quantity;
+                    }, 0);
                     dataByDay[key].benefice += isNaN(saleProfit) ? 0 : saleProfit;
                 }
             });
@@ -108,19 +118,19 @@ export function useDashboardData(dateRange?: DateRange) {
                 .sort(([, a], [, b]) => a.date.getTime() - b.date.getTime())
                 .map(([key, value]) => ({ date: key, jour: key, revenu: value.revenu, benefice: value.benefice }));
             
-            const stockAlerts = products
+            const stockAlerts = (products || [])
               .filter(p => p.quantity <= p.minStockLevel)
               .sort((a, b) => a.quantity - b.quantity)
               .slice(0, 5);
 
             const productSales = new Map<number, { product: Product; totalVendu: number }>();
             currentSales.forEach(sale => {
-                sale.items.forEach(item => {
+                (sale.items || []).forEach(item => {
                     if (typeof item.id === 'number') {
                         const product = products.find(p => p.id === item.id);
                         if (!product) return;
                         const existing = productSales.get(item.id) || { product, totalVendu: 0 };
-                        productSales.set(item.id, { ...existing, totalVendu: existing.totalVendu + item.quantity });
+                        productSales.set(item.id, { ...existing, totalVendu: existing.totalVendu + (item.quantity || 0) });
                     }
                 });
             });
@@ -130,7 +140,7 @@ export function useDashboardData(dateRange?: DateRange) {
                 .map(p => ({...p.product, totalVendu: p.totalVendu}));
 
             const expensesData = Object.entries(
-                expenses.reduce((acc, d) => {
+                (expenses || []).reduce((acc, d) => {
                     acc[d.category] = (acc[d.category] || 0) + d.amount;
                     return acc;
                 }, {} as Record<string, number>)
