@@ -72,10 +72,8 @@ export default function SellPage() {
     };
 
     const handleSaleFinalized = useCallback(() => {
-        if (activeCartId) {
-            removeCart(activeCartId);
-        }
-    }, [activeCartId, removeCart]);
+        clearCart();
+    }, [clearCart]);
 
     const handleKeyDown = useCallback((e: KeyboardEvent) => {
         if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
