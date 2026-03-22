@@ -45,10 +45,10 @@ const RestoreProgress = ({ progress }: { progress: any }) => (
 );
 
 
-export function BackupPreview({ backupData, onClose, onComplete }: { backupData: Partial<DB>, onClose: () => void, onComplete: () => void }) {
+export function BackupPreview({ backupData, onClose, onComplete }: { backupData: any, onClose: () => void, onComplete: () => void }) {
   const [step, setStep] = useState(STEPS.STATS);
-  const [editedData, setEditedData] = useState(backupData);
-  const [selectedTables, setSelectedTables] = useState(Object.keys(backupData));
+  const [editedData, setEditedData] = useState(backupData.data);
+  const [selectedTables, setSelectedTables] = useState(Object.keys(backupData.data));
   const [currentEditTable, setCurrentEditTable] = useState<string | null>(null);
   const [restoreProgress, setRestoreProgress] = useState({
     current: 0,
@@ -63,7 +63,7 @@ export function BackupPreview({ backupData, onClose, onComplete }: { backupData:
   };
 
   const handleSaveTableEdits = (tableName: string, newRecords: any[]) => {
-    setEditedData(prev => ({ ...prev, [tableName]: newRecords }));
+    setEditedData((prev:any) => ({ ...prev, [tableName]: newRecords }));
     setCurrentEditTable(null);
     setStep(STEPS.SELECT);
   };
@@ -76,14 +76,15 @@ export function BackupPreview({ backupData, onClose, onComplete }: { backupData:
 
     try {
         await dataService.restoreTables(
-            editedData as Partial<DB>, 
+            { meta: backupData.meta, data: editedData }, 
             tablesToRestore, 
             (progress) => setRestoreProgress(progress)
         );
         toast.success("Restauration terminée !");
         setTimeout(() => onComplete(), 1500);
     } catch (error: any) {
-        toast.error("Une erreur majeure est survenue pendant la restauration.", { description: error.message });
+        toast.error("Une erreur majeure est survenue pendant la restauration.", { description: error.message, duration: 10000 });
+        setStep(STEPS.CONFIRM); // Go back to confirm step on failure
     }
   };
   

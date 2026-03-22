@@ -875,6 +875,24 @@ class DataService {
     }
     
     // Stock Intake
+    async getStockIntakes(params: { query?: string; from?: Date, to?: Date }): Promise<StockIntake[]> {
+        let collection = this.db.stockIntakes.orderBy('createdAt').reverse();
+        
+        if (params.from && params.to) {
+            collection = this.db.stockIntakes.where('createdAt').between(params.from, params.to, true, true).reverse();
+        }
+        
+        if (params.query) {
+            const lowerQuery = params.query.toLowerCase();
+            return collection.filter(si =>
+                (si.supplierName || '').toLowerCase().includes(lowerQuery) ||
+                si.invoiceNumber.toLowerCase().includes(lowerQuery)
+            ).toArray();
+        }
+
+        return collection.toArray();
+    }
+
     async addStockIntake(intakeData: { supplierName: string; invoiceNumber: string; invoiceDate: Date }, items: StockIntakeItem[]): Promise<StockIntake> {
         return this.db.transaction('rw', this.db.suppliers, this.db.products, this.db.inventoryLogs, this.db.stockIntakes, async (tx) => {
             let supplier = await tx.table('suppliers').where('name').equalsIgnoreCase(intakeData.supplierName).first();
@@ -1087,36 +1105,58 @@ class DataService {
     // Backup & Restore
     async exportData(): Promise<string> {
         const data: Partial<DB> = {};
-        for (const tableName of this.db.tables.map(t => t.name)) {
-            data[tableName as keyof DB] = await this.db.table(tableName).toArray();
+        const tables = this.db.tables.map(t => t.name as TableName);
+        for (const tableName of tables) {
+            data[tableName] = await this.db.table(tableName).toArray();
         }
-        return JSON.stringify(data, null, 2);
+        const exportFile = {
+            meta: {
+                appName: 'iPOS',
+                schemaVersion: this.db.verno,
+                exportDate: new Date().toISOString(),
+            },
+            data: data
+        };
+        return JSON.stringify(exportFile, null, 2);
     }
     
-    async restoreTables(backupData: Partial<DB>, tablesToRestore: string[], onProgress: (progress: any) => void): Promise<void> {
-        const total = tablesToRestore.length;
-        let current = 0;
-        const done: { table: string; success: boolean; error?: string }[] = [];
-        
-        for (const tableName of tablesToRestore) {
-            current++;
-            onProgress({ current, total, currentTable: tableName, done });
-            try {
-                if (backupData[tableName as keyof typeof backupData]) {
-                    const table = this.db.table(tableName);
-                    await table.clear();
-                    const records = backupData[tableName as keyof typeof backupData] as any[];
-                    if (records.length > 0) {
-                        await table.bulkPut(records);
-                    }
-                    done.push({ table: tableName, success: true });
-                }
-            } catch (e: any) {
-                done.push({ table: tableName, success: false, error: e.message });
-            } finally {
-                onProgress({ current, total, currentTable: tableName, done });
-            }
+    async restoreTables(backupFile: any, tablesToRestore: string[], onProgress: (progress: any) => void): Promise<void> {
+        if (!backupFile.meta || backupFile.meta.appName !== 'iPOS') {
+            throw new Error("Fichier de sauvegarde non valide ou ne provient pas de l'application iPOS.");
         }
+        if (backupFile.meta.schemaVersion !== this.db.verno) {
+            throw new Error(`Incompatibilité de version. Sauvegarde (v${backupFile.meta.schemaVersion}), Application (v${this.db.verno}).`);
+        }
+        
+        const backupData = backupFile.data as Partial<DB>;
+        const tablesToModify = this.db.tables.filter(t => tablesToRestore.includes(t.name));
+    
+        return this.db.transaction('rw', tablesToModify, async () => {
+            const total = tablesToRestore.length;
+            let current = 0;
+            const done: { table: string; success: boolean; error?: string }[] = [];
+    
+            for (const tableName of tablesToRestore) {
+                current++;
+                onProgress({ current, total, currentTable: tableName, done });
+                try {
+                    if (backupData[tableName as keyof typeof backupData]) {
+                        const table = this.db.table(tableName);
+                        await table.clear();
+                        const records = backupData[tableName as keyof typeof backupData] as any[];
+                        if (records.length > 0) {
+                            await table.bulkPut(records);
+                        }
+                        done.push({ table: tableName, success: true });
+                    }
+                } catch (e: any) {
+                    console.error(`Erreur lors de la restauration de la table ${tableName}:`, e);
+                    throw new Error(`Échec de la restauration de la table "${tableName}". L'opération a été annulée.`);
+                } finally {
+                    onProgress({ current, total, currentTable: tableName, done });
+                }
+            }
+        });
     }
     
     async resetDatabase(): Promise<void> {

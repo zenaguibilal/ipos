@@ -19,7 +19,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { dataService } from '@/services/data-service';
 import { BackupPreview } from './BackupPreview';
-import type { DB } from '@/lib/types';
 
 
 export function BackupAndRestore() {
@@ -29,7 +28,7 @@ export function BackupAndRestore() {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [resetConfirmationCode, setResetConfirmationCode] = useState('');
 
-    const [backupData, setBackupData] = useState<Partial<DB> | null>(null);
+    const [backupData, setBackupData] = useState<any | null>(null);
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
     const handleBackup = async () => {
@@ -67,7 +66,7 @@ export function BackupAndRestore() {
                     try {
                         const jsonString = e.target?.result as string;
                         const data = JSON.parse(jsonString);
-                        if (typeof data === 'object' && data !== null && Object.keys(data).length > 0) {
+                        if (typeof data === 'object' && data !== null && data.data && Object.keys(data.data).length > 0) {
                             setBackupData(data);
                             setIsPreviewOpen(true);
                         } else {
