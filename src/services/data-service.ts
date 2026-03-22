@@ -363,7 +363,6 @@ class DataService {
     
     let customers = await collection.toArray();
     
-    // Efficiently get all unpaid sales once
     const unpaidSales = await this.db.sales.where('paymentStatus').notEqual('paid').toArray();
     const unpaidSalesByCustomer = new Map<number, Sale[]>();
     for (const sale of unpaidSales) {
@@ -379,19 +378,20 @@ class DataService {
     const customerWithData: Customer[] = customers.map(c => {
         let debtStatus: Customer['debtStatus'] = 'none';
 
-        if (c.outstandingBalance > 0 && c.settlementDay) {
+        if (c.outstandingBalance > 0) {
             const customerUnpaidSales = unpaidSalesByCustomer.get(c.id!);
             if (customerUnpaidSales && customerUnpaidSales.length > 0) {
-                // Find the oldest unpaid sale for this customer
                 const oldestUnpaidSale = customerUnpaidSales.reduce((oldest, current) => 
                     safeToDate(oldest.createdAt!).getTime() < safeToDate(current.createdAt!).getTime() ? oldest : current
                 );
                 
-                const dueDate = new Date(safeToDate(oldestUnpaidSale.createdAt!).getTime() + c.settlementDay * 24 * 60 * 60 * 1000);
+                const settlementDay = c.settlementDay || 30;
+                
+                const dueDate = new Date(safeToDate(oldestUnpaidSale.createdAt!).getTime() + settlementDay * 24 * 60 * 60 * 1000);
                 
                 if (now > dueDate) {
                     debtStatus = 'overdue';
-                } else if (subDays(dueDate, 7) <= now) {
+                } else if (c.settlementDay && subDays(dueDate, 7) <= now) {
                     debtStatus = 'due_soon';
                 }
             }
