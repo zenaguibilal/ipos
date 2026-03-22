@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,7 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { ProductIntakeCombobox } from '@/components/stock/ProductIntakeCombobox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { useLiveQuery } from 'dexie-react-hooks';
 
 export default function NewStockIntakePage() {
     const router = useRouter();
@@ -27,16 +28,11 @@ export default function NewStockIntakePage() {
     const [supplierPopoverOpen, setSupplierPopoverOpen] = useState(false);
     
     const [invoiceNumber, setInvoiceNumber] = useState('');
-    const [invoiceDate, setInvoiceDate] = useState<Date | undefined>();
+    const [invoiceDate, setInvoiceDate] = useState<Date | undefined>(new Date());
     const [items, setItems] = useState<StockIntakeItem[]>([]);
     const [isSaving, setIsSaving] = useState(false);
-    const [isMounted, setIsMounted] = useState(false);
-
-    const [suppliers, setSuppliers] = useState<Supplier[] | undefined>(undefined);
-
-    useEffect(() => {
-      dataService.getSuppliers().then(setSuppliers);
-    }, []);
+    
+    const suppliers = useLiveQuery(() => dataService.getSuppliers());
 
     const supplierOptions = useMemo(() => {
         if (!suppliers) return [];
@@ -44,11 +40,6 @@ export default function NewStockIntakePage() {
         return suppliers.filter(s => s.name.toLowerCase().includes(supplierSearch.toLowerCase()));
     }, [suppliers, supplierSearch]);
 
-
-    useEffect(() => {
-        setInvoiceDate(new Date());
-        setIsMounted(true);
-    }, []);
 
     const handleAddProduct = (product: any) => {
         const existingItemIndex = items.findIndex(item => item.productId === product.id);
@@ -161,7 +152,7 @@ export default function NewStockIntakePage() {
                      <Button variant="outline" size="icon" asChild>
                         <Link href="/stock"><ArrowLeft className="h-4 w-4" /></Link>
                      </Button>
-                    <Button onClick={handleSave} disabled={isSaving || !isMounted}>
+                    <Button onClick={handleSave} disabled={isSaving}>
                         {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                         {isSaving ? 'Enregistrement...' : 'Enregistrer la réception'}
                     </Button>

@@ -1,16 +1,16 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { dataService } from '@/services/data-service';
-import type { CompanyProfile, ZakatData } from '@/lib/types';
 import { formatCurrency } from '@/lib/utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AlertTriangle, ArrowRight, Minus, Plus } from 'lucide-react';
+import { AlertTriangle, Minus, Plus } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { useLiveQuery } from 'dexie-react-hooks';
 
 const ZAKAT_RATE = 0.025;
 const NISAB_GOLD_GRAMS = 85;
@@ -19,21 +19,10 @@ export default function ZakatPage() {
     const [cashOnHand, setCashOnHand] = useState('');
     const [debts, setDebts] = useState('');
 
-    const [zakatData, setZakatData] = useState<ZakatData | undefined>(undefined);
-    const [companyProfile, setCompanyProfile] = useState<CompanyProfile | null | undefined>(undefined);
-    const [isLoading, setIsLoading] = useState(true);
+    const zakatData = useLiveQuery(() => dataService.getZakatData());
+    const companyProfile = useLiveQuery(() => dataService.getCompanyProfile());
     
-    useEffect(() => {
-        setIsLoading(true);
-        Promise.all([
-            dataService.getZakatData(),
-            dataService.getCompanyProfile()
-        ]).then(([zakat, profile]) => {
-            setZakatData(zakat);
-            setCompanyProfile(profile);
-            setIsLoading(false);
-        });
-    }, []);
+    const isLoading = zakatData === undefined || companyProfile === undefined;
 
     const nisabAmount = useMemo(() => {
         const goldPrice = companyProfile?.goldPricePerGram || 0;
@@ -65,7 +54,6 @@ export default function ZakatPage() {
                     placeholder={placeholder}
                     value={onChange ? (value === 0 ? '' : String(value)) : undefined}
                     onChange={(e) => onChange?.(e.target.value)}
-                    defaultValue={value}
                 />
             ) : (
                 <span className={`text-lg font-bold ${className}`}>{formatCurrency(value)}</span>

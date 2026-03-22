@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { dataService } from '@/services/data-service';
 import { formatDateToYYYYMMDD } from '@/lib/utils';
 import { addDays, format } from 'date-fns';
@@ -30,22 +30,29 @@ export default function BreadPage() {
         return profile?.prix_pain;
     }, []);
 
-    const orders = useLiveQuery(async () => {
-      if (!formattedDate) return undefined;
-      
-      const ordersExist = await dataService.checkIfBreadOrdersExist(formattedDate);
-      if (!ordersExist) {
-          setIsGenerating(true);
-          try {
-              await dataService.createDayOrders(formattedDate);
-          } catch (error) {
-              console.error("Failed to generate daily orders:", error);
-              toast.error("Erreur lors de la génération des commandes du jour.");
-          } finally {
-              setIsGenerating(false);
-          }
-      }
-      return dataService.getBreadOrdersForDate(formattedDate);
+    const orders = useLiveQuery(() => 
+        dataService.getBreadOrdersForDate(formattedDate),
+        [formattedDate]
+    );
+
+    useEffect(() => {
+        const generateOrders = async () => {
+            if (formattedDate) {
+                setIsGenerating(true);
+                try {
+                    const ordersExist = await dataService.checkIfBreadOrdersExist(formattedDate);
+                    if (!ordersExist) {
+                        await dataService.createDayOrders(formattedDate);
+                    }
+                } catch (error) {
+                    console.error("Failed to generate daily orders:", error);
+                    toast.error("Erreur lors de la génération des commandes du jour.");
+                } finally {
+                    setIsGenerating(false);
+                }
+            }
+        };
+        generateOrders();
     }, [formattedDate]);
     
     const isLoading = orders === undefined || isGenerating;
@@ -56,7 +63,7 @@ export default function BreadPage() {
 
     const isToday = useMemo(() => formatDateToYYYYMMDD(new Date()) === formattedDate, [formattedDate]);
 
-    if (!orders && isLoading) {
+    if (isLoading && orders === undefined) {
         return (
             <div className="p-4 sm:p-6 space-y-6">
                 <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
