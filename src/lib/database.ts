@@ -22,9 +22,9 @@ export class PosDatabase extends Dexie {
     commandes_pain!: Table<BreadOrder, number>;
 
     constructor() {
-        super('iPOS_DB_NATIVE'); // Use the original name
+        super('posDB');
         this.version(29).stores({
-            products: '++id, name, *barcodes, category, price, quantity, [category+name], fournisseurId',
+            products: '++id, name, *barcodes, category, price, quantity, [category+name], fournisseurId, createdAt',
             customers: '++id, &searchName, createdAt, lastName, firstName, [lastName+firstName], phone, outstandingBalance, lastActivityDate',
             sales: '++id, &invoiceNumber, createdAt, customerId, customerName, paymentStatus, dueDate',
             payments: '++id, createdAt, customerId, paymentDate',
@@ -41,15 +41,12 @@ export class PosDatabase extends Dexie {
             clients_pain: '++id, nom, actif, type_recurrence',
             commandes_pain: '++id, [client_pain_id+date], date, est_paye, est_livre',
         }).upgrade(tx => {
-            // Dexie upgrade functions are declarative of the target version structure.
-            // This is for version 22, ensuring searchName is populated. It runs if the client db version < 22.
             return tx.table('customers').toCollection().modify(customer => {
                 if (customer.firstName && customer.lastName && !customer.searchName) {
                    customer.searchName = `${customer.firstName.toLowerCase()} ${customer.lastName.toLowerCase()}`;
                 }
             });
         }).upgrade(tx => {
-            // This is for version 28, migrating 'statut' to 'est_paye' and 'est_livre'
             return tx.table('commandes_pain').toCollection().modify(order => {
                 const oldStatut = (order as any).statut;
                 if (oldStatut !== undefined) {
@@ -92,7 +89,6 @@ export class PosDatabase extends Dexie {
             }
         });
 
-        // Hooks to add/update timestamps
         this.tables.forEach(table => {
             if (['settings', 'carts'].includes(table.name)) return;
             
@@ -113,7 +109,6 @@ export class PosDatabase extends Dexie {
             });
         });
         
-        // Hooks to auto-generate searchName for customers
         this.customers.hook('creating', (primKey, obj) => {
             if(typeof obj.firstName === 'string' && typeof obj.lastName === 'string') {
                 obj.searchName = `${obj.firstName.toLowerCase()} ${obj.lastName.toLowerCase()}`;
@@ -132,15 +127,15 @@ export class PosDatabase extends Dexie {
     }
 }
 
-let db: PosDatabase;
+let dbInstance: PosDatabase;
 
 export function getDb(): PosDatabase {
-  if (typeof window !== 'undefined') {
-    if (!db) {
-      db = new PosDatabase();
-    }
-    return db;
+  if (typeof window === 'undefined') {
+    throw new Error("La base de données (getDb) ne peut pas être appelée côté serveur. Assurez-vous que le composant est un 'use client' et que l'appel se fait dans un useEffect, un gestionnaire d'événements ou un hook useLiveQuery.");
   }
-  // This is a server-side mock.
-  return new Dexie('iPOS_DB_NATIVE') as unknown as PosDatabase;
+  
+  if (!dbInstance) {
+    dbInstance = new PosDatabase();
+  }
+  return dbInstance;
 }

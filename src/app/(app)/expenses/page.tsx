@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { dataService } from '@/services/data-service';
 import type { Expense, ExpenseCategory } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -23,6 +23,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { formatCurrency } from '@/lib/utils';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { useLiveQuery } from 'dexie-react-hooks';
 
 export default function ExpensesPage() {
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -31,32 +32,22 @@ export default function ExpensesPage() {
     const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
     const { dateRange, setDate, isMounted } = useDateRange(29);
 
-    const [expenses, setExpenses] = useState<Expense[] | undefined>(undefined);
-    const [categories, setCategories] = useState<ExpenseCategory[]>([]);
-
-    const loadData = useCallback(() => {
-        setIsLoading(true);
-        Promise.all([
+    const { expenses, categories } = useLiveQuery(() => {
+        if (!isMounted) return { expenses: undefined, categories: [] };
+        return Promise.all([
             dataService.getExpenses({ 
                 category: selectedCategory === 'all' ? undefined : selectedCategory,
                 from: dateRange?.from,
                 to: dateRange?.to
             }),
             dataService.getExpenseCategories()
-        ]).then(([expenseData, categoryData]) => {
-            setExpenses(expenseData);
-            setCategories(categoryData as ExpenseCategory[]);
-            setIsLoading(false);
-        });
-    }, [selectedCategory, dateRange]);
+        ]).then(([expenseData, categoryData]) => ({
+            expenses: expenseData,
+            categories: categoryData as ExpenseCategory[]
+        }));
+    }, [isMounted, selectedCategory, dateRange], { expenses: undefined, categories: [] });
 
-    useEffect(() => {
-        if(isMounted) {
-            loadData();
-        }
-    }, [isMounted, loadData]);
-    
-    const [isLoading, setIsLoading] = useState(true);
+    const isLoading = expenses === undefined;
 
     const handleEditExpense = (expense: Expense) => {
         setSelectedExpense(expense);
@@ -66,16 +57,6 @@ export default function ExpensesPage() {
     const handleDeleteExpense = (expense: Expense) => {
         setSelectedExpense(expense);
         setIsDeleteDialogOpen(true);
-    };
-    
-    const handleDialogClose = (open: boolean) => {
-        setIsExpenseDialogOpen(open);
-        if (!open) loadData();
-    };
-
-    const handleDeleteDialogClose = (open: boolean) => {
-        setIsDeleteDialogOpen(open);
-        if (!open) loadData();
     };
 
     const totalExpenses = expenses ? expenses.reduce((acc, expense) => acc + expense.amount, 0) : 0;
@@ -173,12 +154,12 @@ export default function ExpensesPage() {
 
             <ExpenseDialog 
                 isOpen={isExpenseDialogOpen}
-                onOpenChange={handleDialogClose}
+                onOpenChange={setIsExpenseDialogOpen}
                 expense={selectedExpense}
             />
             <DeleteExpenseDialog 
                 isOpen={isDeleteDialogOpen}
-                onOpenChange={handleDeleteDialogClose}
+                onOpenChange={setIsDeleteDialogOpen}
                 expense={selectedExpense}
             />
         </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { dataService } from '@/services/data-service';
 import { useDebounce } from '@/hooks/useDebounce';
 import type { ProductReturn } from '@/lib/types';
@@ -16,6 +16,7 @@ import { CancelReturnDialog } from '@/components/returns/CancelReturnDialog';
 import Link from 'next/link';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { useLiveQuery } from 'dexie-react-hooks';
 
 export default function ReturnsPage() {
     const [searchQuery, setSearchQuery] = useState('');
@@ -26,25 +27,16 @@ export default function ReturnsPage() {
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
     const [isCancelOpen, setIsCancelOpen] = useState(false);
 
-    const [returns, setReturns] = useState<ProductReturn[] | undefined>(undefined);
-    const [isLoading, setIsLoading] = useState(true);
-
-    const loadReturns = useCallback(() => {
-        if (!isMounted) return;
-        setIsLoading(true);
-        dataService.getReturns({ 
+    const returns = useLiveQuery(() => {
+        if (!isMounted) return undefined;
+        return dataService.getReturns({ 
             query: debouncedSearchQuery,
             from: dateRange?.from,
             to: dateRange?.to
-        }).then(data => {
-            setReturns(data);
-            setIsLoading(false);
         });
     }, [isMounted, debouncedSearchQuery, dateRange]);
 
-    useEffect(() => {
-        loadReturns();
-    }, [loadReturns]);
+    const isLoading = returns === undefined;
 
     const handleViewDetails = (pr: ProductReturn) => {
         setSelectedReturn(pr);
@@ -54,13 +46,6 @@ export default function ReturnsPage() {
     const handleCancelReturn = (pr: ProductReturn) => {
         setSelectedReturn(pr);
         setIsCancelOpen(true);
-    };
-
-    const handleCancelDialogClose = (open: boolean) => {
-        setIsCancelOpen(open);
-        if (!open) {
-            loadReturns();
-        }
     };
     
     const renderSkeletons = () => (
@@ -135,7 +120,7 @@ export default function ReturnsPage() {
             />
             <CancelReturnDialog 
                 isOpen={isCancelOpen}
-                onOpenChange={handleCancelDialogClose}
+                onOpenChange={setIsCancelOpen}
                 productReturn={selectedReturn}
             />
         </div>

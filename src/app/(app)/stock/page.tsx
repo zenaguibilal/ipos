@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { dataService } from '@/services/data-service';
 import { useDebounce } from '@/hooks/useDebounce';
 import type { StockIntake, Supplier } from '@/lib/types';
@@ -15,6 +15,7 @@ import Link from 'next/link';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useLiveQuery } from 'dexie-react-hooks';
 
 export default function StockPage() {
     const [searchQuery, setSearchQuery] = useState('');
@@ -24,30 +25,16 @@ export default function StockPage() {
     const [selectedIntake, setSelectedIntake] = useState<StockIntake | null>(null);
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
-    const [stockIntakes, setStockIntakes] = useState<StockIntake[] | undefined>(undefined);
-    const [suppliers, setSuppliers] = useState<Supplier[] | undefined>(undefined);
-    const [isLoading, setIsLoading] = useState(true);
-
-    const loadStockIntakes = useCallback(() => {
-        if (!isMounted) return;
-        setIsLoading(true);
-        Promise.all([
-            dataService.getStockIntakes({ 
-                query: debouncedSearchQuery,
-                from: dateRange?.from,
-                to: dateRange?.to
-            }),
-            dataService.getSuppliers()
-        ]).then(([intakeData, supplierData]) => {
-            setStockIntakes(intakeData);
-            setSuppliers(supplierData);
-            setIsLoading(false);
+    const stockIntakes = useLiveQuery(() => {
+        if (!isMounted) return undefined;
+        return dataService.getStockIntakes({ 
+            query: debouncedSearchQuery,
+            from: dateRange?.from,
+            to: dateRange?.to
         });
     }, [isMounted, debouncedSearchQuery, dateRange]);
 
-    useEffect(() => {
-        loadStockIntakes();
-    }, [loadStockIntakes]);
+    const isLoading = stockIntakes === undefined;
 
     const handleViewDetails = (intake: StockIntake) => {
         setSelectedIntake(intake);
@@ -86,7 +73,6 @@ export default function StockPage() {
                         key={s.id} 
                         intake={s}
                         onViewDetails={handleViewDetails}
-                        suppliers={suppliers || []}
                     />
                 ))}
             </div>

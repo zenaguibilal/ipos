@@ -10,26 +10,16 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useSync } from '@/hooks/useSync';
 import type { CompanyProfile } from '@/lib/types';
+import { useLiveQuery } from 'dexie-react-hooks';
 
 export function SyncData() {
     const { syncStatus, syncNow } = useSync();
-    const [companyProfile, setCompanyProfile] = useState<CompanyProfile | null>(null);
-
-    const loadProfile = useCallback(async () => {
-        const profile = await dataService.getCompanyProfile();
-        setCompanyProfile(profile);
-    }, []);
-
-    useEffect(() => {
-        loadProfile();
-    }, [loadProfile, syncStatus.lastSync]);
-
+    const companyProfile = useLiveQuery(() => dataService.getCompanyProfile());
 
     const handleSync = async () => {
         toast.info("Lancement de la synchronisation complète...");
         try {
             await syncNow();
-            await loadProfile(); // Reload profile to get latest sync date
             toast.success("Synchronisation terminée avec succès !");
         } catch (error: any) {
             console.error("Erreur lors de la synchronisation:", error);

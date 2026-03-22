@@ -17,9 +17,10 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import type { StockIntake } from '@/lib/types';
+import type { StockIntake, Supplier } from '@/lib/types';
 import { formatCurrency } from '@/lib/utils';
-import { useMemo } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { dataService } from '@/services/data-service';
 
 export function StockIntakeDetailsDialog({
     isOpen,
@@ -30,15 +31,17 @@ export function StockIntakeDetailsDialog({
     onOpenChange: (open: boolean) => void;
     intake: StockIntake | null;
 }) {
-
-    const supplierName = useMemo(() => {
-        if (!intake) return '';
-        // Note: The `supplierName` might not be on the intake object if it's from an older schema version.
-        // The display here is just for showing what's available.
-        return intake.supplierName || 'Fournisseur inconnu';
-    }, [intake]);
+    const supplier = useLiveQuery(
+      async () => {
+        if (!intake?.supplierId) return undefined;
+        return dataService.getById<Supplier>('suppliers', intake.supplierId);
+      },
+      [intake?.supplierId]
+    );
 
     if (!intake) return null;
+    
+    const supplierName = intake.supplierName || supplier?.name || 'Fournisseur inconnu';
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>

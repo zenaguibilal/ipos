@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { dataService } from '@/services/data-service';
 import type { BreadClient } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -11,27 +11,14 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BREAD_WEEK_DAY_LABELS, BREAD_WEEK_DAYS } from '@/lib/constants';
+import { useLiveQuery } from 'dexie-react-hooks';
 
-interface BreadClientListProps {
-    onDataChange: () => void;
-}
-
-export function BreadClientList({ onDataChange }: BreadClientListProps) {
+export function BreadClientList() {
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [selectedClient, setSelectedClient] = useState<BreadClient | null>(null);
-    const [clients, setClients] = useState<BreadClient[] | undefined>(undefined);
-    const [isLoading, setIsLoading] = useState(true);
 
-    const loadClients = useCallback(async () => {
-        setIsLoading(true);
-        const loadedClients = await dataService.getBreadClients();
-        setClients(loadedClients);
-        setIsLoading(false);
-    }, []);
-    
-    useEffect(() => {
-        loadClients();
-    }, [loadClients]);
+    const clients = useLiveQuery(() => dataService.getBreadClients());
+    const isLoading = clients === undefined;
 
     const handleEdit = (client: BreadClient) => {
         setSelectedClient(client);
@@ -42,14 +29,6 @@ export function BreadClientList({ onDataChange }: BreadClientListProps) {
         setSelectedClient(null);
         setIsFormOpen(true);
     };
-
-    const handleFormClose = (isOpen: boolean) => {
-        setIsFormOpen(isOpen);
-        if (!isOpen) {
-            onDataChange();
-            loadClients();
-        }
-    }
     
     const getRecurrenceBadge = (client: BreadClient) => {
         switch (client.type_recurrence) {
@@ -103,9 +82,8 @@ export function BreadClientList({ onDataChange }: BreadClientListProps) {
 
             <BreadClientForm 
                 isOpen={isFormOpen}
-                onOpenChange={handleFormClose}
+                onOpenChange={setIsFormOpen}
                 client={selectedClient}
-                onDataChange={onDataChange}
             />
         </>
     );

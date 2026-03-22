@@ -8,16 +8,22 @@ import { FileText } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { safeToDate, formatCurrency } from '@/lib/utils';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { dataService } from '@/services/data-service';
 
 interface StockIntakeCardProps {
     intake: StockIntake;
     onViewDetails: (intake: StockIntake) => void;
-    suppliers: Supplier[];
 }
 
-const StockIntakeCardComponent = ({ intake, onViewDetails, suppliers }: StockIntakeCardProps) => {
+export const StockIntakeCard = React.memo<StockIntakeCardProps>(({ intake, onViewDetails }) => {
 
-    const supplierName = suppliers.find(s => s.id === intake.supplierId)?.name || 'Fournisseur inconnu';
+    const supplier = useLiveQuery(
+        () => intake.supplierId ? dataService.getById<Supplier>('suppliers', intake.supplierId) : undefined,
+        [intake.supplierId]
+    );
+
+    const supplierName = intake.supplierName || supplier?.name || 'Fournisseur inconnu';
 
     return (
         <Card className="transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
@@ -50,6 +56,5 @@ const StockIntakeCardComponent = ({ intake, onViewDetails, suppliers }: StockInt
             </CardFooter>
         </Card>
     );
-}
-
-export const StockIntakeCard = React.memo(StockIntakeCardComponent);
+});
+StockIntakeCard.displayName = 'StockIntakeCard';

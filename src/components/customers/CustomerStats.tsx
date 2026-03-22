@@ -5,13 +5,19 @@ import { Skeleton } from '@/components/ui/skeleton';
 import type { Customer } from '@/lib/types';
 import { Users, AlertTriangle, UserX } from 'lucide-react';
 import { useMemo } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { dataService } from '@/services/data-service';
 
 interface CustomerStatsProps {
   customers: Customer[] | undefined;
   isLoading: boolean;
 }
 
-export function CustomerStats({ customers, isLoading }: CustomerStatsProps) {
+export function CustomerStats({ customers: initialCustomers, isLoading: isInitialLoading }: CustomerStatsProps) {
+
+  const customers = useLiveQuery(() => dataService.getCustomers({}), [], initialCustomers);
+  const isLoading = customers === undefined;
+
   const stats = useMemo(() => {
     if (!customers) {
       return { total: 0, overdue: 0, overLimit: 0 };

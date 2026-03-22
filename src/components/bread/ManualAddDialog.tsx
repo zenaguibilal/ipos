@@ -10,24 +10,18 @@ import { dataService } from '@/services/data-service';
 import { toast } from 'sonner';
 import { Plus } from 'lucide-react';
 import type { BreadClient } from '@/lib/types';
+import { useLiveQuery } from 'dexie-react-hooks';
 
 interface ManualAddDialogProps {
     currentDate: string;
-    onAdd: () => void;
 }
 
-export function ManualAddDialog({ currentDate, onAdd }: ManualAddDialogProps) {
+export function ManualAddDialog({ currentDate }: ManualAddDialogProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [selectedClientId, setSelectedClientId] = useState<string>('');
     const [quantity, setQuantity] = useState(10);
-    const [manualClients, setManualClients] = useState<BreadClient[]>([]);
-
-    useEffect(() => {
-        if(isOpen) {
-            dataService.getManualBreadClients().then(setManualClients);
-        }
-    }, [isOpen]);
     
+    const manualClients = useLiveQuery(() => isOpen ? dataService.getManualBreadClients() : [], [isOpen]);
 
     const handleAdd = async () => {
         if (!selectedClientId) {
@@ -45,7 +39,6 @@ export function ManualAddDialog({ currentDate, onAdd }: ManualAddDialogProps) {
             setIsOpen(false);
             setSelectedClientId('');
             setQuantity(10);
-            onAdd();
         } catch(error: any) {
             toast.error("Erreur lors de l'ajout.", { description: error.message });
         }

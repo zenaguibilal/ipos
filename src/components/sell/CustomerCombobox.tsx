@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import React from 'react';
 import { dataService } from '@/services/data-service';
 import { Combobox, ComboboxOption } from '@/components/ui/combobox';
 import type { Customer } from '@/lib/types';
 import { formatCurrency } from '@/lib/utils';
+import { useLiveQuery } from 'dexie-react-hooks';
 
 interface CustomerComboboxProps {
     customerId: number | null;
@@ -19,19 +20,9 @@ const WalkInCustomerOption: ComboboxOption = {
 
 export const CustomerCombobox = React.forwardRef<HTMLButtonElement, CustomerComboboxProps>(({ customerId, onSelectCustomer }, ref) => {
     
-    const [customers, setCustomers] = useState<Customer[]>([]);
+    const customers = useLiveQuery(() => dataService.getCustomers({ sortBy: 'lastName_asc' }), []);
 
-    const loadCustomers = useCallback(async () => {
-      const allCustomers = await dataService.getAll<Customer>('customers');
-      const sorted = allCustomers.sort((a,b) => (a.lastName || '').localeCompare(b.lastName || ''));
-      setCustomers(sorted);
-    }, []);
-
-    useEffect(() => {
-        loadCustomers();
-    }, [loadCustomers]);
-
-    const customerOptions = useMemo<ComboboxOption[]>(() => {
+    const customerOptions = React.useMemo<ComboboxOption[]>(() => {
         if (!customers) return [WalkInCustomerOption];
 
         const options = customers.map(c => {
@@ -45,9 +36,7 @@ export const CustomerCombobox = React.forwardRef<HTMLButtonElement, CustomerComb
         });
 
         return [WalkInCustomerOption, ...options];
-
     }, [customers]);
-
 
     const handleSelect = (value: string) => {
         if (value === 'walk-in') {

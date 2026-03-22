@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useMemo } from 'react';
 import { dataService } from '@/services/data-service';
 import { formatDateToYYYYMMDD } from '@/lib/utils';
 import { addDays, format } from 'date-fns';
@@ -11,78 +11,52 @@ import { BreadClientList } from '@/components/bread/BreadClientList';
 import { BreadDayView } from '@/components/bread/BreadDayView';
 import { BreadStats } from '@/components/bread/BreadStats';
 import { Loader2 } from 'lucide-react';
-import type { BreadOrderWithClient } from '@/lib/types';
+import type { CompanyProfile } from '@/lib/types';
 import { toast } from 'sonner';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useLiveQuery } from 'dexie-react-hooks';
 
 export default function BreadPage() {
-    const [currentDate, setCurrentDate] = useState<Date | undefined>(undefined);
+    const [currentDate, setCurrentDate] = useState(new Date());
     const [isGenerating, setIsGenerating] = useState(false);
-    const [isLoading, setIsLoading] = useState(true);
-    const [orders, setOrders] = useState<BreadOrderWithClient[] | undefined>(undefined);
-    const [breadPriceSetting, setBreadPriceSetting] = useState<number | undefined>(undefined);
 
-    useEffect(() => {
-        setCurrentDate(new Date());
+    const formattedDate = useMemo(() => formatDateToYYYYMMDD(currentDate), [currentDate]);
+
+    const breadPriceSetting = useLiveQuery<CompanyProfile['prix_pain']>(async () => {
+        const profile = await dataService.getCompanyProfile();
+        return profile?.prix_pain;
     }, []);
 
-    const formattedDate = useMemo(() => currentDate ? formatDateToYYYYMMDD(currentDate) : '', [currentDate]);
-
-    const fetchOrders = useCallback(async (date: string) => {
-      if (!date) return;
-      setIsLoading(true);
-      try {
-        const ordersExist = await dataService.checkIfBreadOrdersExist(date);
-        if (!ordersExist) {
-            setIsGenerating(true);
-            try {
-                await dataService.createDayOrders(date);
-            } catch (error) {
-                console.error("Failed to generate daily orders:", error);
-                toast.error("Erreur lors de la génération des commandes du jour.");
-            } finally {
-                setIsGenerating(false);
-            }
-        }
-        const fetchedOrders = await dataService.getBreadOrdersForDate(date);
-        setOrders(fetchedOrders);
-      } catch (error) {
-          console.error("Failed to fetch orders:", error);
-          toast.error("Erreur lors de la récupération des commandes.");
-      } finally {
-          setIsLoading(false);
+    const orders = useLiveQuery(async () => {
+      if (!formattedDate) return undefined;
+      
+      const ordersExist = await dataService.checkIfBreadOrdersExist(formattedDate);
+      if (!ordersExist) {
+          setIsGenerating(true);
+          try {
+              await dataService.createDayOrders(formattedDate);
+          } catch (error) {
+              console.error("Failed to generate daily orders:", error);
+              toast.error("Erreur lors de la génération des commandes du jour.");
+          } finally {
+              setIsGenerating(false);
+          }
       }
-    }, []);
-
-    const handleDataChange = useCallback(() => {
-        if(formattedDate) {
-            fetchOrders(formattedDate);
-        }
-    }, [formattedDate, fetchOrders]);
+      return dataService.getBreadOrdersForDate(formattedDate);
+    }, [formattedDate]);
     
-    useEffect(() => {
-        dataService.getCompanyProfile().then(p => setBreadPriceSetting(p?.prix_pain));
-    }, []);
-    
-    useEffect(() => {
-        if (formattedDate) {
-            fetchOrders(formattedDate);
-        }
-    }, [formattedDate, fetchOrders]);
+    const isLoading = orders === undefined || isGenerating;
     
     const handleDateChange = (days: number) => {
-        setCurrentDate(prev => prev ? addDays(prev, days) : new Date());
+        setCurrentDate(prev => addDays(prev, days));
     };
 
-    const isToday = useMemo(() => {
-        if (!currentDate) return false;
-        return formatDateToYYYYMMDD(new Date()) === formattedDate;
-    }, [currentDate, formattedDate]);
+    const isToday = useMemo(() => formatDateToYYYYMMDD(new Date()) === formattedDate, [formattedDate]);
 
-    if (!currentDate) {
+    if (!orders && isLoading) {
         return (
             <div className="p-4 sm:p-6 space-y-6">
                 <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
@@ -115,8 +89,6 @@ export default function BreadPage() {
         );
     }
 
-    const showLoadingState = isLoading || isGenerating || orders === undefined;
-
     return (
         <div className="p-4 sm:p-6 space-y-6">
             <PageHeader 
@@ -138,11 +110,11 @@ export default function BreadPage() {
                 </Alert>
             )}
 
-            <BreadStats orders={orders} isLoading={showLoadingState}/>
+            <BreadStats orders={orders} isLoading={isLoading}/>
 
             <div className="grid lg:grid-cols-3 gap-6 items-start">
                 <div className="lg:col-span-2">
-                    {showLoadingState ? (
+                    {isLoading ? (
                         <div className="flex justify-center items-center h-64">
                             <Loader2 className="h-8 w-8 animate-spin text-primary" />
                         </div>
@@ -151,13 +123,12 @@ export default function BreadPage() {
                             orders={orders || []} 
                             currentDate={formattedDate} 
                             breadPrice={breadPriceSetting || 0}
-                            onDataChange={handleDataChange}
                         />
                     )}
                 </div>
 
                 <div className="lg:col-span-1">
-                    <BreadClientList onDataChange={handleDataChange}/>
+                    <BreadClientList />
                 </div>
             </div>
         </div>

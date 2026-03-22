@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo } from 'react';
 import { dataService } from '@/services/data-service';
 import type { StockIntake, CostingItem, Supplier } from '@/lib/types';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
@@ -16,44 +16,22 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { useLiveQuery } from 'dexie-react-hooks';
 
 export default function CostingPage() {
     const [selectedIntakeId, setSelectedIntakeId] = useState<string | null>(null);
     const [deliveryCost, setDeliveryCost] = useState('');
     const [isApplyingCosts, setIsApplyingCosts] = useState(false);
 
-    const [intakes, setIntakes] = useState<StockIntake[] | undefined>(undefined);
-    const [suppliers, setSuppliers] = useState<Supplier[] | undefined>(undefined);
-    const [selectedIntake, setSelectedIntake] = useState<StockIntake | undefined>(undefined);
-    const [isLoading, setIsLoading] = useState(true);
-
-    const loadIntakes = useCallback(() => {
-        setIsLoading(true);
-        Promise.all([
-            dataService.getStockIntakes({}),
-            dataService.getSuppliers()
-        ]).then(([intakeData, supplierData]) => {
-            setIntakes(intakeData);
-            setSuppliers(supplierData);
-            setIsLoading(false);
-        });
-    }, []);
-
-    useEffect(() => {
-        loadIntakes();
-    }, [loadIntakes]);
-
-    useEffect(() => {
-      if (selectedIntakeId) {
-        setIsLoading(true);
-        dataService.getById<StockIntake>('stockIntakes', parseInt(selectedIntakeId)).then(data => {
-            setSelectedIntake(data);
-            setIsLoading(false);
-        });
-      } else {
-        setSelectedIntake(undefined);
-      }
+    const intakes = useLiveQuery(() => dataService.getStockIntakes({}));
+    const suppliers = useLiveQuery(() => dataService.getSuppliers());
+    
+    const selectedIntake = useLiveQuery(async () => {
+        if (!selectedIntakeId) return undefined;
+        return dataService.getById<StockIntake>('stockIntakes', parseInt(selectedIntakeId));
     }, [selectedIntakeId]);
+
+    const isLoading = intakes === undefined || suppliers === undefined;
 
     const intakeOptions = useMemo<ComboboxOption[]>(() => {
         if (!intakes || !suppliers) return [];

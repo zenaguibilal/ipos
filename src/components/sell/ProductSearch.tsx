@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, forwardRef, useImperativeHandle, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, forwardRef, useImperativeHandle, useRef, useEffect } from 'react';
 import { dataService } from '@/services/data-service';
 import type { Product } from '@/lib/types';
 import { Input } from '@/components/ui/input';
@@ -13,6 +13,8 @@ import { Label } from '../ui/label';
 import { formatCurrency, getPlaceholder } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { useDebounce } from '@/hooks/useDebounce';
 
 interface ProductSearchProps {
     onProductSelect: (product: Product, quantity: number) => void;
@@ -67,10 +69,11 @@ const CustomProductDialog = ({ onAdd }: { onAdd: (name: string, price: number) =
 
 export const ProductSearch = forwardRef<{focus: () => void}, ProductSearchProps>(({ onProductSelect }, ref) => {
     const [query, setQuery] = useState('');
+    const debouncedQuery = useDebounce(query, 100);
     const [selectedCategory, setSelectedCategory] = useState('all');
     const inputRef = useRef<HTMLInputElement>(null);
-    const [products, setProducts] = useState<Product[]>([]);
-    const [categories, setCategories] = useState<string[]>([]);
+    
+    const categories = useLiveQuery(() => dataService.getProductCategories(), []);
 
     useImperativeHandle(ref, () => ({
         focus: () => {
@@ -78,18 +81,10 @@ export const ProductSearch = forwardRef<{focus: () => void}, ProductSearchProps>
         },
     }));
     
-    const loadData = useCallback(async () => {
-        const [prods, cats] = await Promise.all([
-            dataService.getAll<Product>('products'),
-            dataService.getProductCategories()
-        ]);
-        setProducts(prods);
-        setCategories(cats);
-    }, []);
-
-    useEffect(() => {
-        loadData();
-    }, [loadData]);
+    const filteredProducts = useLiveQuery(async () => {
+        if (!debouncedQuery) return [];
+        return dataService.getProducts({ query: debouncedQuery, category: selectedCategory === 'all' ? undefined : selectedCategory });
+    }, [debouncedQuery, selectedCategory]);
 
     const handleBarcodeScanned = async (scannedBarcode: string) => {
         if (!scannedBarcode.trim()) return;
@@ -102,28 +97,6 @@ export const ProductSearch = forwardRef<{focus: () => void}, ProductSearchProps>
         }
     };
     
-    const filteredProducts = useMemo(() => {
-        if (!products) return [];
-
-        const lowercasedQuery = query.toLowerCase().trim();
-        if (!lowercasedQuery) {
-            return [];
-        }
-        
-        let categoryFiltered = products;
-        if (selectedCategory !== 'all') {
-            categoryFiltered = products.filter(p => p.category === selectedCategory);
-        }
-
-        const results = categoryFiltered.filter(p => 
-            p.name.toLowerCase().includes(lowercasedQuery) ||
-            p.barcodes?.some(b => b.includes(lowercasedQuery))
-        );
-
-        return results.slice(0, 10);
-
-    }, [query, products, selectedCategory]);
-
     const addCustomProduct = (name: string, price: number) => {
         const customProduct: Product = {
             id: `custom-${Date.now()}`,
@@ -184,7 +157,7 @@ export const ProductSearch = forwardRef<{focus: () => void}, ProductSearchProps>
 
             <ScrollArea className="flex-grow -mx-4 mt-2">
                 <div className="space-y-1 px-4">
-                    {filteredProducts.map((product, index) => (
+                    {filteredProducts?.map((product, index) => (
                         <ListItem
                             key={product.id}
                             product={product}
@@ -195,7 +168,7 @@ export const ProductSearch = forwardRef<{focus: () => void}, ProductSearchProps>
                             isLast={index === filteredProducts.length - 1}
                         />
                     ))}
-                     {filteredProducts.length === 0 && (
+                     {filteredProducts?.length === 0 && (
                         <div className="text-center text-muted-foreground py-8">
                             {query.trim() ? (
                                 <p>Aucun produit trouvé pour votre recherche.</p>

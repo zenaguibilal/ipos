@@ -33,6 +33,7 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useLiveQuery } from 'dexie-react-hooks';
 
 type ViewMode = 'grid' | 'list';
 type StockStatus = 'all' | 'in_stock' | 'low_stock' | 'out_of_stock';
@@ -77,61 +78,22 @@ export default function ProductsPage() {
 
     const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
-    const [products, setProducts] = useState<Product[] | undefined>(undefined);
-    const [categories, setCategories] = useState<string[] | undefined>(undefined);
-    const [suppliers, setSuppliers] = useState<Supplier[] | undefined>(undefined);
-    const [isLoading, setIsLoading] = useState(true);
-    
-    const loadProducts = useCallback(() => {
-        setIsLoading(true);
-        dataService.getProducts({ 
-            query: debouncedSearchQuery, 
-            category: selectedCategory === 'all' ? undefined : selectedCategory,
-            supplierId: selectedSupplier === 'all' ? undefined : parseInt(selectedSupplier),
-            stockStatus: stockStatus,
-            sortBy: sortBy,
-        }).then(p => {
-            setProducts(p);
-            setIsLoading(false);
-        });
-    }, [debouncedSearchQuery, selectedCategory, selectedSupplier, stockStatus, sortBy]);
+    const products = useLiveQuery(() => dataService.getProducts({ 
+        query: debouncedSearchQuery, 
+        category: selectedCategory === 'all' ? undefined : selectedCategory,
+        supplierId: selectedSupplier === 'all' ? undefined : parseInt(selectedSupplier),
+        stockStatus: stockStatus,
+        sortBy: sortBy,
+    }), [debouncedSearchQuery, selectedCategory, selectedSupplier, stockStatus, sortBy]);
 
-    useEffect(() => {
-        loadProducts();
-    }, [loadProducts]);
-    
-    useEffect(() => {
-        dataService.getProductCategories().then(setCategories);
-        dataService.getSuppliers().then(setSuppliers);
-    }, []);
+    const categories = useLiveQuery(() => dataService.getProductCategories());
+    const suppliers = useLiveQuery(() => dataService.getSuppliers());
 
+    const isLoading = products === undefined;
+    
     useEffect(() => {
         setSelectedProducts(new Set());
     }, [debouncedSearchQuery, selectedCategory, stockStatus, selectedSupplier]);
-
-    const handleDialogClose = (open: boolean) => {
-        if (!open) {
-            setIsProductDialogOpen(false);
-            loadProducts();
-        } else {
-            setIsProductDialogOpen(true);
-        }
-    };
-
-    const handleDeleteDialogClose = (open: boolean) => {
-        if (!open) {
-            setIsDeleteDialogOpen(false);
-            loadProducts();
-        } else {
-            setIsDeleteDialogOpen(true);
-        }
-    };
-
-    const handleBulkDeleteSuccess = () => {
-        setIsBulkDeleteDialogOpen(false);
-        setSelectedProducts(new Set());
-        loadProducts();
-    };
 
     const handleEditProduct = (product: Product) => {
         setSelectedProduct(product);
@@ -190,7 +152,6 @@ export default function ProductsPage() {
             toast.success("Importation des produits terminée avec succès !");
             setIsProductImportPreviewOpen(false);
             setProductImportAnalysis(null);
-            loadProducts();
         } catch (error) {
             console.error("Product import failed:", error);
             toast.error("Une erreur est survenue lors de l'importation.");
@@ -443,14 +404,14 @@ export default function ProductsPage() {
 
             <ProductDialog 
                 isOpen={isProductDialogOpen}
-                onOpenChange={handleDialogClose}
+                onOpenChange={setIsProductDialogOpen}
                 product={selectedProduct}
                 categories={categories || []}
                 suppliers={suppliers || []}
             />
             <DeleteProductDialog 
                 isOpen={isDeleteDialogOpen}
-                onOpenChange={handleDeleteDialogClose}
+                onOpenChange={setIsDeleteDialogOpen}
                 product={selectedProduct}
             />
             <PrintLabelsDialog
@@ -462,7 +423,7 @@ export default function ProductsPage() {
                 isOpen={isBulkDeleteDialogOpen}
                 onOpenChange={setIsBulkDeleteDialogOpen}
                 productIds={Array.from(selectedProducts)}
-                onSuccess={handleBulkDeleteSuccess}
+                onSuccess={() => setSelectedProducts(new Set())}
             />
              <ProductImportPreviewDialog
                 isOpen={isProductImportPreviewOpen}

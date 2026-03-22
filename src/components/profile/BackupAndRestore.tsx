@@ -43,7 +43,7 @@ export function BackupAndRestore() {
             const link = document.createElement('a');
             link.href = url;
             const dateStr = new Date().toISOString().split('T')[0];
-            link.download = `ipos-offline-backup-${dateStr}.json`;
+            link.download = `ipos-backup-${dateStr}.json`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);

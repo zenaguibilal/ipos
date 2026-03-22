@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import {
     Dialog,
     DialogContent,
@@ -35,6 +35,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { useLiveQuery } from 'dexie-react-hooks';
 
 interface DraftsDialogProps {
     isOpen: boolean;
@@ -43,21 +44,10 @@ interface DraftsDialogProps {
 }
 
 export function DraftsDialog({ isOpen, onOpenChange, onLoadDraft }: DraftsDialogProps) {
-    const [drafts, setDrafts] = useState<Draft[]>([]);
-
-    const loadDrafts = useCallback(async () => {
-        if(isOpen) {
-            setDrafts(await dataService.getDrafts());
-        }
-    }, [isOpen]);
-
-    useEffect(() => {
-        loadDrafts();
-    }, [loadDrafts]);
+    const drafts = useLiveQuery(() => isOpen ? dataService.getDrafts() : [], [isOpen]);
 
     const handleDelete = async (id: number) => {
         await dataService.deleteDraft(id);
-        setDrafts(prev => prev.filter(d => d.id !== id));
     };
 
     return (

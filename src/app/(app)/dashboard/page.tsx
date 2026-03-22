@@ -16,7 +16,7 @@ export default function DashboardPage() {
     const { dateRange, setDate, isMounted } = useDateRange(6);
     const { data, isLoading } = useDashboardData(dateRange);
 
-    if (!isMounted || isLoading) {
+    if (!isMounted || isLoading || !data) {
         return (
             <div className="p-4 sm:p-6 space-y-6">
                 <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
