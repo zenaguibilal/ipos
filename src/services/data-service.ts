@@ -377,23 +377,21 @@ class DataService {
     const now = new Date();
     const customerWithData: Customer[] = customers.map(c => {
         let debtStatus: Customer['debtStatus'] = 'none';
+        const customerUnpaidSales = unpaidSalesByCustomer.get(c.id!);
 
-        if (c.outstandingBalance > 0) {
-            const customerUnpaidSales = unpaidSalesByCustomer.get(c.id!);
-            if (customerUnpaidSales && customerUnpaidSales.length > 0) {
-                const oldestUnpaidSale = customerUnpaidSales.reduce((oldest, current) => 
-                    safeToDate(oldest.createdAt!).getTime() < safeToDate(current.createdAt!).getTime() ? oldest : current
-                );
-                
-                const settlementDay = c.settlementDay || 30;
-                
-                const dueDate = new Date(safeToDate(oldestUnpaidSale.createdAt!).getTime() + settlementDay * 24 * 60 * 60 * 1000);
-                
-                if (now > dueDate) {
-                    debtStatus = 'overdue';
-                } else if (c.settlementDay && subDays(dueDate, 7) <= now) {
-                    debtStatus = 'due_soon';
-                }
+        if (c.outstandingBalance > 0 && customerUnpaidSales && customerUnpaidSales.length > 0) {
+            const oldestUnpaidSale = customerUnpaidSales.reduce((oldest, current) => 
+                safeToDate(oldest.createdAt!).getTime() < safeToDate(current.createdAt!).getTime() ? oldest : current
+            );
+            
+            const settlementDay = c.settlementDay || 30; // Use a default of 30 days if not set
+            
+            const dueDate = new Date(safeToDate(oldestUnpaidSale.createdAt!).getTime() + settlementDay * 24 * 60 * 60 * 1000);
+            
+            if (now > dueDate) {
+                debtStatus = 'overdue';
+            } else if (subDays(dueDate, 7) <= now) { // Due within 7 days
+                debtStatus = 'due_soon';
             }
         }
         
