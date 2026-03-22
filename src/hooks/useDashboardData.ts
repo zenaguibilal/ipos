@@ -78,7 +78,7 @@ export function useDashboardData(dateRange?: DateRange) {
                 profit: { current: currentMetrics.profit, vs: calcVs(currentMetrics.profit, previousMetrics.profit) },
                 sales: { current: currentMetrics.salesCount, vs: calcVs(currentMetrics.salesCount, previousMetrics.salesCount) },
                 inventoryValue: { 
-                    current: products.reduce((acc, p) => acc + (p.purchasePrice * p.quantity || 0), 0),
+                    current: products.reduce((acc, p) => acc + ((p.purchasePrice || 0) * (p.quantity || 0)), 0),
                     productCount: products.length
                 },
             };

@@ -4,7 +4,7 @@ import { db } from '@/lib/database';
 import type { TableName, Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, InventoryLog, StockIntakeItem, ZakatData, CostingItem, Draft, Supplier, ImportAnalysis, BreadClient, BreadOrder, BreadOrderWithClient, DB, ProductImportAnalysis, GlobalActivityItem } from '@/lib/types';
 import { subDays, endOfDay, startOfDay } from 'date-fns';
 import Papa from 'papaparse';
-import { calculateCartTotals } from '@/lib/utils';
+import { calculateCartTotals, formatCurrency } from '@/lib/utils';
 import { BREAD_WEEK_DAYS } from '@/lib/constants';
 import { sheetsService } from './googleSheets';
 
@@ -954,22 +954,41 @@ class DataService {
     
     async getGlobalActivity(options: { limit?: number } = {}): Promise<GlobalActivityItem[]> {
       const { limit = 10 } = options;
-      const [sales, intakes, returns, customers] = await Promise.all([
-        this.getSales({}),
-        this.getStockIntakes({}),
-        this.getReturns({}),
-        this.getCustomers({}),
-      ]);
-
-      const activity: GlobalActivityItem[] = [];
-      sales.forEach(s => s.createdAt && activity.push({ type: 'sale', date: new Date(s.createdAt), id: s.id!, description: `Vente #${s.invoiceNumber}`, details: s.customerName || 'Client de passage', amount: s.total, amountClass: 'text-primary' }));
-      const suppliers = await this.getSuppliers();
-      const supplierMap = new Map(suppliers.map(s => [s.id, s.name]));
-      intakes.forEach(i => i.createdAt && activity.push({ type: 'stock_intake', date: new Date(i.createdAt), id: i.id!, description: `Réception de ${supplierMap.get(i.supplierId) || 'fournisseur inconnu'}`, details: `${i.items.length} article(s)`, amount: i.totalValue, amountClass: 'text-yellow-400' }));
-      returns.forEach(r => r.createdAt && activity.push({ type: 'return', date: new Date(r.createdAt), id: r.id!, description: `Retour sur facture #${r.originalInvoiceNumber}`, details: `${r.items.length} article(s) retourné(s)`, amount: r.totalReturnValue, amountClass: 'text-destructive' }));
-      customers.forEach(c => c.createdAt && activity.push({ type: 'customer', date: new Date(c.createdAt), id: c.id!, description: `Nouveau client`, details: `${c.firstName} ${c.lastName}`}));
-      
-      return activity.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, limit);
+      try {
+        const [sales, intakes, returns, customers, payments] = await Promise.all([
+          this.getSales({}),
+          this.getStockIntakes({}),
+          this.getReturns({}),
+          this.getCustomers({}),
+          this.getAll<Payment>('payments'),
+        ]);
+  
+        const activity: GlobalActivityItem[] = [];
+        sales.forEach(s => s.createdAt && activity.push({ type: 'sale', date: new Date(s.createdAt), id: s.id!, description: `Vente #${s.invoiceNumber}`, details: s.customerName || 'Client de passage', amount: s.total, amountClass: 'text-primary' }));
+        
+        const suppliers = await this.getSuppliers();
+        const supplierMap = new Map(suppliers.map(s => [s.id, s.name]));
+        intakes.forEach(i => i.createdAt && activity.push({ type: 'stock_intake', date: new Date(i.createdAt), id: i.id!, description: `Réception de ${supplierMap.get(i.supplierId) || 'fournisseur inconnu'}`, details: `${i.items.length} article(s)`, amount: i.totalValue, amountClass: 'text-yellow-400' }));
+        
+        returns.forEach(r => r.createdAt && activity.push({ type: 'return', date: new Date(r.createdAt), id: r.id!, description: `Retour sur facture #${r.originalInvoiceNumber}`, details: `${r.items.length} article(s) retourné(s)`, amount: r.totalReturnValue, amountClass: 'text-destructive' }));
+        
+        customers.forEach(c => c.createdAt && activity.push({ type: 'customer', date: new Date(c.createdAt), id: c.id!, description: `Nouveau client`, details: `${c.firstName} ${c.lastName}`}));
+  
+        payments.forEach(p => p.paymentDate && activity.push({
+            type: 'payment',
+            date: new Date(p.paymentDate),
+            id: p.id!,
+            description: `Paiement de ${p.customerName || 'client inconnu'}`,
+            details: p.notes || `Montant: ${formatCurrency(p.amount)}`,
+            amount: p.amount,
+            amountClass: 'text-chart-quaternary'
+        }));
+        
+        return activity.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, limit);
+      } catch (error) {
+        console.error("Failed to get global activity", error);
+        return []; // Return empty on error to prevent dashboard crash
+      }
     }
 }
 
