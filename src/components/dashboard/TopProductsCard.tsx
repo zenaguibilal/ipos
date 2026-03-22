@@ -1,4 +1,3 @@
-
 'use client';
 import { useTheme } from 'next-themes';
 import { cn } from '@/lib/utils';
@@ -7,11 +6,10 @@ import Image from 'next/image';
 import { getPlaceholder } from '@/lib/utils';
 
 export function TopProductsCard({ products }: { products: (Product & { totalVendu: number })[] }) {
-    const { theme } = useTheme();
-    const cardClass = theme === 'light' ? 'glass-card-light' : 'glass-card-dark';
+    const cardClass = 'luxury-glass';
 
     return (
-        <div className={cn('glass-card h-full flex flex-col p-6', cardClass)}>
+        <div className={cn('h-full flex flex-col p-6', cardClass)}>
             <h3 className="text-xl font-semibold mb-4">Produits Phares</h3>
             {products.length > 0 ? (
                 <div className="flex-grow space-y-4">

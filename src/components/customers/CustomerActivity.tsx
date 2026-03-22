@@ -34,8 +34,8 @@ export function CustomerActivity({ activity, onSaleClick, onReturnClick }: Custo
         
         if (item.type === 'sale') {
            const Icon = ShoppingBag;
-           const title = item.description;
            const sale = item as unknown as Sale;
+           const title = `Vente #${sale.invoiceNumber}`;
           return (
             <TimelineItem key={`sale-${item.id}`}>
               {!isLast && <TimelineConnector />}
@@ -77,7 +77,7 @@ export function CustomerActivity({ activity, onSaleClick, onReturnClick }: Custo
                 <TimelineIcon>
                   <Undo2 className="h-5 w-5 text-chart-secondary" />
                 </TimelineIcon>
-                <TimelineTitle>{pr.originalInvoiceNumber}</TimelineTitle>
+                <TimelineTitle>Retour sur facture #{pr.originalInvoiceNumber}</TimelineTitle>
                  <span className="text-sm text-muted-foreground ml-auto">{formattedDate}</span>
               </TimelineHeader>
                <TimelineBody>

@@ -1,9 +1,8 @@
-
 'use client';
 import { useTheme } from 'next-themes';
 import { cn, formatCurrency, safeToDate } from '@/lib/utils';
 import type { GlobalActivityItem } from '@/lib/types';
-import { ShoppingBag, Archive, UserPlus, Undo2, Activity, ArrowRight } from 'lucide-react';
+import { ShoppingBag, Archive, UserPlus, Undo2, Activity, ArrowRight, HandCoins } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import Link from 'next/link';
@@ -13,21 +12,22 @@ const iconMap = {
     stock_intake: Archive,
     return: Undo2,
     customer: UserPlus,
+    payment: HandCoins,
 };
 
 const activityLinks = {
   sale: '/sales-history',
   stock_intake: '/stock',
   return: '/returns',
-  customer: '/customers'
+  customer: '/customers',
+  payment: '/customers',
 }
 
 export function RecentActivityCard({ activities }: { activities: GlobalActivityItem[] }) {
-    const { theme } = useTheme();
-    const cardClass = theme === 'light' ? 'glass-card-light' : 'glass-card-dark';
+    const cardClass = 'luxury-glass';
 
     return (
-        <div className={cn('glass-card h-full flex flex-col p-6', cardClass)}>
+        <div className={cn('h-full flex flex-col p-6', cardClass)}>
             <h3 className="text-xl font-semibold mb-4">Activité Récente</h3>
             {activities.length > 0 ? (
                 <div className="flex-grow space-y-4 overflow-y-auto -mr-2 pr-2">

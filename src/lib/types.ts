@@ -1,5 +1,6 @@
 
 
+
 export const TABLES = {
   products: 'products',
   customers: 'customers',
@@ -303,7 +304,7 @@ export interface ProductImportAnalysis {
 }
 
 export interface GlobalActivityItem {
-    type: 'sale' | 'stock_intake' | 'return' | 'customer';
+    type: 'sale' | 'stock_intake' | 'return' | 'customer' | 'payment';
     date: Date;
     id: number | string;
     description: string;

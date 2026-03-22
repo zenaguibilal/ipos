@@ -12,7 +12,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import type { Cart, SalePayment, Customer, Product } from '@/lib/types';
+import type { Cart, SalePayment, Customer, Product, Sale } from '@/lib/types';
 import { Loader2, CreditCard, Banknote, AlertTriangle } from 'lucide-react';
 import { dataService } from '@/services/data-service';
 import { formatCurrency, calculateCartTotals } from '@/lib/utils';
@@ -37,7 +37,7 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, onSaleFinalized }: P
     const [dueDate, setDueDate] = useState<Date | undefined>();
     
     const [isLoading, setIsLoading] = useState(false);
-    const [lastSale, setLastSale] = useState<any>(null);
+    const [lastSale, setLastSale] = useState<Sale | null>(null);
 
     const [showLossAlert, setShowLossAlert] = useState(false);
     const [lossItems, setLossItems] = useState<Product[]>([]);

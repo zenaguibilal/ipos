@@ -1,4 +1,3 @@
-
 'use client';
 import { useTheme } from 'next-themes';
 import { cn } from '@/lib/utils';
@@ -7,11 +6,10 @@ import { ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 
 export function StockAlertsCard({ alerts }: { alerts: Product[] }) {
-    const { theme } = useTheme();
-    const cardClass = theme === 'light' ? 'glass-card-light' : 'glass-card-dark';
+    const cardClass = 'luxury-glass';
 
     return (
-        <div className={cn('glass-card h-full flex flex-col p-6', cardClass)}>
+        <div className={cn('h-full flex flex-col p-6', cardClass)}>
             <h3 className="text-xl font-semibold mb-4">Alertes de Stock</h3>
             {alerts.length > 0 ? (
                 <div className="flex-grow space-y-3 overflow-y-auto -mr-2 pr-2">

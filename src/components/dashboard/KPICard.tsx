@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useTheme } from 'next-themes';
@@ -15,14 +14,13 @@ interface KPICardProps {
 }
 
 export function KPICard({ title, value, change, subtitle, icon: Icon, format }: KPICardProps) {
-    const { theme } = useTheme();
-    const cardClass = theme === 'light' ? 'glass-card-light' : 'glass-card-dark';
+    const cardClass = 'luxury-glass';
     
     const hasChange = typeof change === 'number' && isFinite(change);
     const isPositive = hasChange && change >= 0;
 
     return (
-        <div className={cn('glass-card relative overflow-hidden p-6', cardClass)}>
+        <div className={cn('relative overflow-hidden p-6', cardClass)}>
             <div className="flex justify-between items-start">
                 <div className="space-y-1">
                     <p className="text-muted-foreground">{title}</p>
@@ -38,7 +36,7 @@ export function KPICard({ title, value, change, subtitle, icon: Icon, format }: 
                 {hasChange ? (
                     <div className={cn(
                         "flex items-center gap-1",
-                        isPositive ? "text-success" : "text-destructive"
+                        isPositive ? "text-green-500" : "text-destructive"
                     )}>
                         {change !== 0 && (isPositive ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />)}
                         <span>{Math.abs(change).toFixed(1)}% vs. période préc.</span>

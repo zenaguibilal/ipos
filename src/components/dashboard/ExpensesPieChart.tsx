@@ -1,4 +1,3 @@
-
 'use client';
 import { useMemo } from 'react';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
@@ -20,8 +19,7 @@ const CustomTooltip = ({ active, payload }: any) => {
 };
 
 export function ExpensesPieChart({ data }: { data: DashboardExpenseData[] }) {
-    const { theme } = useTheme();
-    const cardClass = theme === 'light' ? 'glass-card-light' : 'glass-card-dark';
+    const cardClass = 'luxury-glass';
 
     const totalExpenses = useMemo(() => data.reduce((sum, item) => sum + item.value, 0), [data]);
 
@@ -35,7 +33,7 @@ export function ExpensesPieChart({ data }: { data: DashboardExpenseData[] }) {
     ];
 
     return (
-        <div className={cn('glass-card h-full flex flex-col p-6', cardClass)}>
+        <div className={cn('h-full flex flex-col p-6', cardClass)}>
             <div className="flex justify-between items-start mb-4">
                 <div>
                     <h3 className="text-xl font-semibold">Analyse des Dépenses</h3>

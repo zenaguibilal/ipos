@@ -1,4 +1,3 @@
-
 'use client';
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 import { useTheme } from 'next-themes';
@@ -14,7 +13,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
       <div className="p-3 rounded-xl border bg-background/80 backdrop-blur-sm">
         <p className="font-bold text-lg">{label}</p>
         <p className="text-primary">{`Revenu: ${formatCurrency(payload[0].value)}`}</p>
-        <p className="text-success">{`Bénéfice: ${formatCurrency(payload[1].value)}`}</p>
+        <p className="text-green-500">{`Bénéfice: ${formatCurrency(payload[1].value)}`}</p>
       </div>
     );
   }
@@ -23,11 +22,11 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 
 export function RevenueChart({ data }: { data: DashboardChartData[] }) {
     const { theme } = useTheme();
-    const cardClass = theme === 'light' ? 'glass-card-light' : 'glass-card-dark';
+    const cardClass = 'luxury-glass';
     const [timeframe, setTimeframe] = useState('day');
 
     return (
-        <div className={cn('glass-card h-96 flex flex-col p-6', cardClass)}>
+        <div className={cn('h-96 flex flex-col p-6', cardClass)}>
             <div className="flex justify-between items-center mb-4">
                 <h3 className="text-xl font-semibold">Revenus & Bénéfices</h3>
                 <Select value={timeframe} onValueChange={setTimeframe} disabled>
@@ -48,8 +47,8 @@ export function RevenueChart({ data }: { data: DashboardChartData[] }) {
                                 <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0.1}/>
                             </linearGradient>
                             <linearGradient id="colorProfit" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="hsl(var(--success))" stopOpacity={0.7}/>
-                                <stop offset="95%" stopColor="hsl(var(--success))" stopOpacity={0.1}/>
+                                <stop offset="5%" stopColor="hsl(140, 70%, 50%)" stopOpacity={0.7}/>
+                                <stop offset="95%" stopColor="hsl(140, 70%, 50%)" stopOpacity={0.1}/>
                             </linearGradient>
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--foreground) / 0.1)" />

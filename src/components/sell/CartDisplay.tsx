@@ -22,7 +22,7 @@ export function CartDisplay({ cart, onQuantityChange, onRemoveItem }: CartDispla
     return (
         <CardContent className="p-4 sm:p-6 flex-grow flex flex-col min-h-0">
             {cart.items.length === 0 ? (
-                <div className="flex-grow flex flex-col items-center justify-center text-center text-muted-foreground luxury-glass p-8">
+                <div className="flex-grow flex flex-col items-center justify-center text-center text-muted-foreground luxury-glass p-8 rounded-2xl">
                     <ShoppingCart className="h-16 w-16 mb-4 text-primary/70" />
                     <h3 className="text-lg font-semibold">Le panier est vide</h3>
                     <p className="text-sm">Recherchez un produit pour commencer.</p>

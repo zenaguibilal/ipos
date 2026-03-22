@@ -41,9 +41,9 @@ export const SyncIndicator = () => {
     }
     if (syncStatus.lastSync) {
         const timeAgo = format(new Date(syncStatus.lastSync), 'HH:mm', { locale: fr });
-        return { text: `Sync: ${timeAgo}`, icon: <Check className="h-4 w-4 text-success" />, color: 'text-success' };
+        return { text: `Sync: ${timeAgo}`, icon: <Check className="h-4 w-4 text-green-500" />, color: 'text-green-500' };
     }
-    return { text: syncStatus.isOnline ? 'En ligne' : 'Hors ligne', icon: syncStatus.isOnline ? <Wifi className="h-4 w-4 text-success" /> : <WifiOff className="h-4 w-4 text-muted-foreground" />, color: syncStatus.isOnline ? 'text-success' : 'text-muted-foreground' };
+    return { text: syncStatus.isOnline ? 'En ligne' : 'Hors ligne', icon: syncStatus.isOnline ? <Wifi className="h-4 w-4 text-green-500" /> : <WifiOff className="h-4 w-4 text-muted-foreground" />, color: syncStatus.isOnline ? 'text-green-500' : 'text-muted-foreground' };
   }
 
   const { text, icon, color, tooltip } = getStatusInfo();
