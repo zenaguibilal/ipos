@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { dataService } from '@/services/data-service';
-import type { Cart, Product, Customer } from '@/lib/types';
+import type { Cart, Product, Customer, Draft } from '@/lib/types';
 import { toast } from 'sonner';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { getDb } from '@/lib/database';
@@ -129,10 +129,32 @@ export const useCarts = () => {
     }, [activeCart]);
     
     const loadDraftToCart = useCallback(async (draftId: number) => {
-        if (!activeCartId || !activeCart) return;
-        await dataService.loadDraftToCart(draftId, activeCart);
-        toast.success(`Brouillon chargé dans ${activeCart?.name}.`);
-    }, [activeCart, activeCartId]);
+        if (!activeCart) return;
+
+        const draftContent = await dataService.getDraftAndClear(draftId);
+        if (!draftContent) {
+            toast.error("Brouillon non trouvé.");
+            return;
+        }
+
+        const targetCartIsNotEmpty = activeCart.items.length > 0;
+
+        if (targetCartIsNotEmpty) {
+            const newCartName = `Brouillon (${draftContent.customerName || 'Nouveau'})`;
+            const newCart = createNewCart(newCartName);
+            newCart.items = draftContent.items;
+            newCart.customerId = draftContent.customerId;
+            newCart.customerName = draftContent.customerName;
+            newCart.discount = draftContent.discount;
+            
+            await dataService.saveCart(newCart);
+            await setActiveCartId(newCart.id);
+            toast.success(`Brouillon chargé dans un nouveau panier: "${newCartName}".`);
+        } else {
+            await dataService.loadDraftContentToCart(activeCart.id, draftContent);
+            toast.success(`Brouillon chargé dans ${activeCart.name}.`);
+        }
+    }, [activeCart, setActiveCartId]);
 
     useEffect(() => {
         if (activeCart && activeCart.items.some(i => i.flash)) {

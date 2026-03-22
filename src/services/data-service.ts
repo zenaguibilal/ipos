@@ -749,15 +749,21 @@ class DataService {
         sheetsService.addToQueue('drafts', 'delete', { id });
     }
     
-    async loadDraftToCart(draftId: number, activeCart: Cart): Promise<void> {
+    async getDraftAndClear(draftId: number): Promise<Omit<Draft, 'id' | 'createdAt' | 'updatedAt'> | null> {
         const draft = await this.db.drafts.get(draftId);
-        if(!draft) return;
-        activeCart.items = draft.items;
-        activeCart.customerId = draft.customerId;
-        activeCart.customerName = draft.customerName;
-        activeCart.discount = draft.discount;
-        await this.saveCart(activeCart);
+        if (!draft) return null;
         await this.deleteDraft(draftId);
+        const { id, createdAt, updatedAt, ...draftContent } = draft;
+        return draftContent;
+    }
+
+    async loadDraftContentToCart(cartId: string, draftContent: Omit<Draft, 'id' | 'createdAt' | 'updatedAt'>): Promise<void> {
+        return this.db.carts.where({id: cartId}).modify(cart => {
+            cart.items = draftContent.items;
+            cart.customerId = draftContent.customerId;
+            cart.customerName = draftContent.customerName;
+            cart.discount = draftContent.discount;
+        });
     }
     
     // Stock Intake
