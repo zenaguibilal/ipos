@@ -685,9 +685,17 @@ class DataService {
     
     async saveDraft(cart: Cart, notes?: string): Promise<Draft> {
         const { total } = calculateCartTotals(cart);
-        const draftData: Omit<Draft, 'id'> = { date: new Date(), customerId: cart.customerId, customerName: cart.customerName, items: cart.items, total, discount: cart.discount, notes };
-        const id = await this.db.drafts.add(draftData);
-        const newDraft = {...draftData, id};
+        const draftData: Omit<Draft, 'id' | 'createdAt' | 'updatedAt'> = { 
+          date: new Date(), 
+          customerId: cart.customerId, 
+          customerName: cart.customerName, 
+          items: cart.items, 
+          total, 
+          discount: cart.discount, 
+          notes 
+        };
+        const id = await this.db.drafts.add(draftData as Draft);
+        const newDraft = {...draftData, id} as Draft;
         sheetsService.addToQueue('drafts', 'upsert', newDraft);
         return newDraft;
     }
@@ -966,8 +974,9 @@ class DataService {
             }
         }
 
+        const customerMap = new Map(allCustomers.map(c => [c.id, c]));
         const topCustomers: TopCustomer[] = Object.entries(customerSales).map(([customerId, totalSpent]) => {
-            const customer = allCustomers.find(c => c.id === Number(customerId));
+            const customer = customerMap.get(Number(customerId));
             return {
                 id: Number(customerId),
                 name: customer ? `${customer.firstName} ${customer.lastName}` : 'Client Inconnu',
