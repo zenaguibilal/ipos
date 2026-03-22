@@ -1,279 +1,146 @@
 'use client';
 
-import { TABLES, type TableName } from './types';
+import Dexie, { type Table } from 'dexie';
+import type { Product, Customer, Sale, Payment, StockIntake, ProductReturn, Cart, CompanyProfile, Expense, Setting, Notification, InventoryLog, Draft, Supplier, BreadClient, BreadOrder } from './types';
 
-const DB_NAME = 'iPOS_DB_NATIVE';
-const DB_VERSION = 2; // Incremented version to trigger upgrade
+export class PosDatabase extends Dexie {
+    products!: Table<Product, number>;
+    customers!: Table<Customer, number>;
+    sales!: Table<Sale, number>;
+    payments!: Table<Payment, number>;
+    stockIntakes!: Table<StockIntake, number>;
+    returns!: Table<ProductReturn, number>;
+    carts!: Table<Cart, string>;
+    drafts!: Table<Draft, number>;
+    companyProfile!: Table<CompanyProfile, number>;
+    expenses!: Table<Expense, number>;
+    settings!: Table<Setting, string>;
+    notifications!: Table<Notification, number>;
+    inventoryLogs!: Table<InventoryLog, number>;
+    suppliers!: Table<Supplier, number>;
+    clients_pain!: Table<BreadClient, number>;
+    commandes_pain!: Table<BreadOrder, number>;
 
-let dbPromise: Promise<IDBDatabase> | null = null;
-
-function openDB(): Promise<IDBDatabase> {
-    if (typeof window === 'undefined') {
-        // This is a server-side mock. It will never resolve.
-        return new Promise(() => {});
-    }
-    if (dbPromise) {
-        return dbPromise;
-    }
-
-    dbPromise = new Promise((resolve, reject) => {
-        const request = indexedDB.open(DB_NAME, DB_VERSION);
-
-        request.onupgradeneeded = (event) => {
-            const db = (event.target as IDBOpenDBRequest).result;
-            const tx = (event.target as IDBOpenDBRequest).transaction;
-
-            Object.values(TABLES).forEach(tableName => {
-                let store: IDBObjectStore;
-                if (!db.objectStoreNames.contains(tableName)) {
-                    let keyPath = 'id';
-                    let autoIncrement = true;
-                    if (['carts', 'settings'].includes(tableName)) {
-                        autoIncrement = false;
-                    } else if (tableName === 'companyProfile') {
-                        autoIncrement = false;
-                    }
-                    store = db.createObjectStore(tableName, { keyPath, autoIncrement });
-                } else {
-                    store = tx!.objectStore(tableName);
-                }
-
-                // Add indexes based on old Dexie schema for performance
-                switch (tableName) {
-                    case 'products':
-                        if (!store.indexNames.contains('name')) store.createIndex('name', 'name', { unique: false });
-                        if (!store.indexNames.contains('barcodes')) store.createIndex('barcodes', 'barcodes', { multiEntry: true });
-                        if (!store.indexNames.contains('category')) store.createIndex('category', 'category', { unique: false });
-                        if (!store.indexNames.contains('fournisseurId')) store.createIndex('fournisseurId', 'fournisseurId', { unique: false });
-                        if (!store.indexNames.contains('category_name')) store.createIndex('category_name', ['category', 'name'], { unique: false });
-                        break;
-                    case 'customers':
-                        if (!store.indexNames.contains('searchName')) store.createIndex('searchName', 'searchName', { unique: false });
-                        if (!store.indexNames.contains('lastName')) store.createIndex('lastName', 'lastName', { unique: false });
-                        if (!store.indexNames.contains('firstName')) store.createIndex('firstName', 'firstName', { unique: false });
-                        if (!store.indexNames.contains('createdAt')) store.createIndex('createdAt', 'createdAt', { unique: false });
-                        if (!store.indexNames.contains('phone')) store.createIndex('phone', 'phone', { unique: false });
-                        if (!store.indexNames.contains('outstandingBalance')) store.createIndex('outstandingBalance', 'outstandingBalance', { unique: false });
-                        if (!store.indexNames.contains('lastActivityDate')) store.createIndex('lastActivityDate', 'lastActivityDate', { unique: false });
-                        if (!store.indexNames.contains('lastName_firstName')) store.createIndex('lastName_firstName', ['lastName', 'firstName'], { unique: false });
-                        break;
-                    case 'sales':
-                        if (!store.indexNames.contains('invoiceNumber')) store.createIndex('invoiceNumber', 'invoiceNumber', { unique: true });
-                        if (!store.indexNames.contains('createdAt')) store.createIndex('createdAt', 'createdAt', { unique: false });
-                        if (!store.indexNames.contains('customerId')) store.createIndex('customerId', 'customerId', { unique: false });
-                        if (!store.indexNames.contains('customerName')) store.createIndex('customerName', 'customerName', { unique: false });
-                        if (!store.indexNames.contains('paymentStatus')) store.createIndex('paymentStatus', 'paymentStatus', { unique: false });
-                        if (!store.indexNames.contains('dueDate')) store.createIndex('dueDate', 'dueDate', { unique: false });
-                        break;
-                    case 'payments':
-                        if (!store.indexNames.contains('customerId')) store.createIndex('customerId', 'customerId', { unique: false });
-                        if (!store.indexNames.contains('createdAt')) store.createIndex('createdAt', 'createdAt', { unique: false });
-                        if (!store.indexNames.contains('paymentDate')) store.createIndex('paymentDate', 'paymentDate', { unique: false });
-                        break;
-                    case 'stockIntakes':
-                        if (!store.indexNames.contains('supplierId')) store.createIndex('supplierId', 'supplierId', { unique: false });
-                        if (!store.indexNames.contains('createdAt')) store.createIndex('createdAt', 'createdAt', { unique: false });
-                        if (!store.indexNames.contains('invoiceNumber')) store.createIndex('invoiceNumber', 'invoiceNumber', { unique: false });
-                        break;
-                    case 'returns':
-                        if (!store.indexNames.contains('createdAt')) store.createIndex('createdAt', 'createdAt', { unique: false });
-                        if (!store.indexNames.contains('originalSaleId')) store.createIndex('originalSaleId', 'originalSaleId', { unique: false });
-                        if (!store.indexNames.contains('customerId')) store.createIndex('customerId', 'customerId', { unique: false });
-                        break;
-                    case 'drafts':
-                         if (!store.indexNames.contains('date')) store.createIndex('date', 'date', { unique: false });
-                         if (!store.indexNames.contains('createdAt')) store.createIndex('createdAt', 'createdAt', { unique: false });
-                         if (!store.indexNames.contains('updatedAt')) store.createIndex('updatedAt', 'updatedAt', { unique: false });
-                        break;
-                    case 'expenses':
-                         if (!store.indexNames.contains('expenseDate')) store.createIndex('expenseDate', 'expenseDate', { unique: false });
-                         if (!store.indexNames.contains('category')) store.createIndex('category', 'category', { unique: false });
-                         if (!store.indexNames.contains('category_expenseDate')) store.createIndex('category_expenseDate', ['category', 'expenseDate'], { unique: false });
-                        break;
-                    case 'inventoryLogs':
-                        if (!store.indexNames.contains('productId')) store.createIndex('productId', 'productId', { unique: false });
-                        if (!store.indexNames.contains('createdAt')) store.createIndex('createdAt', 'createdAt', { unique: false });
-                        if (!store.indexNames.contains('reason')) store.createIndex('reason', 'reason', { unique: false });
-                        break;
-                    case 'suppliers':
-                        if (!store.indexNames.contains('name')) store.createIndex('name', 'name', { unique: true });
-                        break;
-                    case 'clients_pain':
-                        if (!store.indexNames.contains('actif')) store.createIndex('actif', 'actif', { unique: false });
-                        break;
-                    case 'commandes_pain':
-                        if (!store.indexNames.contains('date')) store.createIndex('date', 'date', { unique: false });
-                        if (!store.indexNames.contains('client_pain_id')) store.createIndex('client_pain_id', 'client_pain_id', { unique: false });
-                        if (!store.indexNames.contains('client_pain_id_date')) store.createIndex('client_pain_id_date', ['client_pain_id', 'date'], { unique: false });
-                        if (!store.indexNames.contains('est_paye')) store.createIndex('est_paye', 'est_paye', { unique: false });
-                        if (!store.indexNames.contains('est_livre')) store.createIndex('est_livre', 'est_livre', { unique: false });
-                        break;
-                    case 'notifications':
-                        if (!store.indexNames.contains('createdAt')) store.createIndex('createdAt', 'createdAt', { unique: false });
-                        if (!store.indexNames.contains('isRead')) store.createIndex('isRead', 'isRead', { unique: false });
-                        if (!store.indexNames.contains('type')) store.createIndex('type', 'type', { unique: false });
-                        if (!store.indexNames.contains('type_isRead')) store.createIndex('type_isRead', ['type', 'isRead'], { unique: false });
-                        break;
+    constructor() {
+        super('iPOS_DB_NATIVE'); // Use the original name
+        this.version(29).stores({
+            products: '++id, name, *barcodes, category, price, quantity, [category+name], fournisseurId',
+            customers: '++id, &searchName, createdAt, lastName, firstName, [lastName+firstName], phone, outstandingBalance, lastActivityDate',
+            sales: '++id, &invoiceNumber, createdAt, customerId, customerName, paymentStatus, dueDate',
+            payments: '++id, createdAt, customerId, paymentDate',
+            stockIntakes: '++id, &invoiceNumber, supplierId, createdAt',
+            returns: '++id, createdAt, originalSaleId, customerId',
+            carts: '&id',
+            drafts: '++id, date, createdAt, updatedAt',
+            companyProfile: 'id', // Singleton table
+            expenses: '++id, category, expenseDate, [category+expenseDate]',
+            settings: '&id', // Key-value store for UI state and preferences
+            notifications: '++id, createdAt, isRead, type, [type+isRead]',
+            inventoryLogs: '++id, productId, createdAt, reason',
+            suppliers: '++id, &name',
+            clients_pain: '++id, nom, actif, type_recurrence',
+            commandes_pain: '++id, [client_pain_id+date], date, est_paye, est_livre',
+        }).upgrade(tx => {
+            // Dexie upgrade functions are declarative of the target version structure.
+            // This is for version 22, ensuring searchName is populated. It runs if the client db version < 22.
+            return tx.table('customers').toCollection().modify(customer => {
+                if (customer.firstName && customer.lastName && !customer.searchName) {
+                   customer.searchName = `${customer.firstName.toLowerCase()} ${customer.lastName.toLowerCase()}`;
                 }
             });
-        };
+        }).upgrade(tx => {
+            // This is for version 28, migrating 'statut' to 'est_paye' and 'est_livre'
+            return tx.table('commandes_pain').toCollection().modify(order => {
+                const oldStatut = (order as any).statut;
+                if (oldStatut !== undefined) {
+                    switch(oldStatut) {
+                        case 'en_attente':
+                            order.est_paye = false;
+                            order.est_livre = false;
+                            break;
+                        case 'livre':
+                            order.est_paye = false;
+                            order.est_livre = true;
+                            break;
+                        case 'paye':
+                            order.est_paye = true;
+                            order.est_livre = true; 
+                            break;
+                        default:
+                            order.est_paye = !!order.vente_id;
+                            order.est_livre = false;
+                    }
+                    delete (order as any).statut;
+                }
+            });
+        }).upgrade(async tx => {
+            const stockIntakesToMigrate = await tx.table('stockIntakes').toArray();
+            for (const intake of stockIntakesToMigrate) {
+                if (typeof (intake as any).supplier === 'string') {
+                    const supplierName = (intake as any).supplier;
+                    let supplier = await tx.table('suppliers').where('name').equalsIgnoreCase(supplierName).first();
+                    if (!supplier) {
+                        const supplierId = await tx.table('suppliers').add({ name: supplierName, balance: 0 });
+                        supplier = { id: supplierId, name: supplierName, balance: 0 };
+                    }
+                    await tx.table('stockIntakes').update(intake.id, {
+                        supplierId: supplier.id,
+                        supplierName: supplier.name,
+                        supplier: undefined
+                    });
+                }
+            }
+        });
 
-        request.onsuccess = (event) => {
-            resolve((event.target as IDBOpenDBRequest).result);
-        };
+        // Hooks to add/update timestamps
+        this.tables.forEach(table => {
+            if (['settings', 'carts'].includes(table.name)) return;
+            
+            table.hook('creating', (primKey, obj, trans) => {
+                const now = new Date();
+                if ((obj as any).createdAt === undefined) {
+                    (obj as any).createdAt = now;
+                }
+                if ((obj as any).updatedAt === undefined && table.name !== 'inventoryLogs') {
+                    (obj as any).updatedAt = now;
+                }
+            });
 
-        request.onerror = (event) => {
-            console.error("IndexedDB error:", (event.target as IDBOpenDBRequest).error);
-            reject((event.target as IDBOpenDBRequest).error);
-            dbPromise = null;
-        };
-    });
+            table.hook('updating', (modifications, primKey, obj, trans) => {
+                if((modifications as any).updatedAt === undefined) {
+                    (modifications as any).updatedAt = new Date();
+                }
+            });
+        });
+        
+        // Hooks to auto-generate searchName for customers
+        this.customers.hook('creating', (primKey, obj) => {
+            if(typeof obj.firstName === 'string' && typeof obj.lastName === 'string') {
+                obj.searchName = `${obj.firstName.toLowerCase()} ${obj.lastName.toLowerCase()}`;
+            }
+        });
 
-    return dbPromise;
-}
-
-function promisify<T>(request: IDBRequest<T>): Promise<T> {
-  return new Promise((resolve, reject) => {
-    request.onsuccess = () => resolve(request.result);
-    request.onerror  = () => reject(request.error);
-  });
-}
-
-async function getAll<T>(table: TableName): Promise<T[]> {
-  const db = await openDB();
-  const tx = db.transaction(table, 'readonly');
-  const store = tx.objectStore(table);
-  return promisify<T[]>(store.getAll());
-}
-
-async function getById<T>(table: TableName, id: IDBValidKey): Promise<T | undefined> {
-  if (id === undefined || id === null) return undefined;
-  const db = await openDB();
-  const tx = db.transaction(table, 'readonly');
-  const store = tx.objectStore(table);
-  return promisify<T>(store.get(id));
-}
-
-async function add<T extends { id?: IDBValidKey }>(table: TableName, item: Omit<T, 'id'>): Promise<T> {
-  const db = await openDB();
-  const tx = db.transaction(table, 'readwrite');
-  const store = tx.objectStore(table);
-  const now = new Date();
-  const newItem = {
-    ...item,
-    createdAt: (item as any).createdAt ?? now,
-    updatedAt: now,
-  };
-  const id = await promisify<IDBValidKey>(store.add(newItem));
-  await promisify(tx.done);
-  return { ...newItem, id } as T;
-}
-
-async function update<T>(table: TableName, id: IDBValidKey, changes: Partial<T>): Promise<T | undefined> {
-  const db = await openDB();
-  const tx = db.transaction(table, 'readwrite');
-  const store = tx.objectStore(table);
-  const existing = await promisify<any>(store.get(id));
-  if (!existing) return undefined;
-  const updated = {
-    ...existing,
-    ...changes,
-    id: existing.id,
-    updatedAt: new Date(),
-  };
-  await promisify(store.put(updated));
-  await promisify(tx.done);
-  return updated as T;
-}
-
-async function put(table: TableName, item: any): Promise<any> {
-    const db = await openDB();
-    const tx = db.transaction(table, 'readwrite');
-    const store = tx.objectStore(table);
-    const id = await promisify(store.put(item));
-    await promisify(tx.done);
-    return { ...item, id };
-}
-
-async function remove(table: TableName, id: IDBValidKey): Promise<void> {
-  const db = await openDB();
-  const tx = db.transaction(table, 'readwrite');
-  const store = tx.objectStore(table);
-  await promisify(store.delete(id));
-  await promisify(tx.done);
-}
-
-async function removeMultiple(table: TableName, ids: IDBValidKey[]): Promise<void> {
-    if (ids.length === 0) return;
-    const db = await openDB();
-    const tx = db.transaction(table, 'readwrite');
-    const store = tx.objectStore(table);
-    for (const id of ids) {
-        store.delete(id);
+        this.customers.hook('updating', (modifications, primKey, obj) => {
+            if (Object.hasOwn(modifications, 'firstName') || Object.hasOwn(modifications, 'lastName')) {
+                const newFirstName = Object.hasOwn(modifications, 'firstName') ? (modifications as any).firstName : obj.firstName;
+                const newLastName = Object.hasOwn(modifications, 'lastName') ? (modifications as any).lastName : obj.lastName;
+                if (typeof newFirstName === 'string' && typeof newLastName === 'string') {
+                    (modifications as any).searchName = `${newFirstName.toLowerCase()} ${newLastName.toLowerCase()}`;
+                }
+            }
+        });
     }
-    await promisify(tx.done);
 }
 
+let db: PosDatabase;
 
-async function where<T>(table: TableName, indexName: string, value: any): Promise<T[]> {
-  const db = await openDB();
-  const store = db.transaction(table, 'readonly').objectStore(table);
-  if (!store.indexNames.contains(indexName)) {
-    console.warn(`Index '${indexName}' does not exist on table '${table}'. Performing a full table scan.`);
-    const allItems = await getAll<any>(table);
-    return allItems.filter(item => {
-        const itemValue = item[indexName];
-        if (Array.isArray(itemValue)) {
-            return itemValue.includes(value);
-        }
-        return itemValue === value;
-    });
+export function getDb(): PosDatabase {
+  if (typeof window !== 'undefined') {
+    if (!db) {
+      db = new PosDatabase();
+    }
+    return db;
   }
-  const index = store.index(indexName);
-  return promisify(index.getAll(value));
+  // This is a server-side mock.
+  return new Dexie('iPOS_DB_NATIVE') as unknown as PosDatabase;
 }
-
-async function clearTable(table: TableName): Promise<void> {
-  const db = await openDB();
-  const tx = db.transaction(table, 'readwrite');
-  await promisify(tx.objectStore(table).clear());
-  await promisify(tx.done);
-}
-
-async function resetDatabase(): Promise<void> {
-    const db = dbPromise ? await dbPromise : null;
-    if (db) {
-        db.close();
-    }
-    await new Promise<void>((resolve, reject) => {
-        const deleteRequest = indexedDB.deleteDatabase(DB_NAME);
-        deleteRequest.onsuccess = () => {
-            dbPromise = null;
-            resolve();
-        };
-        deleteRequest.onerror = (e) => reject((e.target as IDBOpenDBRequest).error);
-        deleteRequest.onblocked = () => {
-            console.warn("Delete blocked");
-            reject(new Error("La suppression de la base de données est bloquée."));
-        }
-    });
-}
-
-export const db = {
-    open: openDB,
-    promisify,
-    getAll,
-    getById,
-    add,
-    update,
-    put,
-    remove,
-    removeMultiple,
-    where,
-    clearTable,
-    resetDatabase,
-    transaction: async (tables: TableName[], mode: IDBTransactionMode) => {
-        const db = await openDB();
-        return db.transaction(tables, mode);
-    }
-};

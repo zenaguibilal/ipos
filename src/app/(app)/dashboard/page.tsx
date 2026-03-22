@@ -34,9 +34,9 @@ export default function DashboardPage() {
                         <Skeleton className="h-[450px] w-full" />
                     </div>
                     <div className="lg:col-span-1 space-y-6">
-                        <Skeleton className="h-[300px] w-full" />
-                        <Skeleton className="h-[300px] w-full" />
-                        <Skeleton className="h-[300px] w-full" />
+                         <Skeleton className="h-[250px] w-full" />
+                         <Skeleton className="h-[250px] w-full" />
+                         <Skeleton className="h-[250px] w-full" />
                     </div>
                 </div>
                  <div className="grid grid-cols-1">

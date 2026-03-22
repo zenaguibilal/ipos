@@ -6,6 +6,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  CardFooter
 } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { TopCustomer } from '@/lib/types';
@@ -45,13 +46,13 @@ export function TopCustomersCard({ customers }: { customers: TopCustomer[] }) {
         )}
       </CardContent>
        {customers.length > 0 && (
-        <CardContent>
+        <CardFooter>
              <Button asChild className="w-full">
                 <Link href="/customers">
                     <Users className="mr-2 h-4 w-4" /> Voir tous les clients
                 </Link>
             </Button>
-        </CardContent>
+        </CardFooter>
       )}
     </Card>
   );
