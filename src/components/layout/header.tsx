@@ -58,7 +58,7 @@ export function AppHeader() {
       <div className="flex-1 flex justify-start">
          <div className="flex items-baseline gap-2">
               <Link
-                  href="/dashboard"
+                  href="/sell"
                   className="flex items-center gap-2 font-semibold"
               >
                   <Image src="/icon.svg" alt="iPOS logo" width={32} height={32} />
