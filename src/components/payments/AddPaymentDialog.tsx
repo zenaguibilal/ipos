@@ -64,7 +64,6 @@ export function AddPaymentDialog({ isOpen, onOpenChange, customer, outstandingBa
       onOpenChange(false);
       setAmount('');
     } catch (error) {
-      console.error('Error adding payment: ', error);
       toast.error("Erreur lors de l'enregistrement du paiement.");
     } finally {
       setIsLoading(false);

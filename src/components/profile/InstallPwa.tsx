@@ -41,11 +41,9 @@ export function InstallPwa() {
     await installPrompt.prompt();
     const { outcome } = await installPrompt.userChoice;
     if (outcome === 'accepted') {
-      console.log('User accepted the install prompt');
       setIsAppInstalled(true);
       setInstallPrompt(null);
     } else {
-      console.log('User dismissed the install prompt');
     }
   };
   
