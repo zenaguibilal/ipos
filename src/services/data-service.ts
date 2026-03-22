@@ -980,11 +980,21 @@ class DataService {
             
             for (const item of newReturn.items) {
                 if(item.productId && item.wasRestocked) {
-                    const product = await this.db.products.get(item.productId);
-                    if(product?.id) {
-                        const newQuantity = product.quantity + item.quantity;
-                        await this.db.products.update(product.id, { quantity: newQuantity });
-                        await this.db.inventoryLogs.add({ productId: item.productId, change: item.quantity, newQuantity, reason: 'return', relatedId: newReturn.id });
+                    let newQuantity = 0;
+                    await this.db.products.where({ id: item.productId }).modify(product => {
+                        product.quantity += item.quantity;
+                        newQuantity = product.quantity;
+                    });
+
+                    if (newQuantity > 0) { // Check if modify did anything
+                        await this.db.inventoryLogs.add({
+                            productId: item.productId,
+                            change: item.quantity,
+                            newQuantity: newQuantity,
+                            reason: 'return',
+                            relatedId: newReturn.id,
+                            createdAt: new Date()
+                        });
                     }
                 }
             }
