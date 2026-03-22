@@ -180,7 +180,7 @@ class DataService {
             productId: newProductId,
             change: productData.quantity,
             newQuantity: productData.quantity,
-            reason: 'stock_intake',
+            reason: 'manual_adjustment',
             relatedId: `init-${newProductId}`,
             createdAt: new Date(),
       });
@@ -875,66 +875,91 @@ class DataService {
     
     // Stock Intake
     async addStockIntake(intakeData: { supplierName: string; invoiceNumber: string; invoiceDate: Date }, items: StockIntakeItem[]): Promise<StockIntake> {
-      return this.db.transaction('rw', this.db.suppliers, this.db.products, this.db.inventoryLogs, this.db.stockIntakes, async () => {
-          let supplier = await this.db.suppliers.where('name').equalsIgnoreCase(intakeData.supplierName).first();
-          if(!supplier) {
-              const newSupplierData = { name: intakeData.supplierName, balance: 0 };
-              const id = await this.db.suppliers.add(newSupplierData);
-              supplier = { ...newSupplierData, id, balance: 0 };
-          }
-          
-          const intakeItems = [];
-          for (const item of items) {
-              const quantityChange = item.quantity - item.quantityDamaged;
-              if(item.isNew) {
-                  const newProduct = await this.addProduct({ 
-                      name: item.name, category: item.category, price: item.price, 
-                      purchasePrice: item.purchasePrice, quantity: quantityChange,
-                      minStockLevel: 10, barcodes: item.barcodes, unite: 'Pièce', 
-                      fournisseurId: supplier.id 
-                  });
-                  item.productId = newProduct.id as number;
-              } else if(item.productId) {
-                  let newQuantity = 0;
-                  const updatedRows = await this.db.products.where({ id: item.productId }).modify(product => {
-                      product.quantity += quantityChange;
-                      product.purchasePrice = item.purchasePrice;
-                      product.dateMajPrix = new Date();
-                      product.fournisseurId = supplier!.id;
-                      newQuantity = product.quantity;
-                  });
-  
-                  if (updatedRows === 0) throw new Error(`Produit avec ID ${item.productId} non trouvé.`);
-  
-                  await this.db.inventoryLogs.add({
-                      productId: item.productId as number, change: quantityChange,
-                      newQuantity: newQuantity, reason: 'stock_intake',
-                      createdAt: new Date()
-                  });
-              }
-              intakeItems.push({ 
-                  productId: item.productId, productName: item.name, 
-                  quantityReceived: item.quantity, quantityDamaged: item.quantityDamaged, 
-                  purchasePrice: item.purchasePrice 
-              });
-          }
-          
-          const totalValue = intakeItems.reduce((acc, item) => acc + (item.purchasePrice * item.quantityReceived), 0);
-          
-          await this.db.suppliers.update(supplier.id!, {
-              balance: (supplier.balance || 0) + totalValue
-          });
-  
-          const newIntakeData: Omit<StockIntake, 'id'> = { 
-              ...intakeData, supplierId: supplier.id!, supplierName: supplier.name, 
-              items: intakeItems, totalValue, 
-          };
-          const id = await this.db.stockIntakes.add(newIntakeData as StockIntake);
-          
-          const newIntake = { ...newIntakeData, id };
-          sheetsService.addToQueue('stockIntakes', 'upsert', newIntake);
-          return newIntake;
-      });
+        return this.db.transaction('rw', this.db.suppliers, this.db.products, this.db.inventoryLogs, this.db.stockIntakes, async (tx) => {
+            // 1. Get or create supplier
+            let supplier = await tx.table('suppliers').where('name').equalsIgnoreCase(intakeData.supplierName).first();
+            if (!supplier) {
+                const newSupplierData = { name: intakeData.supplierName, balance: 0 };
+                const id = await tx.table('suppliers').add(newSupplierData);
+                supplier = { ...newSupplierData, id, balance: 0 };
+            }
+    
+            // 2. Create a placeholder intake record to get an ID
+            const tempIntakeData: Omit<StockIntake, 'id'> = {
+                ...intakeData,
+                supplierId: supplier.id!,
+                supplierName: supplier.name,
+                items: [],
+                totalValue: 0,
+            };
+            const intakeId = await tx.table('stockIntakes').add(tempIntakeData as StockIntake);
+    
+            const finalIntakeItems = [];
+            let finalTotalValue = 0;
+    
+            // 3. Process all items
+            for (const item of items) {
+                const quantityChange = item.quantity - item.quantityDamaged;
+                finalTotalValue += item.quantity * item.purchasePrice;
+                let productId = item.productId;
+                let finalQuantity = 0;
+    
+                if (item.isNew) {
+                    // Create new product
+                    const newProductData: Omit<Product, 'id'> = {
+                        name: item.name, category: item.category, price: item.price,
+                        purchasePrice: item.purchasePrice, quantity: quantityChange,
+                        minStockLevel: 10, barcodes: item.barcodes, unite: 'Pièce' as const,
+                        fournisseurId: supplier.id, dateMajPrix: new Date(),
+                    };
+                    productId = await tx.table('products').add(newProductData);
+                    finalQuantity = quantityChange;
+                } else if (productId) {
+                    // Atomically update existing product
+                    const updatedRows = await tx.table('products').where({ id: productId }).modify(product => {
+                        product.quantity += quantityChange;
+                        product.purchasePrice = item.purchasePrice;
+                        product.dateMajPrix = new Date();
+                        product.fournisseurId = supplier.id;
+                        finalQuantity = product.quantity;
+                    });
+                    if (updatedRows === 0) throw new Error(`Produit avec ID ${productId} non trouvé.`);
+                }
+    
+                if (productId) {
+                    // Add inventory log with the correct relatedId
+                    await tx.table('inventoryLogs').add({
+                        productId: productId,
+                        change: quantityChange,
+                        newQuantity: finalQuantity,
+                        reason: 'stock_intake',
+                        relatedId: intakeId,
+                        createdAt: new Date()
+                    });
+    
+                    finalIntakeItems.push({
+                        productId: productId, productName: item.name,
+                        quantityReceived: item.quantity, quantityDamaged: item.quantityDamaged,
+                        purchasePrice: item.purchasePrice
+                    });
+                }
+            }
+    
+            // 4. Update the intake record with final items and total value
+            await tx.table('stockIntakes').update(intakeId, {
+                items: finalIntakeItems,
+                totalValue: finalTotalValue
+            });
+    
+            // 5. Update supplier balance
+            await tx.table('suppliers').update(supplier.id!, {
+                balance: (supplier.balance || 0) + finalTotalValue
+            });
+    
+            const finalIntake = await tx.table('stockIntakes').get(intakeId);
+            if(finalIntake) sheetsService.addToQueue('stockIntakes', 'upsert', finalIntake);
+            return finalIntake!;
+        });
     }
     
     // Returns
