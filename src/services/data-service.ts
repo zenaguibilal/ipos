@@ -58,7 +58,8 @@ class DataService {
   }
 
   async addProductToCart(cartId: string, product: Product, quantity: number): Promise<void> {
-    return this.db.carts.where({id: cartId}).modify(cart => {
+    // Optimistic UI update first
+    await this.db.carts.where({ id: cartId }).modify(cart => {
         const existingItemIndex = cart.items.findIndex(item => item.id === product.id);
         if (existingItemIndex > -1) {
             cart.items[existingItemIndex].cartQuantity += quantity;
@@ -67,6 +68,20 @@ class DataService {
             cart.items.push({ ...product, cartQuantity: quantity, flash: true });
         }
     });
+
+    // Then, validate stock without blocking UI
+    if (typeof product.id === 'number') {
+        const dbProduct = await this.getById<Product>('products', product.id);
+        if (!dbProduct || dbProduct.quantity < quantity) {
+            // Revert if stock is insufficient
+            await this.db.carts.where({ id: cartId }).modify(cart => {
+                const itemToRevert = cart.items.find(item => item.id === product.id);
+                if(itemToRevert) itemToRevert.cartQuantity -= quantity;
+                cart.items = cart.items.filter(item => item.cartQuantity > 0);
+            });
+            throw new Error(`Stock insuffisant pour ${product.name}. Disponible: ${dbProduct?.quantity || 0}`);
+        }
+    }
   }
 
   async updateCartItemQuantity(cartId: string, itemId: string | number, newQuantity: number): Promise<{capped: boolean, maxQuantity?: number}> {
@@ -609,6 +624,21 @@ class DataService {
 
     async addSale(saleData: Omit<Sale, 'id' | 'invoiceNumber' | 'remainingBalance' | 'paymentStatus'> & { amountPaid: number }): Promise<Sale> {
         return this.db.transaction('rw', this.db.sales, this.db.products, this.db.inventoryLogs, this.db.customers, async () => {
+            
+            // 1. Pre-sale validation
+            for (const item of saleData.items) {
+                if (typeof item.id === 'number') {
+                    const product = await this.db.products.get(item.id);
+                    if (!product) {
+                        throw new Error(`Produit "${item.name}" non trouvé dans l'inventaire.`);
+                    }
+                    if (product.quantity < item.quantity) {
+                        throw new Error(`Stock insuffisant pour "${item.name}". Demandé: ${item.quantity}, Disponible: ${product.quantity}.`);
+                    }
+                }
+            }
+
+            // 2. Create Sale Record
             const salesCount = await this.db.sales.count();
             const invoiceNumber = `INV-${new Date().getFullYear()}-${(salesCount + 1).toString().padStart(5, '0')}`;
             const remainingBalance = saleData.total - saleData.amountPaid;
@@ -617,21 +647,35 @@ class DataService {
 
             const saleId = await this.db.sales.add(newSaleData);
             
+            // 3. Update Inventory
             for(const item of newSaleData.items) {
                 if (typeof item.id === 'number') {
-                    const product = await this.db.products.get(item.id);
-                    if (product) {
+                    // We already fetched the product, but we do it again inside the transaction for safety
+                    const product = await this.db.products.get(item.id); 
+                    if (product) { // Should always be true because of pre-validation
                         const newQuantity = product.quantity - item.quantity;
                         await this.db.products.update(item.id, { quantity: newQuantity });
-                        await this.db.inventoryLogs.add({ productId: item.id, change: -item.quantity, newQuantity, reason: 'sale', relatedId: saleId, createdAt: new Date() });
+                        await this.db.inventoryLogs.add({ 
+                            productId: item.id, 
+                            change: -item.quantity, 
+                            newQuantity, 
+                            reason: 'sale', 
+                            relatedId: saleId, 
+                            createdAt: new Date() 
+                        });
                     }
                 }
             }
             
+            // 4. Update Customer Balance
             if (newSaleData.customerId) {
                 const customer = await this.db.customers.get(newSaleData.customerId);
                 if (customer?.id) {
-                    await this.db.customers.update(customer.id, { outstandingBalance: customer.outstandingBalance + newSaleData.remainingBalance, totalSpent: customer.totalSpent + newSaleData.total, lastActivityDate: new Date() });
+                    await this.db.customers.update(customer.id, { 
+                        outstandingBalance: customer.outstandingBalance + newSaleData.remainingBalance, 
+                        totalSpent: customer.totalSpent + newSaleData.total, 
+                        lastActivityDate: new Date() 
+                    });
                 }
             }
             
@@ -680,12 +724,12 @@ class DataService {
     
     // Drafts
     async getDrafts(): Promise<Draft[]> {
-        return this.db.drafts.orderBy('date').reverse().toArray();
+        return this.db.drafts.orderBy('createdAt').reverse().toArray();
     }
     
     async saveDraft(cart: Cart, notes?: string): Promise<Draft> {
         const { total } = calculateCartTotals(cart);
-        const draftData: Omit<Draft, 'id' | 'createdAt' | 'updatedAt'> = { 
+        const draftData: Omit<Draft, 'id' > = { 
           date: new Date(), 
           customerId: cart.customerId, 
           customerName: cart.customerName, 
@@ -741,7 +785,7 @@ class DataService {
             if(!supplier) {
                 const newSupplierData = { name: intakeData.supplierName, balance: 0 };
                 const id = await this.db.suppliers.add(newSupplierData);
-                supplier = { ...newSupplierData, id };
+                supplier = { ...newSupplierData, id, balance: 0 };
             }
             
             const intakeItems = [];
@@ -937,12 +981,13 @@ class DataService {
         const allProducts = await this.db.products.toArray();
 
         const totalRevenue = sales.reduce((sum, s) => sum + (s.total || 0), 0);
+        const totalExpenses = expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+        
         const salesProfit = sales.reduce((sum, s) => {
             const saleProfit = (s.items || []).reduce((itemSum, item) => 
                 itemSum + ((item.price || 0) - (item.purchasePrice || 0)) * (item.quantity || 0), 0);
-            return sum + saleProfit;
+            return sum + saleProfit - (s.discountAmount || 0);
         }, 0);
-        const totalExpenses = expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
         const totalProfit = salesProfit - totalExpenses;
         const inventoryValue = allProducts.reduce((sum, p) => sum + ((p.purchasePrice || 0) * (p.quantity || 0)), 0);
 
@@ -984,7 +1029,7 @@ class DataService {
             };
         }).sort((a, b) => b.totalSpent - a.totalSpent).slice(0, 5);
         
-        const lowStockProducts = allProducts.filter(p => p.quantity <= p.minStockLevel).sort((a,b) => a.quantity - b.quantity).slice(0, 5);
+        const lowStockProducts = allProducts.filter(p => p.quantity <= p.minStockLevel).sort((a,b) => a.quantity - b.quantity).slice(0, 10);
         const recentActivity = await this.getGlobalActivity(10);
 
         return {
