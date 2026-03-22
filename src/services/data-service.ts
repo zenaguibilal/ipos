@@ -649,7 +649,7 @@ class DataService {
             quantity = client.jours_semaine[dayOfWeek].quantite;
           }
           if (quantity && quantity > 0) {
-            ordersToCreate.push({ client_pain_id: client.id!, date, quantite, est_paye: false, est_livre: false, vente_id: null });
+            ordersToCreate.push({ client_pain_id: client.id!, date, quantite: quantity, est_paye: false, est_livre: false, vente_id: null });
           }
         }
         if(ordersToCreate.length > 0) {
@@ -675,37 +675,42 @@ class DataService {
             const breadProduct = await this.db.products.where('name').equals('Pain').first();
             if (!breadProduct?.id || typeof breadProduct.id !== 'number') throw new Error("Le produit 'Pain' n'a pas été trouvé.");
             
-            for (const orderId of orderIds) {
-                const order = await this.db.commandes_pain.get(orderId);
-                if (order && !order.vente_id) {
-                    const client = await this.getById<BreadClient>('clients_pain', order.client_pain_id);
-                    const salesCount = await this.db.sales.count();
-                    const invoiceNumber = `INV-${new Date().getFullYear()}-${(salesCount + 1).toString().padStart(5, '0')}`;
-                    
-                    const saleTotal = breadPrice * order.quantite;
-                    const saleData: Omit<Sale, 'id'> = { 
-                        items: [{ id: breadProduct.id!, name: "Pain", price: breadPrice, purchasePrice: breadProduct.purchasePrice, quantity: order.quantite }], 
-                        subtotal: saleTotal, total: saleTotal, amountPaid: 0, payments: [], clientPainId: order.client_pain_id, 
-                        customerName: client?.nom, invoiceNumber, remainingBalance: saleTotal, 
-                        paymentStatus: 'unpaid' as const, createdAt: new Date(), updatedAt: new Date()
-                    };
-                    const saleId = await this.db.sales.add(saleData);
-                    
-                    await this.db.commandes_pain.update(orderId, { vente_id: saleId, est_paye: true });
-                    sheetsService.addToQueue('commandes_pain', 'upsert', { id: orderId, vente_id: saleId, est_paye: true });
+            const ordersToConvert = await this.db.commandes_pain.where('id').anyOf(orderIds).and(o => !o.vente_id).toArray();
+            const totalBreadNeeded = ordersToConvert.reduce((sum, o) => sum + o.quantite, 0);
 
-                    const newProductQuantity = breadProduct.quantity - order.quantite;
-                    await this.db.products.update(breadProduct.id, { quantity: newProductQuantity });
-                    await this.db.inventoryLogs.add({ productId: breadProduct.id, change: -order.quantite, newQuantity: newProductQuantity, reason: 'sale', relatedId: saleId, createdAt: new Date() });
+            if (breadProduct.quantity < totalBreadNeeded) {
+                throw new Error(`Stock de pain insuffisant. Requis: ${totalBreadNeeded}, Disponible: ${breadProduct.quantity}.`);
+            }
 
-                    if (client?.nom) {
-                        const mainCustomer = await this.db.customers.where('searchName').equals(client.nom.toLowerCase()).first();
-                        if (mainCustomer?.id) {
-                           await this.db.customers.update(mainCustomer.id, { outstandingBalance: mainCustomer.outstandingBalance + saleData.total, lastActivityDate: new Date() });
-                        }
+            for (const order of ordersToConvert) {
+                const client = await this.getById<BreadClient>('clients_pain', order.client_pain_id);
+                const salesCount = await this.db.sales.count();
+                const invoiceNumber = `INV-${new Date().getFullYear()}-${(salesCount + (orderIds.indexOf(order.id!)+1)).toString().padStart(5, '0')}`;
+                
+                const saleTotal = breadPrice * order.quantite;
+                const saleData: Omit<Sale, 'id'> = { 
+                    items: [{ id: breadProduct.id, name: "Pain", price: breadPrice, purchasePrice: breadProduct.purchasePrice, quantity: order.quantite }], 
+                    subtotal: saleTotal, total: saleTotal, amountPaid: 0, payments: [], clientPainId: order.client_pain_id, 
+                    customerName: client?.nom, invoiceNumber, remainingBalance: saleTotal, 
+                    paymentStatus: 'unpaid' as const, createdAt: new Date(), updatedAt: new Date()
+                };
+                const saleId = await this.db.sales.add(saleData);
+                
+                await this.db.commandes_pain.update(order.id!, { vente_id: saleId, est_paye: true });
+                sheetsService.addToQueue('commandes_pain', 'upsert', { id: order.id, vente_id: saleId, est_paye: true });
+
+                if (client?.nom) {
+                    const mainCustomer = await this.db.customers.where('searchName').equals(client.nom.toLowerCase()).first();
+                    if (mainCustomer?.id) {
+                       await this.db.customers.update(mainCustomer.id, { outstandingBalance: mainCustomer.outstandingBalance + saleData.total, lastActivityDate: new Date() });
+                       sheetsService.addToQueue('customers', 'upsert', { id: mainCustomer.id, outstandingBalance: mainCustomer.outstandingBalance + saleData.total, lastActivityDate: new Date() });
                     }
                 }
             }
+
+             await this.db.products.update(breadProduct.id, { quantity: breadProduct.quantity - totalBreadNeeded });
+             await this.db.inventoryLogs.add({ productId: breadProduct.id, change: -totalBreadNeeded, newQuantity: breadProduct.quantity - totalBreadNeeded, reason: 'sale', relatedId: `bread-conv-${orderIds.join(',')}`, createdAt: new Date() });
+             sheetsService.addToQueue('products', 'upsert', {id: breadProduct.id, quantity: breadProduct.quantity - totalBreadNeeded });
         });
     }
   
@@ -900,6 +905,7 @@ class DataService {
                 const newSupplierData = { name: intakeData.supplierName, balance: 0 };
                 const id = await tx.table('suppliers').add(newSupplierData);
                 supplier = { ...newSupplierData, id, balance: 0 };
+                 sheetsService.addToQueue('suppliers', 'upsert', supplier);
             }
     
             const tempIntakeData: Omit<StockIntake, 'id'> = {
@@ -929,6 +935,8 @@ class DataService {
                     };
                     productId = await tx.table('products').add(newProductData);
                     finalQuantity = quantityChange;
+                    const newProduct = { ...newProductData, id: productId };
+                    sheetsService.addToQueue('products', 'upsert', newProduct);
                 } else if (productId) {
                     await tx.table('products').where({ id: productId }).modify(product => {
                         product.quantity += quantityChange;
@@ -937,6 +945,8 @@ class DataService {
                         product.fournisseurId = supplier.id;
                         finalQuantity = product.quantity;
                     });
+                    const updatedProduct = await tx.table('products').get(productId);
+                    if(updatedProduct) sheetsService.addToQueue('products', 'upsert', updatedProduct);
                 }
     
                 if (productId) {
@@ -1250,3 +1260,5 @@ class DataService {
 }
 
 export const dataService = new DataService();
+
+    

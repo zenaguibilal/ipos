@@ -1,9 +1,11 @@
 
+
 'use client';
 
 import { dataService } from '@/services/data-service';
 import type { CompanyProfile, TableName } from '@/lib/types';
 import { TABLES } from '@/lib/types';
+import { getDb } from '@/lib/database';
 
 const SYNC_QUEUE_KEY = 'ipos_sync_queue';
 
@@ -87,60 +89,52 @@ class GoogleSheetsService {
   async fetchFromSheets(table: string): Promise<any[]> {
     if (!this.scriptUrl || !this.isOnline) return [];
     const response = await fetch(`${this.scriptUrl}?table=${table}`);
+    if (!response.ok) {
+        throw new Error(`Failed to fetch from sheets, status: ${response.status}`);
+    }
     const result = await response.json();
-    if (!result.success) throw new Error(result.error);
+    if (!result.success) throw new Error(result.error || `Unknown error fetching table ${table}`);
     return result.records || [];
   }
   
   async syncTable(tableName: TableName) {
-    if (!Object.values(TABLES).includes(tableName)) {
-        return { success: true, message: 'Skipped' };
+    if (!this.isOnline || !this.scriptUrl) {
+      throw new Error("Pas de connexion ou URL de script non configurée.");
     }
-    const localRecords = await dataService.getAll(tableName);
+    if (!Object.values(TABLES).includes(tableName as any) || ['carts', 'settings'].includes(tableName)) {
+      return { success: true, message: `Tableau ignoré: ${tableName}` };
+    }
+
+    const db = getDb();
+    const table = db.table(tableName);
+
+    // 1. Fetch remote records
     const remoteRecords = await this.fetchFromSheets(tableName);
+    if (!Array.isArray(remoteRecords)) {
+        throw new Error(`Données invalides reçues pour le tableau: ${tableName}`);
+    }
 
-    const localMap = new Map(localRecords.map((r: any) => [String(r.id), r]));
-    const remoteMap = new Map(remoteRecords.map((r: any) => [String(r.id), r]));
+    // 2. Get local record IDs
+    const localIds = (await table.toCollection().keys());
+    const remoteIds = new Set(remoteRecords.map((r: any) => r.id));
 
-    const toUpdateLocal: any[] = [];
-    const toUpdateRemote: any[] = [];
-    const toAddLocal: any[] = [];
-    const toAddRemote: any[] = [];
-    let noChange = 0;
+    // 3. Determine which local records to delete.
+    const idsToDelete = localIds.filter(id => !remoteIds.has(id));
 
-    for (const [id, local] of localMap.entries()) {
-      const remote = remoteMap.get(id);
-      if (!remote) {
-        toAddRemote.push(local);
-      } else {
-        const localTime = new Date(local.updatedAt || local.createdAt || 0).getTime();
-        const remoteTime = new Date(remote.updatedAt || remote.createdAt || 0).getTime();
-
-        if (remoteTime > localTime) toUpdateLocal.push(remote);
-        else if (localTime > remoteTime) toUpdateRemote.push(local);
-        else noChange++;
+    // 4. Perform DB operations in a transaction
+    await db.transaction('rw', table, async () => {
+      if (idsToDelete.length > 0) {
+        await table.bulkDelete(idsToDelete as any[]); // Cast to any[] to handle mixed string/number keys
       }
-    }
-    for (const [id, remote] of remoteMap.entries()) {
-      if (!localMap.has(id)) toAddLocal.push(remote);
-    }
-    
-    // Applying changes needs to be done carefully via dataService to trigger logic
-    if (toUpdateLocal.length > 0) {
-        for(const record of toUpdateLocal) {
-          if(record.id) await dataService.update(tableName as any, record.id, record);
-        }
-    }
-     if (toAddLocal.length > 0) {
-         for(const record of toAddLocal) await dataService.add(tableName as any, record);
-     }
-    for (const record of [...toUpdateRemote, ...toAddRemote]) {
-      await this.sendToSheets(tableName, 'upsert', record);
-    }
-    
+      if (remoteRecords.length > 0) {
+        await table.bulkPut(remoteRecords);
+      }
+    });
+
     return {
-      success: true, localUpdated: toUpdateLocal.length, localAdded: toAddLocal.length,
-      remoteUpdated: toUpdateRemote.length, remoteAdded: toAddRemote.length, noChange
+      success: true,
+      deleted: idsToDelete.length,
+      upserted: remoteRecords.length,
     };
   }
 
@@ -151,11 +145,11 @@ class GoogleSheetsService {
 
     const results: { [key: string]: any } = {};
     for (const table of TABLES_TO_SYNC) {
-      if(['carts'].includes(table as string)) continue;
       try {
-        results[table as string] = await this.syncTable(table as string);
+        results[table] = await this.syncTable(table);
       } catch (e: any) {
-        results[table as string] = { success: false, error: e.message };
+        console.error(`La synchronisation a échoué pour le tableau ${table}:`, e);
+        results[table] = { success: false, error: e.message };
       }
     }
     const lastSync = new Date().toISOString();
@@ -164,6 +158,11 @@ class GoogleSheetsService {
   }
 
   addToQueue(table: string, action: 'upsert' | 'delete', record: any) {
+    // Make sure we have an ID for upsert/delete
+    if(!record.id && (action === 'upsert' || action === 'delete')){
+      console.warn("Attempted to queue record without ID.", {table, action, record});
+      return;
+    }
     if (this.isOnline && this.scriptUrl) {
       this.sendToSheets(table, action, record).catch(e => {
         console.warn('Live sync failed, adding to queue.', e);
@@ -175,26 +174,39 @@ class GoogleSheetsService {
   }
   
   private pushToQueue(item: QueueItem) {
-    const queue = this.loadQueue();
-    queue.push(item);
-    this.saveQueue(queue);
+    try {
+        const queue = this.loadQueue();
+        // Avoid duplicates for the same record
+        const existingIndex = queue.findIndex(i => i.table === item.table && i.record.id === item.record.id);
+        if (existingIndex > -1) {
+            queue[existingIndex] = item; // Replace with the latest change
+        } else {
+            queue.push(item);
+        }
+        this.saveQueue(queue);
+    } catch(e) {
+        console.error("Failed to push to sync queue", e);
+    }
   }
 
   async processSyncQueue() {
     if (!this.isOnline || !this.scriptUrl) return;
-    const queue = this.loadQueue();
+    let queue = this.loadQueue();
     if (queue.length === 0) return;
-    let success = true;
+    
+    const remainingItems: QueueItem[] = [];
+
     for (const item of queue) {
       try {
         await this.sendToSheets(item.table, item.action, item.record);
       } catch {
         item.attempts++;
-        success = false;
+        if (item.attempts < 3) {
+            remainingItems.push(item);
+        }
       }
     }
-    const newQueue = queue.filter(item => item.attempts < 3);
-    this.saveQueue(newQueue);
+    this.saveQueue(remainingItems);
   }
 
   getStatus() {
@@ -214,9 +226,15 @@ class GoogleSheetsService {
   }
 
   saveQueue(queue: QueueItem[]) {
-    if (typeof localStorage === 'undefined') return;
-    localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(queue));
+    try {
+      if (typeof localStorage === 'undefined') return;
+      localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(queue));
+    } catch(e) {
+       console.error("Failed to save sync queue", e);
+    }
   }
 }
 
 export const sheetsService = new GoogleSheetsService();
+
+    
