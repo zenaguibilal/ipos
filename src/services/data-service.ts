@@ -886,17 +886,18 @@ class DataService {
     
     // Expenses
     async getExpenses(params: { category?: string; from?: Date, to?: Date }): Promise<Expense[]> {
-        let collection = this.db.expenses.orderBy('expenseDate').reverse();
-        
-        if (params.from && params.to) {
-            collection = this.db.expenses.where('expenseDate').between(params.from, params.to, true, true).reverse();
+        let collection;
+        if(params.from && params.to) {
+            collection = this.db.expenses.where('expenseDate').between(params.from, params.to);
+        } else {
+            collection = this.db.expenses.toCollection();
         }
         
         if (params.category) {
-            return collection.filter(e => e.category === params.category).toArray();
+            collection = collection.filter(e => e.category === params.category);
         }
         
-        return collection.toArray();
+        return collection.reverse().toArray();
     }
     
     async getExpenseCategories(): Promise<string[]> {
@@ -981,14 +982,14 @@ class DataService {
         const allProducts = await this.db.products.toArray();
 
         const totalRevenue = sales.reduce((sum, s) => sum + (s.total || 0), 0);
-        const totalExpenses = expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+        const totalExpensesValue = expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
         
         const salesProfit = sales.reduce((sum, s) => {
             const saleProfit = (s.items || []).reduce((itemSum, item) => 
                 itemSum + ((item.price || 0) - (item.purchasePrice || 0)) * (item.quantity || 0), 0);
             return sum + saleProfit - (s.discountAmount || 0);
         }, 0);
-        const totalProfit = salesProfit - totalExpenses;
+        const totalProfit = salesProfit - totalExpensesValue;
         const inventoryValue = allProducts.reduce((sum, p) => sum + ((p.purchasePrice || 0) * (p.quantity || 0)), 0);
 
         const productSales: { [key: number]: { revenue: number, profit: number, units: number } } = {};
@@ -1011,6 +1012,7 @@ class DataService {
         })).sort((a, b) => b.totalRevenue - a.totalRevenue).slice(0, 5);
 
         const allCustomers = await this.db.customers.toArray();
+        const customerMap = new Map(allCustomers.map(c => [c.id, c]));
         const customerSales: { [key: number]: number } = {};
         for (const sale of sales) {
             if (sale.customerId) {
@@ -1018,8 +1020,7 @@ class DataService {
                 customerSales[sale.customerId] += sale.total;
             }
         }
-
-        const customerMap = new Map(allCustomers.map(c => [c.id, c]));
+        
         const topCustomers: TopCustomer[] = Object.entries(customerSales).map(([customerId, totalSpent]) => {
             const customer = customerMap.get(Number(customerId));
             return {
@@ -1033,7 +1034,7 @@ class DataService {
         const recentActivity = await this.getGlobalActivity(10);
 
         return {
-            stats: { totalRevenue, totalProfit, salesCount: sales.length, inventoryValue, totalExpenses },
+            stats: { totalRevenue, totalProfit, salesCount: sales.length, inventoryValue, totalExpenses: totalExpensesValue },
             sales, expenses, topProducts, topCustomers, lowStockProducts, recentActivity,
         };
     }
