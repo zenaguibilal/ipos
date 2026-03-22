@@ -1,116 +1,116 @@
-# iPOS - Description Complète de l'Application
+# iPOS - وصف كامل للتطبيق
 
-Ce document fournit une description détaillée de chaque page et fonctionnalité majeure de l'application iPOS, une solution de point de vente 100% hors ligne, en mettant en lumière les aspects techniques clés qui garantissent sa robustesse et sa fiabilité.
-
----
-
-## 1. Tableau de Bord (`/dashboard`)
-
-C'est la page d'accueil et le centre névralgique de l'application, offrant une vue d'ensemble en temps réel des performances de l'entreprise.
-
--   **Objectif :** Fournir des indicateurs de performance clés (KPI) et une vue rapide de l'activité commerciale.
--   **Fonctionnalités :**
-    -   **Sélecteur de Période :** Un filtre de date puissant pour analyser les données sur des périodes personnalisées (aujourd'hui, 7 derniers jours, ce mois-ci, etc.).
-    -   **Cartes de Statistiques :** Affiche les chiffres essentiels : Revenu Total, Bénéfice Net, Nombre de Ventes et Valeur Totale du Stock. Ces métriques sont calculées dynamiquement à partir des données locales.
-    -   **Alertes de Stock Faible :** Met en évidence les produits dont le stock a atteint ou est tombé en dessous du niveau minimum défini, permettant une gestion proactive des commandes.
-    -   **Graphique des Revenus :** Un graphique à barres visuel qui compare les revenus et les bénéfices nets jour par jour sur la période sélectionnée, offrant un aperçu rapide des tendances.
-    -   **Activité Récente :** Un flux en direct des dernières opérations : ventes, réceptions de stock, retours de produits et enregistrements de nouveaux clients, triées par date.
+يقدم هذا المستند وصفًا تفصيليًا لكل صفحة وميزة رئيسية في تطبيق iPOS، وهو حل نقاط بيع يعمل 100% بدون اتصال بالإنترنت، مع تسليط الضوء على الجوانب التقنية الرئيسية التي تضمن قوته وموثوقيته.
 
 ---
 
-## 2. Point de Vente (`/sell`)
+## 1. لوحة التحكم (`/dashboard`)
 
-L'interface principale de caisse, conçue pour être rapide, intuitive et efficace, même sans connexion internet.
+هذه هي الصفحة الرئيسية والمركز العصبي للتطبيق، حيث توفر نظرة عامة في الوقت الفعلي على أداء العمل.
 
--   **Objectif :** Permettre l'enregistrement rapide des ventes et la gestion des transactions.
--   **Fonctionnalités :**
-    -   **Gestion Multi-paniers :** Possibilité de gérer plusieurs paniers simultanément via des onglets, idéal pour les heures de pointe. L'état des paniers est temporaire et géré via `React.useState` pour une réactivité maximale.
-    -   **Recherche de Produits :** Un champ de recherche puissant qui permet de trouver des produits par nom ou de les scanner par code-barres.
-    -   **Sélection de Client :** Associer une vente à un client existant pour le suivi du crédit ou choisir "Client de passage" pour les ventes anonymes.
-    -   **Finalisation de la Vente :** Un dialogue de paiement complet qui gère plusieurs modes de paiement.
-        -   **Transaction Atomique :** La finalisation est une transaction `Dexie.js` atomique. Cela garantit que la mise à jour des stocks et la création de l'enregistrement de vente réussissent ensemble ou échouent ensemble, empêchant toute incohérence de données.
-    -   **Paiement de Dettes :** Si un client avec un solde impayé est sélectionné, un bouton "Payer Dette" apparaît, permettant d'enregistrer un paiement pour ce client directement depuis l'interface de vente.
-    -   **Impression de Reçus :** Génère un reçu détaillé à la fin de la vente, avec options d'impression pour imprimante thermique (80mm) ou format A4 standard.
+-   **الهدف:** توفير مؤشرات الأداء الرئيسية (KPIs) ونظرة سريعة على النشاط التجاري.
+-   **الميزات:**
+    -   **محدد الفترة الزمنية:** مرشح تاريخ قوي لتحليل البيانات عبر فترات مخصصة (اليوم، آخر 7 أيام، هذا الشهر، إلخ).
+    -   **بطاقات الإحصائيات:** تعرض الأرقام الأساسية: إجمالي الإيرادات، صافي الربح، عدد المبيعات، والقيمة الإجمالية للمخزون. يتم حساب هذه المقاييس ديناميكيًا من البيانات المحلية.
+    -   **تنبيهات انخفاض المخزون:** تسلط الضوء على المنتجات التي وصل مخزونها إلى الحد الأدنى المحدد أو انخفض عنه، مما يسمح بإدارة استباقية للطلبات.
+    -   **مخطط الإيرادات:** رسم بياني شريطي مرئي يقارن الإيرادات وصافي الأرباح يومًا بيوم خلال الفترة المحددة، مما يوفر نظرة سريعة على الاتجاهات.
+    -   **النشاط الأخير:** تدفق مباشر لآخر العمليات: المبيعات، استلام المخزون، مرتجعات المنتجات، وتسجيل العملاء الجدد، مرتبة حسب التاريخ.
 
 ---
 
-## 3. Gestion des Produits (`/products`)
+## 2. نقطة البيع (`/sell`)
 
-Le centre de contrôle complet pour tout l'inventaire.
+واجهة الكاشير الرئيسية، مصممة لتكون سريعة وبديهية وفعالة، حتى بدون اتصال بالإنترنت.
 
--   **Objectif :** Gérer le catalogue de produits, suivre les niveaux de stock et les prix.
--   **Fonctionnalités :**
-    -   **Recherche et Filtrage :** Outils puissants pour rechercher par nom/code-barres et filtrer par catégorie, fournisseur ou statut de stock.
-    -   **Modes d'Affichage :** Basculer entre une vue en grille (cartes visuelles) et une vue en liste (tableau détaillé).
-    -   **Actions en Masse :** Sélectionner plusieurs produits pour les supprimer en une seule fois ou pour imprimer leurs étiquettes avec code-barres.
-    -   **Gestion de Produit :** Un formulaire complet pour ajouter ou modifier un produit avec tous ses détails : nom, catégorie, prix de vente, prix d'achat, quantité, stock minimum, codes-barres multiples, etc.
-    -   **Import/Export CSV :** Importer une liste de produits depuis un fichier CSV pour un démarrage rapide ou exporter l'inventaire actuel.
-
----
-
-## 4. Gestion des Clients (`/customers`)
-
-Un mini-CRM pour gérer la base de données clients et leur historique.
-
--   **Objectif :** Centraliser les informations des clients, suivre leur historique d'achat et gérer leurs dettes.
--   **Fonctionnalités :**
-    -   **Liste des Clients :** Affiche tous les clients avec des statistiques clés comme le solde impayé et la limite de crédit.
-    -   **Page de Détail du Client (`/customers/[id]`):**
-        -   **Historique d'Activité :** Une chronologie détaillée de toutes les interactions du client : achats, paiements et retours.
-        -   **Actions :** Possibilité d'enregistrer un nouveau paiement pour ce client ou d'imprimer un relevé de compte détaillé de ses factures impayées.
+-   **الهدف:** تمكين تسجيل المبيعات السريع وإدارة المعاملات.
+-   **الميزات:**
+    -   **إدارة سلات متعددة:** إمكانية إدارة عدة سلات تسوق في وقت واحد عبر علامات تبويب، مثالية لأوقات الذروة. حالة السلات مؤقتة وتتم إدارتها باستخدام `React.useState` لتحقيق أقصى درجات الاستجابة.
+    -   **بحث المنتجات:** حقل بحث قوي يسمح بالعثور على المنتجات بالاسم أو مسحها ضوئيًا بالباركود.
+    -   **اختيار العميل:** ربط عملية بيع بعميل حالي لتتبع الائتمان أو اختيار "عميل عابر" للمبيعات المجهولة.
+    -   **إتمام البيع:** حوار دفع كامل يدير طرق دفع متعددة.
+        -   **معاملة ذرية:** الإتمام هو معاملة `IndexedDB` ذرية. وهذا يضمن أن تحديث المخزون وإنشاء سجل البيع ينجحان معًا أو يفشلان معًا، مما يمنع أي تناقض في البيانات.
+    -   **دفع الديون:** إذا تم اختيار عميل برصيد مستحق، يظهر زر "دفع الدين"، مما يسمح بتسجيل دفعة لهذا العميل مباشرة من واجهة البيع.
+    -   **طباعة الإيصالات:** يولد إيصالًا مفصلاً في نهاية البيع، مع خيارات طباعة لطابعة حرارية (80 مم) أو تنسيق A4 قياسي.
 
 ---
 
-## 5. Historique des Ventes (`/sales-history`)
+## 3. إدارة المنتجات (`/products`)
 
-Un journal de bord de toutes les transactions de vente passées.
+مركز التحكم الكامل لجميع المخزون.
 
--   **Objectif :** Fournir un accès facile à l'historique des ventes pour consultation ou gestion.
--   **Fonctionnalités :**
-    -   Affichage de toutes les ventes avec recherche et filtre par période.
-    -   **Détails de la Vente :** Ouvrir une fenêtre affichant tous les détails d'une vente.
-    -   **Annulation de Vente :** Possibilité d'annuler une vente. Cette action est réversible et atomique : elle réintègre les produits dans le stock et ajuste le solde du client si nécessaire.
-
----
-
-## 6. Gestion de Stock (`/stock` & `/costing`)
-
-Modules pour la gestion de l'inventaire en amont (réceptions et coûts).
-
--   **Objectif :** Enregistrer les entrées de marchandises et calculer leur coût réel.
--   **Fonctionnalités :**
-    -   **Réception de Stock (`/stock/intake`) :**
-        -   Enregistrer une nouvelle livraison en spécifiant le fournisseur, le numéro de facture et la date.
-        -   Ajouter des produits existants ou en créer de nouveaux à la volée.
-        -   Saisir la quantité reçue et le prix d'achat unitaire. L'opération est une transaction atomique qui garantit la mise à jour cohérente de l'inventaire.
-    -   **Calcul des Coûts (`/costing`) :**
-        -   Outil d'analyse financière permettant de sélectionner une réception de stock et d'y ajouter des frais annexes (ex: transport).
-        -   Le système répartit ces frais sur chaque article de la réception proportionnellement à sa valeur, calculant ainsi un **coût final unitaire**.
-        -   L'utilisateur peut ensuite choisir d'appliquer ces nouveaux coûts comme prix d'achat pour les produits concernés, garantissant des calculs de bénéfices plus précis à l'avenir.
+-   **الهدف:** إدارة كتالوج المنتجات، وتتبع مستويات المخزون والأسعار.
+-   **الميزات:**
+    -   **بحث وتصفية:** أدوات قوية للبحث بالاسم/الباركود والتصفية حسب الفئة، المورد، أو حالة المخزون.
+    -   **أوضاع العرض:** التبديل بين عرض الشبكة (بطاقات مرئية) وعرض القائمة (جدول مفصل).
+    -   **إجراءات جماعية:** تحديد منتجات متعددة لحذفها دفعة واحدة أو لطباعة ملصقات الباركود الخاصة بها.
+    -   **إدارة المنتج:** نموذج كامل لإضافة أو تعديل منتج بجميع تفاصيله: الاسم، الفئة، سعر البيع، سعر الشراء، الكمية، الحد الأدنى للمخزون، باركود متعدد، إلخ.
+    -   **استيراد/تصدير CSV:** استيراد قائمة منتجات من ملف CSV لبداية سريعة أو تصدير المخزون الحالي.
 
 ---
 
-## 7. Gestion des Commandes de Pain (`/bread`)
+## 4. إدارة العملاء (`/customers`)
 
-Un module spécialisé et puissant pour gérer les commandes quotidiennes de pain.
+نظام CRM مصغر لإدارة قاعدة بيانات العملاء وسجلهم.
 
--   **Objectif :** Automatiser et simplifier la gestion des clients et des commandes de pain.
--   **Fonctionnalités :**
-    -   **Gestion des Clients de Pain :** Ajouter et gérer des clients avec des logiques de commande récurrentes.
-    -   **Vue Journalière :** Interface principale affichant les commandes d'un seul jour, avec une navigation facile entre les jours.
-    -   **Génération Automatique :** Le système crée automatiquement les commandes du jour pour tous les clients actifs en fonction de leurs règles de récurrence.
-    -   **Conversion en Vente :** Sélectionner plusieurs commandes pour les transformer en factures de vente en un clic.
+-   **الهدف:** مركزية معلومات العملاء، تتبع سجل مشترياتهم، وإدارة ديونهم.
+-   **الميزات:**
+    -   **قائمة العملاء:** تعرض جميع العملاء مع إحصائيات رئيسية مثل الرصيد المستحق وحد الائتمان.
+    -   **صفحة تفاصيل العميل (`/customers/[id]`):**
+        -   **سجل النشاط:** جدول زمني مفصل لجميع تفاعلات العميل: المشتريات، الدفعات، والمرتجعات.
+        -   **إجراءات:** إمكانية تسجيل دفعة جديدة لهذا العميل أو طباعة كشف حساب مفصل لفواتيره غير المدفوعة.
 
 ---
 
-## 8. Profil & Paramètres (`/profile`)
+## 5. سجل المبيعات (`/sales-history`)
 
-La page de configuration globale de l'application.
+سجل لجميع معاملات البيع السابقة.
 
--   **Objectif :** Gérer les informations de l'entreprise, les paramètres et les données de l'application.
--   **Fonctionnalités :**
-    -   **Profil de l'Entreprise :** Modifier les informations qui apparaîtront sur les reçus.
-    -   **Sauvegarde et Restauration :**
-        -   **Sauvegarde :** Télécharger une sauvegarde complète de toutes les données de l'application (toutes les tables Dexie) dans un unique fichier JSON.
-        -   **Restauration :** Restaurer l'état de l'application à partir d'un fichier de sauvegarde. C'est une opération destructrice mais efficace pour la migration de données.
-    -   **Zone de Danger :** Une option pour réinitialiser complètement l'application et supprimer toutes les données.
+-   **الهدف:** توفير وصول سهل إلى سجل المبيعات للتشاور أو الإدارة.
+-   **الميزات:**
+    -   عرض جميع المبيعات مع البحث والتصفية حسب الفترة.
+    -   **تفاصيل البيع:** فتح نافذة تعرض جميع تفاصيل عملية البيع.
+    -   **إلغاء البيع:** إمكانية إلغاء عملية بيع. هذا الإجراء قابل للعكس وذري: يعيد المنتجات إلى المخزون ويعدل رصيد العميل إذا لزم الأمر.
+
+---
+
+## 6. إدارة المخزون (`/stock` & `/costing`)
+
+وحدات لإدارة المخزون من المنبع (الاستلام والتكاليف).
+
+-   **الهدف:** تسجيل إدخالات البضائع وحساب تكلفتها الحقيقية.
+-   **الميزات:**
+    -   **استلام المخزون (`/stock/intake`):**
+        -   تسجيل تسليم جديد بتحديد المورد، رقم الفاتورة، والتاريخ.
+        -   إضافة منتجات موجودة أو إنشاء منتجات جديدة على الفور.
+        -   إدخال الكمية المستلمة وسعر الشراء الوحدوي. العملية هي معاملة ذرية تضمن التحديث المتسق للمخزون.
+    -   **حساب التكاليف (`/costing`):**
+        -   أداة تحليل مالي تسمح باختيار عملية استلام مخزون وإضافة تكاليف إضافية إليها (مثل النقل).
+        -   يقوم النظام بتوزيع هذه التكاليف على كل عنصر في الشحنة بشكل متناسب مع قيمته، وبالتالي حساب **التكلفة النهائية للوحدة**.
+        -   يمكن للمستخدم بعد ذلك اختيار تطبيق هذه التكاليف الجديدة كأسعار شراء للمنتجات المعنية، مما يضمن حسابات أرباح أكثر دقة في المستقبل.
+
+---
+
+## 7. إدارة طلبات الخبز (`/bread`)
+
+وحدة متخصصة وقوية لإدارة طلبات الخبز اليومية.
+
+-   **الهدف:** أتمتة وتبسيط إدارة عملاء وطلبات الخبز.
+-   **الميزات:**
+    -   **إدارة عملاء الخبز:** إضافة وإدارة العملاء بمنطق طلبات متكررة.
+    -   **العرض اليومي:** واجهة رئيسية تعرض طلبات يوم واحد، مع تنقل سهل بين الأيام.
+    -   **إنشاء تلقائي:** يقوم النظام تلقائيًا بإنشاء طلبات اليوم لجميع العملاء النشطين بناءً على قواعد التكرار الخاصة بهم.
+    -   **تحويل إلى مبيعات:** تحديد عدة طلبات لتحويلها إلى فواتير بيع بنقرة واحدة.
+
+---
+
+## 8. الملف الشخصي والإعدادات (`/profile`)
+
+صفحة التكوين الشاملة للتطبيق.
+
+-   **الهدف:** إدارة معلومات الشركة، الإعدادات، وبيانات التطبيق.
+-   **الميزات:**
+    -   **ملف الشركة:** تعديل المعلومات التي ستظهر على الإيصالات.
+    -   **النسخ الاحتياطي والاستعادة:**
+        -   **النسخ الاحتياطي:** تنزيل نسخة احتياطية كاملة من جميع بيانات التطبيق (جميع جداول IndexedDB) في ملف JSON واحد.
+        -   **الاستعادة:** استعادة حالة التطبيق من ملف نسخ احتياطي. هذه عملية مدمرة ولكنها فعالة لترحيل البيانات.
+    -   **منطقة الخطر:** خيار لإعادة تعيين التطبيق بالكامل وحذف جميع البيانات.
