@@ -880,24 +880,6 @@ class DataService {
     }
     
     // Stock Intake
-    async getStockIntakes(params: { query?: string; from?: Date, to?: Date }): Promise<StockIntake[]> {
-        let collection = this.db.stockIntakes.orderBy('createdAt').reverse();
-        
-        if (params.from && params.to) {
-            collection = this.db.stockIntakes.where('createdAt').between(params.from, params.to, true, true).reverse();
-        }
-        
-        if (params.query) {
-            const lowerQuery = params.query.toLowerCase();
-            return collection.filter(si =>
-                (si.supplierName || '').toLowerCase().includes(lowerQuery) ||
-                si.invoiceNumber.toLowerCase().includes(lowerQuery)
-            ).toArray();
-        }
-
-        return collection.toArray();
-    }
-
     async addStockIntake(intakeData: { supplierName: string; invoiceNumber: string; invoiceDate: Date }, items: StockIntakeItem[]): Promise<StockIntake> {
         return this.db.transaction('rw', this.db.suppliers, this.db.products, this.db.inventoryLogs, this.db.stockIntakes, async (tx) => {
             let supplier = await tx.table('suppliers').where('name').equalsIgnoreCase(intakeData.supplierName).first();

@@ -9,6 +9,7 @@ import { getDb } from '@/lib/database';
 
 const SYNC_QUEUE_KEY = 'ipos_sync_queue';
 
+// Define which tables are eligible for a full sync
 export const TABLES_TO_SYNC: TableName[] = [
     'products', 'customers', 'suppliers',
     'sales', 'stockIntakes', 'returns',
@@ -48,6 +49,7 @@ class GoogleSheetsService {
       this.isOnline = false;
     });
     
+    // Process queue on initial load if online
     if (this.isOnline) {
       this.processSyncQueue();
     }
@@ -61,13 +63,16 @@ class GoogleSheetsService {
         this.processSyncQueue();
       }
     } catch { 
+      // This might happen if DB is not ready, it's ok.
       this.scriptUrl = null;
     }
   }
 
   async sendToSheets(table: string, action: 'upsert' | 'delete', record: any) {
-    if (!this.scriptUrl) return;
+    if (!this.scriptUrl) throw new Error("Sync URL not configured.");
+    if (!this.isOnline) throw new Error("Offline. Cannot send to sheets.");
 
+    // Using 'text/plain' for no-cors POST requests
     const response = await fetch(this.scriptUrl, {
       method: 'POST',
       mode: 'no-cors', 
@@ -75,22 +80,29 @@ class GoogleSheetsService {
       headers: { 'Content-Type': 'text/plain' }
     });
     
+    // For no-cors, we can't inspect the response, so we optimistically assume success
     if (response.type === 'opaque') {
         return { success: true };
     }
 
+    // This block would only run if the server has CORS headers, which is not the case for Google Apps Script web apps by default.
     const result = await response.json();
     if (!result.success) {
       throw new Error(result.error || 'Sync request failed');
     }
     return result;
   }
-
+  
   async fetchFromSheets(table: string): Promise<any[]> {
     if (!this.scriptUrl || !this.isOnline) return [];
-    const response = await fetch(`${this.scriptUrl}?table=${table}`);
+    
+    const fetchUrl = new URL(this.scriptUrl);
+    fetchUrl.searchParams.append('table', table);
+
+    const response = await fetch(fetchUrl.toString());
     if (!response.ok) {
-        throw new Error(`Failed to fetch from sheets, status: ${response.status}`);
+        const errorText = await response.text();
+        throw new Error(`Failed to fetch from sheets, status: ${response.status}. Error: ${errorText}`);
     }
     const result = await response.json();
     if (!result.success) throw new Error(result.error || `Unknown error fetching table ${table}`);
@@ -101,14 +113,15 @@ class GoogleSheetsService {
     if (!this.isOnline || !this.scriptUrl) {
       throw new Error("Pas de connexion ou URL de script non configurée.");
     }
-    if (!Object.values(TABLES).includes(tableName as any) || ['carts', 'settings'].includes(tableName)) {
+    // 'carts' is transient and should not be synced.
+    if (!Object.values(TABLES).includes(tableName as any) || ['carts'].includes(tableName)) {
       return { success: true, message: `Tableau ignoré: ${tableName}` };
     }
 
     const db = getDb();
     const table = db.table(tableName);
 
-    // 1. Fetch remote records
+    // 1. Fetch remote records from Google Sheets
     const remoteRecords = await this.fetchFromSheets(tableName);
     if (!Array.isArray(remoteRecords)) {
         throw new Error(`Données invalides reçues pour le tableau: ${tableName}`);
@@ -118,10 +131,10 @@ class GoogleSheetsService {
     const localIds = (await table.toCollection().keys());
     const remoteIds = new Set(remoteRecords.map((r: any) => r.id));
 
-    // 3. Determine which local records to delete.
+    // 3. Determine which local records to delete (stale records).
     const idsToDelete = localIds.filter(id => !remoteIds.has(id));
 
-    // 4. Perform DB operations in a transaction
+    // 4. Perform DB operations in a single atomic transaction
     await db.transaction('rw', table, async () => {
       if (idsToDelete.length > 0) {
         await table.bulkDelete(idsToDelete as any[]); // Cast to any[] to handle mixed string/number keys
@@ -158,7 +171,6 @@ class GoogleSheetsService {
   }
 
   addToQueue(table: string, action: 'upsert' | 'delete', record: any) {
-    // Make sure we have an ID for upsert/delete
     if(!record.id && (action === 'upsert' || action === 'delete')){
       console.warn("Attempted to queue record without ID.", {table, action, record});
       return;
@@ -176,10 +188,9 @@ class GoogleSheetsService {
   private pushToQueue(item: QueueItem) {
     try {
         const queue = this.loadQueue();
-        // Avoid duplicates for the same record
         const existingIndex = queue.findIndex(i => i.table === item.table && i.record.id === item.record.id);
         if (existingIndex > -1) {
-            queue[existingIndex] = item; // Replace with the latest change
+            queue[existingIndex] = item;
         } else {
             queue.push(item);
         }
@@ -236,5 +247,3 @@ class GoogleSheetsService {
 }
 
 export const sheetsService = new GoogleSheetsService();
-
-    

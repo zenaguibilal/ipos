@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { CardContent, CardFooter } from '@/components/ui/card';
 import { Loader2, RefreshCw, AlertTriangle } from 'lucide-react';
@@ -9,11 +8,11 @@ import { dataService } from '@/services/data-service';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useSync } from '@/hooks/useSync';
-import type { CompanyProfile } from '@/lib/types';
 import { useLiveQuery } from 'dexie-react-hooks';
 
 export function SyncData() {
     const { syncStatus, syncNow } = useSync();
+    // We still use live query to get the URL, as it's the most reactive way.
     const companyProfile = useLiveQuery(() => dataService.getCompanyProfile());
 
     const handleSync = async () => {
@@ -33,7 +32,7 @@ export function SyncData() {
 
     return (
         <>
-            <CardContent>
+            <CardContent className="space-y-4">
                 {!canSync && (
                     <div className="p-4 border-l-4 border-chart-secondary bg-chart-secondary/10 rounded-r-lg text-chart-secondary">
                         <div className="flex items-start gap-3">
@@ -47,21 +46,26 @@ export function SyncData() {
                         </div>
                     </div>
                 )}
-                 {companyProfile?.lastSyncDate && (
-                    <p className="text-sm text-muted-foreground mt-4">
-                        Dernière synchronisation réussie le : <span className="font-semibold">{format(new Date(companyProfile.lastSyncDate), 'd MMMM yyyy à HH:mm', { locale: fr })}</span>
+                 {syncStatus.lastSync && (
+                    <p className="text-sm text-muted-foreground">
+                        Dernière synchronisation réussie le : <span className="font-semibold">{format(new Date(syncStatus.lastSync), 'd MMMM yyyy à HH:mm', { locale: fr })}</span>
                     </p>
                 )}
                  {syncStatus.error && (
-                    <p className="text-sm text-destructive mt-4">
+                    <p className="text-sm text-destructive mt-2">
                         Erreur de synchronisation: {syncStatus.error}
+                    </p>
+                )}
+                {syncStatus.pendingItems > 0 && (
+                     <p className="text-sm text-chart-secondary mt-2">
+                        {syncStatus.pendingItems} modification(s) en attente de synchronisation.
                     </p>
                 )}
             </CardContent>
             <CardFooter className="border-t pt-6">
                 <Button onClick={handleSync} disabled={syncStatus.isSyncing || !canSync}>
                     {syncStatus.isSyncing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
-                    {syncStatus.isSyncing ? 'Synchronisation en cours...' : 'Synchroniser maintenant'}
+                    {syncStatus.isSyncing ? 'Synchronisation en cours...' : 'Lancer une synchronisation complète'}
                 </Button>
             </CardFooter>
         </>

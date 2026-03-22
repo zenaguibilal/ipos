@@ -19,6 +19,10 @@ export const useSync = () => {
   const fetchProfile = useCallback(async () => {
       const profile = await dataService.getCompanyProfile();
       setCompanyProfile(profile);
+      // Also update the sheetsService if the URL changes
+      if (profile?.syncUrl && profile.syncUrl !== sheetsService.scriptUrl) {
+          sheetsService.scriptUrl = profile.syncUrl;
+      }
   }, []);
   
   useEffect(() => {
@@ -45,18 +49,20 @@ export const useSync = () => {
         }));
     };
     
-    const interval = setInterval(updateStatus, 5000);
-    updateStatus();
+    const interval = setInterval(updateStatus, 5000); // Check every 5 seconds
+    updateStatus(); // Initial check
 
     return () => clearInterval(interval);
-  }, [companyProfile]);
+  }, [companyProfile]); // Rerun if profile changes
 
   const syncNow = async () => {
     setSyncStatus(prev => ({ ...prev, isSyncing: true, error: null }));
     try {
+      // Re-fetch profile right before sync to ensure URL is up-to-date
+      await fetchProfile();
       const result = await sheetsService.fullSync();
-      const updatedProfile = await dataService.getCompanyProfile();
-      setCompanyProfile(updatedProfile);
+      // Re-fetch profile again after sync to get the new lastSyncDate
+      await fetchProfile();
 
       setSyncStatus(prev => ({
         ...prev,
