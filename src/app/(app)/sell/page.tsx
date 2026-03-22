@@ -18,6 +18,7 @@ import { dataService } from '@/services/data-service';
 import { AddPaymentDialog } from '@/components/payments/AddPaymentDialog';
 import { CartTotalBar } from '@/components/sell/CartTotalBar';
 import type { Customer } from '@/lib/types';
+import { useLiveQuery } from 'dexie-react-hooks';
 
 export default function SellPage() {
     const {
@@ -38,22 +39,18 @@ export default function SellPage() {
         isLoading,
     } = useCarts();
 
+    const selectedCustomer = useLiveQuery(
+        () => activeCart?.customerId ? dataService.getCustomerById(activeCart.customerId) : Promise.resolve(null),
+        [activeCart?.customerId]
+    );
+
     const [isProductSheetOpen, setIsProductSheetOpen] = useState(false);
     const [isDraftsDialogOpen, setIsDraftsDialogOpen] = useState(false);
     const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
-    const [selectedCustomer, setSelectedCustomer] = useState<Customer | null | undefined>(undefined);
 
     const productSearchRef = useRef<{ focus: () => void }>(null);
     const customerComboboxRef = useRef<HTMLButtonElement>(null);
     const paymentButtonRef = useRef<HTMLButtonElement>(null);
-
-    useEffect(() => {
-        if (activeCart?.customerId) {
-            dataService.getCustomerById(activeCart.customerId).then(setSelectedCustomer);
-        } else {
-            setSelectedCustomer(null);
-        }
-    }, [activeCart?.customerId]);
 
     const handleSaveDraft = async () => {
         if (!activeCart || activeCart.items.length === 0) {
@@ -119,7 +116,9 @@ export default function SellPage() {
         };
     }, [handleKeyDown]);
 
-    if (isLoading || !activeCart || selectedCustomer === undefined) {
+    const isDataLoading = isLoading || !activeCart || selectedCustomer === undefined;
+
+    if (isDataLoading) {
         return (
             <div className="h-full flex flex-col p-4 gap-4">
                 <Skeleton className="h-12 flex-grow" />
@@ -200,6 +199,7 @@ export default function SellPage() {
                             <CardContent className="p-4 sm:p-6">
                                 <SaleActions
                                     cart={activeCart}
+                                    customer={selectedCustomer}
                                     onClearCart={clearCart}
                                     onSetDiscount={setCartDiscount}
                                     onSaveDraft={handleSaveDraft}

@@ -25,12 +25,13 @@ interface PaymentDialogProps {
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
     cart: Cart;
+    customer: Customer | null | undefined;
     onSaleFinalized: () => void;
 }
 
 type PaymentMode = 'cash' | 'card' | 'other' | 'credit' | 'mixed';
 
-export function PaymentDialog({ isOpen, onOpenChange, cart, onSaleFinalized }: PaymentDialogProps) {
+export function PaymentDialog({ isOpen, onOpenChange, cart, customer, onSaleFinalized }: PaymentDialogProps) {
     const [paymentMode, setPaymentMode] = useState<PaymentMode>('cash');
     const [cashAmount, setCashAmount] = useState('');
     const [creditAmount, setCreditAmount] = useState('');
@@ -41,8 +42,6 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, onSaleFinalized }: P
 
     const [showLossAlert, setShowLossAlert] = useState(false);
     const [lossItems, setLossItems] = useState<Product[]>([]);
-
-    const [customer, setCustomer] = useState<Customer | undefined>(undefined);
 
     const { subtotal, discountAmount, total } = calculateCartTotals(cart);
 
@@ -55,18 +54,6 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, onSaleFinalized }: P
     const newTotalOutstanding = (customer?.outstandingBalance ?? 0) + debtFromThisSale;
     const creditAvailable = (customer?.creditLimit ?? 0) - (customer?.outstandingBalance ?? 0);
     const creditUsage = customer?.creditLimit && customer.creditLimit > 0 ? (newTotalOutstanding / customer.creditLimit) * 100 : 0;
-
-    const loadCustomer = useCallback(async () => {
-        if(cart.customerId) {
-            setCustomer(await dataService.getById<Customer>('customers', cart.customerId));
-        } else {
-            setCustomer(undefined);
-        }
-    }, [cart.customerId]);
-
-    useEffect(() => {
-        loadCustomer();
-    }, [loadCustomer]);
 
     useEffect(() => {
         if (isOpen) {

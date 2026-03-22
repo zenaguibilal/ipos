@@ -5,7 +5,7 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Trash2 } from 'lucide-react';
-import type { Cart } from '@/lib/types';
+import type { Cart, Customer } from '@/lib/types';
 import { PaymentDialog } from './PaymentDialog';
 import {
   AlertDialog,
@@ -25,6 +25,7 @@ import { Separator } from '@/components/ui/separator';
 
 interface SaleActionsProps {
     cart: Cart;
+    customer: Customer | null | undefined;
     onClearCart: () => void;
     onSetDiscount: (discount: { type: 'fixed' | 'percentage'; value: number }) => void;
     onSaveDraft: () => void;
@@ -32,7 +33,7 @@ interface SaleActionsProps {
     onSaleFinalized: () => void;
 }
 
-export const SaleActions = React.forwardRef<HTMLButtonElement, SaleActionsProps>(({ cart, onClearCart, onSetDiscount, onSaveDraft, onOpenDrafts, onSaleFinalized }, ref) => {
+export const SaleActions = React.forwardRef<HTMLButtonElement, SaleActionsProps>(({ cart, customer, onClearCart, onSetDiscount, onSaveDraft, onOpenDrafts, onSaleFinalized }, ref) => {
     const [isPaymentOpen, setIsPaymentOpen] = useState(false);
     
     const totalItems = cart.items.reduce((acc, item) => acc + item.cartQuantity, 0);
@@ -47,6 +48,7 @@ export const SaleActions = React.forwardRef<HTMLButtonElement, SaleActionsProps>
                 isOpen={isPaymentOpen}
                 onOpenChange={setIsPaymentOpen}
                 cart={cart}
+                customer={customer}
                 onSaleFinalized={onSaleFinalized}
             />
              <div className="space-y-4">
