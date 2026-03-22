@@ -873,24 +873,6 @@ class DataService {
     }
     
     // Stock Intake
-    async getStockIntakes(params: { query?: string; from?: Date, to?: Date }): Promise<StockIntake[]> {
-        let collection = this.db.stockIntakes.orderBy('createdAt').reverse();
-
-        if (params.from && params.to) {
-            collection = this.db.stockIntakes.where('createdAt').between(params.from, params.to, true, true).reverse();
-        }
-        
-        if (params.query) {
-            const lowerQuery = params.query.toLowerCase();
-            return collection.filter(si =>
-                (si.supplierName || '').toLowerCase().includes(lowerQuery) ||
-                si.invoiceNumber.toLowerCase().includes(lowerQuery)
-            ).toArray();
-        }
-
-        return collection.toArray();
-    }
-    
     async addStockIntake(intakeData: { supplierName: string; invoiceNumber: string; invoiceDate: Date }, items: StockIntakeItem[]): Promise<StockIntake> {
         return this.db.transaction('rw', this.db.suppliers, this.db.products, this.db.inventoryLogs, this.db.stockIntakes, async () => {
             let supplier = await this.db.suppliers.where('name').equalsIgnoreCase(intakeData.supplierName).first();
@@ -902,23 +884,65 @@ class DataService {
             
             const intakeItems = [];
             for (const item of items) {
+                const quantityChange = item.quantity - item.quantityDamaged;
                 if(item.isNew) {
-                    const newProduct = await this.addProduct({ name: item.name, category: item.category, price: item.price, purchasePrice: item.purchasePrice, quantity: item.quantity - item.quantityDamaged, minStockLevel: 10, barcodes: item.barcodes, unite: 'Pièce', fournisseurId: supplier.id });
+                    const newProduct = await this.addProduct({ 
+                        name: item.name, 
+                        category: item.category, 
+                        price: item.price, 
+                        purchasePrice: item.purchasePrice, 
+                        quantity: quantityChange,
+                        minStockLevel: 10, 
+                        barcodes: item.barcodes, 
+                        unite: 'Pièce', 
+                        fournisseurId: supplier.id 
+                    });
                     item.productId = newProduct.id as number;
                 } else if(item.productId) {
-                    const product = await this.db.products.get(item.productId);
-                    if (product) {
-                        const newQuantity = product.quantity + item.quantity - item.quantityDamaged;
-                        await this.db.products.update(item.productId, { quantity: newQuantity, purchasePrice: item.purchasePrice, dateMajPrix: new Date(), fournisseurId: supplier.id });
-                        await this.db.inventoryLogs.add({ productId: item.productId, change: item.quantity - item.quantityDamaged, newQuantity, reason: 'stock_intake', createdAt: new Date() });
+                    let newQuantity = 0;
+                    const updatedRows = await this.db.products.where({ id: item.productId }).modify(product => {
+                        product.quantity += quantityChange;
+                        product.purchasePrice = item.purchasePrice;
+                        product.dateMajPrix = new Date();
+                        product.fournisseurId = supplier!.id;
+                        newQuantity = product.quantity;
+                    });
+    
+                    if (updatedRows === 0) {
+                        throw new Error(`Produit avec ID ${item.productId} non trouvé.`);
                     }
+    
+                    await this.db.inventoryLogs.add({
+                        productId: item.productId as number,
+                        change: quantityChange,
+                        newQuantity: newQuantity,
+                        reason: 'stock_intake',
+                        createdAt: new Date()
+                    });
                 }
-                intakeItems.push({ productId: item.productId, productName: item.name, quantityReceived: item.quantity, quantityDamaged: item.quantityDamaged, purchasePrice: item.purchasePrice });
+                intakeItems.push({ 
+                    productId: item.productId, 
+                    productName: item.name, 
+                    quantityReceived: item.quantity, 
+                    quantityDamaged: item.quantityDamaged, 
+                    purchasePrice: item.purchasePrice 
+                });
             }
             
             const totalValue = intakeItems.reduce((acc, item) => acc + (item.purchasePrice * item.quantityReceived), 0);
-            const newIntakeData: Omit<StockIntake, 'id'> = { ...intakeData, supplierId: supplier.id!, supplierName: supplier.name, items: intakeItems, totalValue, createdAt: new Date(), updatedAt: new Date() };
-            const id = await this.db.stockIntakes.add(newIntakeData);
+            
+            await this.db.suppliers.update(supplier.id!, {
+                balance: (supplier.balance || 0) + totalValue
+            });
+    
+            const newIntakeData: Omit<StockIntake, 'id'> = { 
+                ...intakeData, 
+                supplierId: supplier.id!, 
+                supplierName: supplier.name, 
+                items: intakeItems, 
+                totalValue, 
+            };
+            const id = await this.db.stockIntakes.add(newIntakeData as StockIntake);
             
             const newIntake = { ...newIntakeData, id };
             sheetsService.addToQueue('stockIntakes', 'upsert', newIntake);
