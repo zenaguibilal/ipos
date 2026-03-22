@@ -46,7 +46,6 @@ export default function BreadPage() {
                 if (!ordersExist) {
                     // Fire-and-forget: The UI will update reactively via useLiveQuery
                     dataService.createDayOrders(formattedDate).catch(error => {
-                        console.error("Failed to auto-generate daily orders:", error);
                         toast.error("Erreur lors de la génération automatique des commandes.");
                     });
                 }

@@ -93,7 +93,6 @@ export default function CostingPage() {
             toast.success("Les nouveaux coûts d'achat ont été appliqués avec succès !");
         } catch (error) {
             toast.error("Erreur lors de l'application des nouveaux coûts.");
-            console.error(error);
         } finally {
             setIsApplyingCosts(false);
         }

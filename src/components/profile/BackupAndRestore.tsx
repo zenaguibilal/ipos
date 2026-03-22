@@ -50,7 +50,6 @@ export function BackupAndRestore() {
 
             toast.success("Sauvegarde téléchargée avec succès !");
         } catch (error) {
-            console.error("Erreur lors de la sauvegarde:", error);
             toast.error("Une erreur est survenue lors de la sauvegarde.");
         } finally {
             setIsBackingUp(false);
@@ -108,7 +107,6 @@ export function BackupAndRestore() {
             setTimeout(() => window.location.reload(), 2000);
 
         } catch (error) {
-            console.error("Erreur lors de la réinitialisation:", error);
             toast.error("Erreur lors de la réinitialisation.", { duration: 10000 });
         } finally {
             setIsResetting(false);

@@ -172,7 +172,6 @@ export default function ProductsPage() {
             setIsProductImportPreviewOpen(false);
             setProductImportAnalysis(null);
         } catch (error: any) {
-            console.error("Product import failed:", error);
             toast.error("Une erreur est survenue lors de l'importation.", { description: error.message });
         } finally {
             setIsImporting(false);
@@ -195,7 +194,6 @@ export default function ProductsPage() {
             toast.success("Exportation terminée avec succès.");
         } catch (error) {
             toast.error("Erreur lors de l'exportation des produits.");
-            console.error(error);
         }
     };
     

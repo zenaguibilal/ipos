@@ -12,7 +12,6 @@ export function useDashboardData(dateRange?: DateRange) {
         try {
             return await dataService.getDashboardData(dateRange.from, dateRange.to);
         } catch (err) {
-            console.error("Failed to load dashboard data:", err);
             toast.error("Impossible de charger les données du tableau de bord.");
             return undefined;
         }

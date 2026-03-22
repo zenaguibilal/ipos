@@ -1142,7 +1142,6 @@ class DataService {
                         done.push({ table: tableName, success: true });
                     }
                 } catch (e: any) {
-                    console.error(`Erreur lors de la restauration de la table ${tableName}:`, e);
                     throw new Error(`Échec de la restauration de la table "${tableName}". L'opération a été annulée.`);
                 } finally {
                     onProgress({ current, total, currentTable: tableName, done });

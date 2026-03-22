@@ -12,8 +12,6 @@ export const PwaHandler = () => {
             const wb = navigator.serviceWorker;
 
             wb.register('/sw.js').then(registration => {
-                console.log('SW registered:', registration.scope);
-                
                 // Logic to handle updates
                 registration.addEventListener('updatefound', () => {
                     const newWorker = registration.installing;
@@ -35,7 +33,6 @@ export const PwaHandler = () => {
                     }
                 });
             }).catch(err => {
-                console.error('SW registration failed:', err);
             });
 
             let refreshing = false;

@@ -48,7 +48,6 @@ export function CompanyProfileForm() {
             toast.success('Profil de l\'entreprise mis à jour avec succès.');
         } catch (err) {
             setError("Une erreur est survenue lors de la mise à jour du profil.");
-            console.error(err);
             toast.error("Échec de la mise à jour du profil.");
         } finally {
             setIsSaving(false);

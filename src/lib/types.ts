@@ -12,7 +12,6 @@ export const TABLES = {
   companyProfile: 'companyProfile',
   expenses: 'expenses',
   settings: 'settings',
-  notifications: 'notifications',
   inventoryLogs: 'inventoryLogs',
   suppliers: 'suppliers',
   clients_pain: 'clients_pain',
@@ -227,15 +226,6 @@ export interface Setting {
     value: any;
 }
 
-export interface Notification {
-    id?: number;
-    type: 'low-stock' | 'unpaid-invoice' | 'info';
-    message: string;
-    isRead: boolean;
-    createdAt: Date;
-    relatedId?: number | string; // e.g., product.id or customer.id
-}
-
 export type InventoryLogReason = 'sale' | 'return' | 'stock_intake' | 'cancellation' | 'manual_adjustment';
 
 export interface InventoryLog {
@@ -381,7 +371,6 @@ export interface DB {
     companyProfile: CompanyProfile;
     expenses: Expense[];
     settings: Setting[];
-    notifications: Notification[];
     inventoryLogs: InventoryLog[];
     suppliers: Supplier[];
     clients_pain: BreadClient[];

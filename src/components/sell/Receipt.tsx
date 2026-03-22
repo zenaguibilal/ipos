@@ -59,7 +59,7 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(({ sale, p
         
         QRCode.toDataURL(details, { errorCorrectionLevel: 'M', width: 100 })
             .then(url => setQrCodeUrl(url))
-            .catch(err => console.error("QR Code generation failed:", err));
+            .catch(err => {});
 
     }, [sale]);
     

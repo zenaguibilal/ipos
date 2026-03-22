@@ -127,7 +127,6 @@ export function ProductDialog({ isOpen, onOpenChange, product, categories, suppl
         } catch (err) {
             setError("Une erreur est survenue.");
             toast.error("Échec de l'opération.");
-            console.error(err);
         } finally {
             setIsLoading(false);
         }

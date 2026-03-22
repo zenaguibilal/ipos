@@ -127,7 +127,6 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, customer, onSaleFina
             toast.success("Vente finalisée avec succès !");
             onSaleFinalized();
         } catch (error: any) {
-            console.error("Failed to finalize sale:", error);
             toast.error(error.message || "Erreur lors de la finalisation de la vente.");
             setIsLoading(false);
         }

@@ -15,7 +15,7 @@ export const TABLES_TO_SYNC: TableName[] = [
     'sales', 'stockIntakes', 'returns',
     'payments', 'expenses', 'drafts',
     'inventoryLogs', 'clients_pain', 'commandes_pain',
-    'companyProfile', 'settings', 'notifications'
+    'companyProfile', 'settings'
 ];
 
 interface QueueItem {
@@ -161,7 +161,6 @@ class GoogleSheetsService {
       try {
         results[table] = await this.syncTable(table);
       } catch (e: any) {
-        console.error(`La synchronisation a échoué pour le tableau ${table}:`, e);
         results[table] = { success: false, error: e.message };
       }
     }
@@ -172,12 +171,10 @@ class GoogleSheetsService {
 
   addToQueue(table: string, action: 'upsert' | 'delete', record: any) {
     if(!record.id && (action === 'upsert' || action === 'delete')){
-      console.warn("Attempted to queue record without ID.", {table, action, record});
       return;
     }
     if (this.isOnline && this.scriptUrl) {
       this.sendToSheets(table, action, record).catch(e => {
-        console.warn('Live sync failed, adding to queue.', e);
         this.pushToQueue({ id: Date.now(), table, action, record, attempts: 0 });
       });
       return;
@@ -196,7 +193,6 @@ class GoogleSheetsService {
         }
         this.saveQueue(queue);
     } catch(e) {
-        console.error("Failed to push to sync queue", e);
     }
   }
 
@@ -241,7 +237,6 @@ class GoogleSheetsService {
       if (typeof localStorage === 'undefined') return;
       localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(queue));
     } catch(e) {
-       console.error("Failed to save sync queue", e);
     }
   }
 }
