@@ -12,7 +12,6 @@ import {
   Undo2,
   Archive,
   Wallet,
-  LayoutDashboard,
   HandHeart,
   Calculator,
   Wheat,
@@ -37,7 +36,6 @@ import { ThemeToggle } from './theme-toggle';
 import { SyncIndicator } from '../common/SyncIndicator';
 
 const navLinks = [
-  { href: '/dashboard', label: 'Tableau de bord', icon: LayoutDashboard },
   { href: '/sell', label: 'Point de Vente', icon: ShoppingCart },
   { href: '/bread', label: 'Commandes de Pain', icon: Wheat },
   { href: '/products', label: 'Produits', icon: Package },
