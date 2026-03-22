@@ -4,19 +4,21 @@ import { useParams } from 'next/navigation';
 import { dataService } from '@/services/data-service';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, HandCoins, Printer } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ArrowLeft, HandCoins, Printer, Loader2 } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CustomerMetrics } from '@/components/customers/CustomerMetrics';
 import { CustomerActivity } from '@/components/customers/CustomerActivity';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AddPaymentDialog } from '@/components/payments/AddPaymentDialog';
 import { SaleDetailsDialog } from '@/components/sales/SaleDetailsDialog';
 import { ReturnDetailsDialog } from '@/components/returns/ReturnDetailsDialog';
-import type { Sale, ProductReturn, Customer, GlobalActivityItem } from '@/lib/types';
+import type { Sale, ProductReturn, Customer, Payment } from '@/lib/types';
 import { PrintStatementDialog } from '@/components/customers/PrintStatementDialog';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { useLiveQuery } from 'dexie-react-hooks';
+
+const ITEMS_PER_PAGE = 10;
 
 export default function CustomerDetailPage() {
     const params = useParams();
@@ -29,10 +31,32 @@ export default function CustomerDetailPage() {
     const [selectedReturn, setSelectedReturn] = useState<ProductReturn | null>(null);
     const [isReturnDetailsOpen, setIsReturnDetailsOpen] = useState(false);
 
-    const customer = useLiveQuery(() => !isNaN(customerId) ? dataService.getCustomerById(customerId) : undefined, [customerId]);
-    const activity = useLiveQuery(() => !isNaN(customerId) ? dataService.getCustomerActivity(customerId) : [], [customerId]);
+    // States for activity pagination
+    const [activity, setActivity] = useState<(Sale | Payment | ProductReturn)[]>([]);
+    const [allActivity, setAllActivity] = useState<(Sale | Payment | ProductReturn)[]>([]);
+    const [activityPage, setActivityPage] = useState(1);
+    const [isLoadingActivity, setIsLoadingActivity] = useState(true);
 
-    const isLoading = customer === undefined || activity === undefined;
+    const customer = useLiveQuery(() => !isNaN(customerId) ? dataService.getCustomerById(customerId) : undefined, [customerId]);
+    
+    useEffect(() => {
+        if (isNaN(customerId)) return;
+
+        setIsLoadingActivity(true);
+        dataService.getCustomerActivity(customerId).then(data => {
+            setAllActivity(data);
+            setActivity(data.slice(0, ITEMS_PER_PAGE));
+            setIsLoadingActivity(false);
+        });
+    }, [customerId]);
+
+    const handleLoadMore = () => {
+        const nextPage = activityPage + 1;
+        setActivity(allActivity.slice(0, nextPage * ITEMS_PER_PAGE));
+        setActivityPage(nextPage);
+    };
+
+    const isLoading = customer === undefined;
 
     const handleSaleClick = (sale: Sale) => {
         setSelectedSale(sale);
@@ -94,12 +118,25 @@ export default function CustomerDetailPage() {
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <CustomerActivity 
-                                activity={activity || []} 
-                                onSaleClick={handleSaleClick}
-                                onReturnClick={handleReturnClick}
-                            />
+                           {isLoadingActivity ? (
+                                <div className="flex justify-center items-center h-60">
+                                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                                </div>
+                            ) : (
+                                <CustomerActivity 
+                                    activity={activity} 
+                                    onSaleClick={handleSaleClick}
+                                    onReturnClick={handleReturnClick}
+                                />
+                            )}
                         </CardContent>
+                        {!isLoadingActivity && activity.length < allActivity.length && (
+                            <CardFooter>
+                                <Button onClick={handleLoadMore} className="w-full">
+                                    Charger plus
+                                </Button>
+                            </CardFooter>
+                        )}
                     </Card>
                 </div>
                 <div className="space-y-6">
