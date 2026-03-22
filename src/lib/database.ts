@@ -26,7 +26,7 @@ export class PosDatabase extends Dexie {
         this.version(30).stores({
             products: '++id, name, *barcodes, category, price, quantity, [category+name], fournisseurId, createdAt',
             customers: '++id, searchName, createdAt, lastName, firstName, [lastName+firstName], phone, outstandingBalance, lastActivityDate',
-            sales: '++id, &invoiceNumber, createdAt, customerId, customerName, paymentStatus, dueDate',
+            sales: '++id, &invoiceNumber, createdAt, customerId, customerName, paymentStatus, dueDate, *items.id',
             payments: '++id, createdAt, customerId, paymentDate',
             stockIntakes: '++id, &invoiceNumber, supplierId, createdAt',
             returns: '++id, createdAt, originalSaleId, customerId',
@@ -40,83 +40,9 @@ export class PosDatabase extends Dexie {
             suppliers: '++id, &name',
             clients_pain: '++id, nom, actif, type_recurrence',
             commandes_pain: '++id, [client_pain_id+date], date, est_paye, est_livre',
-        }).upgrade(tx => {
-            // This upgrade is for version 30, adding a standalone index for expenseDate for performance.
-            // No data migration is needed, just schema update.
-            // The previous upgrade functions are kept for clients on older versions.
-            return tx.table('customers').toCollection().modify(customer => {
-                if (customer.firstName && customer.lastName && !customer.searchName) {
-                   customer.searchName = `${customer.firstName.toLowerCase()} ${customer.lastName.toLowerCase()}`;
-                }
-            });
         });
 
-        this.version(29).stores({
-            products: '++id, name, *barcodes, category, price, quantity, [category+name], fournisseurId',
-            customers: '++id, searchName, createdAt, lastName, firstName, [lastName+firstName], phone, outstandingBalance, lastActivityDate',
-            sales: '++id, &invoiceNumber, createdAt, customerId, customerName, paymentStatus, dueDate',
-            payments: '++id, createdAt, customerId, paymentDate',
-            stockIntakes: '++id, &invoiceNumber, supplierId, createdAt',
-            returns: '++id, createdAt, originalSaleId, customerId',
-            carts: '&id',
-            drafts: '++id, date, createdAt, updatedAt',
-            companyProfile: 'id', // Singleton table
-            expenses: '++id, category, expenseDate, [category+expenseDate]',
-            settings: '&id', // Key-value store for UI state and preferences
-            notifications: '++id, createdAt, isRead, type, [type+isRead]',
-            inventoryLogs: '++id, productId, createdAt, reason',
-            suppliers: '++id, &name',
-            clients_pain: '++id, nom, actif, type_recurrence',
-            commandes_pain: '++id, [client_pain_id+date], date, est_paye, est_livre',
-        }).upgrade(tx => {
-            return tx.table('customers').toCollection().modify(customer => {
-                if (customer.firstName && customer.lastName && !customer.searchName) {
-                   customer.searchName = `${customer.firstName.toLowerCase()} ${customer.lastName.toLowerCase()}`;
-                }
-            });
-        }).upgrade(tx => {
-            return tx.table('commandes_pain').toCollection().modify(order => {
-                const oldStatut = (order as any).statut;
-                if (oldStatut !== undefined) {
-                    switch(oldStatut) {
-                        case 'en_attente':
-                            order.est_paye = false;
-                            order.est_livre = false;
-                            break;
-                        case 'livre':
-                            order.est_paye = false;
-                            order.est_livre = true;
-                            break;
-                        case 'paye':
-                            order.est_paye = true;
-                            order.est_livre = true; 
-                            break;
-                        default:
-                            order.est_paye = !!order.vente_id;
-                            order.est_livre = false;
-                    }
-                    delete (order as any).statut;
-                }
-            });
-        }).upgrade(async tx => {
-            const stockIntakesToMigrate = await tx.table('stockIntakes').toArray();
-            for (const intake of stockIntakesToMigrate) {
-                if (typeof (intake as any).supplier === 'string') {
-                    const supplierName = (intake as any).supplier;
-                    let supplier = await tx.table('suppliers').where('name').equalsIgnoreCase(supplierName).first();
-                    if (!supplier) {
-                        const supplierId = await tx.table('suppliers').add({ name: supplierName, balance: 0 });
-                        supplier = { id: supplierId, name: supplierName, balance: 0 };
-                    }
-                    await tx.table('stockIntakes').update(intake.id, {
-                        supplierId: supplier.id,
-                        supplierName: supplier.name,
-                        supplier: undefined
-                    });
-                }
-            }
-        });
-
+        // Hooks to add/update timestamps
         this.tables.forEach(table => {
             if (['settings', 'carts'].includes(table.name)) return;
             
@@ -137,6 +63,7 @@ export class PosDatabase extends Dexie {
             });
         });
         
+        // Hooks to auto-generate searchName for customers
         this.customers.hook('creating', (primKey, obj) => {
             if(typeof obj.firstName === 'string' && typeof obj.lastName === 'string') {
                 obj.searchName = `${obj.firstName.toLowerCase()} ${obj.lastName.toLowerCase()}`;
@@ -167,5 +94,3 @@ export function getDb(): PosDatabase {
   }
   return dbInstance;
 }
-
-    
