@@ -1,7 +1,7 @@
 'use client';
 
 import { db } from '@/lib/database';
-import type { TableName, Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, InventoryLog, StockIntakeItem, ZakatData, CostingItem, Draft, Supplier, ImportAnalysis, BreadClient, BreadOrder, BreadOrderWithClient, DB, ProductImportAnalysis, GlobalActivityItem, DashboardData } from '@/lib/types';
+import type { TableName, Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, InventoryLog, StockIntakeItem, ZakatData, CostingItem, Draft, Supplier, ImportAnalysis, BreadClient, BreadOrder, BreadOrderWithClient, DB, ProductImportAnalysis, GlobalActivityItem, DashboardData, TopCustomer } from '@/lib/types';
 import { subDays, endOfDay, startOfDay } from 'date-fns';
 import Papa from 'papaparse';
 import { calculateCartTotals, formatCurrency } from '@/lib/utils';
@@ -1001,6 +1001,25 @@ class DataService {
             totalProfit: data.profit,
             unitsSold: data.units,
         })).sort((a, b) => b.totalRevenue - a.totalRevenue).slice(0, 5);
+
+        const customerSales: { [key: number]: number } = {};
+        for (const sale of sales) {
+            if (sale.customerId) {
+                if (!customerSales[sale.customerId]) {
+                    customerSales[sale.customerId] = 0;
+                }
+                customerSales[sale.customerId] += sale.total;
+            }
+        }
+
+        const topCustomers: TopCustomer[] = Object.entries(customerSales).map(([customerId, totalSpent]) => {
+            const customer = allCustomers.find(c => c.id === Number(customerId));
+            return {
+                id: Number(customerId),
+                name: customer ? `${customer.firstName} ${customer.lastName}` : 'Client Inconnu',
+                totalSpent,
+            };
+        }).sort((a, b) => b.totalSpent - a.totalSpent).slice(0, 5);
         
         const lowStockProducts = allProducts.filter(p => p.quantity > 0 && p.quantity <= p.minStockLevel).sort((a,b) => a.quantity - b.quantity).slice(0, 5);
         
@@ -1017,7 +1036,7 @@ class DataService {
             sales,
             expenses,
             topProducts,
-            topCustomers: [], // This was not fully implemented before
+            topCustomers,
             lowStockProducts,
             recentActivity,
         };
@@ -1034,11 +1053,11 @@ class DataService {
         
         const activity: GlobalActivityItem[] = [];
 
-        allSales.forEach(s => s.createdAt && activity.push({ type: 'sale', date: new Date(s.createdAt), id: s.id!, description: `Vente #${s.invoiceNumber}`, details: s.customerName || 'Client de passage', amount: s.total, amountClass: 'text-primary' }));
-        allStockIntakes.forEach(si => si.createdAt && activity.push({ type: 'stock_intake', date: new Date(si.createdAt), id: si.id!, description: `Réception de stock`, details: `Facture: ${si.invoiceNumber}`, amount: si.totalValue, amountClass: 'text-yellow-500' }));
-        allReturns.forEach(r => r.createdAt && activity.push({ type: 'return', date: new Date(r.createdAt), id: r.id!, description: `Retour sur facture #${r.originalInvoiceNumber}`, details: `${r.items.length} article(s) retourné(s)`, amount: -r.totalReturnValue, amountClass: 'text-destructive' }));
-        allCustomers.forEach(c => c.createdAt && activity.push({ type: 'customer', date: new Date(c.createdAt), id: c.id!, description: `Nouveau client`, details: `${c.firstName} ${c.lastName}`, amount: undefined }));
-        allPayments.forEach(p => p.createdAt && activity.push({ type: 'payment', date: new Date(p.createdAt), id: p.id!, description: `Paiement reçu`, details: p.customerName || 'Client inconnu', amount: p.amount, amountClass: 'text-green-500' }));
+        (allSales || []).forEach(s => s.createdAt && activity.push({ type: 'sale', date: new Date(s.createdAt), id: s.id!, description: `Vente #${s.invoiceNumber}`, details: s.customerName || 'Client de passage', amount: s.total, amountClass: 'text-primary' }));
+        (allStockIntakes || []).forEach(si => si.createdAt && activity.push({ type: 'stock_intake', date: new Date(si.createdAt), id: si.id!, description: `Réception de stock`, details: `Facture: ${si.invoiceNumber}`, amount: si.totalValue, amountClass: 'text-yellow-500' }));
+        (allReturns || []).forEach(r => r.createdAt && activity.push({ type: 'return', date: new Date(r.createdAt), id: r.id!, description: `Retour sur facture #${r.originalInvoiceNumber}`, details: `${r.items.length} article(s) retourné(s)`, amount: -r.totalReturnValue, amountClass: 'text-destructive' }));
+        (allCustomers || []).forEach(c => c.createdAt && activity.push({ type: 'customer', date: new Date(c.createdAt), id: c.id!, description: `Nouveau client`, details: `${c.firstName} ${c.lastName}`, amount: undefined }));
+        (allPayments || []).forEach(p => p.createdAt && activity.push({ type: 'payment', date: new Date(p.createdAt), id: p.id!, description: `Paiement reçu`, details: p.customerName || 'Client inconnu', amount: p.amount, amountClass: 'text-green-500' }));
         
         return activity.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, limit);
     }

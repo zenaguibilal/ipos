@@ -8,6 +8,7 @@ import { KPICard } from '@/components/dashboard/KPICard';
 import { RevenueChart } from '@/components/dashboard/RevenueChart';
 import { StockAlertsCard } from '@/components/dashboard/StockAlertsCard';
 import { TopProductsCard } from '@/components/dashboard/TopProductsCard';
+import { TopCustomersCard } from '@/components/dashboard/TopCustomersCard';
 import { RecentActivityCard } from '@/components/dashboard/RecentActivityCard';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -28,13 +29,18 @@ export default function DashboardPage() {
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
                     {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-28 w-full" />)}
                 </div>
-                <div className="grid gap-4 lg:grid-cols-5">
-                     <div className="lg:col-span-3">
-                        <Skeleton className="h-[400px] w-full" />
-                    </div>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <div className="lg:col-span-2">
-                        <Skeleton className="h-[400px] w-full" />
+                        <Skeleton className="h-[450px] w-full" />
                     </div>
+                    <div className="lg:col-span-1 space-y-6">
+                        <Skeleton className="h-[300px] w-full" />
+                        <Skeleton className="h-[300px] w-full" />
+                        <Skeleton className="h-[300px] w-full" />
+                    </div>
+                </div>
+                 <div className="grid grid-cols-1">
+                    <Skeleton className="h-[350px] w-full" />
                 </div>
             </div>
         );
@@ -59,6 +65,7 @@ export default function DashboardPage() {
                 </div>
                 <div className="lg:col-span-1 space-y-6">
                     <TopProductsCard products={data.topProducts} />
+                    <TopCustomersCard customers={data.topCustomers} />
                     <StockAlertsCard products={data.lowStockProducts} />
                 </div>
             </div>
