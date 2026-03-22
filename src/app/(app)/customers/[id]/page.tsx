@@ -31,23 +31,26 @@ export default function CustomerDetailPage() {
 
     const [customer, setCustomer] = useState<Customer | undefined>(undefined);
     const [activity, setActivity] = useState<GlobalActivityItem[] | undefined>(undefined);
+    const [isLoading, setIsLoading] = useState(true);
 
     const loadData = useCallback(async () => {
-        if (isNaN(customerId)) return;
+        if (isNaN(customerId)) {
+            setIsLoading(false);
+            return;
+        };
+        setIsLoading(true);
         const [customerData, activityData] = await Promise.all([
             dataService.getCustomerById(customerId),
             dataService.getCustomerActivity(customerId),
         ]);
         setCustomer(customerData);
         setActivity(activityData);
+        setIsLoading(false);
     }, [customerId]);
 
     useEffect(() => {
         loadData();
     }, [loadData]);
-
-
-    const isLoading = customer === undefined || activity === undefined;
 
     const handleSaleClick = (sale: Sale) => {
         setSelectedSale(sale);

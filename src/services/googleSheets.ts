@@ -12,7 +12,7 @@ export const TABLES_TO_SYNC: TableName[] = [
     'sales', 'stockIntakes', 'returns',
     'payments', 'expenses', 'drafts',
     'inventoryLogs', 'clients_pain', 'commandes_pain',
-    'companyProfile', 'settings'
+    'companyProfile', 'settings', 'notifications'
 ];
 
 interface QueueItem {

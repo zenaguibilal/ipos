@@ -80,37 +80,51 @@ export default function ProductsPage() {
     const [products, setProducts] = useState<Product[] | undefined>(undefined);
     const [categories, setCategories] = useState<string[] | undefined>(undefined);
     const [suppliers, setSuppliers] = useState<Supplier[] | undefined>(undefined);
+    const [isLoading, setIsLoading] = useState(true);
     
     const loadProducts = useCallback(() => {
+        setIsLoading(true);
         dataService.getProducts({ 
             query: debouncedSearchQuery, 
             category: selectedCategory === 'all' ? undefined : selectedCategory,
             supplierId: selectedSupplier === 'all' ? undefined : parseInt(selectedSupplier),
             stockStatus: stockStatus,
             sortBy: sortBy,
-        }).then(setProducts);
+        }).then(p => {
+            setProducts(p);
+            setIsLoading(false);
+        });
     }, [debouncedSearchQuery, selectedCategory, selectedSupplier, stockStatus, sortBy]);
 
     useEffect(() => {
         loadProducts();
-        dataService.getProductCategories().then(setCategories);
-        dataService.getSuppliers().then(setSuppliers);
     }, [loadProducts]);
     
-    const isLoading = products === undefined || categories === undefined || suppliers === undefined;
+    useEffect(() => {
+        dataService.getProductCategories().then(setCategories);
+        dataService.getSuppliers().then(setSuppliers);
+    }, []);
 
     useEffect(() => {
         setSelectedProducts(new Set());
     }, [debouncedSearchQuery, selectedCategory, stockStatus, selectedSupplier]);
 
     const handleDialogClose = (open: boolean) => {
-        setIsProductDialogOpen(open);
-        if(!open) loadProducts();
+        if (!open) {
+            setIsProductDialogOpen(false);
+            loadProducts();
+        } else {
+            setIsProductDialogOpen(true);
+        }
     };
 
     const handleDeleteDialogClose = (open: boolean) => {
-        setIsDeleteDialogOpen(open);
-        if(!open) loadProducts();
+        if (!open) {
+            setIsDeleteDialogOpen(false);
+            loadProducts();
+        } else {
+            setIsDeleteDialogOpen(true);
+        }
     };
 
     const handleBulkDeleteSuccess = () => {

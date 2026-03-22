@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { dataService } from '@/services/data-service';
 import type { StockIntake, CostingItem } from '@/lib/types';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
@@ -20,20 +20,31 @@ import { PageHeader } from '@/components/layout/PageHeader';
 export default function CostingPage() {
     const [selectedIntakeId, setSelectedIntakeId] = useState<string | null>(null);
     const [deliveryCost, setDeliveryCost] = useState('');
-    const [isMounted, setIsMounted] = useState(false);
     const [isApplyingCosts, setIsApplyingCosts] = useState(false);
 
     const [intakes, setIntakes] = useState<StockIntake[] | undefined>(undefined);
     const [selectedIntake, setSelectedIntake] = useState<StockIntake | undefined>(undefined);
+    const [isLoading, setIsLoading] = useState(true);
 
-    useEffect(() => {
-        setIsMounted(true);
-        dataService.getStockIntakes({}).then(setIntakes);
+    const loadIntakes = useCallback(() => {
+        setIsLoading(true);
+        dataService.getStockIntakes({}).then(data => {
+            setIntakes(data);
+            setIsLoading(false);
+        });
     }, []);
 
     useEffect(() => {
+        loadIntakes();
+    }, [loadIntakes]);
+
+    useEffect(() => {
       if (selectedIntakeId) {
-        dataService.getById<StockIntake>('stockIntakes', parseInt(selectedIntakeId)).then(setSelectedIntake);
+        setIsLoading(true);
+        dataService.getById<StockIntake>('stockIntakes', parseInt(selectedIntakeId)).then(data => {
+            setSelectedIntake(data);
+            setIsLoading(false);
+        });
       } else {
         setSelectedIntake(undefined);
       }
@@ -104,9 +115,7 @@ export default function CostingPage() {
         }
     };
 
-    const isLoading = intakes === undefined || (selectedIntakeId && selectedIntake === undefined) || !isMounted;
-
-    if (isLoading && isMounted) {
+    if (isLoading) {
         return (
              <div className="p-4 sm:p-6 space-y-6">
                 <Skeleton className="h-10 w-1/2" />

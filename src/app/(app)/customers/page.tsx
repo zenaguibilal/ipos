@@ -37,16 +37,19 @@ export default function CustomersPage() {
     const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
     const [customers, setCustomers] = useState<Customer[] | undefined>(undefined);
+    const [isLoading, setIsLoading] = useState(true);
 
     const loadCustomers = useCallback(() => {
-        dataService.getCustomers({ query: debouncedSearchQuery, status: filterStatus }).then(setCustomers);
+        setIsLoading(true);
+        dataService.getCustomers({ query: debouncedSearchQuery, status: filterStatus }).then(data => {
+            setCustomers(data);
+            setIsLoading(false);
+        });
     }, [debouncedSearchQuery, filterStatus]);
 
     useEffect(() => {
         loadCustomers();
     }, [loadCustomers]);
-    
-    const isLoading = customers === undefined;
 
     const handleEditCustomer = (customer: Customer) => {
         setSelectedCustomer(customer);
@@ -59,13 +62,21 @@ export default function CustomersPage() {
     };
     
     const handleDialogClose = (open: boolean) => {
-        setIsCustomerDialogOpen(open);
-        if(!open) loadCustomers();
+        if (!open) {
+            setIsCustomerDialogOpen(false);
+            loadCustomers();
+        } else {
+            setIsCustomerDialogOpen(true);
+        }
     }
     
     const handleDeleteDialogClose = (open: boolean) => {
-        setIsDeleteDialogOpen(open);
-        if(!open) loadCustomers();
+        if (!open) {
+            setIsDeleteDialogOpen(false);
+            loadCustomers();
+        } else {
+            setIsDeleteDialogOpen(true);
+        }
     }
 
     const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {

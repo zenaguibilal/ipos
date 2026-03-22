@@ -21,13 +21,19 @@ export default function ZakatPage() {
 
     const [zakatData, setZakatData] = useState<ZakatData | undefined>(undefined);
     const [companyProfile, setCompanyProfile] = useState<CompanyProfile | null | undefined>(undefined);
+    const [isLoading, setIsLoading] = useState(true);
     
     useEffect(() => {
-        dataService.getZakatData().then(setZakatData);
-        dataService.getCompanyProfile().then(setCompanyProfile);
+        setIsLoading(true);
+        Promise.all([
+            dataService.getZakatData(),
+            dataService.getCompanyProfile()
+        ]).then(([zakat, profile]) => {
+            setZakatData(zakat);
+            setCompanyProfile(profile);
+            setIsLoading(false);
+        });
     }, []);
-
-    const isLoading = zakatData === undefined || companyProfile === undefined;
 
     const nisabAmount = useMemo(() => {
         const goldPrice = companyProfile?.goldPricePerGram || 0;
