@@ -26,27 +26,34 @@ export const useCarts = () => {
     
     const loadCarts = useCallback(async () => {
         setIsLoading(true);
-        const [loadedCarts, activeIdSetting] = await Promise.all([
-            dataService.getAll<Cart>('carts'),
-            dataService.getSetting(ACTIVE_CART_ID_KEY)
-        ]);
+        try {
+            const [loadedCarts, activeIdSetting] = await Promise.all([
+                dataService.getAll<Cart>('carts'),
+                dataService.getSetting(ACTIVE_CART_ID_KEY)
+            ]);
 
-        if (loadedCarts.length === 0) {
-            const newCart = createNewCart('Panier 1');
-            await dataService.saveCart(newCart);
-            await dataService.setSetting(ACTIVE_CART_ID_KEY, newCart.id);
-            setCarts([newCart]);
-            setActiveCartIdState(newCart.id);
-        } else {
-            setCarts(loadedCarts);
-            if (activeIdSetting?.value && loadedCarts.some(c => c.id === activeIdSetting.value)) {
-                setActiveCartIdState(activeIdSetting.value);
+            if (loadedCarts.length === 0) {
+                const newCart = createNewCart('Panier 1');
+                await dataService.saveCart(newCart);
+                await dataService.setSetting(ACTIVE_CART_ID_KEY, newCart.id);
+                setCarts([newCart]);
+                setActiveCartIdState(newCart.id);
             } else {
-                setActiveCartIdState(loadedCarts[0].id);
-                await dataService.setSetting(ACTIVE_CART_ID_KEY, loadedCarts[0].id);
+                setCarts(loadedCarts);
+                if (activeIdSetting?.value && loadedCarts.some(c => c.id === activeIdSetting.value)) {
+                    setActiveCartIdState(activeIdSetting.value);
+                } else {
+                    const newActiveId = loadedCarts[0].id;
+                    setActiveCartIdState(newActiveId);
+                    await dataService.setSetting(ACTIVE_CART_ID_KEY, newActiveId);
+                }
             }
+        } catch (error) {
+            console.error("Failed to load carts:", error);
+            // Handle error, maybe set a default state
+        } finally {
+            setIsLoading(false);
         }
-        setIsLoading(false);
     }, []);
 
     useEffect(() => {

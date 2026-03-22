@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { sheetsService } from '@/services/googleSheets';
 import type { CompanyProfile } from '@/lib/types';
 import { dataService } from '@/services/data-service';
@@ -16,14 +16,14 @@ interface SyncStatus {
 export const useSync = () => {
   const [companyProfile, setCompanyProfile] = useState<CompanyProfile | null>(null);
   
-  const fetchProfile = async () => {
+  const fetchProfile = useCallback(async () => {
       const profile = await dataService.getCompanyProfile();
       setCompanyProfile(profile);
-  };
+  }, []);
   
   useEffect(() => {
       fetchProfile();
-  }, []);
+  }, [fetchProfile]);
 
   const [syncStatus, setSyncStatus] = useState<SyncStatus>({
     isOnline: false,

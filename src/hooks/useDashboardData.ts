@@ -1,9 +1,9 @@
 'use client';
 
-import { useMemo, useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { dataService } from '@/services/data-service';
 import type { DateRange } from 'react-day-picker';
-import type { Product, Sale, StockIntake, Customer, ProductReturn, Expense, GlobalActivityItem, DashboardDataType } from '@/lib/types';
+import type { Product, Sale, GlobalActivityItem, DashboardDataType } from '@/lib/types';
 import { differenceInDays, subDays, format, startOfDay, endOfDay } from 'date-fns';
 import { fr } from 'date-fns/locale';
 

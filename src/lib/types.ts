@@ -1,5 +1,26 @@
 
 
+export const TABLES = {
+  products: 'products',
+  customers: 'customers',
+  sales: 'sales',
+  payments: 'payments',
+  stockIntakes: 'stockIntakes',
+  returns: 'returns',
+  carts: 'carts',
+  drafts: 'drafts',
+  companyProfile: 'companyProfile',
+  expenses: 'expenses',
+  settings: 'settings',
+  notifications: 'notifications',
+  inventoryLogs: 'inventoryLogs',
+  suppliers: 'suppliers',
+  clients_pain: 'clients_pain',
+  commandes_pain: 'commandes_pain',
+} as const
+
+export type TableName = keyof typeof TABLES;
+
 export interface Product {
     id?: number | string; // string for custom products
     name: string;

@@ -1,12 +1,12 @@
 'use client';
 
-import * as storage from '@/lib/storage';
-import type { CompanyProfile, DB } from '@/lib/types';
-import type { TableName } from '@/lib/storage';
+import { dataService } from '@/services/data-service';
+import type { CompanyProfile, DB, TableName } from '@/lib/types';
+import { TABLES } from '@/lib/types';
 
 const SYNC_QUEUE_KEY = 'ipos_sync_queue';
 
-export const TABLES_TO_SYNC: (keyof DB)[] = [
+export const TABLES_TO_SYNC: TableName[] = [
     'products', 'customers', 'suppliers',
     'sales', 'stockIntakes', 'returns',
     'payments', 'expenses', 'drafts',
@@ -27,9 +27,7 @@ class GoogleSheetsService {
   isOnline: boolean = false;
   initialized: boolean = false;
 
-  constructor() {
-    // Constructor must be safe to run on the server.
-  }
+  constructor() {}
 
   init() {
     if (typeof window === 'undefined' || this.initialized) {
@@ -54,7 +52,7 @@ class GoogleSheetsService {
 
   async loadScriptUrl() {
     try {
-      const profile = await storage.getById<CompanyProfile>('companyProfile', 1);
+      const profile = await dataService.getCompanyProfile();
       this.scriptUrl = profile?.syncUrl || null;
       if (this.scriptUrl) {
         this.processSyncQueue();
@@ -87,20 +85,18 @@ class GoogleSheetsService {
 
   async fetchFromSheets(table: string): Promise<any[]> {
     if (!this.scriptUrl || !this.isOnline) return [];
-
     const response = await fetch(`${this.scriptUrl}?table=${table}`);
     const result = await response.json();
     if (!result.success) throw new Error(result.error);
     return result.records || [];
   }
   
-  async syncTable(table: string) {
-    const tableName = table as TableName;
-    if (!Object.values(storage.TABLES).includes(tableName)) {
+  async syncTable(tableName: TableName) {
+    if (!Object.values(TABLES).includes(tableName)) {
         return { success: true, message: 'Skipped' };
     }
-    const localRecords = await storage.getAll(tableName);
-    const remoteRecords = await this.fetchFromSheets(table);
+    const localRecords = await dataService.getAll(tableName);
+    const remoteRecords = await this.fetchFromSheets(tableName);
 
     const localMap = new Map(localRecords.map((r: any) => [String(r.id), r]));
     const remoteMap = new Map(remoteRecords.map((r: any) => [String(r.id), r]));
@@ -119,26 +115,24 @@ class GoogleSheetsService {
         const localTime = new Date(local.updatedAt || local.createdAt || 0).getTime();
         const remoteTime = new Date(remote.updatedAt || remote.createdAt || 0).getTime();
 
-        if (remoteTime > localTime) {
-          toUpdateLocal.push(remote);
-        } else if (localTime > remoteTime) {
-          toUpdateRemote.push(local);
-        } else {
-          noChange++;
-        }
+        if (remoteTime > localTime) toUpdateLocal.push(remote);
+        else if (localTime > remoteTime) toUpdateRemote.push(local);
+        else noChange++;
       }
     }
-
     for (const [id, remote] of remoteMap.entries()) {
-      if (!localMap.has(id)) {
-        toAddLocal.push(remote);
-      }
+      if (!localMap.has(id)) toAddLocal.push(remote);
     }
-
-    if (toUpdateLocal.length > 0) await storage.bulkPut(tableName, toUpdateLocal);
-    if (toAddLocal.length > 0) await storage.bulkPut(tableName, toAddLocal);
+    
+    // Applying changes needs to be done carefully via dataService to trigger logic
+    if (toUpdateLocal.length > 0) {
+        for(const record of toUpdateLocal) await dataService.update(tableName, record.id, record);
+    }
+     if (toAddLocal.length > 0) {
+         for(const record of toAddLocal) await dataService.add(tableName, record);
+     }
     for (const record of [...toUpdateRemote, ...toAddRemote]) {
-      await this.sendToSheets(table, 'upsert', record);
+      await this.sendToSheets(tableName, 'upsert', record);
     }
     
     return {
@@ -162,7 +156,7 @@ class GoogleSheetsService {
       }
     }
     const lastSync = new Date().toISOString();
-    await storage.update('companyProfile', 1, { lastSyncDate: lastSync });
+    await dataService.updateCompanyProfile({ lastSyncDate: lastSync });
     return { success: true, results, lastSync };
   }
 
@@ -185,10 +179,8 @@ class GoogleSheetsService {
 
   async processSyncQueue() {
     if (!this.isOnline || !this.scriptUrl) return;
-
     const queue = this.loadQueue();
     if (queue.length === 0) return;
-
     let success = true;
     for (const item of queue) {
       try {
@@ -198,7 +190,6 @@ class GoogleSheetsService {
         success = false;
       }
     }
-    
     const newQueue = queue.filter(item => item.attempts < 3);
     this.saveQueue(newQueue);
   }
