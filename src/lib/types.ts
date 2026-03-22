@@ -1,4 +1,5 @@
 
+
 export const TABLES = {
   products: 'products',
   customers: 'customers',
@@ -134,20 +135,6 @@ export interface Draft {
   notes?: string;
   createdAt?: Date;
   updatedAt?: Date;
-}
-
-export interface TopProduct {
-    id: number;
-    name: string;
-    totalRevenue: number;
-    unitsSold: number;
-    totalProfit: number;
-}
-
-export interface TopCustomer {
-    id: number;
-    name: string;
-    totalSpent: number;
 }
 
 export interface CompanyProfile {
