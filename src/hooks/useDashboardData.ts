@@ -60,9 +60,13 @@ export function useDashboardData(dateRange?: DateRange) {
             const calculateMetrics = (sales: Sale[]) => {
                 let revenue = 0;
                 let profit = 0;
+                if (!sales) return { revenue, profit, salesCount: 0 };
+                
                 for (const sale of sales) {
+                    if (!sale) continue;
                     revenue += sale.total || 0;
                     const saleProfit = (sale.items || []).reduce((acc, item) => {
+                        if (!item) return acc;
                         const cost = item.purchasePrice || 0;
                         const price = item.price || 0;
                         const quantity = item.quantity || 0;
@@ -83,28 +87,35 @@ export function useDashboardData(dateRange?: DateRange) {
                 profit: { current: currentMetrics.profit, vs: calcVs(currentMetrics.profit, previousMetrics.profit) },
                 sales: { current: currentMetrics.salesCount, vs: calcVs(currentMetrics.salesCount, previousMetrics.salesCount) },
                 inventoryValue: { 
-                    current: (products || []).reduce((acc, p) => acc + ((p.purchasePrice || 0) * (p.quantity || 0)), 0),
-                    productCount: products.length
+                    current: (products || []).reduce((acc, p) => {
+                        if (!p) return acc;
+                        return acc + ((p.purchasePrice || 0) * (p.quantity || 0));
+                    }, 0),
+                    productCount: products?.length || 0,
                 },
             };
             
             const daysInRange = differenceInDays(to, from) + 1;
             const dataByDay: { [key: string]: { revenu: number, benefice: number, date: Date } } = {};
 
-            for (let i = 0; i < daysInRange; i++) {
-                const date = subDays(to!, i);
-                const key = format(date, 'd MMM', { locale: fr });
-                if (!dataByDay[key]) {
-                    dataByDay[key] = { revenu: 0, benefice: 0, date };
+            if (daysInRange > 0) {
+                for (let i = 0; i < daysInRange; i++) {
+                    const date = subDays(to!, i);
+                    const key = format(date, 'd MMM', { locale: fr });
+                    if (!dataByDay[key]) {
+                        dataByDay[key] = { revenu: 0, benefice: 0, date };
+                    }
                 }
             }
             
-            currentSales.forEach(sale => {
+            (currentSales || []).forEach(sale => {
+                if (!sale) return;
                 const saleDate = sale.createdAt ? new Date(sale.createdAt) : new Date();
                 const key = format(saleDate, 'd MMM', { locale: fr });
                 if (dataByDay[key]) {
                     dataByDay[key].revenu += sale.total || 0;
                     const saleProfit = (sale.items || []).reduce((acc, item) => {
+                        if (!item) return acc;
                         const cost = item.purchasePrice || 0;
                         const price = item.price || 0;
                         const quantity = item.quantity || 0;
@@ -119,15 +130,16 @@ export function useDashboardData(dateRange?: DateRange) {
                 .map(([key, value]) => ({ date: key, jour: key, revenu: value.revenu, benefice: value.benefice }));
             
             const stockAlerts = (products || [])
-              .filter(p => p.quantity <= p.minStockLevel)
+              .filter(p => p && p.quantity <= p.minStockLevel)
               .sort((a, b) => a.quantity - b.quantity)
               .slice(0, 5);
 
             const productSales = new Map<number, { product: Product; totalVendu: number }>();
-            currentSales.forEach(sale => {
+            (currentSales || []).forEach(sale => {
+                if (!sale) return;
                 (sale.items || []).forEach(item => {
-                    if (typeof item.id === 'number') {
-                        const product = products.find(p => p.id === item.id);
+                    if (item && typeof item.id === 'number' && products) {
+                        const product = products.find(p => p && p.id === item.id);
                         if (!product) return;
                         const existing = productSales.get(item.id) || { product, totalVendu: 0 };
                         productSales.set(item.id, { ...existing, totalVendu: existing.totalVendu + (item.quantity || 0) });
@@ -141,6 +153,7 @@ export function useDashboardData(dateRange?: DateRange) {
 
             const expensesData = Object.entries(
                 (expenses || []).reduce((acc, d) => {
+                    if (!d) return acc;
                     acc[d.category] = (acc[d.category] || 0) + d.amount;
                     return acc;
                 }, {} as Record<string, number>)

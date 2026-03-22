@@ -279,7 +279,7 @@ class DataService {
   
   async getSuppliers(): Promise<Supplier[]> {
       const suppliers = await this.getAll<Supplier>('suppliers');
-      return suppliers.sort((a,b) => a.name.localeCompare(b.name));
+      return suppliers.sort((a,b) => (a.name || '').localeCompare(b.name || ''));
   }
 
   async getCustomerById(id: number): Promise<Customer | undefined> {
@@ -348,7 +348,7 @@ class DataService {
         if(sortField.includes('Date') && aValue && bValue) {
             comparison = new Date(aValue).getTime() - new Date(bValue).getTime();
         } else if (typeof aValue === 'string' && typeof bValue === 'string') {
-            comparison = aValue.localeCompare(bValue);
+             comparison = (aValue || '').localeCompare(bValue || '');
         } else if (typeof aValue === 'number' && typeof bValue === 'number') {
              comparison = aValue - bValue;
         }
@@ -964,25 +964,37 @@ class DataService {
         ]);
   
         const activity: GlobalActivityItem[] = [];
-        sales.forEach(s => s.createdAt && activity.push({ type: 'sale', date: new Date(s.createdAt), id: s.id!, description: `Vente #${s.invoiceNumber}`, details: s.customerName || 'Client de passage', amount: s.total, amountClass: 'text-primary' }));
+        
+        (sales || []).forEach(s => {
+            if(s && s.createdAt) activity.push({ type: 'sale', date: new Date(s.createdAt), id: s.id!, description: `Vente #${s.invoiceNumber}`, details: s.customerName || 'Client de passage', amount: s.total, amountClass: 'text-primary' });
+        });
         
         const suppliers = await this.getSuppliers();
         const supplierMap = new Map(suppliers.map(s => [s.id, s.name]));
-        intakes.forEach(i => i.createdAt && activity.push({ type: 'stock_intake', date: new Date(i.createdAt), id: i.id!, description: `Réception de ${supplierMap.get(i.supplierId) || 'fournisseur inconnu'}`, details: `${i.items.length} article(s)`, amount: i.totalValue, amountClass: 'text-yellow-400' }));
         
-        returns.forEach(r => r.createdAt && activity.push({ type: 'return', date: new Date(r.createdAt), id: r.id!, description: `Retour sur facture #${r.originalInvoiceNumber}`, details: `${r.items.length} article(s) retourné(s)`, amount: r.totalReturnValue, amountClass: 'text-destructive' }));
+        (intakes || []).forEach(i => {
+            if(i && i.createdAt) activity.push({ type: 'stock_intake', date: new Date(i.createdAt), id: i.id!, description: `Réception de ${supplierMap.get(i.supplierId) || 'fournisseur inconnu'}`, details: `${(i.items || []).length} article(s)`, amount: i.totalValue, amountClass: 'text-yellow-400' });
+        });
         
-        customers.forEach(c => c.createdAt && activity.push({ type: 'customer', date: new Date(c.createdAt), id: c.id!, description: `Nouveau client`, details: `${c.firstName} ${c.lastName}`}));
+        (returns || []).forEach(r => {
+            if(r && r.createdAt) activity.push({ type: 'return', date: new Date(r.createdAt), id: r.id!, description: `Retour sur facture #${r.originalInvoiceNumber}`, details: `${(r.items || []).length} article(s) retourné(s)`, amount: r.totalReturnValue, amountClass: 'text-destructive' });
+        });
+        
+        (customers || []).forEach(c => {
+            if(c && c.createdAt) activity.push({ type: 'customer', date: new Date(c.createdAt), id: c.id!, description: `Nouveau client`, details: `${c.firstName || ''} ${c.lastName || ''}`.trim()});
+        });
   
-        payments.forEach(p => p.paymentDate && activity.push({
-            type: 'payment',
-            date: new Date(p.paymentDate),
-            id: p.id!,
-            description: `Paiement de ${p.customerName || 'client inconnu'}`,
-            details: p.notes || `Montant: ${formatCurrency(p.amount)}`,
-            amount: p.amount,
-            amountClass: 'text-chart-quaternary'
-        }));
+        (payments || []).forEach(p => {
+            if(p && p.paymentDate) activity.push({
+                type: 'payment',
+                date: new Date(p.paymentDate),
+                id: p.id!,
+                description: `Paiement de ${p.customerName || 'client inconnu'}`,
+                details: p.notes || `Montant: ${formatCurrency(p.amount)}`,
+                amount: p.amount,
+                amountClass: 'text-chart-quaternary'
+            });
+        });
         
         return activity.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, limit);
       } catch (error) {
