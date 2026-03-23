@@ -52,6 +52,7 @@ export function ProductTable({ products, onEdit, onDelete, selectedProducts, onT
                 <TableBody>
                     {products.map(product => {
                         if (!product.id || typeof product.id !== 'number') return null;
+                        const productId = product.id;
 
                         const placeholder = getPlaceholder(product.category);
                         const imageUrl = product.imageUrl || placeholder.url;
@@ -69,11 +70,11 @@ export function ProductTable({ products, onEdit, onDelete, selectedProducts, onT
                         const isPriceOld = product.dateMajPrix && differenceInDays(new Date(), new Date(product.dateMajPrix)) > 30;
 
                         return (
-                            <TableRow key={product.id} data-state={selectedProducts.has(product.id) ? "selected" : ""}>
+                            <TableRow key={productId} data-state={selectedProducts.has(productId) ? "selected" : ""}>
                                  <TableCell className="px-4">
                                     <Checkbox
-                                        checked={selectedProducts.has(product.id)}
-                                        onCheckedChange={() => onToggleProductSelection(product.id)}
+                                        checked={selectedProducts.has(productId)}
+                                        onCheckedChange={() => onToggleProductSelection(productId)}
                                         aria-label={`Select row for ${product.name}`}
                                     />
                                 </TableCell>
