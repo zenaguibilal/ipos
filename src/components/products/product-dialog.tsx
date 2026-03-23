@@ -38,7 +38,7 @@ const initialFormState = {
     fournisseurId: undefined as number | undefined,
 };
 
-const units: Product['unite'][] = ['Pièce', 'Kg', 'Litre', 'Boîte', 'Carton', 'Sachet', 'Bouteille'];
+const units: NonNullable<Product['unite']>[] = ['Pièce', 'Kg', 'Litre', 'Boîte', 'Carton', 'Sachet', 'Bouteille'];
 
 export function ProductDialog({ isOpen, onOpenChange, product, categories, suppliers }: ProductDialogProps) {
     const [formState, setFormState] = useState(initialFormState);
