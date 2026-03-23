@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { dataService } from '@/services/data-service';
 import { formatDateToYYYYMMDD } from '@/lib/utils';
 import { addDays, format } from 'date-fns';
