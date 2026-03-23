@@ -22,7 +22,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 export default function BreadPage() {
     const [currentDate, setCurrentDate] = useState(new Date());
 
-    const formattedDate = useMemo(() => formatDateToYYYYMMDD(currentDate), [currentDate]);
+    const formattedDate = formatDateToYYYYMMDD(currentDate);
 
     const breadPriceSetting = useLiveQuery<CompanyProfile['prix_pain']>(async () => {
         const profile = await dataService.getCompanyProfile();
@@ -57,7 +57,7 @@ export default function BreadPage() {
         setCurrentDate(prev => addDays(prev, days));
     };
 
-    const isToday = useMemo(() => formatDateToYYYYMMDD(new Date()) === formattedDate, [formattedDate]);
+    const isToday = formatDateToYYYYMMDD(new Date()) === formattedDate;
 
     if (isLoading) {
         return (
