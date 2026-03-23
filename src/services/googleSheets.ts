@@ -232,7 +232,7 @@ class GoogleSheetsService {
 
   saveQueue(queue: QueueItem[]) {
     try {
-      if (typeof localStorage === 'undefined') return;
+      if (typeof localStorage === 'undefined') return [];
       localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(queue));
     } catch(e) {
     }

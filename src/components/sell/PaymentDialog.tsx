@@ -161,7 +161,7 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, customer, onSaleFina
                         <AlertDialogAction onClick={handleLossAlertConfirm} className={cn("bg-destructive hover:bg-destructive/80")}>Continuer quand même</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
-            </Dialog>
+            </AlertDialog>
 
             <Dialog open={isOpen && !showLossAlert} onOpenChange={(open) => !open && closeAndReset()}>
                 <DialogContent className="sm:max-w-lg">
