@@ -64,6 +64,10 @@ class DataService {
         const cart = await this.db.carts.get(cartId);
         if (!cart) throw new Error("Panier non trouvé.");
 
+        if (!product.id) {
+            throw new Error("Impossible d'ajouter un produit sans ID au panier.");
+        }
+
         const existingItem = cart.items.find(item => item.id === product.id);
         const newCartQuantity = (existingItem?.cartQuantity || 0) + quantity;
 
@@ -81,9 +85,6 @@ class DataService {
             existingItem.cartQuantity = newCartQuantity;
             existingItem.flash = true;
         } else {
-            if (!product.id) {
-                throw new Error("Impossible d'ajouter un produit sans ID au panier.");
-            }
             cart.items.push({ ...product, id: product.id, cartQuantity: newCartQuantity, flash: true });
         }
         await this.db.carts.put(cart);
@@ -665,7 +666,7 @@ class DataService {
     }
   
     async convertBreadOrdersToSales(orderIds: number[], breadPrice: number): Promise<void> {
-        return this.db.transaction('rw', this.db.products, this.db.sales, this.db.inventoryLogs, this.db.commandes_pain, this.db.customers, async () => {
+        return this.db.transaction('rw', [this.db.products, this.db.sales, this.db.inventoryLogs, this.db.commandes_pain, this.db.customers, this.db.clients_pain], async () => {
             const breadProduct = await this.db.products.where('name').equals('Pain').first();
             if (!breadProduct?.id || typeof breadProduct.id !== 'number') throw new Error("Le produit 'Pain' n'a pas été trouvé.");
             
@@ -1254,3 +1255,5 @@ class DataService {
 }
 
 export const dataService = new DataService();
+
+    
