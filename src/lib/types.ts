@@ -348,7 +348,7 @@ export interface DB {
     returns: ProductReturn[];
     carts: Cart[];
     drafts: Draft[];
-    companyProfile: CompanyProfile;
+    companyProfile: CompanyProfile[];
     expenses: Expense[];
     settings: Setting[];
     inventoryLogs: InventoryLog[];

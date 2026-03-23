@@ -29,7 +29,7 @@ export function BackupStats({ backupData, onNext }: BackupStatsProps) {
   );
 
   const getBackupDate = () => {
-      const profile = backupData.companyProfile;
+      const profile = backupData.companyProfile?.[0];
       if (profile && profile.lastSyncDate) return profile.lastSyncDate;
       const sales = backupData.sales;
       if (sales && sales.length > 0) return sales[0].createdAt?.toString();
