@@ -6,16 +6,23 @@ import { getDb } from '@/lib/database';
 import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, InventoryLog, StockIntakeItem, ZakatData, CostingItem, Draft, Supplier, ImportAnalysis, BreadClient, BreadOrder, BreadOrderWithClient, ProductImportAnalysis, GlobalActivityItem, DashboardData, TopCustomer, DB } from '@/lib/types';
 import { subDays, endOfDay, startOfDay } from 'date-fns';
 import Papa from 'papaparse';
-import { formatCurrency, safeToDate, calculateCartTotals } from '@/lib/utils';
+import { formatCurrency, safeToDate } from '@/lib/utils';
 import { BREAD_WEEK_DAYS } from '@/lib/constants';
 import { sheetsService } from './googleSheets';
 import { toast } from 'sonner';
+import { calculateCartTotals } from '@/lib/utils';
 
 const LOCAL_ONLY_SETTINGS = ['active_cart_id'];
 
 class DataService {
   get db() {
     return getDb();
+  }
+
+  private async generateInvoiceNumber(): Promise<string> {
+      const lastSale = await this.db.sales.orderBy('id').last();
+      const nextNum = ((lastSale?.id as number) || 0) + 1;
+      return `INV-${new Date().getFullYear()}-${nextNum.toString().padStart(5, '0')}`;
   }
 
   // Generic methods
@@ -689,10 +696,16 @@ class DataService {
                 throw new Error(`Stock de pain insuffisant. Requis: ${totalBreadNeeded}, Disponible: ${breadProduct.quantity}.`);
             }
 
+            // Get the next invoice number base ONCE before the loop.
+            // This is a more robust way to generate sequential numbers inside a transaction.
+            const lastSale = await this.db.sales.orderBy('id').last();
+            const baseInvoiceNum = ((lastSale?.id as number) || 0) + 1;
+
             for (const order of ordersToConvert) {
                 const client = await this.getById<BreadClient>('clients_pain', order.client_pain_id);
-                const salesCount = await this.db.sales.count();
-                const invoiceNumber = `INV-${new Date().getFullYear()}-${(salesCount + (orderIds.indexOf(order.id!)+1)).toString().padStart(5, '0')}`;
+                
+                // Generate a unique invoice number for each order in the batch.
+                const invoiceNumber = `INV-${new Date().getFullYear()}-${(baseInvoiceNum + ordersToConvert.indexOf(order)).toString().padStart(5, '0')}`;
                 
                 const saleTotal = breadPrice * order.quantite;
                 const saleData: Omit<Sale, 'id'> = { 
@@ -760,8 +773,7 @@ class DataService {
                 }
             }
 
-            const salesCount = await this.db.sales.count();
-            const invoiceNumber = `INV-${new Date().getFullYear()}-${(salesCount + 1).toString().padStart(5, '0')}`;
+            const invoiceNumber = await this.generateInvoiceNumber();
             const remainingBalance = saleData.total - saleData.amountPaid;
             const paymentStatus = remainingBalance <= 0 ? 'paid' : (saleData.amountPaid > 0 ? 'partial' : 'unpaid');
             const newSaleData: Omit<Sale, 'id'> = { ...saleData, invoiceNumber, remainingBalance, paymentStatus, createdAt: new Date(), updatedAt: new Date() };
@@ -1279,6 +1291,7 @@ export const dataService = new DataService();
     
 
     
+
 
 
 
