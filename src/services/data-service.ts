@@ -282,7 +282,7 @@ class DataService {
       const lowerQuery = query.toLowerCase();
       collection = collection.filter(p => 
         p.name.toLowerCase().includes(lowerQuery) || 
-        p.barcodes?.some(b => b.includes(lowerQuery))
+        (p.barcodes?.some(b => b.includes(lowerQuery)) ?? false)
       );
     }
     
@@ -1255,4 +1255,5 @@ class DataService {
 
 export const dataService = new DataService();
 
+    
     
