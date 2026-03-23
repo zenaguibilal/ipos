@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { dataService } from '@/services/data-service';
 import { useDebounce } from '@/hooks/useDebounce';
 import type { Product, ProductImportAnalysis, Supplier } from '@/lib/types';
@@ -91,20 +92,21 @@ export default function ProductsPage() {
 
     const isLoading = products === undefined;
 
-    useState(() => {
+    useEffect(() => {
         const savedViewMode = localStorage.getItem('product_view_mode') as ViewMode;
         if (savedViewMode) {
             setViewMode(savedViewMode);
         }
-    });
+    }, []);
 
-    useState(() => {
+    useEffect(() => {
         localStorage.setItem('product_view_mode', viewMode);
-    });
+    }, [viewMode]);
     
-    useState(() => {
+    useEffect(() => {
         setSelectedProducts(new Set());
-    });
+    }, []);
+
 
     const handleEditProduct = (product: Product) => {
         setSelectedProduct(product);
@@ -459,5 +461,7 @@ export default function ProductsPage() {
         </div>
     );
 }
+
+    
 
     

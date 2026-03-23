@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
@@ -20,23 +21,22 @@ const createNewCart = (name: string): Cart => ({
 });
 
 export const useCarts = () => {
-    const db = getDb();
     const [activeCartId, setActiveCartIdState] = useState<string | null>(null);
 
     // Step 1: Just fetch the carts reactively.
-    const carts = useLiveQuery(() => db.carts.toArray(), []);
+    const carts = useLiveQuery(() => getDb().carts.toArray(), []);
 
     // Step 2: Handle the case where no carts exist.
     useEffect(() => {
         if (carts && carts.length === 0) {
             const firstCart = createNewCart('Panier 1');
-            db.carts.add(firstCart).then(id => {
+            getDb().carts.add(firstCart).then(id => {
                 // When adding is successful, set it as the active one.
                 dataService.setSetting(ACTIVE_CART_ID_KEY, id);
                 setActiveCartIdState(id as string);
             });
         }
-    }, [carts, db.carts]);
+    }, [carts]);
 
     // Step 3: Determine the active cart ID once carts are loaded.
     useEffect(() => {
@@ -183,3 +183,5 @@ export const useCarts = () => {
         isLoading: carts === undefined || !activeCart,
     };
 };
+
+    
