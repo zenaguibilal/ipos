@@ -80,7 +80,6 @@ export default function CustomersPage() {
             setIsImportPreviewOpen(false);
             setImportAnalysis(null);
         } catch (error) {
-            console.error("Customer import failed:", error);
             toast.error("Une erreur est survenue lors de l'importation.");
         } finally {
             setIsImporting(false);

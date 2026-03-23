@@ -21,7 +21,6 @@ export function SyncData() {
             await syncNow();
             toast.success("Synchronisation terminée avec succès !");
         } catch (error: any) {
-            console.error("Erreur lors de la synchronisation:", error);
             toast.error("Échec de la synchronisation.", {
                 description: error.message || "Veuillez vérifier votre connexion et l'URL du script."
             });

@@ -3,7 +3,7 @@
 'use client';
 
 import { getDb } from '@/lib/database';
-import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, InventoryLog, StockIntakeItem, ZakatData, CostingItem, Draft, Supplier, ImportAnalysis, BreadClient, BreadOrder, BreadOrderWithClient, DB, ProductImportAnalysis, GlobalActivityItem, DashboardData, TopCustomer } from '@/lib/types';
+import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, InventoryLog, StockIntakeItem, ZakatData, CostingItem, Draft, Supplier, ImportAnalysis, BreadClient, BreadOrder, BreadOrderWithClient, ProductImportAnalysis, GlobalActivityItem, DashboardData, TopCustomer } from '@/lib/types';
 import { subDays, endOfDay, startOfDay, parseISO } from 'date-fns';
 import Papa from 'papaparse';
 import { calculateCartTotals, formatCurrency, safeToDate } from '@/lib/utils';
@@ -1239,5 +1239,24 @@ class DataService {
         return activity.sort((a,b) => b.date.getTime() - a.date.getTime()).slice(0, limit);
     }
 }
+
+type DB = {
+  products: Product[];
+  customers: Customer[];
+  sales: Sale[];
+  payments: Payment[];
+  stockIntakes: StockIntake[];
+  returns: ProductReturn[];
+  carts: Cart[];
+  drafts: Draft[];
+  companyProfile: CompanyProfile[];
+  expenses: Expense[];
+  settings: Setting[];
+  inventoryLogs: InventoryLog[];
+  suppliers: Supplier[];
+  clients_pain: BreadClient[];
+  commandes_pain: BreadOrder[];
+};
+
 
 export const dataService = new DataService();

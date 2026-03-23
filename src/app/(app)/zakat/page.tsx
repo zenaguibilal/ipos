@@ -24,18 +24,14 @@ export default function ZakatPage() {
     
     const isLoading = zakatData === undefined || companyProfile === undefined;
 
-    const nisabAmount = useMemo(() => {
-        const goldPrice = companyProfile?.goldPricePerGram || 0;
-        return goldPrice * NISAB_GOLD_GRAMS;
-    }, [companyProfile]);
+    const goldPrice = companyProfile?.goldPricePerGram || 0;
+    const nisabAmount = goldPrice * NISAB_GOLD_GRAMS;
 
-    const zakatBase = useMemo(() => {
-        const inventory = zakatData?.inventoryValue || 0;
-        const receivables = zakatData?.totalReceivables || 0;
-        const cash = parseFloat(cashOnHand) || 0;
-        const liabilities = parseFloat(debts) || 0;
-        return inventory + receivables + cash - liabilities;
-    }, [zakatData, cashOnHand, debts]);
+    const inventory = zakatData?.inventoryValue || 0;
+    const receivables = zakatData?.totalReceivables || 0;
+    const cash = parseFloat(cashOnHand) || 0;
+    const liabilities = parseFloat(debts) || 0;
+    const zakatBase = inventory + receivables + cash - liabilities;
     
     const isZakatDue = zakatBase >= nisabAmount;
     const zakatAmount = isZakatDue ? zakatBase * ZAKAT_RATE : 0;

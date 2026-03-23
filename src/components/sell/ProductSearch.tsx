@@ -88,12 +88,16 @@ export const ProductSearch = forwardRef<{focus: () => void}, ProductSearchProps>
 
     const handleBarcodeScanned = async (scannedBarcode: string) => {
         if (!scannedBarcode.trim()) return;
-        const product = await dataService.getProductByBarcode(scannedBarcode.trim());
-        if (product) {
-            onProductSelect(product, 1);
-            setQuery(''); // Clear query after successful scan
-        } else {
-            toast.error("Produit non trouvé pour ce code-barres.");
+        try {
+            const product = await dataService.getProductByBarcode(scannedBarcode.trim());
+            if (product) {
+                onProductSelect(product, 1);
+                setQuery(''); // Clear query after successful scan
+            } else {
+                toast.error("Produit non trouvé pour ce code-barres.");
+            }
+        } catch (error) {
+            toast.error("Erreur lors de la recherche du produit.");
         }
     };
     
