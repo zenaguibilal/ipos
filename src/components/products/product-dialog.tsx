@@ -124,9 +124,9 @@ export function ProductDialog({ isOpen, onOpenChange, product, categories, suppl
                 toast.success(`Produit ${name} ajouté.`);
             }
             onOpenChange(false);
-        } catch (err) {
+        } catch (err: any) {
             setError("Une erreur est survenue.");
-            toast.error("Échec de l'opération.");
+            toast.error("Échec de l'opération.", { description: err.message });
         } finally {
             setIsLoading(false);
         }

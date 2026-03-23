@@ -2,7 +2,7 @@
 'use client';
 
 import { dataService } from '@/services/data-service';
-import type { CompanyProfile, DB } from '@/lib/types';
+import type { DB } from '@/lib/types';
 import { getDb } from '@/lib/database';
 
 const SYNC_QUEUE_KEY = 'ipos_sync_queue';
