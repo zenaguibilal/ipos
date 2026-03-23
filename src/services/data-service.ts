@@ -6,10 +6,11 @@ import { getDb } from '@/lib/database';
 import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, InventoryLog, StockIntakeItem, ZakatData, CostingItem, Draft, Supplier, ImportAnalysis, BreadClient, BreadOrder, BreadOrderWithClient, ProductImportAnalysis, GlobalActivityItem, DashboardData, TopCustomer, DB } from '@/lib/types';
 import { subDays, endOfDay, startOfDay } from 'date-fns';
 import Papa from 'papaparse';
-import { formatCurrency, safeToDate, calculateCartTotals } from '@/lib/utils';
+import { formatCurrency, safeToDate } from '@/lib/utils';
 import { BREAD_WEEK_DAYS } from '@/lib/constants';
 import { sheetsService } from './googleSheets';
 import { toast } from 'sonner';
+import { calculateCartTotals } from '@/lib/utils';
 
 class DataService {
   get db() {
@@ -814,8 +815,9 @@ class DataService {
             
             if (sale.customerId) {
                 await this.db.customers.where({id: sale.customerId}).modify(c => {
-                    c.outstandingBalance -= sale.remainingBalance;
-                    c.totalSpent -= sale.total;
+                    c.outstandingBalance = Math.max(0, c.outstandingBalance - sale.remainingBalance);
+                    c.totalSpent = Math.max(0, c.totalSpent - sale.total);
+                    c.lastActivityDate = new Date();
                 });
             }
 
@@ -1270,6 +1272,7 @@ export const dataService = new DataService();
     
 
     
+
 
 
 
