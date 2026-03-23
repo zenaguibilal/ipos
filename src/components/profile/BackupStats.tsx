@@ -32,8 +32,10 @@ export function BackupStats({ backupData, onNext }: BackupStatsProps) {
       const profile = backupData.companyProfile?.[0];
       if (profile && profile.lastSyncDate) return profile.lastSyncDate;
       const sales = backupData.sales;
-      if (sales && sales.length > 0) return sales[0].createdAt?.toString();
-      return 'Date Inconnue';
+      if (sales && sales.length > 0 && sales[0].createdAt) {
+          return sales[0].createdAt.toString();
+      }
+      return null;
   }
   const backupDate = getBackupDate();
 
@@ -64,7 +66,11 @@ export function BackupStats({ backupData, onNext }: BackupStatsProps) {
           </CardHeader>
           <CardContent>
             <Calendar className="h-8 w-8 mx-auto text-primary mb-2" />
-            <p className="text-xl font-bold">{new Date(backupDate).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric'})}</p>
+            <p className="text-xl font-bold">
+              {backupDate
+                ? new Date(backupDate).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric'})
+                : 'Date Inconnue'}
+            </p>
           </CardContent>
         </Card>
       </div>
