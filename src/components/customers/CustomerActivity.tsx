@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import type { Sale, Payment, ProductReturn, GlobalActivityItem } from '@/lib/types';
+import type { Sale, Payment, ProductReturn } from '@/lib/types';
 import { Timeline, TimelineItem, TimelineConnector, TimelineHeader, TimelineIcon, TimelineTitle, TimelineBody } from '@/components/ui/timeline';
 import { safeToDate, formatCurrency, cn } from '@/lib/utils';
 import { format } from 'date-fns';
