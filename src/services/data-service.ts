@@ -6,7 +6,7 @@ import { getDb } from '@/lib/database';
 import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, InventoryLog, StockIntakeItem, ZakatData, CostingItem, Draft, Supplier, ImportAnalysis, BreadClient, BreadOrder, BreadOrderWithClient, ProductImportAnalysis, GlobalActivityItem, DashboardData, TopCustomer, DB } from '@/lib/types';
 import { subDays, endOfDay, startOfDay } from 'date-fns';
 import Papa from 'papaparse';
-import { formatCurrency, safeToDate } from '@/lib/utils';
+import { formatCurrency, safeToDate, calculateCartTotals } from '@/lib/utils';
 import { BREAD_WEEK_DAYS } from '@/lib/constants';
 import { sheetsService } from './googleSheets';
 
@@ -40,11 +40,11 @@ class DataService {
     return profiles[0] || null;
   }
   
-  async updateCompanyProfile(profileData: Partial<Omit<CompanyProfile, 'id'>>): Promise<number> {
+  async updateCompanyProfile(profileData: Partial<Omit<CompanyProfile, 'id'>>): Promise<void> {
     const profile = await this.getCompanyProfile() ?? { id: 1 };
     const updatedProfile = { ...profile, ...profileData, id: 1 as const, updatedAt: new Date() };
     sheetsService.addToQueue('companyProfile', 'upsert', updatedProfile);
-    return this.db.companyProfile.put(updatedProfile);
+    await this.db.companyProfile.put(updatedProfile);
   }
   
   // Cart
@@ -799,7 +799,7 @@ class DataService {
 
             for (const item of sale.items) {
                 if (typeof item.id === 'number') {
-                    await this.db.products.where({id: item.id}).modify(p => { p.quantity += item.quantity });
+                    await this.db.products.where({id: item.id}).modify(p => { p.quantity += item.quantity; });
                     const updatedProduct = await this.db.products.get(item.id);
                     await this.db.inventoryLogs.add({ productId: item.id, change: item.quantity, newQuantity: updatedProduct!.quantity, reason: 'cancellation', relatedId: `cancel-sale-${sale.id}`, createdAt: new Date() });
                 }
@@ -1023,7 +1023,7 @@ class DataService {
 
             for (const item of pr.items) {
                 if (item.productId && item.wasRestocked) {
-                    await this.db.products.where({id: item.productId}).modify(p => { p.quantity -= item.quantity });
+                    await this.db.products.where({id: item.productId}).modify(p => { p.quantity -= item.quantity; });
                     const updatedProduct = await this.db.products.get(item.productId);
                     await this.db.inventoryLogs.add({ productId: item.productId, change: -item.quantity, newQuantity: updatedProduct!.quantity, reason: 'cancellation', relatedId: `cancel-return-${returnId}`, createdAt: new Date() });
                 }
@@ -1259,8 +1259,8 @@ class DataService {
 }
 
 export const dataService = new DataService();
-
     
     
 
     
+
