@@ -6,11 +6,10 @@ import { getDb } from '@/lib/database';
 import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, InventoryLog, StockIntakeItem, ZakatData, CostingItem, Draft, Supplier, ImportAnalysis, BreadClient, BreadOrder, BreadOrderWithClient, ProductImportAnalysis, GlobalActivityItem, DashboardData, TopCustomer, DB } from '@/lib/types';
 import { subDays, endOfDay, startOfDay } from 'date-fns';
 import Papa from 'papaparse';
-import { formatCurrency, safeToDate } from '@/lib/utils';
+import { formatCurrency, safeToDate, calculateCartTotals } from '@/lib/utils';
 import { BREAD_WEEK_DAYS } from '@/lib/constants';
 import { sheetsService } from './googleSheets';
 import { toast } from 'sonner';
-import { calculateCartTotals } from '@/lib/utils';
 
 const LOCAL_ONLY_SETTINGS = ['active_cart_id'];
 
@@ -939,17 +938,21 @@ class DataService {
                     finalQuantity = quantityChange;
                     const newProduct = { ...newProductData, id: productId };
                     sheetsService.addToQueue('products', 'upsert', newProduct);
-                } else if (productId) {
-                    await this.db.products.where({ id: productId }).modify(product => {
-                        product.quantity += quantityChange;
-                        product.purchasePrice = item.purchasePrice;
-                        product.dateMajPrix = new Date();
-                        product.fournisseurId = supplier.id;
-                        finalQuantity = product.quantity;
-                    });
-                    const updatedProduct = await this.db.products.get(productId);
-                    if(updatedProduct) sheetsService.addToQueue('products', 'upsert', updatedProduct);
-                }
+    } else if (productId) {
+        const currentProduct = await this.db.products.get(productId);
+        if (currentProduct) {
+            const newStockQuantity = currentProduct.quantity + quantityChange;
+            await this.db.products.update(productId, {
+                quantity: newStockQuantity,
+                purchasePrice: item.purchasePrice,
+                dateMajPrix: new Date(),
+                fournisseurId: supplier.id,
+            });
+            finalQuantity = newStockQuantity;
+            const updatedProduct = await this.db.products.get(productId);
+            if(updatedProduct) sheetsService.addToQueue('products', 'upsert', updatedProduct);
+        }
+    }
     
                 if (productId) {
                     await this.db.inventoryLogs.add({
@@ -1291,6 +1294,7 @@ export const dataService = new DataService();
     
 
     
+
 
 
 
