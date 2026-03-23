@@ -14,14 +14,22 @@ export function InstallPwa() {
       setInstallPrompt(e as any);
     };
 
+    const handleAppInstalled = () => {
+      setIsAppInstalled(true);
+      setInstallPrompt(null);
+    };
+
+    // Check if the app is already running in standalone mode
     if (window.matchMedia('(display-mode: standalone)').matches) {
       setIsAppInstalled(true);
     }
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', handleAppInstalled);
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
     };
   }, []);
 
@@ -30,12 +38,7 @@ export function InstallPwa() {
       return;
     }
     await installPrompt.prompt();
-    const { outcome } = await installPrompt.userChoice;
-    if (outcome === 'accepted') {
-      setIsAppInstalled(true);
-      setInstallPrompt(null);
-    } else {
-    }
+    // The user choice is handled by the 'appinstalled' event listener
   };
   
   if (isAppInstalled) {
@@ -55,7 +58,7 @@ export function InstallPwa() {
         <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg">
             <div>
               <h4 className="font-semibold">Installation non disponible</h4>
-              <p className="text-sm text-muted-foreground">Votre navigateur ne prend pas en charge l'installation, ou l'application est déjà en cours d'installation. Vous pouvez généralement installer l'application via le bouton dans la barre d'adresse de votre navigateur.</p>
+              <p className="text-sm text-muted-foreground">Votre navigateur ne prend pas en charge l'installation, ou l'application est déjà installée. Vous pouvez généralement installer l'application via le bouton dans la barre d'adresse de votre navigateur.</p>
             </div>
         </div>
     );
