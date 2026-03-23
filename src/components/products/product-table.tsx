@@ -51,7 +51,7 @@ export function ProductTable({ products, onEdit, onDelete, selectedProducts, onT
                 </TableHeader>
                 <TableBody>
                     {products.map(product => {
-                        if (typeof product.id !== 'number') return null;
+                        if (!product.id || typeof product.id !== 'number') return null;
 
                         const placeholder = getPlaceholder(product.category);
                         const imageUrl = product.imageUrl || placeholder.url;
