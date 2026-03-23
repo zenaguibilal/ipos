@@ -10,7 +10,7 @@ import { Receipt } from './Receipt';
 import { dataService } from '@/services/data-service';
 
 interface SaleCompletionScreenProps {
-  sale: Sale & { change?: number };
+  sale: Sale;
   onClose: () => void;
 }
 
