@@ -1,3 +1,4 @@
+
 'use client';
 
 import { getDb } from '@/lib/database';
@@ -34,7 +35,8 @@ class DataService {
 
   // Company Profile
   async getCompanyProfile(): Promise<CompanyProfile | null> {
-    return (await this.getById<CompanyProfile>('companyProfile', 1)) || null;
+    const profiles = await this.getAll<CompanyProfile>('companyProfile');
+    return profiles[0] || null;
   }
   
   async updateCompanyProfile(profileData: Partial<Omit<CompanyProfile, 'id'>>): Promise<number> {
@@ -79,7 +81,10 @@ class DataService {
             existingItem.cartQuantity = newCartQuantity;
             existingItem.flash = true;
         } else {
-            cart.items.push({ ...product, cartQuantity: newCartQuantity, flash: true });
+            if (!product.id) {
+                throw new Error("Impossible d'ajouter un produit sans ID au panier.");
+            }
+            cart.items.push({ ...product, id: product.id, cartQuantity: newCartQuantity, flash: true });
         }
         await this.db.carts.put(cart);
     });
