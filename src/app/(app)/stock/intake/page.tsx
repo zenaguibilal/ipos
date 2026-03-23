@@ -136,7 +136,6 @@ export default function NewStockIntakePage() {
             router.push('/stock');
         } catch (error: any) {
             toast.error("Erreur lors de l'enregistrement", { description: error.message });
-            console.error(error);
         } finally {
             setIsSaving(false);
         }

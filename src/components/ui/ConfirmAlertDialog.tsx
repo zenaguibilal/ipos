@@ -37,7 +37,6 @@ export function ConfirmAlertDialog({
             await onConfirm();
             onOpenChange(false);
         } catch (error: any) {
-            console.error("Confirmation action failed:", error);
             toast.error(error.message || "L'opération a échoué.");
         } finally {
             setIsMutating(false);
