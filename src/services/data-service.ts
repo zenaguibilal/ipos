@@ -39,7 +39,7 @@ class DataService {
   
   async updateCompanyProfile(profileData: Partial<Omit<CompanyProfile, 'id'>>): Promise<number> {
     const profile = await this.getCompanyProfile() ?? { id: 1 };
-    const updatedProfile = { ...profile, ...profileData, id: 1, updatedAt: new Date() };
+    const updatedProfile = { ...profile, ...profileData, id: 1 as const, updatedAt: new Date() };
     sheetsService.addToQueue('companyProfile', 'upsert', updatedProfile);
     return this.db.companyProfile.put(updatedProfile);
   }
@@ -1161,71 +1161,66 @@ class DataService {
     
     async getDashboardData(from: Date, to: Date): Promise<DashboardData | undefined> {
         if (!from || !to) return undefined;
-        try {
-            const sales = await this.db.sales.where('createdAt').between(from, to, true, true).toArray();
-            const expenses = await this.db.expenses.where('expenseDate').between(from, to, true, true).toArray();
-            const allProducts = await this.db.products.toArray();
+        const sales = await this.db.sales.where('createdAt').between(from, to, true, true).toArray();
+        const expenses = await this.db.expenses.where('expenseDate').between(from, to, true, true).toArray();
+        const allProducts = await this.db.products.toArray();
 
-            const totalRevenue = sales.reduce((sum, s) => sum + (s.total || 0), 0);
-            const totalExpensesValue = expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
-            
-            const salesProfit = sales.reduce((sum, s) => {
-                const saleProfit = (s.items || []).reduce((itemSum, item) => 
-                    itemSum + ((item.price || 0) - (item.purchasePrice || 0)) * (item.quantity || 0), 0);
-                return sum + saleProfit - (s.discountAmount || 0);
-            }, 0);
-            const totalProfit = salesProfit - totalExpensesValue;
-            const inventoryValue = allProducts.reduce((sum, p) => sum + ((p.purchasePrice || 0) * (p.quantity || 0)), 0);
+        const totalRevenue = sales.reduce((sum, s) => sum + (s.total || 0), 0);
+        const totalExpensesValue = expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+        
+        const salesProfit = sales.reduce((sum, s) => {
+            const saleProfit = (s.items || []).reduce((itemSum, item) => 
+                itemSum + ((item.price || 0) - (item.purchasePrice || 0)) * (item.quantity || 0), 0);
+            return sum + saleProfit - (s.discountAmount || 0);
+        }, 0);
+        const totalProfit = salesProfit - totalExpensesValue;
+        const inventoryValue = allProducts.reduce((sum, p) => sum + ((p.purchasePrice || 0) * (p.quantity || 0)), 0);
 
-            const productSales: { [key: number]: { revenue: number, profit: number, units: number } } = {};
-            for (const sale of sales) {
-                for (const item of sale.items || []) {
-                    if (typeof item.id !== 'number') continue;
-                    if (!productSales[item.id]) productSales[item.id] = { revenue: 0, profit: 0, units: 0 };
-                    productSales[item.id].revenue += (item.price || 0) * (item.quantity || 0);
-                    productSales[item.id].profit += ((item.price || 0) - (item.purchasePrice || 0)) * (item.quantity || 0);
-                    productSales[item.id].units += item.quantity || 0;
-                }
+        const productSales: { [key: number]: { revenue: number, profit: number, units: number } } = {};
+        for (const sale of sales) {
+            for (const item of sale.items || []) {
+                if (typeof item.id !== 'number') continue;
+                if (!productSales[item.id]) productSales[item.id] = { revenue: 0, profit: 0, units: 0 };
+                productSales[item.id].revenue += (item.price || 0) * (item.quantity || 0);
+                productSales[item.id].profit += ((item.price || 0) - (item.purchasePrice || 0)) * (item.quantity || 0);
+                productSales[item.id].units += item.quantity || 0;
             }
-            
-            const topProducts = Object.entries(productSales).map(([id, data]) => ({
-                id: Number(id),
-                name: allProducts.find(p => p.id === Number(id))?.name || 'Produit Inconnu',
-                totalRevenue: data.revenue,
-                totalProfit: data.profit,
-                unitsSold: data.units,
-            })).sort((a, b) => b.totalRevenue - a.totalRevenue).slice(0, 5);
-
-            const allCustomers = await this.db.customers.toArray();
-            const customerMap = new Map(allCustomers.map(c => [c.id, c]));
-            const customerSales: { [key: number]: number } = {};
-            for (const sale of sales) {
-                if (sale.customerId) {
-                    if (!customerSales[sale.customerId]) customerSales[sale.customerId] = 0;
-                    customerSales[sale.customerId] += sale.total;
-                }
-            }
-            
-            const topCustomers: TopCustomer[] = Object.entries(customerSales).map(([customerId, totalSpent]) => {
-                const customer = customerMap.get(Number(customerId));
-                return {
-                    id: Number(customerId),
-                    name: customer ? `${customer.firstName} ${customer.lastName}` : 'Client Inconnu',
-                    totalSpent,
-                };
-            }).sort((a, b) => b.totalSpent - a.totalSpent).slice(0, 5);
-            
-            const lowStockProducts = allProducts.filter(p => p.quantity <= p.minStockLevel).sort((a,b) => a.quantity - b.quantity).slice(0, 10);
-            const recentActivity = await this.getGlobalActivity(10);
-
-            return {
-                stats: { totalRevenue, totalProfit, salesCount: sales.length, inventoryValue, totalExpenses: totalExpensesValue },
-                sales, expenses, topProducts, topCustomers, lowStockProducts, recentActivity,
-            };
-        } catch (err) {
-            toast.error("Impossible de charger les données du tableau de bord.");
-            return undefined;
         }
+        
+        const topProducts = Object.entries(productSales).map(([id, data]) => ({
+            id: Number(id),
+            name: allProducts.find(p => p.id === Number(id))?.name || 'Produit Inconnu',
+            totalRevenue: data.revenue,
+            totalProfit: data.profit,
+            unitsSold: data.units,
+        })).sort((a, b) => b.totalRevenue - a.totalRevenue).slice(0, 5);
+
+        const allCustomers = await this.db.customers.toArray();
+        const customerMap = new Map(allCustomers.map(c => [c.id, c]));
+        const customerSales: { [key: number]: number } = {};
+        for (const sale of sales) {
+            if (sale.customerId) {
+                if (!customerSales[sale.customerId]) customerSales[sale.customerId] = 0;
+                customerSales[sale.customerId] += sale.total;
+            }
+        }
+        
+        const topCustomers: TopCustomer[] = Object.entries(customerSales).map(([customerId, totalSpent]) => {
+            const customer = customerMap.get(Number(customerId));
+            return {
+                id: Number(customerId),
+                name: customer ? `${customer.firstName} ${customer.lastName}` : 'Client Inconnu',
+                totalSpent,
+            };
+        }).sort((a, b) => b.totalSpent - a.totalSpent).slice(0, 5);
+        
+        const lowStockProducts = allProducts.filter(p => p.quantity <= p.minStockLevel).sort((a,b) => a.quantity - b.quantity).slice(0, 10);
+        const recentActivity = await this.getGlobalActivity(10);
+
+        return {
+            stats: { totalRevenue, totalProfit, salesCount: sales.length, inventoryValue, totalExpenses: totalExpensesValue },
+            sales, expenses, topProducts, topCustomers, lowStockProducts, recentActivity,
+        };
     }
     
     async getGlobalActivity(limit: number): Promise<GlobalActivityItem[]> {
