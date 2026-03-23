@@ -121,13 +121,13 @@ class DataService {
   }
 
   async removeCartItem(cartId: string, itemId: string | number): Promise<void> {
-    return this.db.carts.where({id: cartId}).modify(cart => {
+    await this.db.carts.where({id: cartId}).modify(cart => {
         cart.items = cart.items.filter(item => item.id !== itemId);
     });
   }
   
   async clearCart(cartId: string): Promise<void> {
-     return this.db.carts.where({id: cartId}).modify(cart => {
+     await this.db.carts.where({id: cartId}).modify(cart => {
         cart.items = [];
         cart.customerId = null;
         cart.customerName = '';
@@ -136,14 +136,14 @@ class DataService {
   }
 
   async setCartCustomer(cartId: string, customer: Customer | null): Promise<void> {
-    return this.db.carts.where({id: cartId}).modify(cart => {
+    await this.db.carts.where({id: cartId}).modify(cart => {
         cart.customerId = customer ? customer.id! : null;
         cart.customerName = customer ? `${customer.firstName} ${customer.lastName}` : '';
     });
   }
 
   async setCartDiscount(cartId: string, discount: { type: 'fixed' | 'percentage'; value: number }): Promise<void> {
-      return this.db.carts.where({id: cartId}).modify(cart => {
+      await this.db.carts.where({id: cartId}).modify(cart => {
         let value = Math.max(0, discount.value || 0);
         const subtotal = cart.items.reduce((acc, item) => acc + item.price * item.cartQuantity, 0);
 
@@ -800,14 +800,7 @@ class DataService {
                 if (typeof item.id === 'number') {
                     await this.db.products.where({id: item.id}).modify(p => { p.quantity += item.quantity });
                     const updatedProduct = await this.db.products.get(item.id);
-                    await this.db.inventoryLogs.add({ 
-                        productId: item.id, 
-                        change: item.quantity, 
-                        newQuantity: updatedProduct!.quantity, 
-                        reason: 'cancellation', 
-                        relatedId: `cancel-sale-${sale.id}`, 
-                        createdAt: new Date() 
-                    });
+                    await this.db.inventoryLogs.add({ productId: item.id, change: item.quantity, newQuantity: updatedProduct!.quantity, reason: 'cancellation', relatedId: `cancel-sale-${sale.id}`, createdAt: new Date() });
                 }
             }
             
@@ -1116,7 +1109,10 @@ class DataService {
         const data: Partial<DB> = {};
         const tableNames = this.db.tables.map(t => t.name as keyof DB);
         for (const tableName of tableNames) {
-            data[tableName] = await this.db.table(tableName).toArray();
+            const tableData = await this.db.table(tableName).toArray();
+            if (tableData.length > 0) {
+              data[tableName as keyof DB] = tableData as any;
+            }
         }
         const exportFile = {
             meta: {
@@ -1264,4 +1260,6 @@ class DataService {
 export const dataService = new DataService();
 
     
+    
+
     
