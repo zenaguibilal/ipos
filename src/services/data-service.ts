@@ -9,6 +9,7 @@ import Papa from 'papaparse';
 import { formatCurrency, safeToDate, calculateCartTotals } from '@/lib/utils';
 import { BREAD_WEEK_DAYS } from '@/lib/constants';
 import { sheetsService } from './googleSheets';
+import { toast } from 'sonner';
 
 class DataService {
   get db() {
@@ -57,7 +58,7 @@ class DataService {
   }
 
   async deleteCart(id: string): Promise<void> {
-    return this.db.carts.delete(id);
+    await this.db.carts.delete(id);
   }
 
   async addProductToCart(cartId: string, product: Product, quantity: number): Promise<void> {
@@ -1263,4 +1264,5 @@ export const dataService = new DataService();
     
 
     
+
 
