@@ -636,12 +636,12 @@ class DataService {
 
     async createDayOrders(date: string): Promise<void> {
         const dateParts = date.split('-');
-        const localDate = new Date(
-            parseInt(dateParts[0]),
-            parseInt(dateParts[1]) - 1,
-            parseInt(dateParts[2])
-        );
-        const dayOfWeek = BREAD_WEEK_DAYS[localDate.getDay()];
+    const localDate = new Date(
+        parseInt(dateParts[0]),
+        parseInt(dateParts[1]) - 1,
+        parseInt(dateParts[2])
+    );
+    const dayOfWeek = BREAD_WEEK_DAYS[localDate.getDay()];
         const activeClients = await this.db.clients_pain.filter(c => c.actif === true).toArray();
         const existingOrders = await this.db.commandes_pain.where({date}).toArray();
         const existingClientIds = new Set(existingOrders.map(o => o.client_pain_id));
@@ -817,12 +817,12 @@ class DataService {
             }
             
             if (sale.customerId) {
-                await this.db.customers.where({id: sale.customerId}).modify(c => {
-                    c.outstandingBalance = Math.max(0, c.outstandingBalance - sale.remainingBalance);
-                    c.totalSpent = Math.max(0, c.totalSpent - sale.total);
-                    c.lastActivityDate = new Date();
-                });
-            }
+        await this.db.customers.where({id: sale.customerId}).modify(c => {
+            c.outstandingBalance = Math.max(0, c.outstandingBalance - sale.remainingBalance);
+            c.totalSpent = Math.max(0, c.totalSpent - sale.total);
+            c.lastActivityDate = new Date();
+        });
+    }
 
             await this.db.sales.delete(saleId);
             sheetsService.addToQueue('sales', 'delete', { id: saleId });
@@ -1177,9 +1177,13 @@ class DataService {
     }
     
     async resetDatabase(): Promise<void> {
-        const tables = this.db.tables.map(t => t.name as keyof DB);
-        await Promise.all(tables.map(t => this.db.table(t).clear()));
-    }
+      const tables = this.db.tables;
+      await this.db.transaction('rw', tables, async () => {
+          for (const table of tables) {
+              await table.clear();
+          }
+      });
+  }
     
     async getDashboardData(from: Date, to: Date): Promise<DashboardData | undefined> {
         if (!from || !to) return undefined;
@@ -1275,6 +1279,7 @@ export const dataService = new DataService();
     
 
     
+
 
 
 
