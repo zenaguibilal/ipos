@@ -2,7 +2,7 @@
 'use client';
 
 import { getDb } from '@/lib/database';
-import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, InventoryLog, StockIntakeItem, ZakatData, CostingItem, Draft, Supplier, ImportAnalysis, BreadClient, BreadOrder, BreadOrderWithClient, ProductImportAnalysis, GlobalActivityItem, DashboardData, TopCustomer } from '@/lib/types';
+import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, InventoryLog, StockIntakeItem, ZakatData, CostingItem, Draft, Supplier, ImportAnalysis, BreadClient, BreadOrder, BreadOrderWithClient, ProductImportAnalysis, GlobalActivityItem, DashboardData, TopCustomer, DB } from '@/lib/types';
 import { subDays, endOfDay, startOfDay } from 'date-fns';
 import Papa from 'papaparse';
 import { formatCurrency, safeToDate } from '@/lib/utils';
@@ -126,7 +126,7 @@ class DataService {
   }
   
   async clearCart(cartId: string): Promise<void> {
-     return this.db.carts.where({id: cartId}).modify(cart => {
+     await this.db.carts.where({id: cartId}).modify(cart => {
         cart.items = [];
         cart.customerId = null;
         cart.customerName = '';
@@ -135,14 +135,14 @@ class DataService {
   }
 
   async setCartCustomer(cartId: string, customer: Customer | null): Promise<void> {
-    return this.db.carts.where({id: cartId}).modify(cart => {
+    await this.db.carts.where({id: cartId}).modify(cart => {
         cart.customerId = customer ? customer.id! : null;
         cart.customerName = customer ? `${customer.firstName} ${customer.lastName}` : '';
     });
   }
 
   async setCartDiscount(cartId: string, discount: { type: 'fixed' | 'percentage'; value: number }): Promise<void> {
-      return this.db.carts.where({id: cartId}).modify(cart => {
+      await this.db.carts.where({id: cartId}).modify(cart => {
         let value = Math.max(0, discount.value || 0);
         const subtotal = cart.items.reduce((acc, item) => acc + item.price * item.cartQuantity, 0);
 
@@ -157,7 +157,7 @@ class DataService {
   }
 
   async removeFlashFromCartItems(cartId: string): Promise<void> {
-    return this.db.carts.where({id: cartId}).modify(cart => {
+    await this.db.carts.where({id: cartId}).modify(cart => {
         cart.items.forEach(i => { if(i.flash) i.flash = false });
     });
   }
@@ -179,7 +179,7 @@ class DataService {
         if(existing) throw new Error(`Le code-barres ${existing.barcodes![0]} est déjà utilisé pour le produit "${existing.name}".`);
       }
 
-      const newProductId = await this.db.products.add(productData);
+      const newProductId = await this.db.products.add(productData as Product);
       await this.db.inventoryLogs.add({
             productId: newProductId,
             change: productData.quantity,
@@ -439,7 +439,7 @@ class DataService {
         totalSpent: 0, 
         outstandingBalance: 0,
       };
-      const id = await this.db.customers.add(data);
+      const id = await this.db.customers.add(data as Customer);
       const newCustomer = {...data, id };
       sheetsService.addToQueue('customers', 'upsert', newCustomer);
       return newCustomer;
@@ -574,7 +574,7 @@ class DataService {
     }
 
     async addBreadClient(client: Omit<BreadClient, 'id'>): Promise<BreadClient> {
-        const id = await this.db.clients_pain.add(client);
+        const id = await this.db.clients_pain.add(client as BreadClient);
         const newClient = {...client, id};
         sheetsService.addToQueue('clients_pain', 'upsert', newClient);
         return newClient;
@@ -603,7 +603,7 @@ class DataService {
         if(existing) throw new Error("Une commande pour ce client existe déjà à cette date.");
         
         const orderData: Omit<BreadOrder, 'id'> = { client_pain_id: clientId, date, quantite: quantity, est_paye: false, est_livre: false, vente_id: null };
-        const id = await this.db.commandes_pain.add(orderData);
+        const id = await this.db.commandes_pain.add(orderData as BreadOrder);
         const newOrder = {...orderData, id};
         sheetsService.addToQueue('commandes_pain', 'upsert', newOrder);
         return newOrder;
@@ -647,7 +647,7 @@ class DataService {
           }
         }
         if(ordersToCreate.length > 0) {
-            await this.db.commandes_pain.bulkAdd(ordersToCreate);
+            await this.db.commandes_pain.bulkAdd(ordersToCreate as BreadOrder[]);
             ordersToCreate.forEach(o => sheetsService.addToQueue('commandes_pain', 'upsert', o));
         }
     }
@@ -865,7 +865,7 @@ class DataService {
     }
 
     async loadDraftContentToCart(cartId: string, draftContent: Omit<Draft, 'id' | 'createdAt' | 'updatedAt'>): Promise<void> {
-        return this.db.carts.where({id: cartId}).modify(cart => {
+        await this.db.carts.where({id: cartId}).modify(cart => {
             cart.items = draftContent.items;
             cart.customerId = draftContent.customerId;
             cart.customerName = draftContent.customerName;
@@ -909,7 +909,7 @@ class DataService {
                         minStockLevel: 10, barcodes: item.barcodes, unite: 'Pièce' as const,
                         fournisseurId: supplier.id, dateMajPrix: new Date(),
                     };
-                    productId = await this.db.products.add(newProductData);
+                    productId = await this.db.products.add(newProductData as Product);
                     finalQuantity = quantityChange;
                     const newProduct = { ...newProductData, id: productId };
                     sheetsService.addToQueue('products', 'upsert', newProduct);
@@ -1166,66 +1166,71 @@ class DataService {
     
     async getDashboardData(from: Date, to: Date): Promise<DashboardData | undefined> {
         if (!from || !to) return undefined;
-        const sales = await this.db.sales.where('createdAt').between(from, to, true, true).toArray();
-        const expenses = await this.db.expenses.where('expenseDate').between(from, to, true, true).toArray();
-        const allProducts = await this.db.products.toArray();
+        try {
+            const sales = await this.db.sales.where('createdAt').between(from, to, true, true).toArray();
+            const expenses = await this.db.expenses.where('expenseDate').between(from, to, true, true).toArray();
+            const allProducts = await this.db.products.toArray();
 
-        const totalRevenue = sales.reduce((sum, s) => sum + (s.total || 0), 0);
-        const totalExpensesValue = expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
-        
-        const salesProfit = sales.reduce((sum, s) => {
-            const saleProfit = (s.items || []).reduce((itemSum, item) => 
-                itemSum + ((item.price || 0) - (item.purchasePrice || 0)) * (item.quantity || 0), 0);
-            return sum + saleProfit - (s.discountAmount || 0);
-        }, 0);
-        const totalProfit = salesProfit - totalExpensesValue;
-        const inventoryValue = allProducts.reduce((sum, p) => sum + ((p.purchasePrice || 0) * (p.quantity || 0)), 0);
+            const totalRevenue = sales.reduce((sum, s) => sum + (s.total || 0), 0);
+            const totalExpensesValue = expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+            
+            const salesProfit = sales.reduce((sum, s) => {
+                const saleProfit = (s.items || []).reduce((itemSum, item) => 
+                    itemSum + ((item.price || 0) - (item.purchasePrice || 0)) * (item.quantity || 0), 0);
+                return sum + saleProfit - (s.discountAmount || 0);
+            }, 0);
+            const totalProfit = salesProfit - totalExpensesValue;
+            const inventoryValue = allProducts.reduce((sum, p) => sum + ((p.purchasePrice || 0) * (p.quantity || 0)), 0);
 
-        const productSales: { [key: number]: { revenue: number, profit: number, units: number } } = {};
-        for (const sale of sales) {
-            for (const item of sale.items || []) {
-                if (typeof item.id !== 'number') continue;
-                if (!productSales[item.id]) productSales[item.id] = { revenue: 0, profit: 0, units: 0 };
-                productSales[item.id].revenue += (item.price || 0) * (item.quantity || 0);
-                productSales[item.id].profit += ((item.price || 0) - (item.purchasePrice || 0)) * (item.quantity || 0);
-                productSales[item.id].units += item.quantity || 0;
+            const productSales: { [key: number]: { revenue: number, profit: number, units: number } } = {};
+            for (const sale of sales) {
+                for (const item of sale.items || []) {
+                    if (typeof item.id !== 'number') continue;
+                    if (!productSales[item.id]) productSales[item.id] = { revenue: 0, profit: 0, units: 0 };
+                    productSales[item.id].revenue += (item.price || 0) * (item.quantity || 0);
+                    productSales[item.id].profit += ((item.price || 0) - (item.purchasePrice || 0)) * (item.quantity || 0);
+                    productSales[item.id].units += item.quantity || 0;
+                }
             }
-        }
-        
-        const topProducts = Object.entries(productSales).map(([id, data]) => ({
-            id: Number(id),
-            name: allProducts.find(p => p.id === Number(id))?.name || 'Produit Inconnu',
-            totalRevenue: data.revenue,
-            totalProfit: data.profit,
-            unitsSold: data.units,
-        })).sort((a, b) => b.totalRevenue - a.totalRevenue).slice(0, 5);
+            
+            const topProducts = Object.entries(productSales).map(([id, data]) => ({
+                id: Number(id),
+                name: allProducts.find(p => p.id === Number(id))?.name || 'Produit Inconnu',
+                totalRevenue: data.revenue,
+                totalProfit: data.profit,
+                unitsSold: data.units,
+            })).sort((a, b) => b.totalRevenue - a.totalRevenue).slice(0, 5);
 
-        const allCustomers = await this.db.customers.toArray();
-        const customerMap = new Map(allCustomers.map(c => [c.id, c]));
-        const customerSales: { [key: number]: number } = {};
-        for (const sale of sales) {
-            if (sale.customerId) {
-                if (!customerSales[sale.customerId]) customerSales[sale.customerId] = 0;
-                customerSales[sale.customerId] += sale.total;
+            const allCustomers = await this.db.customers.toArray();
+            const customerMap = new Map(allCustomers.map(c => [c.id, c]));
+            const customerSales: { [key: number]: number } = {};
+            for (const sale of sales) {
+                if (sale.customerId) {
+                    if (!customerSales[sale.customerId]) customerSales[sale.customerId] = 0;
+                    customerSales[sale.customerId] += sale.total;
+                }
             }
-        }
-        
-        const topCustomers: TopCustomer[] = Object.entries(customerSales).map(([customerId, totalSpent]) => {
-            const customer = customerMap.get(Number(customerId));
+            
+            const topCustomers: TopCustomer[] = Object.entries(customerSales).map(([customerId, totalSpent]) => {
+                const customer = customerMap.get(Number(customerId));
+                return {
+                    id: Number(customerId),
+                    name: customer ? `${customer.firstName} ${customer.lastName}` : 'Client Inconnu',
+                    totalSpent,
+                };
+            }).sort((a, b) => b.totalSpent - a.totalSpent).slice(0, 5);
+            
+            const lowStockProducts = allProducts.filter(p => p.quantity <= p.minStockLevel).sort((a,b) => a.quantity - b.quantity).slice(0, 10);
+            const recentActivity = await this.getGlobalActivity(10);
+
             return {
-                id: Number(customerId),
-                name: customer ? `${customer.firstName} ${customer.lastName}` : 'Client Inconnu',
-                totalSpent,
+                stats: { totalRevenue, totalProfit, salesCount: sales.length, inventoryValue, totalExpenses: totalExpensesValue },
+                sales, expenses, topProducts, topCustomers, lowStockProducts, recentActivity,
             };
-        }).sort((a, b) => b.totalSpent - a.totalSpent).slice(0, 5);
-        
-        const lowStockProducts = allProducts.filter(p => p.quantity <= p.minStockLevel).sort((a,b) => a.quantity - b.quantity).slice(0, 10);
-        const recentActivity = await this.getGlobalActivity(10);
-
-        return {
-            stats: { totalRevenue, totalProfit, salesCount: sales.length, inventoryValue, totalExpenses: totalExpensesValue },
-            sales, expenses, topProducts, topCustomers, lowStockProducts, recentActivity,
-        };
+        } catch(e: any) {
+            toast.error("Impossible de charger les données du tableau de bord.", { description: e.message });
+            return undefined;
+        }
     }
     
     async getGlobalActivity(limit: number): Promise<GlobalActivityItem[]> {
@@ -1247,25 +1252,6 @@ class DataService {
         return activity.sort((a,b) => b.date.getTime() - a.date.getTime()).slice(0, limit);
     }
 }
-
-type DB = {
-  products: Product[];
-  customers: Customer[];
-  sales: Sale[];
-  payments: Payment[];
-  stockIntakes: StockIntake[];
-  returns: ProductReturn[];
-  carts: Cart[];
-  drafts: Draft[];
-  companyProfile: CompanyProfile[];
-  expenses: Expense[];
-  settings: Setting[];
-  inventoryLogs: InventoryLog[];
-  suppliers: Supplier[];
-  clients_pain: BreadClient[];
-  commandes_pain: BreadOrder[];
-};
-
 
 export const dataService = new DataService();
 
