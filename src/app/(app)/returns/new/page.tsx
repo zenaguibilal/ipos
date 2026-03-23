@@ -59,19 +59,20 @@ export default function NewReturnPage() {
         }
     };
 
-    const handleItemChange = (productId: number | string | null, field: 'returnQuantity' | 'wasRestocked', value: any) => {
-        setReturnItems(items => items.map(item => {
-            const key = item.productId ?? item.productName;
-            const changedKey = productId ?? (returnItems.find(i => i.productName === value)?.productName); // A bit tricky for productName based matching
-            if (key === changedKey) {
-                if(field === 'returnQuantity') {
-                    const newQty = Math.max(0, Math.min(item.originalQuantity, Number(value)));
-                    return { ...item, [field]: newQty };
-                }
-                return { ...item, [field]: value };
+    const handleItemChange = (index: number, field: 'returnQuantity' | 'wasRestocked', value: any) => {
+        setReturnItems(items => {
+            const newItems = [...items];
+            const item = newItems[index];
+            if (!item) return items;
+
+            if (field === 'returnQuantity') {
+                const newQty = Math.max(0, Math.min(item.originalQuantity, Number(value)));
+                newItems[index] = { ...item, returnQuantity: newQty };
+            } else {
+                newItems[index] = { ...item, wasRestocked: value };
             }
-            return item;
-        }));
+            return newItems;
+        });
     };
     
     const totalReturnValue = returnItems.reduce((acc, item) => acc + (item.price * item.returnQuantity), 0);
@@ -183,8 +184,8 @@ export default function NewReturnPage() {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {returnItems.map(item => (
-                                            <tr key={item.productId || item.productName} className="border-b">
+                                        {returnItems.map((item, index) => (
+                                            <tr key={index} className="border-b">
                                                 <td className="p-2 font-medium">{item.productName}</td>
                                                 <td className="p-2 text-center">{item.originalQuantity}</td>
                                                 <td className="p-2">
@@ -192,7 +193,7 @@ export default function NewReturnPage() {
                                                         type="number" 
                                                         className="text-center" 
                                                         value={item.returnQuantity} 
-                                                        onChange={e => handleItemChange(item.productId, 'returnQuantity', e.target.value)}
+                                                        onChange={e => handleItemChange(index, 'returnQuantity', e.target.value)}
                                                         max={item.originalQuantity}
                                                         min={0}
                                                     />
@@ -201,7 +202,7 @@ export default function NewReturnPage() {
                                                 <td className="p-2 text-center">
                                                     <Switch
                                                         checked={item.wasRestocked}
-                                                        onCheckedChange={value => handleItemChange(item.productId, 'wasRestocked', value)}
+                                                        onCheckedChange={value => handleItemChange(index, 'wasRestocked', value)}
                                                         disabled={item.productId === null}
                                                     />
                                                 </td>

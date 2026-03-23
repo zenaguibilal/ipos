@@ -1,12 +1,10 @@
-
-
 'use client';
 
 import { getDb } from '@/lib/database';
 import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, InventoryLog, StockIntakeItem, ZakatData, CostingItem, Draft, Supplier, ImportAnalysis, BreadClient, BreadOrder, BreadOrderWithClient, ProductImportAnalysis, GlobalActivityItem, DashboardData, TopCustomer } from '@/lib/types';
-import { subDays, endOfDay, startOfDay, parseISO } from 'date-fns';
+import { subDays, endOfDay, startOfDay } from 'date-fns';
 import Papa from 'papaparse';
-import { calculateCartTotals, formatCurrency, safeToDate } from '@/lib/utils';
+import { formatCurrency, safeToDate } from '@/lib/utils';
 import { BREAD_WEEK_DAYS } from '@/lib/constants';
 import { sheetsService } from './googleSheets';
 
@@ -463,15 +461,6 @@ class DataService {
   }
 
   // Import/Export
-  async exportCustomersToCSV(): Promise<string> {
-    const customers = await this.getAll<Customer>('customers');
-    return Papa.unparse(customers.map(c => ({
-        id: c.id, firstName: c.firstName, lastName: c.lastName, phone: c.phone, address: c.address,
-        outstandingBalance: c.outstandingBalance, creditLimit: c.creditLimit, settlementDay: c.settlementDay,
-        lastActivityDate: c.lastActivityDate, createdAt: c.createdAt,
-    })), { header: true });
-  }
-
   async analyzeCustomerImport(data: any[]): Promise<ImportAnalysis> {
         const allCustomers = await this.getAll<Customer>('customers');
         const analysis: ImportAnalysis = {
@@ -1084,6 +1073,21 @@ class DataService {
     }
     
     // Costing
+    async getStockIntakes(params: { query?: string; from?: Date, to?: Date }): Promise<StockIntake[]> {
+        let collection = this.db.stockIntakes.orderBy('createdAt').reverse();
+        if(params.from && params.to) {
+            collection = this.db.stockIntakes.where('createdAt').between(params.from, params.to, true, true).reverse();
+        }
+        if(params.query) {
+            const lowerQuery = params.query.toLowerCase();
+            return collection.filter(s => 
+                (s.supplierName || '').toLowerCase().includes(lowerQuery) ||
+                (s.invoiceNumber || '').toLowerCase().includes(lowerQuery)
+            ).toArray();
+        }
+        return collection.toArray();
+    }
+
     async applyNewPurchasePrices(costingItems: CostingItem[]): Promise<void> {
         return this.db.transaction('rw', this.db.products, async () => {
             for (const item of costingItems) {
