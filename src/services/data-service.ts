@@ -631,7 +631,13 @@ class DataService {
     }
 
     async createDayOrders(date: string): Promise<void> {
-        const dayOfWeek = BREAD_WEEK_DAYS[new Date(date.replace(/-/g, '/')).getUTCDay()];
+        const dateParts = date.split('-');
+        const localDate = new Date(
+            parseInt(dateParts[0]),
+            parseInt(dateParts[1]) - 1,
+            parseInt(dateParts[2])
+        );
+        const dayOfWeek = BREAD_WEEK_DAYS[localDate.getDay()];
         const activeClients = await this.db.clients_pain.filter(c => c.actif === true).toArray();
         const existingOrders = await this.db.commandes_pain.where({date}).toArray();
         const existingClientIds = new Set(existingOrders.map(o => o.client_pain_id));
@@ -1264,5 +1270,6 @@ export const dataService = new DataService();
     
 
     
+
 
 
