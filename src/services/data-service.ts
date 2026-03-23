@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { getDb } from '@/lib/database';
@@ -158,7 +159,7 @@ class DataService {
   }
 
   async removeFlashFromCartItems(cartId: string): Promise<void> {
-    return this.db.carts.where({id: cartId}).modify(cart => {
+    await this.db.carts.where({id: cartId}).modify(cart => {
         cart.items.forEach(i => { if(i.flash) i.flash = false });
     });
   }
