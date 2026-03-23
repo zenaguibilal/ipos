@@ -32,22 +32,25 @@ export default function ExpensesPage() {
     const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
     const { dateRange, setDate, isMounted } = useDateRange(29);
 
-    const { expenses, categories } = useLiveQuery(() => {
-        if (!isMounted) return { expenses: undefined, categories: [] };
+    const data = useLiveQuery(() => {
+        if (!isMounted || !dateRange) return undefined;
         return Promise.all([
             dataService.getExpenses({ 
                 category: selectedCategory === 'all' ? undefined : selectedCategory,
-                from: dateRange?.from,
-                to: dateRange?.to
+                from: dateRange.from,
+                to: dateRange.to
             }),
             dataService.getExpenseCategories()
         ]).then(([expenseData, categoryData]) => ({
             expenses: expenseData,
             categories: categoryData as ExpenseCategory[]
         }));
-    }, [isMounted, selectedCategory, dateRange], { expenses: undefined, categories: [] });
+    }, [isMounted, selectedCategory, dateRange]);
 
-    const isLoading = expenses === undefined;
+    const expenses = data?.expenses;
+    const categories = data?.categories ?? [];
+
+    const isLoading = data === undefined;
 
     const handleEditExpense = (expense: Expense) => {
         setSelectedExpense(expense);
