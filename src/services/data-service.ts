@@ -120,7 +120,7 @@ class DataService {
   }
 
   async removeCartItem(cartId: string, itemId: string | number): Promise<void> {
-    return this.db.carts.where({id: cartId}).modify(cart => {
+    await this.db.carts.where({id: cartId}).modify(cart => {
         cart.items = cart.items.filter(item => item.id !== itemId);
     });
   }
@@ -688,7 +688,7 @@ class DataService {
                     customerName: client?.nom, invoiceNumber, remainingBalance: saleTotal, 
                     paymentStatus: 'unpaid' as const, createdAt: new Date(), updatedAt: new Date()
                 };
-                const saleId = await this.db.sales.add(saleData);
+                const saleId = await this.db.sales.add(saleData as Sale);
                 
                 await this.db.commandes_pain.update(order.id!, { vente_id: saleId, est_paye: true });
                 sheetsService.addToQueue('commandes_pain', 'upsert', { id: order.id, vente_id: saleId, est_paye: true });
@@ -753,7 +753,7 @@ class DataService {
             const paymentStatus = remainingBalance <= 0 ? 'paid' : (saleData.amountPaid > 0 ? 'partial' : 'unpaid');
             const newSaleData: Omit<Sale, 'id'> = { ...saleData, invoiceNumber, remainingBalance, paymentStatus, createdAt: new Date(), updatedAt: new Date() };
 
-            const saleId = await this.db.sales.add(newSaleData);
+            const saleId = await this.db.sales.add(newSaleData as Sale);
             
             for(const item of newSaleData.items) {
                 if (typeof item.id === 'number') {
@@ -784,7 +784,7 @@ class DataService {
                 }
             }
             
-            const finalSale = { ...newSaleData, id: saleId };
+            const finalSale = { ...newSaleData, id: saleId } as Sale;
             sheetsService.addToQueue('sales', 'upsert', finalSale);
             return finalSale;
         });
@@ -818,8 +818,8 @@ class DataService {
     // Payments
     async addPayment(paymentData: Omit<Payment, 'id'>): Promise<Payment> {
         return this.db.transaction('rw', this.db.payments, this.db.customers, async () => {
-            const id = await this.db.payments.add(paymentData);
-            const newPayment = { ...paymentData, id };
+            const id = await this.db.payments.add(paymentData as Payment);
+            const newPayment = { ...paymentData, id } as Payment;
             await this.db.customers.where({ id: newPayment.customerId }).modify(c => {
                 c.outstandingBalance -= newPayment.amount;
                 c.lastActivityDate = new Date();
@@ -979,8 +979,8 @@ class DataService {
     
     async addReturn(returnData: Omit<ProductReturn, 'id'>): Promise<ProductReturn> {
         return this.db.transaction('rw', this.db.returns, this.db.products, this.db.inventoryLogs, this.db.customers, async () => {
-            const id = await this.db.returns.add(returnData);
-            const newReturn = {...returnData, id};
+            const id = await this.db.returns.add(returnData as ProductReturn);
+            const newReturn = {...returnData, id} as ProductReturn;
             
             for (const item of newReturn.items) {
                 if(item.productId && item.wasRestocked) {
@@ -1060,8 +1060,8 @@ class DataService {
     }
     
     async addExpense(expense: Omit<Expense, 'id'>): Promise<Expense> {
-        const id = await this.db.expenses.add(expense);
-        const newExpense = {...expense, id};
+        const id = await this.db.expenses.add(expense as Expense);
+        const newExpense = {...expense, id} as Expense;
         sheetsService.addToQueue('expenses', 'upsert', newExpense);
         return newExpense;
     }
@@ -1268,3 +1268,5 @@ type DB = {
 
 
 export const dataService = new DataService();
+
+    
