@@ -61,7 +61,6 @@ class GoogleSheetsService {
         this.processSyncQueue();
       }
     } catch { 
-      // This might happen if DB is not ready, it's ok.
       this.scriptUrl = null;
     }
   }

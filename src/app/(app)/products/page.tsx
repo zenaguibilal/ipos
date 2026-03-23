@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { dataService } from '@/services/data-service';
 import { useDebounce } from '@/hooks/useDebounce';
 import type { Product, ProductImportAnalysis, Supplier } from '@/lib/types';
@@ -91,20 +91,20 @@ export default function ProductsPage() {
 
     const isLoading = products === undefined;
 
-    useEffect(() => {
+    useState(() => {
         const savedViewMode = localStorage.getItem('product_view_mode') as ViewMode;
         if (savedViewMode) {
             setViewMode(savedViewMode);
         }
-    }, []);
+    });
 
-    useEffect(() => {
+    useState(() => {
         localStorage.setItem('product_view_mode', viewMode);
-    }, [viewMode]);
+    });
     
-    useEffect(() => {
+    useState(() => {
         setSelectedProducts(new Set());
-    }, [debouncedSearchQuery, selectedCategory, stockStatus, selectedSupplier]);
+    });
 
     const handleEditProduct = (product: Product) => {
         setSelectedProduct(product);
