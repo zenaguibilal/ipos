@@ -49,6 +49,7 @@
     "uuid": "^10.0.0"
   },
   "devDependencies": {
+    "@ducanh2912/next-pwa": "^10.2.7",
     "@types/node": "^20.14.12",
     "@types/papaparse": "^5.3.14",
     "@types/qrcode": "^1.5.5",
