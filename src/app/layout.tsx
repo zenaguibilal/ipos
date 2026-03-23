@@ -3,7 +3,6 @@ import './globals.css';
 import { Toaster } from '@/components/ui/sonner';
 import { Inter } from 'next/font/google';
 import { ThemeProvider } from '@/components/layout/theme-provider';
-import { PwaHandler } from '@/components/PwaHandler';
 
 const APP_NAME = "iPOS";
 const APP_DEFAULT_TITLE = "iPOS - Point de Vente";
@@ -86,7 +85,6 @@ export default function RootLayout({
           {children}
           <Toaster richColors />
           <div id="receipt-for-print" className="hidden"></div>
-          <PwaHandler />
         </ThemeProvider>
       </body>
     </html>
