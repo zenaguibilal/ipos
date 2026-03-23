@@ -6,11 +6,12 @@ import { getDb } from '@/lib/database';
 import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, InventoryLog, StockIntakeItem, ZakatData, CostingItem, Draft, Supplier, ImportAnalysis, BreadClient, BreadOrder, BreadOrderWithClient, ProductImportAnalysis, GlobalActivityItem, DashboardData, TopCustomer, DB } from '@/lib/types';
 import { subDays, endOfDay, startOfDay } from 'date-fns';
 import Papa from 'papaparse';
-import { formatCurrency, safeToDate } from '@/lib/utils';
+import { formatCurrency, safeToDate, calculateCartTotals } from '@/lib/utils';
 import { BREAD_WEEK_DAYS } from '@/lib/constants';
 import { sheetsService } from './googleSheets';
 import { toast } from 'sonner';
-import { calculateCartTotals } from '@/lib/utils';
+
+const LOCAL_ONLY_SETTINGS = ['active_cart_id'];
 
 class DataService {
   get db() {
@@ -32,8 +33,10 @@ class DataService {
   }
 
   async setSetting(id: string, value: any): Promise<void> {
-    await sheetsService.addToQueue('settings', 'upsert', { id, value });
     await this.db.settings.put({ id, value });
+    if (!LOCAL_ONLY_SETTINGS.includes(id)) {
+        sheetsService.addToQueue('settings', 'upsert', { id, value });
+    }
   }
 
   // Company Profile
@@ -1272,6 +1275,7 @@ export const dataService = new DataService();
     
 
     
+
 
 
 
