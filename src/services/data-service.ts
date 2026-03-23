@@ -629,7 +629,7 @@ class DataService {
 
     async createDayOrders(date: string): Promise<void> {
         const dayOfWeek = BREAD_WEEK_DAYS[new Date(date.replace(/-/g, '/')).getUTCDay()];
-        const activeClients = await this.db.clients_pain.where('actif').equals(true).toArray();
+        const activeClients = await this.db.clients_pain.filter(c => c.actif === true).toArray();
         const existingOrders = await this.db.commandes_pain.where({date}).toArray();
         const existingClientIds = new Set(existingOrders.map(o => o.client_pain_id));
 
@@ -1254,8 +1254,3 @@ class DataService {
 }
 
 export const dataService = new DataService();
-
-    
-    
-
-    
