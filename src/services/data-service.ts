@@ -28,9 +28,9 @@ class DataService {
     return this.getById<Setting>('settings', id);
   }
 
-  async setSetting(id: string, value: any): Promise<string> {
-    sheetsService.addToQueue('settings', 'upsert', { id, value });
-    return this.db.settings.put({ id, value });
+  async setSetting(id: string, value: any): Promise<void> {
+    await sheetsService.addToQueue('settings', 'upsert', { id, value });
+    await this.db.settings.put({ id, value });
   }
 
   // Company Profile
@@ -363,7 +363,7 @@ class DataService {
 
     if (query) {
         const lowerQuery = query.toLowerCase();
-        collection = collection.filter(c => (c.searchName || '').toLowerCase().includes(lowerQuery) || c.phone?.includes(lowerQuery));
+        collection = collection.filter(c => (c.searchName || '').toLowerCase().includes(lowerQuery) || (c.phone?.includes(lowerQuery) ?? false));
     }
     
     let customers = await collection.toArray();
@@ -1256,4 +1256,6 @@ class DataService {
 export const dataService = new DataService();
 
     
+    
+
     
