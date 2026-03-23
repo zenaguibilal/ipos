@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -15,6 +16,7 @@ import {
   HandHeart,
   Calculator,
   LayoutDashboard,
+  Wheat,
 } from 'lucide-react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
@@ -45,6 +47,7 @@ const navLinks = [
   { href: '/expenses', label: 'Dépenses', icon: Wallet },
   { href: '/costing', label: 'Calcul des Coûts', icon: Calculator },
   { href: '/zakat', label: 'Zakat', icon: HandHeart },
+  { href: '/bread', label: 'Commandes de Pain', icon: Wheat },
 ];
 
 export function AppHeader() {
