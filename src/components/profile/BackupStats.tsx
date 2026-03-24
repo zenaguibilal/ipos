@@ -29,11 +29,13 @@ export function BackupStats({ backupData, onNext }: BackupStatsProps) {
   );
 
   const getBackupDate = () => {
-      const profile = backupData.companyProfile?.[0];
-      if (profile && profile.lastSyncDate) return profile.lastSyncDate;
       const sales = backupData.sales;
       if (sales && sales.length > 0 && sales[0].createdAt) {
           return sales[0].createdAt.toString();
+      }
+      const products = backupData.products;
+       if (products && products.length > 0 && products[0].createdAt) {
+          return products[0].createdAt.toString();
       }
       return null;
   }
