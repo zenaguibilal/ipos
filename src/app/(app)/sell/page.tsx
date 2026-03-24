@@ -5,10 +5,9 @@ import { ProductSearch } from '@/components/sell/ProductSearch';
 import { SaleActions } from '@/components/sell/SaleActions';
 import { Card, CardContent } from '@/components/ui/card';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { useCarts } from '@/hooks/useCarts';
+import { useCart } from '@/hooks/useCart';
 import { Button } from '@/components/ui/button';
 import { CustomerCombobox } from '@/components/sell/CustomerCombobox';
-import { CartTabs } from '@/components/sell/CartTabs';
 import { PackageSearch, HandCoins } from 'lucide-react';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -22,26 +21,21 @@ import { dataService } from '@/services/data-service';
 
 export default function SellPage() {
     const {
-        carts,
-        activeCart,
-        activeCartId,
-        setActiveCartId,
-        addCart,
-        removeCart,
+        cart,
+        isLoading,
         addProductToCart,
         updateCartItemQuantity,
         removeCartItem,
         clearCart,
         setCartCustomer,
         setCartDiscount,
-        saveActiveCartAsDraft,
+        saveCartAsDraft,
         loadDraftToCart,
-        isLoading,
-    } = useCarts();
+    } = useCart();
 
     const customer = useLiveQuery(
-        () => activeCart?.customerId ? dataService.getCustomerById(activeCart.customerId) : Promise.resolve(undefined),
-        [activeCart?.customerId]
+        () => cart?.customerId ? dataService.getCustomerById(cart.customerId) : Promise.resolve(undefined),
+        [cart?.customerId]
     );
 
     const [isProductSheetOpen, setIsProductSheetOpen] = useState(false);
@@ -50,7 +44,7 @@ export default function SellPage() {
 
     const productSearchRef = useRef<{ focus: () => void }>(null);
     const customerComboboxRef = useRef<HTMLButtonElement>(null);
-    const saleActionsRef = useRef<{ payment: HTMLButtonElement; draft: HTMLButtonElement }>(null);
+    const saleActionsRef = useRef<{ payment: () => void; draft: () => void; }>(null);
 
 
     const handleSaleFinalized = useCallback(() => {
@@ -72,7 +66,7 @@ export default function SellPage() {
                 break;
             case 'F4':
                  e.preventDefault();
-                 saleActionsRef.current?.draft.click();
+                 saleActionsRef.current?.draft();
                 break;
             case 'F6':
                 e.preventDefault();
@@ -80,14 +74,14 @@ export default function SellPage() {
                 break;
             case 'F9':
                 e.preventDefault();
-                if (activeCart && activeCart.items.length > 0) {
-                    saleActionsRef.current?.payment.click();
+                if (cart && cart.items.length > 0) {
+                    saleActionsRef.current?.payment();
                 } else {
                     toast.info("Le panier est vide. Impossible de finaliser la vente.");
                 }
                 break;
         }
-    }, [activeCart]);
+    }, [cart]);
 
     useEffect(() => {
         document.addEventListener('keydown', handleKeyDown);
@@ -96,7 +90,7 @@ export default function SellPage() {
         };
     }, [handleKeyDown]);
 
-    const isDataLoading = isLoading || !activeCart;
+    const isDataLoading = isLoading || !cart;
 
     if (isDataLoading) {
         return (
@@ -118,29 +112,20 @@ export default function SellPage() {
     return (
         <>
             <div className="h-full flex flex-col">
-                <CartTotalBar cart={activeCart} customer={customer} />
+                <CartTotalBar cart={cart} customer={customer} />
 
                 <div className="grid md:grid-cols-3 gap-4 flex-grow min-h-0 p-4">
                     {/* Main column */}
                     <div className="md:col-span-2 flex flex-col gap-4">
                         <div className="flex flex-col sm:flex-row gap-4">
-                            <div className="flex-grow">
-                                <CartTabs
-                                    carts={carts}
-                                    activeCartId={activeCartId}
-                                    onTabChange={setActiveCartId}
-                                    onAddCart={addCart}
-                                    onRemoveCart={removeCart}
+                            <div className="flex-grow w-full sm:w-64">
+                                <CustomerCombobox
+                                    ref={customerComboboxRef}
+                                    customerId={cart.customerId}
+                                    onSelectCustomer={(c) => setCartCustomer(c)}
                                 />
                             </div>
                             <div className="flex gap-2">
-                                <div className="w-full sm:w-64">
-                                    <CustomerCombobox
-                                        ref={customerComboboxRef}
-                                        customerId={activeCart.customerId}
-                                        onSelectCustomer={(c) => setCartCustomer(c)}
-                                    />
-                                </div>
                                 {customer && customer.outstandingBalance > 0 && (
                                     <Button 
                                         variant="outline" 
@@ -169,7 +154,7 @@ export default function SellPage() {
 
                         <Card className="flex-grow flex flex-col min-h-0">
                             <CartDisplay
-                                cart={activeCart}
+                                cart={cart}
                                 onQuantityChange={updateCartItemQuantity}
                                 onRemoveItem={removeCartItem}
                             />
@@ -178,14 +163,14 @@ export default function SellPage() {
                         <Card>
                             <CardContent className="p-4 sm:p-6">
                                 <SaleActions
-                                    cart={activeCart}
+                                    ref={saleActionsRef}
+                                    cart={cart}
                                     customer={customer}
                                     onClearCart={clearCart}
                                     onSetDiscount={setCartDiscount}
-                                    onSaveDraft={saveActiveCartAsDraft}
+                                    onSaveDraft={saveCartAsDraft}
                                     onOpenDrafts={() => setIsDraftsDialogOpen(true)}
                                     onSaleFinalized={handleSaleFinalized}
-                                    ref={saleActionsRef}
                                 />
                             </CardContent>
                         </Card>

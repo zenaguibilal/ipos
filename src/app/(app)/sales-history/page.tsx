@@ -6,7 +6,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import type { Sale } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 import { Search, History } from 'lucide-react';
-import { DateRangePicker } from '@/components/dashboard/date-range-picker';
+import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { useDateRange } from '@/hooks/useDateRange';
 import { SalesHistoryCard } from '@/components/sales/SalesHistoryCard';
 import { SaleDetailsDialog } from '@/components/sales/SaleDetailsDialog';

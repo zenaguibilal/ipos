@@ -35,7 +35,7 @@ interface SaleActionsProps {
 }
 
 export const SaleActions = React.forwardRef<
-    { payment: HTMLButtonElement, draft: HTMLButtonElement }, 
+    { payment: () => void, draft: () => void }, 
     SaleActionsProps
 >(({ cart, customer, onClearCart, onSetDiscount, onSaveDraft, onOpenDrafts, onSaleFinalized }, ref) => {
     const [isPaymentOpen, setIsPaymentOpen] = useState(false);
@@ -54,11 +54,15 @@ export const SaleActions = React.forwardRef<
     const draftButtonRef = React.useRef<HTMLButtonElement>(null);
 
     React.useImperativeHandle(ref, () => ({
-        get payment() {
-            return paymentButtonRef.current!;
+        payment: () => {
+            if (paymentButtonRef.current) {
+                paymentButtonRef.current.click();
+            } else {
+                 setIsPaymentOpen(true);
+            }
         },
-        get draft() {
-            return draftButtonRef.current!;
+        draft: () => {
+            draftButtonRef.current?.click();
         }
     }));
 

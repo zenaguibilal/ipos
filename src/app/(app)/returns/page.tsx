@@ -7,7 +7,7 @@ import type { ProductReturn } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Search, Plus, Undo2 } from 'lucide-react';
-import { DateRangePicker } from '@/components/dashboard/date-range-picker';
+import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { useDateRange } from '@/hooks/useDateRange';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ReturnHistoryCard } from '@/components/returns/ReturnHistoryCard';
