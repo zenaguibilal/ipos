@@ -1,5 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie';
-import type { Product, Customer, Sale, Payment, StockIntake, ProductReturn, Cart, Draft, CompanyProfile, Expense, Supplier, BreadClient, BreadOrder } from '@/lib/types';
+import type { Product, Customer, Sale, Payment, StockIntake, ProductReturn, Cart, Draft, CompanyProfile, Expense, InventoryLog, Supplier, BreadClient, BreadOrder } from '@/lib/types';
 
 class iPOSDatabase extends Dexie {
     products!: EntityTable<Product, 'id'>;
@@ -12,6 +12,7 @@ class iPOSDatabase extends Dexie {
     drafts!: EntityTable<Draft, 'id'>;
     companyProfile!: EntityTable<CompanyProfile, 'id'>;
     expenses!: EntityTable<Expense, 'id'>;
+    inventoryLogs!: EntityTable<InventoryLog, 'id'>;
     suppliers!: EntityTable<Supplier, 'id'>;
     clients_pain!: EntityTable<BreadClient, 'id'>;
     commandes_pain!: EntityTable<BreadOrder, 'id'>;
@@ -40,6 +41,11 @@ class iPOSDatabase extends Dexie {
         // Version 3: Add indexes for product sorting
         this.version(3).stores({
              products: '++id, *barcodes, name, category, fournisseurId, createdAt, price, quantity'
+        });
+        // Version 4: Re-add inventoryLogs and remove settings
+        this.version(4).stores({
+            inventoryLogs: '++id, productId, reason, createdAt',
+            settings: null // This explicitly removes the 'settings' table
         });
     }
 }
