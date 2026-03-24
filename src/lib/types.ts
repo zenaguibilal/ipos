@@ -206,6 +206,38 @@ export interface CostingItem extends SaleItem {
     productId?: number;
 }
 
+export interface DashboardStats {
+    totalRevenue: number;
+    totalProfit: number;
+    salesCount: number;
+    inventoryValue: number;
+    totalExpenses: number;
+}
+
+export interface TopProduct {
+    id: number;
+    name: string;
+    totalRevenue: number;
+    unitsSold: number;
+    totalProfit: number;
+}
+
+export interface TopCustomer {
+    id: number;
+    name: string;
+    totalSpent: number;
+}
+
+export interface DashboardData {
+    stats: DashboardStats;
+    sales: Sale[];
+    expenses: Expense[];
+    topProducts: TopProduct[];
+    topCustomers: TopCustomer[];
+    lowStockProducts: Product[];
+    recentActivity: GlobalActivityItem[];
+}
+
 export interface ImportAnalysis {
     customersToAdd: any[];
     customersToUpdate: any[];
@@ -225,7 +257,7 @@ export interface ProductImportAnalysis {
 export interface GlobalActivityItem {
     type: 'sale' | 'stock_intake' | 'return' | 'customer' | 'payment';
     date: Date;
-    id: number | string;
+    id: string;
     description: string;
     details: string;
     amount?: number;

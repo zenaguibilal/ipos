@@ -700,7 +700,7 @@ class DataService {
         
         const remainingBalance = saleData.total - saleData.amountPaid;
         let paymentStatus: Sale['paymentStatus'];
-        if (remainingBalance <= 0) {
+        if (remainingBalance <= 0.01) { // Use a small tolerance for float comparison
             paymentStatus = 'paid';
         } else if (saleData.amountPaid > 0) {
             paymentStatus = 'partial';
@@ -1064,11 +1064,11 @@ class DataService {
         const payments = await db.payments.orderBy('createdAt').reverse().limit(limit).toArray();
 
         const activities: GlobalActivityItem[] = [
-            ...sales.map(s => ({ type: 'sale', date: s.createdAt!, id: s.id!, description: `Vente #${s.invoiceNumber}`, details: `Client: ${s.customerName || 'N/A'}`, amount: s.total, amountClass: 'text-primary' } as GlobalActivityItem)),
-            ...intakes.map(i => ({ type: 'stock_intake', date: i.createdAt!, id: i.id!, description: `Réception de ${i.supplierName}`, details: `${i.items.length} article(s)`, amount: i.totalValue, amountClass: 'text-chart-secondary' } as GlobalActivityItem)),
-            ...returns.map(r => ({ type: 'return', date: r.createdAt!, id: r.id!, description: `Retour sur facture #${r.originalInvoiceNumber}`, details: `Client: ${r.customerName || 'N/A'}`, amount: -r.totalReturnValue, amountClass: 'text-destructive' } as GlobalActivityItem)),
-            ...customers.map(c => ({ type: 'customer', date: c.createdAt!, id: c.id!, description: `Nouveau client`, details: `${c.firstName} ${c.lastName}`, amount: undefined } as GlobalActivityItem)),
-            ...payments.map(p => ({ type: 'payment', date: p.createdAt!, id: p.id!, description: `Paiement reçu`, details: `Client: ${p.customerName}`, amount: p.amount, amountClass: 'text-chart-quaternary' } as GlobalActivityItem)),
+            ...sales.map(s => ({ type: 'sale', date: s.createdAt!, id: `sale-${s.id!}`, description: `Vente #${s.invoiceNumber}`, details: `Client: ${s.customerName || 'N/A'}`, amount: s.total, amountClass: 'text-primary' } as GlobalActivityItem)),
+            ...intakes.map(i => ({ type: 'stock_intake', date: i.createdAt!, id: `intake-${i.id!}`, description: `Réception de ${i.supplierName}`, details: `${i.items.length} article(s)`, amount: i.totalValue, amountClass: 'text-chart-secondary' } as GlobalActivityItem)),
+            ...returns.map(r => ({ type: 'return', date: r.createdAt!, id: `return-${r.id!}`, description: `Retour sur facture #${r.originalInvoiceNumber}`, details: `Client: ${r.customerName || 'N/A'}`, amount: -r.totalReturnValue, amountClass: 'text-destructive' } as GlobalActivityItem)),
+            ...customers.map(c => ({ type: 'customer', date: c.createdAt!, id: `customer-${c.id!}`, description: `Nouveau client`, details: `${c.firstName} ${c.lastName}`, amount: undefined } as GlobalActivityItem)),
+            ...payments.map(p => ({ type: 'payment', date: p.createdAt!, id: `payment-${p.id!}`, description: `Paiement reçu`, details: `Client: ${p.customerName}`, amount: p.amount, amountClass: 'text-chart-quaternary' } as GlobalActivityItem)),
         ];
 
         return activities.sort((a,b) => b.date.getTime() - a.date.getTime()).slice(0, limit);
