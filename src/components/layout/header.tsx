@@ -64,7 +64,7 @@ export function AppHeader() {
                   href="/sell"
                   className="flex items-center gap-2 font-semibold"
               >
-                  <Image src="/icon.svg" alt="iPOS logo" width={32} height={32} />
+                  <Image src="/icon.svg" alt="iPOS logo" width={32} height={32} priority />
                   <span className="hidden sm:inline-block text-xl font-semibold">iPOS</span>
               </Link>
           </div>
