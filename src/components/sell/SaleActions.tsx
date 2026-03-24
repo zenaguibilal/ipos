@@ -28,12 +28,10 @@ interface SaleActionsProps {
     customer: Customer | null | undefined;
     onClearCart: () => void;
     onSetDiscount: (discount: { type: 'fixed' | 'percentage'; value: number }) => void;
-    onSaveDraft: () => void;
-    onOpenDrafts: () => void;
     onSaleFinalized: () => void;
 }
 
-export const SaleActions = React.forwardRef<HTMLButtonElement, SaleActionsProps>(({ cart, customer, onClearCart, onSetDiscount, onSaveDraft, onOpenDrafts, onSaleFinalized }, ref) => {
+export const SaleActions = React.forwardRef<HTMLButtonElement, SaleActionsProps>(({ cart, customer, onClearCart, onSetDiscount, onSaleFinalized }, ref) => {
     const [isPaymentOpen, setIsPaymentOpen] = useState(false);
     
     const totalItems = cart.items.reduce((acc, item) => acc + item.cartQuantity, 0);
@@ -92,15 +90,6 @@ export const SaleActions = React.forwardRef<HTMLButtonElement, SaleActionsProps>
                         <span>Total</span>
                         <span>{formatCurrency(total)}</span>
                     </div>
-                 </div>
-
-                 <div className="grid grid-cols-2 gap-2">
-                    <Button variant="outline" onClick={onSaveDraft} disabled={cart.items.length === 0}>
-                        Brouillon (F4)
-                    </Button>
-                    <Button variant="outline" onClick={onOpenDrafts}>
-                        Ouvrir (F6)
-                    </Button>
                  </div>
 
                  <div className="grid grid-cols-2 gap-4 pt-2">

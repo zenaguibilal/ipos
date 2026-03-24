@@ -1,5 +1,6 @@
 
 
+
 export interface Product {
     id?: number | string; // string for custom products
     name: string;
@@ -98,22 +99,6 @@ export interface Payment {
     notes?: string;
     createdAt?: Date;
     updatedAt?: Date;
-}
-
-export interface Draft {
-  id?: number;
-  date: Date;
-  customerId: number | null;
-  customerName: string;
-  items: CartItem[];
-  total: number;
-  discount: {
-      type: 'fixed' | 'percentage';
-      value: number;
-  };
-  notes?: string;
-  createdAt?: Date;
-  updatedAt?: Date;
 }
 
 export interface CompanyProfile {
@@ -345,7 +330,6 @@ export interface DB {
     stockIntakes: StockIntake[];
     returns: ProductReturn[];
     carts: Cart[];
-    drafts: Draft[];
     companyProfile: CompanyProfile[];
     expenses: Expense[];
     settings: Setting[];

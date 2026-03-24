@@ -149,13 +149,6 @@ export const useCarts = () => {
         });
     }, [activeCartId]);
 
-    const saveActiveCartAsDraft = async () => { 
-        toast.error("Fonctionnalité désactivée", { description: "La base de données a été supprimée de l'application." });
-    };
-    const loadDraftToCart = async () => { 
-        toast.error("Fonctionnalité désactivée", { description: "La base de données a été supprimée de l'application." });
-    };
-
     return {
         carts: carts,
         activeCartId: activeCartId,
@@ -169,8 +162,6 @@ export const useCarts = () => {
         removeCartItem,
         setCartCustomer,
         setCartDiscount,
-        saveActiveCartAsDraft,
-        loadDraftToCart,
         isLoading,
     };
 };

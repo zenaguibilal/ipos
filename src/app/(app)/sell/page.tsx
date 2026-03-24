@@ -13,8 +13,6 @@ import { PackageSearch, HandCoins } from 'lucide-react';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
-import { DraftsDialog } from '@/components/sell/DraftsDialog';
-import { dataService } from '@/services/data-service';
 import { AddPaymentDialog } from '@/components/payments/AddPaymentDialog';
 import { CartTotalBar } from '@/components/sell/CartTotalBar';
 import type { Customer, Product } from '@/lib/types';
@@ -33,8 +31,6 @@ export default function SellPage() {
         clearCart,
         setCartCustomer,
         setCartDiscount,
-        saveActiveCartAsDraft,
-        loadDraftToCart,
         isLoading,
     } = useCarts();
 
@@ -45,31 +41,12 @@ export default function SellPage() {
     }, [activeCart?.customerId]);
 
     const [isProductSheetOpen, setIsProductSheetOpen] = useState(false);
-    const [isDraftsDialogOpen, setIsDraftsDialogOpen] = useState(false);
     const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
 
     const productSearchRef = useRef<{ focus: () => void }>(null);
     const customerComboboxRef = useRef<HTMLButtonElement>(null);
     const paymentButtonRef = useRef<HTMLButtonElement>(null);
 
-    const handleSaveDraft = async () => {
-        if (!activeCart || activeCart.items.length === 0) {
-            toast.error("Impossible d'enregistrer un panier vide comme brouillon.");
-            return;
-        }
-        try {
-            await saveActiveCartAsDraft();
-            await clearCart();
-            toast.success("Brouillon enregistré avec succès. Le panier a été vidé.");
-        } catch (error) {
-            toast.error("Erreur lors de l'enregistrement du brouillon.");
-        }
-    };
-
-    const handleLoadDraft = (draftId: number) => {
-        loadDraftToCart(draftId);
-        setIsDraftsDialogOpen(false);
-    };
 
     const handleSaleFinalized = useCallback(() => {
         clearCart();
@@ -88,14 +65,6 @@ export default function SellPage() {
                 e.preventDefault();
                 customerComboboxRef.current?.click();
                 break;
-            case 'F4':
-                e.preventDefault();
-                handleSaveDraft();
-                break;
-            case 'F6':
-                e.preventDefault();
-                setIsDraftsDialogOpen(true);
-                break;
             case 'F9':
                 e.preventDefault();
                 if (activeCart && activeCart.items.length > 0) {
@@ -105,7 +74,7 @@ export default function SellPage() {
                 }
                 break;
         }
-    }, [activeCart, handleSaveDraft]);
+    }, [activeCart]);
 
     useEffect(() => {
         document.addEventListener('keydown', handleKeyDown);
@@ -203,8 +172,6 @@ export default function SellPage() {
                                     customer={selectedCustomer}
                                     onClearCart={clearCart}
                                     onSetDiscount={setCartDiscount}
-                                    onSaveDraft={handleSaveDraft}
-                                    onOpenDrafts={() => setIsDraftsDialogOpen(true)}
                                     onSaleFinalized={handleSaleFinalized}
                                     ref={paymentButtonRef}
                                 />
@@ -220,11 +187,6 @@ export default function SellPage() {
                     </div>
                 </div>
             </div>
-            <DraftsDialog 
-                isOpen={isDraftsDialogOpen}
-                onOpenChange={setIsDraftsDialogOpen}
-                onLoadDraft={handleLoadDraft}
-            />
             {selectedCustomer && (
                  <AddPaymentDialog 
                     isOpen={isPaymentDialogOpen}
