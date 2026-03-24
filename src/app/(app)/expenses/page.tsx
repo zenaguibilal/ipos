@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { dataService } from '@/services/data-service';
-import type { Expense, ExpenseCategory } from '@/lib/types';
+import type { Expense } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Plus, Filter } from 'lucide-react';
 import { ExpenseCard } from '@/components/expenses/ExpenseCard';
@@ -32,22 +32,18 @@ export default function ExpensesPage() {
     const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
     const { dateRange, setDate, isMounted } = useDateRange(29);
 
-    const { data, isLoading } = useLiveQuery(() => {
-        if (!isMounted || !dateRange) return { data: undefined, isLoading: true };
+    const expenses = useLiveQuery(() => {
+        if (!isMounted || !dateRange?.from || !dateRange?.to) return undefined;
+        return dataService.getExpenses({
+            category: selectedCategory,
+            from: dateRange.from,
+            to: dateRange.to
+        });
+    }, [isMounted, selectedCategory, dateRange]);
 
-        const fetchData = async () => {
-            const [expenses, categories] = await Promise.all([
-                dataService.getExpenses({ category: selectedCategory, from: dateRange.from, to: dateRange.to }),
-                dataService.getExpenseCategories()
-            ]);
-            return { data: { expenses, categories }, isLoading: false };
-        };
-
-        return fetchData();
-    }, [isMounted, selectedCategory, dateRange], { data: undefined, isLoading: true });
-
-    const expenses = data?.expenses;
-    const categories = data?.categories ?? [];
+    const categories = useLiveQuery(() => dataService.getExpenseCategories(), []);
+    
+    const isLoading = expenses === undefined || categories === undefined;
 
     const handleEditExpense = (expense: Expense) => {
         setSelectedExpense(expense);
