@@ -44,18 +44,17 @@ export const useCarts = () => {
     const addCart = useCallback(() => {
         if (!carts) return;
         const newCart = createNewCart(`Panier ${carts.length + 1}`);
-        db.carts.add(newCart);
-        setActiveCartId(newCart.id);
-        toast.info(`Nouveau panier "${newCart.name}" créé.`);
+        dataService.addCart(newCart).then(() => {
+            setActiveCartId(newCart.id);
+            toast.info(`Nouveau panier "${newCart.name}" créé.`);
+        });
     }, [carts, setActiveCartId]);
 
     const removeCart = useCallback((cartId: string) => {
-        if (!carts || carts.length <= 1) {
-            toast.warning("Impossible de supprimer le dernier panier.");
-            return;
-        }
-        db.carts.delete(cartId);
-    }, [carts]);
+        dataService.removeCart(cartId).catch((err) => {
+            toast.warning(err.message || "Impossible de supprimer le dernier panier.");
+        });
+    }, []);
     
     const addProductToCart = useCallback((product: Product, quantity: number) => {
         if (!activeCartId) return;
@@ -88,9 +87,9 @@ export const useCarts = () => {
     }, [activeCartId]);
 
     const setCartDiscount = useCallback((discount: { type: 'fixed' | 'percentage'; value: number }) => {
-        if (!activeCartId || !activeCart) return;
-        db.carts.update(activeCartId, { "discount.type": discount.type, "discount.value": discount.value });
-    }, [activeCartId, activeCart]);
+        if (!activeCartId) return;
+        dataService.setCartDiscount(activeCartId, discount);
+    }, [activeCartId]);
     
     const saveActiveCartAsDraft = useCallback(async () => {
         if (!activeCart) return;

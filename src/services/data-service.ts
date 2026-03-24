@@ -1,3 +1,4 @@
+
 'use client';
 
 import { db } from '@/lib/database';
@@ -88,6 +89,22 @@ class DataService {
         await db.carts.where('id').equals(cartId).modify(cart => {
             cart.items.forEach(item => { if(item.flash) delete item.flash; });
         });
+    }
+
+    async addCart(cart: Cart): Promise<void> {
+        await db.carts.add(cart);
+    }
+    
+    async removeCart(cartId: string): Promise<void> {
+        const cartCount = await db.carts.count();
+        if (cartCount <= 1) {
+            throw new Error("Impossible de supprimer le dernier panier.");
+        }
+        await db.carts.delete(cartId);
+    }
+    
+    async setCartDiscount(cartId: string, discount: { type: 'fixed' | 'percentage', value: number }): Promise<void> {
+        await db.carts.update(cartId, { "discount.type": discount.type, "discount.value": discount.value });
     }
     
     // =================== Drafts ===================
