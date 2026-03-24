@@ -30,7 +30,7 @@ export const useCarts = () => {
         } else if (carts && carts.length === 0) {
             // Initialize first cart
             const firstCart = createNewCart('Panier 1');
-            db.carts.add(firstCart);
+            dataService.addCart(firstCart);
         }
     }, [carts, activeCartId]);
 
@@ -51,10 +51,24 @@ export const useCarts = () => {
     }, [carts, setActiveCartId]);
 
     const removeCart = useCallback((cartId: string) => {
+        if (!carts || carts.length <= 1) {
+            toast.warning("Impossible de supprimer le dernier panier.");
+            return;
+        }
+
+        // If we're deleting the active cart, switch to another one first.
+        if (activeCartId === cartId) {
+            const newActiveCart = carts.find(c => c.id !== cartId);
+            if (newActiveCart) {
+                setActiveCartId(newActiveCart.id);
+            }
+        }
+        
+        // Now delete the cart from the DB
         dataService.removeCart(cartId).catch((err) => {
-            toast.warning(err.message || "Impossible de supprimer le dernier panier.");
+            toast.error(err.message || "Erreur lors de la suppression du panier.");
         });
-    }, []);
+    }, [carts, activeCartId, setActiveCartId]);
     
     const addProductToCart = useCallback((product: Product, quantity: number) => {
         if (!activeCartId) return;
@@ -94,13 +108,11 @@ export const useCarts = () => {
     const saveActiveCartAsDraft = useCallback(async () => {
         if (!activeCart) return;
         await dataService.saveCartAsDraft(activeCart);
-        toast.success("Brouillon sauvegardé.");
     }, [activeCart]);
     
     const loadDraftToCart = useCallback(async (draftId: number) => {
         if (!activeCartId) return;
         await dataService.loadDraftToCart(draftId, activeCartId);
-        toast.success("Brouillon chargé dans le panier actif.");
     }, [activeCartId]);
 
     return {

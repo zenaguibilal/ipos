@@ -96,10 +96,6 @@ class DataService {
     }
     
     async removeCart(cartId: string): Promise<void> {
-        const cartCount = await db.carts.count();
-        if (cartCount <= 1) {
-            throw new Error("Impossible de supprimer le dernier panier.");
-        }
         await db.carts.delete(cartId);
     }
     
@@ -251,7 +247,8 @@ class DataService {
     }
 
     async getProductsByIds(ids: number[]): Promise<Product[]> {
-        return await db.products.bulkGet(ids) as Product[];
+        const products = await db.products.bulkGet(ids);
+        return products.filter((p): p is Product => p !== undefined);
     }
     
     async getProductCategories(): Promise<string[]> {
@@ -530,7 +527,7 @@ class DataService {
     }
     
     async createDayOrders(date: string): Promise<void> {
-        const weekDay = format(new Date(date.replace(/-/g, '/')), 'eeee').toLowerCase() as keyof BreadClient['jours_semaine'];
+        const weekDay = format(new Date(date.replace(/-/g, '/')), 'eeee').toLowerCase() as keyof NonNullable<BreadClient['jours_semaine']>;
 
         const dailyClients = await db.clients_pain
             .where('type_recurrence').equals('quotidien')
@@ -545,23 +542,27 @@ class DataService {
         const orders: Omit<BreadOrder, 'id'>[] = [];
         
         dailyClients.forEach(c => {
-            orders.push({
-                client_pain_id: c.id!,
-                date,
-                quantite: c.quantite_defaut || 0,
-                est_paye: false, est_livre: false, vente_id: null,
-                createdAt: new Date(), updatedAt: new Date(),
-            });
+            if (c.quantite_defaut && c.quantite_defaut > 0) {
+                orders.push({
+                    client_pain_id: c.id!,
+                    date,
+                    quantite: c.quantite_defaut,
+                    est_paye: false, est_livre: false, vente_id: null,
+                    createdAt: new Date(), updatedAt: new Date(),
+                });
+            }
         });
 
         specificDayClients.forEach(c => {
-            orders.push({
-                client_pain_id: c.id!,
-                date,
-                quantite: c.jours_semaine![weekDay].quantite || 0,
-                est_paye: false, est_livre: false, vente_id: null,
-                createdAt: new Date(), updatedAt: new Date(),
-            });
+            if (c.jours_semaine?.[weekDay].quantite && c.jours_semaine[weekDay].quantite > 0) {
+                orders.push({
+                    client_pain_id: c.id!,
+                    date,
+                    quantite: c.jours_semaine[weekDay].quantite,
+                    est_paye: false, est_livre: false, vente_id: null,
+                    createdAt: new Date(), updatedAt: new Date(),
+                });
+            }
         });
 
         if (orders.length > 0) {
@@ -573,14 +574,14 @@ class DataService {
         const orders = await db.commandes_pain.where('date').equals(date).toArray();
         const clientIds = [...new Set(orders.map(o => o.client_pain_id))];
         const clients = await db.clients_pain.bulkGet(clientIds);
-        const clientMap = new Map(clients.map(c => [c!.id, c]));
+        const clientMap = new Map(clients.map(c => c && [c.id, c]).filter(Boolean) as [number, BreadClient][]);
 
         return orders
             .map(order => ({
                 ...order,
-                client: clientMap.get(order.client_pain_id) as BreadClient,
+                client: clientMap.get(order.client_pain_id),
             }))
-            .filter(order => order.client) // Ensure client exists
+            .filter((order): order is BreadOrderWithClient => !!order.client)
             .sort((a,b) => a.client.nom.localeCompare(b.client.nom));
     }
     
@@ -654,8 +655,16 @@ class DataService {
         const processSale = async () => {
             const now = new Date();
             const today = format(now, 'yyMMdd');
-            const countToday = await db.sales.where('createdAt').above(startOfDay(now)).count();
-            const invoiceNumber = `${today}-${String(countToday + 1).padStart(4, '0')}`;
+            
+            const lastSaleToday = await db.sales.where('createdAt').between(startOfDay(now), endOfDay(now), true, true).last();
+            let sequence = 1;
+            if (lastSaleToday) {
+                const lastSequence = parseInt(lastSaleToday.invoiceNumber.split('-')[1], 10);
+                if (!isNaN(lastSequence)) {
+                    sequence = lastSequence + 1;
+                }
+            }
+            const invoiceNumber = `${today}-${String(sequence).padStart(4, '0')}`;
             
             const finalSaleData: Sale = {
                 ...saleData,
