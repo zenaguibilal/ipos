@@ -37,6 +37,10 @@ class iPOSDatabase extends Dexie {
         this.version(2).stores({
             customers: '++id, &searchName, phone, debtStatus, createdAt, lastActivityDate'
         });
+        // Version 3: Add indexes for product sorting
+        this.version(3).stores({
+             products: '++id, *barcodes, name, category, fournisseurId, createdAt, price, quantity'
+        });
     }
 }
 

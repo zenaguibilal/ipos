@@ -220,7 +220,13 @@ class DataService {
     }
 
     async getProducts(params: { query?: string, category?: string, supplier?: string, stockStatus?: string, sortBy?: string }): Promise<Product[]> {
-        let collection = db.products.toCollection();
+        const [sortKey, sortOrder] = (params.sortBy || 'createdAt_desc').split('_');
+        
+        let collection = db.products.orderBy(sortKey);
+
+        if (sortOrder === 'desc') {
+            collection = collection.reverse();
+        }
 
         if (params.query) {
             const q = params.query.toLowerCase();
@@ -241,35 +247,7 @@ class DataService {
             if (params.stockStatus === 'out_of_stock') collection = collection.filter(p => p.quantity <= 0);
         }
         
-        const products = await collection.toArray();
-
-        const [sortKey, sortOrder] = (params.sortBy || 'createdAt_desc').split('_');
-
-        products.sort((a, b) => {
-            const valA = a[sortKey as keyof Product];
-            const valB = b[sortKey as keyof Product];
-
-            if (valA == null && valB != null) return 1;
-            if (valA != null && valB == null) return -1;
-            if (valA == null && valB == null) return 0;
-
-            let comparison = 0;
-            if (typeof valA === 'string' && typeof valB === 'string') {
-                comparison = valA.localeCompare(valB);
-            } else if (valA instanceof Date && valB instanceof Date) {
-                comparison = valA.getTime() - valB.getTime();
-            } else {
-                 if (valA! > valB!) {
-                    comparison = 1;
-                } else if (valA! < valB!) {
-                    comparison = -1;
-                }
-            }
-            
-            return sortOrder === 'desc' ? comparison * -1 : comparison;
-        });
-        
-        return products;
+        return await collection.toArray();
     }
 
     async getProductsByIds(ids: number[]): Promise<Product[]> {
