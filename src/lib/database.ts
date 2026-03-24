@@ -33,6 +33,10 @@ class iPOSDatabase extends Dexie {
             clients_pain: '++id, nom',
             commandes_pain: '++id, client_pain_id, date, &[client_pain_id+date]',
         });
+        // Version 2: Add index for customer lastActivityDate for faster sorting
+        this.version(2).stores({
+            customers: '++id, &searchName, phone, debtStatus, createdAt, lastActivityDate'
+        });
     }
 }
 

@@ -1,8 +1,7 @@
-
 'use client';
 
 import { db } from '@/lib/database';
-import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, StockIntakeItem, ZakatData, CostingItem, Supplier, ImportAnalysis, BreadClient, BreadOrder, BreadOrderWithClient, ProductImportAnalysis, GlobalActivityItem, DashboardData, SaleItem, CartItem, Draft } from '@/lib/types';
+import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, StockIntakeItem, ZakatData, CostingItem, Supplier, ImportAnalysis, BreadClient, BreadOrder, BreadOrderWithClient, ProductImportAnalysis, GlobalActivityItem, Draft, CartItem, SaleItem } from '@/lib/types';
 import { toast } from 'sonner';
 import Papa from 'papaparse';
 import { startOfDay, endOfDay, format } from 'date-fns';
@@ -232,17 +231,20 @@ class DataService {
         
         const [sortKey, sortOrder] = (params.sortBy || 'createdAt_desc').split('_');
         
+        // Use indexed sorting for indexed fields
+        if (sortKey === 'name' || sortKey === 'createdAt') {
+            const sortedCollection = collection.orderBy(sortKey);
+            if (sortOrder === 'desc') {
+                return sortedCollection.reverse().toArray();
+            }
+            return sortedCollection.toArray();
+        }
+
+        // Fallback to client-side sorting for non-indexed fields
         return collection.toArray(products => {
             products.sort((a, b) => {
-                let aVal: any, bVal: any;
-                
-                if (sortKey === 'createdAt') {
-                    aVal = a.createdAt?.getTime() ?? 0;
-                    bVal = b.createdAt?.getTime() ?? 0;
-                } else {
-                    aVal = a[sortKey as keyof Product];
-                    bVal = b[sortKey as keyof Product];
-                }
+                const aVal = a[sortKey as keyof Product] as any;
+                const bVal = b[sortKey as keyof Product] as any;
 
                 if (typeof aVal === 'string' && typeof bVal === 'string') {
                     return sortOrder === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
@@ -311,7 +313,7 @@ class DataService {
             if (params.status === 'over_limit') collection = collection.filter(c => c.isOverLimit === true);
         }
 
-        return collection.reverse().sortBy('lastActivityDate');
+        return collection.orderBy('lastActivityDate').reverse().toArray();
     }
 
     async addCustomer(customer: Omit<Customer, 'id' | 'totalSpent' | 'outstandingBalance' | 'lastActivityDate'>): Promise<Customer> {
@@ -341,7 +343,7 @@ class DataService {
     }
     
     async deleteCustomer(id: number): Promise<void> {
-        return db.transaction('rw', db.customers, db.sales, db.payments, async () => {
+        await db.transaction('rw', db.customers, db.sales, db.payments, async () => {
             const salesCount = await db.sales.where('customerId').equals(id).count();
             if (salesCount > 0) {
                 throw new Error("Impossible de supprimer un client avec un historique de ventes.");
@@ -650,7 +652,7 @@ class DataService {
             const q = params.query.toLowerCase();
             query = query.filter(s => s.invoiceNumber.toLowerCase().includes(q) || s.customerName?.toLowerCase().includes(q));
         }
-        return await query.reverse().sortBy('createdAt');
+        return await query.orderBy('createdAt').reverse().toArray();
     }
 
     async addSale(saleData: any, runInTransaction: boolean = true): Promise<number> {
@@ -815,7 +817,7 @@ class DataService {
             const q = params.query.toLowerCase();
             collection = collection.filter(i => i.supplierName?.toLowerCase().includes(q) || i.invoiceNumber.toLowerCase().includes(q));
         }
-        return await collection.reverse().sortBy('createdAt');
+        return await collection.orderBy('createdAt').reverse().toArray();
     }
 
     // =================== Returns ===================
@@ -828,7 +830,7 @@ class DataService {
             const q = params.query.toLowerCase();
             collection = collection.filter(s => s.originalInvoiceNumber.toLowerCase().includes(q) || s.customerName?.toLowerCase().includes(q));
         }
-        return await collection.reverse().sortBy('createdAt');
+        return await collection.orderBy('createdAt').reverse().toArray();
     }
     
     async addReturn(returnData: Omit<ProductReturn, 'id'>): Promise<ProductReturn> {
@@ -892,7 +894,7 @@ class DataService {
         if (params.category && params.category !== 'all') {
             collection = collection.filter(e => e.category === params.category);
         }
-        return await collection.reverse().sortBy('expenseDate');
+        return await collection.orderBy('expenseDate').reverse().toArray();
     }
     
     async getExpenseCategories(): Promise<string[]> {
