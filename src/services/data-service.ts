@@ -1,7 +1,7 @@
 'use client';
 
 import { getDb } from '@/lib/database';
-import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, InventoryLog, StockIntakeItem, ZakatData, CostingItem, Draft, Supplier, ImportAnalysis, BreadClient, BreadOrder, BreadOrderWithClient, ProductImportAnalysis, GlobalActivityItem, DashboardData, TopCustomer, DB } from '@/lib/types';
+import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, InventoryLog, StockIntakeItem, ZakatData, CostingItem, Draft, Supplier, ImportAnalysis, BreadClient, BreadOrder, BreadOrderWithClient, ProductImportAnalysis, GlobalActivityItem, DashboardData, DB } from '@/lib/types';
 import { subDays, endOfDay, startOfDay } from 'date-fns';
 import Papa from 'papaparse';
 import { formatCurrency, safeToDate, calculateCartTotals } from '@/lib/utils';
@@ -1248,6 +1248,7 @@ export const dataService = new DataService();
     
 
     
+
 
 
 
