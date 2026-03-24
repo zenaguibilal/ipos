@@ -4,22 +4,9 @@
 // This file has been stubbed out because Dexie.js was removed.
 // The application's data persistence functionality has been disabled.
 
-import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, InventoryLog, StockIntakeItem, ZakatData, CostingItem, Draft, Supplier, ImportAnalysis, BreadClient, BreadOrder, BreadOrderWithClient, ProductImportAnalysis, GlobalActivityItem, DashboardData, DB } from '@/lib/types';
+import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, StockIntakeItem, ZakatData, CostingItem, Supplier, ImportAnalysis, BreadClient, BreadOrder, BreadOrderWithClient, ProductImportAnalysis, GlobalActivityItem, DashboardData } from '@/lib/types';
 
 class DataService {
-
-  // Generic methods
-  async getAll<T>(table: keyof DB): Promise<T[]> {
-    return [];
-  }
-
-  async getById<T>(table: keyof DB, id: any): Promise<T | undefined> {
-    return undefined;
-  }
-  
-  // Settings
-  async getSetting(id: string): Promise<Setting | undefined> { return undefined; }
-  async setSetting(id: string, value: any): Promise<void> { }
 
   // Company Profile
   async getCompanyProfile(): Promise<CompanyProfile | null> { return { id: 1 }; }
@@ -90,13 +77,6 @@ class DataService {
   // Payments
   async addPayment(paymentData: Omit<Payment, 'id'>): Promise<Payment> { throw new Error("Fonctionnalité de base de données désactivée."); }
     
-  // Drafts
-  async getDrafts(): Promise<Draft[]> { return []; }
-  async saveDraft(cart: Cart, notes?: string): Promise<Draft> { throw new Error("Fonctionnalité de base de données désactivée."); }
-  async deleteDraft(id: number): Promise<void> { }
-  async getDraftAndClear(draftId: number): Promise<Omit<Draft, 'id' | 'createdAt' | 'updatedAt'> | null> { return null; }
-  async loadDraftContentToCart(cartId: string, draftContent: any): Promise<void> { }
-    
   // Stock Intake
   async addStockIntake(intakeData: any, items: StockIntakeItem[]): Promise<StockIntake> { throw new Error("Fonctionnalité de base de données désactivée."); }
   async getStockIntakes(params: any): Promise<StockIntake[]> { return []; }
@@ -115,11 +95,6 @@ class DataService {
     
   // Costing
   async applyNewPurchasePrices(costingItems: CostingItem[]): Promise<void> { }
-    
-  // Backup & Restore
-  async exportData(): Promise<string> { return "{}"; }
-  async restoreTables(backupFile: any, tablesToRestore: string[], onProgress: (progress: any) => void): Promise<void> { }
-  async resetDatabase(): Promise<void> { }
     
   // Dashboard
   async getDashboardData(from: Date, to: Date): Promise<DashboardData | undefined> {

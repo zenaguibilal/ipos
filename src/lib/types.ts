@@ -184,23 +184,6 @@ export interface Expense {
     updatedAt?: Date;
 }
 
-export interface Setting {
-    id: string; // The key for the setting
-    value: any;
-}
-
-export type InventoryLogReason = 'sale' | 'return' | 'stock_intake' | 'cancellation' | 'manual_adjustment';
-
-export interface InventoryLog {
-    id?: number;
-    productId: number;
-    change: number; // e.g., -2 for sale, +50 for stock intake
-    newQuantity: number;
-    reason: InventoryLogReason;
-    relatedId?: number | string; // ID of the sale, return, intake, etc.
-    createdAt: Date;
-}
-
 export interface CostingItem extends SaleItem {
     totalPurchasePrice: number;
     allocatedDeliveryCost: number;
@@ -320,21 +303,4 @@ export interface BreadOrder {
 
 export interface BreadOrderWithClient extends BreadOrder {
     client: BreadClient;
-}
-
-export interface DB {
-    products: Product[];
-    customers: Customer[];
-    sales: Sale[];
-    payments: Payment[];
-    stockIntakes: StockIntake[];
-    returns: ProductReturn[];
-    carts: Cart[];
-    companyProfile: CompanyProfile[];
-    expenses: Expense[];
-    settings: Setting[];
-    inventoryLogs: InventoryLog[];
-    suppliers: Supplier[];
-    clients_pain: BreadClient[];
-    commandes_pain: BreadOrder[];
 }
