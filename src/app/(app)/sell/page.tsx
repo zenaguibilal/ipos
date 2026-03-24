@@ -50,8 +50,7 @@ export default function SellPage() {
 
     const productSearchRef = useRef<{ focus: () => void }>(null);
     const customerComboboxRef = useRef<HTMLButtonElement>(null);
-    const paymentButtonRef = useRef<HTMLButtonElement>(null);
-    const saveDraftButtonRef = useRef<HTMLButtonElement>(null);
+    const saleActionsRef = useRef<{ payment: HTMLButtonElement; draft: HTMLButtonElement }>(null);
 
 
     const handleSaleFinalized = useCallback(() => {
@@ -73,7 +72,7 @@ export default function SellPage() {
                 break;
             case 'F4':
                  e.preventDefault();
-                 saveDraftButtonRef.current?.click();
+                 saleActionsRef.current?.draft.click();
                 break;
             case 'F6':
                 e.preventDefault();
@@ -82,7 +81,7 @@ export default function SellPage() {
             case 'F9':
                 e.preventDefault();
                 if (activeCart && activeCart.items.length > 0) {
-                    paymentButtonRef.current?.click();
+                    saleActionsRef.current?.payment.click();
                 } else {
                     toast.info("Le panier est vide. Impossible de finaliser la vente.");
                 }
@@ -186,7 +185,7 @@ export default function SellPage() {
                                     onSaveDraft={saveActiveCartAsDraft}
                                     onOpenDrafts={() => setIsDraftsDialogOpen(true)}
                                     onSaleFinalized={handleSaleFinalized}
-                                    ref={{payment: paymentButtonRef, draft: saveDraftButtonRef}}
+                                    ref={saleActionsRef}
                                 />
                             </CardContent>
                         </Card>
