@@ -33,7 +33,7 @@ export function StockIntakeDetailsDialog({
 }) {
     const supplier = useLiveQuery(() => 
         intake?.supplierId ? db.suppliers.get(intake.supplierId) : undefined,
-        [intake]
+        [intake?.supplierId]
     );
 
     if (!intake) return null;
