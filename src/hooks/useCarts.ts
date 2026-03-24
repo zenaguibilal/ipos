@@ -1,10 +1,9 @@
 
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { dataService } from '@/services/data-service';
-import type { Cart, Product, Customer } from '@/lib/types';
+import type { Cart, Product, Customer, CartItem } from '@/lib/types';
 import { toast } from 'sonner';
 
 const createNewCart = (name: string): Cart => ({
@@ -17,8 +16,16 @@ const createNewCart = (name: string): Cart => ({
 });
 
 export const useCarts = () => {
-    const [carts, setCarts] = useState<Cart[]>(() => [createNewCart('Panier 1')]);
-    const [activeCartId, setActiveCartIdState] = useState<string>(carts[0].id);
+    const [carts, setCarts] = useState<Cart[]>([]);
+    const [activeCartId, setActiveCartIdState] = useState<string>('');
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        const initialCarts = [createNewCart('Panier 1')];
+        setCarts(initialCarts);
+        setActiveCartIdState(initialCarts[0].id);
+        setIsLoading(false);
+    }, []);
 
     const activeCart = carts.find(c => c.id === activeCartId);
 
@@ -30,7 +37,7 @@ export const useCarts = () => {
         const newCart = createNewCart(`Panier ${carts.length + 1}`);
         setCarts(prev => [...prev, newCart]);
         setActiveCartId(newCart.id);
-        toast.info(`Nouveau panier "${newCart.name}" créé localement.`);
+        toast.info(`Nouveau panier "${newCart.name}" créé.`);
     }, [carts, setActiveCartId]);
 
     const removeCart = useCallback((cartId: string) => {
@@ -45,26 +52,113 @@ export const useCarts = () => {
         }
     }, [carts, activeCartId, setActiveCartId]);
     
-    const notify = () => toast.error("Fonctionnalité désactivée", { description: "La base de données a été supprimée." });
+    const addProductToCart = useCallback((product: Product, quantity: number) => {
+        if (!activeCartId) return;
 
-    const addProductToCart = () => notify();
-    const updateCartItemQuantity = () => notify();
-    const removeCartItem = () => notify();
-    
-    const clearCart = () => {
-         if (!activeCartId) return;
-         setCarts(prev => prev.map(c => c.id === activeCartId ? { ...c, items: [], customerId: null, customerName: '', discount: { type: 'fixed', value: 0 } } : c));
-         toast.info("Le panier a été vidé localement.");
+        setCarts(prevCarts => {
+            return prevCarts.map(cart => {
+                if (cart.id !== activeCartId) return cart;
+
+                const existingItem = cart.items.find(item => item.id === product.id);
+                let newItems: CartItem[];
+
+                if (existingItem) {
+                    newItems = cart.items.map(item =>
+                        item.id === product.id
+                            ? { ...item, cartQuantity: item.cartQuantity + quantity, flash: true }
+                            : { ...item, flash: false }
+                    );
+                } else {
+                    const newCartItem: CartItem = {
+                        ...product,
+                        cartQuantity: quantity,
+                        flash: true,
+                    };
+                    newItems = [...cart.items.map(i => ({...i, flash: false})), newCartItem];
+                }
+                return { ...cart, items: newItems };
+            });
+        });
+        
+        setTimeout(() => {
+             setCarts(prevCarts => 
+                 prevCarts.map(cart => 
+                    cart.id === activeCartId 
+                    ? { ...cart, items: cart.items.map(i => ({ ...i, flash: false })) }
+                    : cart
+                )
+            );
+        }, 500);
+
+    }, [activeCartId]);
+
+    const updateCartItemQuantity = useCallback((itemId: number | string, newQuantity: number) => {
+        if (!activeCartId) return;
+        
+        setCarts(prevCarts => {
+            return prevCarts.map(cart => {
+                if (cart.id !== activeCartId) return cart;
+                
+                const updatedItems = cart.items
+                    .map(item => item.id === itemId ? { ...item, cartQuantity: newQuantity } : item)
+                    .filter(item => item.cartQuantity > 0);
+
+                return { ...cart, items: updatedItems };
+            });
+        });
+
+    }, [activeCartId]);
+
+    const removeCartItem = useCallback((itemId: number | string) => {
+        if (!activeCartId) return;
+        setCarts(prevCarts => {
+            return prevCarts.map(cart => {
+                if (cart.id !== activeCartId) return cart;
+                return { ...cart, items: cart.items.filter(item => item.id !== itemId) };
+            });
+        });
+    }, [activeCartId]);
+
+    const clearCart = useCallback(() => {
+        if (!activeCartId) return;
+        setCarts(prev => prev.map(c => c.id === activeCartId ? { ...c, items: [], customerId: null, customerName: '', discount: { type: 'fixed', value: 0 } } : c));
+        toast.info("Le panier a été vidé.");
+    }, [activeCartId]);
+
+    const setCartCustomer = useCallback((customer: Customer | null) => {
+        if (!activeCartId) return;
+        setCarts(prevCarts => {
+            return prevCarts.map(cart => {
+                if (cart.id !== activeCartId) return cart;
+                return { 
+                    ...cart, 
+                    customerId: customer?.id || null, 
+                    customerName: customer ? `${customer.firstName} ${customer.lastName}` : '' 
+                };
+            });
+        });
+    }, [activeCartId]);
+
+    const setCartDiscount = useCallback((discount: { type: 'fixed' | 'percentage'; value: number }) => {
+        if (!activeCartId) return;
+        setCarts(prevCarts => {
+            return prevCarts.map(cart => {
+                if (cart.id !== activeCartId) return cart;
+                return { ...cart, discount };
+            });
+        });
+    }, [activeCartId]);
+
+    const saveActiveCartAsDraft = async () => { 
+        toast.error("Fonctionnalité désactivée", { description: "La base de données a été supprimée de l'application." });
+    };
+    const loadDraftToCart = async () => { 
+        toast.error("Fonctionnalité désactivée", { description: "La base de données a été supprimée de l'application." });
     };
 
-    const setCartCustomer = () => notify();
-    const setCartDiscount = () => notify();
-    const saveActiveCartAsDraft = () => notify();
-    const loadDraftToCart = () => notify();
-
     return {
-        carts: carts ?? [],
-        activeCartId: activeCartId || '',
+        carts: carts,
+        activeCartId: activeCartId,
         activeCart,
         setActiveCartId,
         addCart,
@@ -77,6 +171,6 @@ export const useCarts = () => {
         setCartDiscount,
         saveActiveCartAsDraft,
         loadDraftToCart,
-        isLoading: !activeCart,
+        isLoading,
     };
 };
