@@ -798,12 +798,12 @@ class DataService {
             }
             
             if (sale.customerId) {
-        await this.db.customers.where({id: sale.customerId}).modify(c => {
-            c.outstandingBalance = Math.max(0, c.outstandingBalance - sale.remainingBalance);
-            c.totalSpent = Math.max(0, c.totalSpent - sale.total);
-            c.lastActivityDate = new Date();
-        });
-    }
+                await this.db.customers.where({id: sale.customerId}).modify(c => {
+                    c.outstandingBalance = Math.max(0, c.outstandingBalance - sale.remainingBalance);
+                    c.totalSpent = Math.max(0, c.totalSpent - sale.total);
+                    c.lastActivityDate = new Date();
+                });
+            }
 
             await this.db.sales.delete(saleId);
         });
@@ -901,19 +901,19 @@ class DataService {
                     };
                     productId = await this.db.products.add(newProductData as Product);
                     finalQuantity = quantityChange;
-    } else if (productId) {
-        const currentProduct = await this.db.products.get(productId);
-        if (currentProduct) {
-            const newStockQuantity = currentProduct.quantity + quantityChange;
-            await this.db.products.update(productId, {
-                quantity: newStockQuantity,
-                purchasePrice: item.purchasePrice,
-                dateMajPrix: new Date(),
-                fournisseurId: supplier.id,
-            });
-            finalQuantity = newStockQuantity;
-        }
-    }
+                } else if (productId) {
+                    const currentProduct = await this.db.products.get(productId);
+                    if (currentProduct) {
+                        const newStockQuantity = currentProduct.quantity + quantityChange;
+                        await this.db.products.update(productId, {
+                            quantity: newStockQuantity,
+                            purchasePrice: item.purchasePrice,
+                            dateMajPrix: new Date(),
+                            fournisseurId: supplier.id,
+                        });
+                        finalQuantity = newStockQuantity;
+                    }
+                }
     
                 if (productId) {
                     await this.db.inventoryLogs.add({
@@ -1261,3 +1261,6 @@ export const dataService = new DataService();
 
 
 
+
+
+    
