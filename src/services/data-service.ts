@@ -219,7 +219,7 @@ class DataService {
         });
     }
 
-    getProducts(params: { query?: string, category?: string, supplier?: string, stockStatus?: string, sortBy?: string }) {
+    async getProducts(params: { query?: string, category?: string, supplier?: string, stockStatus?: string, sortBy?: string }): Promise<Product[]> {
         let collection = db.products.toCollection();
 
         if (params.query) {
@@ -241,13 +241,35 @@ class DataService {
             if (params.stockStatus === 'out_of_stock') collection = collection.filter(p => p.quantity <= 0);
         }
         
+        const products = await collection.toArray();
+
         const [sortKey, sortOrder] = (params.sortBy || 'createdAt_desc').split('_');
+
+        products.sort((a, b) => {
+            const valA = a[sortKey as keyof Product];
+            const valB = b[sortKey as keyof Product];
+
+            if (valA == null && valB != null) return 1;
+            if (valA != null && valB == null) return -1;
+            if (valA == null && valB == null) return 0;
+
+            let comparison = 0;
+            if (typeof valA === 'string' && typeof valB === 'string') {
+                comparison = valA.localeCompare(valB);
+            } else if (valA instanceof Date && valB instanceof Date) {
+                comparison = valA.getTime() - valB.getTime();
+            } else {
+                 if (valA! > valB!) {
+                    comparison = 1;
+                } else if (valA! < valB!) {
+                    comparison = -1;
+                }
+            }
+            
+            return sortOrder === 'desc' ? comparison * -1 : comparison;
+        });
         
-        const sortedCollection = db.products.orderBy(sortKey as keyof Product);
-        if (sortOrder === 'desc') {
-            return sortedCollection.reverse().toArray();
-        }
-        return sortedCollection.toArray();
+        return products;
     }
 
     async getProductsByIds(ids: number[]): Promise<Product[]> {
@@ -294,8 +316,8 @@ class DataService {
         return { customer, unpaidSales };
     }
 
-    getCustomers(params: { query?: string, status?: string }) {
-        let collection = db.customers.toCollection();
+    async getCustomers(params: { query?: string, status?: string }): Promise<Customer[]> {
+        let collection = db.customers.orderBy('lastActivityDate').reverse();
 
         if (params.query) {
             const q = params.query.toLowerCase();
@@ -303,12 +325,18 @@ class DataService {
         }
 
         if (params.status && params.status !== 'all') {
-            if (params.status === 'has_debt') collection = collection.filter(c => c.outstandingBalance > 0);
-            if (params.status === 'overdue') collection = collection.filter(c => c.debtStatus === 'overdue');
-            if (params.status === 'over_limit') collection = collection.filter(c => c.isOverLimit === true);
+            if (params.status === 'has_debt') {
+                collection = collection.filter(c => c.outstandingBalance > 0);
+            }
+            if (params.status === 'overdue') {
+                collection = collection.filter(c => c.debtStatus === 'overdue');
+            }
+            if (params.status === 'over_limit') {
+                collection = collection.filter(c => c.isOverLimit === true);
+            }
         }
 
-        return db.customers.orderBy('lastActivityDate').reverse().toArray();
+        return await collection.toArray();
     }
 
     async addCustomer(customer: Omit<Customer, 'id' | 'totalSpent' | 'outstandingBalance' | 'lastActivityDate'>): Promise<Customer> {
@@ -726,7 +754,7 @@ class DataService {
                 if (newBalance > 0) {
                     const unpaidSales = await db.sales.where('customerId').equals(customer.id!).and(s => s.paymentStatus !== 'paid' || s.id === saleId).toArray();
                     const isOverdue = unpaidSales.some(s => s.dueDate && new Date(s.dueDate) < now);
-                    debtStatus = isOverdue ? 'overdue' : undefined;
+                    debtStatus = isOverdue ? 'overdue' : 'due_soon';
                 }
                 
                 await db.customers.update(customer.id!, {
@@ -772,7 +800,7 @@ class DataService {
                     if (newBalance > 0) {
                         const unpaidSales = await db.sales.where('customerId').equals(customer.id!).and(s => s.id !== saleId && s.paymentStatus !== 'paid').toArray();
                         const isOverdue = unpaidSales.some(s => s.dueDate && new Date(s.dueDate) < new Date());
-                        debtStatus = isOverdue ? 'overdue' : undefined;
+                        debtStatus = isOverdue ? 'overdue' : 'due_soon';
                     }
 
                     await db.customers.update(customer.id!, {
@@ -804,7 +832,7 @@ class DataService {
                 if (newBalance > 0) {
                     const unpaidSales = await db.sales.where('customerId').equals(customer.id!).and(s => s.paymentStatus !== 'paid').toArray();
                     const isOverdue = unpaidSales.some(s => s.dueDate && new Date(s.dueDate) < new Date());
-                    debtStatus = isOverdue ? 'overdue' : undefined;
+                    debtStatus = isOverdue ? 'overdue' : 'due_soon';
                 }
 
                 await db.customers.update(customer.id!, {
@@ -932,7 +960,7 @@ class DataService {
                     if (newBalance > 0) {
                         const unpaidSales = await db.sales.where('customerId').equals(customer.id!).and(s => s.paymentStatus !== 'paid').toArray();
                         const isOverdue = unpaidSales.some(s => s.dueDate && new Date(s.dueDate) < now);
-                        debtStatus = isOverdue ? 'overdue' : undefined;
+                        debtStatus = isOverdue ? 'overdue' : 'due_soon';
                     }
 
                     await db.customers.update(customer.id!, {
@@ -971,7 +999,7 @@ class DataService {
                     if (newBalance > 0) {
                         const unpaidSales = await db.sales.where('customerId').equals(customer.id!).and(s => s.paymentStatus !== 'paid').toArray();
                         const isOverdue = unpaidSales.some(s => s.dueDate && new Date(s.dueDate) < new Date());
-                        debtStatus = isOverdue ? 'overdue' : undefined;
+                        debtStatus = isOverdue ? 'overdue' : 'due_soon';
                     }
 
                     await db.customers.update(customer.id!, {
