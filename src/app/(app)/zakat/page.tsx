@@ -19,15 +19,15 @@ export default function ZakatPage() {
     const [cashOnHand, setCashOnHand] = useState('');
     const [debts, setDebts] = useState('');
 
-    const [zakatData, setZakatData] = useState<ZakatData | undefined>();
-    const [companyProfile, setCompanyProfile] = useState<CompanyProfile | null | undefined>();
+    const [zakatData, setZakatData] = useState<ZakatData>({ inventoryValue: 0, totalReceivables: 0 });
+    const [companyProfile, setCompanyProfile] = useState<CompanyProfile | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
-        dataService.getZakatData().then(setZakatData);
-        dataService.getCompanyProfile().then(setCompanyProfile);
+        setZakatData({ inventoryValue: 0, totalReceivables: 0 });
+        setCompanyProfile(null);
     }, []);
     
-    const isLoading = zakatData === undefined || companyProfile === undefined;
 
     const goldPrice = companyProfile?.goldPricePerGram || 0;
     const nisabAmount = goldPrice * NISAB_GOLD_GRAMS;

@@ -43,10 +43,10 @@ interface DraftsDialogProps {
 }
 
 export function DraftsDialog({ isOpen, onOpenChange, onLoadDraft }: DraftsDialogProps) {
-    const [drafts, setDrafts] = useState<Draft[] | undefined>();
+    const [drafts, setDrafts] = useState<Draft[]>([]);
     useEffect(() => {
         if (isOpen) {
-            dataService.getDrafts().then(setDrafts);
+            setDrafts([]);
         }
     }, [isOpen]);
 

@@ -35,7 +35,7 @@ export function StockIntakeDetailsDialog({
 
     useEffect(() => {
         if (isOpen && intake?.supplierId) {
-            dataService.getById<Supplier>('suppliers', intake.supplierId).then(setSupplier);
+            setSupplier(undefined);
         }
     }, [isOpen, intake]);
 

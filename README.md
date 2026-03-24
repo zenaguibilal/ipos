@@ -1,45 +1,11 @@
-# iPOS - نظام نقاط بيع يعمل 100% بدون اتصال بالإنترنت
+# iPOS - Modèle d'application de point de vente
 
-**iPOS** هو نظام نقاط بيع (POS) متكامل، حديث وعالي الأداء، مصمم للإدارة المستقلة لمتاجر التجزئة. يعمل بالكامل بدون اتصال بالإنترنت، مما يضمن السرعة والموثوقية.
+**iPOS** est un modèle d'application de point de vente (POS) conçu comme une base pour des solutions de vente au détail.
 
----
+## ⚠️ Important : Couche de données supprimée
 
-## ✨ الميزات الرئيسية
+La base de données côté client d'origine (basée sur Dexie.js / IndexedDB) a été **supprimée** de ce projet. L'application est actuellement un **shell d'interface utilisateur non fonctionnel** et sert de point de départ pour implémenter votre propre solution de backend.
 
--   **يعمل بدون إنترنت:** جميع العمليات (البيع، إدارة المخزون) تعمل بشكل كامل بدون اتصال.
--   **إدارة المخزون:** إضافة المنتجات، تتبع الكميات، وتنبيهات انخفاض المخزون.
--   **نقطة بيع سريعة:** واجهة بيع بديهية تدعم سلات متعددة ومنتجات مخصصة.
--   **إدارة العملاء:** تتبع سجل مشتريات العملاء وديونهم.
--   **لوحة تحكم ذكية:** إحصائيات وتقارير مرئية عن أداء عملك.
--   **وحدات متخصصة:** إدارة طلبات الخبز، حساب تكاليف الشحنات، وحاسبة الزكاة.
--   **نسخ احتياطي واستعادة:** سيطرة كاملة على بياناتك مع خيارات تصدير واستعادة آمنة.
--   **وضع داكن/فاتح:** واجهة مريحة للعين في أي وقت.
-
----
-
-## ⚠️ هام: بياناتك محلية وتحت سيطرتك الكاملة
-
-يتم تخزين جميع بيانات التطبيق (المنتجات، المبيعات، العملاء، إلخ) **حصريًا في قاعدة بيانات IndexedDB داخل متصفحك**، على جهازك الحالي. أنت المسؤول الوحيد عن عمل نسخ احتياطية لبياناتك بانتظام من خلال قسم الإعدادات.
-
----
-
-## 📖 التوثيق الكامل
-
-للحصول على وصف تفصيلي وشامل لكل ميزة وبنية تقنية في التطبيق، يرجى الرجوع إلى المستند الكامل:
+Pour plus de détails, veuillez consulter la documentation.
 
 **[📄 DOCUMENTATION.md](./DOCUMENTATION.md)**
-
-هذا المستند هو المصدر الرئيسي للمعلومات حول:
--   نظرة عامة على الميزات.
--   البنية التحتية والقرارات التقنية.
--   شرح مفصل لكل صفحة ومنطقها.
-
----
-
-## 🚀 البنية التحتية والتقنية
-
--   **إطار العمل:** [Next.js](https://nextjs.org/) (مع App Router)
--   **تخزين البيانات:** [Dexie.js](https://dexie.org/) (طبقة فوق IndexedDB)
--   **تحديثات في الوقت الفعلي:** [dexie-react-hooks](https://dexie.org/docs/dexie-react-hooks/useLiveQuery())
--   **واجهة المستخدم:** [ShadCN UI](https://ui.shadcn.com/) و [Tailwind CSS](https://tailwindcss.com/)
--   **إدارة السمات (Themes):** [next-themes](https://github.com/pacocoursey/next-themes)

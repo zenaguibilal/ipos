@@ -8,13 +8,12 @@ import { dataService } from '@/services/data-service';
 import type { Customer } from '@/lib/types';
 
 export function CustomerStats() {
-  const [customers, setCustomers] = useState<Customer[] | undefined>();
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    dataService.getCustomers({}).then(setCustomers);
+    setCustomers([]);
   }, []);
-
-  const isLoading = customers === undefined;
 
   const stats = useMemo(() => {
     if (!customers) {

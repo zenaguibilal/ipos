@@ -26,18 +26,14 @@ export default function ReturnsPage() {
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
     const [isCancelOpen, setIsCancelOpen] = useState(false);
 
-    const [returns, setReturns] = useState<ProductReturn[] | undefined>();
+    const [returns, setReturns] = useState<ProductReturn[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
         if (!isMounted) return;
-        dataService.getReturns({ 
-            query: debouncedSearchQuery,
-            from: dateRange?.from,
-            to: dateRange?.to
-        }).then(setReturns);
+        setReturns([]);
     }, [isMounted, debouncedSearchQuery, dateRange]);
 
-    const isLoading = returns === undefined;
 
     const handleViewDetails = (pr: ProductReturn) => {
         setSelectedReturn(pr);

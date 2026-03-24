@@ -69,13 +69,13 @@ const PrintableList = React.forwardRef<HTMLDivElement, PrintBreadListDialogProps
 PrintableList.displayName = 'PrintableList';
 
 export function PrintBreadListDialog({ orders, currentDate }: PrintBreadListDialogProps) {
-    const [isOpen, setIsOpen] = React.useState(false);
+    const [isOpen, setIsOpen] = useState(false);
     const [profile, setProfile] = useState<CompanyProfile | null>(null);
     const printRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         if(isOpen) {
-            dataService.getCompanyProfile().then(setProfile);
+            setProfile(null);
         }
     }, [isOpen]);
 

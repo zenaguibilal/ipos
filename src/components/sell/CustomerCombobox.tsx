@@ -19,9 +19,9 @@ const WalkInCustomerOption: ComboboxOption = {
 
 export const CustomerCombobox = React.forwardRef<HTMLButtonElement, CustomerComboboxProps>(({ customerId, onSelectCustomer }, ref) => {
     
-    const [customers, setCustomers] = useState<Customer[] | undefined>();
+    const [customers, setCustomers] = useState<Customer[]>([]);
     useEffect(() => {
-        dataService.getCustomers({ sortBy: 'lastName_asc' }).then(setCustomers);
+        setCustomers([]);
     }, []);
 
     const customerOptions = React.useMemo<ComboboxOption[]>(() => {

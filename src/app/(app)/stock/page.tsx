@@ -24,18 +24,14 @@ export default function StockPage() {
     const [selectedIntake, setSelectedIntake] = useState<StockIntake | null>(null);
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
-    const [stockIntakes, setStockIntakes] = useState<StockIntake[] | undefined>();
+    const [stockIntakes, setStockIntakes] = useState<StockIntake[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
         if (!isMounted) return;
-        dataService.getStockIntakes({ 
-            query: debouncedSearchQuery,
-            from: dateRange?.from,
-            to: dateRange?.to
-        }).then(setStockIntakes);
+        setStockIntakes([]);
     }, [isMounted, debouncedSearchQuery, dateRange]);
 
-    const isLoading = stockIntakes === undefined;
 
     const handleViewDetails = (intake: StockIntake) => {
         setSelectedIntake(intake);

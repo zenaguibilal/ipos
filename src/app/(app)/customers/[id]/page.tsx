@@ -34,34 +34,26 @@ export default function CustomerDetailPage() {
     const [activity, setActivity] = useState<(Sale | Payment | ProductReturn)[]>([]);
     const [allActivity, setAllActivity] = useState<(Sale | Payment | ProductReturn)[]>([]);
     const [activityPage, setActivityPage] = useState(1);
-    const [isLoadingActivity, setIsLoadingActivity] = useState(true);
+    const [isLoadingActivity, setIsLoadingActivity] = useState(false);
 
-    const [customer, setCustomer] = useState<Customer | undefined>();
+    const [customer, setCustomer] = useState<Customer | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
         if (!isNaN(customerId)) {
-            dataService.getCustomerById(customerId).then(setCustomer);
+            setCustomer(null);
+            setAllActivity([]);
+            setActivity([]);
+            setIsLoadingActivity(false);
         }
     }, [customerId]);
 
-    useEffect(() => {
-        if (isNaN(customerId)) return;
-
-        setIsLoadingActivity(true);
-        dataService.getCustomerActivity(customerId).then(data => {
-            setAllActivity(data);
-            setActivity(data.slice(0, ITEMS_PER_PAGE));
-            setIsLoadingActivity(false);
-        });
-    }, [customerId]);
 
     const handleLoadMore = () => {
         const nextPage = activityPage + 1;
         setActivity(allActivity.slice(0, nextPage * ITEMS_PER_PAGE));
         setActivityPage(nextPage);
     };
-
-    const isLoading = customer === undefined;
 
     const handleSaleClick = (sale: Sale) => {
         setSelectedSale(sale);

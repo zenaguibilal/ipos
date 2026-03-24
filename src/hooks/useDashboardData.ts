@@ -10,18 +10,9 @@ export function useDashboardData(dateRange?: DateRange) {
     const [data, setData] = useState<DashboardData | undefined>();
 
     useEffect(() => {
-        if (!dateRange?.from || !dateRange.to) {
-            setData(undefined);
-            return;
-        };
-
-        dataService.getDashboardData(dateRange.from, dateRange.to)
-            .then(setData)
-            .catch(err => {
-                toast.error("Impossible de charger les données du tableau de bord.");
-                setData(undefined);
-            });
+        dataService.notify();
+        setData(undefined);
     }, [dateRange]);
 
-    return { data, isLoading: data === undefined };
+    return { data, isLoading: true };
 }

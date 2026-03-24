@@ -16,14 +16,11 @@ export function CompanyProfileForm() {
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
     
-    const [profile, setProfile] = useState<CompanyProfile | null | undefined>();
-    useEffect(() => {
-        dataService.getCompanyProfile().then(setProfile);
-    }, []);
-
-    const isLoading = profile === undefined;
+    const [profile, setProfile] = useState<CompanyProfile | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
+        setProfile(null);
         if (profile) {
             setFormState(profile);
         }

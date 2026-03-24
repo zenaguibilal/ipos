@@ -35,13 +35,13 @@ export default function CustomersPage() {
     
     const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
-    const [customers, setCustomers] = useState<Customer[] | undefined>();
+    const [customers, setCustomers] = useState<Customer[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
-        dataService.getCustomers({ query: debouncedSearchQuery, status: filterStatus }).then(setCustomers);
+        setCustomers([]);
     }, [debouncedSearchQuery, filterStatus]);
 
-    const isLoading = customers === undefined;
 
     const handleEditCustomer = (customer: Customer) => {
         setSelectedCustomer(customer);

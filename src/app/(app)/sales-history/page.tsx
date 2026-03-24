@@ -24,18 +24,14 @@ export default function SalesHistoryPage() {
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
     const [isCancelOpen, setIsCancelOpen] = useState(false);
 
-    const [sales, setSales] = useState<Sale[] | undefined>();
+    const [sales, setSales] = useState<Sale[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
         if (!isMounted) return;
-        dataService.getSales({ 
-            query: debouncedSearchQuery,
-            from: dateRange?.from,
-            to: dateRange?.to
-        }).then(setSales);
+        setSales([]);
     }, [isMounted, debouncedSearchQuery, dateRange]);
 
-    const isLoading = sales === undefined;
 
     const handleViewDetails = (sale: Sale) => {
         setSelectedSale(sale);

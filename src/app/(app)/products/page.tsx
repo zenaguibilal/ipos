@@ -78,26 +78,16 @@ export default function ProductsPage() {
 
     const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
-    const [products, setProducts] = useState<Product[] | undefined>();
-    const [categories, setCategories] = useState<string[] | undefined>();
-    const [suppliers, setSuppliers] = useState<Supplier[] | undefined>();
+    const [products, setProducts] = useState<Product[]>([]);
+    const [categories, setCategories] = useState<string[]>([]);
+    const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
-        dataService.getProducts({ 
-            query: debouncedSearchQuery, 
-            category: selectedCategory === 'all' ? undefined : selectedCategory,
-            supplierId: selectedSupplier === 'all' ? undefined : parseInt(selectedSupplier),
-            stockStatus: stockStatus,
-            sortBy: sortBy,
-        }).then(setProducts);
+        setProducts([]);
+        setCategories([]);
+        setSuppliers([]);
     }, [debouncedSearchQuery, selectedCategory, selectedSupplier, stockStatus, sortBy]);
-
-    useEffect(() => {
-        dataService.getProductCategories().then(setCategories);
-        dataService.getSuppliers().then(setSuppliers);
-    }, []);
-
-    const isLoading = products === undefined;
 
     useEffect(() => {
         const savedViewMode = localStorage.getItem('product_view_mode') as ViewMode;

@@ -128,8 +128,6 @@ export interface CompanyProfile {
     website?: string;
     vatNumber?: string;
     rcNumber?: string;
-    syncUrl?: string;
-    lastSyncDate?: string;
     goldPricePerGram?: number;
     prix_pain?: number;
     updatedAt?: Date;
@@ -348,7 +346,7 @@ export interface DB {
     returns: ProductReturn[];
     carts: Cart[];
     drafts: Draft[];
-    companyProfile: CompanyProfile;
+    companyProfile: CompanyProfile[];
     expenses: Expense[];
     settings: Setting[];
     inventoryLogs: InventoryLog[];

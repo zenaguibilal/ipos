@@ -19,9 +19,7 @@ export const StockIntakeCard = React.memo<StockIntakeCardProps>(({ intake, onVie
 
     const [supplier, setSupplier] = useState<Supplier | undefined>();
     useEffect(() => {
-        if(intake.supplierId) {
-            dataService.getById<Supplier>('suppliers', intake.supplierId).then(setSupplier);
-        }
+        setSupplier(undefined);
     }, [intake.supplierId]);
 
     const supplierName = intake.supplierName || supplier?.name || 'Fournisseur inconnu';

@@ -31,9 +31,9 @@ export function ProductIntakeCombobox({ onProductSelected, onNewProductCreated }
     const [searchQuery, setSearchQuery] = useState('');
     const debouncedSearchQuery = useDebounce(searchQuery, 200);
 
-    const [products, setProducts] = useState<Product[] | undefined>();
+    const [products, setProducts] = useState<Product[]>([]);
     useEffect(() => {
-        dataService.getAll<Product>('products').then(setProducts);
+        setProducts([]);
     }, []);
 
     const filteredProducts = useMemo(() => {

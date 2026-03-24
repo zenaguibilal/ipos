@@ -16,12 +16,12 @@ export function BreadClientList() {
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [selectedClient, setSelectedClient] = useState<BreadClient | null>(null);
 
-    const [clients, setClients] = useState<BreadClient[] | undefined>();
-    useEffect(() => {
-        dataService.getBreadClients().then(setClients);
-    }, [isFormOpen]); // Refresh when form closes
+    const [clients, setClients] = useState<BreadClient[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
 
-    const isLoading = clients === undefined;
+    useEffect(() => {
+        setClients([]);
+    }, [isFormOpen]); // Refresh when form closes
 
     const handleEdit = (client: BreadClient) => {
         setSelectedClient(client);

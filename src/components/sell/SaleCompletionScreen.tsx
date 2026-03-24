@@ -10,7 +10,7 @@ import { Receipt } from './Receipt';
 import { dataService } from '@/services/data-service';
 
 interface SaleCompletionScreenProps {
-  sale: Sale;
+  sale: Sale & { change?: number };
   onClose: () => void;
 }
 
@@ -19,10 +19,7 @@ export function SaleCompletionScreen({ sale, onClose }: SaleCompletionScreenProp
   const [profile, setProfile] = useState<CompanyProfile | null>(null);
 
   useEffect(() => {
-    const fetchProfile = async () => {
-      setProfile(await dataService.getCompanyProfile());
-    };
-    fetchProfile();
+    setProfile(null);
   }, []);
 
   const handlePrint = (thermal: boolean) => {

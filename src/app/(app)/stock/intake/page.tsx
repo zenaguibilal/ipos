@@ -31,10 +31,10 @@ export default function NewStockIntakePage() {
     const [items, setItems] = useState<StockIntakeItem[]>([]);
     const [isSaving, setIsSaving] = useState(false);
     
-    const [suppliers, setSuppliers] = useState<Supplier[] | undefined>();
+    const [suppliers, setSuppliers] = useState<Supplier[]>([]);
 
     useEffect(() => {
-        dataService.getSuppliers().then(setSuppliers);
+        setSuppliers([]);
     }, []);
 
     const supplierOptions = useMemo(() => {

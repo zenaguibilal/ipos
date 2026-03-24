@@ -23,57 +23,19 @@ export default function BreadPage() {
     const formattedDate = formatDateToYYYYMMDD(currentDate);
 
     const [breadPriceSetting, setBreadPriceSetting] = useState<CompanyProfile['prix_pain']>();
-    const [orders, setOrders] = useState<BreadOrderWithClient[] | undefined>();
+    const [orders, setOrders] = useState<BreadOrderWithClient[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
         dataService.getCompanyProfile().then(profile => setBreadPriceSetting(profile?.prix_pain));
-    }, []);
-
-    useEffect(() => {
-        setOrders(undefined); // To show loader
-        dataService.getBreadOrdersForDate(formattedDate).then(setOrders);
+        setOrders([]);
     }, [formattedDate]);
-
-    const isLoading = orders === undefined;
 
     const handleDateChange = (days: number) => {
         setCurrentDate(prev => addDays(prev, days));
     };
 
     const isToday = formatDateToYYYYMMDD(new Date()) === formattedDate;
-
-    if (isLoading) {
-        return (
-            <div className="p-4 sm:p-6 space-y-6">
-                <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
-                    <div>
-                        <Skeleton className="h-8 w-64 mb-2" />
-                        <Skeleton className="h-5 w-48" />
-                    </div>
-                    <div className="flex gap-2">
-                        <Skeleton className="h-10 w-28" />
-                        <Skeleton className="h-10 w-28" />
-                        <Skeleton className="h-10 w-28" />
-                    </div>
-                </div>
-                 <div className="grid gap-4 md:grid-cols-3">
-                    <Skeleton className="h-24 w-full" />
-                    <Skeleton className="h-24 w-full" />
-                    <Skeleton className="h-24 w-full" />
-                </div>
-                <div className="grid lg:grid-cols-3 gap-6 items-start">
-                    <div className="lg:col-span-2">
-                        <div className="flex justify-center items-center h-64">
-                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                        </div>
-                    </div>
-                    <div className="lg:col-span-1">
-                        <Skeleton className="h-[400px] w-full" />
-                    </div>
-                </div>
-            </div>
-        );
-    }
 
     return (
         <div className="p-4 sm:p-6 space-y-6">

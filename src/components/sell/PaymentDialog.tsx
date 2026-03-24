@@ -123,7 +123,7 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, customer, onSaleFina
 
         try {
             const newSale = await dataService.addSale(saleData);
-            setLastSale({ ...newSale, change: change > 0 ? change : 0 });
+            setLastSale(newSale);
             toast.success("Vente finalisée avec succès !");
             onSaleFinalized();
         } catch (error: any) {

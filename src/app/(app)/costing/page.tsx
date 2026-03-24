@@ -22,24 +22,16 @@ export default function CostingPage() {
     const [deliveryCost, setDeliveryCost] = useState('');
     const [isApplyingCosts, setIsApplyingCosts] = useState(false);
 
-    const [intakes, setIntakes] = useState<StockIntake[] | undefined>();
-    const [suppliers, setSuppliers] = useState<Supplier[] | undefined>();
+    const [intakes, setIntakes] = useState<StockIntake[]>([]);
+    const [suppliers, setSuppliers] = useState<Supplier[]>([]);
     const [selectedIntake, setSelectedIntake] = useState<StockIntake | undefined>();
+    const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
-        dataService.getStockIntakes({}).then(setIntakes);
-        dataService.getSuppliers().then(setSuppliers);
-    }, []);
-
-    useEffect(() => {
-        if (!selectedIntakeId) {
-            setSelectedIntake(undefined);
-            return;
-        }
-        dataService.getById<StockIntake>('stockIntakes', parseInt(selectedIntakeId)).then(setSelectedIntake);
+        setIntakes([]);
+        setSuppliers([]);
+        setSelectedIntake(undefined);
     }, [selectedIntakeId]);
-
-    const isLoading = intakes === undefined || suppliers === undefined;
 
     const intakeOptions = useMemo<ComboboxOption[]>(() => {
         if (!intakes || !suppliers) return [];

@@ -38,14 +38,10 @@ export default function SellPage() {
         isLoading,
     } = useCarts();
 
-    const [selectedCustomer, setSelectedCustomer] = useState<Customer | null | undefined>();
+    const [selectedCustomer, setSelectedCustomer] = useState<Customer | null | undefined>(null);
 
     useEffect(() => {
-        if(activeCart?.customerId) {
-            dataService.getCustomerById(activeCart.customerId).then(setSelectedCustomer);
-        } else {
-            setSelectedCustomer(null);
-        }
+        setSelectedCustomer(null);
     }, [activeCart?.customerId]);
 
     const [isProductSheetOpen, setIsProductSheetOpen] = useState(false);
@@ -118,7 +114,7 @@ export default function SellPage() {
         };
     }, [handleKeyDown]);
 
-    const isDataLoading = isLoading || !activeCart || selectedCustomer === undefined;
+    const isDataLoading = isLoading || !activeCart;
 
     if (isDataLoading) {
         return (
@@ -160,7 +156,10 @@ export default function SellPage() {
                                     <CustomerCombobox
                                         ref={customerComboboxRef}
                                         customerId={activeCart.customerId}
-                                        onSelectCustomer={setCartCustomer}
+                                        onSelectCustomer={(c) => {
+                                            setCartCustomer(c);
+                                            setSelectedCustomer(c);
+                                        }}
                                     />
                                 </div>
                                 {selectedCustomer && selectedCustomer.outstandingBalance > 0 && (

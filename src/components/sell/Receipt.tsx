@@ -66,6 +66,8 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(({ sale, p
     if (!sale?.createdAt) {
         return <div ref={ref}>Génération du reçu...</div>;
     }
+    
+    const saleWithChange = sale as Sale & { change?: number };
 
     return (
         <div ref={ref} className="p-4 bg-white text-black text-sm font-mono">
@@ -155,7 +157,7 @@ export const Receipt = React.forwardRef<HTMLDivElement, ReceiptProps>(({ sale, p
                 ) : (
                     <div className="flex justify-between">
                         <span>{receiptInfo.changeLabel}</span>
-                        <span>{formatCurrency(sale.change ?? 0)}</span>
+                        <span>{formatCurrency(saleWithChange.change ?? 0)}</span>
                     </div>
                 )}
             </div>

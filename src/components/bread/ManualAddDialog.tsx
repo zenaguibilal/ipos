@@ -20,11 +20,11 @@ export function ManualAddDialog({ currentDate }: ManualAddDialogProps) {
     const [selectedClientId, setSelectedClientId] = useState<string>('');
     const [quantity, setQuantity] = useState(10);
     
-    const [manualClients, setManualClients] = useState<BreadClient[] | undefined>();
+    const [manualClients, setManualClients] = useState<BreadClient[]>([]);
 
     useEffect(() => {
         if(isOpen) {
-            dataService.getManualBreadClients().then(setManualClients);
+            setManualClients([]);
         }
     }, [isOpen]);
 

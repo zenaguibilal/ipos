@@ -19,22 +19,14 @@ interface PrintStatementDialogProps {
 export function PrintStatementDialog({ isOpen, onOpenChange, customer }: PrintStatementDialogProps) {
     const [statementData, setStatementData] = useState<{ customer: Customer; unpaidSales: Sale[] } | null>(null);
     const [profile, setProfile] = useState<CompanyProfile | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
+    const [isLoading, setIsLoading] = useState(false);
     const printRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         if (isOpen && customer?.id) {
-            setIsLoading(true);
-            Promise.all([
-                dataService.getCustomerStatementData(customer.id),
-                dataService.getCompanyProfile()
-            ]).then(([data, companyProfile]) => {
-                setStatementData(data);
-                setProfile(companyProfile);
-                setIsLoading(false);
-            }).catch(err => {
-                setIsLoading(false);
-            });
+            setIsLoading(false);
+            setStatementData(null);
+            setProfile(null);
         }
     }, [isOpen, customer]);
 
