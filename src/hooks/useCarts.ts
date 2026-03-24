@@ -51,19 +51,23 @@ export const useCarts = () => {
     }, [carts, setActiveCartId]);
 
     const removeCart = useCallback((cartId: string) => {
-        // UI logic: If we're deleting the active cart, switch to another one first.
-        if (activeCartId === cartId) {
-            const newActiveCart = carts?.find(c => c.id !== cartId);
-            if (newActiveCart) {
-                setActiveCartId(newActiveCart.id);
-            }
-        }
-        
-        // Call the service to perform the deletion. The service handles business logic.
-        dataService.removeCart(cartId).catch((err: Error) => {
-            // If the service throws an error (e.g., trying to delete the last cart), show it.
-            toast.warning(err.message || "Erreur lors de la suppression du panier.");
-        });
+        dataService.removeCart(cartId)
+            .then(() => {
+                toast.success("Panier supprimé.");
+                // This logic now runs only on successful deletion.
+                if (activeCartId === cartId) {
+                    // `carts` from useLiveQuery is not updated yet in this sync block,
+                    // so we find an alternative cart from the list *before* deletion.
+                    const newActiveCart = carts?.find(c => c.id !== cartId);
+                    if (newActiveCart) {
+                        setActiveCartId(newActiveCart.id);
+                    }
+                }
+            })
+            .catch((err: Error) => {
+                // The service throws an error (e.g., trying to delete the last cart), show it.
+                toast.warning(err.message || "Erreur lors de la suppression du panier.");
+            });
     }, [carts, activeCartId, setActiveCartId]);
     
     const addProductToCart = useCallback((product: Product, quantity: number) => {
