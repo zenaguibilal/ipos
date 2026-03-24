@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { dataService } from '@/services/data-service';
 import type { BreadClient } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -11,13 +11,16 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BREAD_WEEK_DAY_LABELS, BREAD_WEEK_DAYS } from '@/lib/constants';
-import { useLiveQuery } from 'dexie-react-hooks';
 
 export function BreadClientList() {
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [selectedClient, setSelectedClient] = useState<BreadClient | null>(null);
 
-    const clients = useLiveQuery(() => dataService.getBreadClients());
+    const [clients, setClients] = useState<BreadClient[] | undefined>();
+    useEffect(() => {
+        dataService.getBreadClients().then(setClients);
+    }, [isFormOpen]); // Refresh when form closes
+
     const isLoading = clients === undefined;
 
     const handleEdit = (client: BreadClient) => {

@@ -11,47 +11,30 @@ import { BreadClientList } from '@/components/bread/BreadClientList';
 import { BreadDayView } from '@/components/bread/BreadDayView';
 import { BreadStats } from '@/components/bread/BreadStats';
 import { Loader2 } from 'lucide-react';
-import type { CompanyProfile } from '@/lib/types';
+import type { CompanyProfile, BreadOrderWithClient } from '@/lib/types';
 import { toast } from 'sonner';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useLiveQuery } from 'dexie-react-hooks';
 
 export default function BreadPage() {
     const [currentDate, setCurrentDate] = useState(new Date());
-
     const formattedDate = formatDateToYYYYMMDD(currentDate);
 
-    const breadPriceSetting = useLiveQuery<CompanyProfile['prix_pain']>(async () => {
-        const profile = await dataService.getCompanyProfile();
-        return profile?.prix_pain;
+    const [breadPriceSetting, setBreadPriceSetting] = useState<CompanyProfile['prix_pain']>();
+    const [orders, setOrders] = useState<BreadOrderWithClient[] | undefined>();
+
+    useEffect(() => {
+        dataService.getCompanyProfile().then(profile => setBreadPriceSetting(profile?.prix_pain));
     }, []);
 
-    // Step 1: Just READ the data reactively.
-    const orders = useLiveQuery(
-        () => dataService.getBreadOrdersForDate(formattedDate),
-        [formattedDate]
-    );
+    useEffect(() => {
+        setOrders(undefined); // To show loader
+        dataService.getBreadOrdersForDate(formattedDate).then(setOrders);
+    }, [formattedDate]);
 
     const isLoading = orders === undefined;
-
-    // Step 2: Handle order creation as a side-effect after the initial data load.
-    useEffect(() => {
-        // Only run if the query has finished (orders is not undefined)
-        if (orders !== undefined) {
-            // Check if there are no orders for this specific date
-            dataService.checkIfBreadOrdersExist(formattedDate).then(ordersExist => {
-                if (!ordersExist) {
-                    // Fire-and-forget: The UI will update reactively via useLiveQuery
-                    dataService.createDayOrders(formattedDate).catch(error => {
-                        toast.error("Erreur lors de la génération automatique des commandes.");
-                    });
-                }
-            });
-        }
-    }, [formattedDate, orders]); // Rerun when date changes or after the initial order query completes.
 
     const handleDateChange = (days: number) => {
         setCurrentDate(prev => addDays(prev, days));

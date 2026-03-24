@@ -10,7 +10,6 @@ import { dataService } from '@/services/data-service';
 import { toast } from 'sonner';
 import { Plus } from 'lucide-react';
 import type { BreadClient } from '@/lib/types';
-import { useLiveQuery } from 'dexie-react-hooks';
 
 interface ManualAddDialogProps {
     currentDate: string;
@@ -21,7 +20,13 @@ export function ManualAddDialog({ currentDate }: ManualAddDialogProps) {
     const [selectedClientId, setSelectedClientId] = useState<string>('');
     const [quantity, setQuantity] = useState(10);
     
-    const manualClients = useLiveQuery(() => isOpen ? dataService.getManualBreadClients() : [], [isOpen]);
+    const [manualClients, setManualClients] = useState<BreadClient[] | undefined>();
+
+    useEffect(() => {
+        if(isOpen) {
+            dataService.getManualBreadClients().then(setManualClients);
+        }
+    }, [isOpen]);
 
     const handleAdd = async () => {
         if (!selectedClientId) {

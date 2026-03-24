@@ -16,7 +16,6 @@ import { ReturnDetailsDialog } from '@/components/returns/ReturnDetailsDialog';
 import type { Sale, ProductReturn, Customer, Payment } from '@/lib/types';
 import { PrintStatementDialog } from '@/components/customers/PrintStatementDialog';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { useLiveQuery } from 'dexie-react-hooks';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -37,8 +36,14 @@ export default function CustomerDetailPage() {
     const [activityPage, setActivityPage] = useState(1);
     const [isLoadingActivity, setIsLoadingActivity] = useState(true);
 
-    const customer = useLiveQuery(() => !isNaN(customerId) ? dataService.getCustomerById(customerId) : undefined, [customerId]);
-    
+    const [customer, setCustomer] = useState<Customer | undefined>();
+
+    useEffect(() => {
+        if (!isNaN(customerId)) {
+            dataService.getCustomerById(customerId).then(setCustomer);
+        }
+    }, [customerId]);
+
     useEffect(() => {
         if (isNaN(customerId)) return;
 

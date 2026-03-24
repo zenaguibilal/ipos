@@ -18,7 +18,6 @@ import { dataService } from '@/services/data-service';
 import { AddPaymentDialog } from '@/components/payments/AddPaymentDialog';
 import { CartTotalBar } from '@/components/sell/CartTotalBar';
 import type { Customer, Product } from '@/lib/types';
-import { useLiveQuery } from 'dexie-react-hooks';
 
 export default function SellPage() {
     const {
@@ -39,10 +38,15 @@ export default function SellPage() {
         isLoading,
     } = useCarts();
 
-    const selectedCustomer = useLiveQuery(
-        () => activeCart?.customerId ? dataService.getCustomerById(activeCart.customerId) : Promise.resolve(null),
-        [activeCart?.customerId]
-    );
+    const [selectedCustomer, setSelectedCustomer] = useState<Customer | null | undefined>();
+
+    useEffect(() => {
+        if(activeCart?.customerId) {
+            dataService.getCustomerById(activeCart.customerId).then(setSelectedCustomer);
+        } else {
+            setSelectedCustomer(null);
+        }
+    }, [activeCart?.customerId]);
 
     const [isProductSheetOpen, setIsProductSheetOpen] = useState(false);
     const [isDraftsDialogOpen, setIsDraftsDialogOpen] = useState(false);

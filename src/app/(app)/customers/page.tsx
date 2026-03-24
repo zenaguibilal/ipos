@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { dataService } from '@/services/data-service';
 import { useDebounce } from '@/hooks/useDebounce';
 import type { Customer, ImportAnalysis } from '@/lib/types';
@@ -19,7 +19,6 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/card';
-import { useLiveQuery } from 'dexie-react-hooks';
 
 type FilterStatus = 'all' | 'has_debt' | 'overdue' | 'over_limit';
 
@@ -36,10 +35,11 @@ export default function CustomersPage() {
     
     const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
-    const customers = useLiveQuery(() => 
-        dataService.getCustomers({ query: debouncedSearchQuery, status: filterStatus }),
-        [debouncedSearchQuery, filterStatus]
-    );
+    const [customers, setCustomers] = useState<Customer[] | undefined>();
+
+    useEffect(() => {
+        dataService.getCustomers({ query: debouncedSearchQuery, status: filterStatus }).then(setCustomers);
+    }, [debouncedSearchQuery, filterStatus]);
 
     const isLoading = customers === undefined;
 

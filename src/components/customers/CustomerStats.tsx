@@ -3,13 +3,17 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Users, AlertTriangle, UserX } from 'lucide-react';
-import { useMemo } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
+import { useMemo, useEffect, useState } from 'react';
 import { dataService } from '@/services/data-service';
+import type { Customer } from '@/lib/types';
 
 export function CustomerStats() {
+  const [customers, setCustomers] = useState<Customer[] | undefined>();
 
-  const customers = useLiveQuery(() => dataService.getCustomers({}));
+  useEffect(() => {
+    dataService.getCustomers({}).then(setCustomers);
+  }, []);
+
   const isLoading = customers === undefined;
 
   const stats = useMemo(() => {

@@ -1,11 +1,10 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { dataService } from '@/services/data-service';
 import { Combobox, ComboboxOption } from '@/components/ui/combobox';
 import type { Customer } from '@/lib/types';
 import { formatCurrency } from '@/lib/utils';
-import { useLiveQuery } from 'dexie-react-hooks';
 
 interface CustomerComboboxProps {
     customerId: number | null;
@@ -20,7 +19,10 @@ const WalkInCustomerOption: ComboboxOption = {
 
 export const CustomerCombobox = React.forwardRef<HTMLButtonElement, CustomerComboboxProps>(({ customerId, onSelectCustomer }, ref) => {
     
-    const customers = useLiveQuery(() => dataService.getCustomers({ sortBy: 'lastName_asc' }), []);
+    const [customers, setCustomers] = useState<Customer[] | undefined>();
+    useEffect(() => {
+        dataService.getCustomers({ sortBy: 'lastName_asc' }).then(setCustomers);
+    }, []);
 
     const customerOptions = React.useMemo<ComboboxOption[]>(() => {
         if (!customers) return [WalkInCustomerOption];

@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import type { StockIntake, Supplier } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,7 +8,6 @@ import { FileText } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { safeToDate, formatCurrency } from '@/lib/utils';
-import { useLiveQuery } from 'dexie-react-hooks';
 import { dataService } from '@/services/data-service';
 
 interface StockIntakeCardProps {
@@ -18,10 +17,12 @@ interface StockIntakeCardProps {
 
 export const StockIntakeCard = React.memo<StockIntakeCardProps>(({ intake, onViewDetails }) => {
 
-    const supplier = useLiveQuery(
-        () => intake.supplierId ? dataService.getById<Supplier>('suppliers', intake.supplierId) : undefined,
-        [intake.supplierId]
-    );
+    const [supplier, setSupplier] = useState<Supplier | undefined>();
+    useEffect(() => {
+        if(intake.supplierId) {
+            dataService.getById<Supplier>('suppliers', intake.supplierId).then(setSupplier);
+        }
+    }, [intake.supplierId]);
 
     const supplierName = intake.supplierName || supplier?.name || 'Fournisseur inconnu';
 

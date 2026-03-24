@@ -13,7 +13,6 @@ import { Label } from '../ui/label';
 import { formatCurrency, getPlaceholder } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { useLiveQuery } from 'dexie-react-hooks';
 import { useDebounce } from '@/hooks/useDebounce';
 
 interface ProductSearchProps {
@@ -73,7 +72,12 @@ export const ProductSearch = forwardRef<{focus: () => void}, ProductSearchProps>
     const [selectedCategory, setSelectedCategory] = useState('all');
     const inputRef = useRef<HTMLInputElement>(null);
     
-    const categories = useLiveQuery(() => dataService.getProductCategories(), []);
+    const [categories, setCategories] = useState<string[] | undefined>();
+    const [filteredProducts, setFilteredProducts] = useState<Product[] | undefined>();
+
+    useEffect(() => {
+        dataService.getProductCategories().then(setCategories);
+    }, []);
 
     useImperativeHandle(ref, () => ({
         focus: () => {
@@ -81,9 +85,13 @@ export const ProductSearch = forwardRef<{focus: () => void}, ProductSearchProps>
         },
     }));
     
-    const filteredProducts = useLiveQuery(async () => {
-        if (!debouncedQuery) return [];
-        return dataService.getProducts({ query: debouncedQuery, category: selectedCategory === 'all' ? undefined : selectedCategory });
+    useEffect(() => {
+        if (!debouncedQuery) {
+            setFilteredProducts([]);
+            return;
+        }
+        dataService.getProducts({ query: debouncedQuery, category: selectedCategory === 'all' ? undefined : selectedCategory })
+            .then(setFilteredProducts);
     }, [debouncedQuery, selectedCategory]);
 
     const handleBarcodeScanned = async (scannedBarcode: string) => {

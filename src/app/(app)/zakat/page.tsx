@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { dataService } from '@/services/data-service';
 import { formatCurrency } from '@/lib/utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,7 +10,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertTriangle, Minus, Plus } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { useLiveQuery } from 'dexie-react-hooks';
+import type { ZakatData, CompanyProfile } from '@/lib/types';
 
 const ZAKAT_RATE = 0.025;
 const NISAB_GOLD_GRAMS = 85;
@@ -19,8 +19,13 @@ export default function ZakatPage() {
     const [cashOnHand, setCashOnHand] = useState('');
     const [debts, setDebts] = useState('');
 
-    const zakatData = useLiveQuery(() => dataService.getZakatData());
-    const companyProfile = useLiveQuery(() => dataService.getCompanyProfile());
+    const [zakatData, setZakatData] = useState<ZakatData | undefined>();
+    const [companyProfile, setCompanyProfile] = useState<CompanyProfile | null | undefined>();
+
+    useEffect(() => {
+        dataService.getZakatData().then(setZakatData);
+        dataService.getCompanyProfile().then(setCompanyProfile);
+    }, []);
     
     const isLoading = zakatData === undefined || companyProfile === undefined;
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { dataService } from '@/services/data-service';
 import type { StockIntake, CostingItem, Supplier } from '@/lib/types';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
@@ -16,19 +16,27 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { useLiveQuery } from 'dexie-react-hooks';
 
 export default function CostingPage() {
     const [selectedIntakeId, setSelectedIntakeId] = useState<string | null>(null);
     const [deliveryCost, setDeliveryCost] = useState('');
     const [isApplyingCosts, setIsApplyingCosts] = useState(false);
 
-    const intakes = useLiveQuery(() => dataService.getStockIntakes({}));
-    const suppliers = useLiveQuery(() => dataService.getSuppliers());
-    
-    const selectedIntake = useLiveQuery(async () => {
-        if (!selectedIntakeId) return undefined;
-        return dataService.getById<StockIntake>('stockIntakes', parseInt(selectedIntakeId));
+    const [intakes, setIntakes] = useState<StockIntake[] | undefined>();
+    const [suppliers, setSuppliers] = useState<Supplier[] | undefined>();
+    const [selectedIntake, setSelectedIntake] = useState<StockIntake | undefined>();
+
+    useEffect(() => {
+        dataService.getStockIntakes({}).then(setIntakes);
+        dataService.getSuppliers().then(setSuppliers);
+    }, []);
+
+    useEffect(() => {
+        if (!selectedIntakeId) {
+            setSelectedIntake(undefined);
+            return;
+        }
+        dataService.getById<StockIntake>('stockIntakes', parseInt(selectedIntakeId)).then(setSelectedIntake);
     }, [selectedIntakeId]);
 
     const isLoading = intakes === undefined || suppliers === undefined;

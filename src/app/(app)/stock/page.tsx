@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { dataService } from '@/services/data-service';
 import { useDebounce } from '@/hooks/useDebounce';
-import type { StockIntake, Supplier } from '@/lib/types';
+import type { StockIntake } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Search, Plus, Archive } from 'lucide-react';
@@ -15,7 +15,6 @@ import Link from 'next/link';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useLiveQuery } from 'dexie-react-hooks';
 
 export default function StockPage() {
     const [searchQuery, setSearchQuery] = useState('');
@@ -25,13 +24,15 @@ export default function StockPage() {
     const [selectedIntake, setSelectedIntake] = useState<StockIntake | null>(null);
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
-    const stockIntakes = useLiveQuery(() => {
-        if (!isMounted) return undefined;
-        return dataService.getStockIntakes({ 
+    const [stockIntakes, setStockIntakes] = useState<StockIntake[] | undefined>();
+
+    useEffect(() => {
+        if (!isMounted) return;
+        dataService.getStockIntakes({ 
             query: debouncedSearchQuery,
             from: dateRange?.from,
             to: dateRange?.to
-        });
+        }).then(setStockIntakes);
     }, [isMounted, debouncedSearchQuery, dateRange]);
 
     const isLoading = stockIntakes === undefined;

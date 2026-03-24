@@ -1,1270 +1,142 @@
 'use client';
 
-import { getDb } from '@/lib/database';
+// This file has been stubbed out because Dexie.js was removed.
+// The application's data persistence functionality has been disabled.
+
 import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, Setting, InventoryLog, StockIntakeItem, ZakatData, CostingItem, Draft, Supplier, ImportAnalysis, BreadClient, BreadOrder, BreadOrderWithClient, ProductImportAnalysis, GlobalActivityItem, DashboardData, DB } from '@/lib/types';
-import { subDays, endOfDay, startOfDay } from 'date-fns';
-import Papa from 'papaparse';
-import { formatCurrency, safeToDate, calculateCartTotals } from '@/lib/utils';
-import { BREAD_WEEK_DAYS } from '@/lib/constants';
 import { toast } from 'sonner';
 
 class DataService {
-  get db() {
-    return getDb();
-  }
 
-  private async generateInvoiceNumber(): Promise<string> {
-      const lastSale = await this.db.sales.orderBy('id').last();
-      const nextNum = ((lastSale?.id as number) || 0) + 1;
-      return `INV-${new Date().getFullYear()}-${nextNum.toString().padStart(5, '0')}`;
+  notify() {
+      toast.error("Fonctionnalité désactivée", { description: "La base de données a été supprimée de l'application." });
   }
 
   // Generic methods
   async getAll<T>(table: keyof DB): Promise<T[]> {
-    return this.db.table<T>(table).toArray();
+    this.notify();
+    return [];
   }
 
   async getById<T>(table: keyof DB, id: any): Promise<T | undefined> {
-    return this.db.table<T>(table).get(id);
+    this.notify();
+    return undefined;
   }
   
   // Settings
-  async getSetting(id: string): Promise<Setting | undefined> {
-    return this.getById<Setting>('settings', id);
-  }
-
-  async setSetting(id: string, value: any): Promise<void> {
-    await this.db.settings.put({ id, value });
-  }
+  async getSetting(id: string): Promise<Setting | undefined> { return undefined; }
+  async setSetting(id: string, value: any): Promise<void> { this.notify(); }
 
   // Company Profile
-  async getCompanyProfile(): Promise<CompanyProfile | null> {
-    const profiles = await this.getAll<CompanyProfile>('companyProfile');
-    return profiles[0] || null;
-  }
-  
-  async updateCompanyProfile(profileData: Partial<Omit<CompanyProfile, 'id'>>): Promise<void> {
-    const profile = await this.getCompanyProfile() ?? { id: 1 };
-    const updatedProfile = { ...profile, ...profileData, id: 1 as const, updatedAt: new Date() };
-    await this.db.companyProfile.put(updatedProfile);
-  }
+  async getCompanyProfile(): Promise<CompanyProfile | null> { return { id: 1 }; }
+  async updateCompanyProfile(profileData: Partial<Omit<CompanyProfile, 'id'>>): Promise<void> { this.notify(); }
   
   // Cart
-  async getCart(id: string): Promise<Cart | undefined> {
-    return this.getById<Cart>('carts', id);
-  }
-
-  async saveCart(cart: Cart): Promise<string> {
-    return this.db.carts.put(cart);
-  }
-
-  async deleteCart(id: string): Promise<void> {
-    await this.db.carts.delete(id);
-  }
-
-  async addProductToCart(cartId: string, product: Product, quantity: number): Promise<void> {
-    return this.db.transaction('rw', this.db.carts, this.db.products, async () => {
-        const cart = await this.db.carts.get(cartId);
-        if (!cart) throw new Error("Panier non trouvé.");
-
-        if (!product.id) {
-            throw new Error("Impossible d'ajouter un produit sans ID au panier.");
-        }
-
-        const existingItem = cart.items.find(item => item.id === product.id);
-        const newCartQuantity = (existingItem?.cartQuantity || 0) + quantity;
-
-        if (typeof product.id === 'number') {
-            const dbProduct = await this.db.products.get(product.id);
-            if (!dbProduct) {
-                throw new Error(`Produit "${product.name}" non trouvé.`);
-            }
-            if (dbProduct.quantity < newCartQuantity) {
-                throw new Error(`Stock insuffisant pour ${product.name}. Demandé: ${newCartQuantity}, Disponible: ${dbProduct.quantity}.`);
-            }
-        }
-
-        if (existingItem) {
-            existingItem.cartQuantity = newCartQuantity;
-            existingItem.flash = true;
-        } else {
-            cart.items.push({ ...product, id: product.id, cartQuantity: newCartQuantity, flash: true });
-        }
-        await this.db.carts.put(cart);
-    });
-  }
-
-  async updateCartItemQuantity(cartId: string, itemId: string | number, newQuantity: number): Promise<{capped: boolean, maxQuantity?: number}> {
-      const cart = await this.getCart(cartId);
-      if (!cart) throw new Error("Panier non trouvé.");
-
-      const itemIndex = cart.items.findIndex(item => item.id === itemId);
-      if (itemIndex === -1) return {capped: false};
-      
-      const item = cart.items[itemIndex];
-      let capped = false;
-      let maxQuantity: number | undefined = undefined;
-
-      if (typeof item.id === 'number') {
-          const product = await this.getById<Product>('products', item.id);
-          if (product && newQuantity > product.quantity) {
-              newQuantity = product.quantity;
-              capped = true;
-              maxQuantity = product.quantity;
-          }
-      }
-      
-      if (newQuantity <= 0) {
-          cart.items.splice(itemIndex, 1);
-      } else {
-          cart.items[itemIndex] = { ...item, cartQuantity: newQuantity };
-      }
-      await this.saveCart(cart);
-      return {capped, maxQuantity};
-  }
-
-  async removeCartItem(cartId: string, itemId: string | number): Promise<void> {
-    await this.db.carts.where({id: cartId}).modify(cart => {
-        cart.items = cart.items.filter(item => item.id !== itemId);
-    });
-  }
-  
-  async clearCart(cartId: string): Promise<void> {
-     await this.db.carts.where({id: cartId}).modify(cart => {
-        cart.items = [];
-        cart.customerId = null;
-        cart.customerName = '';
-        cart.discount = { type: 'fixed', value: 0 };
-    });
-  }
-
-  async setCartCustomer(cartId: string, customer: Customer | null): Promise<void> {
-    await this.db.carts.where({id: cartId}).modify(cart => {
-        cart.customerId = customer ? customer.id! : null;
-        cart.customerName = customer ? `${customer.firstName} ${customer.lastName}` : '';
-    });
-  }
-
-  async setCartDiscount(cartId: string, discount: { type: 'fixed' | 'percentage'; value: number }): Promise<void> {
-      await this.db.carts.where({id: cartId}).modify(cart => {
-        let value = Math.max(0, discount.value || 0);
-        const subtotal = cart.items.reduce((acc, item) => acc + item.price * item.cartQuantity, 0);
-
-        if (discount.type === 'fixed' && value > subtotal) {
-            value = subtotal;
-        }
-        if (discount.type === 'percentage' && (value < 0 || value > 100)) {
-            value = Math.max(0, Math.min(100, value));
-        }
-        cart.discount = { type: discount.type, value };
-      });
-  }
-
-  async removeFlashFromCartItems(cartId: string): Promise<void> {
-    await this.db.carts.where({id: cartId}).modify(cart => {
-        cart.items.forEach(i => { if(i.flash) i.flash = false });
-    });
-  }
+  async getCart(id: string): Promise<Cart | undefined> { return undefined; }
+  async saveCart(cart: Cart): Promise<string> { this.notify(); return cart.id; }
+  async deleteCart(id: string): Promise<void> { this.notify(); }
+  async addProductToCart(cartId: string, product: Product, quantity: number): Promise<void> { this.notify(); }
+  async updateCartItemQuantity(cartId: string, itemId: string | number, newQuantity: number): Promise<{capped: boolean, maxQuantity?: number}> { this.notify(); return {capped: false}; }
+  async removeCartItem(cartId: string, itemId: string | number): Promise<void> { this.notify(); }
+  async clearCart(cartId: string): Promise<void> { this.notify(); }
+  async setCartCustomer(cartId: string, customer: Customer | null): Promise<void> { this.notify(); }
+  async setCartDiscount(discount: { type: 'fixed' | 'percentage'; value: number }): Promise<void> { this.notify(); }
+  async removeFlashFromCartItems(cartId: string): Promise<void> { }
 
   // Product
-  async getProductByBarcode(barcode: string): Promise<Product | undefined> {
-    return this.db.products.where('barcodes').equals(barcode).first();
-  }
-
-  async addProduct(productData: Omit<Product, 'id'>): Promise<Product> {
-    return this.db.transaction('rw', this.db.products, this.db.inventoryLogs, async () => {
-      
-      if(productData.price <= 0 || productData.quantity < 0) {
-        throw new Error("Le prix doit être positif et la quantité ne peut pas être négative.");
-      }
-      
-      if(productData.barcodes && productData.barcodes.length > 0) {
-        const existing = await this.db.products.where('barcodes').anyOf(productData.barcodes).first();
-        if(existing) throw new Error(`Le code-barres ${existing.barcodes![0]} est déjà utilisé pour le produit "${existing.name}".`);
-      }
-
-      const newProductId = await this.db.products.add(productData as Product);
-      await this.db.inventoryLogs.add({
-            productId: newProductId,
-            change: productData.quantity,
-            newQuantity: productData.quantity,
-            reason: 'manual_adjustment',
-            relatedId: `init-${newProductId}`,
-            createdAt: new Date(),
-      });
-      const newProduct = { ...productData, id: newProductId };
-      return newProduct;
-    });
-  }
-
-  async updateProduct(id: number, productData: Partial<Omit<Product, 'id'>>): Promise<void> {
-    return this.db.transaction('rw', this.db.products, this.db.inventoryLogs, async () => {
-      
-        if (productData.price !== undefined && productData.price <= 0) {
-            throw new Error("Le prix doit être un nombre positif.");
-        }
-        if (productData.quantity !== undefined && productData.quantity < 0) {
-            throw new Error("La quantité ne peut pas être négative.");
-        }
-
-        if(productData.barcodes && productData.barcodes.length > 0) {
-            const existing = await this.db.products.where('barcodes').anyOf(productData.barcodes).and(p => p.id !== id).first();
-            if(existing) throw new Error(`Le code-barres ${existing.barcodes![0]} est déjà utilisé pour le produit "${existing.name}".`);
-        }
-
-        const oldProduct = await this.db.products.get(id);
-        if (oldProduct && productData.quantity !== undefined && productData.quantity !== oldProduct.quantity) {
-            await this.db.inventoryLogs.add({
-              productId: id,
-              change: (productData.quantity || 0) - oldProduct.quantity,
-              newQuantity: productData.quantity!,
-              reason: 'manual_adjustment',
-              createdAt: new Date(),
-            });
-        }
-        await this.db.products.update(id, productData);
-    });
-  }
-
-  async deleteProduct(id: number): Promise<void> {
-    return this.db.transaction('rw', this.db.products, this.db.inventoryLogs, this.db.sales, async () => {
-        const salesCount = await this.db.sales.where('items.id').equals(id).count();
-        if (salesCount > 0) {
-            throw new Error("Suppression impossible : ce produit est inclus dans des ventes existantes.");
-        }
-        await this.db.inventoryLogs.where({productId: id}).delete();
-        await this.db.products.delete(id);
-    });
-  }
-
-  async deleteProducts(ids: number[]): Promise<void> {
-     return this.db.transaction('rw', this.db.products, this.db.inventoryLogs, this.db.sales, async () => {
-        for (const id of ids) {
-             const salesCount = await this.db.sales.where('items.id').equals(id).count();
-            if (salesCount > 0) {
-                const product = await this.db.products.get(id);
-                throw new Error(`Suppression impossible : le produit "${product?.name}" est inclus dans des ventes existantes.`);
-            }
-        }
-        await this.db.inventoryLogs.where('productId').anyOf(ids).delete();
-        await this.db.products.bulkDelete(ids);
-    });
-  }
-
-  async getProducts(params: { query?: string; category?: string; supplierId?: number; stockStatus?: 'all' | 'in_stock' | 'low_stock' | 'out_of_stock', sortBy?: string }): Promise<Product[]> {
-    const { query, category, supplierId, stockStatus = 'all', sortBy = 'createdAt_desc' } = params;
-    
-    let collection;
-
-    if(category) {
-        collection = this.db.products.where({ category });
-    } else {
-        collection = this.db.products.toCollection();
-    }
-    
-    if (stockStatus !== 'all') {
-        collection = collection.filter(p => {
-            switch (stockStatus) {
-                case 'in_stock': return p.quantity > p.minStockLevel;
-                case 'low_stock': return p.quantity > 0 && p.quantity <= p.minStockLevel;
-                case 'out_of_stock': return p.quantity <= 0;
-                default: return true;
-            }
-        });
-    }
-
-    if(supplierId) {
-        collection = collection.filter(p => p.fournisseurId === supplierId);
-    }
-
-    if (query) {
-      const lowerQuery = query.toLowerCase();
-      collection = collection.filter(p => 
-        p.name.toLowerCase().includes(lowerQuery) || 
-        (p.barcodes?.some(b => b.includes(lowerQuery)) ?? false)
-      );
-    }
-    
-    const [sortField] = sortBy.split('_');
-    const sortOrder = sortBy.endsWith('desc') ? -1 : 1;
-    
-    const products = await collection.toArray();
-    
-    products.sort((a, b) => {
-        const aVal = (a as any)[sortField];
-        const bVal = (b as any)[sortField];
-        let comparison = 0;
-        if (typeof aVal === 'string' && typeof bVal === 'string') {
-          comparison = aVal.localeCompare(bVal);
-        } else if (typeof aVal === 'number' && typeof bVal === 'number') {
-          comparison = aVal - bVal;
-        } else if (aVal instanceof Date && bVal instanceof Date) {
-          comparison = aVal.getTime() - bVal.getTime();
-        } else if (aVal && !bVal) {
-            return -1;
-        } else if (!aVal && bVal) {
-            return 1;
-        }
-        return comparison * sortOrder;
-    });
-
-    return products;
-  }
-
-  async getProductsByIds(ids: number[]): Promise<Product[]> {
-    return this.db.products.where('id').anyOf(ids).toArray();
-  }
-
-  async getProductCategories(): Promise<string[]> {
-    const products = await this.getAll<Product>('products');
-    const categories = new Set(products.map(p => p.category).filter(Boolean) as string[]);
-    return Array.from(categories).sort();
-  }
-  
-  async getSuppliers(): Promise<Supplier[]> {
-      return this.db.suppliers.orderBy('name').toArray();
-  }
+  async getProductByBarcode(barcode: string): Promise<Product | undefined> { this.notify(); return undefined; }
+  async addProduct(productData: Omit<Product, 'id'>): Promise<Product> { this.notify(); throw new Error("Database removed."); }
+  async updateProduct(id: number, productData: Partial<Omit<Product, 'id'>>): Promise<void> { this.notify(); }
+  async deleteProduct(id: number): Promise<void> { this.notify(); }
+  async deleteProducts(ids: number[]): Promise<void> { this.notify(); }
+  async getProducts(params: any): Promise<Product[]> { return []; }
+  async getProductsByIds(ids: number[]): Promise<Product[]> { return []; }
+  async getProductCategories(): Promise<string[]> { return []; }
+  async getSuppliers(): Promise<Supplier[]> { return []; }
 
   // Customer
-  async getCustomerById(id: number): Promise<Customer | undefined> {
-      return this.getById<Customer>('customers', id);
-  }
-
-  async getCustomerActivity(customerId: number): Promise<(Sale | Payment | ProductReturn)[]> {
-    if (!customerId) return [];
-    const [sales, payments, returns] = await Promise.all([
-        this.db.sales.where({ customerId }).toArray(),
-        this.db.payments.where({ customerId }).toArray(),
-        this.db.returns.where({ customerId }).toArray(),
-    ]);
-
-    const activity: ({ type: string, date: Date } & (Sale | Payment | ProductReturn))[] = [
-        ...sales.map(s => ({ ...s, type: 'sale', date: safeToDate(s.createdAt!) })),
-        ...returns.map(r => ({ ...r, type: 'return', date: safeToDate(r.createdAt!) })),
-        ...payments.map(p => ({ ...p, type: 'payment', date: safeToDate(p.paymentDate!) })),
-    ];
-
-    return activity.filter(item => item.date && !isNaN(item.date.getTime()))
-                   .sort((a, b) => b.date.getTime() - a.date.getTime());
-}
-
-  async getCustomerStatementData(customerId: number): Promise<{ customer: Customer, unpaidSales: Sale[]}> {
-      const customer = await this.getCustomerById(customerId);
-      if (!customer) throw new Error("Client non trouvé");
-      const unpaidSales = await this.db.sales.where('customerId').equals(customerId).and(sale => sale.paymentStatus !== 'paid').sortBy('createdAt');
-      return { customer, unpaidSales };
-  }
-
-  async getCustomers(params: { query?: string; status?: 'all' | 'has_debt' | 'overdue' | 'over_limit', sortBy?: string, limit?: number }): Promise<Customer[]> {
-    const { query, status = 'all', sortBy = 'lastName_asc', limit } = params;
-    
-    let collection = this.db.customers.toCollection();
-
-    if (query) {
-        const lowerQuery = query.toLowerCase();
-        collection = collection.filter(c => (c.searchName || '').toLowerCase().includes(lowerQuery) || (c.phone?.includes(lowerQuery) ?? false));
-    }
-    
-    let customers = await collection.toArray();
-    
-    const unpaidSales = await this.db.sales.where('paymentStatus').notEqual('paid').toArray();
-    const unpaidSalesByCustomer = new Map<number, Sale[]>();
-    for (const sale of unpaidSales) {
-        if (sale.customerId) {
-            if (!unpaidSalesByCustomer.has(sale.customerId)) {
-                unpaidSalesByCustomer.set(sale.customerId, []);
-            }
-            unpaidSalesByCustomer.get(sale.customerId)!.push(sale);
-        }
-    }
-    
-    const now = new Date();
-    const customerWithData: Customer[] = customers.map(c => {
-        let debtStatus: Customer['debtStatus'] = 'none';
-        const customerUnpaidSales = unpaidSalesByCustomer.get(c.id!);
-
-        if (c.outstandingBalance > 0 && customerUnpaidSales && customerUnpaidSales.length > 0) {
-            const oldestUnpaidSale = customerUnpaidSales.reduce((oldest, current) => 
-                safeToDate(oldest.createdAt!).getTime() < safeToDate(current.createdAt!).getTime() ? oldest : current
-            );
-            
-            const settlementDay = c.settlementDay || 30; // Use a default of 30 days if not set
-            
-            const dueDate = new Date(safeToDate(oldestUnpaidSale.createdAt!).getTime() + settlementDay * 24 * 60 * 60 * 1000);
-            
-            if (now > dueDate) {
-                debtStatus = 'overdue';
-            } else if (subDays(dueDate, 7) <= now) { // Due within 7 days
-                debtStatus = 'due_soon';
-            }
-        }
-        
-        const isOverLimit = c.creditLimit ? c.outstandingBalance > c.creditLimit : false;
-        return { ...c, id: c.id!, debtStatus, isOverLimit };
-    });
-    
-    let filteredCustomers = customerWithData;
-
-    if (status && status !== 'all') {
-        filteredCustomers = customerWithData.filter(c => {
-            if (status === 'has_debt') return c.outstandingBalance > 0;
-            if (status === 'over_limit') return c.isOverLimit;
-            if (status === 'overdue') return c.debtStatus === 'overdue';
-            return false;
-        });
-    }
-
-    const sortField = sortBy.split('_')[0] as keyof Customer;
-    if (sortField) {
-        filteredCustomers.sort((a, b) => {
-            const aVal = (a as any)[sortField];
-            const bVal = (b as any)[sortField];
-            let comparison = 0;
-            if(typeof aVal === 'string' && typeof bVal === 'string') {
-                comparison = aVal.localeCompare(bVal);
-            } else if (typeof aVal === 'number' && typeof bVal === 'number') {
-                comparison = aVal - bVal;
-            }
-            return sortBy.endsWith('_desc') ? -comparison : comparison;
-        });
-    }
-
-    return limit ? filteredCustomers.slice(0, limit) : filteredCustomers;
-  }
-
-  async addCustomer(customer: Omit<Customer, 'id' | 'totalSpent' | 'outstandingBalance' | 'lastActivityDate'>): Promise<Customer> {
-      const data = { 
-        ...customer, 
-        totalSpent: 0, 
-        outstandingBalance: 0,
-      };
-      const id = await this.db.customers.add(data as Customer);
-      const newCustomer = {...data, id };
-      return newCustomer;
-  }
-
-  async updateCustomer(id: number, customerData: Partial<Omit<Customer, 'id'>>): Promise<void> {
-      await this.db.customers.update(id, customerData);
-  }
-
-  async deleteCustomer(id: number): Promise<void> {
-    return this.db.transaction('rw', this.db.customers, this.db.sales, async () => {
-        const customer = await this.getById<Customer>('customers', id);
-        if (!customer) return;
-        if (customer.outstandingBalance > 0) {
-            throw new Error(`Suppression impossible : ce client a un solde impayé de ${formatCurrency(customer.outstandingBalance)}`);
-        }
-        const salesCount = await this.db.sales.where({customerId: id}).count();
-        if (salesCount > 0) {
-            throw new Error("Suppression impossible : ce client a un historique de transactions. Envisagez de le désactiver à la place.");
-        }
-        await this.db.customers.delete(id);
-    });
-  }
+  async getCustomerById(id: number): Promise<Customer | undefined> { this.notify(); return undefined; }
+  async getCustomerActivity(customerId: number): Promise<(Sale | Payment | ProductReturn)[]> { return []; }
+  async getCustomerStatementData(customerId: number): Promise<{ customer: Customer, unpaidSales: Sale[]}> { this.notify(); throw new Error("Database removed."); }
+  async getCustomers(params: any): Promise<Customer[]> { return []; }
+  async addCustomer(customer: Omit<Customer, 'id' | 'totalSpent' | 'outstandingBalance' | 'lastActivityDate'>): Promise<Customer> { this.notify(); throw new Error("Database removed."); }
+  async updateCustomer(id: number, customerData: Partial<Omit<Customer, 'id'>>): Promise<void> { this.notify(); }
+  async deleteCustomer(id: number): Promise<void> { this.notify(); }
 
   // Import/Export
-  async analyzeCustomerImport(data: any[]): Promise<ImportAnalysis> {
-        const allCustomers = await this.getAll<Customer>('customers');
-        const analysis: ImportAnalysis = {
-            customersToAdd: [], customersToUpdate: [], skippedRows: [], errorRows: [], totalRows: data.length
-        };
-        for (const row of data) {
-            if (!row.firstName || !row.lastName) { analysis.errorRows.push(row); continue; }
-            const existingCustomer = allCustomers.find(c => c.firstName === row.firstName && c.lastName === row.lastName);
-            if (existingCustomer) analysis.customersToUpdate.push({ ...row, id: existingCustomer.id });
-            else analysis.customersToAdd.push(row);
-        }
-        return analysis;
-    }
-
-    async processCustomerImport(toAdd: any[], toUpdate: any[]): Promise<void> {
-        return this.db.transaction('rw', this.db.customers, async () => {
-          for (const row of toAdd) await this.addCustomer(this.mapRowToCustomer(row));
-          for (const row of toUpdate) await this.updateCustomer(row.id, this.mapRowToCustomer(row));
-        });
-    }
+  async analyzeCustomerImport(data: any[]): Promise<ImportAnalysis> { this.notify(); return { customersToAdd: [], customersToUpdate: [], skippedRows: [], errorRows: data, totalRows: data.length }; }
+  async processCustomerImport(toAdd: any[], toUpdate: any[]): Promise<void> { this.notify(); }
+  async analyzeProductImport(data: any[]): Promise<ProductImportAnalysis> { this.notify(); return { productsToAdd: [], productsToUpdate: [], skippedRows: [], errorRows: data, totalRows: data.length }; }
+  async processProductImport(toAdd: any[], toUpdate: any[]): Promise<void> { this.notify(); }
+  async exportProductsToCSV(): Promise<string> { this.notify(); return ""; }
     
-    private mapRowToCustomer(row: any) {
-        return {
-            firstName: row.firstName, lastName: row.lastName, phone: row.phone || '', address: row.address || '',
-            creditLimit: parseFloat(row.creditLimit) || undefined, settlementDay: parseInt(row.settlementDay) || undefined,
-        };
-    }
-    
-     async analyzeProductImport(data: any[]): Promise<ProductImportAnalysis> {
-        return this.db.transaction('r', this.db.products, async () => {
-            const allProducts = await this.getAll<Product>('products');
-            const productMapByName = new Map(allProducts.map(p => [p.name.toLowerCase(), p]));
-            const productMapByBarcode = new Map();
-            allProducts.forEach(p => p.barcodes?.forEach(b => productMapByBarcode.set(b, p)));
-            
-            const analysis: ProductImportAnalysis = {
-                productsToAdd: [], productsToUpdate: [], skippedRows: [], errorRows: [], totalRows: data.length
-            };
-            
-            for (const row of data) {
-                if (!row.name || !row.price) { analysis.errorRows.push(row); continue; }
-                
-                const barcodes = row.barcodes ? String(row.barcodes).split(',').map(b => b.trim()) : [];
-                
-                let existingProduct;
-                if(barcodes.length > 0) {
-                   existingProduct = barcodes.map((b: string) => productMapByBarcode.get(b)).find(Boolean);
-                }
-                if (!existingProduct) {
-                   existingProduct = productMapByName.get(row.name.toLowerCase());
-                }
-
-                if (existingProduct) {
-                    analysis.productsToUpdate.push({ ...row, id: existingProduct.id });
-                } else {
-                    const barcodeClash = barcodes.some((b: string) => productMapByBarcode.has(b));
-                    if(barcodeClash) {
-                        analysis.errorRows.push({ ...row, error: "Le code-barres existe déjà pour un autre produit." });
-                        continue;
-                    }
-                    analysis.productsToAdd.push(row);
-                }
-            }
-            return analysis;
-        });
-    }
-
-    async processProductImport(toAdd: any[], toUpdate: any[]): Promise<void> {
-      return this.db.transaction('rw', this.db.products, this.db.inventoryLogs, async () => {
-        for (const row of toAdd) {
-            await this.addProduct(this.mapRowToProduct(row));
-        }
-        for (const row of toUpdate) {
-            await this.updateProduct(row.id, this.mapRowToProduct(row));
-        }
-      });
-    }
-    
-    private mapRowToProduct(row: any): Omit<Product, 'id'> {
-        return {
-            name: row.name, category: row.category || 'Non classé', price: parseFloat(row.price) || 0,
-            purchasePrice: parseFloat(row.purchasePrice) || 0, quantity: parseInt(row.quantity) || 0,
-            minStockLevel: parseInt(row.minStockLevel) || 10,
-            barcodes: row.barcodes ? String(row.barcodes).split(',').map(b => b.trim()) : [],
-            unite: row.unite || 'Pièce',
-        };
-    }
-    
-    async exportProductsToCSV(): Promise<string> {
-        const products = await this.getAll<Product>('products');
-        return Papa.unparse(products);
-    }
-    
-    // Zakat
-    async getZakatData(): Promise<ZakatData> {
-        const products = await this.getAll<Product>('products');
-        const customers = await this.getAll<Customer>('customers');
-        const inventoryValue = products.reduce((acc, p) => acc + (p.purchasePrice * p.quantity), 0);
-        const totalReceivables = customers.reduce((acc, c) => acc + c.outstandingBalance, 0);
-        return { inventoryValue, totalReceivables };
-    }
+  // Zakat
+  async getZakatData(): Promise<ZakatData> { return { inventoryValue: 0, totalReceivables: 0 }; }
   
-    // Bread
-    async getBreadClients(): Promise<BreadClient[]> {
-        return this.db.clients_pain.orderBy('nom').toArray();
-    }
-
-    async addBreadClient(client: Omit<BreadClient, 'id'>): Promise<BreadClient> {
-        const id = await this.db.clients_pain.add(client as BreadClient);
-        const newClient = {...client, id};
-        return newClient;
-    }
-
-    async updateBreadClient(id: number, data: Partial<BreadClient>): Promise<void> {
-        await this.db.clients_pain.update(id, data);
-    }
-
-    async deleteBreadClient(id: number): Promise<void> {
-        await this.db.transaction('rw', this.db.commandes_pain, this.db.clients_pain, async () => {
-            await this.db.commandes_pain.where({ client_pain_id: id }).delete();
-            await this.db.clients_pain.delete(id);
-        });
-    }
-
-    async getManualBreadClients(): Promise<BreadClient[]> {
-        return this.db.clients_pain.filter(c => c.actif === true && c.type_recurrence === 'aucun').toArray();
-    }
-
-    async addManualBreadOrder(clientId: number, date: string, quantity: number): Promise<BreadOrder> {
-        const existing = await this.db.commandes_pain.where({ client_pain_id: clientId, date }).first();
-        if(existing) throw new Error("Une commande pour ce client existe déjà à cette date.");
-        
-        const orderData: Omit<BreadOrder, 'id'> = { client_pain_id: clientId, date, quantite: quantity, est_paye: false, est_livre: false, vente_id: null };
-        const id = await this.db.commandes_pain.add(orderData as BreadOrder);
-        const newOrder = {...orderData, id};
-        return newOrder;
-    }
+  // Bread
+  async getBreadClients(): Promise<BreadClient[]> { return []; }
+  async addBreadClient(client: Omit<BreadClient, 'id'>): Promise<BreadClient> { this.notify(); throw new Error("Database removed."); }
+  async updateBreadClient(id: number, data: Partial<BreadClient>): Promise<void> { this.notify(); }
+  async deleteBreadClient(id: number): Promise<void> { this.notify(); }
+  async getManualBreadClients(): Promise<BreadClient[]> { return []; }
+  async addManualBreadOrder(clientId: number, date: string, quantity: number): Promise<BreadOrder> { this.notify(); throw new Error("Database removed."); }
+  async updateBreadOrderQuantity(orderId: number, newQuantity: number): Promise<void> { this.notify(); }
+  async updateBreadOrderDeliveryStatus(orderId: number, delivered: boolean): Promise<void> { this.notify(); }
+  async checkIfBreadOrdersExist(date: string): Promise<boolean> { return true; } // prevent creating new ones
+  async createDayOrders(date: string): Promise<void> { }
+  async getBreadOrdersForDate(date: string): Promise<BreadOrderWithClient[]> { return []; }
+  async convertBreadOrdersToSales(orderIds: number[], breadPrice: number): Promise<void> { this.notify(); }
   
-    async updateBreadOrderQuantity(orderId: number, newQuantity: number): Promise<void> {
-        const order = await this.db.commandes_pain.get(orderId);
-        if (!order) return;
-        const quantite_origine = order.quantite_origine === undefined ? order.quantite : order.quantite_origine;
-        await this.db.commandes_pain.update(orderId, { quantite: newQuantity, quantite_origine });
-    }
-
-    async updateBreadOrderDeliveryStatus(orderId: number, delivered: boolean): Promise<void> {
-        await this.db.commandes_pain.update(orderId, { est_livre: delivered });
-    }
+  // Sales
+  async getSaleByInvoiceNumber(invoiceNumber: string): Promise<Sale | undefined> { this.notify(); return undefined; }
+  async getSales(params: any): Promise<Sale[]> { return []; }
+  async addSale(saleData: any): Promise<Sale> { this.notify(); throw new Error("Database removed."); }
+  async deleteSale(saleId: number): Promise<void> { this.notify(); }
   
-    async checkIfBreadOrdersExist(date: string): Promise<boolean> {
-        const count = await this.db.commandes_pain.where({date}).count();
-        return count > 0;
-    }
-
-    async createDayOrders(date: string): Promise<void> {
-        const dateParts = date.split('-');
-    const localDate = new Date(
-        parseInt(dateParts[0]),
-        parseInt(dateParts[1]) - 1,
-        parseInt(dateParts[2])
-    );
-    const dayOfWeek = BREAD_WEEK_DAYS[localDate.getDay()];
-        const activeClients = await this.db.clients_pain.filter(c => c.actif === true).toArray();
-        const existingOrders = await this.db.commandes_pain.where({date}).toArray();
-        const existingClientIds = new Set(existingOrders.map(o => o.client_pain_id));
-
-        const ordersToCreate: Omit<BreadOrder, 'id'>[] = [];
-        for (const client of activeClients) {
-          if (existingClientIds.has(client.id!)) continue;
-          
-          let quantity: number | undefined;
-          if (client.type_recurrence === 'quotidien') quantity = client.quantite_defaut;
-          else if (client.type_recurrence === 'jours_specifiques' && client.jours_semaine?.[dayOfWeek]?.actif) {
-            quantity = client.jours_semaine[dayOfWeek].quantite;
-          }
-          if (quantity && quantity > 0) {
-            ordersToCreate.push({ client_pain_id: client.id!, date, quantite: quantity, est_paye: false, est_livre: false, vente_id: null });
-          }
-        }
-        if(ordersToCreate.length > 0) {
-            await this.db.commandes_pain.bulkAdd(ordersToCreate as BreadOrder[]);
-        }
-    }
-
-    async getBreadOrdersForDate(date: string): Promise<BreadOrderWithClient[]> {
-        const [orders, clients] = await Promise.all([
-            this.db.commandes_pain.where({date}).toArray(),
-            this.getAll<BreadClient>('clients_pain')
-        ]);
-        const clientsMap = new Map(clients.map(c => [c.id, c]));
-        return orders
-            .map(order => ({...order, client: clientsMap.get(order.client_pain_id)! }))
-            .filter(order => order.client)
-            .sort((a, b) => a.client.nom.localeCompare(b.client.nom));
-    }
-  
-    async convertBreadOrdersToSales(orderIds: number[], breadPrice: number): Promise<void> {
-        return this.db.transaction('rw', [this.db.products, this.db.sales, this.db.inventoryLogs, this.db.commandes_pain, this.db.customers, this.db.clients_pain], async () => {
-            const breadProduct = await this.db.products.where('name').equals('Pain').first();
-            if (!breadProduct?.id || typeof breadProduct.id !== 'number') throw new Error("Le produit 'Pain' n'a pas été trouvé.");
-            
-            const ordersToConvert = await this.db.commandes_pain.where('id').anyOf(orderIds).and(o => !o.vente_id).toArray();
-            const totalBreadNeeded = ordersToConvert.reduce((sum, o) => sum + o.quantite, 0);
-
-            if (breadProduct.quantity < totalBreadNeeded) {
-                throw new Error(`Stock de pain insuffisant. Requis: ${totalBreadNeeded}, Disponible: ${breadProduct.quantity}.`);
-            }
-
-            // Get the next invoice number base ONCE before the loop.
-            // This is a more robust way to generate sequential numbers inside a transaction.
-            const lastSale = await this.db.sales.orderBy('id').last();
-            const baseInvoiceNum = ((lastSale?.id as number) || 0) + 1;
-
-            for (const order of ordersToConvert) {
-                const client = await this.getById<BreadClient>('clients_pain', order.client_pain_id);
-                
-                // Generate a unique invoice number for each order in the batch.
-                const invoiceNumber = `INV-${new Date().getFullYear()}-${(baseInvoiceNum + ordersToConvert.indexOf(order)).toString().padStart(5, '0')}`;
-                
-                const saleTotal = breadPrice * order.quantite;
-                const saleData: Omit<Sale, 'id'> = { 
-                    items: [{ id: breadProduct.id, name: "Pain", price: breadPrice, purchasePrice: breadProduct.purchasePrice, quantity: order.quantite }], 
-                    subtotal: saleTotal, total: saleTotal, amountPaid: 0, payments: [], clientPainId: order.client_pain_id, 
-                    customerName: client?.nom, invoiceNumber, remainingBalance: saleTotal, 
-                    paymentStatus: 'unpaid' as const, createdAt: new Date(), updatedAt: new Date()
-                };
-                const saleId = await this.db.sales.add(saleData as Sale);
-                
-                await this.db.commandes_pain.update(order.id!, { vente_id: saleId, est_paye: true });
-
-                if (client?.nom) {
-                    const mainCustomer = await this.db.customers.where('searchName').equals(client.nom.toLowerCase()).first();
-                    if (mainCustomer?.id) {
-                       await this.db.customers.update(mainCustomer.id, { outstandingBalance: mainCustomer.outstandingBalance + saleData.total, lastActivityDate: new Date() });
-                    }
-                }
-            }
-
-             await this.db.products.update(breadProduct.id, { quantity: breadProduct.quantity - totalBreadNeeded });
-             await this.db.inventoryLogs.add({ productId: breadProduct.id, change: -totalBreadNeeded, newQuantity: breadProduct.quantity - totalBreadNeeded, reason: 'sale', relatedId: `bread-conv-${orderIds.join(',')}`, createdAt: new Date() });
-        });
-    }
-  
-    // Sales
-    async getSaleByInvoiceNumber(invoiceNumber: string): Promise<Sale | undefined> {
-        return this.db.sales.where({invoiceNumber}).first();
-    }
+  // Payments
+  async addPayment(paymentData: Omit<Payment, 'id'>): Promise<Payment> { this.notify(); throw new Error("Database removed."); }
     
-    async getSales(params: { query?: string; from?: Date, to?: Date }): Promise<Sale[]> {
-        let collection = this.db.sales.orderBy('createdAt').reverse();
-        
-        if (params.from && params.to) {
-            collection = this.db.sales.where('createdAt').between(params.from, params.to, true, true).reverse();
-        }
-        
-        if (params.query) {
-            const lowerQuery = params.query.toLowerCase();
-            return collection.filter(s =>
-                s.invoiceNumber.toLowerCase().includes(lowerQuery) ||
-                (s.customerName || '').toLowerCase().includes(lowerQuery)
-            ).toArray();
-        }
-
-        return collection.toArray();
-    }
-
-
-    async addSale(saleData: Omit<Sale, 'id' | 'invoiceNumber' | 'remainingBalance' | 'paymentStatus'> & { amountPaid: number }): Promise<Sale> {
-        return this.db.transaction('rw', this.db.sales, this.db.products, this.db.inventoryLogs, this.db.customers, async () => {
-            
-            for (const item of saleData.items) {
-                if (typeof item.id === 'number') {
-                    const product = await this.db.products.get(item.id);
-                    if (!product) {
-                        throw new Error(`Produit "${item.name}" non trouvé dans l'inventaire.`);
-                    }
-                    if (product.quantity < item.quantity) {
-                        throw new Error(`Stock insuffisant pour "${item.name}". Demandé: ${item.quantity}, Disponible: ${product.quantity}.`);
-                    }
-                }
-            }
-
-            const invoiceNumber = await this.generateInvoiceNumber();
-            const remainingBalance = saleData.total - saleData.amountPaid;
-            const paymentStatus = remainingBalance <= 0 ? 'paid' : (saleData.amountPaid > 0 ? 'partial' : 'unpaid');
-            const newSaleData: Omit<Sale, 'id'> = { ...saleData, invoiceNumber, remainingBalance, paymentStatus, createdAt: new Date(), updatedAt: new Date() };
-
-            const saleId = await this.db.sales.add(newSaleData as Sale);
-            
-            for(const item of newSaleData.items) {
-                if (typeof item.id === 'number') {
-                    const product = await this.db.products.get(item.id); 
-                    if (product) {
-                        const newQuantity = product.quantity - item.quantity;
-                        await this.db.products.update(item.id, { quantity: newQuantity });
-                        await this.db.inventoryLogs.add({ 
-                            productId: item.id, 
-                            change: -item.quantity, 
-                            newQuantity, 
-                            reason: 'sale', 
-                            relatedId: saleId, 
-                            createdAt: new Date() 
-                        });
-                    }
-                }
-            }
-            
-            if (newSaleData.customerId) {
-                const customer = await this.db.customers.get(newSaleData.customerId);
-                if (customer?.id) {
-                    await this.db.customers.update(customer.id, { 
-                        outstandingBalance: customer.outstandingBalance + newSaleData.remainingBalance, 
-                        totalSpent: customer.totalSpent + newSaleData.total, 
-                        lastActivityDate: new Date() 
-                    });
-                }
-            }
-            
-            const finalSale = { ...newSaleData, id: saleId } as Sale;
-            return finalSale;
-        });
-    }
-  
-    async deleteSale(saleId: number): Promise<void> {
-        return this.db.transaction('rw', this.db.sales, this.db.products, this.db.inventoryLogs, this.db.customers, async () => {
-            const sale = await this.db.sales.get(saleId);
-            if (!sale) return;
-
-            for (const item of sale.items) {
-                if (typeof item.id === 'number') {
-                    await this.db.products.where({id: item.id}).modify(p => { p.quantity += item.quantity; });
-                    const updatedProduct = await this.db.products.get(item.id);
-                    await this.db.inventoryLogs.add({ productId: item.id, change: item.quantity, newQuantity: updatedProduct!.quantity, reason: 'cancellation', relatedId: `cancel-sale-${sale.id}`, createdAt: new Date() });
-                }
-            }
-            
-            if (sale.customerId) {
-                await this.db.customers.where({id: sale.customerId}).modify(c => {
-                    c.outstandingBalance = Math.max(0, c.outstandingBalance - sale.remainingBalance);
-                    c.totalSpent = Math.max(0, c.totalSpent - sale.total);
-                    c.lastActivityDate = new Date();
-                });
-            }
-
-            await this.db.sales.delete(saleId);
-        });
-    }
-  
-    // Payments
-    async addPayment(paymentData: Omit<Payment, 'id'>): Promise<Payment> {
-        return this.db.transaction('rw', this.db.payments, this.db.customers, async () => {
-            const id = await this.db.payments.add(paymentData as Payment);
-            const newPayment = { ...paymentData, id } as Payment;
-            await this.db.customers.where({ id: newPayment.customerId }).modify(c => {
-                c.outstandingBalance = Math.max(0, c.outstandingBalance - newPayment.amount);
-                c.lastActivityDate = new Date();
-            });
-            return newPayment;
-        });
-    }
+  // Drafts
+  async getDrafts(): Promise<Draft[]> { return []; }
+  async saveDraft(cart: Cart, notes?: string): Promise<Draft> { this.notify(); throw new Error("Database removed."); }
+  async deleteDraft(id: number): Promise<void> { this.notify(); }
+  async getDraftAndClear(draftId: number): Promise<Omit<Draft, 'id' | 'createdAt' | 'updatedAt'> | null> { this.notify(); return null; }
+  async loadDraftContentToCart(cartId: string, draftContent: any): Promise<void> { this.notify(); }
     
-    // Drafts
-    async getDrafts(): Promise<Draft[]> {
-        return this.db.drafts.orderBy('createdAt').reverse().toArray();
-    }
+  // Stock Intake
+  async addStockIntake(intakeData: any, items: StockIntakeItem[]): Promise<StockIntake> { this.notify(); throw new Error("Database removed."); }
+  async getStockIntakes(params: any): Promise<StockIntake[]> { return []; }
     
-    async saveDraft(cart: Cart, notes?: string): Promise<Draft> {
-        const { total } = calculateCartTotals(cart);
-        const draftData: Omit<Draft, 'id' > = { 
-          date: new Date(), 
-          customerId: cart.customerId, 
-          customerName: cart.customerName, 
-          items: cart.items, 
-          total, 
-          discount: cart.discount, 
-          notes 
-        };
-        const id = await this.db.drafts.add(draftData as Draft);
-        const newDraft = {...draftData, id} as Draft;
-        return newDraft;
-    }
+  // Returns
+  async getReturns(params: any): Promise<ProductReturn[]> { return []; }
+  async addReturn(returnData: Omit<ProductReturn, 'id'>): Promise<ProductReturn> { this.notify(); throw new Error("Database removed."); }
+  async deleteReturn(returnId: number): Promise<void> { this.notify(); }
     
-    async deleteDraft(id: number): Promise<void> {
-        await this.db.drafts.delete(id);
-    }
+  // Expenses
+  async getExpenses(params: any): Promise<Expense[]> { return []; }
+  async getExpenseCategories(): Promise<string[]> { return []; }
+  async addExpense(expense: Omit<Expense, 'id'>): Promise<Expense> { this.notify(); throw new Error("Database removed."); }
+  async updateExpense(id: number, expenseData: Partial<Omit<Expense, 'id'>>): Promise<void> { this.notify(); }
+  async deleteExpense(id: number): Promise<void> { this.notify(); }
     
-    async getDraftAndClear(draftId: number): Promise<Omit<Draft, 'id' | 'createdAt' | 'updatedAt'> | null> {
-        const draft = await this.db.drafts.get(draftId);
-        if (!draft) return null;
-        await this.deleteDraft(draftId);
-        const { id, createdAt, updatedAt, ...draftContent } = draft;
-        return draftContent;
-    }
-
-    async loadDraftContentToCart(cartId: string, draftContent: Omit<Draft, 'id' | 'createdAt' | 'updatedAt'>): Promise<void> {
-        await this.db.carts.where({id: cartId}).modify(cart => {
-            cart.items = draftContent.items;
-            cart.customerId = draftContent.customerId;
-            cart.customerName = draftContent.customerName;
-            cart.discount = draftContent.discount;
-        });
-    }
+  // Costing
+  async applyNewPurchasePrices(costingItems: CostingItem[]): Promise<void> { this.notify(); }
     
-    // Stock Intake
-    async addStockIntake(intakeData: { supplierName: string; invoiceNumber: string; invoiceDate: Date }, items: StockIntakeItem[]): Promise<StockIntake> {
-        return this.db.transaction('rw', this.db.suppliers, this.db.products, this.db.inventoryLogs, this.db.stockIntakes, async () => {
-            let supplier = await this.db.suppliers.where('name').equalsIgnoreCase(intakeData.supplierName).first();
-            if (!supplier) {
-                const newSupplierData = { name: intakeData.supplierName, balance: 0 };
-                const id = await this.db.suppliers.add(newSupplierData);
-                supplier = { ...newSupplierData, id };
-            }
+  // Backup & Restore
+  async exportData(): Promise<string> { this.notify(); return "{}"; }
+  async restoreTables(backupFile: any, tablesToRestore: string[], onProgress: (progress: any) => void): Promise<void> { this.notify(); }
+  async resetDatabase(): Promise<void> { this.notify(); }
     
-            const tempIntakeData: Omit<StockIntake, 'id'> = {
-                ...intakeData,
-                supplierId: supplier.id!,
-                supplierName: supplier.name,
-                items: [],
-                totalValue: 0,
-            };
-            const intakeId = await this.db.stockIntakes.add(tempIntakeData as StockIntake);
-    
-            const finalIntakeItems = [];
-            let finalTotalValue = 0;
-    
-            for (const item of items) {
-                const quantityChange = item.quantity - item.quantityDamaged;
-                finalTotalValue += item.quantity * item.purchasePrice;
-                let productId = item.productId;
-                let finalQuantity = 0;
-    
-                if (item.isNew) {
-                    const newProductData: Omit<Product, 'id'> = {
-                        name: item.name, category: item.category, price: item.price,
-                        purchasePrice: item.purchasePrice, quantity: quantityChange,
-                        minStockLevel: 10, barcodes: item.barcodes, unite: 'Pièce' as const,
-                        fournisseurId: supplier.id, dateMajPrix: new Date(),
-                    };
-                    productId = await this.db.products.add(newProductData as Product);
-                    finalQuantity = quantityChange;
-                } else if (productId) {
-                    const currentProduct = await this.db.products.get(productId);
-                    if (currentProduct) {
-                        const newStockQuantity = currentProduct.quantity + quantityChange;
-                        await this.db.products.update(productId, {
-                            quantity: newStockQuantity,
-                            purchasePrice: item.purchasePrice,
-                            dateMajPrix: new Date(),
-                            fournisseurId: supplier.id,
-                        });
-                        finalQuantity = newStockQuantity;
-                    }
-                }
-    
-                if (productId) {
-                    await this.db.inventoryLogs.add({
-                        productId: productId,
-                        change: quantityChange,
-                        newQuantity: finalQuantity,
-                        reason: 'stock_intake',
-                        relatedId: intakeId,
-                        createdAt: new Date()
-                    });
-    
-                    finalIntakeItems.push({
-                        productId: productId, productName: item.name,
-                        quantityReceived: item.quantity, quantityDamaged: item.quantityDamaged,
-                        purchasePrice: item.purchasePrice
-                    });
-                }
-            }
-    
-            await this.db.stockIntakes.update(intakeId, {
-                items: finalIntakeItems,
-                totalValue: finalTotalValue
-            });
-    
-            await this.db.suppliers.update(supplier.id!, {
-                balance: (supplier.balance || 0) + finalTotalValue
-            });
-    
-            const finalIntake = await this.db.stockIntakes.get(intakeId);
-            return finalIntake!;
-        });
-    }
-    
-    // Returns
-    async getReturns(params: { query?: string; from?: Date, to?: Date }): Promise<ProductReturn[]> {
-        let collection = this.db.returns.orderBy('createdAt').reverse();
-        
-        if (params.from && params.to) {
-            collection = this.db.returns.where('createdAt').between(params.from, params.to, true, true).reverse();
-        }
-        
-        if (params.query) {
-            const lowerQuery = params.query.toLowerCase();
-            return collection.filter(r =>
-                r.originalInvoiceNumber.toLowerCase().includes(lowerQuery) ||
-                (r.customerName || '').toLowerCase().includes(lowerQuery)
-            ).toArray();
-        }
-
-        return collection.toArray();
-    }
-    
-    async addReturn(returnData: Omit<ProductReturn, 'id'>): Promise<ProductReturn> {
-        return this.db.transaction('rw', this.db.returns, this.db.products, this.db.inventoryLogs, this.db.customers, async () => {
-            const id = await this.db.returns.add(returnData as ProductReturn);
-            const newReturn = {...returnData, id} as ProductReturn;
-            
-            for (const item of newReturn.items) {
-                if(item.productId && item.wasRestocked) {
-                    let newQuantity = 0;
-                    await this.db.products.where({ id: item.productId }).modify(product => {
-                        product.quantity += item.quantity;
-                        newQuantity = product.quantity;
-                    });
-
-                    if (newQuantity > 0) { // Check if modify did anything
-                        await this.db.inventoryLogs.add({
-                            productId: item.productId,
-                            change: item.quantity,
-                            newQuantity: newQuantity,
-                            reason: 'return',
-                            relatedId: newReturn.id,
-                            createdAt: new Date()
-                        });
-                    }
-                }
-            }
-            if (newReturn.customerId) {
-                const customer = await this.db.customers.get(newReturn.customerId);
-                if (customer?.id) {
-                    const balanceChange = newReturn.totalReturnValue - newReturn.amountRefunded;
-                    await this.updateCustomer(customer.id, { outstandingBalance: customer.outstandingBalance - balanceChange, lastActivityDate: new Date() });
-                }
-            }
-            return newReturn;
-        });
-    }
-    
-    async deleteReturn(returnId: number): Promise<void> {
-        return this.db.transaction('rw', this.db.returns, this.db.products, this.db.customers, this.db.inventoryLogs, async() => {
-            const pr = await this.db.returns.get(returnId);
-            if (!pr) return;
-
-            for (const item of pr.items) {
-                if (item.productId && item.wasRestocked) {
-                    await this.db.products.where({id: item.productId}).modify(p => { p.quantity -= item.quantity; });
-                    const updatedProduct = await this.db.products.get(item.productId);
-                    await this.db.inventoryLogs.add({ productId: item.productId, change: -item.quantity, newQuantity: updatedProduct!.quantity, reason: 'cancellation', relatedId: `cancel-return-${returnId}`, createdAt: new Date() });
-                }
-            }
-            if (pr.customerId) {
-                await this.db.customers.where({id: pr.customerId}).modify(c => {
-                    const balanceChange = pr.totalReturnValue - pr.amountRefunded;
-                    c.outstandingBalance += balanceChange;
-                });
-            }
-            
-            await this.db.returns.delete(returnId);
-        });
-    }
-    
-    // Expenses
-    async getExpenses(params: { category?: string; from?: Date, to?: Date }): Promise<Expense[]> {
-        let collection;
-        if(params.from && params.to) {
-            collection = this.db.expenses.where('expenseDate').between(params.from, params.to, true, true);
-        } else {
-            collection = this.db.expenses.toCollection();
-        }
-        
-        if (params.category) {
-            collection = collection.filter(e => e.category === params.category);
-        }
-        
-        return collection.reverse().toArray();
-    }
-    
-    async getExpenseCategories(): Promise<string[]> {
-        const expenses = await this.getAll<Expense>('expenses');
-        return Array.from(new Set(expenses.map(e => e.category))).sort();
-    }
-    
-    async addExpense(expense: Omit<Expense, 'id'>): Promise<Expense> {
-        const id = await this.db.expenses.add(expense as Expense);
-        const newExpense = {...expense, id} as Expense;
-        return newExpense;
-    }
-    
-    async updateExpense(id: number, expenseData: Partial<Omit<Expense, 'id'>>): Promise<void> {
-        await this.db.expenses.update(id, expenseData);
-    }
-    
-    async deleteExpense(id: number): Promise<void> {
-        await this.db.expenses.delete(id);
-    }
-    
-    // Costing
-    async getStockIntakes(params: { query?: string; from?: Date, to?: Date }): Promise<StockIntake[]> {
-        let collection = this.db.stockIntakes.orderBy('createdAt').reverse();
-        if(params.from && params.to) {
-            collection = this.db.stockIntakes.where('createdAt').between(params.from, params.to, true, true).reverse();
-        }
-        if(params.query) {
-            const lowerQuery = params.query.toLowerCase();
-            return collection.filter(s => 
-                (s.supplierName || '').toLowerCase().includes(lowerQuery) ||
-                (s.invoiceNumber || '').toLowerCase().includes(lowerQuery)
-            ).toArray();
-        }
-        return collection.toArray();
-    }
-
-    async applyNewPurchasePrices(costingItems: CostingItem[]): Promise<void> {
-        return this.db.transaction('rw', this.db.products, async () => {
-            for (const item of costingItems) {
-                if(item.productId) {
-                   await this.db.products.update(item.productId as number, { purchasePrice: item.finalCostPerUnit, dateMajPrix: new Date() });
-                }
-            }
-        });
-    }
-    
-    // Backup & Restore
-    async exportData(): Promise<string> {
-        const data: Partial<DB> = {};
-        const tableNames = this.db.tables.map(t => t.name as keyof DB);
-        for (const tableName of tableNames) {
-            const tableData = await this.db.table(tableName).toArray();
-            if (tableData.length > 0) {
-              data[tableName as keyof DB] = tableData as any;
-            }
-        }
-        const exportFile = {
-            meta: {
-                appName: 'iPOS',
-                schemaVersion: this.db.verno,
-                exportDate: new Date().toISOString(),
-            },
-            data: data
-        };
-        return JSON.stringify(exportFile, null, 2);
-    }
-    
-    async restoreTables(backupFile: any, tablesToRestore: string[], onProgress: (progress: any) => void): Promise<void> {
-        if (!backupFile.meta || backupFile.meta.appName !== 'iPOS') {
-            throw new Error("Fichier de sauvegarde non valide ou ne provient pas de l'application iPOS.");
-        }
-        if (backupFile.meta.schemaVersion !== this.db.verno) {
-            throw new Error(`Incompatibilité de version. Sauvegarde (v${backupFile.meta.schemaVersion}), Application (v${this.db.verno}).`);
-        }
-        
-        const backupData = backupFile.data as Partial<DB>;
-        const tablesToModify = this.db.tables.filter(t => tablesToRestore.includes(t.name));
-    
-        return this.db.transaction('rw', tablesToModify, async () => {
-            const total = tablesToRestore.length;
-            let current = 0;
-            const done: { table: string; success: boolean; error?: string }[] = [];
-    
-            for (const tableName of tablesToRestore) {
-                current++;
-                onProgress({ current, total, currentTable: tableName, done });
-                try {
-                    if (backupData[tableName as keyof typeof backupData]) {
-                        const table = this.db.table(tableName);
-                        await table.clear();
-                        const records = backupData[tableName as keyof typeof backupData] as any[];
-                        if (records.length > 0) {
-                            await table.bulkPut(records);
-                        }
-                        done.push({ table: tableName, success: true });
-                    }
-                } catch (e: any) {
-                    throw new Error(`Échec de la restauration de la table "${tableName}". L'opération a été annulée.`);
-                } finally {
-                    onProgress({ current, total, currentTable: tableName, done });
-                }
-            }
-        });
-    }
-    
-    async resetDatabase(): Promise<void> {
-      const tables = this.db.tables;
-      await this.db.transaction('rw', tables, async () => {
-          for (const table of tables) {
-              await table.clear();
-          }
-      });
+  // Dashboard
+  async getDashboardData(from: Date, to: Date): Promise<DashboardData | undefined> {
+    this.notify();
+    const stats = { totalRevenue: 0, totalProfit: 0, salesCount: 0, inventoryValue: 0, totalExpenses: 0 };
+    return {
+        stats: stats, sales: [], expenses: [], topProducts: [], topCustomers: [], lowStockProducts: [], recentActivity: [],
+    };
   }
     
-    async getDashboardData(from: Date, to: Date): Promise<DashboardData | undefined> {
-        if (!from || !to) return undefined;
-        try {
-            const sales = await this.db.sales.where('createdAt').between(from, to, true, true).toArray();
-            const expenses = await this.db.expenses.where('expenseDate').between(from, to, true, true).toArray();
-            const allProducts = await this.db.products.toArray();
-
-            const totalRevenue = sales.reduce((sum, s) => sum + (s.total || 0), 0);
-            const totalExpensesValue = expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
-            
-            const salesProfit = sales.reduce((sum, s) => {
-                const saleProfit = (s.items || []).reduce((itemSum, item) => 
-                    itemSum + ((item.price || 0) - (item.purchasePrice || 0)) * (item.quantity || 0), 0);
-                return sum + saleProfit - (s.discountAmount || 0);
-            }, 0);
-            const totalProfit = salesProfit - totalExpensesValue;
-            const inventoryValue = allProducts.reduce((sum, p) => sum + ((p.purchasePrice || 0) * (p.quantity || 0)), 0);
-
-            const productSales: { [key: number]: { revenue: number, profit: number, units: number } } = {};
-            for (const sale of sales) {
-                for (const item of sale.items || []) {
-                    if (typeof item.id !== 'number') continue;
-                    if (!productSales[item.id]) productSales[item.id] = { revenue: 0, profit: 0, units: 0 };
-                    productSales[item.id].revenue += (item.price || 0) * (item.quantity || 0);
-                    productSales[item.id].profit += ((item.price || 0) - (item.purchasePrice || 0)) * (item.quantity || 0);
-                    productSales[item.id].units += item.quantity || 0;
-                }
-            }
-            
-            const topProducts = Object.entries(productSales).map(([id, data]) => ({
-                id: Number(id),
-                name: allProducts.find(p => p.id === Number(id))?.name || 'Produit Inconnu',
-                totalRevenue: data.revenue,
-                totalProfit: data.profit,
-                unitsSold: data.units,
-            })).sort((a, b) => b.totalRevenue - a.totalRevenue).slice(0, 5);
-
-            const allCustomers = await this.db.customers.toArray();
-            const customerMap = new Map(allCustomers.map(c => [c.id, c]));
-            const customerSales: { [key: number]: number } = {};
-            for (const sale of sales) {
-                if (sale.customerId) {
-                    if (!customerSales[sale.customerId]) customerSales[sale.customerId] = 0;
-                    customerSales[sale.customerId] += sale.total;
-                }
-            }
-            
-            const topCustomers: TopCustomer[] = Object.entries(customerSales).map(([customerId, totalSpent]) => {
-                const customer = customerMap.get(Number(customerId));
-                return {
-                    id: Number(customerId),
-                    name: customer ? `${customer.firstName} ${customer.lastName}` : 'Client Inconnu',
-                    totalSpent,
-                };
-            }).sort((a, b) => b.totalSpent - a.totalSpent).slice(0, 5);
-            
-            const lowStockProducts = allProducts.filter(p => p.quantity <= p.minStockLevel).sort((a,b) => a.quantity - b.quantity).slice(0, 10);
-            const recentActivity = await this.getGlobalActivity(10);
-
-            return {
-                stats: { totalRevenue, totalProfit, salesCount: sales.length, inventoryValue, totalExpenses: totalExpensesValue },
-                sales, expenses, topProducts, topCustomers, lowStockProducts, recentActivity,
-            };
-        } catch(e: any) {
-            toast.error("Impossible de charger les données du tableau de bord.", { description: e.message });
-            return undefined;
-        }
-    }
-    
-    async getGlobalActivity(limit: number): Promise<GlobalActivityItem[]> {
-        const [allSales, allStockIntakes, allReturns, allCustomers, allPayments] = await Promise.all([
-            this.db.sales.orderBy('createdAt').reverse().limit(limit).toArray(),
-            this.db.stockIntakes.orderBy('createdAt').reverse().limit(limit).toArray(),
-            this.db.returns.orderBy('createdAt').reverse().limit(limit).toArray(),
-            this.db.customers.orderBy('createdAt').reverse().limit(limit).toArray(),
-            this.db.payments.orderBy('paymentDate').reverse().limit(limit).toArray(),
-        ]);
-        
-        const activity: GlobalActivityItem[] = [];
-        allSales.forEach(s => s.createdAt && activity.push({ type: 'sale', date: safeToDate(s.createdAt), id: s.id!, description: `Vente #${s.invoiceNumber}`, details: s.customerName || 'Client de passage', amount: s.total, amountClass: 'text-primary' }));
-        allStockIntakes.forEach(si => si.createdAt && activity.push({ type: 'stock_intake', date: safeToDate(si.createdAt), id: si.id!, description: `Réception de stock`, details: `Facture: ${si.invoiceNumber}`, amount: si.totalValue, amountClass: 'text-yellow-500' }));
-        allReturns.forEach(r => r.createdAt && activity.push({ type: 'return', date: safeToDate(r.createdAt), id: r.id!, description: `Retour sur facture #${r.originalInvoiceNumber}`, details: `${r.items.length} article(s) retourné(s)`, amount: -r.totalReturnValue, amountClass: 'text-destructive' }));
-        allCustomers.forEach(c => c.createdAt && activity.push({ type: 'customer', date: safeToDate(c.createdAt), id: c.id!, description: `Nouveau client`, details: `${c.firstName} ${c.lastName}`, amount: undefined }));
-        allPayments.forEach(p => p.paymentDate && activity.push({ type: 'payment', date: safeToDate(p.paymentDate), id: p.id!, description: `Paiement reçu`, details: p.customerName || 'Client inconnu', amount: p.amount, amountClass: 'text-green-500' }));
-        
-        return activity.sort((a,b) => b.date.getTime() - a.date.getTime()).slice(0, limit);
-    }
+  async getGlobalActivity(limit: number): Promise<GlobalActivityItem[]> { return []; }
 }
 
 export const dataService = new DataService();
-    
-    
-
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    
-
-

@@ -34,7 +34,6 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useLiveQuery } from 'dexie-react-hooks';
 
 type ViewMode = 'grid' | 'list';
 type StockStatus = 'all' | 'in_stock' | 'low_stock' | 'out_of_stock';
@@ -79,16 +78,24 @@ export default function ProductsPage() {
 
     const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
-    const products = useLiveQuery(() => dataService.getProducts({ 
-        query: debouncedSearchQuery, 
-        category: selectedCategory === 'all' ? undefined : selectedCategory,
-        supplierId: selectedSupplier === 'all' ? undefined : parseInt(selectedSupplier),
-        stockStatus: stockStatus,
-        sortBy: sortBy,
-    }), [debouncedSearchQuery, selectedCategory, selectedSupplier, stockStatus, sortBy]);
+    const [products, setProducts] = useState<Product[] | undefined>();
+    const [categories, setCategories] = useState<string[] | undefined>();
+    const [suppliers, setSuppliers] = useState<Supplier[] | undefined>();
 
-    const categories = useLiveQuery(() => dataService.getProductCategories());
-    const suppliers = useLiveQuery(() => dataService.getSuppliers());
+    useEffect(() => {
+        dataService.getProducts({ 
+            query: debouncedSearchQuery, 
+            category: selectedCategory === 'all' ? undefined : selectedCategory,
+            supplierId: selectedSupplier === 'all' ? undefined : parseInt(selectedSupplier),
+            stockStatus: stockStatus,
+            sortBy: sortBy,
+        }).then(setProducts);
+    }, [debouncedSearchQuery, selectedCategory, selectedSupplier, stockStatus, sortBy]);
+
+    useEffect(() => {
+        dataService.getProductCategories().then(setCategories);
+        dataService.getSuppliers().then(setSuppliers);
+    }, []);
 
     const isLoading = products === undefined;
 

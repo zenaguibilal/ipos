@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { dataService } from '@/services/data-service';
 import type { Product } from '@/lib/types';
 import {
@@ -20,7 +20,6 @@ import { Button } from '@/components/ui/button';
 import { ChevronsUpDown, Plus } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { useDebounce } from '@/hooks/useDebounce';
-import { useLiveQuery } from 'dexie-react-hooks';
 
 interface ProductIntakeComboboxProps {
     onProductSelected: (product: Product) => void;
@@ -32,7 +31,10 @@ export function ProductIntakeCombobox({ onProductSelected, onNewProductCreated }
     const [searchQuery, setSearchQuery] = useState('');
     const debouncedSearchQuery = useDebounce(searchQuery, 200);
 
-    const products = useLiveQuery(() => dataService.getAll<Product>('products'), []);
+    const [products, setProducts] = useState<Product[] | undefined>();
+    useEffect(() => {
+        dataService.getAll<Product>('products').then(setProducts);
+    }, []);
 
     const filteredProducts = useMemo(() => {
         if (!products) return [];

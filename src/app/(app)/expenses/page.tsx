@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { dataService } from '@/services/data-service';
 import type { Expense, ExpenseCategory } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -23,7 +23,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { formatCurrency } from '@/lib/utils';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { useLiveQuery } from 'dexie-react-hooks';
 
 export default function ExpensesPage() {
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -32,19 +31,23 @@ export default function ExpensesPage() {
     const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
     const { dateRange, setDate, isMounted } = useDateRange(29);
 
-    const data = useLiveQuery(() => {
-        if (!isMounted || !dateRange) return undefined;
-        return Promise.all([
+    const [data, setData] = useState<{expenses: Expense[], categories: ExpenseCategory[]} | undefined>();
+
+    useEffect(() => {
+        if (!isMounted || !dateRange) return;
+        Promise.all([
             dataService.getExpenses({ 
                 category: selectedCategory === 'all' ? undefined : selectedCategory,
                 from: dateRange.from,
                 to: dateRange.to
             }),
             dataService.getExpenseCategories()
-        ]).then(([expenseData, categoryData]) => ({
-            expenses: expenseData,
-            categories: categoryData as ExpenseCategory[]
-        }));
+        ]).then(([expenseData, categoryData]) => {
+            setData({
+                expenses: expenseData,
+                categories: categoryData as ExpenseCategory[]
+            });
+        });
     }, [isMounted, selectedCategory, dateRange]);
 
     const expenses = data?.expenses;

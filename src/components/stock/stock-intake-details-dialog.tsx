@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import {
     Dialog,
     DialogContent,
@@ -19,7 +20,6 @@ import {
 import { Button } from '@/components/ui/button';
 import type { StockIntake, Supplier } from '@/lib/types';
 import { formatCurrency } from '@/lib/utils';
-import { useLiveQuery } from 'dexie-react-hooks';
 import { dataService } from '@/services/data-service';
 
 export function StockIntakeDetailsDialog({
@@ -31,13 +31,13 @@ export function StockIntakeDetailsDialog({
     onOpenChange: (open: boolean) => void;
     intake: StockIntake | null;
 }) {
-    const supplier = useLiveQuery(
-      async () => {
-        if (!intake?.supplierId) return undefined;
-        return dataService.getById<Supplier>('suppliers', intake.supplierId);
-      },
-      [intake?.supplierId]
-    );
+    const [supplier, setSupplier] = useState<Supplier | undefined>();
+
+    useEffect(() => {
+        if (isOpen && intake?.supplierId) {
+            dataService.getById<Supplier>('suppliers', intake.supplierId).then(setSupplier);
+        }
+    }, [isOpen, intake]);
 
     if (!intake) return null;
     

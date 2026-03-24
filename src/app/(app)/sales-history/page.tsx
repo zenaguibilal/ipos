@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { dataService } from '@/services/data-service';
 import { useDebounce } from '@/hooks/useDebounce';
 import type { Sale } from '@/lib/types';
@@ -14,7 +14,6 @@ import { CancelSaleDialog } from '@/components/sales/CancelSaleDialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { useLiveQuery } from 'dexie-react-hooks';
 
 export default function SalesHistoryPage() {
     const [searchQuery, setSearchQuery] = useState('');
@@ -25,13 +24,15 @@ export default function SalesHistoryPage() {
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
     const [isCancelOpen, setIsCancelOpen] = useState(false);
 
-    const sales = useLiveQuery(() => {
-        if (!isMounted) return undefined;
-        return dataService.getSales({ 
+    const [sales, setSales] = useState<Sale[] | undefined>();
+
+    useEffect(() => {
+        if (!isMounted) return;
+        dataService.getSales({ 
             query: debouncedSearchQuery,
             from: dateRange?.from,
             to: dateRange?.to
-        });
+        }).then(setSales);
     }, [isMounted, debouncedSearchQuery, dateRange]);
 
     const isLoading = sales === undefined;

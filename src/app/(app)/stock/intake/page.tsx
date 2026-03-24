@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -19,7 +19,6 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { ProductIntakeCombobox } from '@/components/stock/ProductIntakeCombobox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { useLiveQuery } from 'dexie-react-hooks';
 
 export default function NewStockIntakePage() {
     const router = useRouter();
@@ -32,7 +31,11 @@ export default function NewStockIntakePage() {
     const [items, setItems] = useState<StockIntakeItem[]>([]);
     const [isSaving, setIsSaving] = useState(false);
     
-    const suppliers = useLiveQuery(() => dataService.getSuppliers());
+    const [suppliers, setSuppliers] = useState<Supplier[] | undefined>();
+
+    useEffect(() => {
+        dataService.getSuppliers().then(setSuppliers);
+    }, []);
 
     const supplierOptions = useMemo(() => {
         if (!suppliers) return [];
