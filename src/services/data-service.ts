@@ -656,6 +656,26 @@ class DataService {
     async addSale(saleData: any, runInTransaction: boolean = true): Promise<number> {
         const processSale = async () => {
             const now = new Date();
+            
+            // Validate stock availability before proceeding
+            const productIds = saleData.items
+                .map((item: SaleItem) => item.id)
+                .filter((id: any): id is number => typeof id === 'number');
+            
+            if (productIds.length > 0) {
+                const productsInDb = await db.products.bulkGet(productIds);
+                const productMap = new Map(productsInDb.filter((p): p is Product => !!p).map(p => [p.id!, p]));
+
+                for (const item of saleData.items as SaleItem[]) {
+                    if (typeof item.id === 'number') {
+                        const product = productMap.get(item.id);
+                        if (!product || product.quantity < item.quantity) {
+                            throw new Error(`Stock insuffisant pour "${item.name}". Disponible: ${product?.quantity ?? 0}, Demandé: ${item.quantity}`);
+                        }
+                    }
+                }
+            }
+
             const today = format(now, 'yyMMdd');
             
             const lastSaleToday = await db.sales.where('createdAt').between(startOfDay(now), endOfDay(now), true, true).last();
