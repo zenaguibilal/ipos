@@ -76,7 +76,7 @@ export const ProductSearch = forwardRef<{focus: () => void}, ProductSearchProps>
     const [filteredProducts, setFilteredProducts] = useState<Product[] | undefined>();
 
     useEffect(() => {
-        dataService.getProductCategories().then(setCategories);
+        setCategories([]);
     }, []);
 
     useImperativeHandle(ref, () => ({
@@ -86,12 +86,7 @@ export const ProductSearch = forwardRef<{focus: () => void}, ProductSearchProps>
     }));
     
     useEffect(() => {
-        if (!debouncedQuery) {
-            setFilteredProducts([]);
-            return;
-        }
-        dataService.getProducts({ query: debouncedQuery, category: selectedCategory === 'all' ? undefined : selectedCategory })
-            .then(setFilteredProducts);
+        setFilteredProducts([]);
     }, [debouncedQuery, selectedCategory]);
 
     const handleBarcodeScanned = async (scannedBarcode: string) => {

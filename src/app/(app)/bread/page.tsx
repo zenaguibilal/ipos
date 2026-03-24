@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { dataService } from '@/services/data-service';
 import { formatDateToYYYYMMDD } from '@/lib/utils';
 import { addDays, format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -11,23 +10,17 @@ import { BreadClientList } from '@/components/bread/BreadClientList';
 import { BreadDayView } from '@/components/bread/BreadDayView';
 import { BreadStats } from '@/components/bread/BreadStats';
 import { Loader2 } from 'lucide-react';
-import type { CompanyProfile, BreadOrderWithClient } from '@/lib/types';
-import { toast } from 'sonner';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertTriangle } from 'lucide-react';
-import Link from 'next/link';
+import type { BreadOrderWithClient } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function BreadPage() {
     const [currentDate, setCurrentDate] = useState(new Date());
     const formattedDate = formatDateToYYYYMMDD(currentDate);
 
-    const [breadPriceSetting, setBreadPriceSetting] = useState<CompanyProfile['prix_pain']>();
     const [orders, setOrders] = useState<BreadOrderWithClient[]>([]);
     const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
-        dataService.getCompanyProfile().then(profile => setBreadPriceSetting(profile?.prix_pain));
         setOrders([]);
     }, [formattedDate]);
 
@@ -48,16 +41,6 @@ export default function BreadPage() {
                 <Button variant="outline" onClick={() => handleDateChange(1)}>Suivant</Button>
             </PageHeader>
 
-            {(breadPriceSetting === undefined || breadPriceSetting === 0) && (
-                <Alert variant="destructive">
-                    <AlertTriangle className="h-4 w-4" />
-                    <AlertTitle>Prix du pain non défini !</AlertTitle>
-                    <AlertDescription>
-                        Veuillez définir un prix pour le pain dans les <Link href="/profile" className="font-bold underline">paramètres</Link> pour pouvoir convertir les commandes en ventes.
-                    </AlertDescription>
-                </Alert>
-            )}
-
             <BreadStats orders={orders} isLoading={isLoading}/>
 
             <div className="grid lg:grid-cols-3 gap-6 items-start">
@@ -70,7 +53,7 @@ export default function BreadPage() {
                         <BreadDayView 
                             orders={orders || []} 
                             currentDate={formattedDate} 
-                            breadPrice={breadPriceSetting || 0}
+                            breadPrice={0}
                         />
                     )}
                 </div>

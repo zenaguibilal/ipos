@@ -12,7 +12,6 @@ import {
 } from '@/components/ui/dialog';
 import { Printer } from 'lucide-react';
 import type { BreadOrder, BreadOrderWithClient, CompanyProfile } from '@/lib/types';
-import { dataService } from '@/services/data-service';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 

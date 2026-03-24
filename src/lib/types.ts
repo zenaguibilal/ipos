@@ -87,7 +87,6 @@ export interface Sale {
     createdAt?: Date;
     updatedAt?: Date;
     dueDate?: Date;
-    change?: number;
 }
 
 export interface Payment {
