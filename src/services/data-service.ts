@@ -97,6 +97,10 @@ class DataService {
     }
     
     async removeCart(cartId: string): Promise<void> {
+        const carts = await db.carts.toArray();
+        if (carts.length <= 1) {
+             throw new Error("Impossible de supprimer le dernier panier.");
+        }
         await db.carts.delete(cartId);
     }
     
@@ -139,8 +143,6 @@ class DataService {
             });
             await db.drafts.delete(draftId);
             toast.success("Brouillon chargé dans le panier actif.");
-        }).catch(err => {
-            toast.error(err.message || "Erreur lors du chargement du brouillon.");
         });
     }
     
@@ -187,7 +189,8 @@ class DataService {
             ).first();
 
             if (saleWithProduct) {
-                throw new Error("Impossible de supprimer un produit qui a déjà été vendu.");
+                const product = await db.products.get(id);
+                throw new Error(`Impossible de supprimer le produit "${product?.name || 'inconnu'}" car il a déjà été vendu.`);
             }
             await db.products.delete(id);
         });
@@ -195,14 +198,25 @@ class DataService {
 
     async deleteProducts(ids: number[]): Promise<void> {
        return db.transaction('rw', db.products, db.sales, async () => {
-            for (const id of ids) {
-                const saleWithProduct = await db.sales.filter(sale => 
-                    sale.items.some(item => item.id === id)
-                ).first();
-                if (saleWithProduct) {
-                    throw new Error(`Impossible de supprimer le produit (ID: ${id}) car il a déjà été vendu. L'opération a été annulée.`);
+            // Create a set of all product IDs that have been sold
+            const sales = await db.sales.toArray();
+            const soldProductIds = new Set<number>();
+            for (const sale of sales) {
+                for (const item of sale.items) {
+                    if (typeof item.id === 'number') {
+                        soldProductIds.add(item.id);
+                    }
                 }
             }
+
+            // Check if any of the products to be deleted are in the sold set
+            const problemId = ids.find(id => soldProductIds.has(id));
+
+            if (problemId) {
+                const product = await db.products.get(problemId);
+                throw new Error(`Impossible de supprimer "${product?.name || 'un produit'}" (ID: ${problemId}) car il a déjà été vendu. L'opération a été annulée.`);
+            }
+            
             await db.products.bulkDelete(ids);
         });
     }
@@ -231,28 +245,11 @@ class DataService {
         
         const [sortKey, sortOrder] = (params.sortBy || 'createdAt_desc').split('_');
         
-        // Use indexed sorting for indexed fields
-        if (sortKey === 'name' || sortKey === 'createdAt') {
-            const sortedCollection = collection.orderBy(sortKey);
-            if (sortOrder === 'desc') {
-                return sortedCollection.reverse().toArray();
-            }
-            return sortedCollection.toArray();
+        const sortedCollection = collection.orderBy(sortKey as keyof Product);
+        if (sortOrder === 'desc') {
+            return sortedCollection.reverse().toArray();
         }
-
-        // Fallback to client-side sorting for non-indexed fields
-        return collection.toArray(products => {
-            products.sort((a, b) => {
-                const aVal = a[sortKey as keyof Product] as any;
-                const bVal = b[sortKey as keyof Product] as any;
-
-                if (typeof aVal === 'string' && typeof bVal === 'string') {
-                    return sortOrder === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
-                }
-                return sortOrder === 'asc' ? aVal - bVal : bVal - aVal;
-            });
-            return products;
-        });
+        return sortedCollection.toArray();
     }
 
     async getProductsByIds(ids: number[]): Promise<Product[]> {
@@ -295,7 +292,7 @@ class DataService {
         const unpaidSales = await db.sales
             .where('customerId').equals(customerId)
             .and(sale => sale.paymentStatus !== 'paid')
-            .sortBy('createdAt');
+            .orderBy('createdAt').toArray();
         return { customer, unpaidSales };
     }
 
@@ -644,15 +641,16 @@ class DataService {
     }
     
     async getSales(params: { query?: string, from?: Date, to?: Date }): Promise<Sale[]> {
-        let query = db.sales.toCollection();
+        let collection = db.sales.orderBy('createdAt').reverse();
+        
         if (params.from && params.to) {
-             query = query.filter(s => s.createdAt! >= params.from! && s.createdAt! <= params.to!);
+             collection = collection.filter(s => s.createdAt! >= params.from! && s.createdAt! <= params.to!);
         }
         if (params.query) {
             const q = params.query.toLowerCase();
-            query = query.filter(s => s.invoiceNumber.toLowerCase().includes(q) || s.customerName?.toLowerCase().includes(q));
+            collection = collection.filter(s => s.invoiceNumber.toLowerCase().includes(q) || s.customerName?.toLowerCase().includes(q));
         }
-        return await query.orderBy('createdAt').reverse().toArray();
+        return await collection.toArray();
     }
 
     async addSale(saleData: any, runInTransaction: boolean = true): Promise<number> {
@@ -809,7 +807,7 @@ class DataService {
     }
 
     async getStockIntakes(params: { query?: string, from?: Date, to?: Date }): Promise<StockIntake[]> {
-        let collection = db.stockIntakes.toCollection();
+        let collection = db.stockIntakes.orderBy('createdAt').reverse();
         if (params.from && params.to) {
             collection = collection.filter(i => i.createdAt! >= params.from! && i.createdAt! <= params.to!);
         }
@@ -817,12 +815,12 @@ class DataService {
             const q = params.query.toLowerCase();
             collection = collection.filter(i => i.supplierName?.toLowerCase().includes(q) || i.invoiceNumber.toLowerCase().includes(q));
         }
-        return await collection.orderBy('createdAt').reverse().toArray();
+        return await collection.toArray();
     }
 
     // =================== Returns ===================
     async getReturns(params: { query?: string, from?: Date, to?: Date }): Promise<ProductReturn[]> {
-        let collection = db.returns.toCollection();
+        let collection = db.returns.orderBy('createdAt').reverse();
         if (params.from && params.to) {
              collection = collection.filter(s => s.createdAt! >= params.from! && s.createdAt! <= params.to!);
         }
@@ -830,7 +828,7 @@ class DataService {
             const q = params.query.toLowerCase();
             collection = collection.filter(s => s.originalInvoiceNumber.toLowerCase().includes(q) || s.customerName?.toLowerCase().includes(q));
         }
-        return await collection.orderBy('createdAt').reverse().toArray();
+        return await collection.toArray();
     }
     
     async addReturn(returnData: Omit<ProductReturn, 'id'>): Promise<ProductReturn> {
@@ -887,14 +885,14 @@ class DataService {
 
     // =================== Expenses ===================
     async getExpenses(params: { category?: string, from?: Date, to?: Date }): Promise<Expense[]> {
-        let collection = db.expenses.toCollection();
+        let collection = db.expenses.orderBy('expenseDate').reverse();
         if (params.from && params.to) {
             collection = collection.filter(e => e.expenseDate >= params.from! && e.expenseDate <= params.to!);
         }
         if (params.category && params.category !== 'all') {
             collection = collection.filter(e => e.category === params.category);
         }
-        return await collection.orderBy('expenseDate').reverse().toArray();
+        return await collection.toArray();
     }
     
     async getExpenseCategories(): Promise<string[]> {
