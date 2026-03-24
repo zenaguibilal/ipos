@@ -758,19 +758,44 @@ class DataService {
         await db.transaction('rw', db.sales, db.products, db.customers, async () => {
             const sale = await db.sales.get(saleId);
             if (!sale) return;
-
+    
+            // Aggregate stock changes
+            const stockUpdates = new Map<number, number>();
             for (const item of sale.items) {
                 if (typeof item.id === 'number') {
-                    await db.products.where('id').equals(item.id).modify(p => { p.quantity += item.quantity; });
+                    stockUpdates.set(item.id, (stockUpdates.get(item.id) || 0) + item.quantity);
                 }
             }
-
+    
+            // Perform bulk update on products
+            if (stockUpdates.size > 0) {
+                const productIds = Array.from(stockUpdates.keys());
+                const productsToUpdate = await db.products.bulkGet(productIds);
+                const updatePayload: { key: number, changes: Partial<Product> }[] = [];
+    
+                productsToUpdate.forEach(product => {
+                    if (product && product.id) {
+                        const quantityToAdd = stockUpdates.get(product.id);
+                        if (quantityToAdd) {
+                            updatePayload.push({
+                                key: product.id,
+                                changes: { quantity: product.quantity + quantityToAdd }
+                            });
+                        }
+                    }
+                });
+                if (updatePayload.length > 0) {
+                    await db.products.bulkUpdate(updatePayload);
+                }
+            }
+    
+            // Update customer balance
             if (sale.customerId) {
                 const customer = await db.customers.get(sale.customerId);
                 if (customer) {
                     const newBalance = customer.outstandingBalance - sale.remainingBalance;
                     const newTotalSpent = customer.totalSpent - sale.total;
-                    const isOverLimit = customer.creditLimit != null ? newBalance > customer.creditLimit : false;
+                    const isOverLimit = customer.creditLimit != null && newBalance > customer.creditLimit;
                     
                     let debtStatus: Customer['debtStatus'] = 'none';
                     if (newBalance > 0) {
@@ -778,7 +803,7 @@ class DataService {
                         const isOverdue = unpaidSales.some(s => s.dueDate && new Date(s.dueDate) < new Date());
                         debtStatus = isOverdue ? 'overdue' : 'due_soon';
                     }
-
+    
                     await db.customers.update(customer.id!, {
                         outstandingBalance: newBalance,
                         totalSpent: newTotalSpent,
@@ -787,7 +812,8 @@ class DataService {
                     });
                 }
             }
-
+    
+            // Delete the sale
             await db.sales.delete(saleId);
         });
     }
@@ -986,22 +1012,47 @@ class DataService {
     }
 
     async deleteReturn(returnId: number): Promise<void> {
-         await db.transaction('rw', db.returns, db.products, db.customers, db.sales, async () => {
+        await db.transaction('rw', db.returns, db.products, db.customers, db.sales, async () => {
             const pr = await db.returns.get(returnId);
             if (!pr) return;
-            
+    
+            // Aggregate stock changes
+            const stockUpdates = new Map<number, number>();
             for (const item of pr.items) {
                 if (item.wasRestocked && item.productId) {
-                    await db.products.where('id').equals(item.productId).modify(p => { p.quantity -= item.quantity; });
+                    stockUpdates.set(item.productId, (stockUpdates.get(item.productId) || 0) + item.quantity);
                 }
             }
-
+    
+            // Perform bulk update on products
+            if (stockUpdates.size > 0) {
+                const productIds = Array.from(stockUpdates.keys());
+                const productsToUpdate = await db.products.bulkGet(productIds);
+                const updatePayload: { key: number, changes: Partial<Product> }[] = [];
+    
+                productsToUpdate.forEach(product => {
+                    if (product && product.id) {
+                        const quantityToSubtract = stockUpdates.get(product.id);
+                        if (quantityToSubtract) {
+                            updatePayload.push({
+                                key: product.id,
+                                changes: { quantity: product.quantity - quantityToSubtract }
+                            });
+                        }
+                    }
+                });
+                if (updatePayload.length > 0) {
+                    await db.products.bulkUpdate(updatePayload);
+                }
+            }
+    
+            // Update customer balance
             if (pr.customerId) {
                 const customer = await db.customers.get(pr.customerId);
                 if (customer) {
                     const balanceChange = pr.amountRefunded - pr.totalReturnValue;
                     const newBalance = customer.outstandingBalance - balanceChange;
-                    const isOverLimit = customer.creditLimit != null ? newBalance > customer.creditLimit : false;
+                    const isOverLimit = customer.creditLimit != null && newBalance > customer.creditLimit;
                     
                     let debtStatus: Customer['debtStatus'] = 'none';
                     if (newBalance > 0) {
@@ -1009,7 +1060,7 @@ class DataService {
                         const isOverdue = unpaidSales.some(s => s.dueDate && new Date(s.dueDate) < new Date());
                         debtStatus = isOverdue ? 'overdue' : 'due_soon';
                     }
-
+    
                     await db.customers.update(customer.id!, {
                         outstandingBalance: newBalance,
                         isOverLimit,
@@ -1017,7 +1068,8 @@ class DataService {
                     });
                 }
             }
-
+    
+            // Delete the return
             await db.returns.delete(returnId);
         });
     }
