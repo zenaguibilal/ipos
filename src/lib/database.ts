@@ -1,5 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie';
-import type { Product, Customer, Sale, Payment, StockIntake, ProductReturn, Cart, Draft, CompanyProfile, Expense, Setting, InventoryLog, Supplier, BreadClient, BreadOrder } from '@/lib/types';
+import type { Product, Customer, Sale, Payment, StockIntake, ProductReturn, Cart, Draft, CompanyProfile, Expense, Supplier, BreadClient, BreadOrder } from '@/lib/types';
 
 class iPOSDatabase extends Dexie {
     products!: EntityTable<Product, 'id'>;
@@ -12,8 +12,6 @@ class iPOSDatabase extends Dexie {
     drafts!: EntityTable<Draft, 'id'>;
     companyProfile!: EntityTable<CompanyProfile, 'id'>;
     expenses!: EntityTable<Expense, 'id'>;
-    settings!: EntityTable<Setting, 'id'>;
-    inventoryLogs!: EntityTable<InventoryLog, 'id'>;
     suppliers!: EntityTable<Supplier, 'id'>;
     clients_pain!: EntityTable<BreadClient, 'id'>;
     commandes_pain!: EntityTable<BreadOrder, 'id'>;
@@ -31,8 +29,6 @@ class iPOSDatabase extends Dexie {
             drafts: '++id, createdAt',
             companyProfile: 'id',
             expenses: '++id, category, expenseDate',
-            settings: 'id',
-            inventoryLogs: '++id, productId, reason, createdAt',
             suppliers: '++id, &name',
             clients_pain: '++id, nom',
             commandes_pain: '++id, client_pain_id, date, &[client_pain_id+date]',

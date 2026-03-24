@@ -1,6 +1,5 @@
 
 
-
 export interface Product {
     id?: number | string; // string for custom products
     name: string;
@@ -99,6 +98,21 @@ export interface Payment {
     notes?: string;
     createdAt?: Date;
     updatedAt?: Date;
+}
+
+export interface Draft {
+  id?: number;
+  date: Date;
+  customerId: number | null;
+  customerName: string;
+  items: CartItem[];
+  total: number;
+  discount: {
+      type: 'fixed' | 'percentage';
+      value: number;
+  };
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export interface CompanyProfile {
@@ -303,4 +317,20 @@ export interface BreadOrder {
 
 export interface BreadOrderWithClient extends BreadOrder {
     client: BreadClient;
+}
+
+export interface DB {
+    products: Product[];
+    customers: Customer[];
+    sales: Sale[];
+    payments: Payment[];
+    stockIntakes: StockIntake[];
+    returns: ProductReturn[];
+    carts: Cart[];
+    drafts: Draft[];
+    companyProfile: CompanyProfile[];
+    expenses: Expense[];
+    suppliers: Supplier[];
+    clients_pain: BreadClient[];
+    commandes_pain: BreadOrder[];
 }
