@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import { getDb } from '@/lib/database';
@@ -9,8 +7,6 @@ import Papa from 'papaparse';
 import { formatCurrency, safeToDate, calculateCartTotals } from '@/lib/utils';
 import { BREAD_WEEK_DAYS } from '@/lib/constants';
 import { toast } from 'sonner';
-
-const LOCAL_ONLY_SETTINGS = ['active_cart_id'];
 
 class DataService {
   get db() {
@@ -1252,6 +1248,7 @@ export const dataService = new DataService();
     
 
     
+
 
 
 
