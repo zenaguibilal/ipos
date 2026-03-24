@@ -12,7 +12,6 @@ const APP_DESCRIPTION = "Application de point de vente hors ligne pour épicerie
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  applicationName: APP_NAME,
   title: {
     default: APP_DEFAULT_TITLE,
     template: APP_TITLE_TEMPLATE,
@@ -29,7 +28,6 @@ export const metadata: Metadata = {
       template: APP_TITLE_TEMPLATE,
     },
     description: APP_DESCRIPTION,
-    images: ["/icons/icon-512x512.png"]
   },
   twitter: {
     card: "summary",
@@ -38,12 +36,10 @@ export const metadata: Metadata = {
       template: APP_TITLE_TEMPLATE,
     },
     description: APP_DESCRIPTION,
-    images: ["/icons/icon-512x512.png"]
   },
   icons: {
     icon: '/icon.svg',
     shortcut: '/favicon.ico',
-    apple: '/icons/apple-touch-icon.png',
   },
 };
 
