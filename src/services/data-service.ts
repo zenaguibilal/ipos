@@ -448,16 +448,18 @@ class DataService {
   }
 
   async deleteCustomer(id: number): Promise<void> {
-    const customer = await this.getById<Customer>('customers', id);
-    if (!customer) return;
-    if (customer.outstandingBalance > 0) {
-        throw new Error(`Suppression impossible : ce client a un solde impayé de ${formatCurrency(customer.outstandingBalance)}`);
-    }
-    const salesCount = await this.db.sales.where({customerId: id}).count();
-    if (salesCount > 0) {
-        throw new Error("Suppression impossible : ce client a un historique de transactions. Envisagez de le désactiver à la place.");
-    }
-    await this.db.customers.delete(id);
+    return this.db.transaction('rw', this.db.customers, this.db.sales, async () => {
+        const customer = await this.getById<Customer>('customers', id);
+        if (!customer) return;
+        if (customer.outstandingBalance > 0) {
+            throw new Error(`Suppression impossible : ce client a un solde impayé de ${formatCurrency(customer.outstandingBalance)}`);
+        }
+        const salesCount = await this.db.sales.where({customerId: id}).count();
+        if (salesCount > 0) {
+            throw new Error("Suppression impossible : ce client a un historique de transactions. Envisagez de le désactiver à la place.");
+        }
+        await this.db.customers.delete(id);
+    });
   }
 
   // Import/Export
@@ -1264,4 +1266,5 @@ export const dataService = new DataService();
 
 
     
+
 
