@@ -1,12 +1,14 @@
 'use client';
 import { db } from '@/lib/database';
-import { supabase } from '@/lib/supabaseClient';
+import { createClient } from '@/utils/supabase/client';
 import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 export class SyncService {
     private isSyncing = false;
     private localDeviceId: string;
+    private supabase: SupabaseClient;
 
     constructor() {
         let deviceId = localStorage.getItem('localDeviceId');
@@ -15,6 +17,7 @@ export class SyncService {
             localStorage.setItem('localDeviceId', deviceId);
         }
         this.localDeviceId = deviceId;
+        this.supabase = createClient();
     }
 
     getLocalDeviceId(): string {
@@ -55,13 +58,13 @@ export class SyncService {
                 
                 switch (item.action) {
                     case 'create':
-                        ({ error } = await supabase.from(item.tableName).insert(payload));
+                        ({ error } = await this.supabase.from(item.tableName).insert(payload));
                         break;
                     case 'update':
-                        ({ error } = await supabase.from(item.tableName).update(payload).eq('uuid', item.recordUuid));
+                        ({ error } = await this.supabase.from(item.tableName).update(payload).eq('uuid', item.recordUuid));
                         break;
                     case 'delete':
-                        ({ error } = await supabase.from(item.tableName).delete().eq('uuid', item.recordUuid));
+                        ({ error } = await this.supabase.from(item.tableName).delete().eq('uuid', item.recordUuid));
                         break;
                 }
 
@@ -105,7 +108,7 @@ export class SyncService {
             const lastSyncedRecord = await (db as any)[tableName].orderBy('updatedAt').last();
             const lastSyncTime = lastSyncedRecord?.updatedAt || new Date(0);
 
-            const { data, error } = await supabase
+            const { data, error } = await this.supabase
                 .from(tableName)
                 .select('*')
                 .gt('updated_at', lastSyncTime.toISOString())
