@@ -8,7 +8,6 @@ import { subDays, endOfDay, startOfDay } from 'date-fns';
 import Papa from 'papaparse';
 import { formatCurrency, safeToDate, calculateCartTotals } from '@/lib/utils';
 import { BREAD_WEEK_DAYS } from '@/lib/constants';
-import { sheetsService } from './googleSheets';
 import { toast } from 'sonner';
 
 const LOCAL_ONLY_SETTINGS = ['active_cart_id'];
@@ -40,9 +39,6 @@ class DataService {
 
   async setSetting(id: string, value: any): Promise<void> {
     await this.db.settings.put({ id, value });
-    if (!LOCAL_ONLY_SETTINGS.includes(id)) {
-        sheetsService.addToQueue('settings', 'upsert', { id, value });
-    }
   }
 
   // Company Profile
@@ -54,7 +50,6 @@ class DataService {
   async updateCompanyProfile(profileData: Partial<Omit<CompanyProfile, 'id'>>): Promise<void> {
     const profile = await this.getCompanyProfile() ?? { id: 1 };
     const updatedProfile = { ...profile, ...profileData, id: 1 as const, updatedAt: new Date() };
-    sheetsService.addToQueue('companyProfile', 'upsert', updatedProfile);
     await this.db.companyProfile.put(updatedProfile);
   }
   
@@ -202,7 +197,6 @@ class DataService {
             createdAt: new Date(),
       });
       const newProduct = { ...productData, id: newProductId };
-      sheetsService.addToQueue('products', 'upsert', newProduct);
       return newProduct;
     });
   }
@@ -233,8 +227,6 @@ class DataService {
             });
         }
         await this.db.products.update(id, productData);
-        const updatedProduct = await this.db.products.get(id);
-        if(updatedProduct) sheetsService.addToQueue('products', 'upsert', updatedProduct);
     });
   }
 
@@ -246,7 +238,6 @@ class DataService {
         }
         await this.db.inventoryLogs.where({productId: id}).delete();
         await this.db.products.delete(id);
-        sheetsService.addToQueue('products', 'delete', { id });
     });
   }
 
@@ -261,7 +252,6 @@ class DataService {
         }
         await this.db.inventoryLogs.where('productId').anyOf(ids).delete();
         await this.db.products.bulkDelete(ids);
-        ids.forEach(id => sheetsService.addToQueue('products', 'delete', { id }));
     });
   }
 
@@ -454,14 +444,11 @@ class DataService {
       };
       const id = await this.db.customers.add(data as Customer);
       const newCustomer = {...data, id };
-      sheetsService.addToQueue('customers', 'upsert', newCustomer);
       return newCustomer;
   }
 
   async updateCustomer(id: number, customerData: Partial<Omit<Customer, 'id'>>): Promise<void> {
       await this.db.customers.update(id, customerData);
-      const updatedCustomer = await this.db.customers.get(id);
-      if(updatedCustomer) sheetsService.addToQueue('customers', 'upsert', updatedCustomer);
   }
 
   async deleteCustomer(id: number): Promise<void> {
@@ -475,7 +462,6 @@ class DataService {
         throw new Error("Suppression impossible : ce client a un historique de transactions. Envisagez de le désactiver à la place.");
     }
     await this.db.customers.delete(id);
-    sheetsService.addToQueue('customers', 'delete', { id });
   }
 
   // Import/Export
@@ -589,21 +575,17 @@ class DataService {
     async addBreadClient(client: Omit<BreadClient, 'id'>): Promise<BreadClient> {
         const id = await this.db.clients_pain.add(client as BreadClient);
         const newClient = {...client, id};
-        sheetsService.addToQueue('clients_pain', 'upsert', newClient);
         return newClient;
     }
 
     async updateBreadClient(id: number, data: Partial<BreadClient>): Promise<void> {
         await this.db.clients_pain.update(id, data);
-        const updatedClient = await this.db.clients_pain.get(id);
-        if(updatedClient) sheetsService.addToQueue('clients_pain', 'upsert', updatedClient);
     }
 
     async deleteBreadClient(id: number): Promise<void> {
         await this.db.transaction('rw', this.db.commandes_pain, this.db.clients_pain, async () => {
             await this.db.commandes_pain.where({ client_pain_id: id }).delete();
             await this.db.clients_pain.delete(id);
-            sheetsService.addToQueue('clients_pain', 'delete', { id });
         });
     }
 
@@ -618,7 +600,6 @@ class DataService {
         const orderData: Omit<BreadOrder, 'id'> = { client_pain_id: clientId, date, quantite: quantity, est_paye: false, est_livre: false, vente_id: null };
         const id = await this.db.commandes_pain.add(orderData as BreadOrder);
         const newOrder = {...orderData, id};
-        sheetsService.addToQueue('commandes_pain', 'upsert', newOrder);
         return newOrder;
     }
   
@@ -627,12 +608,10 @@ class DataService {
         if (!order) return;
         const quantite_origine = order.quantite_origine === undefined ? order.quantite : order.quantite_origine;
         await this.db.commandes_pain.update(orderId, { quantite: newQuantity, quantite_origine });
-        sheetsService.addToQueue('commandes_pain', 'upsert', {id: orderId, quantite: newQuantity, quantite_origine });
     }
 
     async updateBreadOrderDeliveryStatus(orderId: number, delivered: boolean): Promise<void> {
         await this.db.commandes_pain.update(orderId, { est_livre: delivered });
-        sheetsService.addToQueue('commandes_pain', 'upsert', {id: orderId, est_livre: delivered });
     }
   
     async checkIfBreadOrdersExist(date: string): Promise<boolean> {
@@ -667,7 +646,6 @@ class DataService {
         }
         if(ordersToCreate.length > 0) {
             await this.db.commandes_pain.bulkAdd(ordersToCreate as BreadOrder[]);
-            ordersToCreate.forEach(o => sheetsService.addToQueue('commandes_pain', 'upsert', o));
         }
     }
 
@@ -716,20 +694,17 @@ class DataService {
                 const saleId = await this.db.sales.add(saleData as Sale);
                 
                 await this.db.commandes_pain.update(order.id!, { vente_id: saleId, est_paye: true });
-                sheetsService.addToQueue('commandes_pain', 'upsert', { id: order.id, vente_id: saleId, est_paye: true });
 
                 if (client?.nom) {
                     const mainCustomer = await this.db.customers.where('searchName').equals(client.nom.toLowerCase()).first();
                     if (mainCustomer?.id) {
                        await this.db.customers.update(mainCustomer.id, { outstandingBalance: mainCustomer.outstandingBalance + saleData.total, lastActivityDate: new Date() });
-                       sheetsService.addToQueue('customers', 'upsert', { id: mainCustomer.id, outstandingBalance: mainCustomer.outstandingBalance + saleData.total, lastActivityDate: new Date() });
                     }
                 }
             }
 
              await this.db.products.update(breadProduct.id, { quantity: breadProduct.quantity - totalBreadNeeded });
              await this.db.inventoryLogs.add({ productId: breadProduct.id, change: -totalBreadNeeded, newQuantity: breadProduct.quantity - totalBreadNeeded, reason: 'sale', relatedId: `bread-conv-${orderIds.join(',')}`, createdAt: new Date() });
-             sheetsService.addToQueue('products', 'upsert', {id: breadProduct.id, quantity: breadProduct.quantity - totalBreadNeeded });
         });
     }
   
@@ -809,7 +784,6 @@ class DataService {
             }
             
             const finalSale = { ...newSaleData, id: saleId } as Sale;
-            sheetsService.addToQueue('sales', 'upsert', finalSale);
             return finalSale;
         });
     }
@@ -836,7 +810,6 @@ class DataService {
     }
 
             await this.db.sales.delete(saleId);
-            sheetsService.addToQueue('sales', 'delete', { id: saleId });
         });
     }
   
@@ -849,7 +822,6 @@ class DataService {
                 c.outstandingBalance -= newPayment.amount;
                 c.lastActivityDate = new Date();
             });
-            sheetsService.addToQueue('payments', 'upsert', newPayment);
             return newPayment;
         });
     }
@@ -872,13 +844,11 @@ class DataService {
         };
         const id = await this.db.drafts.add(draftData as Draft);
         const newDraft = {...draftData, id} as Draft;
-        sheetsService.addToQueue('drafts', 'upsert', newDraft);
         return newDraft;
     }
     
     async deleteDraft(id: number): Promise<void> {
         await this.db.drafts.delete(id);
-        sheetsService.addToQueue('drafts', 'delete', { id });
     }
     
     async getDraftAndClear(draftId: number): Promise<Omit<Draft, 'id' | 'createdAt' | 'updatedAt'> | null> {
@@ -906,7 +876,6 @@ class DataService {
                 const newSupplierData = { name: intakeData.supplierName, balance: 0 };
                 const id = await this.db.suppliers.add(newSupplierData);
                 supplier = { ...newSupplierData, id };
-                 sheetsService.addToQueue('suppliers', 'upsert', supplier);
             }
     
             const tempIntakeData: Omit<StockIntake, 'id'> = {
@@ -936,8 +905,6 @@ class DataService {
                     };
                     productId = await this.db.products.add(newProductData as Product);
                     finalQuantity = quantityChange;
-                    const newProduct = { ...newProductData, id: productId };
-                    sheetsService.addToQueue('products', 'upsert', newProduct);
     } else if (productId) {
         const currentProduct = await this.db.products.get(productId);
         if (currentProduct) {
@@ -949,8 +916,6 @@ class DataService {
                 fournisseurId: supplier.id,
             });
             finalQuantity = newStockQuantity;
-            const updatedProduct = await this.db.products.get(productId);
-            if(updatedProduct) sheetsService.addToQueue('products', 'upsert', updatedProduct);
         }
     }
     
@@ -982,7 +947,6 @@ class DataService {
             });
     
             const finalIntake = await this.db.stockIntakes.get(intakeId);
-            if(finalIntake) sheetsService.addToQueue('stockIntakes', 'upsert', finalIntake);
             return finalIntake!;
         });
     }
@@ -1038,7 +1002,6 @@ class DataService {
                     await this.updateCustomer(customer.id, { outstandingBalance: customer.outstandingBalance - balanceChange, lastActivityDate: new Date() });
                 }
             }
-            sheetsService.addToQueue('returns', 'upsert', newReturn);
             return newReturn;
         });
     }
@@ -1063,7 +1026,6 @@ class DataService {
             }
             
             await this.db.returns.delete(returnId);
-            sheetsService.addToQueue('returns', 'delete', { id: returnId });
         });
     }
     
@@ -1091,19 +1053,15 @@ class DataService {
     async addExpense(expense: Omit<Expense, 'id'>): Promise<Expense> {
         const id = await this.db.expenses.add(expense as Expense);
         const newExpense = {...expense, id} as Expense;
-        sheetsService.addToQueue('expenses', 'upsert', newExpense);
         return newExpense;
     }
     
     async updateExpense(id: number, expenseData: Partial<Omit<Expense, 'id'>>): Promise<void> {
         await this.db.expenses.update(id, expenseData);
-        const updatedExpense = await this.db.expenses.get(id);
-        if(updatedExpense) sheetsService.addToQueue('expenses', 'upsert', updatedExpense);
     }
     
     async deleteExpense(id: number): Promise<void> {
         await this.db.expenses.delete(id);
-        sheetsService.addToQueue('expenses', 'delete', { id });
     }
     
     // Costing
@@ -1294,6 +1252,7 @@ export const dataService = new DataService();
     
 
     
+
 
 
 

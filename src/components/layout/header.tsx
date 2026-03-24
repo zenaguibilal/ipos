@@ -35,7 +35,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { ThemeToggle } from './theme-toggle';
-import { SyncIndicator } from '../common/SyncIndicator';
 
 const navLinks = [
   { href: '/dashboard', label: 'Tableau de bord', icon: LayoutDashboard },
@@ -123,7 +122,6 @@ export function AppHeader() {
         <div className="flex-1 flex justify-end">
             <div className="flex items-center gap-2 sm:gap-4">
                 <Clock />
-                <SyncIndicator />
                 <ThemeToggle />
                 <DropdownMenu>
                 <DropdownMenuTrigger asChild>
