@@ -243,7 +243,7 @@ class DataService {
         
         const [sortKey, sortOrder] = (params.sortBy || 'createdAt_desc').split('_');
         
-        const sortedCollection = collection.orderBy(sortKey as keyof Product);
+        const sortedCollection = db.products.orderBy(sortKey as keyof Product);
         if (sortOrder === 'desc') {
             return sortedCollection.reverse().toArray();
         }
@@ -308,7 +308,7 @@ class DataService {
             if (params.status === 'over_limit') collection = collection.filter(c => c.isOverLimit === true);
         }
 
-        return collection.orderBy('lastActivityDate').reverse().toArray();
+        return db.customers.orderBy('lastActivityDate').reverse().toArray();
     }
 
     async addCustomer(customer: Omit<Customer, 'id' | 'totalSpent' | 'outstandingBalance' | 'lastActivityDate'>): Promise<Customer> {
@@ -624,9 +624,7 @@ class DataService {
                     clientPainId: order.client_pain_id,
                     customerId: customer?.id,
                     customerName: customer?.searchName || client?.nom,
-                    createdAt: new Date(),
-                    updatedAt: new Date(),
-                    dueDate: customer?.settlementDay ? new Date(Date.now() + customer.settlementDay * 86400000) : undefined,
+                    dueDate: customer?.settlementDay ? new Date(new Date().getTime() + customer.settlementDay * 86400000) : undefined,
                 };
                 
                 const saleId = await this.addSale(saleData, false);
@@ -677,7 +675,6 @@ class DataService {
             }
 
             const today = format(now, 'yyMMdd');
-            
             const lastSaleToday = await db.sales.where('createdAt').between(startOfDay(now), endOfDay(now), true, true).last();
             let sequence = 1;
             if (lastSaleToday) {
@@ -698,6 +695,9 @@ class DataService {
                 paymentStatus = 'unpaid';
             }
 
+            const customer = saleData.customerId ? await db.customers.get(saleData.customerId) : undefined;
+            const dueDate = customer?.settlementDay ? new Date(now.getTime() + customer.settlementDay * 86400000) : saleData.dueDate;
+
             const finalSaleData: Sale = {
                 ...saleData,
                 invoiceNumber,
@@ -705,6 +705,7 @@ class DataService {
                 updatedAt: now,
                 paymentStatus,
                 remainingBalance,
+                dueDate,
             };
 
             const saleId = await db.sales.add(finalSaleData);
@@ -716,12 +717,24 @@ class DataService {
                 }
             }
             
-            // Update customer balance
-            if (finalSaleData.customerId) {
-                await db.customers.where('id').equals(finalSaleData.customerId).modify(c => {
-                    c.outstandingBalance += finalSaleData.remainingBalance;
-                    c.totalSpent += finalSaleData.total;
-                    c.lastActivityDate = now;
+            // Update customer balance and status
+            if (customer) {
+                const newBalance = customer.outstandingBalance + finalSaleData.remainingBalance;
+                const isOverLimit = customer.creditLimit != null ? newBalance > customer.creditLimit : false;
+                
+                let debtStatus: Customer['debtStatus'] = 'none';
+                if (newBalance > 0) {
+                    const unpaidSales = await db.sales.where('customerId').equals(customer.id!).and(s => s.paymentStatus !== 'paid' || s.id === saleId).toArray();
+                    const isOverdue = unpaidSales.some(s => s.dueDate && new Date(s.dueDate) < now);
+                    debtStatus = isOverdue ? 'overdue' : undefined;
+                }
+                
+                await db.customers.update(customer.id!, {
+                    outstandingBalance: newBalance,
+                    totalSpent: customer.totalSpent + finalSaleData.total,
+                    lastActivityDate: now,
+                    isOverLimit,
+                    debtStatus,
                 });
             }
             toast.success(`Vente #${invoiceNumber} finalisée.`);
@@ -747,12 +760,28 @@ class DataService {
                 }
             }
 
-            // Revert customer balance
+            // Revert customer balance and update status
             if (sale.customerId) {
-                await db.customers.where('id').equals(sale.customerId).modify(c => {
-                    c.outstandingBalance -= (sale.total - sale.amountPaid);
-                    c.totalSpent -= sale.total;
-                });
+                const customer = await db.customers.get(sale.customerId);
+                if (customer) {
+                    const newBalance = customer.outstandingBalance - sale.remainingBalance;
+                    const newTotalSpent = customer.totalSpent - sale.total;
+                    const isOverLimit = customer.creditLimit != null ? newBalance > customer.creditLimit : false;
+                    
+                    let debtStatus: Customer['debtStatus'] = 'none';
+                    if (newBalance > 0) {
+                        const unpaidSales = await db.sales.where('customerId').equals(customer.id!).and(s => s.id !== saleId && s.paymentStatus !== 'paid').toArray();
+                        const isOverdue = unpaidSales.some(s => s.dueDate && new Date(s.dueDate) < new Date());
+                        debtStatus = isOverdue ? 'overdue' : undefined;
+                    }
+
+                    await db.customers.update(customer.id!, {
+                        outstandingBalance: newBalance,
+                        totalSpent: newTotalSpent,
+                        isOverLimit,
+                        debtStatus,
+                    });
+                }
             }
 
             await db.sales.delete(saleId);
@@ -761,16 +790,32 @@ class DataService {
 
     // =================== Payments ===================
     async addPayment(paymentData: Omit<Payment, 'id'>): Promise<Payment> {
-        return db.transaction('rw', db.payments, db.customers, async () => {
+        return db.transaction('rw', db.payments, db.customers, db.sales, async () => {
             const now = new Date();
             const newPayment = { ...paymentData, createdAt: now, updatedAt: now };
             const id = await db.payments.add(newPayment as Payment);
 
-            await db.customers.where('id').equals(paymentData.customerId).modify(c => {
-                c.outstandingBalance -= paymentData.amount;
-                c.lastActivityDate = now;
-            });
-            return { ...newPayment, id } as Payment;
+            const customer = await db.customers.get(paymentData.customerId);
+            if (customer) {
+                const newBalance = customer.outstandingBalance - paymentData.amount;
+                const isOverLimit = customer.creditLimit != null ? newBalance > customer.creditLimit : false;
+                
+                let debtStatus: Customer['debtStatus'] = 'none';
+                if (newBalance > 0) {
+                    const unpaidSales = await db.sales.where('customerId').equals(customer.id!).and(s => s.paymentStatus !== 'paid').toArray();
+                    const isOverdue = unpaidSales.some(s => s.dueDate && new Date(s.dueDate) < new Date());
+                    debtStatus = isOverdue ? 'overdue' : undefined;
+                }
+
+                await db.customers.update(customer.id!, {
+                    outstandingBalance: newBalance,
+                    lastActivityDate: now,
+                    isOverLimit,
+                    debtStatus,
+                });
+            }
+
+            return { ...newPayment, id };
         });
     }
 
@@ -862,7 +907,7 @@ class DataService {
     }
     
     async addReturn(returnData: Omit<ProductReturn, 'id'>): Promise<ProductReturn> {
-        return db.transaction('rw', db.returns, db.products, db.customers, async () => {
+        return db.transaction('rw', db.returns, db.products, db.customers, db.sales, async () => {
             const now = new Date();
             const newReturn: ProductReturn = {
                 ...returnData,
@@ -870,20 +915,33 @@ class DataService {
                 updatedAt: now,
             };
 
-            // Update stock for restocked items
             for (const item of newReturn.items) {
                 if (item.wasRestocked && item.productId) {
                     await db.products.where('id').equals(item.productId).modify(p => { p.quantity += item.quantity; });
                 }
             }
 
-            // Update customer balance if applicable
             if (newReturn.customerId) {
-                const balanceChange = newReturn.amountRefunded - newReturn.totalReturnValue;
-                await db.customers.where('id').equals(newReturn.customerId).modify(c => {
-                    c.outstandingBalance += balanceChange;
-                    c.lastActivityDate = now;
-                });
+                const customer = await db.customers.get(newReturn.customerId);
+                if (customer) {
+                    const balanceChange = newReturn.amountRefunded - newReturn.totalReturnValue;
+                    const newBalance = customer.outstandingBalance + balanceChange;
+                    const isOverLimit = customer.creditLimit != null ? newBalance > customer.creditLimit : false;
+
+                    let debtStatus: Customer['debtStatus'] = 'none';
+                    if (newBalance > 0) {
+                        const unpaidSales = await db.sales.where('customerId').equals(customer.id!).and(s => s.paymentStatus !== 'paid').toArray();
+                        const isOverdue = unpaidSales.some(s => s.dueDate && new Date(s.dueDate) < now);
+                        debtStatus = isOverdue ? 'overdue' : undefined;
+                    }
+
+                    await db.customers.update(customer.id!, {
+                        outstandingBalance: newBalance,
+                        lastActivityDate: now,
+                        isOverLimit,
+                        debtStatus,
+                    });
+                }
             }
 
             const id = await db.returns.add(newReturn);
@@ -892,7 +950,7 @@ class DataService {
     }
 
     async deleteReturn(returnId: number): Promise<void> {
-         await db.transaction('rw', db.returns, db.products, db.customers, async () => {
+         await db.transaction('rw', db.returns, db.products, db.customers, db.sales, async () => {
             const pr = await db.returns.get(returnId);
             if (!pr) return;
             
@@ -903,10 +961,25 @@ class DataService {
             }
 
             if (pr.customerId) {
-                const balanceChange = pr.amountRefunded - pr.totalReturnValue;
-                await db.customers.where('id').equals(pr.customerId).modify(c => {
-                    c.outstandingBalance -= balanceChange;
-                });
+                const customer = await db.customers.get(pr.customerId);
+                if (customer) {
+                    const balanceChange = pr.amountRefunded - pr.totalReturnValue;
+                    const newBalance = customer.outstandingBalance - balanceChange;
+                    const isOverLimit = customer.creditLimit != null ? newBalance > customer.creditLimit : false;
+                    
+                    let debtStatus: Customer['debtStatus'] = 'none';
+                    if (newBalance > 0) {
+                        const unpaidSales = await db.sales.where('customerId').equals(customer.id!).and(s => s.paymentStatus !== 'paid').toArray();
+                        const isOverdue = unpaidSales.some(s => s.dueDate && new Date(s.dueDate) < new Date());
+                        debtStatus = isOverdue ? 'overdue' : undefined;
+                    }
+
+                    await db.customers.update(customer.id!, {
+                        outstandingBalance: newBalance,
+                        isOverLimit,
+                        debtStatus,
+                    });
+                }
             }
 
             await db.returns.delete(returnId);
