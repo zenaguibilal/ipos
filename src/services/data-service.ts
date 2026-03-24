@@ -17,7 +17,10 @@ class DataService {
     }
 
     async updateCompanyProfile(profileData: Partial<Omit<CompanyProfile, 'id'>>): Promise<void> {
-        await db.companyProfile.put({ id: 1, ...profileData, updatedAt: new Date() });
+        const dataToSave = { ...profileData, updatedAt: new Date() };
+        if (profileData.goldPricePerGram) dataToSave.goldPricePerGram = Number(profileData.goldPricePerGram);
+        if (profileData.prix_pain) dataToSave.prix_pain = Number(profileData.prix_pain);
+        await db.companyProfile.put({ id: 1, ...dataToSave });
     }
 
     // =================== Cart ===================
@@ -40,17 +43,16 @@ class DataService {
     }
     
     async updateCartItemQuantity(cartId: string, itemId: string | number, newQuantity: number): Promise<{ capped: boolean, maxQuantity?: number }> {
-        let result = { capped: false, maxQuantity: undefined as number | undefined };
-        await db.transaction('rw', db.carts, db.products, async () => {
+        return db.transaction('rw', db.carts, db.products, async () => {
             const cart = await db.carts.get(cartId);
-            if (!cart) return;
+            if (!cart) return { capped: false };
 
-            let finalQuantity = newQuantity;
             const itemToUpdate = cart.items.find(item => item.id === itemId);
-
-            if (!itemToUpdate) return;
+            if (!itemToUpdate) return { capped: false };
             
-            // For real products, check stock
+            let finalQuantity = newQuantity;
+            let result: { capped: boolean, maxQuantity?: number } = { capped: false };
+            
             if (typeof itemId === 'number') {
                 const product = await db.products.get(itemId);
                 if (product && newQuantity > product.quantity) {
@@ -64,8 +66,8 @@ class DataService {
             ).filter(item => item.cartQuantity > 0);
 
             await db.carts.update(cartId, { items: updatedItems });
+            return result;
         });
-        return result;
     }
 
     async removeCartItem(cartId: string, itemId: string | number): Promise<void> {
@@ -353,11 +355,9 @@ class DataService {
             }
 
             await db.customers.delete(id);
-            // Also delete any stray payments that might exist without sales
             await db.payments.where('customerId').equals(id).delete();
         }).catch(err => {
             console.error("Failed to delete customer:", err);
-            // Re-throw a user-friendly error
             throw new Error(err.message || "Une erreur est survenue lors de la suppression du client.");
         });
     }
