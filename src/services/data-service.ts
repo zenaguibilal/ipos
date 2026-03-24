@@ -17,7 +17,7 @@ class DataService {
     }
 
     async updateCompanyProfile(profileData: Partial<Omit<CompanyProfile, 'id'>>): Promise<void> {
-        await db.companyProfile.put({ id: 1, ...profileData });
+        await db.companyProfile.put({ id: 1, ...profileData, updatedAt: new Date() });
     }
 
     // =================== Cart ===================
@@ -121,21 +121,26 @@ class DataService {
             updatedAt: new Date(),
         };
         await db.drafts.add(draft);
+        toast.success("Brouillon sauvegardé.");
     }
     
     async loadDraftToCart(draftId: number, cartId: string): Promise<void> {
-        const draft = await db.drafts.get(draftId);
-        if (!draft) {
-            toast.error("Brouillon non trouvé.");
-            return;
-        }
-        await db.carts.update(cartId, {
-            items: draft.items,
-            customerId: draft.customerId,
-            customerName: draft.customerName,
-            discount: draft.discount,
+        await db.transaction('rw', db.carts, db.drafts, async () => {
+            const draft = await db.drafts.get(draftId);
+            if (!draft) {
+                throw new Error("Brouillon non trouvé.");
+            }
+            await db.carts.update(cartId, {
+                items: draft.items,
+                customerId: draft.customerId,
+                customerName: draft.customerName,
+                discount: draft.discount,
+            });
+            await db.drafts.delete(draftId);
+            toast.success("Brouillon chargé dans le panier actif.");
+        }).catch(err => {
+            toast.error(err.message || "Erreur lors du chargement du brouillon.");
         });
-        await db.drafts.delete(draftId);
     }
     
     async deleteDraft(draftId: number): Promise<void> {
@@ -692,6 +697,7 @@ class DataService {
                     c.lastActivityDate = now;
                 });
             }
+            toast.success(`Vente #${invoiceNumber} finalisée.`);
             return saleId;
         };
 
