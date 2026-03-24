@@ -179,22 +179,26 @@ class DataService {
     }
 
     async deleteProduct(id: number): Promise<void> {
-        return db.transaction('r', db.sales, async () => {
-            const isUsedInSales = await db.sales.where('items.id').equals(id).first();
-            if (isUsedInSales) {
+        return db.transaction('rw', db.sales, db.products, async () => {
+            const saleWithProduct = await db.sales.filter(sale => 
+                sale.items.some(item => item.id === id)
+            ).first();
+
+            if (saleWithProduct) {
                 throw new Error("Impossible de supprimer un produit qui a déjà été vendu.");
             }
-        }).then(() => {
-            return db.products.delete(id);
+            await db.products.delete(id);
         });
     }
 
     async deleteProducts(ids: number[]): Promise<void> {
        return db.transaction('rw', db.products, db.sales, async () => {
             for (const id of ids) {
-                const isUsedInSales = await db.sales.where('items.id').equals(id).first();
-                if (isUsedInSales) {
-                    throw new Error(`Impossible de supprimer un produit qui a déjà été vendu (ID: ${id}).`);
+                const saleWithProduct = await db.sales.filter(sale => 
+                    sale.items.some(item => item.id === id)
+                ).first();
+                if (saleWithProduct) {
+                    throw new Error(`Impossible de supprimer le produit (ID: ${id}) car il a déjà été vendu. L'opération a été annulée.`);
                 }
             }
             await db.products.bulkDelete(ids);
