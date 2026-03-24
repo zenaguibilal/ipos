@@ -815,7 +815,7 @@ class DataService {
             const id = await this.db.payments.add(paymentData as Payment);
             const newPayment = { ...paymentData, id } as Payment;
             await this.db.customers.where({ id: newPayment.customerId }).modify(c => {
-                c.outstandingBalance -= newPayment.amount;
+                c.outstandingBalance = Math.max(0, c.outstandingBalance - newPayment.amount);
                 c.lastActivityDate = new Date();
             });
             return newPayment;
@@ -1264,3 +1264,4 @@ export const dataService = new DataService();
 
 
     
+
