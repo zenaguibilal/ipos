@@ -17,7 +17,7 @@ class DataService {
     }
 
     async updateCompanyProfile(profileData: Partial<Omit<CompanyProfile, 'id'>>): Promise<void> {
-        const dataToSave = { ...profileData, updatedAt: new Date() };
+        const dataToSave: Partial<CompanyProfile> = { ...profileData, updatedAt: new Date() };
         if (profileData.goldPricePerGram) dataToSave.goldPricePerGram = Number(profileData.goldPricePerGram);
         if (profileData.prix_pain) dataToSave.prix_pain = Number(profileData.prix_pain);
         await db.companyProfile.put({ id: 1, ...dataToSave });
@@ -356,9 +356,6 @@ class DataService {
 
             await db.customers.delete(id);
             await db.payments.where('customerId').equals(id).delete();
-        }).catch(err => {
-            console.error("Failed to delete customer:", err);
-            throw new Error(err.message || "Une erreur est survenue lors de la suppression du client.");
         });
     }
 
@@ -931,63 +928,6 @@ class DataService {
     }
 
     // =================== Dashboard ===================
-    async getDashboardData(from: Date, to: Date): Promise<DashboardData | undefined> {
-        const dateRangeFilter = (item: {createdAt: Date}) => item.createdAt >= from && item.createdAt <= to;
-        const expenseDateRangeFilter = (item: {expenseDate: Date}) => item.expenseDate >= from && item.expenseDate <= to;
-        
-        const [sales, expenses, products, customers] = await Promise.all([
-            db.sales.filter(dateRangeFilter).toArray(),
-            db.expenses.filter(expenseDateRangeFilter).toArray(),
-            db.products.toArray(),
-            db.customers.toArray(),
-        ]);
-
-        const totalRevenue = sales.reduce((sum, s) => sum + s.total, 0);
-        const totalProfit = sales.flatMap(s => s.items).reduce((sum, i) => sum + (i.price - i.purchasePrice) * i.quantity, 0);
-        const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
-        
-        const stats = {
-            totalRevenue,
-            totalProfit: totalProfit,
-            salesCount: sales.length,
-            inventoryValue: products.reduce((sum, p) => sum + p.purchasePrice * p.quantity, 0),
-            totalExpenses: totalExpenses,
-        };
-
-        const productSales: { [id: number]: { totalRevenue: number, unitsSold: number, totalProfit: number } } = {};
-        sales.flatMap(s => s.items).forEach(item => {
-            if (typeof item.id === 'number') {
-                if (!productSales[item.id]) productSales[item.id] = { totalRevenue: 0, unitsSold: 0, totalProfit: 0 };
-                productSales[item.id].totalRevenue += item.price * item.quantity;
-                productSales[item.id].unitsSold += item.quantity;
-                productSales[item.id].totalProfit += (item.price - item.purchasePrice) * item.quantity;
-            }
-        });
-        
-        const topProducts = Object.entries(productSales)
-            .map(([id, data]) => ({ id: Number(id), name: products.find(p=>p.id === Number(id))?.name || 'N/A', ...data }))
-            .sort((a, b) => b.totalRevenue - a.totalRevenue)
-            .slice(0, 5);
-        
-        const customerSales: { [id: number]: number } = {};
-        sales.forEach(s => {
-            if (s.customerId) {
-                if (!customerSales[s.customerId]) customerSales[s.customerId] = 0;
-                customerSales[s.customerId] += s.total;
-            }
-        });
-        const topCustomers = Object.entries(customerSales)
-             .map(([id, total]) => ({ id: Number(id), name: customers.find(c=>c.id===Number(id))?.searchName || 'N/A', totalSpent: total }))
-            .sort((a, b) => b.totalSpent - a.totalSpent)
-            .slice(0, 5);
-
-        const lowStockProducts = products.filter(p => p.quantity <= p.minStockLevel && p.quantity > 0).slice(0, 10);
-        
-        const recentActivity = await this.getGlobalActivity(10);
-        
-        return { stats, sales, expenses, topProducts, topCustomers, lowStockProducts, recentActivity };
-    }
-    
     async getGlobalActivity(limit: number): Promise<GlobalActivityItem[]> {
         const sales = await db.sales.orderBy('createdAt').reverse().limit(limit).toArray();
         const intakes = await db.stockIntakes.orderBy('createdAt').reverse().limit(limit).toArray();
