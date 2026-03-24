@@ -16,10 +16,7 @@ class DataService {
     }
 
     async updateCompanyProfile(profileData: Partial<Omit<CompanyProfile, 'id'>>): Promise<void> {
-        const dataToSave: Partial<CompanyProfile> = { ...profileData, updatedAt: new Date() };
-        if (profileData.goldPricePerGram) dataToSave.goldPricePerGram = Number(profileData.goldPricePerGram);
-        if (profileData.prix_pain) dataToSave.prix_pain = Number(profileData.prix_pain);
-        await db.companyProfile.put({ id: 1, ...dataToSave });
+        await db.companyProfile.put({ id: 1, ...profileData, updatedAt: new Date() });
     }
 
     // =================== Cart ===================
@@ -97,11 +94,20 @@ class DataService {
     }
     
     async removeCart(cartId: string): Promise<void> {
-        const carts = await db.carts.toArray();
-        if (carts.length <= 1) {
-             throw new Error("Impossible de supprimer le dernier panier.");
-        }
-        await db.carts.delete(cartId);
+        await db.transaction('rw', db.carts, async () => {
+            const carts = await db.carts.toArray();
+            if (carts.length <= 1) {
+                throw new Error("Impossible de supprimer le dernier panier.");
+            }
+            const activeCartId = localStorage.getItem('activeCartId');
+            if (activeCartId === cartId) {
+                const newActiveCart = carts.find(c => c.id !== cartId);
+                if (newActiveCart) {
+                    localStorage.setItem('activeCartId', newActiveCart.id);
+                }
+            }
+            await db.carts.delete(cartId);
+        });
     }
     
     async setCartDiscount(cartId: string, discount: { type: 'fixed' | 'percentage', value: number }): Promise<void> {
@@ -198,7 +204,6 @@ class DataService {
 
     async deleteProducts(ids: number[]): Promise<void> {
        return db.transaction('rw', db.products, db.sales, async () => {
-            // Create a set of all product IDs that have been sold
             const sales = await db.sales.toArray();
             const soldProductIds = new Set<number>();
             for (const sale of sales) {
@@ -209,7 +214,6 @@ class DataService {
                 }
             }
 
-            // Check if any of the products to be deleted are in the sold set
             const problemId = ids.find(id => soldProductIds.has(id));
 
             if (problemId) {
@@ -329,14 +333,16 @@ class DataService {
     }
 
     async updateCustomer(id: number, customerData: Partial<Omit<Customer, 'id'>>): Promise<void> {
-        const dataToUpdate: any = { ...customerData, updatedAt: new Date() };
-        if (customerData.firstName || customerData.lastName) {
-            const oldCustomer = await db.customers.get(id);
-            const firstName = customerData.firstName || oldCustomer?.firstName;
-            const lastName = customerData.lastName || oldCustomer?.lastName;
-            dataToUpdate.searchName = `${firstName} ${lastName}`.toLowerCase();
-        }
-        await db.customers.update(id, dataToUpdate);
+        await db.transaction('rw', db.customers, async () => {
+            const dataToUpdate: any = { ...customerData, updatedAt: new Date() };
+            if (customerData.firstName || customerData.lastName) {
+                const oldCustomer = await db.customers.get(id);
+                const firstName = customerData.firstName || oldCustomer?.firstName;
+                const lastName = customerData.lastName || oldCustomer?.lastName;
+                dataToUpdate.searchName = `${firstName} ${lastName}`.toLowerCase();
+            }
+            await db.customers.update(id, dataToUpdate);
+        });
     }
     
     async deleteCustomer(id: number): Promise<void> {
