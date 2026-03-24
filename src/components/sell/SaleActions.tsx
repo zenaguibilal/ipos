@@ -47,11 +47,7 @@ export const SaleActions = React.forwardRef<
     const discountType = cart.discount.type || 'fixed';
 
     const handleSaveDraft = () => {
-        if (cart.items.length > 0) {
-            onSaveDraft();
-        } else {
-            toast.info("Le panier est vide. Impossible de sauvegarder le brouillon.");
-        }
+        onSaveDraft();
     };
     
     const paymentButtonRef = React.useRef<HTMLButtonElement>(null);
