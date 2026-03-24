@@ -688,13 +688,23 @@ class DataService {
             }
             const invoiceNumber = `${today}-${String(sequence).padStart(4, '0')}`;
             
+            const remainingBalance = saleData.total - saleData.amountPaid;
+            let paymentStatus: Sale['paymentStatus'];
+            if (remainingBalance <= 0) {
+                paymentStatus = 'paid';
+            } else if (saleData.amountPaid > 0) {
+                paymentStatus = 'partial';
+            } else {
+                paymentStatus = 'unpaid';
+            }
+
             const finalSaleData: Sale = {
                 ...saleData,
                 invoiceNumber,
                 createdAt: now,
                 updatedAt: now,
-                paymentStatus: saleData.remainingBalance <= 0 ? 'paid' : (saleData.amountPaid > 0 ? 'partial' : 'unpaid'),
-                remainingBalance: saleData.amountPaid - saleData.total,
+                paymentStatus,
+                remainingBalance,
             };
 
             const saleId = await db.sales.add(finalSaleData);
@@ -709,7 +719,7 @@ class DataService {
             // Update customer balance
             if (finalSaleData.customerId) {
                 await db.customers.where('id').equals(finalSaleData.customerId).modify(c => {
-                    c.outstandingBalance += finalSaleData.total - finalSaleData.amountPaid;
+                    c.outstandingBalance += finalSaleData.remainingBalance;
                     c.totalSpent += finalSaleData.total;
                     c.lastActivityDate = now;
                 });
