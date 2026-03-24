@@ -1,4 +1,4 @@
-# iPOS - Application de Point de Vente Complète
+iPOS - Application de Point de Vente Complète
 
 **iPOS** est une application de point de vente (POS) complète et fonctionnelle, conçue pour la vente au détail. Elle est conçue pour fonctionner entièrement hors ligne (offline-first), en utilisant la puissance de votre navigateur pour stocker et gérer toutes vos données.
 

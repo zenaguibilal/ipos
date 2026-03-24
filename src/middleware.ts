@@ -58,9 +58,10 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // Ceci actualisera la session si elle a expiré.
-  // Indispensable pour les Server Components.
-  await supabase.auth.getUser()
+  // This line refreshes the session if it's expired.
+  // It's commented out because it can cause routing issues (404s) in certain Next.js setups.
+  // The session will still be managed and refreshed by the Supabase client when used in components.
+  // await supabase.auth.getUser()
 
   return response
 }
