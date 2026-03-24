@@ -2,8 +2,11 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
-  // Cet objet `response` est ce qui sera transmis au navigateur.
-  const response = NextResponse.next()
+  let response = NextResponse.next({
+    request: {
+      headers: request.headers,
+    },
+  })
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -14,23 +17,51 @@ export async function middleware(request: NextRequest) {
           return request.cookies.get(name)?.value
         },
         set(name: string, value: string, options: CookieOptions) {
-          // La méthode `set` est appelée par le client Supabase lorsqu'il doit
-          // enregistrer la session dans un cookie.
-          response.cookies.set(name, value, options)
+          // Si le client supabase doit définir un cookie, nous mettons à jour les cookies de la requête
+          // et créons une nouvelle réponse avec les cookies mis à jour.
+          request.cookies.set({
+            name,
+            value,
+            ...options,
+          })
+          response = NextResponse.next({
+            request: {
+              headers: request.headers,
+            },
+          })
+          response.cookies.set({
+            name,
+            value,
+            ...options,
+          })
         },
         remove(name: string, options: CookieOptions) {
-          // La méthode `remove` est appelée par le client Supabase lorsqu'il doit
-          // supprimer le cookie de session.
-          response.cookies.set(name, '', options)
+          // Si le client supabase doit supprimer un cookie, nous mettons à jour les cookies de la requête
+          // et créons une nouvelle réponse avec le cookie supprimé.
+          request.cookies.set({
+            name,
+            value: '',
+            ...options,
+          })
+          response = NextResponse.next({
+            request: {
+              headers: request.headers,
+            },
+          })
+          response.cookies.set({
+            name,
+            value: '',
+            ...options,
+          })
         },
       },
     }
   )
 
-  // Ceci actualisera la session si elle a expiré
-  await supabase.auth.getSession()
+  // Ceci actualisera la session si elle a expiré.
+  // Indispensable pour les Server Components.
+  await supabase.auth.getUser()
 
-  // Ceci renverra la réponse avec le cookie mis à jour.
   return response
 }
 
