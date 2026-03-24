@@ -3,25 +3,24 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Users, AlertTriangle, UserX } from 'lucide-react';
-import { useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/database';
-import type { Customer } from '@/lib/types';
 
 export function CustomerStats() {
-  const customers = useLiveQuery<Customer[]>(() => db.customers.toArray());
-  const isLoading = customers === undefined;
+  const stats = useLiveQuery(() => 
+      db.customers.toArray().then(customers => {
+          if (!customers) {
+              return { total: 0, overdue: 0, overLimit: 0 };
+          }
+          return {
+              total: customers.length,
+              overdue: customers.filter(c => c.debtStatus === 'overdue').length,
+              overLimit: customers.filter(c => c.isOverLimit).length,
+          };
+      })
+  );
 
-  const stats = useMemo(() => {
-    if (!customers) {
-      return { total: 0, overdue: 0, overLimit: 0 };
-    }
-    return {
-      total: customers.length,
-      overdue: customers.filter(c => c.debtStatus === 'overdue').length,
-      overLimit: customers.filter(c => c.isOverLimit).length,
-    };
-  }, [customers]);
+  const isLoading = stats === undefined;
 
   if (isLoading) {
     return (
