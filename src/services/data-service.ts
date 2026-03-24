@@ -2,7 +2,7 @@
 'use client';
 
 import { db } from '@/lib/database';
-import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, StockIntakeItem, ZakatData, CostingItem, Supplier, ImportAnalysis, BreadClient, BreadOrder, BreadOrderWithClient, ProductImportAnalysis, GlobalActivityItem, Draft, CartItem, SaleItem } from '@/lib/types';
+import type { Product, Sale, StockIntake, ProductReturn, Expense, Cart, Customer, Payment, CompanyProfile, StockIntakeItem, ZakatData, CostingItem, Supplier, ImportAnalysis, BreadClient, BreadOrder, BreadOrderWithClient, ProductImportAnalysis, GlobalActivityItem, Draft, CartItem, SaleItem, DashboardData, DashboardStats, TopProduct, TopCustomer } from '@/lib/types';
 import { toast } from 'sonner';
 import Papa from 'papaparse';
 import { startOfDay, endOfDay, format } from 'date-fns';
@@ -1074,6 +1074,79 @@ class DataService {
         return activities.sort((a,b) => b.date.getTime() - a.date.getTime()).slice(0, limit);
     }
     
+    async getDashboardData(from: Date, to: Date): Promise<DashboardData> {
+        const sales = await db.sales.where('createdAt').between(from, to, true, true).toArray();
+        const expenses = await db.expenses.where('expenseDate').between(from, to, true, true).toArray();
+        const products = await db.products.toArray();
+        const customers = await db.customers.toArray();
+        const recentActivity = await this.getGlobalActivity(10);
+
+        // Stats
+        const totalRevenue = sales.reduce((sum, s) => sum + s.total, 0);
+        const totalProfit = sales.flatMap(s => s.items).reduce((sum, i) => sum + (i.price - i.purchasePrice) * i.quantity, 0);
+        const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
+        const inventoryValue = products.reduce((sum, p) => sum + p.purchasePrice * p.quantity, 0);
+
+        const stats: DashboardStats = {
+            totalRevenue,
+            totalProfit,
+            salesCount: sales.length,
+            inventoryValue,
+            totalExpenses,
+        };
+
+        // Top Products
+        const productSales: { [id: number]: { totalRevenue: number, unitsSold: number, totalProfit: number } } = {};
+        sales.flatMap(s => s.items).forEach(item => {
+            if (typeof item.id === 'number') {
+                if (!productSales[item.id]) {
+                    productSales[item.id] = { totalRevenue: 0, unitsSold: 0, totalProfit: 0 };
+                }
+                productSales[item.id].totalRevenue += item.price * item.quantity;
+                productSales[item.id].unitsSold += item.quantity;
+                productSales[item.id].totalProfit += (item.price - item.purchasePrice) * item.quantity;
+            }
+        });
+        const topProducts: TopProduct[] = Object.entries(productSales)
+            .map(([id, data]) => ({
+                id: Number(id),
+                name: products.find(p => p.id === Number(id))?.name || 'N/A',
+                ...data
+            }))
+            .sort((a, b) => b.totalRevenue - a.totalRevenue)
+            .slice(0, 5);
+
+        // Top Customers
+        const customerSales: { [id: number]: number } = {};
+        sales.forEach(s => {
+            if (s.customerId) {
+                if (!customerSales[s.customerId]) customerSales[s.customerId] = 0;
+                customerSales[s.customerId] += s.total;
+            }
+        });
+        const topCustomers: TopCustomer[] = Object.entries(customerSales)
+            .map(([id, total]) => ({
+                id: Number(id),
+                name: customers.find(c => c.id === Number(id))?.searchName || 'N/A',
+                totalSpent: total
+            }))
+            .sort((a, b) => b.totalSpent - a.totalSpent)
+            .slice(0, 5);
+
+        // Low Stock Products
+        const lowStockProducts = products.filter(p => p.quantity > 0 && p.quantity <= p.minStockLevel).slice(0, 10);
+        
+        return {
+            stats,
+            sales,
+            expenses,
+            topProducts,
+            topCustomers,
+            lowStockProducts,
+            recentActivity
+        };
+    }
+
     // =================== Backup / Restore ===================
     async exportData(): Promise<any> {
         const data: any = {};
