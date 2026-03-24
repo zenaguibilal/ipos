@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -38,7 +39,6 @@ export function BackupAndRestore() {
             const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
             const link = document.createElement("a");
             const url = URL.createObjectURL(blob);
-            link.setAttribute("href", url);
             link.setAttribute("download", `ipos-backup-${new Date().toISOString().split('T')[0]}.json`);
             link.style.visibility = 'hidden';
             document.body.appendChild(link);
@@ -105,7 +105,7 @@ export function BackupAndRestore() {
             <Card>
                 <CardHeader>
                     <CardTitle>Sauvegarde & Restauration</CardTitle>
-                    <CardDescription>Gérez les données de votre application.</CardDescription>
+                    <CardDescription>Gérez les données de votre application. Les paniers actifs ne sont pas inclus dans les sauvegardes.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                     <div>

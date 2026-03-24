@@ -228,23 +228,26 @@ class DataService {
             collection = collection.reverse();
         }
 
-        if (params.query) {
-            const q = params.query.toLowerCase();
-            collection = collection.filter(p => 
-                p.name.toLowerCase().includes(q) || 
-                (p.barcodes && p.barcodes.some(b => b.includes(q)))
-            );
-        }
-        if (params.category && params.category !== 'all') {
-            collection = collection.filter(p => p.category === params.category);
-        }
-        if (params.supplier && params.supplier !== 'all') {
-            collection = collection.filter(p => p.fournisseurId === parseInt(params.supplier!));
-        }
-        if (params.stockStatus && params.stockStatus !== 'all') {
-            if (params.stockStatus === 'in_stock') collection = collection.filter(p => p.quantity > 0);
-            if (params.stockStatus === 'low_stock') collection = collection.filter(p => p.quantity > 0 && p.quantity <= p.minStockLevel);
-            if (params.stockStatus === 'out_of_stock') collection = collection.filter(p => p.quantity <= 0);
+        if (params.query || (params.category && params.category !== 'all') || (params.stockStatus && params.stockStatus !== 'all') || (params.supplier && params.supplier !== 'all')) {
+            collection = collection.filter(p => {
+                let passes = true;
+                if (params.query) {
+                    const q = params.query.toLowerCase();
+                    passes = passes && (p.name.toLowerCase().includes(q) || (p.barcodes && p.barcodes.some(b => b.includes(q))));
+                }
+                if (params.category && params.category !== 'all') {
+                    passes = passes && (p.category === params.category);
+                }
+                if (params.supplier && params.supplier !== 'all') {
+                    passes = passes && (p.fournisseurId === parseInt(params.supplier!));
+                }
+                if (params.stockStatus && params.stockStatus !== 'all') {
+                    if (params.stockStatus === 'in_stock') passes = passes && p.quantity > 0;
+                    if (params.stockStatus === 'low_stock') passes = passes && (p.quantity > 0 && p.quantity <= p.minStockLevel);
+                    if (params.stockStatus === 'out_of_stock') passes = passes && p.quantity <= 0;
+                }
+                return passes;
+            });
         }
         
         return await collection.toArray();
@@ -297,23 +300,22 @@ class DataService {
     async getCustomers(params: { query?: string, status?: string }): Promise<Customer[]> {
         let collection = db.customers.orderBy('lastActivityDate').reverse();
 
-        if (params.query) {
-            const q = params.query.toLowerCase();
-            collection = collection.filter(c => c.searchName?.toLowerCase().includes(q) || c.phone?.includes(q));
+        if (params.query || (params.status && params.status !== 'all')) {
+            collection = collection.filter(c => {
+                let passes = true;
+                if (params.query) {
+                    const q = params.query.toLowerCase();
+                    passes = passes && (c.searchName?.toLowerCase().includes(q) || c.phone?.includes(q));
+                }
+                if (params.status && params.status !== 'all') {
+                    if (params.status === 'has_debt') passes = passes && c.outstandingBalance > 0;
+                    if (params.status === 'overdue') passes = passes && c.debtStatus === 'overdue';
+                    if (params.status === 'over_limit') passes = passes && c.isOverLimit === true;
+                }
+                return passes;
+            });
         }
-
-        if (params.status && params.status !== 'all') {
-            if (params.status === 'has_debt') {
-                collection = collection.filter(c => c.outstandingBalance > 0);
-            }
-            if (params.status === 'overdue') {
-                collection = collection.filter(c => c.debtStatus === 'overdue');
-            }
-            if (params.status === 'over_limit') {
-                collection = collection.filter(c => c.isOverLimit === true);
-            }
-        }
-
+        
         return await collection.toArray();
     }
 
@@ -622,10 +624,9 @@ class DataService {
                 
                 const saleData: any = {
                     items: [saleItem],
-                    subtotal: total, total,
+                    subtotal: total,
+                    total: total,
                     amountPaid: 0,
-                    remainingBalance: total,
-                    paymentStatus: 'unpaid',
                     payments: [],
                     clientPainId: order.client_pain_id,
                     customerId: customer?.id,
@@ -633,7 +634,7 @@ class DataService {
                     dueDate: customer?.settlementDay ? new Date(new Date().getTime() + customer.settlementDay * 86400000) : undefined,
                 };
                 
-                const saleId = await this.addSale(saleData, false);
+                const { saleId } = await this._processSale(saleData);
                 await db.commandes_pain.update(order.id!, { vente_id: saleId, est_paye: true });
             }
         });
@@ -657,101 +658,98 @@ class DataService {
         return await collection.toArray();
     }
 
-    async addSale(saleData: any, runInTransaction: boolean = true): Promise<number> {
-        const processSale = async () => {
-            const now = new Date();
-            
-            // Validate stock availability before proceeding
-            const productIds = saleData.items
-                .map((item: SaleItem) => item.id)
-                .filter((id: any): id is number => typeof id === 'number');
-            
-            if (productIds.length > 0) {
-                const productsInDb = await db.products.bulkGet(productIds);
-                const productMap = new Map(productsInDb.filter((p): p is Product => !!p).map(p => [p.id!, p]));
+    async addSale(saleData: any): Promise<number> {
+        return db.transaction('rw', db.sales, db.products, db.customers, async () => {
+            const { saleId, invoiceNumber } = await this._processSale(saleData);
+            toast.success(`Vente #${invoiceNumber} finalisée.`);
+            return saleId;
+        });
+    }
 
-                for (const item of saleData.items as SaleItem[]) {
-                    if (typeof item.id === 'number') {
-                        const product = productMap.get(item.id);
-                        if (!product || product.quantity < item.quantity) {
-                            throw new Error(`Stock insuffisant pour "${item.name}". Disponible: ${product?.quantity ?? 0}, Demandé: ${item.quantity}`);
-                        }
+    private async _processSale(saleData: any): Promise<{ saleId: number, invoiceNumber: string }> {
+        const now = new Date();
+        
+        const productIds = saleData.items
+            .map((item: SaleItem) => item.id)
+            .filter((id: any): id is number => typeof id === 'number');
+        
+        if (productIds.length > 0) {
+            const productsInDb = await db.products.bulkGet(productIds);
+            const productMap = new Map(productsInDb.filter((p): p is Product => !!p).map(p => [p.id!, p]));
+
+            for (const item of saleData.items as SaleItem[]) {
+                if (typeof item.id === 'number') {
+                    const product = productMap.get(item.id);
+                    if (!product || product.quantity < item.quantity) {
+                        throw new Error(`Stock insuffisant pour "${item.name}". Disponible: ${product?.quantity ?? 0}, Demandé: ${item.quantity}`);
                     }
                 }
             }
+        }
 
-            const today = format(now, 'yyMMdd');
-            const lastSaleToday = await db.sales.where('createdAt').between(startOfDay(now), endOfDay(now), true, true).last();
-            let sequence = 1;
-            if (lastSaleToday) {
-                const lastSequence = parseInt(lastSaleToday.invoiceNumber.split('-')[1], 10);
-                if (!isNaN(lastSequence)) {
-                    sequence = lastSequence + 1;
-                }
+        const today = format(now, 'yyMMdd');
+        const lastSaleToday = await db.sales.where('createdAt').between(startOfDay(now), endOfDay(now), true, true).last();
+        let sequence = 1;
+        if (lastSaleToday) {
+            const lastSequence = parseInt(lastSaleToday.invoiceNumber.split('-')[1], 10);
+            if (!isNaN(lastSequence)) {
+                sequence = lastSequence + 1;
             }
-            const invoiceNumber = `${today}-${String(sequence).padStart(4, '0')}`;
-            
-            const remainingBalance = saleData.total - saleData.amountPaid;
-            let paymentStatus: Sale['paymentStatus'];
-            if (remainingBalance <= 0) {
-                paymentStatus = 'paid';
-            } else if (saleData.amountPaid > 0) {
-                paymentStatus = 'partial';
-            } else {
-                paymentStatus = 'unpaid';
-            }
+        }
+        const invoiceNumber = `${today}-${String(sequence).padStart(4, '0')}`;
+        
+        const remainingBalance = saleData.total - saleData.amountPaid;
+        let paymentStatus: Sale['paymentStatus'];
+        if (remainingBalance <= 0) {
+            paymentStatus = 'paid';
+        } else if (saleData.amountPaid > 0) {
+            paymentStatus = 'partial';
+        } else {
+            paymentStatus = 'unpaid';
+        }
 
-            const customer = saleData.customerId ? await db.customers.get(saleData.customerId) : undefined;
-            const dueDate = customer?.settlementDay ? new Date(now.getTime() + customer.settlementDay * 86400000) : saleData.dueDate;
+        const customer = saleData.customerId ? await db.customers.get(saleData.customerId) : undefined;
+        const dueDate = customer?.settlementDay ? new Date(now.getTime() + customer.settlementDay * 86400000) : saleData.dueDate;
 
-            const finalSaleData: Sale = {
-                ...saleData,
-                invoiceNumber,
-                createdAt: now,
-                updatedAt: now,
-                paymentStatus,
-                remainingBalance,
-                dueDate,
-            };
-
-            const saleId = await db.sales.add(finalSaleData);
-
-            // Update product quantities
-            for (const item of finalSaleData.items) {
-                if (typeof item.id === 'number') {
-                    await db.products.where('id').equals(item.id).modify(p => { p.quantity -= item.quantity; });
-                }
-            }
-            
-            // Update customer balance and status
-            if (customer) {
-                const newBalance = customer.outstandingBalance + finalSaleData.remainingBalance;
-                const isOverLimit = customer.creditLimit != null ? newBalance > customer.creditLimit : false;
-                
-                let debtStatus: Customer['debtStatus'] = 'none';
-                if (newBalance > 0) {
-                    const unpaidSales = await db.sales.where('customerId').equals(customer.id!).and(s => s.paymentStatus !== 'paid' || s.id === saleId).toArray();
-                    const isOverdue = unpaidSales.some(s => s.dueDate && new Date(s.dueDate) < now);
-                    debtStatus = isOverdue ? 'overdue' : 'due_soon';
-                }
-                
-                await db.customers.update(customer.id!, {
-                    outstandingBalance: newBalance,
-                    totalSpent: customer.totalSpent + finalSaleData.total,
-                    lastActivityDate: now,
-                    isOverLimit,
-                    debtStatus,
-                });
-            }
-            toast.success(`Vente #${invoiceNumber} finalisée.`);
-            return saleId;
+        const finalSaleData: Sale = {
+            ...saleData,
+            invoiceNumber,
+            createdAt: now,
+            updatedAt: now,
+            paymentStatus,
+            remainingBalance,
+            dueDate,
         };
 
-        if (runInTransaction) {
-            return db.transaction('rw', db.sales, db.products, db.customers, processSale);
-        } else {
-            return processSale();
+        const saleId = await db.sales.add(finalSaleData);
+
+        for (const item of finalSaleData.items) {
+            if (typeof item.id === 'number') {
+                await db.products.where('id').equals(item.id).modify(p => { p.quantity -= item.quantity; });
+            }
         }
+        
+        if (customer) {
+            const newBalance = customer.outstandingBalance + finalSaleData.remainingBalance;
+            const isOverLimit = customer.creditLimit != null ? newBalance > customer.creditLimit : false;
+            
+            let debtStatus: Customer['debtStatus'] = 'none';
+            if (newBalance > 0) {
+                const unpaidSales = await db.sales.where('customerId').equals(customer.id!).and(s => s.paymentStatus !== 'paid' || s.id === saleId).toArray();
+                const isOverdue = unpaidSales.some(s => s.dueDate && new Date(s.dueDate) < now);
+                debtStatus = isOverdue ? 'overdue' : 'due_soon';
+            }
+            
+            await db.customers.update(customer.id!, {
+                outstandingBalance: newBalance,
+                totalSpent: customer.totalSpent + finalSaleData.total,
+                lastActivityDate: now,
+                isOverLimit,
+                debtStatus,
+            });
+        }
+        
+        return { saleId, invoiceNumber };
     }
     
     async deleteSale(saleId: number): Promise<void> {
@@ -759,14 +757,12 @@ class DataService {
             const sale = await db.sales.get(saleId);
             if (!sale) return;
 
-            // Restore product quantities
             for (const item of sale.items) {
                 if (typeof item.id === 'number') {
                     await db.products.where('id').equals(item.id).modify(p => { p.quantity += item.quantity; });
                 }
             }
 
-            // Revert customer balance and update status
             if (sale.customerId) {
                 const customer = await db.customers.get(sale.customerId);
                 if (customer) {
@@ -845,7 +841,7 @@ class DataService {
                         category: item.category,
                         price: item.price,
                         purchasePrice: item.purchasePrice,
-                        quantity: 0, // will be updated next
+                        quantity: 0,
                         minStockLevel: 10,
                         barcodes: item.barcodes,
                         fournisseurId: supplier!.id,
@@ -1040,7 +1036,6 @@ class DataService {
             for (const item of costingItems) {
                 if (item.productId) {
                     const product = productMap.get(item.productId);
-                    // Only update if the price has actually changed
                     if (product && product.purchasePrice !== item.finalCostPerUnit) {
                          updates.push({
                              key: item.productId,
@@ -1082,7 +1077,8 @@ class DataService {
     // =================== Backup / Restore ===================
     async exportData(): Promise<any> {
         const data: any = {};
-        for (const table of db.tables) {
+        const tablesToExport = db.tables.filter(table => table.name !== 'carts');
+        for (const table of tablesToExport) {
             data[table.name] = await table.toArray();
         }
         return data;
@@ -1090,7 +1086,8 @@ class DataService {
     
     async restoreTables(data: any): Promise<void> {
         await db.transaction('rw', db.tables, async () => {
-            for (const table of db.tables) {
+             const tablesToRestore = db.tables.filter(table => table.name !== 'carts');
+            for (const table of tablesToRestore) {
                 if (data[table.name]) {
                     await table.clear();
                     await table.bulkAdd(data[table.name]);
