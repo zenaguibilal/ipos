@@ -25,20 +25,15 @@ export default function SalesHistoryPage() {
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
     const [isCancelOpen, setIsCancelOpen] = useState(false);
 
-    const { data: sales, isLoading } = useLiveQuery(() => {
-        if (!isMounted) return { data: [], isLoading: true };
-
-        const fetchSales = async () => {
-            const data = await dataService.getSales({
-                query: debouncedSearchQuery,
-                from: dateRange?.from,
-                to: dateRange?.to
-            });
-            return { data, isLoading: false };
-        };
-
-        return fetchSales();
-    }, [isMounted, debouncedSearchQuery, dateRange], { data: [], isLoading: true });
+    const sales = useLiveQuery(() => {
+        if (!isMounted || !dateRange) return undefined;
+        return dataService.getSales({
+            query: debouncedSearchQuery,
+            from: dateRange.from,
+            to: dateRange.to
+        });
+    }, [isMounted, debouncedSearchQuery, dateRange]);
+    const isLoading = sales === undefined;
 
     const handleViewDetails = (sale: Sale) => {
         setSelectedSale(sale);

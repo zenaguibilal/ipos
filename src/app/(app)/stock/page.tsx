@@ -25,20 +25,15 @@ export default function StockPage() {
     const [selectedIntake, setSelectedIntake] = useState<StockIntake | null>(null);
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
-    const { data: stockIntakes, isLoading } = useLiveQuery(() => {
-        if (!isMounted) return { data: [], isLoading: true };
-
-        const fetchIntakes = async () => {
-            const data = await dataService.getStockIntakes({
-                query: debouncedSearchQuery,
-                from: dateRange?.from,
-                to: dateRange?.to
-            });
-            return { data, isLoading: false };
-        };
-
-        return fetchIntakes();
-    }, [isMounted, debouncedSearchQuery, dateRange], { data: [], isLoading: true });
+    const stockIntakes = useLiveQuery(() => {
+        if (!isMounted || !dateRange) return undefined;
+        return dataService.getStockIntakes({
+            query: debouncedSearchQuery,
+            from: dateRange.from,
+            to: dateRange.to
+        });
+    }, [isMounted, debouncedSearchQuery, dateRange]);
+    const isLoading = stockIntakes === undefined;
 
 
     const handleViewDetails = (intake: StockIntake) => {

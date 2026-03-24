@@ -27,20 +27,16 @@ export default function ReturnsPage() {
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
     const [isCancelOpen, setIsCancelOpen] = useState(false);
 
-    const { data: returns, isLoading } = useLiveQuery(() => {
-        if (!isMounted) return { data: [], isLoading: true };
+    const returns = useLiveQuery(() => {
+        if (!isMounted || !dateRange) return undefined;
+        return dataService.getReturns({
+            query: debouncedSearchQuery,
+            from: dateRange.from,
+            to: dateRange.to
+        });
+    }, [isMounted, debouncedSearchQuery, dateRange]);
+    const isLoading = returns === undefined;
 
-        const fetchReturns = async () => {
-            const data = await dataService.getReturns({
-                query: debouncedSearchQuery,
-                from: dateRange?.from,
-                to: dateRange?.to
-            });
-            return { data, isLoading: false };
-        };
-
-        return fetchReturns();
-    }, [isMounted, debouncedSearchQuery, dateRange], { data: [], isLoading: true });
 
     const handleViewDetails = (pr: ProductReturn) => {
         setSelectedReturn(pr);

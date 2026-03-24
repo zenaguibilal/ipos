@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Skeleton } from '@/components/ui/skeleton';
 import { CustomerMetrics } from '@/components/customers/CustomerMetrics';
 import { CustomerActivity } from '@/components/customers/CustomerActivity';
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { AddPaymentDialog } from '@/components/payments/AddPaymentDialog';
 import { SaleDetailsDialog } from '@/components/sales/SaleDetailsDialog';
 import { ReturnDetailsDialog } from '@/components/returns/ReturnDetailsDialog';
@@ -33,41 +33,30 @@ export default function CustomerDetailPage() {
     const [isReturnDetailsOpen, setIsReturnDetailsOpen] = useState(false);
 
     // States for activity pagination
-    const [activity, setActivity] = useState<(Sale | Payment | ProductReturn)[]>([]);
-    const [allActivity, setAllActivity] = useState<(Sale | Payment | ProductReturn)[]>([]);
     const [activityPage, setActivityPage] = useState(1);
-    const [isLoadingActivity, setIsLoadingActivity] = useState(true);
 
     const customer = useLiveQuery<Customer | undefined>(
         () => !isNaN(customerId) ? dataService.getCustomerById(customerId) : undefined,
         [customerId]
     );
+    const allActivity = useLiveQuery(() => 
+        !isNaN(customerId) ? dataService.getCustomerActivity(customerId) : undefined,
+        [customerId]
+    );
+
+    const activity = useMemo(() => {
+        if (!allActivity) return [];
+        return allActivity.slice(0, activityPage * ITEMS_PER_PAGE);
+    }, [allActivity, activityPage]);
+
+    const hasMoreActivity = allActivity ? activity.length < allActivity.length : false;
+
     const isLoading = customer === undefined;
+    const isLoadingActivity = allActivity === undefined;
 
-    useEffect(() => {
-        if (!isNaN(customerId)) {
-            setIsLoadingActivity(true);
-            setActivityPage(1);
-            dataService.getCustomerActivity(customerId).then(act => {
-                setAllActivity(act);
-                setActivity(act.slice(0, ITEMS_PER_PAGE));
-                setIsLoadingActivity(false);
-            });
-        }
-    }, [customerId]);
-
-    const onDialogClose = async () => {
-        setIsLoadingActivity(true);
-        const act = await dataService.getCustomerActivity(customerId);
-        setAllActivity(act);
-        setActivity(act.slice(0, activityPage * ITEMS_PER_PAGE));
-        setIsLoadingActivity(false);
-    };
 
     const handleLoadMore = () => {
-        const nextPage = activityPage + 1;
-        setActivity(allActivity.slice(0, nextPage * ITEMS_PER_PAGE));
-        setActivityPage(nextPage);
+        setActivityPage(prev => prev + 1);
     };
 
     const handleSaleClick = (sale: Sale) => {
@@ -142,7 +131,7 @@ export default function CustomerDetailPage() {
                                 />
                             )}
                         </CardContent>
-                        {!isLoadingActivity && activity.length < allActivity.length && (
+                        {hasMoreActivity && (
                             <CardFooter>
                                 <Button onClick={handleLoadMore} className="w-full">
                                     Charger plus
@@ -175,10 +164,7 @@ export default function CustomerDetailPage() {
             
              <AddPaymentDialog 
                 isOpen={isPaymentDialogOpen}
-                onOpenChange={(open) => {
-                    setIsPaymentDialogOpen(open);
-                    if (!open) onDialogClose();
-                }}
+                onOpenChange={setIsPaymentDialogOpen}
                 customer={customer}
                 outstandingBalance={customer.outstandingBalance}
             />

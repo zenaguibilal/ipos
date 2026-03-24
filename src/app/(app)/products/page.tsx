@@ -34,6 +34,7 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useLiveQuery } from 'dexie-react-hooks';
 
 type ViewMode = 'grid' | 'list';
 type StockStatus = 'all' | 'in_stock' | 'low_stock' | 'out_of_stock';
@@ -78,32 +79,19 @@ export default function ProductsPage() {
 
     const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
-    const [products, setProducts] = useState<Product[]>([]);
-    const [categories, setCategories] = useState<string[]>([]);
-    const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-
-    useEffect(() => {
-        setIsLoading(true);
-        const fetchProducts = async () => {
-            const [productsData, categoriesData, suppliersData] = await Promise.all([
-                dataService.getProducts({ 
-                    query: debouncedSearchQuery, 
-                    category: selectedCategory, 
-                    supplier: selectedSupplier,
-                    stockStatus, 
-                    sortBy 
-                }),
-                dataService.getProductCategories(),
-                dataService.getSuppliers()
-            ]);
-            setProducts(productsData);
-            setCategories(categoriesData);
-            setSuppliers(suppliersData);
-            setIsLoading(false);
-        };
-        fetchProducts();
-    }, [debouncedSearchQuery, selectedCategory, selectedSupplier, stockStatus, sortBy, isProductDialogOpen, isBulkDeleteDialogOpen, isProductImportPreviewOpen, isDeleteDialogOpen]);
+    const products = useLiveQuery(() => 
+        dataService.getProducts({ 
+            query: debouncedSearchQuery, 
+            category: selectedCategory, 
+            supplier: selectedSupplier,
+            stockStatus, 
+            sortBy 
+        }),
+        [debouncedSearchQuery, selectedCategory, selectedSupplier, stockStatus, sortBy]
+    );
+    const categories = useLiveQuery(() => dataService.getProductCategories());
+    const suppliers = useLiveQuery(() => dataService.getSuppliers());
+    const isLoading = products === undefined || categories === undefined || suppliers === undefined;
 
     useEffect(() => {
         const savedViewMode = localStorage.getItem('product_view_mode') as ViewMode;

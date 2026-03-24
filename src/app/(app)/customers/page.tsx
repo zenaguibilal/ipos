@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { dataService } from '@/services/data-service';
 import { useDebounce } from '@/hooks/useDebounce';
 import type { Customer, ImportAnalysis } from '@/lib/types';
@@ -36,13 +36,11 @@ export default function CustomersPage() {
     
     const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
-    const { customers, isLoading } = useLiveQuery(() => {
-        const fetchCustomers = async () => {
-            const data = await dataService.getCustomers({ query: debouncedSearchQuery, status: filterStatus });
-            return { customers: data, isLoading: false };
-        };
-        return fetchCustomers();
-    }, [debouncedSearchQuery, filterStatus], { customers: [], isLoading: true });
+    const customers = useLiveQuery(() => 
+        dataService.getCustomers({ query: debouncedSearchQuery, status: filterStatus }),
+        [debouncedSearchQuery, filterStatus]
+    );
+    const isLoading = customers === undefined;
 
 
     const handleEditCustomer = (customer: Customer) => {
