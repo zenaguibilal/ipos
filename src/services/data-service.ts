@@ -213,7 +213,7 @@ class DataService {
         }
 
         const oldProduct = await this.db.products.get(id);
-        if (oldProduct && productData.quantity !== undefined && oldProduct.quantity !== productData.quantity) {
+        if (oldProduct && productData.quantity !== undefined && productData.quantity !== oldProduct.quantity) {
             await this.db.inventoryLogs.add({
               productId: id,
               change: (productData.quantity || 0) - oldProduct.quantity,
