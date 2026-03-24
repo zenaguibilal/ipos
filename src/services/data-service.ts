@@ -475,23 +475,25 @@ class DataService {
     }
     
     async addManualBreadOrder(clientId: number, date: string, quantity: number): Promise<BreadOrder> {
-         const existingOrder = await db.commandes_pain.where({ client_pain_id: clientId, date }).first();
-        if (existingOrder) {
-            throw new Error("Une commande manuelle existe déjà pour ce client aujourd'hui.");
-        }
-        
-        const order: BreadOrder = {
-            client_pain_id: clientId,
-            date,
-            quantite: quantity,
-            est_paye: false,
-            est_livre: false,
-            vente_id: null,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-        };
-        const id = await db.commandes_pain.add(order);
-        return { ...order, id };
+        return await db.transaction('rw', db.commandes_pain, async () => {
+            const existingOrder = await db.commandes_pain.where({ client_pain_id: clientId, date }).first();
+            if (existingOrder) {
+                throw new Error("Une commande manuelle existe déjà pour ce client aujourd'hui.");
+            }
+            
+            const order: BreadOrder = {
+                client_pain_id: clientId,
+                date,
+                quantite: quantity,
+                est_paye: false,
+                est_livre: false,
+                vente_id: null,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+            };
+            const id = await db.commandes_pain.add(order);
+            return { ...order, id };
+        });
     }
     
     async updateBreadOrderQuantity(orderId: number, newQuantity: number): Promise<void> {
