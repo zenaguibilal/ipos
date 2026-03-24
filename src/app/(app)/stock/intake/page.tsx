@@ -12,7 +12,7 @@ import { DatePicker } from '@/components/ui/date-picker';
 import type { StockIntakeItem, Supplier } from '@/lib/types';
 import { v4 as uuidv4 } from 'uuid';
 import { toast } from 'sonner';
-import { dataService } from '@/services/data-service';
+import { stockService } from '@/services';
 import { formatCurrency } from '@/lib/utils';
 import { Loader2 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -132,7 +132,7 @@ export default function NewStockIntakePage() {
         setIsSaving(true);
         try {
             const intakeData = { supplierName, invoiceNumber, invoiceDate: invoiceDate || new Date() };
-            await dataService.addStockIntake(intakeData, items);
+            await stockService.addStockIntake(intakeData, items);
             toast.success("Réception de stock enregistrée avec succès !");
             router.push('/stock');
         } catch (error: any) {

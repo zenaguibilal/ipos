@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { dataService } from '@/services/data-service';
+import { salesService, returnService } from '@/services';
 import type { Sale, ReturnItem } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,7 +33,7 @@ export default function NewReturnPage() {
         if (!invoiceNumber) return;
         setIsSearching(true);
         try {
-            const sale = await dataService.getSaleByInvoiceNumber(invoiceNumber);
+            const sale = await salesService.getSaleByInvoiceNumber(invoiceNumber);
             if (sale) {
                 setFoundSale(sale);
                 const items: ReturnItemState[] = sale.items.map(item => ({
@@ -97,7 +97,7 @@ export default function NewReturnPage() {
                     wasRestocked: item.wasRestocked,
                 }));
 
-            await dataService.addReturn({
+            await returnService.addReturn({
                 originalSaleId: foundSale.id,
                 originalInvoiceNumber: foundSale.invoiceNumber,
                 items: itemsForService,

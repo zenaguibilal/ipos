@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { dataService } from '@/services/data-service';
+import { salesService } from '@/services';
 import { useDebounce } from '@/hooks/useDebounce';
 import type { Sale } from '@/lib/types';
 import { Input } from '@/components/ui/input';
@@ -27,7 +27,7 @@ export default function SalesHistoryPage() {
 
     const sales = useLiveQuery(() => {
         if (!isMounted || !dateRange) return undefined;
-        return dataService.getSales({
+        return salesService.getSales({
             query: debouncedSearchQuery,
             from: dateRange.from,
             to: dateRange.to

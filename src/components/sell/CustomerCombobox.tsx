@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { dataService } from '@/services/data-service';
+import { customerService } from '@/services';
 import { Combobox, ComboboxOption } from '@/components/ui/combobox';
 import type { Customer } from '@/lib/types';
 import { formatCurrency } from '@/lib/utils';
@@ -20,7 +20,7 @@ const WalkInCustomerOption: ComboboxOption = {
 
 export const CustomerCombobox = React.forwardRef<HTMLButtonElement, CustomerComboboxProps>(({ customerId, onSelectCustomer }, ref) => {
     
-    const customers = useLiveQuery(() => dataService.getCustomers({}));
+    const customers = useLiveQuery(() => customerService.getCustomers({}));
 
     const customerOptions = React.useMemo<ComboboxOption[]>(() => {
         if (!customers) return [WalkInCustomerOption];

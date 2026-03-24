@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import type { CompanyProfile } from '@/lib/types';
 import { Skeleton } from '../ui/skeleton';
 import { Loader2 } from 'lucide-react';
-import { dataService } from '@/services/data-service';
+import { profileService } from '@/services';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/database';
 
@@ -45,7 +45,7 @@ export function CompanyProfileForm() {
         };
 
         try {
-            await dataService.updateCompanyProfile(dataToSave);
+            await profileService.updateCompanyProfile(dataToSave);
             toast.success('Profil de l\'entreprise mis à jour avec succès.');
         } catch (err) {
             setError("Une erreur est survenue lors de la mise à jour du profil.");

@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { dataService } from '@/services/data-service';
+import { breadService } from '@/services';
 import { toast } from 'sonner';
 import { Plus } from 'lucide-react';
 import type { BreadClient } from '@/lib/types';
@@ -22,7 +22,7 @@ export function ManualAddDialog({ currentDate }: ManualAddDialogProps) {
     const [quantity, setQuantity] = useState(10);
     
     const manualClients = useLiveQuery(
-        () => isOpen ? dataService.getManualBreadClients() : Promise.resolve([]),
+        () => isOpen ? breadService.getManualBreadClients() : Promise.resolve([]),
         [isOpen]
     );
 
@@ -37,7 +37,7 @@ export function ManualAddDialog({ currentDate }: ManualAddDialogProps) {
         }
 
         try {
-            await dataService.addManualBreadOrder(parseInt(selectedClientId, 10), currentDate, quantity);
+            await breadService.addManualBreadOrder(parseInt(selectedClientId, 10), currentDate, quantity);
             toast.success("Commande manuelle ajoutée.");
             setIsOpen(false);
             setSelectedClientId('');

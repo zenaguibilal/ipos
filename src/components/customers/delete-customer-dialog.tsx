@@ -2,7 +2,7 @@
 
 import { toast } from 'sonner';
 import type { Customer } from '@/lib/types';
-import { dataService } from '@/services/data-service';
+import { customerService } from '@/services';
 import { ConfirmAlertDialog } from '@/components/ui/ConfirmAlertDialog';
 
 interface DeleteCustomerDialogProps {
@@ -14,7 +14,7 @@ interface DeleteCustomerDialogProps {
 export function DeleteCustomerDialog({ isOpen, onOpenChange, customer }: DeleteCustomerDialogProps) {
     const handleDelete = async () => {
         if (!customer || !customer.id) return;
-        await dataService.deleteCustomer(customer.id);
+        await customerService.deleteCustomer(customer.id);
         toast.success(`Client "${customer.firstName} ${customer.lastName}" supprimé.`);
     };
 

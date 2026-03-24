@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { dataService } from '@/services/data-service';
+import { customerService } from '@/services';
 import { useDebounce } from '@/hooks/useDebounce';
 import type { Customer, ImportAnalysis } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -37,7 +37,7 @@ export default function CustomersPage() {
     const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
     const customers = useLiveQuery(() => 
-        dataService.getCustomers({ query: debouncedSearchQuery, status: filterStatus }),
+        customerService.getCustomers({ query: debouncedSearchQuery, status: filterStatus }),
         [debouncedSearchQuery, filterStatus]
     );
     const isLoading = customers === undefined;
@@ -60,7 +60,7 @@ export default function CustomersPage() {
                 header: true,
                 skipEmptyLines: true,
                 complete: async (results) => {
-                    const analysis = await dataService.analyzeCustomerImport(results.data);
+                    const analysis = await customerService.analyzeCustomerImport(results.data);
                     setImportAnalysis(analysis);
                     setIsImportPreviewOpen(true);
                 },
@@ -75,7 +75,7 @@ export default function CustomersPage() {
     const handleConfirmImport = async (confirmedData: { toAdd: any[], toUpdate: any[] }) => {
         setIsImporting(true);
         try {
-            await dataService.processCustomerImport(confirmedData.toAdd, confirmedData.toUpdate);
+            await customerService.processCustomerImport(confirmedData.toAdd, confirmedData.toUpdate);
             toast.success("Importation des clients terminée avec succès !");
             setIsImportPreviewOpen(false);
             setImportAnalysis(null);

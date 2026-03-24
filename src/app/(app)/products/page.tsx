@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { dataService } from '@/services/data-service';
+import { productService } from '@/services';
 import { useDebounce } from '@/hooks/useDebounce';
 import type { Product, ProductImportAnalysis, Supplier } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -80,7 +80,7 @@ export default function ProductsPage() {
     const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
     const products = useLiveQuery(() => 
-        dataService.getProducts({ 
+        productService.getProducts({ 
             query: debouncedSearchQuery, 
             category: selectedCategory, 
             supplier: selectedSupplier,
@@ -89,8 +89,8 @@ export default function ProductsPage() {
         }),
         [debouncedSearchQuery, selectedCategory, selectedSupplier, stockStatus, sortBy]
     );
-    const categories = useLiveQuery(() => dataService.getProductCategories());
-    const suppliers = useLiveQuery(() => dataService.getSuppliers());
+    const categories = useLiveQuery(() => productService.getProductCategories());
+    const suppliers = useLiveQuery(() => productService.getSuppliers());
     const isLoading = products === undefined || categories === undefined || suppliers === undefined;
 
     useEffect(() => {
@@ -116,7 +116,7 @@ export default function ProductsPage() {
 
     const handleDeleteProduct = async (product: Product) => {
         try {
-            await dataService.deleteProduct(product.id as number);
+            await productService.deleteProduct(product.id as number);
             toast.success(`Produit "${product.name}" supprimé.`);
         } catch (e: any) {
             toast.error("Suppression impossible", { description: e.message });
@@ -152,7 +152,7 @@ export default function ProductsPage() {
                 skipEmptyLines: true,
                 complete: async (results) => {
                     try {
-                        const analysis = await dataService.analyzeProductImport(results.data);
+                        const analysis = await productService.analyzeProductImport(results.data);
                         setProductImportAnalysis(analysis);
                         setIsProductImportPreviewOpen(true);
                     } catch (e: any) {
@@ -170,7 +170,7 @@ export default function ProductsPage() {
     const handleConfirmImport = async (confirmedData: { toAdd: any[], toUpdate: any[] }) => {
         setIsImporting(true);
         try {
-            await dataService.processProductImport(confirmedData.toAdd, confirmedData.toUpdate);
+            await productService.processProductImport(confirmedData.toAdd, confirmedData.toUpdate);
             toast.success("Importation des produits terminée avec succès !");
             setIsProductImportPreviewOpen(false);
             setProductImportAnalysis(null);
@@ -184,7 +184,7 @@ export default function ProductsPage() {
     const handleExport = async () => {
         toast.info("Préparation de l'exportation des produits...");
         try {
-            const csvString = await dataService.exportProductsToCSV();
+            const csvString = await productService.exportProductsToCSV();
             const blob = new Blob([`\uFEFF${csvString}`], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement("a");
             const url = URL.createObjectURL(blob);
@@ -462,7 +462,3 @@ export default function ProductsPage() {
         </div>
     );
 }
-
-    
-
-    

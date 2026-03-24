@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import type { BreadOrderWithClient } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { dataService } from '@/services/data-service';
+import { breadService } from '@/services';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useDebounce } from '@/hooks/useDebounce';
 import { AlertTriangle } from 'lucide-react';
@@ -29,7 +29,7 @@ export function BreadOrderCard({ order, isSelected, onToggleSelection }: BreadOr
 
     const handleQuantityChange = useCallback(async (newQuantity: number) => {
         try {
-            await dataService.updateBreadOrderQuantity(order.id!, newQuantity);
+            await breadService.updateBreadOrderQuantity(order.id!, newQuantity);
             toast.success(`Quantité mise à jour pour ${order.client.nom}.`);
         } catch (error) {
             toast.error("Erreur lors de la mise à jour de la quantité.");
@@ -48,7 +48,7 @@ export function BreadOrderCard({ order, isSelected, onToggleSelection }: BreadOr
 
     const handleDeliveryToggle = useCallback(async (delivered: boolean) => {
         try {
-            await dataService.updateBreadOrderDeliveryStatus(order.id!, delivered);
+            await breadService.updateBreadOrderDeliveryStatus(order.id!, delivered);
             toast.success(`Statut de livraison mis à jour pour ${order.client.nom}`);
         } catch (error) {
             toast.error("Erreur lors de la mise à jour du statut de livraison.");

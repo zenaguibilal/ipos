@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { dataService } from '@/services/data-service';
+import { backupService } from '@/services';
 import { Download, Upload, Trash2, Eye } from 'lucide-react';
 import { BackupRestoreConfirm } from './BackupRestoreConfirm';
 import { BackupPreview } from './BackupPreview';
@@ -35,7 +35,7 @@ export function BackupAndRestore() {
 
     const handleBackup = async () => {
         try {
-            const data = await dataService.exportData();
+            const data = await backupService.exportData();
             const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
             const link = document.createElement("a");
             const url = URL.createObjectURL(blob);
@@ -71,7 +71,7 @@ export function BackupAndRestore() {
 
     const handleRestore = async (dataToRestore: any) => {
         try {
-            await dataService.restoreTables(dataToRestore);
+            await backupService.restoreTables(dataToRestore);
             toast.success("Restauration terminée avec succès. L'application va se recharger.", {
                 duration: 5000,
                 onDismiss: () => window.location.reload(),
@@ -87,7 +87,7 @@ export function BackupAndRestore() {
 
     const handleReset = async () => {
         try {
-            await dataService.resetDatabase();
+            await backupService.resetDatabase();
             toast.success("Base de données réinitialisée. L'application va se recharger.", {
                 duration: 5000,
                 onDismiss: () => window.location.reload(),

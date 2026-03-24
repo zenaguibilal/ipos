@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { dataService } from '@/services/data-service';
+import { productService } from '@/services';
 import type { Product } from '@/lib/types';
 import {
   Popover,
@@ -32,7 +32,7 @@ export function ProductIntakeCombobox({ onProductSelected, onNewProductCreated }
     const [searchQuery, setSearchQuery] = useState('');
     const debouncedSearchQuery = useDebounce(searchQuery, 200);
 
-    const products = useLiveQuery(() => dataService.getProducts({}), []);
+    const products = useLiveQuery(() => productService.getProducts({}), []);
 
     const filteredProducts = useMemo(() => {
         if (!products) return [];

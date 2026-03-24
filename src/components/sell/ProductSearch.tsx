@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, forwardRef, useImperativeHandle, useRef, useEffect } from 'react';
-import { dataService } from '@/services/data-service';
+import { productService } from '@/services';
 import type { Product } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
@@ -74,10 +74,10 @@ export const ProductSearch = forwardRef<{focus: () => void}, ProductSearchProps>
     const [selectedCategory, setSelectedCategory] = useState('all');
     const inputRef = useRef<HTMLInputElement>(null);
     
-    const categories = useLiveQuery(() => dataService.getProductCategories());
+    const categories = useLiveQuery(() => productService.getProductCategories());
 
     const filteredProducts = useLiveQuery(
-        () => dataService.getProducts({ query: debouncedQuery, category: selectedCategory, stockStatus: 'in_stock' }),
+        () => productService.getProducts({ query: debouncedQuery, category: selectedCategory, stockStatus: 'in_stock' }),
         [debouncedQuery, selectedCategory]
     );
 
@@ -90,7 +90,7 @@ export const ProductSearch = forwardRef<{focus: () => void}, ProductSearchProps>
     const handleBarcodeScanned = async (scannedBarcode: string) => {
         if (!scannedBarcode.trim()) return;
         try {
-            const product = await dataService.getProductByBarcode(scannedBarcode.trim());
+            const product = await productService.getProductByBarcode(scannedBarcode.trim());
             if (product) {
                 onProductSelect(product, 1);
                 setQuery(''); // Clear query after successful scan

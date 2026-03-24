@@ -14,7 +14,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import type { Cart, SalePayment, Customer, Product } from '@/lib/types';
 import { Loader2, CreditCard, Banknote, AlertTriangle } from 'lucide-react';
-import { dataService } from '@/services/data-service';
+import { salesService } from '@/services';
 import { formatCurrency, calculateCartTotals } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import { DatePicker } from '@/components/ui/date-picker';
@@ -119,7 +119,7 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, customer, onSaleFina
         };
 
         try {
-            await dataService.addSale(saleData);
+            await salesService.addSale(saleData);
             onSaleFinalized();
             onOpenChange(false);
         } catch (error: any) {

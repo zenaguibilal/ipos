@@ -3,7 +3,7 @@
 
 import { useRef } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { dataService } from '@/services/data-service';
+import { customerService } from '@/services';
 import { db } from '@/lib/database';
 import type { Customer, Sale, CompanyProfile } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
@@ -24,7 +24,7 @@ export function PrintStatementDialog({ isOpen, onOpenChange, customer }: PrintSt
 
     const statementData = useLiveQuery(() => {
         if (!isOpen || !customer?.id) return undefined;
-        return dataService.getCustomerStatementData(customer.id);
+        return customerService.getCustomerStatementData(customer.id);
     }, [isOpen, customer?.id]);
     
     const isLoading = statementData === undefined && isOpen;

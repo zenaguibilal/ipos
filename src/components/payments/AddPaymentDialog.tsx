@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { dataService } from '@/services/data-service';
+import { paymentService } from '@/services';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -58,7 +58,7 @@ export function AddPaymentDialog({ isOpen, onOpenChange, customer, outstandingBa
         paymentDate: paymentDate,
         notes: notes || undefined,
       };
-      await dataService.addPayment(paymentData);
+      await paymentService.addPayment(paymentData);
 
       toast.success(`Paiement de ${formatCurrency(paymentAmount)} enregistré pour ${customer.firstName} ${customer.lastName}.`);
       onOpenChange(false);

@@ -17,7 +17,7 @@ import { CartTotalBar } from '@/components/sell/CartTotalBar';
 import { DraftsDialog } from '@/components/sell/DraftsDialog';
 import type { Customer, Product } from '@/lib/types';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { dataService } from '@/services/data-service';
+import { customerService } from '@/services';
 
 export default function SellPage() {
     const {
@@ -34,7 +34,7 @@ export default function SellPage() {
     } = useCart();
 
     const customer = useLiveQuery(
-        () => cart?.customerId ? dataService.getCustomerById(cart.customerId) : Promise.resolve(undefined),
+        () => cart?.customerId ? customerService.getCustomerById(cart.customerId) : Promise.resolve(undefined),
         [cart?.customerId]
     );
 

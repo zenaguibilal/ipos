@@ -13,7 +13,7 @@ import { BreadDayView } from '@/components/bread/BreadDayView';
 import { BreadStats } from '@/components/bread/BreadStats';
 import { Loader2 } from 'lucide-react';
 import type { BreadOrderWithClient, CompanyProfile } from '@/lib/types';
-import { dataService } from '@/services/data-service';
+import { breadService } from '@/services';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function BreadPage() {
@@ -21,7 +21,7 @@ export default function BreadPage() {
     const formattedDate = formatDateToYYYYMMDD(currentDate);
 
     const orders = useLiveQuery<BreadOrderWithClient[]>(
-        () => dataService.getBreadOrdersForDate(formattedDate),
+        () => breadService.getBreadOrdersForDate(formattedDate),
         [formattedDate]
     );
 
@@ -37,9 +37,9 @@ export default function BreadPage() {
         const generate = async () => {
             setIsGenerating(true);
             try {
-                const ordersExist = await dataService.checkIfBreadOrdersExist(formattedDate);
+                const ordersExist = await breadService.checkIfBreadOrdersExist(formattedDate);
                 if (!ordersExist) {
-                    await dataService.createDayOrders(formattedDate);
+                    await breadService.createDayOrders(formattedDate);
                 }
             } catch (error) {
                 console.error("Failed to generate daily bread orders:", error);

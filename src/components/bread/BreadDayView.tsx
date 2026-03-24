@@ -10,7 +10,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { ManualAddDialog } from './ManualAddDialog';
 import { PrintBreadListDialog } from './PrintBreadListDialog';
 import { toast } from 'sonner';
-import { dataService } from '@/services/data-service';
+import { breadService } from '@/services';
 import { Loader2 } from 'lucide-react';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Wheat } from 'lucide-react';
@@ -60,7 +60,7 @@ export function BreadDayView({ orders, currentDate, breadPrice }: BreadDayViewPr
         
         setIsConverting(true);
         try {
-            await dataService.convertBreadOrdersToSales(Array.from(selectedOrders), breadPrice);
+            await breadService.convertBreadOrdersToSales(Array.from(selectedOrders), breadPrice);
             toast.success(`${selectedOrders.size} commande(s) convertie(s) en ventes.`);
             setSelectedOrders(new Set());
         } catch (error: any) {

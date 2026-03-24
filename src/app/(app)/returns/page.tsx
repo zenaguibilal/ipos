@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { dataService } from '@/services/data-service';
+import { returnService } from '@/services';
 import { useDebounce } from '@/hooks/useDebounce';
 import type { ProductReturn } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -29,7 +29,7 @@ export default function ReturnsPage() {
 
     const returns = useLiveQuery(() => {
         if (!isMounted || !dateRange) return undefined;
-        return dataService.getReturns({
+        return returnService.getReturns({
             query: debouncedSearchQuery,
             from: dateRange.from,
             to: dateRange.to

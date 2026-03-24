@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { dataService } from '@/services/data-service';
+import { expenseService } from '@/services';
 import type { Expense } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Plus, Filter } from 'lucide-react';
@@ -34,14 +34,14 @@ export default function ExpensesPage() {
 
     const expenses = useLiveQuery(() => {
         if (!isMounted || !dateRange?.from || !dateRange?.to) return undefined;
-        return dataService.getExpenses({
+        return expenseService.getExpenses({
             category: selectedCategory,
             from: dateRange.from,
             to: dateRange.to
         });
     }, [isMounted, selectedCategory, dateRange]);
 
-    const categories = useLiveQuery(() => dataService.getExpenseCategories(), []);
+    const categories = useLiveQuery(() => expenseService.getExpenseCategories(), []);
     
     const isLoading = expenses === undefined || categories === undefined;
 

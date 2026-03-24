@@ -1,7 +1,7 @@
 'use client';
 
 import { toast } from 'sonner';
-import { dataService } from '@/services/data-service';
+import { productService } from '@/services';
 import { ConfirmAlertDialog } from '@/components/ui/ConfirmAlertDialog';
 
 interface DeleteMultipleProductsDialogProps {
@@ -15,7 +15,7 @@ export function DeleteMultipleProductsDialog({ isOpen, onOpenChange, productIds,
 
     const handleDelete = async () => {
         if (productIds.length === 0) return;
-        await dataService.deleteProducts(productIds);
+        await productService.deleteProducts(productIds);
         toast.success(`${productIds.length} produit(s) supprimé(s) avec succès.`);
         onSuccess();
     };

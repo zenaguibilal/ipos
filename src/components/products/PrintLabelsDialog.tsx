@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { dataService } from '@/services/data-service';
+import { productService } from '@/services';
 import type { Product } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -19,7 +19,7 @@ interface PrintLabelsDialogProps {
 
 export function PrintLabelsDialog({ isOpen, onOpenChange, productIds }: PrintLabelsDialogProps) {
   const products = useLiveQuery(
-    () => (isOpen ? dataService.getProductsByIds(productIds) : Promise.resolve(undefined)),
+    () => (isOpen ? productService.getProductsByIds(productIds) : Promise.resolve(undefined)),
     [isOpen, productIds]
   );
   

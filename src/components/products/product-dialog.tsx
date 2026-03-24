@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import type { Product, Supplier } from '@/lib/types';
 import { Loader2, X, AlertTriangle } from 'lucide-react';
 import { Badge } from '../ui/badge';
-import { dataService } from '@/services/data-service';
+import { productService } from '@/services';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { DatePicker } from '../ui/date-picker';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
@@ -117,10 +117,10 @@ export function ProductDialog({ isOpen, onOpenChange, product, categories, suppl
 
         try {
             if (product && product.id) {
-                await dataService.updateProduct(product.id as number, productData);
+                await productService.updateProduct(product.id as number, productData);
                 toast.success(`Produit ${name} mis à jour.`);
             } else {
-                await dataService.addProduct(productData);
+                await productService.addProduct(productData);
                 toast.success(`Produit ${name} ajouté.`);
             }
             onOpenChange(false);

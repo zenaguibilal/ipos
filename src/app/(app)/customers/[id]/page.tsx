@@ -2,8 +2,7 @@
 
 import { useParams } from 'next/navigation';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { dataService } from '@/services/data-service';
-import { db } from '@/lib/database';
+import { customerService } from '@/services';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, HandCoins, Printer, Loader2 } from 'lucide-react';
@@ -36,11 +35,11 @@ export default function CustomerDetailPage() {
     const [activityPage, setActivityPage] = useState(1);
 
     const customer = useLiveQuery<Customer | undefined>(
-        () => !isNaN(customerId) ? dataService.getCustomerById(customerId) : undefined,
+        () => !isNaN(customerId) ? customerService.getCustomerById(customerId) : undefined,
         [customerId]
     );
     const allActivity = useLiveQuery(() => 
-        !isNaN(customerId) ? dataService.getCustomerActivity(customerId) : undefined,
+        !isNaN(customerId) ? customerService.getCustomerActivity(customerId) : undefined,
         [customerId]
     );
 

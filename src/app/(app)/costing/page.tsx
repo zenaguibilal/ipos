@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { dataService } from '@/services/data-service';
+import { costingService } from '@/services';
 import type { StockIntake, CostingItem, Supplier } from '@/lib/types';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -89,7 +89,7 @@ export default function CostingPage() {
         }
         setIsApplyingCosts(true);
         try {
-            await dataService.applyNewPurchasePrices(costingResults);
+            await costingService.applyNewPurchasePrices(costingResults);
             toast.success("Les nouveaux coûts d'achat ont été appliqués avec succès !");
         } catch (error) {
             toast.error("Erreur lors de l'application des nouveaux coûts.");

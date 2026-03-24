@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import type { Customer } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
-import { dataService } from '@/services/data-service';
+import { customerService } from '@/services';
 
 interface CustomerDialogProps {
     isOpen: boolean;
@@ -70,10 +70,10 @@ export function CustomerDialog({ isOpen, onOpenChange, customer }: CustomerDialo
 
         try {
             if (customer && customer.id) { // Editing
-                await dataService.updateCustomer(customer.id, customerData);
+                await customerService.updateCustomer(customer.id, customerData);
                 toast.success(`Client ${firstName} ${lastName} mis à jour.`);
             } else { // Adding
-                await dataService.addCustomer(customerData as any);
+                await customerService.addCustomer(customerData as any);
                 toast.success(`Client ${firstName} ${lastName} ajouté.`);
             }
             onOpenChange(false);

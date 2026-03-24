@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import type { Expense, ExpenseCategory } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
-import { dataService } from '@/services/data-service';
+import { expenseService } from '@/services';
 import { format } from 'date-fns';
 import { DatePicker } from '../ui/date-picker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
@@ -85,10 +85,10 @@ export default function ExpenseDialog({ isOpen, onOpenChange, expense }: Expense
 
         try {
             if (expense && expense.id) { // Editing
-                await dataService.updateExpense(expense.id, expenseData);
+                await expenseService.updateExpense(expense.id, expenseData);
                 toast.success(`Dépense modifiée.`);
             } else { // Adding
-                await dataService.addExpense(expenseData);
+                await expenseService.addExpense(expenseData);
                 toast.success(`Dépense ajoutée.`);
             }
             onOpenChange(false);

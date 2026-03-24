@@ -15,7 +15,7 @@ import { db } from '@/lib/database';
 import type { Draft } from '@/lib/types';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { dataService } from '@/services/data-service';
+import { draftService } from '@/services';
 import { toast } from 'sonner';
 import { ScrollArea } from '../ui/scroll-area';
 import { Trash2 } from 'lucide-react';
@@ -40,7 +40,7 @@ export function DraftsDialog({ isOpen, onOpenChange, onLoadDraft }: DraftsDialog
     const handleDelete = async () => {
         if (!draftToDelete?.id) return;
         try {
-            await dataService.deleteDraft(draftToDelete.id);
+            await draftService.deleteDraft(draftToDelete.id);
             toast.success("Brouillon supprimé.");
         } catch (error) {
             toast.error("Erreur lors de la suppression du brouillon.");

@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import type { BreadClient } from '@/lib/types';
 import { Loader2, Trash2 } from 'lucide-react';
-import { dataService } from '@/services/data-service';
+import { breadService } from '@/services';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { ConfirmAlertDialog } from '@/components/ui/ConfirmAlertDialog';
@@ -75,10 +75,10 @@ export function BreadClientForm({ isOpen, onOpenChange, client }: BreadClientFor
             }
 
             if (client && client.id) {
-                await dataService.updateBreadClient(client.id, dataToSave);
+                await breadService.updateBreadClient(client.id, dataToSave);
                 toast.success(`Client "${formState.nom}" mis à jour.`);
             } else {
-                await dataService.addBreadClient(dataToSave as BreadClient);
+                await breadService.addBreadClient(dataToSave as BreadClient);
                 toast.success(`Client "${formState.nom}" ajouté.`);
             }
             onOpenChange(false);
@@ -93,7 +93,7 @@ export function BreadClientForm({ isOpen, onOpenChange, client }: BreadClientFor
         if (!client || !client.id) return;
         setIsLoading(true);
         try {
-            await dataService.deleteBreadClient(client.id);
+            await breadService.deleteBreadClient(client.id);
             toast.success(`Client "${client.nom}" supprimé.`);
             onOpenChange(false);
         } catch (error) {

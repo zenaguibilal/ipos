@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { dataService } from '@/services/data-service';
+import { zakatService } from '@/services';
 import { formatCurrency } from '@/lib/utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -21,7 +21,7 @@ export default function ZakatPage() {
     const [cashOnHand, setCashOnHand] = useState('');
     const [debts, setDebts] = useState('');
 
-    const zakatData = useLiveQuery<ZakatData>(() => dataService.getZakatData(), []);
+    const zakatData = useLiveQuery<ZakatData>(() => zakatService.getZakatData(), []);
     const companyProfile = useLiveQuery<CompanyProfile | undefined>(() => db.companyProfile.get(1));
     const isLoading = zakatData === undefined || companyProfile === undefined;
     

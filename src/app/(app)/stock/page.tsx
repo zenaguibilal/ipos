@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { dataService } from '@/services/data-service';
+import { stockService } from '@/services';
 import { useDebounce } from '@/hooks/useDebounce';
 import type { StockIntake } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -27,7 +27,7 @@ export default function StockPage() {
 
     const stockIntakes = useLiveQuery(() => {
         if (!isMounted || !dateRange) return undefined;
-        return dataService.getStockIntakes({
+        return stockService.getStockIntakes({
             query: debouncedSearchQuery,
             from: dateRange.from,
             to: dateRange.to

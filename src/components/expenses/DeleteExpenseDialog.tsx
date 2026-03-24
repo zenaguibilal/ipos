@@ -2,7 +2,7 @@
 
 import { toast } from 'sonner';
 import type { Expense } from '@/lib/types';
-import { dataService } from '@/services/data-service';
+import { expenseService } from '@/services';
 import { ConfirmAlertDialog } from '@/components/ui/ConfirmAlertDialog';
 
 interface DeleteExpenseDialogProps {
@@ -14,7 +14,7 @@ interface DeleteExpenseDialogProps {
 export default function DeleteExpenseDialog({ isOpen, onOpenChange, expense }: DeleteExpenseDialogProps) {
     const handleDelete = async () => {
         if (!expense || !expense.id) return;
-        await dataService.deleteExpense(expense.id);
+        await expenseService.deleteExpense(expense.id);
         toast.success(`Dépense "${expense.description}" supprimée.`);
     };
 
