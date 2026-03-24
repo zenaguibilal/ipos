@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useRef } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { dataService } from '@/services/data-service';
 import { db } from '@/lib/database';
@@ -19,20 +19,15 @@ interface PrintStatementDialogProps {
 }
 
 export function PrintStatementDialog({ isOpen, onOpenChange, customer }: PrintStatementDialogProps) {
-    const [statementData, setStatementData] = useState<{ customer: Customer; unpaidSales: Sale[] } | null>(null);
     const profile = useLiveQuery<CompanyProfile | undefined>(() => db.companyProfile.get(1));
-    const [isLoading, setIsLoading] = useState(false);
     const printRef = useRef<HTMLDivElement>(null);
 
-    useEffect(() => {
-        if (isOpen && customer?.id) {
-            setIsLoading(true);
-            dataService.getCustomerStatementData(customer.id).then(data => {
-                setStatementData(data);
-                setIsLoading(false);
-            });
-        }
-    }, [isOpen, customer]);
+    const statementData = useLiveQuery(() => {
+        if (!isOpen || !customer?.id) return undefined;
+        return dataService.getCustomerStatementData(customer.id);
+    }, [isOpen, customer?.id]);
+    
+    const isLoading = statementData === undefined && isOpen;
 
   const handlePrint = () => {
     const printableContent = document.getElementById('receipt-for-print');
