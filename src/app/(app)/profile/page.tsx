@@ -5,8 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CompanyProfileForm } from "@/components/profile/company-profile-form";
 import { BackupAndRestore } from "@/components/profile/BackupAndRestore";
 import { SyncData } from "@/components/profile/SyncData";
-import { InstallPwa } from "@/components/profile/InstallPwa";
-import { User, Database, RefreshCw, Download } from 'lucide-react';
+import { User, Database, RefreshCw } from 'lucide-react';
 import { PageHeader } from "@/components/layout/PageHeader";
 
 export default function ProfilePage() {
@@ -18,7 +17,7 @@ export default function ProfilePage() {
             />
 
             <Tabs defaultValue="profile" className="w-full">
-                <TabsList className="grid w-full grid-cols-4">
+                <TabsList className="grid w-full grid-cols-3">
                     <TabsTrigger value="profile">
                         <User className="mr-2 h-4 w-4" />
                         Profil
@@ -30,10 +29,6 @@ export default function ProfilePage() {
                     <TabsTrigger value="sync">
                         <RefreshCw className="mr-2 h-4 w-4" />
                         Synchronisation
-                    </TabsTrigger>
-                    <TabsTrigger value="install">
-                        <Download className="mr-2 h-4 w-4" />
-                        Installation
                     </TabsTrigger>
                 </TabsList>
                 <TabsContent value="profile">
@@ -67,19 +62,6 @@ export default function ProfilePage() {
                             </CardDescription>
                         </CardHeader>
                         <SyncData />
-                    </Card>
-                </TabsContent>
-                 <TabsContent value="install">
-                     <Card>
-                        <CardHeader>
-                            <CardTitle>Installation de l'Application</CardTitle>
-                             <CardDescription>
-                                Installez iPOS comme une application sur votre ordinateur pour un accès rapide et une meilleure expérience hors ligne.
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                           <InstallPwa />
-                        </CardContent>
                     </Card>
                 </TabsContent>
             </Tabs>
