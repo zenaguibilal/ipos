@@ -3,7 +3,7 @@
 import { db } from '@/lib/database';
 import type { BreadClient, BreadOrder, BreadOrderWithClient } from '@/lib/types';
 import { format } from 'date-fns';
-import { salesService } from './sales.service';
+import { processSaleTransaction } from '@/lib/sale-processor';
 
 export class BreadService {
     async getManualBreadClients(): Promise<BreadClient[]> {
@@ -169,11 +169,10 @@ export class BreadService {
                     clientPainId: order.client_pain_id,
                     customerId: customer?.id,
                     customerName: customer?.searchName || client?.nom,
-                    dueDate: customer?.settlementDay ? new Date(new Date().getTime() + customer.settlementDay * 86400000) : undefined,
                 };
                 
-                const { saleId } = await salesService._processSale(saleData);
-                await db.commandes_pain.update(order.id!, { vente_id: saleId, est_paye: true });
+                const { saleId } = await processSaleTransaction(saleData);
+                await db.commandes_pain.update(order.id!, { vente_id: saleId, est_paye: true, updatedAt: new Date() });
             }
         });
     }
