@@ -10,13 +10,13 @@ export class ReturnService {
         let collection = db.returns.where('sync_status').notEqual('pending_delete').reverse();
 
         if (params.from && params.to) {
-             collection = collection.filter(s => s.created_at! >= params.from! && s.created_at! <= params.to!);
+             collection = collection.filter(s => s.createdAt! >= params.from! && s.createdAt! <= params.to!);
         }
         if (params.query) {
             const q = params.query.toLowerCase();
             collection = collection.filter(s => s.originalInvoiceNumber.toLowerCase().includes(q) || s.customerName?.toLowerCase().includes(q));
         }
-        return await collection.sortBy('created_at');
+        return await collection.sortBy('createdAt');
     }
     
     async addReturn(returnData: Omit<ProductReturn, 'id'>): Promise<ProductReturn> {
@@ -26,8 +26,8 @@ export class ReturnService {
             const newReturn: ProductReturn = {
                 ...returnData,
                 uuid,
-                created_at: now,
-                updated_at: now,
+                createdAt: now,
+                updatedAt: now,
                 sync_status: 'pending_create',
                 last_modified_by: syncService.getLocalDeviceId(),
             };
@@ -39,15 +39,15 @@ export class ReturnService {
                 if (item.wasRestocked && item.productId) {
                     await db.products.where('id').equals(item.productId).modify(p => { p.quantity += item.quantity; });
                     const product = await db.products.get(item.productId);
-                    if(product) {
-                        await syncService.queueSyncOperation('products', product.uuid!, 'update', { quantity: product.quantity, updated_at: now, last_modified_by: syncService.getLocalDeviceId() });
+                    if(product && product.uuid) {
+                        await syncService.queueSyncOperation('products', product.uuid, 'update', { quantity: product.quantity, updatedAt: now, last_modified_by: syncService.getLocalDeviceId() });
                     }
                 }
             }
 
             if (newReturn.customerId) {
                 const customer = await db.customers.get(newReturn.customerId);
-                if (customer) {
+                if (customer && customer.uuid) {
                     const balanceChange = newReturn.amountRefunded - newReturn.totalReturnValue;
                     const newBalance = customer.outstandingBalance + balanceChange;
                     const isOverLimit = customer.creditLimit != null ? newBalance > customer.creditLimit : false;
@@ -55,7 +55,7 @@ export class ReturnService {
                     let debtStatus: Customer['debtStatus'] = 'none';
                     if (newBalance > 0) {
                         const unpaidSales = await db.sales.where('customerId').equals(customer.id!).and(s => s.paymentStatus !== 'paid' && s.sync_status !== 'pending_delete').toArray();
-                        const isOverdue = unpaidSales.some(s => s.dueDate && new Date(s.dueDate) < now);
+                        const isOverdue = unpaidSales.some(s => s.dueDate && new Date(s.dueDate) < new Date());
                         debtStatus = isOverdue ? 'overdue' : 'due_soon';
                     }
 
@@ -64,13 +64,13 @@ export class ReturnService {
                         lastActivityDate: now,
                         isOverLimit,
                         debtStatus,
-                        updated_at: now,
+                        updatedAt: now,
                         sync_status: 'pending_update' as const,
                         last_modified_by: syncService.getLocalDeviceId(),
                     };
 
                     await db.customers.update(customer.id!, customerUpdate);
-                    await syncService.queueSyncOperation('customers', customer.uuid!, 'update', customerUpdate);
+                    await syncService.queueSyncOperation('customers', customer.uuid, 'update', customerUpdate);
                 }
             }
 
@@ -81,7 +81,7 @@ export class ReturnService {
     async deleteReturn(returnId: number): Promise<void> {
         await db.transaction('rw', db.returns, db.products, db.customers, db.sales, db.sync_queue, async () => {
             const pr = await db.returns.get(returnId);
-            if (!pr) return;
+            if (!pr || !pr.uuid) return;
     
             const stockUpdates = new Map<number, number>();
             for (const item of pr.items) {
@@ -95,12 +95,12 @@ export class ReturnService {
                 const productsToUpdate = await db.products.bulkGet(productIds);
     
                 for(const product of productsToUpdate) {
-                    if (product && product.id) {
+                    if (product && product.id && product.uuid) {
                         const quantityToSubtract = stockUpdates.get(product.id);
                         if (quantityToSubtract) {
                            const newQuantity = product.quantity - quantityToSubtract;
                            await db.products.update(product.id, { quantity: newQuantity });
-                           await syncService.queueSyncOperation('products', product.uuid!, 'update', { quantity: newQuantity, updated_at: new Date(), last_modified_by: syncService.getLocalDeviceId() });
+                           await syncService.queueSyncOperation('products', product.uuid, 'update', { quantity: newQuantity, updatedAt: new Date(), last_modified_by: syncService.getLocalDeviceId() });
                         }
                     }
                 }
@@ -108,7 +108,7 @@ export class ReturnService {
     
             if (pr.customerId) {
                 const customer = await db.customers.get(pr.customerId);
-                if (customer) {
+                if (customer && customer.uuid) {
                     const balanceChange = pr.amountRefunded - pr.totalReturnValue;
                     const newBalance = customer.outstandingBalance - balanceChange;
                     const isOverLimit = customer.creditLimit != null && newBalance > customer.creditLimit;
@@ -124,17 +124,17 @@ export class ReturnService {
                         outstandingBalance: newBalance,
                         isOverLimit,
                         debtStatus,
-                        updated_at: new Date(),
+                        updatedAt: new Date(),
                         sync_status: 'pending_update' as const,
                         last_modified_by: syncService.getLocalDeviceId()
                     };
                     await db.customers.update(customer.id!, customerUpdate);
-                    await syncService.queueSyncOperation('customers', customer.uuid!, 'update', customerUpdate);
+                    await syncService.queueSyncOperation('customers', customer.uuid, 'update', customerUpdate);
                 }
             }
     
-            await db.returns.update(returnId, { sync_status: 'pending_delete', updated_at: new Date(), last_modified_by: syncService.getLocalDeviceId() });
-            await syncService.queueSyncOperation('returns', pr.uuid!, 'delete', {});
+            await db.returns.update(returnId, { sync_status: 'pending_delete', updatedAt: new Date(), last_modified_by: syncService.getLocalDeviceId() });
+            await syncService.queueSyncOperation('returns', pr.uuid, 'delete', {});
         });
     }
 }

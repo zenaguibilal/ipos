@@ -4,6 +4,7 @@ import { db } from '@/lib/database';
 import type { Sale, Customer } from '@/lib/types';
 import { toast } from 'sonner';
 import { processSaleTransaction } from '@/lib/sale-processor';
+import { syncService } from './sync.service';
 
 export class SalesService {
     async getSaleByInvoiceNumber(invoiceNumber: string): Promise<Sale | undefined> {
@@ -12,17 +13,17 @@ export class SalesService {
         return sale;
     }
     
-    async getSales(params: { query?: string, from?: Date, to?: Date }): Promise<Sale[]> {
+    async getSales(params: { query?: string, from?: Date, to?: Date } = {}): Promise<Sale[]> {
         let collection = db.sales.where('sync_status').notEqual('pending_delete').reverse();
         
         if (params.from && params.to) {
-             collection = collection.filter(s => s.created_at! >= params.from! && s.created_at! <= params.to!);
+             collection = collection.filter(s => s.createdAt! >= params.from! && s.createdAt! <= params.to!);
         }
         if (params.query) {
             const q = params.query.toLowerCase();
             collection = collection.filter(s => s.invoiceNumber.toLowerCase().includes(q) || s.customerName?.toLowerCase().includes(q));
         }
-        return await collection.sortBy('created_at');
+        return await collection.sortBy('createdAt');
     }
 
     async addSale(saleData: any): Promise<number> {
@@ -36,28 +37,24 @@ export class SalesService {
     async deleteSale(saleId: number): Promise<void> {
         await db.transaction('rw', db.sales, db.products, db.customers, db.sync_queue, async () => {
             const sale = await db.sales.get(saleId);
-            if (!sale) return;
+            if (!sale || !sale.uuid) return;
     
-            const stockUpdates = new Map<number, number>();
+            // Restore product stock
             for (const item of sale.items) {
                 if (typeof item.id === 'number') {
-                    stockUpdates.set(item.id, (stockUpdates.get(item.id) || 0) + item.quantity);
+                    const product = await db.products.get(item.id);
+                    if (product && product.uuid) {
+                        const newQuantity = product.quantity + item.quantity;
+                        await db.products.update(item.id, { quantity: newQuantity });
+                        await syncService.queueSyncOperation('products', product.uuid, 'update', { quantity: newQuantity, updatedAt: new Date(), last_modified_by: syncService.getLocalDeviceId() });
+                    }
                 }
             }
     
-            if (stockUpdates.size > 0) {
-                const productIds = Array.from(stockUpdates.keys());
-                await db.products.where('id').anyOf(productIds).modify((product, ref) => {
-                    const quantityToAdd = stockUpdates.get(ref.value.id!);
-                    if(quantityToAdd) {
-                        ref.value.quantity += quantityToAdd;
-                    }
-                });
-            }
-    
+            // Adjust customer balance
             if (sale.customerId) {
                 const customer = await db.customers.get(sale.customerId);
-                if (customer) {
+                if (customer && customer.uuid) {
                     const newBalance = customer.outstandingBalance - sale.remainingBalance;
                     const newTotalSpent = customer.totalSpent - sale.total;
                     const isOverLimit = customer.creditLimit != null && newBalance > customer.creditLimit;
@@ -69,16 +66,23 @@ export class SalesService {
                         debtStatus = isOverdue ? 'overdue' : 'due_soon';
                     }
     
-                    await db.customers.update(customer.id!, {
+                    const customerUpdate = {
                         outstandingBalance: newBalance,
                         totalSpent: newTotalSpent,
                         isOverLimit,
                         debtStatus,
-                    });
+                        updatedAt: new Date(),
+                        sync_status: 'pending_update' as const,
+                        last_modified_by: syncService.getLocalDeviceId()
+                    };
+                    await db.customers.update(customer.id, customerUpdate);
+                    await syncService.queueSyncOperation('customers', customer.uuid, 'update', customerUpdate);
                 }
             }
     
-            await db.sales.update(saleId, { sync_status: 'pending_delete', updated_at: new Date() });
+            // Soft delete the sale
+            await db.sales.update(saleId, { sync_status: 'pending_delete', updatedAt: new Date(), last_modified_by: syncService.getLocalDeviceId() });
+            await syncService.queueSyncOperation('sales', sale.uuid, 'delete', {});
         });
     }
 }

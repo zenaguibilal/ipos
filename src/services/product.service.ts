@@ -18,8 +18,8 @@ export class ProductService {
         const newProduct = {
             ...productData,
             uuid,
-            created_at: now,
-            updated_at: now,
+            createdAt: now,
+            updatedAt: now,
             dateMajPrix: now,
             sync_status: 'pending_create' as const,
             last_modified_by: syncService.getLocalDeviceId(),
@@ -31,12 +31,12 @@ export class ProductService {
     }
 
     async updateProduct(id: number, productData: Partial<Omit<Product, 'id'>>): Promise<void> {
-         await db.transaction('rw', db.products, async () => {
+         await db.transaction('rw', db.products, db.sync_queue, async () => {
             const now = new Date();
             const product = await db.products.get(id);
-            if (!product) return;
+            if (!product || !product.uuid) return;
 
-            const dataToUpdate: any = { ...productData, updated_at: now, last_modified_by: syncService.getLocalDeviceId() };
+            const dataToUpdate: any = { ...productData, updatedAt: now, last_modified_by: syncService.getLocalDeviceId() };
             if (productData.purchasePrice && productData.purchasePrice !== product.purchasePrice) {
                  dataToUpdate.dateMajPrix = now;
             }
@@ -45,30 +45,30 @@ export class ProductService {
             }
              
             await db.products.update(id, dataToUpdate);
-            await syncService.queueSyncOperation('products', product.uuid!, 'update', dataToUpdate);
+            await syncService.queueSyncOperation('products', product.uuid, 'update', dataToUpdate);
         });
     }
 
     async deleteProduct(id: number): Promise<void> {
-        return db.transaction('rw', db.sales, db.products, async () => {
+        return db.transaction('rw', db.sales, db.products, db.sync_queue, async () => {
             const saleWithProduct = await db.sales.filter(sale => 
                 sale.items.some(item => item.id === id) && sale.sync_status !== 'pending_delete'
             ).first();
 
             const product = await db.products.get(id);
-            if (!product) return;
+            if (!product || !product.uuid) return;
 
             if (saleWithProduct) {
                 throw new Error(`Impossible de supprimer le produit "${product.name}" car il a déjà été vendu.`);
             }
             
-            await db.products.update(id, { sync_status: 'pending_delete', updated_at: new Date(), last_modified_by: syncService.getLocalDeviceId() });
-            await syncService.queueSyncOperation('products', product.uuid!, 'delete', {});
+            await db.products.update(id, { sync_status: 'pending_delete', updatedAt: new Date(), last_modified_by: syncService.getLocalDeviceId() });
+            await syncService.queueSyncOperation('products', product.uuid, 'delete', {});
         });
     }
 
     async deleteProducts(ids: number[]): Promise<void> {
-       return db.transaction('rw', db.products, db.sales, async () => {
+       return db.transaction('rw', db.products, db.sales, db.sync_queue, async () => {
             const sales = await db.sales.where('sync_status').notEqual('pending_delete').toArray();
             const soldProductIds = new Set<number>();
             for (const sale of sales) {
@@ -88,16 +88,16 @@ export class ProductService {
             
             const productsToDelete = await db.products.bulkGet(ids);
             for (const product of productsToDelete) {
-                if (product) {
-                    await db.products.update(product.id!, { sync_status: 'pending_delete', updated_at: new Date(), last_modified_by: syncService.getLocalDeviceId() });
-                    await syncService.queueSyncOperation('products', product.uuid!, 'delete', {});
+                if (product && product.uuid) {
+                    await db.products.update(product.id!, { sync_status: 'pending_delete', updatedAt: new Date(), last_modified_by: syncService.getLocalDeviceId() });
+                    await syncService.queueSyncOperation('products', product.uuid, 'delete', {});
                 }
             }
         });
     }
 
-    async getProducts(params: { query?: string, category?: string, supplier?: string, stockStatus?: string, sortBy?: string }): Promise<Product[]> {
-        const [sortKey, sortOrder] = (params.sortBy || 'created_at_desc').split('_');
+    async getProducts(params: { query?: string, category?: string, supplier?: string, stockStatus?: string, sortBy?: string } = {}): Promise<Product[]> {
+        const [sortKey, sortOrder] = (params.sortBy || 'createdAt_desc').split('_');
         
         let collection = db.products.where('sync_status').notEqual('pending_delete');
 
@@ -178,7 +178,7 @@ export class ProductService {
             barcodes: row.barcodes ? [row.barcodes.trim()] : [],
         });
 
-        await db.transaction('rw', db.products, async () => {
+        await db.transaction('rw', db.products, db.sync_queue, async () => {
             const productsToAdd = toAdd.map(parseRow);
             for(const p of productsToAdd) {
                 await this.addProduct(p);

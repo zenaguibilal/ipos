@@ -61,7 +61,7 @@ class iPOSDatabase extends Dexie {
             clients_pain: '++id, &uuid, nom, sync_status, updatedAt',
             commandes_pain: '++id, &uuid, client_pain_id, date, &[client_pain_id+date], sync_status, updatedAt',
             companyProfile: 'id, &uuid',
-            sync_queue: '++id, table, record_id',
+            sync_queue: '++id, tableName, recordUuid',
         });
     }
 }

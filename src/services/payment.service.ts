@@ -13,8 +13,8 @@ export class PaymentService {
             const newPayment = { 
                 ...paymentData, 
                 uuid,
-                created_at: now, 
-                updated_at: now,
+                createdAt: now, 
+                updatedAt: now,
                 sync_status: 'pending_create' as const,
                 last_modified_by: syncService.getLocalDeviceId()
             };
@@ -23,7 +23,7 @@ export class PaymentService {
 
 
             const customer = await db.customers.get(paymentData.customerId);
-            if (customer) {
+            if (customer && customer.uuid) {
 
                 // Allocate payment to oldest unpaid sales
                 let amountToAllocate = paymentData.amount;
@@ -31,14 +31,14 @@ export class PaymentService {
                     const unpaidSales = await db.sales
                         .where('customerId').equals(paymentData.customerId)
                         .and(sale => sale.paymentStatus !== 'paid' && sale.sync_status !== 'pending_delete')
-                        .sortBy('created_at');
+                        .sortBy('createdAt');
 
                     for (const sale of unpaidSales) {
                         if (amountToAllocate <= 0) break;
 
                         const payableAmount = Math.min(amountToAllocate, sale.remainingBalance);
                         
-                        if (payableAmount > 0) {
+                        if (payableAmount > 0 && sale.uuid) {
                             const newAmountPaid = sale.amountPaid + payableAmount;
                             const newRemainingBalance = sale.remainingBalance - payableAmount;
                             const newPaymentStatus: Sale['paymentStatus'] = newRemainingBalance <= 0.01 ? 'paid' : 'partial';
@@ -47,13 +47,13 @@ export class PaymentService {
                                 amountPaid: newAmountPaid,
                                 remainingBalance: newRemainingBalance,
                                 paymentStatus: newPaymentStatus,
-                                updated_at: now,
+                                updatedAt: now,
                                 sync_status: 'pending_update' as const,
                                 last_modified_by: syncService.getLocalDeviceId()
                             };
 
                             await db.sales.update(sale.id!, saleUpdate);
-                            await syncService.queueSyncOperation('sales', sale.uuid!, 'update', saleUpdate);
+                            await syncService.queueSyncOperation('sales', sale.uuid, 'update', saleUpdate);
 
                             amountToAllocate -= payableAmount;
                         }
@@ -75,13 +75,13 @@ export class PaymentService {
                     lastActivityDate: now,
                     isOverLimit,
                     debtStatus,
-                    updated_at: now,
+                    updatedAt: now,
                     sync_status: 'pending_update' as const,
                     last_modified_by: syncService.getLocalDeviceId()
                 };
 
                 await db.customers.update(customer.id!, customerUpdate);
-                await syncService.queueSyncOperation('customers', customer.uuid!, 'update', customerUpdate);
+                await syncService.queueSyncOperation('customers', customer.uuid, 'update', customerUpdate);
             }
 
             return { ...newPayment, id };

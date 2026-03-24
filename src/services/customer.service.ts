@@ -13,14 +13,14 @@ export class CustomerService {
     }
     
     async getCustomerActivity(customerId: number): Promise<(Sale | Payment | ProductReturn)[]> {
-        const sales = await db.sales.where({ customerId, sync_status: 'synced' }).or('sync_status').equals('pending_create').or('sync_status').equals('pending_update').toArray();
-        const payments = await db.payments.where({ customerId, sync_status: 'synced' }).or('sync_status').equals('pending_create').or('sync_status').equals('pending_update').toArray();
-        const returns = await db.returns.where({ customerId, sync_status: 'synced' }).or('sync_status').equals('pending_create').or('sync_status').equals('pending_update').toArray();
+        const sales = await db.sales.where({ customerId }).and(s => s.sync_status !== 'pending_delete').toArray();
+        const payments = await db.payments.where({ customerId }).and(p => p.sync_status !== 'pending_delete').toArray();
+        const returns = await db.returns.where({ customerId }).and(r => r.sync_status !== 'pending_delete').toArray();
         
         const activity = [
-            ...sales.map(s => ({ ...s, type: 'sale', date: s.created_at!, id: `sale-${s.id}` })),
+            ...sales.map(s => ({ ...s, type: 'sale', date: s.createdAt!, id: `sale-${s.id}` })),
             ...payments.map(p => ({ ...p, type: 'payment', date: p.paymentDate, id: `payment-${p.id}` })),
-            ...returns.map(r => ({ ...r, type: 'return', date: r.created_at!, id: `return-${r.id}` })),
+            ...returns.map(r => ({ ...r, type: 'return', date: r.createdAt!, id: `return-${r.id}` })),
         ];
 
         return activity.sort((a, b) => b.date.getTime() - a.date.getTime());
@@ -32,11 +32,11 @@ export class CustomerService {
         const unpaidSales = await db.sales
             .where('customerId').equals(customerId)
             .and(sale => sale.paymentStatus !== 'paid' && sale.sync_status !== 'pending_delete')
-            .orderBy('created_at').toArray();
+            .orderBy('createdAt').toArray();
         return { customer, unpaidSales };
     }
 
-    async getCustomers(params: { query?: string, status?: string }): Promise<Customer[]> {
+    async getCustomers(params: { query?: string, status?: string } = {}): Promise<Customer[]> {
         let collection = db.customers.where('sync_status').notEqual('pending_delete');
 
         if (params.query || (params.status && params.status !== 'all')) {
@@ -68,8 +68,8 @@ export class CustomerService {
             searchName: `${customer.firstName} ${customer.lastName}`.toLowerCase(),
             totalSpent: 0,
             outstandingBalance: 0,
-            created_at: now,
-            updated_at: now,
+            createdAt: now,
+            updatedAt: now,
             lastActivityDate: now,
             sync_status: 'pending_create',
             last_modified_by: syncService.getLocalDeviceId(),
@@ -80,11 +80,11 @@ export class CustomerService {
     }
 
     async updateCustomer(id: number, customerData: Partial<Omit<Customer, 'id'>>): Promise<void> {
-        await db.transaction('rw', db.customers, async () => {
+        await db.transaction('rw', db.customers, db.sync_queue, async () => {
             const customer = await db.customers.get(id);
-            if(!customer) return;
+            if(!customer || !customer.uuid) return;
 
-            const dataToUpdate: any = { ...customerData, updated_at: new Date(), last_modified_by: syncService.getLocalDeviceId() };
+            const dataToUpdate: any = { ...customerData, updatedAt: new Date(), last_modified_by: syncService.getLocalDeviceId() };
             if (customerData.firstName || customerData.lastName) {
                 const firstName = customerData.firstName || customer.firstName;
                 const lastName = customerData.lastName || customer.lastName;
@@ -94,19 +94,19 @@ export class CustomerService {
                 dataToUpdate.sync_status = 'pending_update';
             }
             await db.customers.update(id, dataToUpdate);
-            await syncService.queueSyncOperation('customers', customer.uuid!, 'update', dataToUpdate);
+            await syncService.queueSyncOperation('customers', customer.uuid, 'update', dataToUpdate);
         });
     }
     
     async deleteCustomer(id: number): Promise<void> {
-        await db.transaction('rw', db.customers, db.sales, db.payments, async () => {
+        await db.transaction('rw', db.customers, db.sales, db.payments, db.sync_queue, async () => {
             const salesCount = await db.sales.where('customerId').equals(id).and(s => s.sync_status !== 'pending_delete').count();
             if (salesCount > 0) {
                 throw new Error("Impossible de supprimer un client avec un historique de ventes.");
             }
 
             const customer = await db.customers.get(id);
-            if (!customer) return;
+            if (!customer || !customer.uuid) return;
 
             if (customer.outstandingBalance > 0) {
                 throw new Error("Impossible de supprimer un client avec une dette existante.");
@@ -115,13 +115,15 @@ export class CustomerService {
             // Soft delete payments
             const paymentsToDelete = await db.payments.where('customerId').equals(id).toArray();
             for (const payment of paymentsToDelete) {
-                await db.payments.update(payment.id!, { sync_status: 'pending_delete', updated_at: new Date(), last_modified_by: syncService.getLocalDeviceId() });
-                await syncService.queueSyncOperation('payments', payment.uuid!, 'delete', {});
+                if (payment.uuid) {
+                    await db.payments.update(payment.id!, { sync_status: 'pending_delete', updatedAt: new Date(), last_modified_by: syncService.getLocalDeviceId() });
+                    await syncService.queueSyncOperation('payments', payment.uuid, 'delete', {});
+                }
             }
 
             // Soft delete customer
-            await db.customers.update(id, { sync_status: 'pending_delete', updated_at: new Date(), last_modified_by: syncService.getLocalDeviceId() });
-            await syncService.queueSyncOperation('customers', customer.uuid!, 'delete', {});
+            await db.customers.update(id, { sync_status: 'pending_delete', updatedAt: new Date(), last_modified_by: syncService.getLocalDeviceId() });
+            await syncService.queueSyncOperation('customers', customer.uuid, 'delete', {});
         });
     }
 

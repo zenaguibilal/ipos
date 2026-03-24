@@ -37,7 +37,7 @@ export async function processSaleTransaction(saleData: any): Promise<{ saleId: n
 
     // 2. Generate Invoice Number
     const today = format(now, 'yyMMdd');
-    const lastSaleToday = await db.sales.where('created_at').between(startOfDay(now), endOfDay(now), true, true).last();
+    const lastSaleToday = await db.sales.where('createdAt').between(startOfDay(now), endOfDay(now), true, true).last();
     let sequence = 1;
     if (lastSaleToday) {
         const lastSequence = parseInt(lastSaleToday.invoiceNumber.split('-')[1], 10);
@@ -67,8 +67,8 @@ export async function processSaleTransaction(saleData: any): Promise<{ saleId: n
         ...saleData,
         uuid,
         invoiceNumber,
-        created_at: now,
-        updated_at: now,
+        createdAt: now,
+        updatedAt: now,
         paymentStatus,
         remainingBalance,
         dueDate,
@@ -86,14 +86,14 @@ export async function processSaleTransaction(saleData: any): Promise<{ saleId: n
             await db.products.where('id').equals(item.id).modify(p => { p.quantity -= item.quantity; });
             // Queue sync for product quantity change
             const product = await db.products.get(item.id);
-            if (product) {
-                 await syncService.queueSyncOperation('products', product.uuid!, 'update', { quantity: product.quantity, updated_at: new Date(), last_modified_by: syncService.getLocalDeviceId() });
+            if (product && product.uuid) {
+                 await syncService.queueSyncOperation('products', product.uuid, 'update', { quantity: product.quantity, updatedAt: new Date(), last_modified_by: syncService.getLocalDeviceId() });
             }
         }
     }
     
     // 6. Update Customer Balance
-    if (customer) {
+    if (customer && customer.uuid) {
         const newBalance = customer.outstandingBalance + finalSaleData.remainingBalance;
         const isOverLimit = customer.creditLimit != null ? newBalance > customer.creditLimit : false;
         
@@ -102,7 +102,7 @@ export async function processSaleTransaction(saleData: any): Promise<{ saleId: n
             // Check all unpaid sales for this customer, including the one just created
             const unpaidSales = await db.sales
                 .where('customerId').equals(customer.id!)
-                .filter(s => s.paymentStatus !== 'paid' && s.sync_status !== 'pending_delete')
+                .and(s => s.sync_status !== 'pending_delete')
                 .toArray();
             const isOverdue = unpaidSales.some(s => s.dueDate && new Date(s.dueDate) < now);
             debtStatus = isOverdue ? 'overdue' : 'due_soon';
@@ -115,12 +115,12 @@ export async function processSaleTransaction(saleData: any): Promise<{ saleId: n
             isOverLimit,
             debtStatus,
             sync_status: 'pending_update' as const,
-            updated_at: now,
+            updatedAt: now,
             last_modified_by: syncService.getLocalDeviceId(),
         };
 
         await db.customers.update(customer.id!, customerUpdate);
-        await syncService.queueSyncOperation('customers', customer.uuid!, 'update', customerUpdate);
+        await syncService.queueSyncOperation('customers', customer.uuid, 'update', customerUpdate);
     }
     
     return { saleId, invoiceNumber };

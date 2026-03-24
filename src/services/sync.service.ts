@@ -1,7 +1,3 @@
-// This is a simplified conceptual implementation for demonstration.
-// A production-grade sync engine would require more robust error handling,
-// conflict resolution strategies, and batching optimizations.
-
 'use client';
 import { db } from '@/lib/database';
 import { supabase } from '@/lib/supabaseClient';
@@ -25,16 +21,16 @@ export class SyncService {
         return this.localDeviceId;
     }
 
-    async queueSyncOperation(table_name: string, record_uuid: string, action: 'create' | 'update' | 'delete', payload: any) {
+    async queueSyncOperation(tableName: string, recordUuid: string, action: 'create' | 'update' | 'delete', payload: any) {
         await db.sync_queue.add({
-            table_name,
-            record_uuid,
+            tableName,
+            recordUuid,
             action,
             payload,
-            created_at: new Date(),
+            createdAt: new Date(),
             attempts: 0,
         });
-        // Trigger sync immediately if online
+        
         if (navigator.onLine) {
             this.processPushQueue();
         }
@@ -44,7 +40,7 @@ export class SyncService {
         if (this.isSyncing || !navigator.onLine) return;
         this.isSyncing = true;
         
-        const queueItems = await db.sync_queue.orderBy('created_at').limit(100).toArray();
+        const queueItems = await db.sync_queue.orderBy('createdAt').limit(100).toArray();
         if (queueItems.length === 0) {
             this.isSyncing = false;
             return;
@@ -55,34 +51,33 @@ export class SyncService {
         for (const item of queueItems) {
             try {
                 let error;
+                const payload = { ...item.payload, last_modified_by: this.localDeviceId };
+                
                 switch (item.action) {
                     case 'create':
-                        ({ error } = await supabase.from(item.table_name).insert(item.payload));
+                        ({ error } = await supabase.from(item.tableName).insert(payload));
                         break;
                     case 'update':
-                        ({ error } = await supabase.from(item.table_name).update(item.payload).eq('uuid', item.record_uuid));
+                        ({ error } = await supabase.from(item.tableName).update(payload).eq('uuid', item.recordUuid));
                         break;
                     case 'delete':
-                        ({ error } = await supabase.from(item.table_name).delete().eq('uuid', item.record_uuid));
+                        ({ error } = await supabase.from(item.tableName).delete().eq('uuid', item.recordUuid));
                         break;
                 }
 
-                if (error) {
-                    throw error;
-                }
+                if (error) throw error;
                 
-                // If successful, remove from queue
                 await db.sync_queue.delete(item.id!);
 
-                // If it was a pending delete, we can now safely remove the local soft-deleted record
-                if (item.action === 'delete') {
-                    const recordInTable = await (db as any)[item.table_name].where('uuid').equals(item.record_uuid).first();
-                    if (recordInTable) {
-                        await (db as any)[item.table_name].delete(recordInTable.id);
+                const table = (db as any)[item.tableName];
+                const record = await table?.where('uuid').equals(item.recordUuid).first();
+
+                if (record) {
+                    if (item.action === 'delete') {
+                        await table.delete(record.id);
+                    } else {
+                        await table.update(record.id, { sync_status: 'synced' });
                     }
-                } else {
-                     // Mark the local item as synced
-                    await (db as any)[item.table_name].where('uuid').equals(item.record_uuid).modify({ sync_status: 'synced' });
                 }
 
             } catch (e: any) {
@@ -93,7 +88,6 @@ export class SyncService {
         
         this.isSyncing = false;
         
-        // If there are more items, process them
         if (await db.sync_queue.count() > 0) {
             this.processPushQueue();
         } else {
@@ -101,30 +95,32 @@ export class SyncService {
         }
     }
 
-    // A simple pull strategy: "last write wins". More complex logic (e.g., CRDTs) is needed for true multi-master sync.
     async pullChanges() {
         if (!navigator.onLine) return;
         
         for (const table of db.tables) {
-            if (table.name === 'sync_queue' || table.name === 'carts' || table.name === 'drafts') continue;
+            const tableName = table.name;
+            if (tableName === 'sync_queue' || tableName === 'carts' || tableName === 'drafts') continue;
             
-            const lastSyncedRecord = await table.orderBy('updated_at').last();
-            const lastSyncTime = lastSyncedRecord?.updated_at || new Date(0);
+            const lastSyncedRecord = await (db as any)[tableName].orderBy('updatedAt').last();
+            const lastSyncTime = lastSyncedRecord?.updatedAt || new Date(0);
 
             const { data, error } = await supabase
-                .from(table.name)
+                .from(tableName)
                 .select('*')
                 .gt('updated_at', lastSyncTime.toISOString())
                 .not('last_modified_by', 'eq', this.localDeviceId);
 
             if (error) {
-                console.error(`Error pulling from ${table.name}`, error);
+                console.error(`Error pulling from ${tableName}`, error);
                 continue;
             }
             
             if (data && data.length > 0) {
-                 toast.info(`Réception de ${data.length} modification(s) de la table ${table.name}...`);
-                 await (db as any)[table.name].bulkPut(data);
+                 toast.info(`Réception de ${data.length} modification(s) de la table ${tableName}...`);
+                 // Here, we use a simple "last write wins" by using bulkPut.
+                 // A more robust system might need conflict resolution logic.
+                 await (db as any)[tableName].bulkPut(data);
             }
         }
     }

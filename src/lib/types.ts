@@ -3,8 +3,8 @@ export type SyncStatus = 'synced' | 'pending_create' | 'pending_update' | 'pendi
 export interface BaseEntity {
     id?: number;
     uuid?: string; // For remote identification
-    created_at?: Date;
-    updated_at?: Date;
+    createdAt?: Date;
+    updatedAt?: Date;
     sync_status?: SyncStatus;
     last_modified_by?: string; // To track origin of last change (local device ID)
 }
@@ -268,11 +268,11 @@ export interface BreadOrderWithClient extends BreadOrder {
 
 export interface SyncQueueItem {
     id?: number;
-    table_name: string;
-    record_uuid: string;
+    tableName: string;
+    recordUuid: string;
     action: 'create' | 'update' | 'delete';
     payload: any;
-    created_at: Date;
+    createdAt: Date;
     attempts?: number;
 }
 
