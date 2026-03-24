@@ -1,4 +1,3 @@
-
 'use client';
 
 import { db } from '@/lib/database';
@@ -91,7 +90,7 @@ class DataService {
     }
 
     async addCart(cart: Cart): Promise<void> {
-        await db.carts.add(cart);
+        await db.carts.put(cart);
     }
     
     async removeCart(cartId: string): Promise<void> {
