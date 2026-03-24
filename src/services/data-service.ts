@@ -1,3 +1,4 @@
+
 'use client';
 
 import { db } from '@/lib/database';
@@ -98,13 +99,6 @@ class DataService {
             const carts = await db.carts.toArray();
             if (carts.length <= 1) {
                 throw new Error("Impossible de supprimer le dernier panier.");
-            }
-            const activeCartId = localStorage.getItem('activeCartId');
-            if (activeCartId === cartId) {
-                const newActiveCart = carts.find(c => c.id !== cartId);
-                if (newActiveCart) {
-                    localStorage.setItem('activeCartId', newActiveCart.id);
-                }
             }
             await db.carts.delete(cartId);
         });

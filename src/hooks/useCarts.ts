@@ -51,22 +51,18 @@ export const useCarts = () => {
     }, [carts, setActiveCartId]);
 
     const removeCart = useCallback((cartId: string) => {
-        if (!carts || carts.length <= 1) {
-            toast.warning("Impossible de supprimer le dernier panier.");
-            return;
-        }
-
-        // If we're deleting the active cart, switch to another one first.
+        // UI logic: If we're deleting the active cart, switch to another one first.
         if (activeCartId === cartId) {
-            const newActiveCart = carts.find(c => c.id !== cartId);
+            const newActiveCart = carts?.find(c => c.id !== cartId);
             if (newActiveCart) {
                 setActiveCartId(newActiveCart.id);
             }
         }
         
-        // Now delete the cart from the DB
-        dataService.removeCart(cartId).catch((err) => {
-            toast.error(err.message || "Erreur lors de la suppression du panier.");
+        // Call the service to perform the deletion. The service handles business logic.
+        dataService.removeCart(cartId).catch((err: Error) => {
+            // If the service throws an error (e.g., trying to delete the last cart), show it.
+            toast.warning(err.message || "Erreur lors de la suppression du panier.");
         });
     }, [carts, activeCartId, setActiveCartId]);
     
