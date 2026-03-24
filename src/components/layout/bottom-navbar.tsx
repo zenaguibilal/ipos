@@ -7,15 +7,15 @@ import {
   Users2,
   History,
   ShoppingCart,
-  LayoutDashboard,
+  Archive,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navLinks = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/products', label: 'Produits', icon: Package },
   { href: '/customers', label: 'Clients', icon: Users2 },
   { href: '/sales-history', label: 'Historique', icon: History },
+  { href: '/stock', label: 'Stock', icon: Archive },
 ];
 
 export function BottomNavBar() {

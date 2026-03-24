@@ -37,7 +37,6 @@ import {
 import { ThemeToggle } from './theme-toggle';
 
 const navLinks = [
-  { href: '/dashboard', label: 'Tableau de bord', icon: LayoutDashboard },
   { href: '/stock', label: 'Stock', icon: Archive },
   { href: '/products', label: 'Produits', icon: Package },
   { href: '/customers', label: 'Clients', icon: Users2 },
@@ -62,7 +61,7 @@ export function AppHeader() {
       <div className="flex-1 flex justify-start">
          <div className="flex items-baseline gap-2">
               <Link
-                  href="/dashboard"
+                  href="/sell"
                   className="flex items-center gap-2 font-semibold"
               >
                   <Image src="/icon.svg" alt="iPOS logo" width={32} height={32} />
