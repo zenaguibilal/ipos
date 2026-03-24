@@ -318,19 +318,3 @@ export interface BreadOrder {
 export interface BreadOrderWithClient extends BreadOrder {
     client: BreadClient;
 }
-
-export interface DB {
-    products: Product[];
-    customers: Customer[];
-    sales: Sale[];
-    payments: Payment[];
-    stockIntakes: StockIntake[];
-    returns: ProductReturn[];
-    carts: Cart[];
-    drafts: Draft[];
-    companyProfile: CompanyProfile[];
-    expenses: Expense[];
-    suppliers: Supplier[];
-    clients_pain: BreadClient[];
-    commandes_pain: BreadOrder[];
-}
