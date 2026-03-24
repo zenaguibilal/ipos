@@ -1,7 +1,15 @@
+export type SyncStatus = 'synced' | 'pending_create' | 'pending_update' | 'pending_delete';
 
+export interface BaseEntity {
+    id?: number;
+    uuid?: string; // For remote identification
+    created_at?: Date;
+    updated_at?: Date;
+    sync_status?: SyncStatus;
+    last_modified_by?: string; // To track origin of last change (local device ID)
+}
 
-export interface Product {
-    id?: number | string; // string for custom products
+export interface Product extends BaseEntity {
     name: string;
     category?: string;
     price: number;
@@ -14,12 +22,9 @@ export interface Product {
     dateExpiration?: Date;
     fournisseurId?: number;
     dateMajPrix?: Date;
-    createdAt?: Date;
-    updatedAt?: Date;
 }
 
-export interface Customer {
-    id?: number;
+export interface Customer extends BaseEntity {
     firstName: string;
     lastName: string;
     searchName?: string;
@@ -30,8 +35,6 @@ export interface Customer {
     totalSpent: number;
     outstandingBalance: number;
     lastActivityDate?: Date;
-    createdAt?: Date;
-    updatedAt?: Date;
     debtStatus?: 'none' | 'due_soon' | 'overdue';
     isOverLimit?: boolean;
 }
@@ -51,7 +54,7 @@ export interface CartItem extends Product {
     flash?: boolean; // For UI animation
 }
 
-// Represents a single shopping cart session
+// Represents a single shopping cart session - LOCAL ONLY
 export interface Cart {
     id:string;
     name: string;
@@ -69,8 +72,7 @@ export interface SalePayment {
     amount: number;
 }
 
-export interface Sale {
-    id?: number;
+export interface Sale extends BaseEntity {
     invoiceNumber: string;
     items: SaleItem[];
     subtotal: number;
@@ -84,22 +86,18 @@ export interface Sale {
     customerId?: number;
     customerName?: string;
     clientPainId?: number;
-    createdAt?: Date;
-    updatedAt?: Date;
     dueDate?: Date;
 }
 
-export interface Payment {
-    id?: number;
+export interface Payment extends BaseEntity {
     customerId: number;
     customerName?: string;
     amount: number;
     paymentDate: Date;
     notes?: string;
-    createdAt?: Date;
-    updatedAt?: Date;
 }
 
+// LOCAL ONLY
 export interface Draft {
   id?: number;
   date: Date;
@@ -115,7 +113,7 @@ export interface Draft {
   updatedAt?: Date;
 }
 
-export interface CompanyProfile {
+export interface CompanyProfile extends BaseEntity {
     id?: 1;
     companyName?: string;
     address?: string;
@@ -129,7 +127,6 @@ export interface CompanyProfile {
     rcNumber?: string;
     goldPricePerGram?: number;
     prix_pain?: number;
-    updatedAt?: Date;
 }
 
 export interface StockIntakeItem {
@@ -145,8 +142,7 @@ export interface StockIntakeItem {
     isNew: boolean;
 }
 
-export interface StockIntake {
-    id?: number;
+export interface StockIntake extends BaseEntity {
     supplierId: number;
     supplierName?: string;
     invoiceNumber: string;
@@ -159,8 +155,6 @@ export interface StockIntake {
         purchasePrice: number;
     }[];
     totalValue: number;
-    createdAt?: Date;
-    updatedAt?: Date;
 }
 
 export interface ReturnItem {
@@ -172,8 +166,7 @@ export interface ReturnItem {
     wasRestocked: boolean;
 }
 
-export interface ProductReturn {
-    id?: number;
+export interface ProductReturn extends BaseEntity {
     originalSaleId?: number;
     originalInvoiceNumber: string;
     items: ReturnItem[];
@@ -181,33 +174,26 @@ export interface ProductReturn {
     amountRefunded: number;
     customerId?: number;
     customerName?: string;
-    createdAt?: Date;
-    updatedAt?: Date;
     notes?: string;
 }
 
 export type ExpenseCategory = 'Loyer' | 'Salaires' | 'Fournisseurs' | 'Services Publics' | 'Marketing' | 'Maintenance' | 'Autre';
 
-export interface Expense {
-    id?: number;
+export interface Expense extends BaseEntity {
     description: string;
     category: ExpenseCategory;
     amount: number;
     expenseDate: Date;
-    createdAt?: Date;
-    updatedAt?: Date;
 }
 
 export type InventoryLogReason = 'sale' | 'return' | 'stock_intake' | 'cancellation' | 'manual_adjustment';
 
-export interface InventoryLog {
-    id?: number;
+export interface InventoryLog extends BaseEntity {
     productId: number;
     change: number; // e.g., -2 for sale, +50 for stock intake
     newQuantity: number;
     reason: InventoryLogReason;
     relatedId?: number | string; // ID of the sale, return, intake, etc.
-    createdAt: Date;
 }
 
 export interface CostingItem extends SaleItem {
@@ -239,22 +225,18 @@ export interface ZakatData {
     totalReceivables: number;
 }
 
-export interface Supplier {
-    id?: number;
+export interface Supplier extends BaseEntity {
     name: string;
     contactPerson?: string;
     phone?: string;
     email?: string;
     address?: string;
     balance: number; // Solde de la dette envers le fournisseur
-    createdAt?: Date;
-    updatedAt?: Date;
 }
 
 // =================== Bread Types ===================
 
-export interface BreadClient {
-    id?: number;
+export interface BreadClient extends BaseEntity {
     nom: string;
     actif: boolean;
     type_recurrence: 'quotidien' | 'jours_specifiques' | 'aucun';
@@ -268,12 +250,9 @@ export interface BreadClient {
         samedi:   { actif: boolean, quantite: number },
         dimanche: { actif: boolean, quantite: number }
     };
-    createdAt?: Date;
-    updatedAt?: Date;
 }
 
-export interface BreadOrder {
-    id?: number;
+export interface BreadOrder extends BaseEntity {
     client_pain_id: number;
     date: string; // YYYY-MM-DD
     quantite: number;
@@ -281,13 +260,22 @@ export interface BreadOrder {
     est_paye: boolean;
     est_livre: boolean;
     vente_id: number | null;
-    createdAt?: Date;
-    updatedAt?: Date;
 }
 
 export interface BreadOrderWithClient extends BreadOrder {
     client: BreadClient;
 }
+
+export interface SyncQueueItem {
+    id?: number;
+    table_name: string;
+    record_uuid: string;
+    action: 'create' | 'update' | 'delete';
+    payload: any;
+    created_at: Date;
+    attempts?: number;
+}
+
 
 export interface DB {
     products: Product[];
@@ -304,4 +292,5 @@ export interface DB {
     suppliers: Supplier[];
     clients_pain: BreadClient[];
     commandes_pain: BreadOrder[];
+    sync_queue: SyncQueueItem[];
 }

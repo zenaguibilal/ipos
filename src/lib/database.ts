@@ -1,5 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie';
-import type { Product, Customer, Sale, Payment, StockIntake, ProductReturn, Cart, Draft, CompanyProfile, Expense, InventoryLog, Supplier, BreadClient, BreadOrder } from '@/lib/types';
+import type { Product, Customer, Sale, Payment, StockIntake, ProductReturn, Cart, Draft, CompanyProfile, Expense, InventoryLog, Supplier, BreadClient, BreadOrder, SyncQueueItem } from '@/lib/types';
 
 class iPOSDatabase extends Dexie {
     products!: EntityTable<Product, 'id'>;
@@ -16,6 +16,7 @@ class iPOSDatabase extends Dexie {
     suppliers!: EntityTable<Supplier, 'id'>;
     clients_pain!: EntityTable<BreadClient, 'id'>;
     commandes_pain!: EntityTable<BreadOrder, 'id'>;
+    sync_queue!: EntityTable<SyncQueueItem, 'id'>;
 
     constructor() {
         super('iPOSDatabase');
@@ -46,6 +47,21 @@ class iPOSDatabase extends Dexie {
         this.version(4).stores({
             inventoryLogs: '++id, productId, reason, createdAt',
             settings: null // This explicitly removes the 'settings' table
+        });
+        // Version 5: Add sync queue and sync status fields to all tables
+        this.version(5).stores({
+            products: '++id, &uuid, *barcodes, name, category, fournisseurId, sync_status, updatedAt',
+            customers: '++id, &uuid, &searchName, phone, debtStatus, sync_status, updatedAt',
+            sales: '++id, &uuid, &invoiceNumber, customerId, sync_status, updatedAt',
+            payments: '++id, &uuid, customerId, paymentDate, sync_status, updatedAt',
+            stockIntakes: '++id, &uuid, supplierId, invoiceDate, sync_status, updatedAt',
+            returns: '++id, &uuid, originalSaleId, customerId, sync_status, updatedAt',
+            expenses: '++id, &uuid, category, expenseDate, sync_status, updatedAt',
+            suppliers: '++id, &uuid, &name, sync_status, updatedAt',
+            clients_pain: '++id, &uuid, nom, sync_status, updatedAt',
+            commandes_pain: '++id, &uuid, client_pain_id, date, &[client_pain_id+date], sync_status, updatedAt',
+            companyProfile: 'id, &uuid',
+            sync_queue: '++id, table, record_id',
         });
     }
 }

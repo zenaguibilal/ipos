@@ -3,6 +3,8 @@
 import { db } from '@/lib/database';
 import type { Product, Sale, Customer, SaleItem } from '@/lib/types';
 import { startOfDay, endOfDay, format } from 'date-fns';
+import { v4 as uuidv4 } from 'uuid';
+import { syncService } from '@/services/sync.service';
 
 /**
  * This function processes a sale transaction. It must be called from within a Dexie transaction.
@@ -35,7 +37,7 @@ export async function processSaleTransaction(saleData: any): Promise<{ saleId: n
 
     // 2. Generate Invoice Number
     const today = format(now, 'yyMMdd');
-    const lastSaleToday = await db.sales.where('createdAt').between(startOfDay(now), endOfDay(now), true, true).last();
+    const lastSaleToday = await db.sales.where('created_at').between(startOfDay(now), endOfDay(now), true, true).last();
     let sequence = 1;
     if (lastSaleToday) {
         const lastSequence = parseInt(lastSaleToday.invoiceNumber.split('-')[1], 10);
@@ -60,22 +62,33 @@ export async function processSaleTransaction(saleData: any): Promise<{ saleId: n
     const dueDate = customer?.settlementDay ? new Date(now.getTime() + customer.settlementDay * 86400000) : saleData.dueDate;
 
     // 4. Create Sale Record
+    const uuid = uuidv4();
     const finalSaleData: Sale = {
         ...saleData,
+        uuid,
         invoiceNumber,
-        createdAt: now,
-        updatedAt: now,
+        created_at: now,
+        updated_at: now,
         paymentStatus,
         remainingBalance,
         dueDate,
+        sync_status: 'pending_create' as const,
+        last_modified_by: syncService.getLocalDeviceId(),
     };
 
     const saleId = await db.sales.add(finalSaleData);
+    await syncService.queueSyncOperation('sales', uuid, 'create', { ...finalSaleData, id: undefined });
+
 
     // 5. Update Product Stock
     for (const item of finalSaleData.items) {
         if (typeof item.id === 'number') {
             await db.products.where('id').equals(item.id).modify(p => { p.quantity -= item.quantity; });
+            // Queue sync for product quantity change
+            const product = await db.products.get(item.id);
+            if (product) {
+                 await syncService.queueSyncOperation('products', product.uuid!, 'update', { quantity: product.quantity, updated_at: new Date(), last_modified_by: syncService.getLocalDeviceId() });
+            }
         }
     }
     
@@ -89,19 +102,25 @@ export async function processSaleTransaction(saleData: any): Promise<{ saleId: n
             // Check all unpaid sales for this customer, including the one just created
             const unpaidSales = await db.sales
                 .where('customerId').equals(customer.id!)
-                .filter(s => s.paymentStatus !== 'paid')
+                .filter(s => s.paymentStatus !== 'paid' && s.sync_status !== 'pending_delete')
                 .toArray();
             const isOverdue = unpaidSales.some(s => s.dueDate && new Date(s.dueDate) < now);
             debtStatus = isOverdue ? 'overdue' : 'due_soon';
         }
         
-        await db.customers.update(customer.id!, {
+        const customerUpdate = {
             outstandingBalance: newBalance,
             totalSpent: customer.totalSpent + finalSaleData.total,
             lastActivityDate: now,
             isOverLimit,
             debtStatus,
-        });
+            sync_status: 'pending_update' as const,
+            updated_at: now,
+            last_modified_by: syncService.getLocalDeviceId(),
+        };
+
+        await db.customers.update(customer.id!, customerUpdate);
+        await syncService.queueSyncOperation('customers', customer.uuid!, 'update', customerUpdate);
     }
     
     return { saleId, invoiceNumber };

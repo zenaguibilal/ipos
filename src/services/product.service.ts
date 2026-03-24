@@ -4,56 +4,72 @@ import { db } from '@/lib/database';
 import type { Product, Supplier, ProductImportAnalysis } from '@/lib/types';
 import { format } from 'date-fns';
 import Papa from 'papaparse';
+import { v4 as uuidv4 } from 'uuid';
+import { syncService } from './sync.service';
 
 export class ProductService {
     async getProductByBarcode(barcode: string): Promise<Product | undefined> {
-        return await db.products.where('barcodes').equals(barcode).first();
+        return await db.products.where('barcodes').equals(barcode).and(p => p.sync_status !== 'pending_delete').first();
     }
     
     async addProduct(productData: Omit<Product, 'id'>): Promise<Product> {
-        return db.transaction('rw', db.products, async () => {
-            const now = new Date();
-            const newProduct = {
-                ...productData,
-                createdAt: now,
-                updatedAt: now,
-                dateMajPrix: now,
-            };
-            const id = await db.products.add(newProduct as Product);
-            return { ...newProduct, id } as Product;
-        });
+        const now = new Date();
+        const uuid = uuidv4();
+        const newProduct = {
+            ...productData,
+            uuid,
+            created_at: now,
+            updated_at: now,
+            dateMajPrix: now,
+            sync_status: 'pending_create' as const,
+            last_modified_by: syncService.getLocalDeviceId(),
+        };
+
+        const id = await db.products.add(newProduct as Product);
+        await syncService.queueSyncOperation('products', uuid, 'create', { ...newProduct, id: undefined });
+        return { ...newProduct, id } as Product;
     }
 
     async updateProduct(id: number, productData: Partial<Omit<Product, 'id'>>): Promise<void> {
          await db.transaction('rw', db.products, async () => {
-            const dataToUpdate: any = { ...productData, updatedAt: new Date() };
-            const oldProduct = await db.products.get(id);
+            const now = new Date();
+            const product = await db.products.get(id);
+            if (!product) return;
 
-            if (oldProduct && productData.purchasePrice && productData.purchasePrice !== oldProduct.purchasePrice) {
-                 dataToUpdate.dateMajPrix = new Date();
+            const dataToUpdate: any = { ...productData, updated_at: now, last_modified_by: syncService.getLocalDeviceId() };
+            if (productData.purchasePrice && productData.purchasePrice !== product.purchasePrice) {
+                 dataToUpdate.dateMajPrix = now;
+            }
+            if (product.sync_status !== 'pending_create') {
+                dataToUpdate.sync_status = 'pending_update';
             }
              
             await db.products.update(id, dataToUpdate);
+            await syncService.queueSyncOperation('products', product.uuid!, 'update', dataToUpdate);
         });
     }
 
     async deleteProduct(id: number): Promise<void> {
         return db.transaction('rw', db.sales, db.products, async () => {
             const saleWithProduct = await db.sales.filter(sale => 
-                sale.items.some(item => item.id === id)
+                sale.items.some(item => item.id === id) && sale.sync_status !== 'pending_delete'
             ).first();
 
+            const product = await db.products.get(id);
+            if (!product) return;
+
             if (saleWithProduct) {
-                const product = await db.products.get(id);
-                throw new Error(`Impossible de supprimer le produit "${product?.name || 'inconnu'}" car il a déjà été vendu.`);
+                throw new Error(`Impossible de supprimer le produit "${product.name}" car il a déjà été vendu.`);
             }
-            await db.products.delete(id);
+            
+            await db.products.update(id, { sync_status: 'pending_delete', updated_at: new Date(), last_modified_by: syncService.getLocalDeviceId() });
+            await syncService.queueSyncOperation('products', product.uuid!, 'delete', {});
         });
     }
 
     async deleteProducts(ids: number[]): Promise<void> {
        return db.transaction('rw', db.products, db.sales, async () => {
-            const sales = await db.sales.toArray();
+            const sales = await db.sales.where('sync_status').notEqual('pending_delete').toArray();
             const soldProductIds = new Set<number>();
             for (const sale of sales) {
                 for (const item of sale.items) {
@@ -70,18 +86,20 @@ export class ProductService {
                 throw new Error(`Impossible de supprimer "${product?.name || 'un produit'}" (ID: ${problemId}) car il a déjà été vendu. L'opération a été annulée.`);
             }
             
-            await db.products.delete(ids);
+            const productsToDelete = await db.products.bulkGet(ids);
+            for (const product of productsToDelete) {
+                if (product) {
+                    await db.products.update(product.id!, { sync_status: 'pending_delete', updated_at: new Date(), last_modified_by: syncService.getLocalDeviceId() });
+                    await syncService.queueSyncOperation('products', product.uuid!, 'delete', {});
+                }
+            }
         });
     }
 
     async getProducts(params: { query?: string, category?: string, supplier?: string, stockStatus?: string, sortBy?: string }): Promise<Product[]> {
-        const [sortKey, sortOrder] = (params.sortBy || 'createdAt_desc').split('_');
+        const [sortKey, sortOrder] = (params.sortBy || 'created_at_desc').split('_');
         
-        let collection = db.products.orderBy(sortKey);
-
-        if (sortOrder === 'desc') {
-            collection = collection.reverse();
-        }
+        let collection = db.products.where('sync_status').notEqual('pending_delete');
 
         if (params.query || (params.category && params.category !== 'all') || (params.stockStatus && params.stockStatus !== 'all') || (params.supplier && params.supplier !== 'all')) {
             collection = collection.filter(p => {
@@ -105,27 +123,28 @@ export class ProductService {
             });
         }
         
-        return await collection.toArray();
+        const sortedCollection = sortOrder === 'desc' ? collection.reverse() : collection;
+        return await sortedCollection.sortBy(sortKey);
     }
 
     async getProductsByIds(ids: number[]): Promise<Product[]> {
         const products = await db.products.bulkGet(ids);
-        return products.filter((p): p is Product => p !== undefined);
+        return products.filter((p): p is Product => p !== undefined && p.sync_status !== 'pending_delete');
     }
     
     async getProductCategories(): Promise<string[]> {
-        const products = await db.products.toArray();
+        const products = await db.products.where('sync_status').notEqual('pending_delete').toArray();
         const categories = new Set(products.map(p => p.category).filter(Boolean) as string[]);
         return Array.from(categories).sort();
     }
     
     async getSuppliers(): Promise<Supplier[]> {
-        return await db.suppliers.orderBy('name').toArray();
+        return await db.suppliers.where('sync_status').notEqual('pending_delete').sortBy('name');
     }
 
     async analyzeProductImport(data: any[]): Promise<ProductImportAnalysis> {
         const analysis: ProductImportAnalysis = { productsToAdd: [], productsToUpdate: [], skippedRows: [], errorRows: [], totalRows: data.length };
-        const existingProducts = await db.products.toArray();
+        const existingProducts = await db.products.where('sync_status').notEqual('pending_delete').toArray();
         const existingBarcodes = new Map<string, number>();
         existingProducts.forEach(p => p.barcodes?.forEach(b => existingBarcodes.set(b, p.id as number)));
 
@@ -161,7 +180,9 @@ export class ProductService {
 
         await db.transaction('rw', db.products, async () => {
             const productsToAdd = toAdd.map(parseRow);
-            await db.products.bulkAdd(productsToAdd as any);
+            for(const p of productsToAdd) {
+                await this.addProduct(p);
+            }
 
             for (const p of toUpdate) {
                 await this.updateProduct(p.id, parseRow(p));
@@ -170,7 +191,7 @@ export class ProductService {
     }
 
     async exportProductsToCSV(): Promise<string> {
-        const products = await db.products.toArray();
+        const products = await db.products.where('sync_status').notEqual('pending_delete').toArray();
         const dataForCSV = products.map(p => ({
             id: p.id,
             name: p.name,

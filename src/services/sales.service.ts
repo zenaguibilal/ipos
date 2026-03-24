@@ -7,24 +7,26 @@ import { processSaleTransaction } from '@/lib/sale-processor';
 
 export class SalesService {
     async getSaleByInvoiceNumber(invoiceNumber: string): Promise<Sale | undefined> {
-        return await db.sales.where('invoiceNumber').equals(invoiceNumber).first();
+        const sale = await db.sales.where('invoiceNumber').equals(invoiceNumber).first();
+        if (sale?.sync_status === 'pending_delete') return undefined;
+        return sale;
     }
     
     async getSales(params: { query?: string, from?: Date, to?: Date }): Promise<Sale[]> {
-        let collection = db.sales.orderBy('createdAt').reverse();
+        let collection = db.sales.where('sync_status').notEqual('pending_delete').reverse();
         
         if (params.from && params.to) {
-             collection = collection.filter(s => s.createdAt! >= params.from! && s.createdAt! <= params.to!);
+             collection = collection.filter(s => s.created_at! >= params.from! && s.created_at! <= params.to!);
         }
         if (params.query) {
             const q = params.query.toLowerCase();
             collection = collection.filter(s => s.invoiceNumber.toLowerCase().includes(q) || s.customerName?.toLowerCase().includes(q));
         }
-        return await collection.toArray();
+        return await collection.sortBy('created_at');
     }
 
     async addSale(saleData: any): Promise<number> {
-        return db.transaction('rw', db.sales, db.products, db.customers, async () => {
+        return db.transaction('rw', db.sales, db.products, db.customers, db.sync_queue, async () => {
             const { saleId, invoiceNumber } = await processSaleTransaction(saleData);
             toast.success(`Vente #${invoiceNumber} finalisée.`);
             return saleId;
@@ -32,7 +34,7 @@ export class SalesService {
     }
     
     async deleteSale(saleId: number): Promise<void> {
-        await db.transaction('rw', db.sales, db.products, db.customers, async () => {
+        await db.transaction('rw', db.sales, db.products, db.customers, db.sync_queue, async () => {
             const sale = await db.sales.get(saleId);
             if (!sale) return;
     
@@ -46,7 +48,7 @@ export class SalesService {
             if (stockUpdates.size > 0) {
                 const productIds = Array.from(stockUpdates.keys());
                 await db.products.where('id').anyOf(productIds).modify((product, ref) => {
-                    const quantityToAdd = stockUpdates.get(ref.value.id);
+                    const quantityToAdd = stockUpdates.get(ref.value.id!);
                     if(quantityToAdd) {
                         ref.value.quantity += quantityToAdd;
                     }
@@ -62,7 +64,7 @@ export class SalesService {
                     
                     let debtStatus: Customer['debtStatus'] = 'none';
                     if (newBalance > 0) {
-                        const unpaidSales = await db.sales.where('customerId').equals(customer.id!).and(s => s.id !== saleId && s.paymentStatus !== 'paid').toArray();
+                        const unpaidSales = await db.sales.where('customerId').equals(customer.id!).and(s => s.id !== saleId && s.sync_status !== 'pending_delete').toArray();
                         const isOverdue = unpaidSales.some(s => s.dueDate && new Date(s.dueDate) < new Date());
                         debtStatus = isOverdue ? 'overdue' : 'due_soon';
                     }
@@ -76,7 +78,7 @@ export class SalesService {
                 }
             }
     
-            await db.sales.delete(saleId);
+            await db.sales.update(saleId, { sync_status: 'pending_delete', updated_at: new Date() });
         });
     }
 }
