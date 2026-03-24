@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { dataService } from '@/services/data-service';
+import { useState } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '@/lib/database';
 import type { BreadClient } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -16,12 +17,8 @@ export function BreadClientList() {
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [selectedClient, setSelectedClient] = useState<BreadClient | null>(null);
 
-    const [clients, setClients] = useState<BreadClient[]>([]);
-    const [isLoading, setIsLoading] = useState(false);
-
-    useEffect(() => {
-        setClients([]);
-    }, [isFormOpen]); // Refresh when form closes
+    const clients = useLiveQuery(() => db.clients_pain.orderBy('nom').toArray());
+    const isLoading = clients === undefined;
 
     const handleEdit = (client: BreadClient) => {
         setSelectedClient(client);

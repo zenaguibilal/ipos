@@ -18,6 +18,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMe
 import { PageHeader } from '@/components/layout/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/card';
 
 type FilterStatus = 'all' | 'has_debt' | 'overdue' | 'over_limit';
@@ -35,12 +36,13 @@ export default function CustomersPage() {
     
     const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
-    const [customers, setCustomers] = useState<Customer[]>([]);
-    const [isLoading, setIsLoading] = useState(false);
-
-    useEffect(() => {
-        setCustomers([]);
-    }, [debouncedSearchQuery, filterStatus]);
+    const { customers, isLoading } = useLiveQuery(() => {
+        const fetchCustomers = async () => {
+            const data = await dataService.getCustomers({ query: debouncedSearchQuery, status: filterStatus });
+            return { customers: data, isLoading: false };
+        };
+        return fetchCustomers();
+    }, [debouncedSearchQuery, filterStatus], { customers: [], isLoading: true });
 
 
     const handleEditCustomer = (customer: Customer) => {

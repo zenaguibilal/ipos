@@ -4,7 +4,7 @@
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Save, FolderOpen } from 'lucide-react';
 import type { Cart, Customer } from '@/lib/types';
 import { PaymentDialog } from './PaymentDialog';
 import {
@@ -22,16 +22,22 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { formatCurrency, calculateCartTotals } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
+import { toast } from 'sonner';
 
 interface SaleActionsProps {
     cart: Cart;
     customer: Customer | null | undefined;
     onClearCart: () => void;
     onSetDiscount: (discount: { type: 'fixed' | 'percentage'; value: number }) => void;
+    onSaveDraft: () => void;
+    onOpenDrafts: () => void;
     onSaleFinalized: () => void;
 }
 
-export const SaleActions = React.forwardRef<HTMLButtonElement, SaleActionsProps>(({ cart, customer, onClearCart, onSetDiscount, onSaleFinalized }, ref) => {
+export const SaleActions = React.forwardRef<
+    { payment: HTMLButtonElement, draft: HTMLButtonElement }, 
+    SaleActionsProps
+>(({ cart, customer, onClearCart, onSetDiscount, onSaveDraft, onOpenDrafts, onSaleFinalized }, ref) => {
     const [isPaymentOpen, setIsPaymentOpen] = useState(false);
     
     const totalItems = cart.items.reduce((acc, item) => acc + item.cartQuantity, 0);
@@ -39,6 +45,27 @@ export const SaleActions = React.forwardRef<HTMLButtonElement, SaleActionsProps>
     
     const discountValue = cart.discount.value || 0;
     const discountType = cart.discount.type || 'fixed';
+
+    const handleSaveDraft = () => {
+        if (cart.items.length > 0) {
+            onSaveDraft();
+        } else {
+            toast.info("Le panier est vide. Impossible de sauvegarder le brouillon.");
+        }
+    };
+    
+    const paymentButtonRef = React.useRef<HTMLButtonElement>(null);
+    const draftButtonRef = React.useRef<HTMLButtonElement>(null);
+
+    React.useImperativeHandle(ref, () => ({
+        get payment() {
+            return paymentButtonRef.current!;
+        },
+        get draft() {
+            return draftButtonRef.current!;
+        }
+    }));
+
 
     return (
         <>
@@ -93,6 +120,16 @@ export const SaleActions = React.forwardRef<HTMLButtonElement, SaleActionsProps>
                  </div>
 
                  <div className="grid grid-cols-2 gap-4 pt-2">
+                    <div>
+                        <div className="flex gap-2">
+                            <Button ref={draftButtonRef} variant="outline" className="flex-1" onClick={handleSaveDraft}>
+                                <Save className="mr-2 h-4 w-4" /> Brouillon (F4)
+                            </Button>
+                             <Button variant="outline" size="icon" onClick={onOpenDrafts}>
+                                <FolderOpen className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    </div>
                      <AlertDialog>
                         <AlertDialogTrigger asChild>
                             <Button variant="destructive" size="lg" disabled={cart.items.length === 0}>
@@ -114,16 +151,16 @@ export const SaleActions = React.forwardRef<HTMLButtonElement, SaleActionsProps>
                             </AlertDialogFooter>
                         </AlertDialogContent>
                     </AlertDialog>
-
-                    <Button 
-                        ref={ref}
-                        size="lg" 
-                        disabled={cart.items.length === 0}
-                        onClick={() => setIsPaymentOpen(true)}
-                    >
-                        Payer (F9)
-                    </Button>
                 </div>
+                 <Button 
+                    ref={paymentButtonRef}
+                    size="lg" 
+                    className="w-full text-lg py-6"
+                    disabled={cart.items.length === 0}
+                    onClick={() => setIsPaymentOpen(true)}
+                >
+                    Payer (F9)
+                </Button>
             </div>
         </>
     );

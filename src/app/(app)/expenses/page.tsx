@@ -23,6 +23,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { formatCurrency } from '@/lib/utils';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { useLiveQuery } from 'dexie-react-hooks';
 
 export default function ExpensesPage() {
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -31,13 +32,19 @@ export default function ExpensesPage() {
     const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
     const { dateRange, setDate, isMounted } = useDateRange(29);
 
-    const [data, setData] = useState<{expenses: Expense[], categories: ExpenseCategory[]}>({expenses: [], categories: []});
-    const [isLoading, setIsLoading] = useState(false);
+    const { data, isLoading } = useLiveQuery(() => {
+        if (!isMounted || !dateRange) return { data: undefined, isLoading: true };
 
-    useEffect(() => {
-        if (!isMounted || !dateRange) return;
-        setData({ expenses: [], categories: [] });
-    }, [isMounted, selectedCategory, dateRange]);
+        const fetchData = async () => {
+            const [expenses, categories] = await Promise.all([
+                dataService.getExpenses({ category: selectedCategory, from: dateRange.from, to: dateRange.to }),
+                dataService.getExpenseCategories()
+            ]);
+            return { data: { expenses, categories }, isLoading: false };
+        };
+
+        return fetchData();
+    }, [isMounted, selectedCategory, dateRange], { data: undefined, isLoading: true });
 
     const expenses = data?.expenses;
     const categories = data?.categories ?? [];

@@ -14,6 +14,8 @@ import { formatCurrency, getPlaceholder } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useDebounce } from '@/hooks/useDebounce';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '@/lib/database';
 
 interface ProductSearchProps {
     onProductSelect: (product: Product, quantity: number) => void;
@@ -72,22 +74,18 @@ export const ProductSearch = forwardRef<{focus: () => void}, ProductSearchProps>
     const [selectedCategory, setSelectedCategory] = useState('all');
     const inputRef = useRef<HTMLInputElement>(null);
     
-    const [categories, setCategories] = useState<string[] | undefined>();
-    const [filteredProducts, setFilteredProducts] = useState<Product[] | undefined>();
+    const categories = useLiveQuery(() => dataService.getProductCategories());
 
-    useEffect(() => {
-        setCategories([]);
-    }, []);
+    const filteredProducts = useLiveQuery(
+        () => dataService.getProducts({ query: debouncedQuery, category: selectedCategory, stockStatus: 'in_stock' }),
+        [debouncedQuery, selectedCategory]
+    );
 
     useImperativeHandle(ref, () => ({
         focus: () => {
             inputRef.current?.focus();
         },
     }));
-    
-    useEffect(() => {
-        setFilteredProducts([]);
-    }, [debouncedQuery, selectedCategory]);
 
     const handleBarcodeScanned = async (scannedBarcode: string) => {
         if (!scannedBarcode.trim()) return;

@@ -2,7 +2,9 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { dataService } from '@/services/data-service';
+import { db } from '@/lib/database';
 import type { Customer, Sale, CompanyProfile } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -18,15 +20,17 @@ interface PrintStatementDialogProps {
 
 export function PrintStatementDialog({ isOpen, onOpenChange, customer }: PrintStatementDialogProps) {
     const [statementData, setStatementData] = useState<{ customer: Customer; unpaidSales: Sale[] } | null>(null);
-    const [profile, setProfile] = useState<CompanyProfile | null>(null);
+    const profile = useLiveQuery<CompanyProfile | undefined>(() => db.companyProfile.get(1));
     const [isLoading, setIsLoading] = useState(false);
     const printRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         if (isOpen && customer?.id) {
-            setIsLoading(false);
-            setStatementData(null);
-            setProfile(null);
+            setIsLoading(true);
+            dataService.getCustomerStatementData(customer.id).then(data => {
+                setStatementData(data);
+                setIsLoading(false);
+            });
         }
     }, [isOpen, customer]);
 
@@ -66,7 +70,7 @@ export function PrintStatementDialog({ isOpen, onOpenChange, customer }: PrintSt
                         <Skeleton className="h-20 w-full" />
                     </div>
                 ) : statementData ? (
-                    <CustomerStatement ref={printRef} customer={statementData.customer} unpaidSales={statementData.unpaidSales} profile={profile} />
+                    <CustomerStatement ref={printRef} customer={statementData.customer} unpaidSales={statementData.unpaidSales} profile={profile || null} />
                 ) : (
                     <p>Impossible de charger les données du relevé.</p>
                 )}

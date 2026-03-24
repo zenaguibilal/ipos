@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { dataService } from '@/services/data-service';
 import { useDebounce } from '@/hooks/useDebounce';
 import type { ProductReturn } from '@/lib/types';
@@ -16,6 +16,7 @@ import { CancelReturnDialog } from '@/components/returns/CancelReturnDialog';
 import Link from 'next/link';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { useLiveQuery } from 'dexie-react-hooks';
 
 export default function ReturnsPage() {
     const [searchQuery, setSearchQuery] = useState('');
@@ -26,14 +27,20 @@ export default function ReturnsPage() {
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
     const [isCancelOpen, setIsCancelOpen] = useState(false);
 
-    const [returns, setReturns] = useState<ProductReturn[]>([]);
-    const [isLoading, setIsLoading] = useState(false);
+    const { data: returns, isLoading } = useLiveQuery(() => {
+        if (!isMounted) return { data: [], isLoading: true };
 
-    useEffect(() => {
-        if (!isMounted) return;
-        setReturns([]);
-    }, [isMounted, debouncedSearchQuery, dateRange]);
+        const fetchReturns = async () => {
+            const data = await dataService.getReturns({
+                query: debouncedSearchQuery,
+                from: dateRange?.from,
+                to: dateRange?.to
+            });
+            return { data, isLoading: false };
+        };
 
+        return fetchReturns();
+    }, [isMounted, debouncedSearchQuery, dateRange], { data: [], isLoading: true });
 
     const handleViewDetails = (pr: ProductReturn) => {
         setSelectedReturn(pr);

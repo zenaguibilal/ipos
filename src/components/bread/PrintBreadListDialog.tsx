@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -14,6 +14,8 @@ import { Printer } from 'lucide-react';
 import type { BreadOrder, BreadOrderWithClient, CompanyProfile } from '@/lib/types';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '@/lib/database';
 
 interface PrintBreadListDialogProps {
     orders: BreadOrderWithClient[];
@@ -69,14 +71,8 @@ PrintableList.displayName = 'PrintableList';
 
 export function PrintBreadListDialog({ orders, currentDate }: PrintBreadListDialogProps) {
     const [isOpen, setIsOpen] = useState(false);
-    const [profile, setProfile] = useState<CompanyProfile | null>(null);
+    const profile = useLiveQuery(() => db.companyProfile.get(1));
     const printRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        if(isOpen) {
-            setProfile(null);
-        }
-    }, [isOpen]);
 
     const handlePrint = () => {
         const printableContent = document.getElementById('receipt-for-print');
@@ -106,7 +102,7 @@ export function PrintBreadListDialog({ orders, currentDate }: PrintBreadListDial
                     </DialogHeader>
                     <div id="label-print-area-wrapper" className="flex-grow overflow-y-auto bg-muted/50 p-4 rounded-md">
                         <div id="label-print-area" className="bg-white mx-auto" style={{ width: '210mm', minHeight: '297mm', padding: '1cm' }}>
-                            <PrintableList ref={printRef} orders={orders} currentDate={currentDate} profile={profile} />
+                            <PrintableList ref={printRef} orders={orders} currentDate={currentDate} profile={profile || null} />
                         </div>
                     </div>
                     <DialogFooter className="print-hide pt-4">

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { dataService } from '@/services/data-service';
 import { useDebounce } from '@/hooks/useDebounce';
 import type { StockIntake } from '@/lib/types';
@@ -15,6 +15,7 @@ import Link from 'next/link';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useLiveQuery } from 'dexie-react-hooks';
 
 export default function StockPage() {
     const [searchQuery, setSearchQuery] = useState('');
@@ -24,13 +25,20 @@ export default function StockPage() {
     const [selectedIntake, setSelectedIntake] = useState<StockIntake | null>(null);
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
-    const [stockIntakes, setStockIntakes] = useState<StockIntake[]>([]);
-    const [isLoading, setIsLoading] = useState(false);
+    const { data: stockIntakes, isLoading } = useLiveQuery(() => {
+        if (!isMounted) return { data: [], isLoading: true };
 
-    useEffect(() => {
-        if (!isMounted) return;
-        setStockIntakes([]);
-    }, [isMounted, debouncedSearchQuery, dateRange]);
+        const fetchIntakes = async () => {
+            const data = await dataService.getStockIntakes({
+                query: debouncedSearchQuery,
+                from: dateRange?.from,
+                to: dateRange?.to
+            });
+            return { data, isLoading: false };
+        };
+
+        return fetchIntakes();
+    }, [isMounted, debouncedSearchQuery, dateRange], { data: [], isLoading: true });
 
 
     const handleViewDetails = (intake: StockIntake) => {

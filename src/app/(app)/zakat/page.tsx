@@ -11,6 +11,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { AlertTriangle, Minus, Plus } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import type { ZakatData, CompanyProfile } from '@/lib/types';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '@/lib/database';
 
 const ZAKAT_RATE = 0.025;
 const NISAB_GOLD_GRAMS = 85;
@@ -19,14 +21,9 @@ export default function ZakatPage() {
     const [cashOnHand, setCashOnHand] = useState('');
     const [debts, setDebts] = useState('');
 
-    const [zakatData, setZakatData] = useState<ZakatData>({ inventoryValue: 0, totalReceivables: 0 });
-    const [companyProfile, setCompanyProfile] = useState<CompanyProfile | null>(null);
-    const [isLoading, setIsLoading] = useState(false);
-
-    useEffect(() => {
-        setZakatData({ inventoryValue: 0, totalReceivables: 0 });
-        setCompanyProfile(null);
-    }, []);
+    const zakatData = useLiveQuery<ZakatData>(() => dataService.getZakatData(), []);
+    const companyProfile = useLiveQuery<CompanyProfile | undefined>(() => db.companyProfile.get(1));
+    const isLoading = zakatData === undefined || companyProfile === undefined;
     
 
     const goldPrice = companyProfile?.goldPricePerGram || 0;

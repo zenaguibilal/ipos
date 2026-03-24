@@ -81,13 +81,29 @@ export default function ProductsPage() {
     const [products, setProducts] = useState<Product[]>([]);
     const [categories, setCategories] = useState<string[]>([]);
     const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-    const [isLoading, setIsLoading] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        setProducts([]);
-        setCategories([]);
-        setSuppliers([]);
-    }, [debouncedSearchQuery, selectedCategory, selectedSupplier, stockStatus, sortBy]);
+        setIsLoading(true);
+        const fetchProducts = async () => {
+            const [productsData, categoriesData, suppliersData] = await Promise.all([
+                dataService.getProducts({ 
+                    query: debouncedSearchQuery, 
+                    category: selectedCategory, 
+                    supplier: selectedSupplier,
+                    stockStatus, 
+                    sortBy 
+                }),
+                dataService.getProductCategories(),
+                dataService.getSuppliers()
+            ]);
+            setProducts(productsData);
+            setCategories(categoriesData);
+            setSuppliers(suppliersData);
+            setIsLoading(false);
+        };
+        fetchProducts();
+    }, [debouncedSearchQuery, selectedCategory, selectedSupplier, stockStatus, sortBy, isProductDialogOpen, isBulkDeleteDialogOpen, isProductImportPreviewOpen, isDeleteDialogOpen]);
 
     useEffect(() => {
         const savedViewMode = localStorage.getItem('product_view_mode') as ViewMode;
@@ -102,7 +118,7 @@ export default function ProductsPage() {
     
     useEffect(() => {
         setSelectedProducts(new Set());
-    }, []);
+    }, [products]);
 
 
     const handleEditProduct = (product: Product) => {

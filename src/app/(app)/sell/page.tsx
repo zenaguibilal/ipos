@@ -15,7 +15,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { AddPaymentDialog } from '@/components/payments/AddPaymentDialog';
 import { CartTotalBar } from '@/components/sell/CartTotalBar';
+import { DraftsDialog } from '@/components/sell/DraftsDialog';
 import type { Customer, Product } from '@/lib/types';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { dataService } from '@/services/data-service';
 
 export default function SellPage() {
     const {
@@ -31,21 +34,24 @@ export default function SellPage() {
         clearCart,
         setCartCustomer,
         setCartDiscount,
+        saveActiveCartAsDraft,
+        loadDraftToCart,
         isLoading,
     } = useCarts();
 
-    const [selectedCustomer, setSelectedCustomer] = useState<Customer | null | undefined>(null);
-
-    useEffect(() => {
-        setSelectedCustomer(null);
-    }, [activeCart?.customerId]);
+    const customer = useLiveQuery(
+        () => activeCart?.customerId ? dataService.getCustomerById(activeCart.customerId) : Promise.resolve(undefined),
+        [activeCart?.customerId]
+    );
 
     const [isProductSheetOpen, setIsProductSheetOpen] = useState(false);
     const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+    const [isDraftsDialogOpen, setIsDraftsDialogOpen] = useState(false);
 
     const productSearchRef = useRef<{ focus: () => void }>(null);
     const customerComboboxRef = useRef<HTMLButtonElement>(null);
     const paymentButtonRef = useRef<HTMLButtonElement>(null);
+    const saveDraftButtonRef = useRef<HTMLButtonElement>(null);
 
 
     const handleSaleFinalized = useCallback(() => {
@@ -64,6 +70,14 @@ export default function SellPage() {
             case 'F2':
                 e.preventDefault();
                 customerComboboxRef.current?.click();
+                break;
+            case 'F4':
+                 e.preventDefault();
+                 saveDraftButtonRef.current?.click();
+                break;
+            case 'F6':
+                e.preventDefault();
+                setIsDraftsDialogOpen(true);
                 break;
             case 'F9':
                 e.preventDefault();
@@ -105,7 +119,7 @@ export default function SellPage() {
     return (
         <>
             <div className="h-full flex flex-col">
-                <CartTotalBar cart={activeCart} customer={selectedCustomer || undefined} />
+                <CartTotalBar cart={activeCart} customer={customer} />
 
                 <div className="grid md:grid-cols-3 gap-4 flex-grow min-h-0 p-4">
                     {/* Main column */}
@@ -125,13 +139,10 @@ export default function SellPage() {
                                     <CustomerCombobox
                                         ref={customerComboboxRef}
                                         customerId={activeCart.customerId}
-                                        onSelectCustomer={(c) => {
-                                            setCartCustomer(c);
-                                            setSelectedCustomer(c);
-                                        }}
+                                        onSelectCustomer={(c) => setCartCustomer(c)}
                                     />
                                 </div>
-                                {selectedCustomer && selectedCustomer.outstandingBalance > 0 && (
+                                {customer && customer.outstandingBalance > 0 && (
                                     <Button 
                                         variant="outline" 
                                         className="h-auto" 
@@ -169,11 +180,13 @@ export default function SellPage() {
                             <CardContent className="p-4 sm:p-6">
                                 <SaleActions
                                     cart={activeCart}
-                                    customer={selectedCustomer}
+                                    customer={customer}
                                     onClearCart={clearCart}
                                     onSetDiscount={setCartDiscount}
+                                    onSaveDraft={saveActiveCartAsDraft}
+                                    onOpenDrafts={() => setIsDraftsDialogOpen(true)}
                                     onSaleFinalized={handleSaleFinalized}
-                                    ref={paymentButtonRef}
+                                    ref={{payment: paymentButtonRef, draft: saveDraftButtonRef}}
                                 />
                             </CardContent>
                         </Card>
@@ -187,14 +200,19 @@ export default function SellPage() {
                     </div>
                 </div>
             </div>
-            {selectedCustomer && (
+            {customer && (
                  <AddPaymentDialog 
                     isOpen={isPaymentDialogOpen}
                     onOpenChange={setIsPaymentDialogOpen}
-                    customer={selectedCustomer}
-                    outstandingBalance={selectedCustomer.outstandingBalance}
+                    customer={customer}
+                    outstandingBalance={customer.outstandingBalance}
                 />
             )}
+            <DraftsDialog
+                isOpen={isDraftsDialogOpen}
+                onOpenChange={setIsDraftsDialogOpen}
+                onLoadDraft={loadDraftToCart}
+            />
         </>
     );
 }

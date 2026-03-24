@@ -1,7 +1,9 @@
 'use client';
 
 import { useParams } from 'next/navigation';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { dataService } from '@/services/data-service';
+import { db } from '@/lib/database';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, HandCoins, Printer, Loader2 } from 'lucide-react';
@@ -34,20 +36,33 @@ export default function CustomerDetailPage() {
     const [activity, setActivity] = useState<(Sale | Payment | ProductReturn)[]>([]);
     const [allActivity, setAllActivity] = useState<(Sale | Payment | ProductReturn)[]>([]);
     const [activityPage, setActivityPage] = useState(1);
-    const [isLoadingActivity, setIsLoadingActivity] = useState(false);
+    const [isLoadingActivity, setIsLoadingActivity] = useState(true);
 
-    const [customer, setCustomer] = useState<Customer | null>(null);
-    const [isLoading, setIsLoading] = useState(false);
+    const customer = useLiveQuery<Customer | undefined>(
+        () => !isNaN(customerId) ? dataService.getCustomerById(customerId) : undefined,
+        [customerId]
+    );
+    const isLoading = customer === undefined;
 
     useEffect(() => {
         if (!isNaN(customerId)) {
-            setCustomer(null);
-            setAllActivity([]);
-            setActivity([]);
-            setIsLoadingActivity(false);
+            setIsLoadingActivity(true);
+            setActivityPage(1);
+            dataService.getCustomerActivity(customerId).then(act => {
+                setAllActivity(act);
+                setActivity(act.slice(0, ITEMS_PER_PAGE));
+                setIsLoadingActivity(false);
+            });
         }
     }, [customerId]);
 
+    const onDialogClose = async () => {
+        setIsLoadingActivity(true);
+        const act = await dataService.getCustomerActivity(customerId);
+        setAllActivity(act);
+        setActivity(act.slice(0, activityPage * ITEMS_PER_PAGE));
+        setIsLoadingActivity(false);
+    };
 
     const handleLoadMore = () => {
         const nextPage = activityPage + 1;
@@ -160,7 +175,10 @@ export default function CustomerDetailPage() {
             
              <AddPaymentDialog 
                 isOpen={isPaymentDialogOpen}
-                onOpenChange={setIsPaymentDialogOpen}
+                onOpenChange={(open) => {
+                    setIsPaymentDialogOpen(open);
+                    if (!open) onDialogClose();
+                }}
                 customer={customer}
                 outstandingBalance={customer.outstandingBalance}
             />

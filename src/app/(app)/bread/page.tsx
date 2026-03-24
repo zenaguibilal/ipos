@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { db } from '@/lib/database';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { formatDateToYYYYMMDD } from '@/lib/utils';
 import { addDays, format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -10,18 +12,42 @@ import { BreadClientList } from '@/components/bread/BreadClientList';
 import { BreadDayView } from '@/components/bread/BreadDayView';
 import { BreadStats } from '@/components/bread/BreadStats';
 import { Loader2 } from 'lucide-react';
-import type { BreadOrderWithClient } from '@/lib/types';
+import type { BreadOrderWithClient, CompanyProfile } from '@/lib/types';
+import { dataService } from '@/services/data-service';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function BreadPage() {
     const [currentDate, setCurrentDate] = useState(new Date());
     const formattedDate = formatDateToYYYYMMDD(currentDate);
 
-    const [orders, setOrders] = useState<BreadOrderWithClient[]>([]);
-    const [isLoading, setIsLoading] = useState(false);
+    const orders = useLiveQuery<BreadOrderWithClient[]>(
+        () => dataService.getBreadOrdersForDate(formattedDate),
+        [formattedDate]
+    );
 
+    const companyProfile = useLiveQuery<CompanyProfile | undefined>(
+        () => db.companyProfile.get(1)
+    );
+
+    const [isGenerating, setIsGenerating] = useState(false);
+    const isLoading = orders === undefined || isGenerating;
+    
+    // Auto-generate orders for the current day if they don't exist
     useEffect(() => {
-        setOrders([]);
+        const generate = async () => {
+            setIsGenerating(true);
+            try {
+                const ordersExist = await dataService.checkIfBreadOrdersExist(formattedDate);
+                if (!ordersExist) {
+                    await dataService.createDayOrders(formattedDate);
+                }
+            } catch (error) {
+                console.error("Failed to generate daily bread orders:", error);
+            } finally {
+                setIsGenerating(false);
+            }
+        };
+        generate();
     }, [formattedDate]);
 
     const handleDateChange = (days: number) => {
@@ -53,7 +79,7 @@ export default function BreadPage() {
                         <BreadDayView 
                             orders={orders || []} 
                             currentDate={formattedDate} 
-                            breadPrice={0}
+                            breadPrice={companyProfile?.prix_pain || 0}
                         />
                     )}
                 </div>

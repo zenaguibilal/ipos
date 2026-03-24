@@ -19,6 +19,8 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { ProductIntakeCombobox } from '@/components/stock/ProductIntakeCombobox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '@/lib/database';
 
 export default function NewStockIntakePage() {
     const router = useRouter();
@@ -31,11 +33,7 @@ export default function NewStockIntakePage() {
     const [items, setItems] = useState<StockIntakeItem[]>([]);
     const [isSaving, setIsSaving] = useState(false);
     
-    const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-
-    useEffect(() => {
-        setSuppliers([]);
-    }, []);
+    const suppliers = useLiveQuery(() => db.suppliers.toArray());
 
     const supplierOptions = useMemo(() => {
         if (!suppliers) return [];

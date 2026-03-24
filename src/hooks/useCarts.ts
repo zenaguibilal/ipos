@@ -2,8 +2,11 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '@/lib/database';
 import { v4 as uuidv4 } from 'uuid';
-import type { Cart, Product, Customer, CartItem } from '@/lib/types';
+import { dataService } from '@/services/data-service';
+import type { Cart, Product, Customer } from '@/lib/types';
 import { toast } from 'sonner';
 
 const createNewCart = (name: string): Cart => ({
@@ -16,142 +19,94 @@ const createNewCart = (name: string): Cart => ({
 });
 
 export const useCarts = () => {
-    const [carts, setCarts] = useState<Cart[]>([]);
+    const carts = useLiveQuery(() => db.carts.toArray());
     const [activeCartId, setActiveCartIdState] = useState<string>('');
-    const [isLoading, setIsLoading] = useState(true);
-
+    
     useEffect(() => {
-        const initialCarts = [createNewCart('Panier 1')];
-        setCarts(initialCarts);
-        setActiveCartIdState(initialCarts[0].id);
-        setIsLoading(false);
-    }, []);
+        if (carts && carts.length > 0) {
+            if (!activeCartId || !carts.some(c => c.id === activeCartId)) {
+                setActiveCartIdState(carts[0].id);
+            }
+        } else if (carts && carts.length === 0) {
+            // Initialize first cart
+            const firstCart = createNewCart('Panier 1');
+            db.carts.add(firstCart);
+        }
+    }, [carts, activeCartId]);
 
-    const activeCart = carts.find(c => c.id === activeCartId);
+    const activeCart = carts?.find(c => c.id === activeCartId);
+    const isLoading = carts === undefined;
 
     const setActiveCartId = useCallback((id: string) => {
         setActiveCartIdState(id);
     }, []);
 
     const addCart = useCallback(() => {
+        if (!carts) return;
         const newCart = createNewCart(`Panier ${carts.length + 1}`);
-        setCarts(prev => [...prev, newCart]);
+        db.carts.add(newCart);
         setActiveCartId(newCart.id);
         toast.info(`Nouveau panier "${newCart.name}" créé.`);
     }, [carts, setActiveCartId]);
 
     const removeCart = useCallback((cartId: string) => {
-        if (carts.length <= 1) {
+        if (!carts || carts.length <= 1) {
             toast.warning("Impossible de supprimer le dernier panier.");
             return;
         }
-        const remainingCarts = carts.filter(c => c.id !== cartId);
-        setCarts(remainingCarts);
-        if (activeCartId === cartId) {
-            setActiveCartId(remainingCarts[0].id);
-        }
-    }, [carts, activeCartId, setActiveCartId]);
+        db.carts.delete(cartId);
+    }, [carts]);
     
     const addProductToCart = useCallback((product: Product, quantity: number) => {
         if (!activeCartId) return;
-
-        setCarts(prevCarts => {
-            return prevCarts.map(cart => {
-                if (cart.id !== activeCartId) return cart;
-
-                const existingItem = cart.items.find(item => item.id === product.id);
-                let newItems: CartItem[];
-
-                if (existingItem) {
-                    newItems = cart.items.map(item =>
-                        item.id === product.id
-                            ? { ...item, cartQuantity: item.cartQuantity + quantity, flash: true }
-                            : { ...item, flash: false }
-                    );
-                } else {
-                    const newCartItem: CartItem = {
-                        ...product,
-                        cartQuantity: quantity,
-                        flash: true,
-                    };
-                    newItems = [...cart.items.map(i => ({...i, flash: false})), newCartItem];
-                }
-                return { ...cart, items: newItems };
-            });
-        });
-        
-        setTimeout(() => {
-             setCarts(prevCarts => 
-                 prevCarts.map(cart => 
-                    cart.id === activeCartId 
-                    ? { ...cart, items: cart.items.map(i => ({ ...i, flash: false })) }
-                    : cart
-                )
-            );
-        }, 500);
-
+        dataService.addProductToCart(activeCartId, product, quantity);
     }, [activeCartId]);
 
     const updateCartItemQuantity = useCallback((itemId: number | string, newQuantity: number) => {
         if (!activeCartId) return;
-        
-        setCarts(prevCarts => {
-            return prevCarts.map(cart => {
-                if (cart.id !== activeCartId) return cart;
-                
-                const updatedItems = cart.items
-                    .map(item => item.id === itemId ? { ...item, cartQuantity: newQuantity } : item)
-                    .filter(item => item.cartQuantity > 0);
-
-                return { ...cart, items: updatedItems };
-            });
+        dataService.updateCartItemQuantity(activeCartId, itemId, newQuantity).then(result => {
+            if (result.capped) {
+                toast.warning(`La quantité a été limitée à ${result.maxQuantity} (stock disponible).`);
+            }
         });
-
     }, [activeCartId]);
 
     const removeCartItem = useCallback((itemId: number | string) => {
         if (!activeCartId) return;
-        setCarts(prevCarts => {
-            return prevCarts.map(cart => {
-                if (cart.id !== activeCartId) return cart;
-                return { ...cart, items: cart.items.filter(item => item.id !== itemId) };
-            });
-        });
+        dataService.removeCartItem(activeCartId, itemId);
     }, [activeCartId]);
 
     const clearCart = useCallback(() => {
         if (!activeCartId) return;
-        setCarts(prev => prev.map(c => c.id === activeCartId ? { ...c, items: [], customerId: null, customerName: '', discount: { type: 'fixed', value: 0 } } : c));
+        dataService.clearCart(activeCartId);
         toast.info("Le panier a été vidé.");
     }, [activeCartId]);
 
     const setCartCustomer = useCallback((customer: Customer | null) => {
         if (!activeCartId) return;
-        setCarts(prevCarts => {
-            return prevCarts.map(cart => {
-                if (cart.id !== activeCartId) return cart;
-                return { 
-                    ...cart, 
-                    customerId: customer?.id || null, 
-                    customerName: customer ? `${customer.firstName} ${customer.lastName}` : '' 
-                };
-            });
-        });
+        dataService.setCartCustomer(activeCartId, customer);
     }, [activeCartId]);
 
     const setCartDiscount = useCallback((discount: { type: 'fixed' | 'percentage'; value: number }) => {
+        if (!activeCartId || !activeCart) return;
+        db.carts.update(activeCartId, { "discount.type": discount.type, "discount.value": discount.value });
+    }, [activeCartId, activeCart]);
+    
+    const saveActiveCartAsDraft = useCallback(async () => {
+        if (!activeCart) return;
+        await dataService.saveCartAsDraft(activeCart);
+        toast.success("Brouillon sauvegardé.");
+    }, [activeCart]);
+    
+    const loadDraftToCart = useCallback(async (draftId: number) => {
         if (!activeCartId) return;
-        setCarts(prevCarts => {
-            return prevCarts.map(cart => {
-                if (cart.id !== activeCartId) return cart;
-                return { ...cart, discount };
-            });
-        });
+        await dataService.loadDraftToCart(draftId, activeCartId);
+        toast.success("Brouillon chargé dans le panier actif.");
     }, [activeCartId]);
 
     return {
-        carts: carts,
-        activeCartId: activeCartId,
+        carts: carts || [],
+        activeCartId,
         activeCart,
         setActiveCartId,
         addCart,
@@ -162,6 +117,8 @@ export const useCarts = () => {
         removeCartItem,
         setCartCustomer,
         setCartDiscount,
+        saveActiveCartAsDraft,
+        loadDraftToCart,
         isLoading,
     };
 };

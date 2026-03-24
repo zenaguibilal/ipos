@@ -16,22 +16,22 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '@/lib/database';
 
 export default function CostingPage() {
     const [selectedIntakeId, setSelectedIntakeId] = useState<string | null>(null);
     const [deliveryCost, setDeliveryCost] = useState('');
     const [isApplyingCosts, setIsApplyingCosts] = useState(false);
 
-    const [intakes, setIntakes] = useState<StockIntake[]>([]);
-    const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-    const [selectedIntake, setSelectedIntake] = useState<StockIntake | undefined>();
-    const [isLoading, setIsLoading] = useState(false);
+    const intakes = useLiveQuery(() => db.stockIntakes.orderBy('createdAt').reverse().toArray());
+    const suppliers = useLiveQuery(() => db.suppliers.toArray());
+    const selectedIntake = useLiveQuery(() => 
+        selectedIntakeId ? db.stockIntakes.get(parseInt(selectedIntakeId)) : Promise.resolve(undefined),
+        [selectedIntakeId]
+    );
 
-    useEffect(() => {
-        setIntakes([]);
-        setSuppliers([]);
-        setSelectedIntake(undefined);
-    }, [selectedIntakeId]);
+    const isLoading = !intakes || !suppliers;
 
     const intakeOptions = useMemo<ComboboxOption[]>(() => {
         if (!intakes || !suppliers) return [];

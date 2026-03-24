@@ -10,17 +10,18 @@ import type { CompanyProfile } from '@/lib/types';
 import { Skeleton } from '../ui/skeleton';
 import { Loader2 } from 'lucide-react';
 import { dataService } from '@/services/data-service';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '@/lib/database';
 
 export function CompanyProfileForm() {
     const [formState, setFormState] = useState<Partial<CompanyProfile>>({});
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
     
-    const [profile, setProfile] = useState<CompanyProfile | null>(null);
-    const [isLoading, setIsLoading] = useState(false);
+    const profile = useLiveQuery(() => db.companyProfile.get(1));
+    const isLoading = profile === undefined;
 
     useEffect(() => {
-        setProfile(null);
         if (profile) {
             setFormState(profile);
         }
