@@ -57,7 +57,7 @@ export default function BreadPage() {
     const isToday = formatDateToYYYYMMDD(new Date()) === formattedDate;
 
     return (
-        <div className="p-4 sm:p-6 space-y-6">
+        <div className="p-4 sm:p-6 space-y-6 flex flex-col h-full">
             <PageHeader 
                 title="Gestion des Commandes de Pain"
                 description={format(currentDate, 'EEEE d MMMM yyyy', { locale: fr })}
@@ -69,8 +69,8 @@ export default function BreadPage() {
 
             <BreadStats orders={orders} isLoading={isLoading}/>
 
-            <div className="grid lg:grid-cols-3 gap-6 items-start">
-                <div className="lg:col-span-2">
+            <div className="grid lg:grid-cols-3 gap-6 items-stretch flex-grow min-h-0">
+                <div className="lg:col-span-2 flex flex-col">
                     {isLoading ? (
                         <div className="flex justify-center items-center h-64">
                             <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -84,7 +84,7 @@ export default function BreadPage() {
                     )}
                 </div>
 
-                <div className="lg:col-span-1">
+                <div className="lg:col-span-1 flex flex-col">
                     <BreadClientList />
                 </div>
             </div>

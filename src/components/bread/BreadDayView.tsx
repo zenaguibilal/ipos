@@ -95,8 +95,8 @@ export function BreadDayView({ orders, currentDate, breadPrice }: BreadDayViewPr
     }
     
     return (
-        <Card>
-            <CardHeader>
+        <Card className="flex flex-col h-full">
+            <CardHeader className="flex-shrink-0">
                 <CardTitle>Commandes du Jour</CardTitle>
                 <div className="flex flex-col sm:flex-row gap-2 mt-4">
                     <div className="flex items-center space-x-2">
@@ -115,8 +115,8 @@ export function BreadDayView({ orders, currentDate, breadPrice }: BreadDayViewPr
                     </div>
                 </div>
             </CardHeader>
-            <CardContent>
-                <ScrollArea className="h-[60vh]">
+            <CardContent className="flex-grow min-h-0">
+                <ScrollArea className="h-full">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {orders.map(order => (
                             <BreadOrderCard 

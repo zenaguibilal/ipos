@@ -182,13 +182,24 @@ export class SyncService {
                 if (data && data.length > 0) {
                      const localData = data.map(record => this._fromSnakeCase(record));
 
-                     for (const localRecord of localData) {
-                        const existingLocal = await (db as any)[tableName].where('uuid').equals(localRecord.uuid).first();
-                        if (existingLocal && existingLocal.sync_status !== 'synced') {
-                            console.warn(`Conflict detected for ${tableName}:${existingLocal.uuid}. Local changes will be overwritten by remote.`);
-                        }
-                     }
-                     await (db as any)[tableName].bulkPut(localData);
+                    // Radical Fix: Prevent data loss from overwriting pending local changes.
+                    // Get UUIDs of all local records that are waiting to be synced.
+                    const localPendingUuids = new Set(
+                        (await (db as any)[tableName]
+                            .where('sync_status').notEqual('synced')
+                            .toArray())
+                            .map((r: any) => r.uuid).filter(Boolean)
+                    );
+
+                    // Filter out any incoming changes that would conflict with a pending local change.
+                    const safeDataToPut = localData.filter(
+                        (remoteRecord: any) => !localPendingUuids.has(remoteRecord.uuid)
+                    );
+
+                    if (safeDataToPut.length > 0) {
+                        console.log(`[Sync] Pulling ${safeDataToPut.length} new/updated records for table: ${tableName}`);
+                        await (db as any)[tableName].bulkPut(safeDataToPut);
+                    }
                 }
             } catch (e) {
                 console.error(`Error pulling from ${tableName}`, e);

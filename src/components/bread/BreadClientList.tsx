@@ -47,15 +47,15 @@ export function BreadClientList() {
 
     return (
         <>
-            <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
+            <Card className="flex flex-col h-full">
+                <CardHeader className="flex flex-row items-center justify-between flex-shrink-0">
                     <CardTitle>Clients de Pain</CardTitle>
                     <Button size="icon" variant="ghost" onClick={handleAddNew}>
                         <Plus className="h-5 w-5" />
                     </Button>
                 </CardHeader>
-                <CardContent>
-                    <ScrollArea className="h-[400px]">
+                <CardContent className="flex-grow min-h-0">
+                    <ScrollArea className="h-full">
                         <div className="space-y-2">
                             {isLoading && [...Array(5)].map((_, i) => <Skeleton key={i} className="h-14 w-full" />)}
                             
