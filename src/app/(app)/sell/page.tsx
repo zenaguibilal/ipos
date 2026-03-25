@@ -15,7 +15,7 @@ import { AddPaymentDialog } from '@/components/payments/AddPaymentDialog';
 import { CartTotalBar } from '@/components/sell/CartTotalBar';
 import type { Product, Customer } from '@/lib/types';
 import { useAppStore, useAppActions } from '@/stores/appStore';
-import { customerService } from '@/services';
+import { customerService } from '@/services/customer.service';
 
 export default function SellPage() {
     const { cart, cartCustomer, isCartLoading } = useAppStore(state => ({

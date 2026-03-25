@@ -9,14 +9,15 @@ import { salesService } from './sales.service';
 import { stockService } from './stock.service';
 import { supplierService } from './supplier.service';
 import { profileService } from './profile.service';
-import { inventoryService } from './inventory.service';
 import { backupService } from './backup.service';
+import { inventoryService } from './inventory.service';
 
 export {
     authService,
     breadService,
     customerService,
     expenseService,
+    inventoryService,
     paymentService,
     productService,
     returnService,
@@ -24,6 +25,5 @@ export {
     stockService,
     supplierService,
     profileService,
-    inventoryService,
     backupService
 };

@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { salesService, returnService } from '@/services';
+import { salesService } from '@/services/sales.service';
+import { returnService } from '@/services/return.service';
 import type { Sale, ReturnItem } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -104,7 +105,6 @@ export default function NewReturnPage() {
                 totalReturnValue,
                 amountRefunded,
                 customerUuid: foundSale.customerUuid,
-                customerName: foundSale.customerName,
                 notes,
             });
 
@@ -168,7 +168,7 @@ export default function NewReturnPage() {
                         <CardHeader>
                             <CardTitle>2. Sélectionner les Articles à Retourner</CardTitle>
                             <CardDescription>
-                                Facture: {foundSale.invoiceNumber} | Client: {foundSale.customerName || 'N/A'}
+                                Facture: {foundSale.invoiceNumber} | Client: {foundSale.customerUuid || 'N/A'}
                             </CardDescription>
                         </CardHeader>
                         <CardContent>

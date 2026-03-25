@@ -12,11 +12,12 @@ import { safeToDate, formatCurrency } from '@/lib/utils';
 
 interface ReturnHistoryCardProps {
     productReturn: ProductReturn;
+    customerName?: string;
     onViewDetails: (pr: ProductReturn) => void;
     onCancelReturn: (pr: ProductReturn) => void;
 }
 
-const ReturnHistoryCardComponent = ({ productReturn, onViewDetails, onCancelReturn }: ReturnHistoryCardProps) => {
+const ReturnHistoryCardComponent = ({ productReturn, customerName, onViewDetails, onCancelReturn }: ReturnHistoryCardProps) => {
 
     return (
         <Card className="flex flex-col transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
@@ -50,7 +51,7 @@ const ReturnHistoryCardComponent = ({ productReturn, onViewDetails, onCancelRetu
                 </div>
                  <div className="flex justify-between items-center">
                     <span className="text-muted-foreground">Client</span>
-                    <span className="font-semibold truncate">{productReturn.customerName || 'N/A'}</span>
+                    <span className="font-semibold truncate">{customerName || 'N/A'}</span>
                 </div>
                 <div className="flex justify-between items-center">
                     <span className="text-muted-foreground">Articles</span>

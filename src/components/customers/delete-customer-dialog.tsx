@@ -2,7 +2,7 @@
 
 import { toast } from 'sonner';
 import type { Customer } from '@/lib/types';
-import { customerService } from '@/services';
+import { customerService } from '@/services/customer.service';
 import { ConfirmAlertDialog } from '@/components/ui/ConfirmAlertDialog';
 
 interface DeleteCustomerDialogProps {

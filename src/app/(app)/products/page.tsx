@@ -30,7 +30,8 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { productService, supplierService } from '@/services';
+import { productService } from '@/services/product.service';
+import { supplierService } from '@/services/supplier.service';
 
 type ViewMode = 'grid' | 'list';
 type StockStatus = 'all' | 'in_stock' | 'low_stock' | 'out_of_stock';

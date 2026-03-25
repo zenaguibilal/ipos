@@ -51,8 +51,8 @@ class BreadService {
         return breadRepository.getOrdersForDate(date);
     }
     
-    async addManualBreadOrder(clientUuid: string, date: string, quantity: number): Promise<BreadOrder> {
-        const existingOrder = await breadRepository.findClientOrderForDate(clientUuid, date);
+    async addManualBreadOrder(breadClientUuid: string, date: string, quantity: number): Promise<BreadOrder> {
+        const existingOrder = await breadRepository.findClientOrderForDate(breadClientUuid, date);
         if (existingOrder) {
             throw new Error("Une commande existe déjà pour ce client à cette date.");
         }
@@ -60,7 +60,7 @@ class BreadService {
         const newOrder: BreadOrder = {
             uuid: uuidv4(),
             user_id: 'user_id_placeholder',
-            clientPainUuid: clientUuid,
+            breadClientUuid,
             date,
             quantite: quantity,
             est_paye: false,
@@ -106,7 +106,7 @@ class BreadService {
                  ordersToCreate.push({
                     uuid: uuidv4(),
                     user_id: 'user_id_placeholder',
-                    clientPainUuid: client.uuid,
+                    breadClientUuid: client.uuid,
                     date: date,
                     quantite: quantity,
                     est_paye: false,
@@ -125,14 +125,9 @@ class BreadService {
     
     async convertBreadOrdersToSales(orderUuids: string[], breadPrice: number): Promise<void> {
         const orders = await breadRepository.getOrdersByUuids(orderUuids);
-        const customerUuids = [...new Set(orders.map(o => o.clientPainUuid))];
-        const customers = await breadRepository.getCustomersByUuids(customerUuids);
-        const customerMap = new Map(customers.map(c => [c.uuid, c]));
         
         for (const order of orders) {
             if (order.venteUuid) continue; // Already converted
-
-            const customer = customerMap.get(order.clientPainUuid);
             
             const cartItem: CartItem = {
                 uuid: 'BREAD_PRODUCT', // Special ID for bread
@@ -151,8 +146,7 @@ class BreadService {
                 discountValue: 0,
                 amountPaid: 0, // All bread sales are credit by default
                 payments: [],
-                customerUuid: customer?.uuid,
-                customerName: customer?.searchName,
+                customerUuid: order.breadClientUuid,
             });
             
             await breadRepository.updateOrder(order.uuid, { 

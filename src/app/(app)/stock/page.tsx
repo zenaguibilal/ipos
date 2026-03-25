@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { useDebounce } from '@/hooks/useDebounce';
-import type { StockIntake } from '@/lib/types';
+import type { StockIntake, Supplier } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Search, Plus, Archive } from 'lucide-react';
@@ -16,6 +16,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { stockService } from '@/services/stock.service';
+import { supplierService } from '@/services/supplier.service';
 
 export default function StockPage() {
     const [searchQuery, setSearchQuery] = useState('');
@@ -26,26 +27,32 @@ export default function StockPage() {
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
     const [stockIntakes, setStockIntakes] = useState<StockIntake[] | undefined>(undefined);
+    const [supplierMap, setSupplierMap] = useState<Map<string, Supplier>>(new Map());
     const isLoading = stockIntakes === undefined;
 
-    const fetchStockIntakes = useCallback(async () => {
+    const fetchStockIntakesAndSuppliers = useCallback(async () => {
         if (!isMounted || !dateRange?.from) return;
         try {
-            const data = await stockService.getStockIntakes({
-                query: debouncedSearchQuery,
-                from: dateRange.from,
-                to: dateRange.to
-            });
-            setStockIntakes(data);
+            const [intakesData, suppliersData] = await Promise.all([
+                stockService.getStockIntakes({
+                    query: debouncedSearchQuery,
+                    from: dateRange.from,
+                    to: dateRange.to
+                }),
+                supplierService.getSuppliers()
+            ]);
+
+            setStockIntakes(intakesData);
+            setSupplierMap(new Map(suppliersData.map(s => [s.uuid, s])));
         } catch (error) {
             console.error(error);
-            toast.error("Impossible de charger l'historique des réceptions.");
+            toast.error("Impossible de charger l'historique des réceptions ou les fournisseurs.");
         }
     }, [isMounted, debouncedSearchQuery, dateRange]);
 
     useEffect(() => {
-        fetchStockIntakes();
-    }, [fetchStockIntakes]);
+        fetchStockIntakesAndSuppliers();
+    }, [fetchStockIntakesAndSuppliers]);
 
 
     const handleViewDetails = useCallback((intake: StockIntake) => {
@@ -80,13 +87,17 @@ export default function StockPage() {
         
         return (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {stockIntakes.map(s => (
-                    <StockIntakeCard 
-                        key={s.uuid} 
-                        intake={s}
-                        onViewDetails={handleViewDetails}
-                    />
-                ))}
+                {stockIntakes.map(s => {
+                    const supplier = s.supplierUuid ? supplierMap.get(s.supplierUuid) : undefined;
+                    return (
+                        <StockIntakeCard 
+                            key={s.uuid} 
+                            intake={s}
+                            supplierName={supplier?.name}
+                            onViewDetails={handleViewDetails}
+                        />
+                    );
+                })}
             </div>
         );
     }
@@ -121,6 +132,7 @@ export default function StockPage() {
                 isOpen={isDetailsOpen}
                 onOpenChange={setIsDetailsOpen}
                 intake={selectedIntake}
+                supplierName={selectedIntake?.supplierUuid ? supplierMap.get(selectedIntake.supplierUuid)?.name : undefined}
             />
         </div>
     );

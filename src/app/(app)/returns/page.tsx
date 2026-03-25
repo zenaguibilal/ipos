@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { returnService } from '@/services';
+import { returnService } from '@/services/return.service';
+import { customerService } from '@/services/customer.service';
 import { useDebounce } from '@/hooks/useDebounce';
-import type { ProductReturn } from '@/lib/types';
+import type { ProductReturn, Customer } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Search, Plus, Undo2 } from 'lucide-react';
@@ -28,26 +29,31 @@ export default function ReturnsPage() {
     const [isCancelOpen, setIsCancelOpen] = useState(false);
 
     const [returns, setReturns] = useState<ProductReturn[] | undefined>(undefined);
+    const [customerMap, setCustomerMap] = useState<Map<string, Customer>>(new Map());
     const isLoading = returns === undefined;
     
-    const fetchReturns = useCallback(async () => {
+    const fetchReturnsAndCustomers = useCallback(async () => {
         if (!isMounted || !dateRange) return;
         try {
-            const data = await returnService.filterReturns({
-                query: debouncedSearchQuery,
-                from: dateRange.from,
-                to: dateRange.to
-            });
-            setReturns(data);
+            const [returnsData, customersData] = await Promise.all([
+                returnService.filterReturns({
+                    query: debouncedSearchQuery,
+                    from: dateRange.from,
+                    to: dateRange.to
+                }),
+                customerService.getCustomers()
+            ]);
+            setReturns(returnsData);
+            setCustomerMap(new Map(customersData.map(c => [c.uuid, c])));
         } catch (error) {
             console.error(error);
-            toast.error("Impossible de charger l'historique des retours.");
+            toast.error("Impossible de charger l'historique des retours ou les clients.");
         }
     }, [isMounted, debouncedSearchQuery, dateRange]);
 
     useEffect(() => {
-        fetchReturns();
-    }, [fetchReturns]);
+        fetchReturnsAndCustomers();
+    }, [fetchReturnsAndCustomers]);
 
 
     const handleViewDetails = (pr: ProductReturn) => {
@@ -87,14 +93,19 @@ export default function ReturnsPage() {
         
         return (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {returns.map(r => (
-                    <ReturnHistoryCard 
-                        key={r.uuid} 
-                        productReturn={r}
-                        onViewDetails={handleViewDetails}
-                        onCancelReturn={handleCancelReturn}
-                    />
-                ))}
+                {returns.map(r => {
+                    const customer = r.customerUuid ? customerMap.get(r.customerUuid) : undefined;
+                    const customerName = customer ? `${customer.firstName} ${customer.lastName}` : undefined;
+                    return (
+                        <ReturnHistoryCard 
+                            key={r.uuid} 
+                            productReturn={r}
+                            customerName={customerName}
+                            onViewDetails={handleViewDetails}
+                            onCancelReturn={handleCancelReturn}
+                        />
+                    )
+                })}
             </div>
         );
     }
@@ -134,7 +145,7 @@ export default function ReturnsPage() {
                 isOpen={isCancelOpen}
                 onOpenChange={setIsCancelOpen}
                 productReturn={selectedReturn}
-                onSuccess={fetchReturns}
+                onSuccess={fetchReturnsAndCustomers}
             />
         </div>
     );

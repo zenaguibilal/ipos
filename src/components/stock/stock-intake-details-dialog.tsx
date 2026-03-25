@@ -19,42 +19,27 @@ import {
 import { Button } from '@/components/ui/button';
 import type { StockIntake } from '@/lib/types';
 import { formatCurrency } from '@/lib/utils';
-import { useEffect, useState } from 'react';
-import { supplierService } from '@/services';
-import { toast } from 'sonner';
 
 export function StockIntakeDetailsDialog({
     isOpen,
     onOpenChange,
     intake,
+    supplierName,
 }: {
     isOpen: boolean;
     onOpenChange: (open: boolean) => void;
     intake: StockIntake | null;
+    supplierName?: string;
 }) {
-    const [supplierName, setSupplierName] = useState('Fournisseur inconnu');
-    
-    useEffect(() => {
-        if(intake?.supplierUuid) {
-            supplierService.getSupplierByUuid(intake.supplierUuid)
-                .then(sup => {
-                    if (sup) setSupplierName(sup.name);
-                })
-                .catch(() => toast.error("Impossible de charger le nom du fournisseur."));
-        } else if (intake) {
-            setSupplierName(intake.supplierName || 'Fournisseur inconnu');
-        }
-    }, [intake]);
-
     if (!intake) return null;
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-2xl">
                 <DialogHeader>
-                    <DialogTitle>Détails de la réception</DialogTitle>
+                    <DialogTitle>Détails de la reception</DialogTitle>
                     <DialogDescription>
-                        Fournisseur: <span className="font-semibold">{supplierName}</span> | Facture n°:{' '}
+                        Fournisseur: <span className="font-semibold">{supplierName || 'Fournisseur inconnu'}</span> | Facture n°:{' '}
                         <span className="font-mono">{intake.invoiceNumber}</span>
                     </DialogDescription>
                 </DialogHeader>

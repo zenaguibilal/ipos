@@ -2,7 +2,7 @@
 
 import { toast } from 'sonner';
 import type { Expense } from '@/lib/types';
-import { expenseService } from '@/services';
+import { expenseService } from '@/services/expense.service';
 import { ConfirmAlertDialog } from '@/components/ui/ConfirmAlertDialog';
 
 interface DeleteExpenseDialogProps {

@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BREAD_WEEK_DAY_LABELS, BREAD_WEEK_DAYS } from '@/lib/constants';
-import { breadService } from '@/services';
+import { breadService } from '@/services/bread.service';
 import { toast } from 'sonner';
 
 export function BreadClientList() {

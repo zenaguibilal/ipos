@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import type { BreadClient } from '@/lib/types';
 import { Loader2, Trash2 } from 'lucide-react';
-import { breadService } from '@/services';
+import { breadService } from '@/services/bread.service';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { ConfirmAlertDialog } from '@/components/ui/ConfirmAlertDialog';

@@ -1,3 +1,4 @@
+
 export interface Product {
     uuid: string;
     user_id: string;
@@ -57,7 +58,6 @@ export interface Cart {
     name: string;
     items: CartItem[];
     customerUuid: string | null;
-    customerName: string;
     discount: {
         type: 'fixed' | 'percentage';
         value: number;
@@ -83,8 +83,6 @@ export interface Sale {
     paymentStatus: 'paid' | 'partial' | 'unpaid';
     payments: SalePayment[];
     customerUuid?: string;
-    customerName?: string;
-    clientPainUuid?: string;
     createdAt?: Date;
     updatedAt?: Date;
     dueDate?: Date;
@@ -94,7 +92,6 @@ export interface Payment {
     uuid: string;
     user_id: string;
     customerUuid: string;
-    customerName?: string;
     amount: number;
     paymentDate: Date;
     notes?: string;
@@ -105,7 +102,6 @@ export interface Payment {
 export interface CompanyProfile {
     uuid: string;
     user_id: string;
-    id: 1; // This is a client-side concept for singleton
     companyName?: string;
     address?: string;
     city?: string;
@@ -138,7 +134,6 @@ export interface StockIntake {
     uuid: string;
     user_id: string;
     supplierUuid?: string;
-    supplierName?: string;
     invoiceNumber: string;
     invoiceDate: Date;
     items: {
@@ -171,7 +166,6 @@ export interface ProductReturn {
     totalReturnValue: number;
     amountRefunded: number;
     customerUuid?: string;
-    customerName?: string;
     createdAt?: Date;
     updatedAt?: Date;
     notes?: string;
@@ -241,7 +235,7 @@ export interface BreadClient {
 export interface BreadOrder {
     uuid: string;
     user_id: string;
-    clientPainUuid: string;
+    breadClientUuid: string;
     date: string; // YYYY-MM-DD
     quantite: number;
     quantite_origine?: number;

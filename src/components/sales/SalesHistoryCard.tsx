@@ -14,11 +14,12 @@ import { cn } from '@/lib/utils';
 
 interface SalesHistoryCardProps {
     sale: Sale;
+    customerName?: string;
     onViewDetails: (sale: Sale) => void;
     onCancelSale: (sale: Sale) => void;
 }
 
-const SalesHistoryCardComponent = ({ sale, onViewDetails, onCancelSale }: SalesHistoryCardProps) => {
+const SalesHistoryCardComponent = ({ sale, customerName, onViewDetails, onCancelSale }: SalesHistoryCardProps) => {
 
     const paymentStatusMap = {
         paid: { text: 'Payé', icon: CheckCircle, color: 'text-chart-quaternary' },
@@ -55,7 +56,7 @@ const SalesHistoryCardComponent = ({ sale, onViewDetails, onCancelSale }: SalesH
             <CardContent className="space-y-2 flex-grow text-sm">
                  <div className="flex justify-between items-center">
                     <span className="text-muted-foreground">Client</span>
-                    <span className="font-semibold truncate">{sale.customerName || 'Client de passage'}</span>
+                    <span className="font-semibold truncate">{customerName || 'Client de passage'}</span>
                 </div>
                 <div className="flex justify-between items-center text-sm">
                     <span className="text-muted-foreground">Articles</span>

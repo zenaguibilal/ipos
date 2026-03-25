@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import type { Expense, ExpenseCategory } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
-import { expenseService } from '@/services';
+import { expenseService } from '@/services/expense.service';
 import { DatePicker } from '../ui/date-picker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Combobox } from '../ui/combobox';

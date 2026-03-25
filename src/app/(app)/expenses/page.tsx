@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { expenseService } from '@/services';
+import { expenseService } from '@/services/expense.service';
 import type { Expense } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Plus, Filter } from 'lucide-react';

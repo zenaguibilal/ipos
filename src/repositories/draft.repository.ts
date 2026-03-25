@@ -1,19 +1,3 @@
-'use client';
-import { db } from '@/lib/database';
-import type { Draft } from '@/lib/types';
-
-class DraftRepository {
-    async getAll(): Promise<Draft[]> {
-        return db.drafts.orderBy('createdAt').reverse().toArray();
-    }
-
-    async add(draft: Draft): Promise<number> {
-        return db.drafts.add(draft);
-    }
-
-    async delete(uuid: string): Promise<void> {
-        await db.drafts.where('uuid').equals(uuid).delete();
-    }
-}
-
-export const draftRepository = new DraftRepository();
+// This file is obsolete and has been removed as part of the architecture refactor.
+// The "Drafts" feature was tied to local client-side persistence (IndexedDB)
+// and is not compatible with the new Supabase-backend architecture.

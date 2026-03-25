@@ -11,7 +11,7 @@ import { BreadDayView } from '@/components/bread/BreadDayView';
 import { BreadStats } from '@/components/bread/BreadStats';
 import { Loader2 } from 'lucide-react';
 import type { BreadOrderWithClient } from '@/lib/types';
-import { breadService } from '@/services';
+import { breadService } from '@/services/bread.service';
 import { useAppStore } from '@/stores/appStore';
 import { toast } from 'sonner';
 

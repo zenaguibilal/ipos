@@ -21,7 +21,6 @@ class ReturnService {
         totalReturnValue: number,
         amountRefunded: number,
         customerUuid?: string,
-        customerName?: string,
         notes?: string
     }): Promise<ProductReturn> {
         
@@ -40,7 +39,6 @@ class ReturnService {
             totalReturnValue: returnData.totalReturnValue,
             amountRefunded: returnData.amountRefunded,
             customerUuid: returnData.customerUuid,
-            customerName: returnData.customerName,
             createdAt: now,
             updatedAt: now,
             notes: returnData.notes,

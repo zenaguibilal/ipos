@@ -26,7 +26,6 @@ class SalesService {
         amountPaid: number,
         payments: { method: 'cash' | 'card' | 'other', amount: number }[],
         customerUuid?: string | null,
-        customerName?: string,
         dueDate?: Date,
     }): Promise<Sale> {
         
@@ -66,7 +65,6 @@ class SalesService {
             paymentStatus,
             payments: saleData.payments,
             customerUuid: saleData.customerUuid || undefined,
-            customerName: saleData.customerName,
             createdAt: now,
             updatedAt: now,
             dueDate: saleData.dueDate,

@@ -3,14 +3,16 @@
 import { useState, useMemo } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import type { BreadOrderWithClient } from '@/lib/types';
+import type { BreadOrderWithClient, CartItem } from '@/lib/types';
 import { BreadOrderCard } from './BreadOrderCard';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ManualAddDialog } from './ManualAddDialog';
 import { PrintBreadListDialog } from './PrintBreadListDialog';
 import { toast } from 'sonner';
-import { breadService } from '@/services';
+import { breadService } from '@/services/bread.service';
+import { salesService } from '@/services/sales.service';
+import { breadRepository, customerRepository } from '@/repositories';
 import { Loader2 } from 'lucide-react';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Wheat } from 'lucide-react';
@@ -23,7 +25,7 @@ interface BreadDayViewProps {
 }
 
 export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayViewProps) {
-    const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
+    const [selectedOrders, setSelectedOrders] = new Set<string>();
     const [isConverting, setIsConverting] = useState(false);
     const breadPrice = useAppStore((state) => state.profile?.prix_pain) || 0;
 

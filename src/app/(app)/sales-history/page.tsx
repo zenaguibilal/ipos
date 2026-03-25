@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { salesService } from '@/services';
+import { salesService } from '@/services/sales.service';
+import { customerService } from '@/services/customer.service';
 import { useDebounce } from '@/hooks/useDebounce';
-import type { Sale } from '@/lib/types';
+import type { Sale, Customer } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 import { Search, History } from 'lucide-react';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
@@ -26,26 +27,31 @@ export default function SalesHistoryPage() {
     const [isCancelOpen, setIsCancelOpen] = useState(false);
 
     const [sales, setSales] = useState<Sale[] | undefined>(undefined);
+    const [customerMap, setCustomerMap] = useState<Map<string, Customer>>(new Map());
     const isLoading = sales === undefined;
 
-    const fetchSales = useCallback(async () => {
+    const fetchSalesAndCustomers = useCallback(async () => {
         if (!isMounted || !dateRange) return;
         try {
-            const data = await salesService.filterSales({
-                query: debouncedSearchQuery,
-                from: dateRange.from,
-                to: dateRange.to
-            });
-            setSales(data);
+            const [salesData, customersData] = await Promise.all([
+                salesService.filterSales({
+                    query: debouncedSearchQuery,
+                    from: dateRange.from,
+                    to: dateRange.to
+                }),
+                customerService.getCustomers()
+            ]);
+            setSales(salesData);
+            setCustomerMap(new Map(customersData.map(c => [c.uuid, c])));
         } catch (error) {
             console.error(error);
-            toast.error("Impossible de charger l'historique des ventes.");
+            toast.error("Impossible de charger l'historique des ventes ou les clients.");
         }
     }, [isMounted, debouncedSearchQuery, dateRange]);
 
     useEffect(() => {
-        fetchSales();
-    }, [fetchSales]);
+        fetchSalesAndCustomers();
+    }, [fetchSalesAndCustomers]);
 
     const handleViewDetails = (sale: Sale) => {
         setSelectedSale(sale);
@@ -80,14 +86,19 @@ export default function SalesHistoryPage() {
         
         return (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {sales.map(s => (
-                    <SalesHistoryCard 
-                        key={s.uuid} 
-                        sale={s}
-                        onViewDetails={handleViewDetails}
-                        onCancelSale={handleCancelSale}
-                    />
-                ))}
+                {sales.map(s => {
+                    const customer = s.customerUuid ? customerMap.get(s.customerUuid) : undefined;
+                    const customerName = customer ? `${customer.firstName} ${customer.lastName}` : undefined;
+                    return (
+                        <SalesHistoryCard 
+                            key={s.uuid} 
+                            sale={s}
+                            customerName={customerName}
+                            onViewDetails={handleViewDetails}
+                            onCancelSale={handleCancelSale}
+                        />
+                    )
+                })}
             </div>
         );
     }
@@ -120,12 +131,13 @@ export default function SalesHistoryPage() {
                 isOpen={isDetailsOpen}
                 onOpenChange={setIsDetailsOpen}
                 sale={selectedSale}
+                customerName={selectedSale?.customerUuid ? customerMap.get(selectedSale.customerUuid) ? `${customerMap.get(selectedSale.customerUuid)?.firstName} ${customerMap.get(selectedSale.customerUuid)?.lastName}` : undefined : undefined}
             />
             <CancelSaleDialog 
                 isOpen={isCancelOpen}
                 onOpenChange={setIsCancelOpen}
                 sale={selectedSale}
-                onSuccess={fetchSales}
+                onSuccess={fetchSalesAndCustomers}
             />
         </div>
     );

@@ -1,7 +1,7 @@
 'use client';
 
 import { toast } from 'sonner';
-import { productService } from '@/services';
+import { productService } from '@/services/product.service';
 import { ConfirmAlertDialog } from '@/components/ui/ConfirmAlertDialog';
 
 interface DeleteMultipleProductsDialogProps {

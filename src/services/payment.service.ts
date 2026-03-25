@@ -17,7 +17,6 @@ class PaymentService {
             uuid: uuidv4(),
             user_id: 'user_id_placeholder', // This will be set by the repository layer
             customerUuid,
-            customerName: `${customer.firstName} ${customer.lastName}`,
             amount,
             paymentDate,
             notes,

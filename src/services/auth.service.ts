@@ -1,12 +1,13 @@
-// In a real Supabase implementation, this would interact with the Supabase client.
-// For now, it mocks session management using LocalStorage.
+// In a real Supabase implementation, this will interact with the Supabase client.
+// For now, it mocks session management in-memory.
 
 interface Session {
     id: string;
     email: string;
 }
 
-const SESSION_KEY = 'ipos-session';
+// In-memory session store for the duration of the app lifetime.
+let memorySession: Session | null = null;
 
 class AuthService {
     /**
@@ -19,7 +20,7 @@ class AuthService {
         console.log(`AuthService: Signing in ${email}`);
         // In a real app, you would validate credentials here.
         const mockSession: Session = { id: 'user_id_placeholder', email };
-        localStorage.setItem(SESSION_KEY, JSON.stringify(mockSession));
+        memorySession = mockSession;
         return mockSession;
     }
 
@@ -28,23 +29,15 @@ class AuthService {
      */
     async signOut(): Promise<void> {
         console.log('AuthService: Signing out');
-        localStorage.removeItem(SESSION_KEY);
+        memorySession = null;
     }
 
     /**
-     * Retrieves the current session from LocalStorage.
+     * Retrieves the current session from memory.
      * @returns The session object or null if not logged in.
      */
     getSession(): Session | null {
-        try {
-            const sessionStr = localStorage.getItem(SESSION_KEY);
-            if (sessionStr) {
-                return JSON.parse(sessionStr);
-            }
-            return null;
-        } catch (error) {
-            return null;
-        }
+        return memorySession;
     }
 }
 

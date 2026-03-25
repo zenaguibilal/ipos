@@ -15,7 +15,9 @@ import { ReturnDetailsDialog } from '@/components/returns/ReturnDetailsDialog';
 import type { Sale, ProductReturn, Customer } from '@/lib/types';
 import { PrintStatementDialog } from '@/components/customers/PrintStatementDialog';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { customerService, salesService, returnService } from '@/services';
+import { customerService } from '@/services/customer.service';
+import { salesService } from '@/services/sales.service';
+import { returnService } from '@/services/return.service';
 import { toast } from 'sonner';
 
 const ITEMS_PER_PAGE = 10;

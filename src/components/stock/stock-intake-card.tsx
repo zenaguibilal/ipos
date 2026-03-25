@@ -11,19 +11,20 @@ import { safeToDate, formatCurrency } from '@/lib/utils';
 
 interface StockIntakeCardProps {
     intake: StockIntake;
+    supplierName?: string;
     onViewDetails: (intake: StockIntake) => void;
 }
 
-export const StockIntakeCard = React.memo<StockIntakeCardProps>(({ intake, onViewDetails }) => {
+export const StockIntakeCard = React.memo<StockIntakeCardProps>(({ intake, supplierName, onViewDetails }) => {
 
-    const supplierName = intake.supplierName || 'Fournisseur inconnu';
+    const name = supplierName || 'Fournisseur inconnu';
 
     return (
         <Card className="transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
             <CardHeader>
                 <div className="flex justify-between items-start">
                     <div>
-                        <CardTitle className="text-lg">{supplierName}</CardTitle>
+                        <CardTitle className="text-lg">{name}</CardTitle>
                         <CardDescription className="font-mono text-xs">{intake.invoiceNumber}</CardDescription>
                     </div>
                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onViewDetails(intake)}>

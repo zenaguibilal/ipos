@@ -25,7 +25,7 @@ class StockService {
             const existingSupplier = await supplierRepository.findByUuid(supplierUuid);
             if (!existingSupplier) {
                 toast.warning(`Le fournisseur avec l'ID ${supplierUuid} n'a pas été trouvé. Un nouveau fournisseur sera créé.`);
-                supplierUuid = ''; // Force creation if UUID is invalid
+                supplierUuid = undefined; // Force creation if UUID is invalid
             } else {
                 supplierName = existingSupplier.name;
             }
@@ -56,7 +56,6 @@ class StockService {
             uuid: uuidv4(),
             user_id: 'user_id_placeholder',
             supplierUuid,
-            supplierName: supplierName,
             invoiceNumber: intakeData.invoiceNumber,
             invoiceDate: intakeData.invoiceDate,
             items: items.map(item => ({

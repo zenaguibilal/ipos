@@ -26,10 +26,12 @@ export function SaleDetailsDialog({
     isOpen,
     onOpenChange,
     sale,
+    customerName,
 }: {
     isOpen: boolean;
     onOpenChange: (open: boolean) => void;
     sale: Sale | null;
+    customerName?: string;
 }) {
     if (!sale) return null;
 
@@ -39,7 +41,7 @@ export function SaleDetailsDialog({
                 <DialogHeader>
                     <DialogTitle>Détails de la vente</DialogTitle>
                     <DialogDescription>
-                        Facture n°: <span className="font-mono font-semibold">{sale.invoiceNumber}</span>
+                        Facture n°: <span className="font-mono font-semibold">{sale.invoiceNumber}</span> | Client: {customerName || 'Client de passage'}
                         <br />
                         Date: {format(safeToDate(sale.createdAt!), 'd MMMM yyyy HH:mm', { locale: fr })}
                     </DialogDescription>

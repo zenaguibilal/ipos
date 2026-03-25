@@ -3,12 +3,11 @@ import { immer } from 'zustand/middleware/immer';
 import type { Cart, Customer, Product, CompanyProfile } from '@/lib/types';
 import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
-import { 
-    authService,
-    customerService, 
-    profileService,
-    salesService
-} from '@/services';
+import { authService } from '@/services/auth.service';
+import { customerService } from '@/services/customer.service';
+import { profileService } from '@/services/profile.service';
+import { salesService } from '@/services/sales.service';
+
 
 // This is a mock session for the new architecture. It will be replaced by Supabase's user object.
 interface Session {
@@ -39,7 +38,6 @@ interface AppState {
         signOut: () => Promise<void>;
 
         // Data Actions (These are high-level actions that might interact with services)
-        fetchCustomers: () => Promise<Customer[]>;
         fetchProfile: () => Promise<void>;
         updateProfile: (profileData: Partial<CompanyProfile>) => Promise<void>;
 
@@ -60,12 +58,10 @@ interface AppState {
     }
 }
 
-const initialCartState: Cart = {
+const initialCartState: Omit<Cart, 'customerUuid'> = {
     id: 'default-cart',
     name: 'Panier Principal',
     items: [],
-    customerUuid: null,
-    customerName: 'Client de passage',
     discount: { type: 'fixed', value: 0 },
 };
 
@@ -75,7 +71,10 @@ export const useAppStore = create<AppState>()(
         // Initial State
         session: null,
         sessionLoading: true,
-        cart: initialCartState,
+        cart: {
+            ...initialCartState,
+            customerUuid: null,
+        },
         cartCustomer: null,
         isCartLoading: false,
         profile: null,
@@ -94,21 +93,10 @@ export const useAppStore = create<AppState>()(
             },
             signOut: async () => {
                 await authService.signOut();
-                set({ session: null, cart: initialCartState, cartCustomer: null });
+                set({ session: null, cart: { ...initialCartState, customerUuid: null }, cartCustomer: null });
             },
             
             // == DATA ACTIONS ==
-            fetchCustomers: async () => {
-                // This might be better handled locally on the customers page
-                // to avoid loading all customers into global state.
-                // For now, we return it as a utility.
-                try {
-                    return await customerService.getCustomers();
-                } catch (error) {
-                    toast.error("Impossible de charger les clients.");
-                    return [];
-                }
-            },
             fetchProfile: async () => {
                 set({ isSettingsLoading: true });
                 try {
@@ -178,10 +166,9 @@ export const useAppStore = create<AppState>()(
 
             clearCart: () => {
                 set(state => {
-                    state.cart = initialCartState;
-                    // Preserve customer selection
-                    state.cart.customerUuid = get().cart.customerUuid;
-                    state.cart.customerName = get().cart.customerName;
+                    // Reset only items and discount, preserve the customer selection
+                    state.cart.items = [];
+                    state.cart.discount = { type: 'fixed', value: 0 };
                 });
                 toast.info("Le panier a été vidé.");
             },
@@ -189,7 +176,6 @@ export const useAppStore = create<AppState>()(
             setCartCustomer: (customer) => {
                 set(state => {
                     state.cart.customerUuid = customer?.uuid ?? null;
-                    state.cart.customerName = customer ? `${customer.firstName} ${customer.lastName}` : 'Client de passage';
                     state.cartCustomer = customer;
                 });
             },
@@ -204,6 +190,8 @@ export const useAppStore = create<AppState>()(
             finalizeSale: async (saleData) => {
                 const { cart, cartCustomer } = get();
 
+                // 1. Create the sale. The service is responsible for the entire transaction,
+                // including creating the sale record and updating inventory.
                 const sale = await salesService.createSale({
                     ...saleData,
                     items: cart.items,
@@ -212,7 +200,7 @@ export const useAppStore = create<AppState>()(
                     customerUuid: cart.customerUuid,
                 });
                 
-                // Recalculate customer status if a customer was associated
+                // 2. Recalculate customer status if a customer was associated
                 if (sale.customerUuid) {
                     const updatedCustomer = await customerService.recalculateCustomerStatus(sale.customerUuid);
                     // Update customer in the store if it's the current one
@@ -221,11 +209,12 @@ export const useAppStore = create<AppState>()(
                     }
                 }
                 
-                // Reset cart
+                // 3. Reset cart. The customer selection is preserved by clearCart.
                 get().actions.clearCart();
             }
         }
     }))
 );
 
+// This allows non-component files to call actions
 export const useAppActions = useAppStore.getState().actions;

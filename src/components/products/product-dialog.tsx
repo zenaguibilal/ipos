@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { DatePicker } from '../ui/date-picker';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
 import { Combobox } from '../ui/combobox';
-import { productService } from '@/services';
+import { productService } from '@/services/product.service';
 
 interface ProductDialogProps {
     isOpen: boolean;
