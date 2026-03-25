@@ -10,16 +10,20 @@ import {
   Archive,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useIsManagerOrAdmin } from '@/stores/appStore';
 
-const navLinks = [
-  { href: '/products', label: 'Produits', icon: Package },
-  { href: '/customers', label: 'Clients', icon: Users2 },
-  { href: '/sales-history', label: 'Historique', icon: History },
-  { href: '/stock', label: 'Stock', icon: Archive },
+const allNavLinks = [
+  { href: '/products', label: 'Produits', icon: Package, manager: true },
+  { href: '/customers', label: 'Clients', icon: Users2, manager: false },
+  { href: '/sales-history', label: 'Historique', icon: History, manager: false },
+  { href: '/stock', label: 'Stock', icon: Archive, manager: true },
 ];
 
 export function BottomNavBar() {
   const pathname = usePathname();
+  const isManagerOrAdmin = useIsManagerOrAdmin();
+
+  const navLinks = allNavLinks.filter(link => !link.manager || isManagerOrAdmin);
 
   return (
     <div className="fixed bottom-0 left-0 z-30 w-full border-t bg-background/80 backdrop-blur-xl md:hidden print-hide">

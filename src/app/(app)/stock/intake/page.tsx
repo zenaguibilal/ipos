@@ -22,9 +22,11 @@ import { stockService } from '@/services/stock.service';
 import { supplierService } from '@/services/supplier.service';
 import { productService } from '@/services/product.service';
 import { inventoryService } from '@/services/inventory.service';
+import { useIsManagerOrAdmin } from '@/stores/appStore';
 
 export default function NewStockIntakePage() {
     const router = useRouter();
+    const isManagerOrAdmin = useIsManagerOrAdmin();
     const [supplierUuid, setSupplierUuid] = useState<string>('');
     const [supplierName, setSupplierName] = useState('');
     const [supplierSearch, setSupplierSearch] = useState('');
@@ -38,12 +40,19 @@ export default function NewStockIntakePage() {
     const [suppliers, setSuppliers] = useState<Supplier[] | undefined>(undefined);
 
     useEffect(() => {
+        if (!isManagerOrAdmin) {
+            toast.error("Accès non autorisé.");
+            router.replace('/sell');
+        }
+    }, [isManagerOrAdmin, router]);
+
+    useEffect(() => {
         const fetchSuppliers = async () => {
             try {
                 const data = await supplierService.getSuppliers();
                 setSuppliers(data);
-            } catch (error) {
-                toast.error("Impossible de charger les fournisseurs.");
+            } catch (error: any) {
+                toast.error("Impossible de charger les fournisseurs.", { description: error.message });
             }
         };
         fetchSuppliers();
@@ -226,6 +235,10 @@ export default function NewStockIntakePage() {
         setSupplierName(supplierSearch);
         setSupplierPopoverOpen(false);
     };
+    
+    if (!isManagerOrAdmin) {
+        return null; // or a loading/unauthorized component
+    }
 
     return (
         <div className="p-4 sm:p-6 space-y-6">

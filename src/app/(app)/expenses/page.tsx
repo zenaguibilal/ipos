@@ -24,8 +24,10 @@ import { formatCurrency } from '@/lib/utils';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { toast } from 'sonner';
+import { useIsManagerOrAdmin } from '@/stores/appStore';
 
 export default function ExpensesPage() {
+    const isManagerOrAdmin = useIsManagerOrAdmin();
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
     const [isExpenseDialogOpen, setIsExpenseDialogOpen] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -45,9 +47,9 @@ export default function ExpensesPage() {
                 to: dateRange.to
             });
             setExpenses(data);
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
-            toast.error("Impossible de charger les dépenses.");
+            toast.error("Impossible de charger les dépenses.", { description: error.message });
         }
     }, [isMounted, selectedCategory, dateRange]);
     
@@ -59,9 +61,9 @@ export default function ExpensesPage() {
         try {
             const cats = await expenseService.getCategories();
             setCategories(cats);
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
-            toast.error("Impossible de charger les catégories de dépenses.");
+            toast.error("Impossible de charger les catégories de dépenses.", { description: error.message });
         }
     }, []);
 
@@ -104,7 +106,10 @@ export default function ExpensesPage() {
                     title="Aucune dépense trouvée"
                     description="Commencez par ajouter une nouvelle dépense ou ajustez vos filtres."
                 >
-                     <Button onClick={() => { setSelectedExpense(null); setIsExpenseDialogOpen(true); }}>
+                     <Button 
+                        onClick={() => { setSelectedExpense(null); setIsExpenseDialogOpen(true); }}
+                        disabled={!isManagerOrAdmin}
+                    >
                         <Plus className="mr-2 h-4 w-4" /> Ajouter une dépense
                     </Button>
                 </EmptyState>
@@ -131,7 +136,10 @@ export default function ExpensesPage() {
                 title="Gestion des Dépenses"
                 description="Suivez et gérez toutes les charges de votre entreprise."
             >
-                <Button onClick={() => { setSelectedExpense(null); setIsExpenseDialogOpen(true); }}>
+                <Button 
+                    onClick={() => { setSelectedExpense(null); setIsExpenseDialogOpen(true); }}
+                    disabled={!isManagerOrAdmin}
+                >
                     <Plus className="mr-2 h-4 w-4" /> Ajouter
                 </Button>
             </PageHeader>
@@ -176,20 +184,24 @@ export default function ExpensesPage() {
             <div>
                {renderContent()}
             </div>
-
-            <ExpenseDialog 
-                isOpen={isExpenseDialogOpen}
-                onOpenChange={setIsExpenseDialogOpen}
-                expense={selectedExpense}
-                onSuccess={onDialogSuccess}
-                existingCategories={categories || []}
-            />
-            <DeleteExpenseDialog 
-                isOpen={isDeleteDialogOpen}
-                onOpenChange={setIsDeleteDialogOpen}
-                expense={selectedExpense}
-                onSuccess={fetchExpenses}
-            />
+            
+            {isManagerOrAdmin && (
+                <>
+                    <ExpenseDialog 
+                        isOpen={isExpenseDialogOpen}
+                        onOpenChange={setIsExpenseDialogOpen}
+                        expense={selectedExpense}
+                        onSuccess={onDialogSuccess}
+                        existingCategories={categories || []}
+                    />
+                    <DeleteExpenseDialog 
+                        isOpen={isDeleteDialogOpen}
+                        onOpenChange={setIsDeleteDialogOpen}
+                        expense={selectedExpense}
+                        onSuccess={fetchExpenses}
+                    />
+                </>
+            )}
         </div>
     );
 }

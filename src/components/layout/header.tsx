@@ -32,23 +32,24 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useAppStore } from '@/stores/appStore';
+import { useAppStore, useIsManagerOrAdmin } from '@/stores/appStore';
 import { toast } from 'sonner';
 
-const navLinks = [
-  { href: '/stock', label: 'Stock', icon: Archive },
-  { href: '/products', label: 'Produits', icon: Package },
-  { href: '/customers', label: 'Clients', icon: Users2 },
-  { href: '/sales-history', label: 'Ventes', icon: History },
-  { href: '/returns', label: 'Retours', icon: Undo2 },
-  { href: '/expenses', label: 'Dépenses', icon: Wallet },
-  { href: '/bread', label: 'Pain', icon: Wheat },
+const allNavLinks = [
+  { href: '/stock', label: 'Stock', icon: Archive, managerOnly: true },
+  { href: '/products', label: 'Produits', icon: Package, managerOnly: true },
+  { href: '/customers', label: 'Clients', icon: Users2, managerOnly: false },
+  { href: '/sales-history', label: 'Ventes', icon: History, managerOnly: false },
+  { href: '/returns', label: 'Retours', icon: Undo2, managerOnly: false },
+  { href: '/expenses', label: 'Dépenses', icon: Wallet, managerOnly: true },
+  { href: '/bread', label: 'Pain', icon: Wheat, managerOnly: true },
 ];
 
 export function AppHeader() {
   const pathname = usePathname();
   const { user } = useAppStore(state => state);
   const { signOut } = useAppStore(state => state.actions);
+  const isManagerOrAdmin = useIsManagerOrAdmin();
 
   const handleSignOut = async () => {
     try {
@@ -62,6 +63,8 @@ export function AppHeader() {
   const mainActionLinks = [
     { href: '/sell', label: 'Point de Vente', icon: ShoppingCart },
   ];
+  
+  const navLinks = allNavLinks.filter(link => !link.managerOnly || isManagerOrAdmin);
 
   return (
     <header className="flex h-16 items-center gap-4 bg-background/80 px-4 sm:px-6 print-hide sticky top-0 z-30 border-b backdrop-blur-xl">

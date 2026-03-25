@@ -1,7 +1,7 @@
 'use client';
 
 import type { Expense } from '@/lib/types';
-import { expenseRepository } from '@/repositories';
+import { expenseRepository } from '@/repositories/expense.repository';
 import { v4 as uuidv4 } from 'uuid';
 
 class ExpenseService {

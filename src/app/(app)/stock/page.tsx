@@ -17,8 +17,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { stockService } from '@/services/stock.service';
 import { supplierService } from '@/services/supplier.service';
+import { useIsManagerOrAdmin } from '@/stores/appStore';
 
 export default function StockPage() {
+    const isManagerOrAdmin = useIsManagerOrAdmin();
     const [searchQuery, setSearchQuery] = useState('');
     const debouncedSearchQuery = useDebounce(searchQuery, 300);
     const { dateRange, setDate, isMounted } = useDateRange(29);
@@ -43,10 +45,10 @@ export default function StockPage() {
             ]);
 
             setStockIntakes(intakesData);
-            setSupplierMap(new Map(suppliersData.map(s => [s.uuid, s])));
-        } catch (error) {
+            setSupplierMap(new Map(suppliersData.map(s => [s.uuid, s.name])));
+        } catch (error: any) {
             console.error(error);
-            toast.error("Impossible de charger l'historique des réceptions ou les fournisseurs.");
+            toast.error("Impossible de charger l'historique des réceptions.", { description: error.message });
         }
     }, [isMounted, debouncedSearchQuery, dateRange]);
 
@@ -78,7 +80,7 @@ export default function StockPage() {
                     title="Aucune réception de stock trouvée"
                     description="Commencez par enregistrer une nouvelle réception de stock."
                 >
-                     <Button asChild>
+                     <Button asChild disabled={!isManagerOrAdmin}>
                         <Link href="/stock/intake"><Plus className="mr-2 h-4 w-4" /> Nouvelle Réception</Link>
                     </Button>
                 </EmptyState>
@@ -108,9 +110,11 @@ export default function StockPage() {
                 title="Historique des Réceptions de Stock"
                 description="Recherchez et consultez toutes les réceptions de marchandises."
             >
-                 <Button asChild>
-                    <Link href="/stock/intake"><Plus className="mr-2 h-4 w-4" /> Nouvelle Réception</Link>
-                </Button>
+                {isManagerOrAdmin && (
+                    <Button asChild>
+                        <Link href="/stock/intake"><Plus className="mr-2 h-4 w-4" /> Nouvelle Réception</Link>
+                    </Button>
+                )}
             </PageHeader>
 
             <div className="flex flex-col sm:flex-row gap-2">

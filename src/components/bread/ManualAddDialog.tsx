@@ -1,15 +1,16 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { breadService } from '@/services/bread.service';
+import { customerService } from '@/services/customer.service';
 import { toast } from 'sonner';
 import { Plus } from 'lucide-react';
-import type { BreadClient } from '@/lib/types';
+import type { Customer } from '@/lib/types';
 
 interface ManualAddDialogProps {
     currentDate: string;
@@ -20,11 +21,11 @@ export function ManualAddDialog({ currentDate, onSuccess }: ManualAddDialogProps
     const [isOpen, setIsOpen] = useState(false);
     const [selectedClientUuid, setSelectedClientUuid] = useState<string>('');
     const [quantity, setQuantity] = useState(10);
-    const [manualClients, setManualClients] = useState<BreadClient[]>([]);
+    const [manualClients, setManualClients] = useState<Customer[]>([]);
 
     useEffect(() => {
         if(isOpen) {
-            breadService.getManualClients()
+            customerService.filterCustomers({ status: 'is_manual_bread_client' })
                 .then(setManualClients)
                 .catch(() => toast.error("Impossible de charger les clients manuels."));
         }
@@ -72,7 +73,7 @@ export function ManualAddDialog({ currentDate, onSuccess }: ManualAddDialogProps
                                 <SelectTrigger id="manual-client"><SelectValue placeholder="Sélectionnez un client..."/></SelectTrigger>
                                 <SelectContent>
                                     {manualClients?.map(client => (
-                                        <SelectItem key={client.uuid} value={client.uuid}>{client.nom}</SelectItem>
+                                        <SelectItem key={client.uuid} value={client.uuid}>{client.firstName} {client.lastName}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>

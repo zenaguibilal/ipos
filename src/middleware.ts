@@ -8,7 +8,6 @@ export async function middleware(request: NextRequest) {
     },
   })
 
-  // The `updateSession` logic is now directly in the middleware.
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -18,37 +17,26 @@ export async function middleware(request: NextRequest) {
           return request.cookies.get(name)?.value
         },
         set(name: string, value: string, options: CookieOptions) {
-          // The `set` method was called from a Server Component.
-          // This can be ignored if you have middleware refreshing
-          // user sessions, but here in middleware we need to
-          // set the cookie on the response.
           response.cookies.set({ name, value, ...options })
         },
         remove(name: string, options: CookieOptions) {
-          // The `delete` method was called from a Server Component.
-          // This can be ignored if you have middleware refreshing
-          // user sessions, but here in middleware we need to
-          // delete the cookie on the response.
           response.cookies.set({ name, value: '', ...options })
         },
       },
     }
   )
 
-  // This will refresh the session if it's expired.
   const { data: { user } } = await supabase.auth.getUser();
 
-  // If the user is not signed in and tries to access a protected route,
-  // redirect them to the login page.
-  if (!user && !request.nextUrl.pathname.startsWith('/auth')) {
+  const isAuthRoute = request.nextUrl.pathname.startsWith('/login');
+
+  if (!user && !isAuthRoute) {
     const url = request.nextUrl.clone()
-    url.pathname = '/auth'
+    url.pathname = '/login'
     return NextResponse.redirect(url)
   }
 
-  // If the user is signed in and tries to access the login page,
-  // redirect them to the main app page.
-  if (user && request.nextUrl.pathname.startsWith('/auth')) {
+  if (user && isAuthRoute) {
     const url = request.nextUrl.clone()
     url.pathname = '/sell'
     return NextResponse.redirect(url)

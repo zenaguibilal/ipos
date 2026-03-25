@@ -14,15 +14,11 @@ interface DeleteExpenseDialogProps {
 
 export default function DeleteExpenseDialog({ isOpen, onOpenChange, expense, onSuccess }: DeleteExpenseDialogProps) {
     const handleDelete = async () => {
-        if (!expense || !expense.id) return;
-        try {
-            await expenseService.deleteExpense(expense.id);
-            toast.success(`Dépense "${expense.description}" supprimée.`);
-            onSuccess();
-        } catch (error: any) {
-             toast.error("Erreur lors de la suppression", { description: error.message });
-             throw error;
-        }
+        if (!expense?.uuid) return;
+        
+        await expenseService.deleteExpense(expense.uuid);
+        toast.success(`Dépense "${expense.description}" supprimée.`);
+        onSuccess();
     };
 
     return (

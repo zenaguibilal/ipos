@@ -37,10 +37,10 @@ export function ProductIntakeCombobox({ onProductSelected, onNewProductCreated }
     useEffect(() => {
         const fetchProducts = async () => {
             try {
-                const data = await productService.filterProducts({});
+                const data = await productService.getProducts();
                 setProducts(data);
-            } catch (error) {
-                toast.error("Impossible de charger les produits.");
+            } catch (error: any) {
+                toast.error("Impossible de charger les produits.", { description: error.message });
             }
         };
         fetchProducts();
@@ -57,7 +57,7 @@ export function ProductIntakeCombobox({ onProductSelected, onNewProductCreated }
     }, [products, debouncedSearchQuery]);
 
     const handleSelect = (productId: string) => {
-        const product = products?.find(p => p.id === productId);
+        const product = products?.find(p => p.uuid === productId);
         if (product) {
             onProductSelected(product);
         }
@@ -109,9 +109,9 @@ export function ProductIntakeCombobox({ onProductSelected, onNewProductCreated }
                         <CommandGroup>
                             {filteredProducts?.map((product) => (
                                 <CommandItem
-                                    key={product.id}
-                                    value={product.id}
-                                    onSelect={() => handleSelect(product.id)}
+                                    key={product.uuid}
+                                    value={product.uuid}
+                                    onSelect={() => handleSelect(product.uuid)}
                                 >
                                     <div>
                                         <p>{product.name}</p>

@@ -11,13 +11,13 @@ import {
     DialogFooter,
 } from '@/components/ui/dialog';
 import { Printer } from 'lucide-react';
-import type { BreadOrder, BreadOrderWithClient, CompanyProfile } from '@/lib/types';
+import type { BreadOrder, BreadOrderWithCustomer, CompanyProfile } from '@/lib/types';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useAppStore } from '@/stores/appStore';
 
 interface PrintBreadListDialogProps {
-    orders: BreadOrderWithClient[];
+    orders: BreadOrderWithCustomer[];
     currentDate: string;
 }
 
@@ -28,7 +28,7 @@ const getStatusLabel = (order: BreadOrder) => {
     return 'En attente';
 };
 
-const PrintableList = React.forwardRef<HTMLDivElement, { orders: BreadOrderWithClient[], currentDate: string, profile: CompanyProfile | null }>(({ orders, currentDate, profile }, ref) => {
+const PrintableList = React.forwardRef<HTMLDivElement, { orders: BreadOrderWithCustomer[], currentDate: string, profile: CompanyProfile | null }>(({ orders, currentDate, profile }, ref) => {
     const totalQuantity = orders.reduce((acc, order) => acc + order.quantite, 0);
     const formattedDate = format(new Date(currentDate.replace(/-/g, '/')), 'EEEE d MMMM yyyy', { locale: fr });
     
@@ -48,8 +48,8 @@ const PrintableList = React.forwardRef<HTMLDivElement, { orders: BreadOrderWithC
                 </thead>
                 <tbody>
                     {orders.map(order => (
-                        <tr key={order.id} className="[&>td]:border [&>td]:border-gray-300 [&>td]:p-2">
-                            <td>{order.client.nom}</td>
+                        <tr key={order.uuid} className="[&>td]:border [&>td]:border-gray-300 [&>td]:p-2">
+                            <td>{order.customer.firstName} {order.customer.lastName}</td>
                             <td className="text-center font-bold">{order.quantite}</td>
                             <td>{getStatusLabel(order)}</td>
                         </tr>

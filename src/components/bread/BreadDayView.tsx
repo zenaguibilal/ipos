@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import type { BreadOrderWithClient, CartItem } from '@/lib/types';
+import type { BreadOrderWithCustomer } from '@/lib/types';
 import { BreadOrderCard } from './BreadOrderCard';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -11,14 +11,13 @@ import { ManualAddDialog } from './ManualAddDialog';
 import { PrintBreadListDialog } from './PrintBreadListDialog';
 import { toast } from 'sonner';
 import { breadService } from '@/services/bread.service';
-import { salesService } from '@/services/sales.service';
 import { Loader2 } from 'lucide-react';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Wheat } from 'lucide-react';
 import { useAppStore } from '@/stores/appStore';
 
 interface BreadDayViewProps {
-    orders: BreadOrderWithClient[];
+    orders: BreadOrderWithCustomer[];
     currentDate: string;
     onOrdersChange: () => void;
 }
@@ -63,38 +62,7 @@ export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayVi
         
         setIsConverting(true);
         try {
-            const ordersToConvert = await breadService.getOrdersByUuids(Array.from(selectedOrders));
-            
-            for (const order of ordersToConvert) {
-                if (order.venteUuid) continue;
-
-                const cartItem: CartItem = {
-                    uuid: 'BREAD_PRODUCT', // Special ID for bread
-                    user_id: 'system',
-                    name: 'Pain',
-                    price: breadPrice,
-                    purchasePrice: 0,
-                    quantity: Infinity, // Unlimited stock for bread
-                    cartQuantity: order.quantite,
-                    minStockLevel: 0,
-                };
-                
-                const sale = await salesService.createSale({
-                    items: [cartItem],
-                    discountType: 'fixed',
-                    discountValue: 0,
-                    amountPaid: 0, // All bread sales are credit by default
-                    payments: [],
-                    customerUuid: order.breadClientUuid,
-                });
-                
-                await breadService.updateOrder(order.uuid, { 
-                    venteUuid: sale.uuid,
-                    est_paye: true,
-                    updatedAt: new Date()
-                });
-            }
-
+            await breadService.convertBreadOrdersToSales(Array.from(selectedOrders), breadPrice);
             toast.success(`${selectedOrders.size} commande(s) convertie(s) en ventes.`);
             setSelectedOrders(new Set());
             onOrdersChange();

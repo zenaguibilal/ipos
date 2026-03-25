@@ -26,7 +26,7 @@ export function CancelReturnDialog({ isOpen, onOpenChange, productReturn, onSucc
         // 2. Reverse stock adjustment for restocked items
         for (const item of cancelledReturn.items) {
             if (item.wasRestocked && item.productUuid) {
-                await inventoryService.adjustStock(item.productUuid, -item.quantity, 'cancellation', cancelledReturn.uuid);
+                await inventoryService.adjustStock(item.productUuid, item.quantity, 'cancellation', cancelledReturn.uuid);
             }
         }
         

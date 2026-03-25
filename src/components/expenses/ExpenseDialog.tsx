@@ -10,7 +10,6 @@ import type { Expense, ExpenseCategory } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
 import { expenseService } from '@/services/expense.service';
 import { DatePicker } from '../ui/date-picker';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Combobox } from '../ui/combobox';
 
 const defaultCategories: ExpenseCategory[] = ['Loyer', 'Salaires', 'Fournisseurs', 'Services Publics', 'Marketing', 'Maintenance', 'Autre'];
@@ -23,7 +22,7 @@ interface ExpenseDialogProps {
     existingCategories: string[];
 }
 
-const initialFormState: Omit<Expense, 'uuid' | 'id' | 'createdAt' | 'updatedAt'> = {
+const initialFormState: Omit<Expense, 'uuid' | 'user_id' | 'createdAt' | 'updatedAt'> = {
     description: '',
     category: 'Autre',
     amount: 0,
@@ -97,7 +96,7 @@ export default function ExpenseDialog({ isOpen, onOpenChange, expense, onSuccess
             onOpenChange(false);
         } catch (err: any) {
             setError(err.message || "Une erreur est survenue.");
-            toast.error("Échec de l'opération.");
+            toast.error("Échec de l'opération.", { description: err.message });
         } finally {
             setIsLoading(false);
         }

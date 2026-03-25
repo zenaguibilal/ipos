@@ -6,10 +6,12 @@ import { CompanyProfileForm } from "@/components/profile/company-profile-form";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { useAppStore } from "@/stores/appStore";
+import { useAppStore, useIsManagerOrAdmin } from "@/stores/appStore";
+import { DataManagementCard } from "@/components/profile/DataManagementCard";
 
 export default function ProfilePage() {
     const { signOut } = useAppStore(state => state.actions);
+    const isManagerOrAdmin = useIsManagerOrAdmin();
 
     const handleSignOut = async () => {
         try {
@@ -36,6 +38,8 @@ export default function ProfilePage() {
                 </CardHeader>
                 <CompanyProfileForm />
             </Card>
+
+            {isManagerOrAdmin && <DataManagementCard />}
 
             <Card>
                 <CardHeader>

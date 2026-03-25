@@ -10,7 +10,7 @@ import { BreadClientList } from '@/components/bread/BreadClientList';
 import { BreadDayView } from '@/components/bread/BreadDayView';
 import { BreadStats } from '@/components/bread/BreadStats';
 import { Loader2 } from 'lucide-react';
-import type { BreadOrderWithClient } from '@/lib/types';
+import type { BreadOrderWithCustomer } from '@/lib/types';
 import { breadService } from '@/services/bread.service';
 import { useAppStore } from '@/stores/appStore';
 import { toast } from 'sonner';
@@ -19,7 +19,7 @@ export default function BreadPage() {
     const [currentDate, setCurrentDate] = useState(new Date());
     const formattedDate = formatDateToYYYYMMDD(currentDate);
 
-    const [orders, setOrders] = useState<BreadOrderWithClient[] | undefined>(undefined);
+    const [orders, setOrders] = useState<BreadOrderWithCustomer[] | undefined>(undefined);
     const [isGenerating, setIsGenerating] = useState(false);
     
     const companyProfile = useAppStore((state) => state.profile);
@@ -29,9 +29,9 @@ export default function BreadPage() {
         try {
             const generatedOrders = await breadService.generateAndGetOrdersForDate(date);
             setOrders(generatedOrders);
-        } catch (error) {
+        } catch (error: any) {
             console.error("Failed to generate or fetch daily bread orders:", error);
-            toast.error("Erreur lors de la génération des commandes de pain.");
+            toast.error("Erreur lors de la génération des commandes de pain.", { description: error.message });
         } finally {
             setIsGenerating(false);
         }
@@ -78,7 +78,7 @@ export default function BreadPage() {
                 </div>
 
                 <div className="lg:col-span-1 flex flex-col">
-                    <BreadClientList />
+                    <BreadClientList onListChange={() => fetchAndGenerateOrders(formattedDate)} />
                 </div>
             </div>
         </div>

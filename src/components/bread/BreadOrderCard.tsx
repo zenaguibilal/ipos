@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import type { BreadOrderWithClient } from '@/lib/types';
+import type { BreadOrderWithCustomer } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { breadService } from '@/services/bread.service';
@@ -14,7 +14,7 @@ import { AlertTriangle } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 
 interface BreadOrderCardProps {
-    order: BreadOrderWithClient;
+    order: BreadOrderWithCustomer;
     isSelected: boolean;
     onToggleSelection: (orderId: string) => void;
     onUpdate: () => void;
@@ -31,12 +31,12 @@ export function BreadOrderCard({ order, isSelected, onToggleSelection, onUpdate 
     const handleQuantityChange = useCallback(async (newQuantity: number) => {
         try {
             await breadService.updateBreadOrderQuantity(order.uuid, newQuantity);
-            toast.success(`Quantité mise à jour pour ${order.client.nom}.`);
+            toast.success(`Quantité mise à jour pour ${order.customer.firstName}.`);
             onUpdate();
         } catch (error) {
             toast.error("Erreur lors de la mise à jour de la quantité.");
         }
-    }, [order.uuid, order.client.nom, onUpdate]);
+    }, [order.uuid, order.customer.firstName, onUpdate]);
 
     useEffect(() => {
         if (debouncedQuantity !== order.quantite) {
@@ -51,12 +51,12 @@ export function BreadOrderCard({ order, isSelected, onToggleSelection, onUpdate 
     const handleDeliveryToggle = useCallback(async (delivered: boolean) => {
         try {
             await breadService.updateBreadOrderDeliveryStatus(order.uuid, delivered);
-            toast.success(`Statut de livraison mis à jour pour ${order.client.nom}`);
+            toast.success(`Statut de livraison mis à jour pour ${order.customer.firstName}`);
             onUpdate();
         } catch (error) {
             toast.error("Erreur lors de la mise à jour du statut de livraison.");
         }
-    }, [order.uuid, order.client.nom, onUpdate]);
+    }, [order.uuid, order.customer.firstName, onUpdate]);
     
     return (
         <Card className={cn(
@@ -65,7 +65,7 @@ export function BreadOrderCard({ order, isSelected, onToggleSelection, onUpdate 
             isPaid ? "bg-green-500/10" : "bg-card"
         )}>
             <CardHeader className="flex-row items-center justify-between p-4">
-                <CardTitle className="text-lg">{order.client.nom}</CardTitle>
+                <CardTitle className="text-lg">{order.customer.firstName} {order.customer.lastName}</CardTitle>
                 <Checkbox checked={isSelected} onCheckedChange={() => onToggleSelection(order.uuid)} disabled={isPaid} />
             </CardHeader>
             <CardContent className="flex-grow p-4 pt-0">

@@ -17,10 +17,12 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/card';
 import { customerService } from '@/services/customer.service';
+import { useIsManagerOrAdmin } from '@/stores/appStore';
 
 type FilterStatus = 'all' | 'has_debt' | 'overdue' | 'over_limit';
 
 export default function CustomersPage() {
+    const isManagerOrAdmin = useIsManagerOrAdmin();
     const [searchQuery, setSearchQuery] = useState('');
     const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
     const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
@@ -37,9 +39,9 @@ export default function CustomersPage() {
         try {
             const data = await customerService.filterCustomers({ query: debouncedSearchQuery, status: filterStatus });
             setCustomers(data);
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
-            toast.error("Impossible de charger les clients.");
+            toast.error("Impossible de charger les clients.", { description: error.message });
             setCustomers([]); // Set to empty array on error
         }
     }, [debouncedSearchQuery, filterStatus]);
@@ -103,7 +105,7 @@ export default function CustomersPage() {
                 title="Gestion des Clients"
                 description="Recherchez, ajoutez et gérez vos clients."
             >
-                <Button asChild variant="outline" disabled>
+                <Button asChild variant="outline" disabled={!isManagerOrAdmin}>
                     <label htmlFor="csv-importer">
                         <FileDown className="mr-2 h-4 w-4" /> Importer (bientôt)
                         <input type="file" id="csv-importer" accept=".csv" className="sr-only" />
@@ -153,12 +155,14 @@ export default function CustomersPage() {
                 customer={selectedCustomer}
                 onSuccess={fetchCustomers}
             />
-            <DeleteCustomerDialog 
-                isOpen={isDeleteDialogOpen}
-                onOpenChange={setIsDeleteDialogOpen}
-                customer={selectedCustomer}
-                onSuccess={fetchCustomers}
-            />
+            {isManagerOrAdmin && (
+                <DeleteCustomerDialog 
+                    isOpen={isDeleteDialogOpen}
+                    onOpenChange={setIsDeleteDialogOpen}
+                    customer={selectedCustomer}
+                    onSuccess={fetchCustomers}
+                />
+            )}
         </div>
     );
 }

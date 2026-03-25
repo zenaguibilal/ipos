@@ -1,13 +1,13 @@
 'use client';
 
 import { useMemo } from 'react';
-import type { BreadOrderWithClient } from '@/lib/types';
+import type { BreadOrderWithCustomer } from '@/lib/types';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Package, Truck, CheckCircle } from 'lucide-react';
 import { Skeleton } from '../ui/skeleton';
 
 interface BreadStatsProps {
-    orders?: BreadOrderWithClient[];
+    orders?: BreadOrderWithCustomer[];
     isLoading: boolean;
 }
 

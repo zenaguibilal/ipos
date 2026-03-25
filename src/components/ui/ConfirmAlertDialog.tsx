@@ -14,7 +14,7 @@ interface ConfirmAlertDialogProps {
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
     title: string;
-    description: string;
+    description: React.ReactNode;
     onConfirm: () => Promise<void>;
     confirmText?: string;
     cancelText?: string;
@@ -37,7 +37,9 @@ export function ConfirmAlertDialog({
             await onConfirm();
             onOpenChange(false);
         } catch (error: any) {
-            toast.error(error.message || "L'opération a échoué.");
+            toast.error(error.message || "L'opération a échoué.", {
+                description: "Veuillez réessayer ou contacter le support si le problème persiste."
+            });
         } finally {
             setIsMutating(false);
         }
