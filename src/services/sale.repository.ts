@@ -79,24 +79,22 @@ class SaleRepository {
     }
 
     async filter(filters: { query?: string, from?: Date, to?: Date }): Promise<Sale[]> {
-        // This is complex because the customer name is not on the sale table.
-        // A database function or a more complex query would be needed for a direct search.
-        // For now, we filter by invoice number if the query looks like one.
-        let query = this.baseQuery.order('created_at', { ascending: false });
-
-        if (filters.query) {
-             query = query.ilike('invoice_number', `%${filters.query}%`);
-        }
-        if (filters.from) {
-            query = query.gte('created_at', filters.from.toISOString());
-        }
-        if (filters.to) {
-            query = query.lte('created_at', filters.to.toISOString());
-        }
+        const { data, error } = await this.supabase.rpc('search_sales', {
+            p_search_query: filters.query || null,
+            p_from_date: filters.from?.toISOString() || null,
+            p_to_date: filters.to?.toISOString() || null,
+        });
         
-        const { data, error } = await query;
         if (error) throw error;
-        return data.map(fromSupabase);
+        
+        const saleUuids = data.map((s: any) => s.uuid);
+        if (saleUuids.length === 0) return [];
+        
+        const { data: salesWithItems, error: itemsError } = await this.baseQuery.in('uuid', saleUuids);
+
+        if (itemsError) throw itemsError;
+
+        return salesWithItems.map(fromSupabase);
     }
 
     async add(sale: Sale): Promise<Sale> {
@@ -184,8 +182,10 @@ class SaleRepository {
             }))
         );
 
-        const { error: itemsError } = await this.supabase.from('sale_items').upsert(allSaleItems);
-        if (itemsError) throw itemsError;
+        if (allSaleItems.length > 0) {
+            const { error: itemsError } = await this.supabase.from('sale_items').upsert(allSaleItems);
+            if (itemsError) throw itemsError;
+        }
     }
 
     async count(): Promise<number> {

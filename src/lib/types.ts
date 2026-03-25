@@ -1,5 +1,4 @@
 
-
 export type AppRole = 'admin' | 'manager' | 'cashier';
 
 export interface Product {
@@ -244,7 +243,7 @@ export interface BreadOrder {
 }
 
 export interface BreadOrderWithCustomer extends BreadOrder {
-    customer: Customer;
+    customer: Pick<Customer, 'uuid' | 'firstName' | 'lastName'>;
 }
 
 export interface ImportAnalysis {

@@ -1,116 +1,52 @@
 'use client';
 
 import { v4 as uuidv4 } from 'uuid';
-import type { BreadClient, BreadOrder, CartItem, Customer } from '@/lib/types';
-import { breadRepository } from '@/repositories/bread.repository';
+import type { BreadOrder, Customer, CartItem } from '@/lib/types';
+import { customerRepository } from '@/repositories/customer.repository';
+import { breadOrderRepository } from '@/repositories/breadOrder.repository';
 import { salesService } from './sales.service';
+import { useAppStore } from '@/stores/appStore';
 import { BREAD_WEEK_DAYS } from '@/lib/constants';
 
 class BreadService {
-
-    // == Client Management ==
-    async addBreadClient(clientData: Partial<BreadClient>): Promise<BreadClient> {
-        const newClient: BreadClient = {
-            ...clientData,
-            uuid: uuidv4(),
-            user_id: 'user_id_placeholder', // This will be set by the repository layer
-            nom: clientData.nom!,
-            actif: clientData.actif !== false,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-        } as BreadClient;
-
-        return await breadRepository.addClient(newClient);
+    
+    private getUserId(): string {
+        const session = useAppStore.getState().session;
+        if (!session?.user?.id) {
+            throw new Error("User not authenticated");
+        }
+        return session.user.id;
     }
     
-    async updateBreadClient(uuid: string, clientData: Partial<BreadClient>): Promise<BreadClient> {
-        const data = { ...clientData, updatedAt: new Date() };
-        return breadRepository.updateClient(uuid, data);
-    }
-
-    async deleteBreadClient(uuid: string): Promise<void> {
-        // The repository should handle this atomicity.
-        await breadRepository.deleteClientWithOrders(uuid);
-    }
-    
-    async getBreadClients(): Promise<BreadClient[]> {
-        return breadRepository.getAllClients();
-    }
-    
-    async getManualClients(): Promise<BreadClient[]> {
-        return breadRepository.getManualClients();
-    }
-
-    async getCustomersByUuids(uuids: string[]): Promise<Customer[]> {
-        return breadRepository.getCustomersByUuids(uuids);
-    }
-    
-    // --- Orders ---
-    
-    async generateAndGetOrdersForDate(date: string): Promise<any[]> {
-        const ordersExist = await breadRepository.ordersExistForDate(date);
+    async generateAndGetOrdersForDate(date: string) {
+        const ordersExist = await breadOrderRepository.ordersExistForDate(date);
         if (!ordersExist) {
             await this.createDayOrders(date);
         }
-        return breadRepository.getOrdersForDate(date);
-    }
-    
-    async addManualBreadOrder(breadClientUuid: string, date: string, quantity: number): Promise<BreadOrder> {
-        const existingOrder = await breadRepository.findClientOrderForDate(breadClientUuid, date);
-        if (existingOrder) {
-            throw new Error("Une commande existe déjà pour ce client à cette date.");
-        }
-
-        const newOrder: BreadOrder = {
-            uuid: uuidv4(),
-            user_id: 'user_id_placeholder',
-            breadClientUuid,
-            date,
-            quantite: quantity,
-            est_paye: false,
-            est_livre: false,
-            venteUuid: null,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-        };
-        
-        return await breadRepository.addOrder(newOrder);
-    }
-
-    async updateBreadOrderQuantity(uuid: string, quantity: number): Promise<void> {
-        const order = await breadRepository.findOrderByUuid(uuid);
-        if(!order) return;
-
-        const updateData: Partial<BreadOrder> = { quantite: quantity, updatedAt: new Date() };
-        if (order.quantite_origine === undefined) {
-            updateData.quantite_origine = order.quantite;
-        }
-        await breadRepository.updateOrder(uuid, updateData);
-    }
-    
-     async updateBreadOrderDeliveryStatus(uuid: string, delivered: boolean): Promise<void> {
-        await breadRepository.updateOrder(uuid, { est_livre: delivered, updatedAt: new Date() });
+        return breadOrderRepository.getOrdersForDate(date);
     }
     
     async createDayOrders(date: string): Promise<void> {
         const dayOfWeek = BREAD_WEEK_DAYS[new Date(date.replace(/-/g, '/')).getDay()];
-        const activeClients = await breadRepository.getActiveClients();
+        const activeBreadClients = await customerRepository.filter({ status: 'is_bread_client' });
         
         const ordersToCreate: BreadOrder[] = [];
         
-        for (const client of activeClients) {
+        for (const client of activeBreadClients) {
+            if (client.bread_type_recurrence === 'aucun') continue;
+
             let quantity = 0;
-            if (client.type_recurrence === 'quotidien') {
-                quantity = client.quantite_defaut || 0;
-            } else if (client.type_recurrence === 'jours_specifiques' && client.jours_semaine?.[dayOfWeek]?.actif) {
-                quantity = client.jours_semaine[dayOfWeek].quantite || 0;
+            if (client.bread_type_recurrence === 'quotidien') {
+                quantity = client.bread_quantite_defaut || 0;
+            } else if (client.bread_type_recurrence === 'jours_specifiques' && client.bread_jours_semaine?.[dayOfWeek]?.actif) {
+                quantity = client.bread_jours_semaine[dayOfWeek].quantite || 0;
             }
 
             if (quantity > 0) {
                  ordersToCreate.push({
                     uuid: uuidv4(),
-                    user_id: 'user_id_placeholder',
-                    breadClientUuid: client.uuid,
+                    user_id: this.getUserId(),
+                    customerUuid: client.uuid,
                     date: date,
                     quantite: quantity,
                     est_paye: false,
@@ -123,16 +59,86 @@ class BreadService {
         }
 
         if (ordersToCreate.length > 0) {
-            await breadRepository.bulkAddOrders(ordersToCreate);
+            await breadOrderRepository.bulkAddOrders(ordersToCreate);
         }
     }
     
-    async getOrdersByUuids(orderUuids: string[]): Promise<BreadOrder[]> {
-        return breadRepository.getOrdersByUuids(orderUuids);
+    async addManualBreadOrder(customerUuid: string, date: string, quantity: number): Promise<BreadOrder> {
+        const existingOrder = await breadOrderRepository.findClientOrderForDate(customerUuid, date);
+        if (existingOrder) {
+            throw new Error("Une commande existe déjà pour ce client à cette date.");
+        }
+
+        const newOrder: BreadOrder = {
+            uuid: uuidv4(),
+            user_id: this.getUserId(),
+            customerUuid,
+            date,
+            quantite: quantity,
+            est_paye: false,
+            est_livre: false,
+            venteUuid: null,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+        };
+        
+        return await breadOrderRepository.addOrder(newOrder);
     }
 
-    async updateOrder(uuid: string, data: Partial<BreadOrder>): Promise<void> {
-        return breadRepository.updateOrder(uuid, data);
+    async updateBreadOrderQuantity(uuid: string, quantity: number): Promise<void> {
+        const order = await breadOrderRepository.findOrderByUuid(uuid);
+        if(!order) return;
+
+        const updateData: Partial<BreadOrder> = { quantite: quantity, updatedAt: new Date() };
+        if (order.quantite_origine === undefined) {
+            updateData.quantite_origine = order.quantite;
+        }
+        await breadOrderRepository.updateOrder(uuid, updateData);
+    }
+    
+     async updateBreadOrderDeliveryStatus(uuid: string, delivered: boolean): Promise<void> {
+        await breadOrderRepository.updateOrder(uuid, { est_livre: delivered, updatedAt: new Date() });
+    }
+
+    async convertBreadOrdersToSales(orderUuids: string[], breadPrice: number): Promise<void> {
+        const orders = await breadOrderRepository.getOrdersByUuids(orderUuids);
+        const customerUuids = [...new Set(orders.map(o => o.customerUuid))];
+        
+        for (const customerUuid of customerUuids) {
+            const customerOrders = orders.filter(o => o.customerUuid === customerUuid);
+            const totalQuantity = customerOrders.reduce((sum, o) => sum + o.quantite, 0);
+
+            if (totalQuantity <= 0) continue;
+
+            // This is a "dummy" cart item representing the bread. It won't affect real product stock.
+            const breadCartItem: CartItem = {
+                uuid: 'BREAD_PRODUCT', // Special non-existent product UUID
+                user_id: this.getUserId(),
+                name: 'Pain',
+                price: breadPrice,
+                purchasePrice: 0, 
+                quantity: Infinity,
+                cartQuantity: totalQuantity,
+                minStockLevel: 0,
+            };
+
+            const sale = await salesService.createSale({
+                items: [breadCartItem],
+                discountType: 'fixed',
+                discountValue: 0,
+                amountPaid: 0,
+                payments: [],
+                customerUuid: customerUuid,
+            });
+
+            await breadOrderRepository.bulkUpdateSaleRelation(
+                customerOrders.map(o => o.uuid),
+                sale.uuid
+            );
+            
+            // Recalculate customer status after adding the sale
+            await customerService.recalculateCustomerStatus(customerUuid);
+        }
     }
 }
 

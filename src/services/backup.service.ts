@@ -2,18 +2,16 @@
 
 import { createClient } from "@/utils/supabase/client";
 import { toast } from "sonner";
-import { 
-    productRepository,
-    customerRepository,
-    saleRepository,
-    expenseRepository,
-    supplierRepository,
-    stockRepository,
-    paymentRepository,
-    returnRepository,
-    breadRepository,
-    inventoryRepository
-} from '@/repositories';
+import { productRepository } from '@/repositories/product.repository';
+import { customerRepository } from '@/repositories/customer.repository';
+import { saleRepository } from '@/repositories/sale.repository';
+import { expenseRepository } from '@/repositories/expense.repository';
+import { supplierRepository } from '@/repositories/supplier.repository';
+import { stockRepository } from '@/repositories/stock.repository';
+import { paymentRepository } from '@/repositories/payment.repository';
+import { returnRepository } from '@/repositories/return.repository';
+import { breadOrderRepository } from '@/repositories/breadOrder.repository';
+import { companyRepository } from "@/repositories/company.repository";
 import { useAppStore } from "@/stores/appStore";
 
 class BackupService {
@@ -37,8 +35,8 @@ class BackupService {
             stockIntakes,
             payments,
             returns,
-            breadClients,
             breadOrders,
+            profile,
         ] = await Promise.all([
             productRepository.getAll(),
             customerRepository.getAll(),
@@ -48,16 +46,18 @@ class BackupService {
             stockRepository.getAll(),
             paymentRepository.getAll(),
             returnRepository.getAll(),
-            breadRepository.getAllClients(),
-            breadRepository.getAllOrders(),
+            breadOrderRepository.getAllForUser(),
+            companyRepository.get().then(p => p ? [p] : []),
         ]);
         
         return { 
-            products, customers, sales, expenses, suppliers, 
+            suppliers, customers, products, expenses, 
             stock_intakes: stockIntakes, 
-            payments, product_returns: returns, 
-            bread_clients: breadClients, 
-            bread_orders: breadOrders 
+            sales,
+            product_returns: returns, 
+            payments,
+            bread_orders: breadOrders,
+            company_profile: profile,
         };
     }
     
@@ -121,21 +121,31 @@ class BackupService {
 
         // 2. Delete all existing data in order
         toast.info("Clearing existing data...");
-        await saleRepository.deleteAllForUser(); // Deletes sale_items via cascade
-        await productRepository.deleteAllForUser(); // Deletes inventory_logs via cascade
-        await customerRepository.deleteAllForUser(); // Deletes payments, returns, bread_orders via cascade
-        await supplierRepository.deleteAllForUser(); // Deletes stock_intakes via cascade
-        await expenseRepository.deleteAllForUser();
-        // bread_clients are part of customers now
-
+        // Order is critical to respect foreign key constraints (delete children before parents)
+        await saleRepository.deleteAllForUser(userId); // Deletes sale_items via cascade
+        await returnRepository.deleteAllForUser(userId);
+        await paymentRepository.deleteAllForUser(userId);
+        await stockRepository.deleteAllForUser(userId);
+        await productRepository.deleteAllForUser(userId); // Deletes inventory_logs via cascade
+        await breadOrderRepository.deleteAllForUser(userId);
+        await customerRepository.deleteAllForUser(userId);
+        await supplierRepository.deleteAllForUser(userId);
+        await expenseRepository.deleteAllForUser(userId);
+        await companyRepository.deleteAllForUser(userId);
+        
         // 3. Insert new data in reverse order of deletion
         toast.info("Restoring data...");
+        // Order is critical (insert parents before children)
+        if (data.company_profile?.length) await companyRepository.bulkUpsert(data.company_profile);
         if (data.suppliers?.length) await supplierRepository.bulkUpsert(data.suppliers);
         if (data.customers?.length) await customerRepository.bulkUpsert(data.customers);
         if (data.products?.length) await productRepository.bulkUpsert(data.products);
-        if (data.sales?.length) await saleRepository.bulkUpsert(data.sales);
         if (data.expenses?.length) await expenseRepository.bulkUpsert(data.expenses);
-        // ... and so on for other tables if needed. The main ones are covered.
+        if (data.stock_intakes?.length) await stockRepository.bulkUpsert(data.stock_intakes);
+        if (data.sales?.length) await saleRepository.bulkUpsert(data.sales); // Inserts sale_items
+        if (data.product_returns?.length) await returnRepository.bulkUpsert(data.product_returns);
+        if (data.payments?.length) await paymentRepository.bulkUpsert(data.payments);
+        if (data.bread_orders?.length) await breadOrderRepository.bulkUpsert(data.bread_orders);
     }
 }
 

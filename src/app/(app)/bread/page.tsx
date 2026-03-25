@@ -12,7 +12,6 @@ import { BreadStats } from '@/components/bread/BreadStats';
 import { Loader2 } from 'lucide-react';
 import type { BreadOrderWithCustomer } from '@/lib/types';
 import { breadService } from '@/services/bread.service';
-import { useAppStore } from '@/stores/appStore';
 import { toast } from 'sonner';
 
 export default function BreadPage() {
@@ -21,8 +20,6 @@ export default function BreadPage() {
 
     const [orders, setOrders] = useState<BreadOrderWithCustomer[] | undefined>(undefined);
     const [isGenerating, setIsGenerating] = useState(false);
-    
-    const companyProfile = useAppStore((state) => state.profile);
 
     const fetchAndGenerateOrders = useCallback(async (date: string) => {
         setIsGenerating(true);

@@ -3,7 +3,7 @@ import { create } from 'zustand';
 import { produce } from 'immer';
 import type { Session, User } from '@supabase/supabase-js';
 import type { Cart, Customer, CompanyProfile, AppRole, Product, CartItem } from '@/lib/types';
-import { calculateCartTotals } from '@/lib/utils';
+import { toast } from 'sonner';
 
 import { authService } from '@/services/auth.service';
 import { salesService } from '@/services/sales.service';
@@ -73,11 +73,30 @@ export const useAppStore = create<AppState>()((set, get) => ({
     ...initialState,
     actions: {
         setSession: (session) => set({ session, user: session?.user ?? null, sessionLoading: false }),
-        signIn: (email, password) => authService.signIn(email, password),
-        signUp: (email, password) => authService.signUp(email, password),
+        signIn: async (email, password) => {
+            try {
+                await authService.signIn(email, password);
+            } catch (error: any) {
+                toast.error(error.message || "La connexion a échoué.");
+                throw error;
+            }
+        },
+        signUp: async (email, password) => {
+            try {
+                await authService.signUp(email, password);
+            } catch (error: any) {
+                toast.error(error.message || "L'inscription a échoué.");
+                throw error;
+            }
+        },
         signOut: async () => {
-            await authService.signOut();
-            set({ session: null, user: null, profile: null, cart: initialCart, cartCustomer: null });
+            try {
+                await authService.signOut();
+                set({ session: null, user: null, profile: null, cart: initialCart, cartCustomer: null });
+            } catch (error: any) {
+                toast.error(error.message || "La déconnexion a échoué.");
+                throw error;
+            }
         },
         fetchProfile: async () => {
             if (get().profile) return; // Fetch only once
@@ -143,27 +162,33 @@ export const useAppStore = create<AppState>()((set, get) => ({
             state.cart.discount = { type: 'fixed', value: 0 };
         })),
         finalizeSale: async (paymentData) => {
-            const { cart, cartCustomer } = get();
+            const { cart } = get();
             if (cart.items.length === 0) throw new Error("Le panier est vide.");
 
-            const sale = await salesService.createSale({
-                items: cart.items,
-                discountType: cart.discount.type,
-                discountValue: cart.discount.value,
-                ...paymentData,
-                customerUuid: cart.customerUuid,
-            });
+            try {
+                const sale = await salesService.createSale({
+                    items: cart.items,
+                    discountType: cart.discount.type,
+                    discountValue: cart.discount.value,
+                    ...paymentData,
+                    customerUuid: cart.customerUuid,
+                });
 
-            for (const item of sale.items) {
-                await inventoryService.adjustStock(item.productUuid, -item.quantity, 'sale', sale.uuid);
+                for (const item of sale.items) {
+                    await inventoryService.adjustStock(item.productUuid, -item.quantity, 'sale', sale.uuid);
+                }
+
+                if (sale.customerUuid) {
+                    const updatedCustomer = await customerService.recalculateCustomerStatus(sale.customerUuid);
+                    set({ cartCustomer: updatedCustomer });
+                }
+
+                get().actions.clearCart();
+            } catch (error: any) {
+                console.error("Failed to finalize sale:", error);
+                toast.error("Échec de la finalisation de la vente", { description: error.message });
+                throw error;
             }
-
-            if (sale.customerUuid) {
-                const updatedCustomer = await customerService.recalculateCustomerStatus(sale.customerUuid);
-                set({ cartCustomer: updatedCustomer });
-            }
-
-            get().actions.clearCart();
         },
         setProductViewMode: (mode) => set({ productViewMode: mode }),
     }

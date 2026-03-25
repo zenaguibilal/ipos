@@ -63,7 +63,7 @@ export function ManualAddDialog({ currentDate, onSuccess }: ManualAddDialogProps
                     <DialogHeader>
                         <DialogTitle>Ajouter une commande manuelle</DialogTitle>
                         <DialogDescription>
-                            Sélectionnez un client et une quantité à ajouter pour aujourd'hui.
+                            Sélectionnez un client et une quantité à ajouter pour le jour sélectionné.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">

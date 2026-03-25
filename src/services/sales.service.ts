@@ -15,6 +15,10 @@ class SalesService {
         return session.user.id;
     }
 
+    async getAllSales(): Promise<Sale[]> {
+        return saleRepository.getAll();
+    }
+
     async getSaleByUuid(uuid: string): Promise<Sale | undefined> {
         return saleRepository.findByUuid(uuid);
     }
@@ -82,8 +86,6 @@ class SalesService {
             dueDate: saleData.dueDate,
         };
 
-        // The service's responsibility ends here. It creates the sale record.
-        // Orchestration of inventory and customer updates is handled by the calling layer (e.g., appStore).
         return await saleRepository.add(newSale);
     }
 
