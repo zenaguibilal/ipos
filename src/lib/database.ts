@@ -1,3 +1,4 @@
+
 import Dexie, { type EntityTable, type Transaction } from 'dexie';
 import type { Product, Customer, Sale, Payment, StockIntake, ProductReturn, Cart, Draft, CompanyProfile, Expense, InventoryLog, Supplier, BreadClient, BreadOrder, SyncQueueItem } from '@/lib/types';
 import { v4 as uuidv4 } from 'uuid';
@@ -40,7 +41,9 @@ class iPOSDatabase extends Dexie {
             sync_queue: '++id, createdAt',
         }).upgrade(tx => {
             return tx.table('products').toCollection().modify(product => {
-                product.stockStatus = calculateStockStatus(product.quantity, product.minStockLevel);
+                if (product.stockStatus === undefined) {
+                    product.stockStatus = calculateStockStatus(product.quantity, product.minStockLevel);
+                }
             });
         });
 

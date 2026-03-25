@@ -1,3 +1,4 @@
+
 'use client';
 
 import { db } from '@/lib/database';
@@ -8,7 +9,7 @@ import { inventoryService } from './inventory.service';
 import { calculateStockStatus } from '@/lib/utils';
 
 export class StockService {
-    async addStockIntake(intakeData: { supplierName: string; invoiceNumber: string; invoiceDate: Date }, items: StockIntakeItem[]): Promise<StockIntake> {
+    async addStockIntake(intakeData: { supplierUuid?: string; supplierName: string; invoiceNumber: string; invoiceDate: Date }, items: StockIntakeItem[]): Promise<StockIntake> {
         return db.transaction('rw', db.stockIntakes, db.products, db.suppliers, db.sync_queue, db.inventoryLogs, async () => {
             const now = new Date();
             const deviceId = syncService.getLocalDeviceId();
@@ -16,7 +17,16 @@ export class StockService {
             let supplierName = intakeData.supplierName;
 
             // 1. Find or Create Supplier
-            let supplier = await db.suppliers.where('name').equalsIgnoreCase(supplierName).and(s => s.sync_status !== 'pending_delete').first();
+            let supplier: Supplier | undefined;
+            // Prioritize finding by UUID if provided.
+            if (intakeData.supplierUuid) {
+                supplier = await db.suppliers.where({ uuid: intakeData.supplierUuid }).first();
+            }
+            // Fallback to finding by name if UUID search fails or wasn't provided.
+            if (!supplier) {
+                supplier = await db.suppliers.where('name').equalsIgnoreCase(supplierName).and(s => s.sync_status !== 'pending_delete').first();
+            }
+
             if (!supplier) {
                 const newSupplierUuid = uuidv4();
                 const newSupplier: Omit<Supplier, 'id'> = {
