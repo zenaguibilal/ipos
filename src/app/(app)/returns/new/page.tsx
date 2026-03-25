@@ -4,9 +4,6 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { salesService } from '@/services/sales.service';
-import { returnService } from '@/services/return.service';
-import { inventoryService } from '@/services/inventory.service';
-import { customerService } from '@/services/customer.service';
 import type { Sale, ReturnItem } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,12 +15,13 @@ import { formatCurrency, cn } from '@/lib/utils';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { v4 as uuidv4 } from 'uuid';
+import { useAppActions } from '@/stores/appStore';
 
-type ReturnItemState = ReturnItem & { originalQuantity: number, returnQuantity: number, productUuid: string };
+type ReturnItemState = ReturnItem & { originalQuantity: number, returnQuantity: number };
 
 export default function NewReturnPage() {
     const router = useRouter();
+    const { processReturn } = useAppActions();
     const [invoiceNumber, setInvoiceNumber] = useState('');
     const [foundSale, setFoundSale] = useState<Sale | null>(null);
     const [isSearching, setIsSearching] = useState(false);
@@ -45,7 +43,7 @@ export default function NewReturnPage() {
                     productName: item.name,
                     price: item.price,
                     purchasePrice: item.purchasePrice,
-                    quantity: item.quantity, // this is the original quantity sold
+                    quantity: item.quantity, // this will become returnQuantity in the service
                     originalQuantity: item.quantity,
                     returnQuantity: 0, // start with 0 to return
                     wasRestocked: true,
@@ -71,7 +69,7 @@ export default function NewReturnPage() {
 
             if (field === 'returnQuantity') {
                 const newQty = Math.max(0, Math.min(item.originalQuantity, Number(value)));
-                newItems[index] = { ...item, returnQuantity: newQty };
+                newItems[index] = { ...item, returnQuantity: newQty, quantity: newQty };
             } else {
                 newItems[index] = { ...item, wasRestocked: value };
             }
@@ -90,19 +88,9 @@ export default function NewReturnPage() {
 
         setIsSaving(true);
         try {
-            const itemsForService: ReturnItem[] = returnItems
-                .filter(item => item.returnQuantity > 0)
-                .map(item => ({
-                    productUuid: item.productUuid,
-                    productName: item.productName,
-                    quantity: item.returnQuantity,
-                    price: item.price,
-                    purchasePrice: item.purchasePrice,
-                    wasRestocked: item.wasRestocked,
-                }));
+            const itemsForService = returnItems.filter(item => item.returnQuantity > 0);
 
-            // Orchestration logic is now in the component
-            const createdReturn = await returnService.addReturn({
+            await processReturn({
                 originalSaleUuid: foundSale.uuid,
                 items: itemsForService,
                 totalReturnValue,
@@ -111,23 +99,11 @@ export default function NewReturnPage() {
                 notes,
             });
 
-            // Adjust stock for restocked items
-            for (const item of createdReturn.items) {
-                if (item.wasRestocked && item.productUuid) {
-                    await inventoryService.adjustStock(item.productUuid, item.quantity, 'return', createdReturn.uuid);
-                }
-            }
-            
-            // Recalculate customer status
-            if (createdReturn.customerUuid) {
-                await customerService.recalculateCustomerStatus(createdReturn.customerUuid);
-            }
-
             toast.success("Retour enregistré avec succès !");
             router.push('/returns');
 
         } catch (error: any) {
-            toast.error("Erreur lors de l'enregistrement du retour.", { description: error.message });
+            // Error is already toasted by the store action
         } finally {
             setIsSaving(false);
         }
@@ -200,7 +176,7 @@ export default function NewReturnPage() {
                                     </thead>
                                     <tbody>
                                         {returnItems.map((item, index) => (
-                                            <tr key={item.productUuid + index} className="border-b">
+                                            <tr key={(item.productUuid || `custom-${index}`) + index} className="border-b">
                                                 <td className="p-2 font-medium">{item.productName}</td>
                                                 <td className="p-2 text-center">{item.originalQuantity}</td>
                                                 <td className="p-2">
@@ -218,7 +194,7 @@ export default function NewReturnPage() {
                                                     <Switch
                                                         checked={item.wasRestocked}
                                                         onCheckedChange={value => handleItemChange(index, 'wasRestocked', value)}
-                                                        disabled={item.productUuid === null}
+                                                        disabled={!item.productUuid}
                                                     />
                                                 </td>
                                             </tr>

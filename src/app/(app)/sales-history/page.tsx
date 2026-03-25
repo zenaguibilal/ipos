@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -33,6 +32,7 @@ export default function SalesHistoryPage() {
 
     const fetchSalesAndCustomers = useCallback(async () => {
         if (!isMounted || !dateRange) return;
+        setSales(undefined);
         try {
             const [salesData, customersData] = await Promise.all([
                 salesService.filterSales({
@@ -89,7 +89,7 @@ export default function SalesHistoryPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {sales.map(s => {
                     const customer = s.customerUuid ? customerMap.get(s.customerUuid) : undefined;
-                    const customerName = customer ? `${customer.firstName} ${customer.lastName}` : undefined;
+                    const customerName = customer ? `${customer.firstName} ${customer.lastName}` : 'Client de passage';
                     return (
                         <SalesHistoryCard 
                             key={s.uuid} 
@@ -132,7 +132,7 @@ export default function SalesHistoryPage() {
                 isOpen={isDetailsOpen}
                 onOpenChange={setIsDetailsOpen}
                 sale={selectedSale}
-                customerName={selectedSale?.customerUuid ? customerMap.get(selectedSale.customerUuid) ? `${customerMap.get(selectedSale.customerUuid)?.firstName} ${customerMap.get(selectedSale.customerUuid)?.lastName}` : undefined : undefined}
+                customerName={selectedSale?.customerUuid ? (customerMap.get(selectedSale.customerUuid) ? `${customerMap.get(selectedSale.customerUuid)?.firstName} ${customerMap.get(selectedSale.customerUuid)?.lastName}` : 'Client Inconnu') : 'Client de passage'}
             />
             <CancelSaleDialog 
                 isOpen={isCancelOpen}

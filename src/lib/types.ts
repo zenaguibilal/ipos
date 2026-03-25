@@ -1,4 +1,3 @@
-
 export type AppRole = 'admin' | 'manager' | 'cashier';
 
 export interface Product {
@@ -117,7 +116,7 @@ export interface Payment {
 export interface CompanyProfile {
     uuid: string;
     user_id: string;
-    companyName?: string;
+    companyName: string;
     address?: string;
     city?: string;
     zipCode?: string;

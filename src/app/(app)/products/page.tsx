@@ -2,10 +2,10 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useDebounce } from '@/hooks/useDebounce';
-import type { Product, Supplier } from '@/lib/types';
+import type { Product, Supplier, ProductImportAnalysis } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, LayoutGrid, List, Printer, Trash2, PackageCheck, PackageX, AlertTriangle, Archive, SortAsc, FileDown, FileUp, Building, Package } from 'lucide-react';
+import { Plus, Search, LayoutGrid, List, Printer, Trash2, PackageCheck, PackageX, AlertTriangle, Archive, SortAsc, FileDown, FileUp, Building, Package, Loader2 } from 'lucide-react';
 import { ProductCard } from '@/components/products/product-card';
 import { ProductTable } from '@/components/products/product-table';
 import { ProductTableSkeleton } from '@/components/products/product-table-skeleton';
@@ -14,6 +14,7 @@ import { DeleteProductDialog } from '@/components/products/delete-product-dialog
 import { DeleteMultipleProductsDialog } from '@/components/products/DeleteMultipleProductsDialog';
 import { PrintLabelsDialog } from '@/components/products/PrintLabelsDialog';
 import { InventoryStats } from '@/components/products/InventoryStats';
+import { ProductImportPreviewDialog } from '@/components/products/ProductImportPreviewDialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,6 +34,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { productService } from '@/services/product.service';
 import { supplierService } from '@/services/supplier.service';
 import { useAppStore, useIsManagerOrAdmin } from '@/stores/appStore';
+import Papa from 'papaparse';
 
 type StockStatus = 'all' | 'in_stock' | 'low_stock' | 'out_of_stock';
 
@@ -81,6 +83,12 @@ export default function ProductsPage() {
     const [categories, setCategories] = useState<string[] | undefined>(undefined);
     const [suppliers, setSuppliers] = useState<Supplier[] | undefined>(undefined);
     const isLoading = products === undefined || categories === undefined || suppliers === undefined;
+    
+    // States for CSV Import
+    const [isImportPreviewOpen, setIsImportPreviewOpen] = useState(false);
+    const [importAnalysis, setImportAnalysis] = useState<ProductImportAnalysis | null>(null);
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [isImporting, setIsImporting] = useState(false);
 
     const fetchProducts = useCallback(async () => {
         try {
@@ -134,13 +142,10 @@ export default function ProductsPage() {
     }, []);
 
     const handleDeleteProduct = useCallback(async (product: Product) => {
-        try {
-            await productService.deleteProduct(product.uuid);
-            toast.success(`Produit "${product.name}" supprimé.`);
-            fetchProducts();
-        } catch (e: any) {
-            toast.error("Suppression impossible", { description: e.message });
-        }
+        // The business logic is now in the service layer, the dialog will show the error.
+        await productService.deleteProduct(product.uuid);
+        toast.success(`Produit "${product.name}" supprimé.`);
+        fetchProducts();
     }, [fetchProducts]);
 
     const handleToggleSelection = useCallback((productUuid: string) => {
@@ -165,11 +170,45 @@ export default function ProductsPage() {
     }, [products, selectedProducts.size]);
 
     const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
-        toast.info("L'importation CSV n'est pas encore implémentée.");
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setIsAnalyzing(true);
+        Papa.parse(file, {
+            header: true,
+            skipEmptyLines: true,
+            complete: async (results) => {
+                try {
+                    const analysis = await productService.analyzeImport(results.data);
+                    setImportAnalysis(analysis);
+                    setIsImportPreviewOpen(true);
+                } catch (error: any) {
+                    toast.error("Erreur lors de l'analyse du fichier.", { description: error.message });
+                } finally {
+                    setIsAnalyzing(false);
+                    e.target.value = ''; // Reset input
+                }
+            },
+            error: (error: any) => {
+                toast.error("Erreur de lecture du fichier CSV.", { description: error.message });
+                setIsAnalyzing(false);
+            }
+        });
     };
 
-    const handleExport = async () => {
-        toast.info("Fonctionnalité d'exportation non implémentée.");
+    const handleConfirmImport = async (confirmedData: { toAdd: any[], toUpdate: any[] }) => {
+        setIsImporting(true);
+        try {
+            await productService.executeImport(confirmedData);
+            toast.success("Importation des produits terminée !");
+            setIsImportPreviewOpen(false);
+            setImportAnalysis(null);
+            onDialogSuccess(); // Refresh products and meta
+        } catch (error: any) {
+            toast.error("Erreur lors de l'importation des produits.", { description: error.message });
+        } finally {
+            setIsImporting(false);
+        }
     };
     
     const renderSkeletons = () => (
@@ -249,13 +288,14 @@ export default function ProductsPage() {
             >
                 {isManagerOrAdmin && (
                     <>
-                        <Button onClick={handleExport} variant="outline" disabled>
+                        <Button variant="outline" disabled>
                             <FileUp className="mr-2 h-4 w-4" /> Exporter (bientôt)
                         </Button>
-                        <Button asChild variant="outline" disabled>
-                            <label htmlFor="csv-importer">
-                                <FileDown className="mr-2 h-4 w-4" /> Importer (bientôt)
-                                <input type="file" id="csv-importer" accept=".csv" className="sr-only" onChange={handleFileSelected} />
+                        <Button asChild variant="outline" disabled={isAnalyzing}>
+                            <label htmlFor="csv-product-importer">
+                                {isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
+                                {isAnalyzing ? 'Analyse...' : 'Importer'}
+                                <input type="file" id="csv-product-importer" accept=".csv" className="sr-only" onChange={handleFileSelected} />
                             </label>
                         </Button>
                         <Button onClick={() => { setSelectedProduct(null); setIsProductDialogOpen(true); }}>
@@ -434,6 +474,13 @@ export default function ProductsPage() {
                             setSelectedProducts(new Set());
                             fetchProducts();
                         }}
+                    />
+                     <ProductImportPreviewDialog
+                        isOpen={isImportPreviewOpen}
+                        onOpenChange={setIsImportPreviewOpen}
+                        analysis={importAnalysis}
+                        onConfirm={handleConfirmImport}
+                        isImporting={isImporting}
                     />
                 </>
             )}

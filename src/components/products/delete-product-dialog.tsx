@@ -15,13 +15,9 @@ export function DeleteProductDialog({ isOpen, onOpenChange, product, onConfirmDe
     
     const handleConfirm = async () => {
         if (!product) return;
-        
-        // Orchestration: Check for dependencies before deleting
-        const hasLogs = await productService.hasInventoryLogs(product.uuid);
-        if (hasLogs) {
-            throw new Error("Suppression impossible: ce produit a un historique de transactions (ventes, stocks...).");
-        }
-
+        // The business logic is now in the service layer.
+        // The onConfirmDelete function (handleDeleteProduct in the parent) will call the service.
+        // The ConfirmAlertDialog will catch and display any errors thrown by the service.
         await onConfirmDelete(product);
     };
 
@@ -29,7 +25,7 @@ export function DeleteProductDialog({ isOpen, onOpenChange, product, onConfirmDe
         <ConfirmAlertDialog
             isOpen={isOpen}
             onOpenChange={onOpenChange}
-            title='Êtes-vous absolument sûr ?'
+            title='Êtes-vous absolutely sûr ?'
             description={`Cette action est irréversible. Le produit "${product?.name}" sera définitivement supprimé.`}
             onConfirm={handleConfirm}
             confirmText="Continuer et supprimer"

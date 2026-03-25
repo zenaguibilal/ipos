@@ -1,8 +1,9 @@
-
 'use client';
 import { v4 as uuidv4 } from 'uuid';
 import type { Sale, CartItem, SaleItem } from '@/lib/types';
 import { saleRepository } from '@/repositories/sale.repository';
+import { inventoryService } from './inventory.service';
+import { customerService } from './customer.service';
 import { useAppStore } from '@/stores/appStore';
 
 class SalesService {
@@ -89,16 +90,24 @@ class SalesService {
         return await saleRepository.add(newSale);
     }
 
-    async deleteSale(uuid: string): Promise<Sale> {
+    async processSaleCancellation(uuid: string): Promise<void> {
         const sale = await saleRepository.findByUuid(uuid);
         if (!sale) {
             throw new Error("Vente non trouvée.");
         }
 
+        // 1. Delete the sale record.
         await saleRepository.delete(uuid);
         
-        // Return the deleted sale so the orchestrator knows what to revert.
-        return sale;
+        // 2. Restore stock for each item in the cancelled sale.
+        for (const item of sale.items) {
+             await inventoryService.adjustStock(item.productUuid, item.quantity, 'cancellation', sale.uuid);
+        }
+
+        // 3. Recalculate customer status if a customer was associated with the sale.
+        if (sale.customerUuid) {
+            await customerService.recalculateCustomerStatus(sale.customerUuid);
+        }
     }
 }
 

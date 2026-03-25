@@ -1,7 +1,7 @@
 
 'use client';
 import { v4 as uuidv4 } from 'uuid';
-import type { Customer, Sale } from '@/lib/types';
+import type { Customer, Sale, ImportAnalysis } from '@/lib/types';
 import { customerRepository } from '@/repositories/customer.repository';
 import { saleRepository } from '@/repositories/sale.repository';
 import { returnRepository } from '@/repositories/return.repository';
@@ -80,8 +80,10 @@ class CustomerService {
     }
 
     async deleteCustomer(uuid: string): Promise<void> {
-        // The check for existing sales is now orchestrated by the calling component
-        // to avoid cross-service dependencies.
+        const sales = await saleRepository.findByCustomerUuid(uuid);
+        if (sales.length > 0) {
+            throw new Error("Impossible de supprimer un client avec un historique de ventes.");
+        }
         await customerRepository.delete(uuid);
     }
     
@@ -95,8 +97,6 @@ class CustomerService {
     }
     
     async getCustomerActivity(customerUuid: string, page: number, pageSize: number): Promise<any[]> {
-        // In a real high-performance app, this would be a single server-side query.
-        // For now, we fetch separately and combine.
         const [sales, payments, returns] = await Promise.all([
             saleRepository.findByCustomerUuid(customerUuid),
             paymentRepository.findByCustomerUuid(customerUuid),
@@ -125,18 +125,12 @@ class CustomerService {
         return { customer, unpaidSales };
     }
 
-    /**
-     * Recalculates a customer's financial status from scratch based on their entire transaction history.
-     * This is the single source of truth for customer balance, debt status, and total spent.
-     * @param customerUuid The UUID of the customer to recalculate.
-     */
     async recalculateCustomerStatus(customerUuid: string): Promise<Customer> {
         const customer = await customerRepository.findByUuid(customerUuid);
         if (!customer) throw new Error("Customer not found during recalculation.");
 
         const now = new Date();
 
-        // This would be a server-side function (RPC) in a production app for performance
         const [sales, payments, returns] = await Promise.all([
              saleRepository.findByCustomerUuid(customerUuid),
              paymentRepository.findByCustomerUuid(customerUuid),
@@ -148,10 +142,8 @@ class CustomerService {
         const totalPaidViaPayments = payments.reduce((sum, p) => sum + p.amount, 0);
         const netCreditFromReturns = returns.reduce((sum, r) => sum + (r.totalReturnValue - r.amountRefunded), 0);
         
-        // Amount paid directly on a sale is already part of sales data
         const totalPaidOnSales = sales.reduce((sum, s) => sum + s.amountPaid, 0);
         
-        // Balance calculation needs to be precise
         const newBalance = totalInvoiced - totalPaidViaPayments - totalPaidOnSales - netCreditFromReturns;
         const totalSpent = totalInvoiced;
 
@@ -174,6 +166,76 @@ class CustomerService {
         };
         
         return await customerRepository.update(customer.uuid, customerUpdate);
+    }
+
+    async analyzeImport(csvData: any[]): Promise<ImportAnalysis> {
+        const existingCustomers = await this.getCustomers();
+        const existingNames = new Map(existingCustomers.map(c => [c.searchName, c]));
+
+        const analysis: ImportAnalysis = {
+            customersToAdd: [],
+            customersToUpdate: [],
+            skippedRows: [],
+            errorRows: [],
+            totalRows: csvData.length,
+        };
+
+        for (const row of csvData) {
+            const firstName = row.firstName || row.prenom || row.first_name;
+            const lastName = row.lastName || row.nom || row.last_name;
+
+            if (!firstName || !lastName) {
+                analysis.errorRows.push({ ...row, error: "Prénom ou nom manquant" });
+                continue;
+            }
+            
+            const searchName = `${firstName} ${lastName}`.toLowerCase().trim();
+            const existingCustomer = existingNames.get(searchName);
+
+            const customerData = {
+                firstName,
+                lastName,
+                phone: row.phone || row.telephone,
+                address: row.address || row.adresse,
+                creditLimit: row.creditLimit ? parseFloat(row.creditLimit) : undefined,
+                outstandingBalance: row.outstandingBalance ? parseFloat(row.outstandingBalance) : undefined,
+            };
+
+            if (existingCustomer) {
+                analysis.customersToUpdate.push({ ...customerData, uuid: existingCustomer.uuid });
+            } else {
+                analysis.customersToAdd.push(customerData);
+            }
+        }
+        return analysis;
+    }
+
+    async executeImport(confirmedData: { toAdd: any[], toUpdate: any[] }): Promise<void> {
+        const userId = this.getUserId();
+        const now = new Date();
+
+        const toAdd = confirmedData.toAdd.map(c => ({
+            ...c,
+            uuid: uuidv4(),
+            user_id: userId,
+            searchName: `${c.firstName} ${c.lastName}`.toLowerCase().trim(),
+            totalSpent: 0,
+            outstandingBalance: c.outstandingBalance || 0,
+            createdAt: now,
+            updatedAt: now,
+        }));
+
+         const toUpdate = confirmedData.toUpdate.map(c => ({
+            ...c,
+            searchName: `${c.firstName} ${c.lastName}`.toLowerCase().trim(),
+            updatedAt: now,
+        }));
+        
+        const upsertData = [...toAdd, ...toUpdate];
+        
+        if (upsertData.length > 0) {
+            await customerRepository.bulkUpsert(upsertData);
+        }
     }
 }
 

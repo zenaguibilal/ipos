@@ -18,15 +18,14 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { ProductIntakeCombobox } from '@/components/stock/ProductIntakeCombobox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { stockService } from '@/services/stock.service';
 import { supplierService } from '@/services/supplier.service';
-import { productService } from '@/services/product.service';
-import { inventoryService } from '@/services/inventory.service';
-import { useIsManagerOrAdmin } from '@/stores/appStore';
+import { useAppActions, useIsManagerOrAdmin } from '@/stores/appStore';
 
 export default function NewStockIntakePage() {
     const router = useRouter();
     const isManagerOrAdmin = useIsManagerOrAdmin();
+    const { processStockIntake } = useAppActions();
+    
     const [supplierUuid, setSupplierUuid] = useState<string>('');
     const [supplierName, setSupplierName] = useState('');
     const [supplierSearch, setSupplierSearch] = useState('');
@@ -155,67 +154,19 @@ export default function NewStockIntakePage() {
 
         setIsSaving(true);
         try {
-            // --- Orchestration Logic ---
-            // 1. Find or create supplier
-            const supplier = await supplierService.findOrCreateSupplier(supplierName, supplierUuid);
-
-            // 2. Create the stock intake record
-            const intakeItems = items.map(item => ({
-                productUuid: item.productUuid,
-                productName: item.name,
-                quantityReceived: item.quantity,
-                quantityDamaged: item.quantityDamaged,
-                purchasePrice: item.purchasePrice,
-            }));
-            const createdIntake = await stockService.addStockIntake({
-                supplierUuid: supplier.uuid,
+            await processStockIntake({
+                supplierName,
+                supplierUuid,
                 invoiceNumber,
                 invoiceDate: invoiceDate || new Date(),
-                items: intakeItems,
-                totalValue,
+                items,
+                totalValue
             });
-
-            // 3. Process each item: create new product OR update existing stock
-            for (const item of items) {
-                const effectiveQuantity = item.quantity - item.quantityDamaged;
-                if (effectiveQuantity <= 0 && !item.isNew) continue;
-                
-                let productUuidToAdjust = item.productUuid;
-
-                if (item.isNew) {
-                    const newProductData: Omit<Product, 'uuid' | 'user_id'> = {
-                        name: item.name,
-                        category: item.category || 'Non classé',
-                        price: item.price,
-                        purchasePrice: item.purchasePrice,
-                        quantity: 0, // Will be set by adjustStock
-                        minStockLevel: 10,
-                        barcodes: item.barcodes,
-                        supplierUuid: supplier.uuid,
-                        dateMajPrix: new Date(),
-                    };
-                    const newProduct = await productService.addProduct(newProductData);
-                    productUuidToAdjust = newProduct.uuid;
-
-                } else if (item.productUuid) {
-                    // Update prices first for existing product
-                    await productService.updateProduct(item.productUuid, {
-                        purchasePrice: item.purchasePrice,
-                        price: item.price,
-                        dateMajPrix: new Date(),
-                    });
-                }
-
-                // Adjust stock for the new or existing product
-                if (productUuidToAdjust) {
-                    await inventoryService.adjustStock(productUuidToAdjust, effectiveQuantity, 'stock_intake', createdIntake.uuid);
-                }
-            }
 
             toast.success("Réception de stock enregistrée avec succès !");
             router.push('/stock');
         } catch (error: any) {
-            toast.error("Erreur lors de l'enregistrement", { description: error.message });
+            // Error is already toasted by the store action
         } finally {
             setIsSaving(false);
         }

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { CartDisplay } from '@/components/sell/CartDisplay';
@@ -16,7 +15,6 @@ import { AddPaymentDialog } from '@/components/payments/AddPaymentDialog';
 import { CartTotalBar } from '@/components/sell/CartTotalBar';
 import type { Product, Customer } from '@/lib/types';
 import { useAppStore, useAppActions } from '@/stores/appStore';
-import { customerService } from '@/services/customer.service';
 
 export default function SellPage() {
     const { cart, cartCustomer, isCartLoading } = useAppStore(state => ({
@@ -24,7 +22,7 @@ export default function SellPage() {
         cartCustomer: state.cartCustomer,
         isCartLoading: state.isCartLoading,
     }));
-    const { addProductToCart } = useAppActions();
+    const { addProductToCart, setCartCustomer } = useAppActions();
     
     const [isProductSheetOpen, setIsProductSheetOpen] = useState(false);
     const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
@@ -38,25 +36,11 @@ export default function SellPage() {
         cartItemsCountRef.current = cart?.items.length ?? 0;
     }, [cart?.items.length]);
 
-    const handleSuccessfulPayment = useCallback(async () => {
-        if (!cartCustomer) return;
-        try {
-            // Re-fetch customer to update state after payment
-            const updatedCustomer = await customerService.recalculateCustomerStatus(cartCustomer.uuid);
-            useAppActions.setCartCustomer(updatedCustomer || null);
-        } catch (error) {
-            console.error("Failed to refetch customer data", error);
-            toast.error("Impossible de rafraîchir les données du client.");
-        }
-    }, [cartCustomer]);
+    const handleSuccessfulPayment = useCallback(async (updatedCustomer: Customer) => {
+        toast.success("Paiement enregistré. Mise à jour du statut du client...");
+        setCartCustomer(updatedCustomer);
+    }, [setCartCustomer]);
 
-    const handleSaleFinalized = useCallback(() => {
-        // The store action now handles clearing the cart.
-        // We might want to refresh the customer here too if they were involved.
-        if (cart.customerUuid) {
-            handleSuccessfulPayment();
-        }
-    }, [cart.customerUuid, handleSuccessfulPayment]);
 
     const handleKeyDown = useCallback((e: KeyboardEvent) => {
         if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
@@ -104,8 +88,12 @@ export default function SellPage() {
     }
     
     const handleProductSelected = (product: Product, quantity: number) => {
-        addProductToCart(product, quantity);
-        setIsProductSheetOpen(false);
+        try {
+            addProductToCart(product, quantity);
+            setIsProductSheetOpen(false);
+        } catch(error: any) {
+            toast.error(error.message);
+        }
     }
 
     return (
@@ -155,7 +143,7 @@ export default function SellPage() {
                             <CardContent className="p-4 sm:p-6">
                                 <SaleActions
                                     ref={saleActionsRef}
-                                    onSaleFinalized={handleSaleFinalized}
+                                    onSaleFinalized={() => { /* Store now handles all post-sale logic */}}
                                 />
                             </CardContent>
                         </Card>

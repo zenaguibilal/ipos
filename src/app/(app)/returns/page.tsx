@@ -34,6 +34,7 @@ export default function ReturnsPage() {
     
     const fetchReturnsAndCustomers = useCallback(async () => {
         if (!isMounted || !dateRange) return;
+        setReturns(undefined);
         try {
             const [returnsData, customersData] = await Promise.all([
                 returnService.filterReturns({

@@ -2,7 +2,7 @@
 import { create } from 'zustand';
 import { produce } from 'immer';
 import type { Session, User } from '@supabase/supabase-js';
-import type { Cart, Customer, CompanyProfile, AppRole, Product, CartItem } from '@/lib/types';
+import type { Cart, Customer, CompanyProfile, Product, CartItem, ReturnItem, StockIntakeItem } from '@/lib/types';
 import { toast } from 'sonner';
 
 import { authService } from '@/services/auth.service';
@@ -10,6 +10,9 @@ import { salesService } from '@/services/sales.service';
 import { customerService } from '@/services/customer.service';
 import { inventoryService } from '@/services/inventory.service';
 import { profileService } from '@/services/profile.service';
+import { returnService } from '@/services/return.service';
+import { supplierService } from '@/services/supplier.service';
+import { stockService } from '@/services/stock.service';
 
 // Main State Interface
 interface AppState {
@@ -44,6 +47,22 @@ interface AppActions {
         payments: { method: 'cash' | 'card' | 'other'; amount: number }[];
         dueDate?: Date;
     }) => Promise<void>;
+    processReturn: (returnData: {
+        originalSaleUuid: string,
+        items: ReturnItem[],
+        totalReturnValue: number,
+        amountRefunded: number,
+        customerUuid?: string,
+        notes?: string
+    }) => Promise<void>;
+    processStockIntake: (intakeData: {
+        supplierName: string,
+        supplierUuid?: string,
+        invoiceNumber: string,
+        invoiceDate: Date,
+        items: StockIntakeItem[],
+        totalValue: number
+    }) => Promise<void>;
     setProductViewMode: (mode: 'grid' | 'list') => void;
 }
 
@@ -74,29 +93,14 @@ export const useAppStore = create<AppState>()((set, get) => ({
     actions: {
         setSession: (session) => set({ session, user: session?.user ?? null, sessionLoading: false }),
         signIn: async (email, password) => {
-            try {
-                await authService.signIn(email, password);
-            } catch (error: any) {
-                toast.error(error.message || "La connexion a échoué.");
-                throw error;
-            }
+            await authService.signIn(email, password);
         },
         signUp: async (email, password) => {
-            try {
-                await authService.signUp(email, password);
-            } catch (error: any) {
-                toast.error(error.message || "L'inscription a échoué.");
-                throw error;
-            }
+            await authService.signUp(email, password);
         },
         signOut: async () => {
-            try {
-                await authService.signOut();
-                set({ session: null, user: null, profile: null, cart: initialCart, cartCustomer: null });
-            } catch (error: any) {
-                toast.error(error.message || "La déconnexion a échoué.");
-                throw error;
-            }
+            await authService.signOut();
+            set({ session: null, user: null, profile: null, cart: initialCart, cartCustomer: null });
         },
         fetchProfile: async () => {
             if (get().profile) return; // Fetch only once
@@ -104,8 +108,8 @@ export const useAppStore = create<AppState>()((set, get) => ({
                 set({ isSettingsLoading: true });
                 const profile = await profileService.getProfile();
                 set({ profile });
-            } catch (error) {
-                console.error("Failed to fetch profile", error);
+            } catch (error: any) {
+                toast.error("Impossible de charger le profil de l'entreprise.", { description: error.message });
             } finally {
                 set({ isSettingsLoading: false });
             }
@@ -187,6 +191,75 @@ export const useAppStore = create<AppState>()((set, get) => ({
             } catch (error: any) {
                 console.error("Failed to finalize sale:", error);
                 toast.error("Échec de la finalisation de la vente", { description: error.message });
+                throw error;
+            }
+        },
+        processReturn: async (returnData) => {
+             try {
+                const newReturn = await returnService.addReturn(returnData);
+                for (const item of newReturn.items) {
+                    if (item.wasRestocked && item.productUuid) {
+                        await inventoryService.adjustStock(item.productUuid, item.quantity, 'return', newReturn.uuid);
+                    }
+                }
+                if (newReturn.customerUuid) {
+                    await customerService.recalculateCustomerStatus(newReturn.customerUuid);
+                }
+            } catch (error: any) {
+                toast.error("Échec du traitement du retour.", { description: error.message });
+                throw error;
+            }
+        },
+        processStockIntake: async (intakeData) => {
+            try {
+                const supplier = await supplierService.findOrCreateSupplier(intakeData.supplierName, intakeData.supplierUuid);
+
+                const finalItems = [];
+                for (const item of intakeData.items) {
+                    let productUuid = item.productUuid;
+                    if (item.isNew) {
+                        const newProduct = await productService.addProduct({
+                            name: item.name,
+                            category: item.category,
+                            price: item.price,
+                            purchasePrice: item.purchasePrice,
+                            quantity: 0, // Initial quantity is 0, will be adjusted by inventory service
+                            minStockLevel: 10,
+                            supplierUuid: supplier.uuid,
+                        });
+                        productUuid = newProduct.uuid;
+                    } else {
+                        // Update product purchase price if it has changed
+                        const p = await inventoryService.getProductInfo(productUuid!);
+                        if (p && p.purchasePrice !== item.purchasePrice) {
+                            await productService.updateProduct(p.uuid, { purchasePrice: item.purchasePrice, dateMajPrix: new Date() });
+                        }
+                    }
+
+                    if (productUuid) {
+                        const quantityReceived = item.quantity - item.quantityDamaged;
+                        if (quantityReceived > 0) {
+                            await inventoryService.adjustStock(productUuid, quantityReceived, 'stock_intake');
+                        }
+                        finalItems.push({
+                            productUuid: productUuid,
+                            productName: item.name,
+                            quantityReceived: item.quantity,
+                            quantityDamaged: item.quantityDamaged,
+                            purchasePrice: item.purchasePrice,
+                        });
+                    }
+                }
+
+                await stockService.addStockIntake({
+                    supplierUuid: supplier.uuid,
+                    invoiceNumber: intakeData.invoiceNumber,
+                    invoiceDate: intakeData.invoiceDate,
+                    items: finalItems,
+                    totalValue: intakeData.totalValue,
+                });
+            } catch (error: any) {
+                toast.error("Échec du traitement de la réception de stock.", { description: error.message });
                 throw error;
             }
         },

@@ -39,9 +39,9 @@ export default function BreadPage() {
     }, [formattedDate, fetchAndGenerateOrders]);
 
 
-    const handleDateChange = (days: number) => {
+    const handleDateChange = useCallback((days: number) => {
         setCurrentDate(prev => addDays(prev, days));
-    };
+    }, []);
 
     const isToday = formatDateToYYYYMMDD(new Date()) === formattedDate;
     const isLoading = orders === undefined || isGenerating;

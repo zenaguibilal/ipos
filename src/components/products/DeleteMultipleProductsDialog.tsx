@@ -16,15 +16,8 @@ export function DeleteMultipleProductsDialog({ isOpen, onOpenChange, productUuid
     const handleDelete = async () => {
         if (productUuids.length === 0) return;
 
-        // Orchestration: check for dependencies before deleting
-        for (const uuid of productUuids) {
-            const hasLogs = await productService.hasInventoryLogs(uuid);
-            if (hasLogs) {
-                const product = await productService.getProductByUuid(uuid);
-                throw new Error(`Suppression impossible: Le produit "${product?.name || 'inconnu'}" a un historique de transactions.`);
-            }
-        }
-        
+        // The business logic is now in the service layer.
+        // The ConfirmAlertDialog will catch and display any errors thrown by the service.
         await productService.bulkDelete(productUuids);
         toast.success(`${productUuids.length} produit(s) supprimé(s) avec succès.`);
         onSuccess();

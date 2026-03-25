@@ -92,7 +92,7 @@ export function ProductImportPreviewDialog({ isOpen, onOpenChange, analysis, onC
     const handleToggleAll = (checked: boolean) => {
         const filteredKeys = new Set(filteredItems.map(i => i.key));
         setEditableItems(prev => prev.map(item => 
-            filteredKeys.has(item.key) ? { ...item, include: checked } : item
+            (filteredKeys.has(item.key) && item.status !== 'error') ? { ...item, include: checked } : item
         ));
     };
 
@@ -182,7 +182,7 @@ export function ProductImportPreviewDialog({ isOpen, onOpenChange, analysis, onC
                             <TableHeader className="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
                                 <TableRow>
                                     <TableHead className="w-12"><Checkbox 
-                                        checked={filteredItems.length > 0 && filteredItems.every(i => i.include)}
+                                        checked={filteredItems.length > 0 && filteredItems.filter(i => i.status !== 'error').every(i => i.include)}
                                         onCheckedChange={(checked) => handleToggleAll(!!checked)}
                                     /></TableHead>
                                     <TableHead>Nom</TableHead>
@@ -214,7 +214,7 @@ export function ProductImportPreviewDialog({ isOpen, onOpenChange, analysis, onC
                                         <TableCell>
                                             {item.status === 'new' && <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300">Nouveau</Badge>}
                                             {item.status === 'update' && <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300">Mise à jour</Badge>}
-                                            {item.status === 'error' && <Badge variant="destructive">Erreur</Badge>}
+                                            {item.status === 'error' && <Badge variant="destructive">{item.data.error || 'Erreur'}</Badge>}
                                         </TableCell>
                                         <TableCell>
                                             <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleRemoveItem(item.key)}>

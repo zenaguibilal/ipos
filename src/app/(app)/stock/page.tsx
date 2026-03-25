@@ -34,6 +34,7 @@ export default function StockPage() {
 
     const fetchStockIntakesAndSuppliers = useCallback(async () => {
         if (!isMounted || !dateRange?.from) return;
+        setStockIntakes(undefined);
         try {
             const [intakesData, suppliersData] = await Promise.all([
                 stockService.getStockIntakes({
@@ -45,7 +46,7 @@ export default function StockPage() {
             ]);
 
             setStockIntakes(intakesData);
-            setSupplierMap(new Map(suppliersData.map(s => [s.uuid, s.name])));
+            setSupplierMap(new Map(suppliersData.map(s => [s.uuid, s])));
         } catch (error: any) {
             console.error(error);
             toast.error("Impossible de charger l'historique des réceptions.", { description: error.message });
@@ -136,7 +137,7 @@ export default function StockPage() {
                 isOpen={isDetailsOpen}
                 onOpenChange={setIsDetailsOpen}
                 intake={selectedIntake}
-                supplierName={selectedIntake?.supplierUuid ? supplierMap.get(selectedIntake.supplierUuid)?.name : undefined}
+                supplierName={selectedIntake?.supplierUuid ? supplierMap.get(selectedIntake.supplierUuid)?.name : 'Fournisseur Inconnu'}
             />
         </div>
     );

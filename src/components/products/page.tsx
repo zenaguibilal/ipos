@@ -3,10 +3,10 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useDebounce } from '@/hooks/useDebounce';
-import type { Product, Supplier } from '@/lib/types';
+import type { Product, Supplier, ProductImportAnalysis } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, LayoutGrid, List, Printer, Trash2, PackageCheck, PackageX, AlertTriangle, Archive, SortAsc, FileDown, FileUp, Building, Package } from 'lucide-react';
+import { Plus, Search, LayoutGrid, List, Printer, Trash2, PackageCheck, PackageX, AlertTriangle, Archive, SortAsc, FileDown, FileUp, Building, Package, Loader2 } from 'lucide-react';
 import { ProductCard } from '@/components/products/product-card';
 import { ProductTable } from '@/components/products/product-table';
 import { ProductTableSkeleton } from '@/components/products/product-table-skeleton';
@@ -15,6 +15,7 @@ import { DeleteProductDialog } from '@/components/products/delete-product-dialog
 import { DeleteMultipleProductsDialog } from '@/components/products/DeleteMultipleProductsDialog';
 import { PrintLabelsDialog } from '@/components/products/PrintLabelsDialog';
 import { InventoryStats } from '@/components/products/InventoryStats';
+import { ProductImportPreviewDialog } from '@/components/products/ProductImportPreviewDialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,7 +34,8 @@ import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton';
 import { productService } from '@/services/product.service';
 import { supplierService } from '@/services/supplier.service';
-import { useAppStore } from '@/stores/appStore';
+import { useAppStore, useIsManagerOrAdmin } from '@/stores/appStore';
+import Papa from 'papaparse';
 
 type StockStatus = 'all' | 'in_stock' | 'low_stock' | 'out_of_stock';
 
@@ -56,6 +58,7 @@ const sortOptions: { [key: string]: string } = {
 };
 
 export default function ProductsPage() {
+    const isManagerOrAdmin = useIsManagerOrAdmin();
     const { viewMode, setViewMode } = useAppStore(state => ({
         viewMode: state.productViewMode,
         setViewMode: state.actions.setProductViewMode,
@@ -81,6 +84,12 @@ export default function ProductsPage() {
     const [categories, setCategories] = useState<string[] | undefined>(undefined);
     const [suppliers, setSuppliers] = useState<Supplier[] | undefined>(undefined);
     const isLoading = products === undefined || categories === undefined || suppliers === undefined;
+    
+    // States for CSV Import
+    const [isImportPreviewOpen, setIsImportPreviewOpen] = useState(false);
+    const [importAnalysis, setImportAnalysis] = useState<ProductImportAnalysis | null>(null);
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [isImporting, setIsImporting] = useState(false);
 
     const fetchProducts = useCallback(async () => {
         try {
@@ -92,8 +101,8 @@ export default function ProductsPage() {
                 sortBy 
             });
             setProducts(data);
-        } catch(error) {
-            toast.error("Impossible de charger les produits.");
+        } catch(error: any) {
+            toast.error("Impossible de charger les produits.", { description: error.message });
             console.error(error);
         }
     }, [debouncedSearchQuery, selectedCategory, selectedSupplier, stockStatus, sortBy]);
@@ -110,8 +119,8 @@ export default function ProductsPage() {
             ]);
             setCategories(cats);
             setSuppliers(sups);
-        } catch(error) {
-            toast.error("Impossible de charger les catégories et fournisseurs.");
+        } catch(error: any) {
+            toast.error("Impossible de charger les métadonnées.", { description: error.message });
         }
     }, []);
 
@@ -134,6 +143,7 @@ export default function ProductsPage() {
     }, []);
 
     const handleDeleteProduct = useCallback(async (product: Product) => {
+        // The business logic is now in the service layer, the dialog will show the error.
         await productService.deleteProduct(product.uuid);
         toast.success(`Produit "${product.name}" supprimé.`);
         fetchProducts();
@@ -161,11 +171,45 @@ export default function ProductsPage() {
     }, [products, selectedProducts.size]);
 
     const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
-        toast.info("L'importation CSV n'est pas encore implémentée.");
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setIsAnalyzing(true);
+        Papa.parse(file, {
+            header: true,
+            skipEmptyLines: true,
+            complete: async (results) => {
+                try {
+                    const analysis = await productService.analyzeImport(results.data);
+                    setImportAnalysis(analysis);
+                    setIsImportPreviewOpen(true);
+                } catch (error: any) {
+                    toast.error("Erreur lors de l'analyse du fichier.", { description: error.message });
+                } finally {
+                    setIsAnalyzing(false);
+                    e.target.value = ''; // Reset input
+                }
+            },
+            error: (error: any) => {
+                toast.error("Erreur de lecture du fichier CSV.", { description: error.message });
+                setIsAnalyzing(false);
+            }
+        });
     };
 
-    const handleExport = async () => {
-        toast.info("Fonctionnalité d'exportation non implémentée.");
+    const handleConfirmImport = async (confirmedData: { toAdd: any[], toUpdate: any[] }) => {
+        setIsImporting(true);
+        try {
+            await productService.executeImport(confirmedData);
+            toast.success("Importation des produits terminée !");
+            setIsImportPreviewOpen(false);
+            setImportAnalysis(null);
+            onDialogSuccess(); // Refresh products and meta
+        } catch (error: any) {
+            toast.error("Erreur lors de l'importation des produits.", { description: error.message });
+        } finally {
+            setIsImporting(false);
+        }
     };
     
     const renderSkeletons = () => (
@@ -192,7 +236,7 @@ export default function ProductsPage() {
                     title="Aucun produit trouvé"
                     description="Essayez d'ajuster votre recherche ou vos filtres, ou ajoutez un nouveau produit."
                 >
-                     <Button onClick={() => setIsProductDialogOpen(true)}>
+                     <Button onClick={() => setIsProductDialogOpen(true)} disabled={!isManagerOrAdmin}>
                         <Plus className="mr-2 h-4 w-4" /> Ajouter un produit
                     </Button>
                 </EmptyState>
@@ -243,18 +287,23 @@ export default function ProductsPage() {
                 title="Gestion des Produits"
                 description="Recherchez, filtrez et gérez votre inventaire."
             >
-                <Button onClick={handleExport} variant="outline" disabled>
-                    <FileUp className="mr-2 h-4 w-4" /> Exporter (bientôt)
-                </Button>
-                <Button asChild variant="outline" disabled>
-                    <label htmlFor="csv-importer">
-                        <FileDown className="mr-2 h-4 w-4" /> Importer (bientôt)
-                        <input type="file" id="csv-importer" accept=".csv" className="sr-only" onChange={handleFileSelected} />
-                    </label>
-                </Button>
-                <Button onClick={() => { setSelectedProduct(null); setIsProductDialogOpen(true); }}>
-                    <Plus className="mr-2 h-4 w-4" /> Ajouter
-                </Button>
+                {isManagerOrAdmin && (
+                    <>
+                        <Button variant="outline" disabled>
+                            <FileUp className="mr-2 h-4 w-4" /> Exporter (bientôt)
+                        </Button>
+                        <Button asChild variant="outline" disabled={isAnalyzing}>
+                            <label htmlFor="csv-product-importer">
+                                {isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
+                                {isAnalyzing ? 'Analyse...' : 'Importer'}
+                                <input type="file" id="csv-product-importer" accept=".csv" className="sr-only" onChange={handleFileSelected} />
+                            </label>
+                        </Button>
+                        <Button onClick={() => { setSelectedProduct(null); setIsProductDialogOpen(true); }}>
+                            <Plus className="mr-2 h-4 w-4" /> Ajouter
+                        </Button>
+                    </>
+                )}
             </PageHeader>
 
             <InventoryStats products={products} isLoading={isLoading} />
@@ -367,62 +416,75 @@ export default function ProductsPage() {
                 </div>
             </div>
 
-             <div className="flex flex-col sm:flex-row gap-2 justify-between items-center bg-card border rounded-lg p-3">
-                <div className="flex items-center gap-3">
-                    <Checkbox
-                        id="select-all"
-                        checked={!isLoading && products && products.length > 0 && selectedProducts.size === products.length}
-                        onCheckedChange={handleToggleSelectAll}
-                        disabled={isLoading || !products || products.length === 0}
-                    />
-                    <label htmlFor="select-all" className="text-sm font-medium">
-                        {selectedProducts.size > 0 ? `${selectedProducts.size} sélectionné(s)` : "Tout sélectionner"}
-                    </label>
-                </div>
-                {selectedProducts.size > 0 && (
-                    <div className="flex gap-2">
-                        <Button variant="outline" onClick={() => setIsPrintDialogOpen(true)}>
-                            <Printer className="mr-2 h-4 w-4" /> Imprimer
-                        </Button>
-                        <Button variant="destructive" onClick={() => setIsBulkDeleteDialogOpen(true)}>
-                            <Trash2 className="mr-2 h-4 w-4" /> Supprimer
-                        </Button>
+            {isManagerOrAdmin && (
+                <div className="flex flex-col sm:flex-row gap-2 justify-between items-center bg-card border rounded-lg p-3">
+                    <div className="flex items-center gap-3">
+                        <Checkbox
+                            id="select-all"
+                            checked={!isLoading && products && products.length > 0 && selectedProducts.size === products.length}
+                            onCheckedChange={handleToggleSelectAll}
+                            disabled={isLoading || !products || products.length === 0}
+                        />
+                        <label htmlFor="select-all" className="text-sm font-medium">
+                            {selectedProducts.size > 0 ? `${selectedProducts.size} sélectionné(s)` : "Tout sélectionner"}
+                        </label>
                     </div>
-                )}
-            </div>
+                    {selectedProducts.size > 0 && (
+                        <div className="flex gap-2">
+                            <Button variant="outline" onClick={() => setIsPrintDialogOpen(true)}>
+                                <Printer className="mr-2 h-4 w-4" /> Imprimer
+                            </Button>
+                            <Button variant="destructive" onClick={() => setIsBulkDeleteDialogOpen(true)}>
+                                <Trash2 className="mr-2 h-4 w-4" /> Supprimer
+                            </Button>
+                        </div>
+                    )}
+                </div>
+            )}
             
             <div>
                {renderContent()}
             </div>
 
-            <ProductDialog 
-                isOpen={isProductDialogOpen}
-                onOpenChange={setIsProductDialogOpen}
-                product={selectedProduct}
-                categories={categories || []}
-                suppliers={suppliers || []}
-                onSuccess={onDialogSuccess}
-            />
-            <DeleteProductDialog 
-                isOpen={isDeleteDialogOpen}
-                onOpenChange={setIsDeleteDialogOpen}
-                product={selectedProduct}
-                onConfirmDelete={handleDeleteProduct}
-            />
-            <PrintLabelsDialog
-                isOpen={isPrintDialogOpen}
-                onOpenChange={setIsPrintDialogOpen}
-                productUuids={Array.from(selectedProducts)}
-            />
-             <DeleteMultipleProductsDialog
-                isOpen={isBulkDeleteDialogOpen}
-                onOpenChange={setIsBulkDeleteDialogOpen}
-                productUuids={Array.from(selectedProducts)}
-                onSuccess={() => {
-                    setSelectedProducts(new Set());
-                    fetchProducts();
-                }}
-            />
+            {isManagerOrAdmin && (
+                <>
+                    <ProductDialog 
+                        isOpen={isProductDialogOpen}
+                        onOpenChange={setIsProductDialogOpen}
+                        product={selectedProduct}
+                        categories={categories || []}
+                        suppliers={suppliers || []}
+                        onSuccess={onDialogSuccess}
+                    />
+                    <DeleteProductDialog 
+                        isOpen={isDeleteDialogOpen}
+                        onOpenChange={setIsDeleteDialogOpen}
+                        product={selectedProduct}
+                        onConfirmDelete={handleDeleteProduct}
+                    />
+                    <PrintLabelsDialog
+                        isOpen={isPrintDialogOpen}
+                        onOpenChange={setIsPrintDialogOpen}
+                        productUuids={Array.from(selectedProducts)}
+                    />
+                     <DeleteMultipleProductsDialog
+                        isOpen={isBulkDeleteDialogOpen}
+                        onOpenChange={setIsBulkDeleteDialogOpen}
+                        productUuids={Array.from(selectedProducts)}
+                        onSuccess={() => {
+                            setSelectedProducts(new Set());
+                            fetchProducts();
+                        }}
+                    />
+                     <ProductImportPreviewDialog
+                        isOpen={isImportPreviewOpen}
+                        onOpenChange={setIsImportPreviewOpen}
+                        analysis={importAnalysis}
+                        onConfirm={handleConfirmImport}
+                        isImporting={isImporting}
+                    />
+                </>
+            )}
         </div>
     );
 }

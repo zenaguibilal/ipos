@@ -2,10 +2,10 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { useDebounce } from '@/hooks/useDebounce';
-import type { Customer } from '@/lib/types';
+import type { Customer, ImportAnalysis } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, Users, FileDown } from 'lucide-react';
+import { Plus, Search, Users, FileDown, Loader2 } from 'lucide-react';
 import { CustomerCard } from '@/components/customers/customer-card';
 import { CustomerDialog } from '@/components/customers/customer-dialog';
 import { DeleteCustomerDialog } from '@/components/customers/delete-customer-dialog';
@@ -18,6 +18,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/card';
 import { customerService } from '@/services/customer.service';
 import { useIsManagerOrAdmin } from '@/stores/appStore';
+import { ImportPreviewDialog } from '@/components/customers/import-preview-dialog';
+import Papa from 'papaparse';
 
 type FilterStatus = 'all' | 'has_debt' | 'overdue' | 'over_limit';
 
@@ -33,6 +35,12 @@ export default function CustomersPage() {
 
     const [customers, setCustomers] = useState<Customer[] | undefined>(undefined);
     const isLoading = customers === undefined;
+
+    // States for CSV Import
+    const [isImportPreviewOpen, setIsImportPreviewOpen] = useState(false);
+    const [importAnalysis, setImportAnalysis] = useState<ImportAnalysis | null>(null);
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [isImporting, setIsImporting] = useState(false);
 
     const fetchCustomers = useCallback(async () => {
         setCustomers(undefined); // Set to loading state
@@ -59,6 +67,49 @@ export default function CustomersPage() {
         setSelectedCustomer(customer);
         setIsDeleteDialogOpen(true);
     }, []);
+
+    const handleFileSelected = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        setIsAnalyzing(true);
+        Papa.parse(file, {
+            header: true,
+            skipEmptyLines: true,
+            complete: async (results) => {
+                try {
+                    const analysis = await customerService.analyzeImport(results.data);
+                    setImportAnalysis(analysis);
+                    setIsImportPreviewOpen(true);
+                } catch (error: any) {
+                    toast.error("Erreur lors de l'analyse du fichier.", { description: error.message });
+                } finally {
+                    setIsAnalyzing(false);
+                    // Reset file input to allow re-uploading the same file
+                    event.target.value = '';
+                }
+            },
+            error: (error: any) => {
+                toast.error("Erreur de lecture du fichier CSV.", { description: error.message });
+                setIsAnalyzing(false);
+            }
+        });
+    };
+
+    const handleConfirmImport = async (confirmedData: { toAdd: any[], toUpdate: any[] }) => {
+        setIsImporting(true);
+        try {
+            await customerService.executeImport(confirmedData);
+            toast.success("Importation terminée avec succès !");
+            setIsImportPreviewOpen(false);
+            setImportAnalysis(null);
+            fetchCustomers();
+        } catch (error: any) {
+            toast.error("Erreur lors de l'importation des données.", { description: error.message });
+        } finally {
+            setIsImporting(false);
+        }
+    };
     
     const renderSkeletons = () => (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -105,10 +156,11 @@ export default function CustomersPage() {
                 title="Gestion des Clients"
                 description="Recherchez, ajoutez et gérez vos clients."
             >
-                <Button asChild variant="outline" disabled={!isManagerOrAdmin}>
+                <Button asChild variant="outline" disabled={!isManagerOrAdmin || isAnalyzing}>
                     <label htmlFor="csv-importer">
-                        <FileDown className="mr-2 h-4 w-4" /> Importer (bientôt)
-                        <input type="file" id="csv-importer" accept=".csv" className="sr-only" />
+                        {isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
+                        {isAnalyzing ? 'Analyse...' : 'Importer'}
+                        <input type="file" id="csv-importer" accept=".csv" className="sr-only" onChange={handleFileSelected} />
                     </label>
                 </Button>
                 <Button onClick={() => { setSelectedCustomer(null); setIsCustomerDialogOpen(true); }}>
@@ -155,13 +207,23 @@ export default function CustomersPage() {
                 customer={selectedCustomer}
                 onSuccess={fetchCustomers}
             />
+            
             {isManagerOrAdmin && (
-                <DeleteCustomerDialog 
-                    isOpen={isDeleteDialogOpen}
-                    onOpenChange={setIsDeleteDialogOpen}
-                    customer={selectedCustomer}
-                    onSuccess={fetchCustomers}
-                />
+                <>
+                    <DeleteCustomerDialog 
+                        isOpen={isDeleteDialogOpen}
+                        onOpenChange={setIsDeleteDialogOpen}
+                        customer={selectedCustomer}
+                        onSuccess={fetchCustomers}
+                    />
+                    <ImportPreviewDialog
+                        isOpen={isImportPreviewOpen}
+                        onOpenChange={setIsImportPreviewOpen}
+                        analysis={importAnalysis}
+                        onConfirm={handleConfirmImport}
+                        isImporting={isImporting}
+                    />
+                </>
             )}
         </div>
     );

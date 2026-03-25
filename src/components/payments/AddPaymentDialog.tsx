@@ -12,13 +12,12 @@ import { formatCurrency } from '@/lib/utils';
 import { Textarea } from '../ui/textarea';
 import { DatePicker } from '../ui/date-picker';
 import { paymentService } from '@/services/payment.service';
-import { customerService } from '@/services/customer.service';
 
 interface AddPaymentDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   customer: Customer;
-  onPaymentSuccess: () => void;
+  onPaymentSuccess: (updatedCustomer: Customer) => void;
 }
 
 export function AddPaymentDialog({ isOpen, onOpenChange, customer, onPaymentSuccess }: AddPaymentDialogProps) {
@@ -52,22 +51,20 @@ export function AddPaymentDialog({ isOpen, onOpenChange, customer, onPaymentSucc
     
     setIsLoading(true);
     try {
-      await paymentService.addPayment({
+      // The service now handles the full transaction, including customer status recalculation
+      const updatedCustomer = await paymentService.addPayment({
         customerUuid: customer.uuid,
         amount: paymentAmount,
         paymentDate: paymentDate,
         notes: notes || undefined,
       });
 
-      // After adding the payment, recalculate the customer's status
-      await customerService.recalculateCustomerStatus(customer.uuid);
-
       toast.success(`Paiement de ${formatCurrency(paymentAmount)} enregistré pour ${customer.firstName} ${customer.lastName}.`);
-      onPaymentSuccess();
+      onPaymentSuccess(updatedCustomer); // Pass the updated customer back to the parent
       onOpenChange(false);
       setAmount('');
-    } catch (error) {
-      toast.error("Erreur lors de l'enregistrement du paiement.");
+    } catch (error: any) {
+      toast.error("Erreur lors de l'enregistrement du paiement.", { description: error.message });
     } finally {
       setIsLoading(false);
     }
