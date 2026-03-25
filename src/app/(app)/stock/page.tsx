@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { stockService } from '@/services';
 import { useDebounce } from '@/hooks/useDebounce';
 import type { StockIntake } from '@/lib/types';
@@ -36,10 +36,10 @@ export default function StockPage() {
     const isLoading = stockIntakes === undefined;
 
 
-    const handleViewDetails = (intake: StockIntake) => {
+    const handleViewDetails = useCallback((intake: StockIntake) => {
         setSelectedIntake(intake);
         setIsDetailsOpen(true);
-    };
+    }, []);
 
     const renderSkeletons = () => (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -69,11 +69,13 @@ export default function StockPage() {
         return (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {stockIntakes.map(s => (
+                    s.id ?
                     <StockIntakeCard 
                         key={s.id} 
                         intake={s}
                         onViewDetails={handleViewDetails}
                     />
+                    : null
                 ))}
             </div>
         );

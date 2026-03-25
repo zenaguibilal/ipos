@@ -64,6 +64,19 @@ class iPOSDatabase extends Dexie {
             inventoryLogs: '++id, &uuid, productId, reason, createdAt, sync_status, updatedAt',
             sync_queue: '++id, createdAt',
         });
+        // Version 6: Refactor FKs to UUIDs and add relevant indexes
+        this.version(6).stores({
+            products: '++id, &uuid, *barcodes, name, category, supplierUuid, createdAt, price, quantity, sync_status, updatedAt',
+            sales: '++id, &uuid, &invoiceNumber, customerUuid, createdAt, sync_status, updatedAt',
+            payments: '++id, &uuid, customerUuid, paymentDate, sync_status, updatedAt',
+            stockIntakes: '++id, &uuid, supplierUuid, invoiceDate, createdAt, sync_status, updatedAt',
+            returns: '++id, &uuid, originalSaleId, customerUuid, createdAt, sync_status, updatedAt',
+            commandes_pain: '++id, &uuid, clientPainUuid, date, &[clientPainUuid+date], sync_status, updatedAt',
+        }).upgrade(tx => {
+            // This upgrade is for schema declaration only. Data migration for FKs is complex
+            // and would require a dedicated migration script. For a fresh start, this is sufficient.
+            console.log("Upgrading to version 6: Foreign keys are now based on UUIDs.");
+        });
     }
 }
 

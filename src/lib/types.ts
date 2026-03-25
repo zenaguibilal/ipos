@@ -2,7 +2,7 @@ export type SyncStatus = 'synced' | 'pending_create' | 'pending_update' | 'pendi
 
 export interface BaseEntity {
     id?: number;
-    uuid?: string; // For remote identification
+    uuid: string; // For remote identification
     createdAt?: Date;
     updatedAt?: Date;
     sync_status?: SyncStatus;
@@ -20,7 +20,7 @@ export interface Product extends BaseEntity {
     imageUrl?: string;
     unite?: 'Pièce' | 'Kg' | 'Litre' | 'Boîte' | 'Carton' | 'Sachet' | 'Bouteille';
     dateExpiration?: Date;
-    fournisseurId?: number;
+    supplierUuid?: string;
     dateMajPrix?: Date;
 }
 
@@ -59,7 +59,7 @@ export interface Cart {
     id:string;
     name: string;
     items: CartItem[];
-    customerId: number | null;
+    customerUuid: string | null;
     customerName: string;
     discount: {
         type: 'fixed' | 'percentage';
@@ -83,14 +83,14 @@ export interface Sale extends BaseEntity {
     remainingBalance: number;
     paymentStatus: 'paid' | 'partial' | 'unpaid';
     payments: SalePayment[];
-    customerId?: number;
+    customerUuid?: string;
     customerName?: string;
-    clientPainId?: number;
+    clientPainUuid?: string;
     dueDate?: Date;
 }
 
 export interface Payment extends BaseEntity {
-    customerId: number;
+    customerUuid: string;
     customerName?: string;
     amount: number;
     paymentDate: Date;
@@ -101,7 +101,7 @@ export interface Payment extends BaseEntity {
 export interface Draft {
   id?: number;
   date: Date;
-  customerId: number | null;
+  customerUuid: string | null;
   customerName: string;
   items: CartItem[];
   total: number;
@@ -114,7 +114,7 @@ export interface Draft {
 }
 
 export interface CompanyProfile extends BaseEntity {
-    id?: 1;
+    id: 1;
     companyName?: string;
     address?: string;
     city?: string;
@@ -143,7 +143,7 @@ export interface StockIntakeItem {
 }
 
 export interface StockIntake extends BaseEntity {
-    supplierId: number;
+    supplierUuid: string;
     supplierName?: string;
     invoiceNumber: string;
     invoiceDate: Date;
@@ -172,7 +172,7 @@ export interface ProductReturn extends BaseEntity {
     items: ReturnItem[];
     totalReturnValue: number;
     amountRefunded: number;
-    customerId?: number;
+    customerUuid?: string;
     customerName?: string;
     notes?: string;
 }
@@ -253,7 +253,7 @@ export interface BreadClient extends BaseEntity {
 }
 
 export interface BreadOrder extends BaseEntity {
-    client_pain_id: number;
+    clientPainUuid: string;
     date: string; // YYYY-MM-DD
     quantite: number;
     quantite_origine?: number;

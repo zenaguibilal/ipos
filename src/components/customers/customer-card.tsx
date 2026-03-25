@@ -133,7 +133,7 @@ const CustomerCardComponent = ({ customer, onEdit, onDelete }: CustomerCardProps
                  <div className="flex items-center text-sm">
                     <Calendar className="h-4 w-4 mr-2 text-muted-foreground"/>
                     <span className="text-muted-foreground">Dernière activité:</span>
-                     <span className="font-semibold ml-auto">{customer.lastActivityDate ? formatDistanceToNow(customer.lastActivityDate, { addSuffix: true, locale: fr }) : 'N/A'}</span>
+                     <span className="font-semibold ml-auto">{customer.lastActivityDate ? formatDistanceToNow(new Date(customer.lastActivityDate), { addSuffix: true, locale: fr }) : 'N/A'}</span>
                 </div>
             </CardContent>
             <CardFooter className="pt-0">

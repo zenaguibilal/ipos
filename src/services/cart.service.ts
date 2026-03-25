@@ -13,7 +13,7 @@ export class CartService {
                 id: CART_ID,
                 name: 'Panier Principal',
                 items: [],
-                customerId: null,
+                customerUuid: null,
                 customerName: '',
                 discount: { type: 'fixed', value: 0 },
             });
@@ -78,7 +78,7 @@ export class CartService {
 
     async setCartCustomer(cartId: string, customer: Customer | null): Promise<void> {
         await db.carts.update(cartId, {
-            customerId: customer?.id ?? null,
+            customerUuid: customer?.uuid ?? null,
             customerName: customer ? `${customer.firstName} ${customer.lastName}` : 'Client de passage'
         });
     }

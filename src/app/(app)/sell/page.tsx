@@ -34,8 +34,8 @@ export default function SellPage() {
     } = useCart();
 
     const customer = useLiveQuery(
-        () => cart?.customerId ? customerService.getCustomerById(cart.customerId) : Promise.resolve(undefined),
-        [cart?.customerId]
+        () => cart?.customerUuid ? customerService.getCustomerByUuid(cart.customerUuid) : Promise.resolve(undefined),
+        [cart?.customerUuid]
     );
 
     const [isProductSheetOpen, setIsProductSheetOpen] = useState(false);
@@ -121,7 +121,7 @@ export default function SellPage() {
                             <div className="flex-grow w-full sm:w-64">
                                 <CustomerCombobox
                                     ref={customerComboboxRef}
-                                    customerId={cart.customerId}
+                                    customerUuid={cart.customerUuid}
                                     onSelectCustomer={(c) => setCartCustomer(c)}
                                 />
                             </div>

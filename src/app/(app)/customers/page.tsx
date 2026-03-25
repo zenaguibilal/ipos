@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { customerService } from '@/services';
 import { useDebounce } from '@/hooks/useDebounce';
 import type { Customer, ImportAnalysis } from '@/lib/types';
@@ -43,15 +43,15 @@ export default function CustomersPage() {
     const isLoading = customers === undefined;
 
 
-    const handleEditCustomer = (customer: Customer) => {
+    const handleEditCustomer = useCallback((customer: Customer) => {
         setSelectedCustomer(customer);
         setIsCustomerDialogOpen(true);
-    };
+    }, []);
 
-    const handleDeleteCustomer = (customer: Customer) => {
+    const handleDeleteCustomer = useCallback((customer: Customer) => {
         setSelectedCustomer(customer);
         setIsDeleteDialogOpen(true);
-    };
+    }, []);
 
     const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -114,12 +114,14 @@ export default function CustomersPage() {
         return (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {customers.map(c => (
+                    c.id ? 
                     <CustomerCard 
                         key={c.id} 
                         customer={c} 
                         onEdit={handleEditCustomer} 
                         onDelete={handleDeleteCustomer}
                     />
+                    : null
                 ))}
             </div>
         );

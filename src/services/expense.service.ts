@@ -7,15 +7,18 @@ import { syncService } from './sync.service';
 
 export class ExpenseService {
     async getExpenses(params: { category?: string, from?: Date, to?: Date }): Promise<Expense[]> {
-        let collection = db.expenses.where('sync_status').notEqual('pending_delete').reverse();
+        let collection = db.expenses.where('sync_status').notEqual('pending_delete');
 
         if (params.from && params.to) {
-            collection = collection.filter(e => e.expenseDate >= params.from! && e.expenseDate <= params.to!);
+            collection = db.expenses.where('expenseDate').between(params.from, params.to, true, true)
+                .and(e => e.sync_status !== 'pending_delete');
         }
+        
         if (params.category && params.category !== 'all') {
             collection = collection.filter(e => e.category === params.category);
         }
-        return await collection.sortBy('expenseDate');
+
+        return await collection.reverse().sortBy('expenseDate');
     }
     
     async getExpenseCategories(): Promise<string[]> {
@@ -24,7 +27,7 @@ export class ExpenseService {
         return Array.from(categories).sort();
     }
     
-    async addExpense(expense: Omit<Expense, 'id'>): Promise<Expense> {
+    async addExpense(expense: Omit<Expense, 'id' | 'uuid'>): Promise<Expense> {
         const now = new Date();
         const uuid = uuidv4();
         const newExpense = { 

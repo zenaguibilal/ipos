@@ -14,16 +14,18 @@ export class SalesService {
     }
     
     async getSales(params: { query?: string, from?: Date, to?: Date } = {}): Promise<Sale[]> {
-        let collection = db.sales.where('sync_status').notEqual('pending_delete').reverse();
+        let collection = db.sales.where('sync_status').notEqual('pending_delete');
         
         if (params.from && params.to) {
-             collection = collection.filter(s => s.createdAt! >= params.from! && s.createdAt! <= params.to!);
+             collection = db.sales.where('createdAt').between(params.from, params.to, true, true)
+                .and(s => s.sync_status !== 'pending_delete');
         }
+
         if (params.query) {
             const q = params.query.toLowerCase();
             collection = collection.filter(s => s.invoiceNumber.toLowerCase().includes(q) || s.customerName?.toLowerCase().includes(q));
         }
-        return await collection.sortBy('createdAt');
+        return await collection.reverse().sortBy('createdAt');
     }
 
     async addSale(saleData: any): Promise<number> {
@@ -52,8 +54,8 @@ export class SalesService {
             }
     
             // Adjust customer balance
-            if (sale.customerId) {
-                const customer = await db.customers.get(sale.customerId);
+            if (sale.customerUuid) {
+                const customer = await db.customers.where({ uuid: sale.customerUuid }).first();
                 if (customer && customer.uuid) {
                     const newBalance = customer.outstandingBalance - sale.remainingBalance;
                     const newTotalSpent = customer.totalSpent - sale.total;
@@ -61,7 +63,7 @@ export class SalesService {
                     
                     let debtStatus: Customer['debtStatus'] = 'none';
                     if (newBalance > 0) {
-                        const unpaidSales = await db.sales.where('customerId').equals(customer.id!).and(s => s.id !== saleId && s.sync_status !== 'pending_delete').toArray();
+                        const unpaidSales = await db.sales.where('customerUuid').equals(customer.uuid).and(s => s.id !== saleId && s.sync_status !== 'pending_delete').toArray();
                         const isOverdue = unpaidSales.some(s => s.dueDate && new Date(s.dueDate) < new Date());
                         debtStatus = isOverdue ? 'overdue' : 'due_soon';
                     }
@@ -75,7 +77,7 @@ export class SalesService {
                         sync_status: 'pending_update' as const,
                         last_modified_by: syncService.getLocalDeviceId()
                     };
-                    await db.customers.update(customer.id, customerUpdate);
+                    await db.customers.update(customer.id!, customerUpdate);
                     await syncService.queueSyncOperation('customers', customer.uuid, 'update', customerUpdate);
                 }
             }

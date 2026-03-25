@@ -8,7 +8,7 @@ import type { Customer } from '@/lib/types';
 import { formatCurrency } from '@/lib/utils';
 
 interface CustomerComboboxProps {
-    customerId: number | null;
+    customerUuid: string | null;
     onSelectCustomer: (customer: Customer | null) => void;
 }
 
@@ -18,7 +18,7 @@ const WalkInCustomerOption: ComboboxOption = {
     subLabel: 'Aucun client sélectionné',
 };
 
-export const CustomerCombobox = React.forwardRef<HTMLButtonElement, CustomerComboboxProps>(({ customerId, onSelectCustomer }, ref) => {
+export const CustomerCombobox = React.forwardRef<HTMLButtonElement, CustomerComboboxProps>(({ customerUuid, onSelectCustomer }, ref) => {
     
     const customers = useLiveQuery(() => customerService.getCustomers({}));
 
@@ -28,7 +28,7 @@ export const CustomerCombobox = React.forwardRef<HTMLButtonElement, CustomerComb
         const options = customers.map(c => {
             const availableCredit = (c.creditLimit || 0) - c.outstandingBalance;
             return {
-                value: String(c.id!),
+                value: c.uuid!,
                 label: `${c.firstName} ${c.lastName}`,
                 subLabel: `Dette: ${formatCurrency(c.outstandingBalance)} | Disponible: ${formatCurrency(availableCredit)}`,
                 subLabelClassName: c.outstandingBalance > 0 ? 'text-destructive' : 'text-green-600',
@@ -42,7 +42,7 @@ export const CustomerCombobox = React.forwardRef<HTMLButtonElement, CustomerComb
         if (value === 'walk-in') {
             onSelectCustomer(null);
         } else {
-            const selectedCustomer = customers?.find(c => c.id === parseInt(value, 10));
+            const selectedCustomer = customers?.find(c => c.uuid === value);
             onSelectCustomer(selectedCustomer || null);
         }
     };
@@ -52,7 +52,7 @@ export const CustomerCombobox = React.forwardRef<HTMLButtonElement, CustomerComb
             ref={ref}
             options={customerOptions}
             onSelect={handleSelect}
-            value={customerId ? String(customerId) : 'walk-in'}
+            value={customerUuid || 'walk-in'}
             placeholder="Sélectionner un client..."
             searchPlaceholder="Rechercher un client..."
             notFoundMessage="Aucun client trouvé."

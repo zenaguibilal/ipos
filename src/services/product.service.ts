@@ -12,7 +12,7 @@ export class ProductService {
         return await db.products.where('barcodes').equals(barcode).and(p => p.sync_status !== 'pending_delete').first();
     }
     
-    async addProduct(productData: Omit<Product, 'id'>): Promise<Product> {
+    async addProduct(productData: Omit<Product, 'id' | 'uuid'>): Promise<Product> {
         const now = new Date();
         const uuid = uuidv4();
         const newProduct = {
@@ -51,12 +51,13 @@ export class ProductService {
 
     async deleteProduct(id: number): Promise<void> {
         return db.transaction('rw', db.sales, db.products, db.sync_queue, async () => {
+            const product = await db.products.get(id);
+            if (!product || !product.uuid) return;
+
             const saleWithProduct = await db.sales.filter(sale => 
                 sale.items.some(item => item.id === id) && sale.sync_status !== 'pending_delete'
             ).first();
 
-            const product = await db.products.get(id);
-            if (!product || !product.uuid) return;
 
             if (saleWithProduct) {
                 throw new Error(`Impossible de supprimer le produit "${product.name}" car il a déjà été vendu.`);
@@ -96,33 +97,34 @@ export class ProductService {
         });
     }
 
-    async getProducts(params: { query?: string, category?: string, supplier?: string, stockStatus?: string, sortBy?: string } = {}): Promise<Product[]> {
+    async getProducts(params: { query?: string, category?: string, supplierUuid?: string, stockStatus?: string, sortBy?: string } = {}): Promise<Product[]> {
         const [sortKey, sortOrder] = (params.sortBy || 'createdAt_desc').split('_');
         
         let collection = db.products.where('sync_status').notEqual('pending_delete');
 
-        if (params.query || (params.category && params.category !== 'all') || (params.stockStatus && params.stockStatus !== 'all') || (params.supplier && params.supplier !== 'all')) {
-            collection = collection.filter(p => {
-                let passes = true;
-                if (params.query) {
-                    const q = params.query.toLowerCase();
-                    passes = passes && (p.name.toLowerCase().includes(q) || (p.barcodes && p.barcodes.some(b => b.includes(q))));
-                }
-                if (params.category && params.category !== 'all') {
-                    passes = passes && (p.category === params.category);
-                }
-                if (params.supplier && params.supplier !== 'all') {
-                    passes = passes && (p.fournisseurId === parseInt(params.supplier!));
-                }
-                if (params.stockStatus && params.stockStatus !== 'all') {
-                    if (params.stockStatus === 'in_stock') passes = passes && p.quantity > 0;
-                    if (params.stockStatus === 'low_stock') passes = passes && (p.quantity > 0 && p.quantity <= p.minStockLevel);
-                    if (params.stockStatus === 'out_of_stock') passes = passes && p.quantity <= 0;
-                }
-                return passes;
-            });
+        // Apply most selective filters first
+        if (params.category && params.category !== 'all') {
+            collection = db.products.where({ category: params.category }).and(p => p.sync_status !== 'pending_delete');
+        }
+        if (params.supplierUuid && params.supplierUuid !== 'all') {
+            collection = collection.where({ supplierUuid: params.supplierUuid });
         }
         
+        // Apply less selective filters
+        collection = collection.filter(p => {
+            let passes = true;
+            if (params.query) {
+                const q = params.query.toLowerCase();
+                passes = passes && (p.name.toLowerCase().includes(q) || (p.barcodes && p.barcodes.some(b => b.includes(q))));
+            }
+            if (params.stockStatus && params.stockStatus !== 'all') {
+                if (params.stockStatus === 'in_stock') passes = passes && p.quantity > 0;
+                if (params.stockStatus === 'low_stock') passes = passes && (p.quantity > 0 && p.quantity <= p.minStockLevel);
+                if (params.stockStatus === 'out_of_stock') passes = passes && p.quantity <= 0;
+            }
+            return passes;
+        });
+
         const sortedCollection = sortOrder === 'desc' ? collection.reverse() : collection;
         return await sortedCollection.sortBy(sortKey);
     }
@@ -201,8 +203,8 @@ export class ProductService {
             quantity: p.quantity,
             minStockLevel: p.minStockLevel,
             barcodes: p.barcodes?.join(','),
-            fournisseurId: p.fournisseurId,
-            dateExpiration: p.dateExpiration ? format(p.dateExpiration, 'yyyy-MM-dd') : '',
+            supplierUuid: p.supplierUuid,
+            dateExpiration: p.dateExpiration ? format(new Date(p.dateExpiration), 'yyyy-MM-dd') : '',
             unite: p.unite,
         }));
         return Papa.unparse(dataForCSV);

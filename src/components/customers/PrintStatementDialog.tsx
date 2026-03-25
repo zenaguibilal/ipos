@@ -23,9 +23,9 @@ export function PrintStatementDialog({ isOpen, onOpenChange, customer }: PrintSt
     const printRef = useRef<HTMLDivElement>(null);
 
     const statementData = useLiveQuery(() => {
-        if (!isOpen || !customer?.id) return undefined;
-        return customerService.getCustomerStatementData(customer.id);
-    }, [isOpen, customer?.id]);
+        if (!isOpen || !customer?.uuid) return undefined;
+        return customerService.getCustomerStatementData(customer.uuid);
+    }, [isOpen, customer?.uuid]);
     
     const isLoading = statementData === undefined && isOpen;
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -24,6 +24,7 @@ import { db } from '@/lib/database';
 
 export default function NewStockIntakePage() {
     const router = useRouter();
+    const [supplierUuid, setSupplierUuid] = useState<string>('');
     const [supplierName, setSupplierName] = useState('');
     const [supplierSearch, setSupplierSearch] = useState('');
     const [supplierPopoverOpen, setSupplierPopoverOpen] = useState(false);
@@ -42,7 +43,7 @@ export default function NewStockIntakePage() {
     }, [suppliers, supplierSearch]);
 
 
-    const handleAddProduct = (product: any) => {
+    const handleAddProduct = useCallback((product: any) => {
         const existingItemIndex = items.findIndex(item => item.productId === product.id);
         if (existingItemIndex > -1) {
             const newItems = [...items];
@@ -66,9 +67,9 @@ export default function NewStockIntakePage() {
                 }
             ]);
         }
-    };
+    }, [items]);
     
-    const handleAddNewItem = (name: string) => {
+    const handleAddNewItem = useCallback((name: string) => {
         const newItem: StockIntakeItem = {
             id: uuidv4(),
             name: name,
@@ -81,7 +82,7 @@ export default function NewStockIntakePage() {
             isNew: true,
         };
         setItems(prev => [...prev, newItem]);
-    };
+    }, []);
 
     const handleItemChange = (id: string, field: keyof StockIntakeItem, value: any) => {
         setItems(prev => prev.map(item => {
@@ -131,7 +132,7 @@ export default function NewStockIntakePage() {
 
         setIsSaving(true);
         try {
-            const intakeData = { supplierName, invoiceNumber, invoiceDate: invoiceDate || new Date() };
+            const intakeData = { supplierUuid, supplierName, invoiceNumber, invoiceDate: invoiceDate || new Date() };
             await stockService.addStockIntake(intakeData, items);
             toast.success("Réception de stock enregistrée avec succès !");
             router.push('/stock');
@@ -140,6 +141,21 @@ export default function NewStockIntakePage() {
         } finally {
             setIsSaving(false);
         }
+    };
+
+    const handleSupplierSelect = (uuid: string) => {
+        const selected = suppliers?.find(s => s.uuid === uuid);
+        if (selected) {
+            setSupplierUuid(selected.uuid!);
+            setSupplierName(selected.name);
+        }
+        setSupplierPopoverOpen(false);
+    };
+
+    const handleSupplierCreate = () => {
+        setSupplierUuid('');
+        setSupplierName(supplierSearch);
+        setSupplierPopoverOpen(false);
     };
 
     return (
@@ -185,10 +201,7 @@ export default function NewStockIntakePage() {
                                             <Button 
                                                 variant="link" 
                                                 className="w-full"
-                                                onClick={() => {
-                                                    setSupplierName(supplierSearch);
-                                                    setSupplierPopoverOpen(false);
-                                                }}>
+                                                onClick={handleSupplierCreate}>
                                                 <Plus className="mr-2 h-4 w-4" />
                                                 Créer le fournisseur "{supplierSearch}"
                                             </Button>
@@ -196,13 +209,9 @@ export default function NewStockIntakePage() {
                                         <CommandGroup>
                                             {supplierOptions?.map((supplier) => (
                                                 <CommandItem
-                                                    key={supplier.id}
-                                                    value={supplier.name}
-                                                    onSelect={(currentValue) => {
-                                                        const selectedName = suppliers?.find(s => s.name.toLowerCase() === currentValue)?.name || '';
-                                                        setSupplierName(selectedName);
-                                                        setSupplierPopoverOpen(false);
-                                                    }}
+                                                    key={supplier.uuid}
+                                                    value={supplier.uuid}
+                                                    onSelect={() => handleSupplierSelect(supplier.uuid!)}
                                                 >
                                                     {supplier.name}
                                                 </CommandItem>

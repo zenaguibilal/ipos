@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { productService } from '@/services';
 import { useDebounce } from '@/hooks/useDebounce';
 import type { Product, ProductImportAnalysis, Supplier } from '@/lib/types';
@@ -83,7 +83,7 @@ export default function ProductsPage() {
         productService.getProducts({ 
             query: debouncedSearchQuery, 
             category: selectedCategory, 
-            supplier: selectedSupplier,
+            supplierUuid: selectedSupplier,
             stockStatus, 
             sortBy 
         }),
@@ -94,14 +94,22 @@ export default function ProductsPage() {
     const isLoading = products === undefined || categories === undefined || suppliers === undefined;
 
     useEffect(() => {
-        const savedViewMode = localStorage.getItem('product_view_mode') as ViewMode;
-        if (savedViewMode) {
-            setViewMode(savedViewMode);
+        try {
+            const savedViewMode = localStorage.getItem('product_view_mode') as ViewMode;
+            if (savedViewMode) {
+                setViewMode(savedViewMode);
+            }
+        } catch (error) {
+            console.error("Could not access localStorage:", error);
         }
     }, []);
 
     useEffect(() => {
-        localStorage.setItem('product_view_mode', viewMode);
+        try {
+            localStorage.setItem('product_view_mode', viewMode);
+        } catch (error) {
+            console.error("Could not access localStorage:", error);
+        }
     }, [viewMode]);
     
     useEffect(() => {
@@ -109,21 +117,21 @@ export default function ProductsPage() {
     }, [products]);
 
 
-    const handleEditProduct = (product: Product) => {
+    const handleEditProduct = useCallback((product: Product) => {
         setSelectedProduct(product);
         setIsProductDialogOpen(true);
-    };
+    }, []);
 
-    const handleDeleteProduct = async (product: Product) => {
+    const handleDeleteProduct = useCallback(async (product: Product) => {
         try {
             await productService.deleteProduct(product.id as number);
             toast.success(`Produit "${product.name}" supprimé.`);
         } catch (e: any) {
             toast.error("Suppression impossible", { description: e.message });
         }
-    };
+    }, []);
 
-    const handleToggleSelection = (productId: number) => {
+    const handleToggleSelection = useCallback((productId: number) => {
         setSelectedProducts(prev => {
             const newSet = new Set(prev);
             if (newSet.has(productId)) {
@@ -133,16 +141,16 @@ export default function ProductsPage() {
             }
             return newSet;
         });
-    };
+    }, []);
     
-    const handleToggleSelectAll = () => {
+    const handleToggleSelectAll = useCallback(() => {
         if (!products) return;
         if (selectedProducts.size === products.length) {
             setSelectedProducts(new Set());
         } else {
             setSelectedProducts(new Set(products.map(p => p.id as number).filter(id => typeof id === 'number')));
         }
-    }
+    }, [products, selectedProducts.size]);
 
     const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -340,9 +348,9 @@ export default function ProductsPage() {
                         >Tous</DropdownMenuCheckboxItem>
                         {suppliers?.map(sup => (
                             <DropdownMenuCheckboxItem
-                                key={sup.id}
-                                checked={selectedSupplier === String(sup.id)}
-                                onCheckedChange={() => setSelectedSupplier(String(sup.id))}
+                                key={sup.uuid}
+                                checked={selectedSupplier === sup.uuid}
+                                onCheckedChange={() => setSelectedSupplier(sup.uuid!)}
                             >{sup.name}</DropdownMenuCheckboxItem>
                         ))}
                     </DropdownMenuContent>

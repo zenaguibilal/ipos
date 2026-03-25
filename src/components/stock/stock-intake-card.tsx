@@ -1,15 +1,13 @@
 'use client';
 
 import React from 'react';
-import type { StockIntake, Supplier } from '@/lib/types';
+import type { StockIntake } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { FileText } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { safeToDate, formatCurrency } from '@/lib/utils';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '@/lib/database';
 
 interface StockIntakeCardProps {
     intake: StockIntake;
@@ -18,12 +16,7 @@ interface StockIntakeCardProps {
 
 export const StockIntakeCard = React.memo<StockIntakeCardProps>(({ intake, onViewDetails }) => {
 
-    const supplier = useLiveQuery(() => 
-        intake.supplierId ? db.suppliers.get(intake.supplierId) : undefined,
-        [intake.supplierId]
-    );
-
-    const supplierName = intake.supplierName || supplier?.name || 'Fournisseur inconnu';
+    const supplierName = intake.supplierName || 'Fournisseur inconnu';
 
     return (
         <Card className="transition-all duration-300 hover:shadow-xl hover:-translate-y-1">

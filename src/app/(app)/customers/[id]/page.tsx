@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Skeleton } from '@/components/ui/skeleton';
 import { CustomerMetrics } from '@/components/customers/CustomerMetrics';
 import { CustomerActivity } from '@/components/customers/CustomerActivity';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { AddPaymentDialog } from '@/components/payments/AddPaymentDialog';
 import { SaleDetailsDialog } from '@/components/sales/SaleDetailsDialog';
 import { ReturnDetailsDialog } from '@/components/returns/ReturnDetailsDialog';
@@ -39,8 +39,8 @@ export default function CustomerDetailPage() {
         [customerId]
     );
     const allActivity = useLiveQuery(() => 
-        !isNaN(customerId) ? customerService.getCustomerActivity(customerId) : undefined,
-        [customerId]
+        customer?.uuid ? customerService.getCustomerActivity(customer.uuid) : undefined,
+        [customer?.uuid]
     );
 
     const activity = useMemo(() => {
@@ -58,15 +58,15 @@ export default function CustomerDetailPage() {
         setActivityPage(prev => prev + 1);
     };
 
-    const handleSaleClick = (sale: Sale) => {
+    const handleSaleClick = useCallback((sale: Sale) => {
         setSelectedSale(sale);
         setIsSaleDetailsOpen(true);
-    };
+    }, []);
 
-    const handleReturnClick = (pr: ProductReturn) => {
+    const handleReturnClick = useCallback((pr: ProductReturn) => {
         setSelectedReturn(pr);
         setIsReturnDetailsOpen(true);
-    };
+    }, []);
 
     if (isLoading) {
         return (

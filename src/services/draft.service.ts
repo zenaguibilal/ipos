@@ -14,7 +14,7 @@ export class DraftService {
         const { total } = calculateCartTotals(cart);
         const draft: Draft = {
             date: new Date(),
-            customerId: cart.customerId,
+            customerUuid: cart.customerUuid,
             customerName: cart.customerName,
             items: cart.items,
             total: total,
@@ -34,7 +34,7 @@ export class DraftService {
             }
             await db.carts.update(cartId, {
                 items: draft.items,
-                customerId: draft.customerId,
+                customerUuid: draft.customerUuid,
                 customerName: draft.customerName,
                 discount: draft.discount,
             });
