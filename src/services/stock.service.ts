@@ -11,7 +11,7 @@ export class StockService {
             const now = new Date();
             const deviceId = syncService.getLocalDeviceId();
 
-            let supplier = await db.suppliers.where('name').equalsIgnoreCase(intakeData.supplierName).first();
+            let supplier = await db.suppliers.where('name').equalsIgnoreCase(intakeData.supplierName).and(s => s.sync_status !== 'pending_delete').first();
             if (!supplier) {
                 const supplierUuid = uuidv4();
                 const newSupplier: Omit<Supplier, 'id'> = {

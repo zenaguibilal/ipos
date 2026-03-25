@@ -43,10 +43,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#1a120c" },
-  ],
+  themeColor: { media: "(prefers-color-scheme: dark)", color: "#1a120c" },
   width: "device-width",
   initialScale: 1,
 };
@@ -64,7 +61,7 @@ export default function RootLayout({
         <ThemeProvider
           attribute="class"
           defaultTheme="dark"
-          enableSystem
+          enableSystem={false}
           disableTransitionOnChange
         >
           {children}
