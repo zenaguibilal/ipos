@@ -43,20 +43,6 @@ class SyncServiceSingleton {
         return this.localDeviceId;
     }
 
-    private _toSnakeCase(obj: any): any {
-        if (Array.isArray(obj)) {
-            return obj.map(v => this._toSnakeCase(v));
-        }
-        if (obj !== null && typeof obj === 'object' && !(obj instanceof Date)) {
-            return Object.keys(obj).reduce((acc, key) => {
-                const snakeKey = key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
-                acc[snakeKey] = this._toSnakeCase(obj[key]);
-                return acc;
-            }, {} as any);
-        }
-        return obj;
-    }
-
     private _fromSnakeCase(obj: any): any {
         if (Array.isArray(obj)) {
             return obj.map(v => this._fromSnakeCase(v));
@@ -121,7 +107,7 @@ class SyncServiceSingleton {
         for (const item of queueItems) {
             try {
                 let error;
-                const remotePayload = this._toSnakeCase(item.payload);
+                const remotePayload = item.payload; // Use camelCase directly
                 
                 remotePayload.last_modified_by = this.localDeviceId;
                 remotePayload.updated_at = new Date().toISOString();
@@ -130,46 +116,44 @@ class SyncServiceSingleton {
                     remotePayload.uuid = item.recordUuid;
                 }
 
-                switch (item.action) {
-                    case 'create':
-                        ({ error } = await this.supabase.from(item.tableName).insert(remotePayload));
-                        break;
-                    case 'update':
-                        ({ error } = await this.supabase.from(item.tableName).update(remotePayload).eq('uuid', item.recordUuid));
-                        break;
-                    case 'delete':
-                        ({ error } = await this.supabase.from(item.tableName).delete().eq('uuid', item.recordUuid));
-                        break;
+                if (item.action === 'create' || item.action === 'update') {
+                    ({ error } = await this.supabase.from(item.tableName).upsert(this._toSnakeCase(remotePayload)));
+                } else if (item.action === 'delete') {
+                    ({ error } = await this.supabase.from(item.tableName).delete().eq('uuid', item.recordUuid));
                 }
 
-                 if (error && error.code === '23505' && item.action === 'create') {
-                     console.warn(`Sync race condition for ${item.tableName}:${item.recordUuid}. Converting to update.`);
-                     delete remotePayload.uuid;
-                     ({ error } = await this.supabase.from(item.tableName).update(remotePayload).eq('uuid', item.recordUuid));
-                }
 
                 if (error) throw error;
                 
                 await db.transaction('rw', db.sync_queue, (db as any)[item.tableName], async () => {
-                    // Operation was successful, remove from queue
                     await db.sync_queue.delete(item.id!);
                 
-                    // If it wasn't a delete, mark the local item as 'synced'
                     if (item.action !== 'delete') {
                         const record = await (db as any)[item.tableName]?.where('uuid').equals(item.recordUuid).first();
                         if (record) {
                             await (db as any)[item.tableName].update(record.id, { sync_status: 'synced' });
                         }
                     }
-                    // If it was a delete, we do nothing. The local record remains as a 'pending_delete' tombstone.
                 });
-
 
             } catch (e: any) {
                 console.error('Push sync error for item:', item, e);
                 await db.sync_queue.update(item.id!, { attempts: (item.attempts || 0) + 1 });
             }
         }
+    }
+     private _toSnakeCase(obj: any): any {
+        if (Array.isArray(obj)) {
+            return obj.map(v => this._toSnakeCase(v));
+        }
+        if (obj !== null && typeof obj === 'object' && !(obj instanceof Date)) {
+            return Object.keys(obj).reduce((acc, key) => {
+                const snakeKey = key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+                acc[snakeKey] = this._toSnakeCase(obj[key]);
+                return acc;
+            }, {} as any);
+        }
+        return obj;
     }
 
     private async _pullChanges() {
@@ -180,7 +164,7 @@ class SyncServiceSingleton {
             if (['sync_queue', 'carts', 'drafts'].includes(tableName)) continue;
             
             try {
-                const lastSyncedRecord = await (db as any)[tableName].orderBy('updatedAt').last();
+                const lastSyncedRecord = await (db as any)[tableName].where('sync_status').equals('synced').orderBy('updatedAt').last();
                 const lastSyncTime = lastSyncedRecord?.updatedAt || new Date(0);
 
                 const { data, error } = await this.supabase

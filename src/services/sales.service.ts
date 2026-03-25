@@ -1,3 +1,4 @@
+
 'use client';
 
 import { db } from '@/lib/database';
@@ -16,18 +17,21 @@ export class SalesService {
     }
     
     async getSales(params: { query?: string, from?: Date, to?: Date } = {}): Promise<Sale[]> {
-        let collection = db.sales.where('sync_status').notEqual('pending_delete');
+        let collection;
         
         if (params.from && params.to) {
-             collection = db.sales.where('createdAt').between(params.from, params.to, true, true)
-                .and(s => s.sync_status !== 'pending_delete');
+             collection = db.sales.where('createdAt').between(params.from, params.to, true, true);
+        } else {
+             collection = db.sales.toCollection();
         }
+
+        collection = collection.and(s => s.sync_status !== 'pending_delete');
 
         if (params.query) {
             const q = params.query.toLowerCase();
             collection = collection.filter(s => s.invoiceNumber.toLowerCase().includes(q) || s.customerName?.toLowerCase().includes(q));
         }
-        return await collection.reverse().sortBy('createdAt');
+        return await collection.orderBy('createdAt').reverse().toArray();
     }
 
     async addSale(saleData: any): Promise<number> {

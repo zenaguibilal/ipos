@@ -1,3 +1,4 @@
+
 'use client';
 
 import { db } from '@/lib/database';
@@ -116,7 +117,7 @@ export class ProductService {
         } else {
             collection = db.products.toCollection();
         }
-
+        
         collection = collection.and(p => p.sync_status !== 'pending_delete');
 
         if (params.category && params.category !== 'all') {
@@ -128,11 +129,21 @@ export class ProductService {
         
         if (params.query) {
             const q = params.query.toLowerCase();
-            collection = collection.filter(p => p.name.toLowerCase().includes(q) || (p.barcodes && p.barcodes.some(b => b.includes(q))));
+            collection = collection.filter(p => 
+                p.name.toLowerCase().includes(q) || 
+                (p.barcodes && p.barcodes.some(b => b.includes(q)))
+            );
         }
         
-        const sortedCollection = sortOrder === 'desc' ? collection.reverse() : collection;
-        return await sortedCollection.sortBy(sortKey);
+        if (sortKey && ['name', 'price', 'quantity', 'createdAt'].includes(sortKey)) {
+             collection = collection.orderBy(sortKey);
+        }
+
+        if (sortOrder === 'desc') {
+            collection = collection.reverse();
+        }
+
+        return await collection.toArray();
     }
 
     async getProductsByIds(ids: number[]): Promise<Product[]> {

@@ -46,6 +46,10 @@ export default function SellPage() {
     const customerComboboxRef = useRef<HTMLButtonElement>(null);
     const saleActionsRef = useRef<{ payment: () => void; draft: () => void; }>(null);
 
+    const cartItemsCountRef = useRef(cart?.items.length ?? 0);
+    useEffect(() => {
+        cartItemsCountRef.current = cart?.items.length ?? 0;
+    }, [cart?.items.length]);
 
     const handleSaleFinalized = useCallback(() => {
         clearCart();
@@ -74,14 +78,14 @@ export default function SellPage() {
                 break;
             case 'F9':
                 e.preventDefault();
-                if (cart && cart.items.length > 0) {
+                if (cartItemsCountRef.current > 0) {
                     saleActionsRef.current?.payment();
                 } else {
                     toast.info("Le panier est vide. Impossible de finaliser la vente.");
                 }
                 break;
         }
-    }, [cart]);
+    }, []); // Dependencies are removed for performance, logic now uses refs
 
     useEffect(() => {
         document.addEventListener('keydown', handleKeyDown);

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { db } from '@/lib/database';
@@ -7,18 +8,21 @@ import { syncService } from './sync.service';
 
 export class ExpenseService {
     async getExpenses(params: { category?: string, from?: Date, to?: Date }): Promise<Expense[]> {
-        let collection = db.expenses.where('sync_status').notEqual('pending_delete');
+        let collection;
 
         if (params.from && params.to) {
-            collection = db.expenses.where('expenseDate').between(params.from, params.to, true, true)
-                .and(e => e.sync_status !== 'pending_delete');
+            collection = db.expenses.where('expenseDate').between(params.from, params.to, true, true);
+        } else {
+            collection = db.expenses.toCollection();
         }
         
+        collection = collection.and(e => e.sync_status !== 'pending_delete');
+
         if (params.category && params.category !== 'all') {
             collection = collection.filter(e => e.category === params.category);
         }
 
-        return await collection.reverse().sortBy('expenseDate');
+        return await collection.orderBy('expenseDate').reverse().toArray();
     }
     
     async getExpenseCategories(): Promise<string[]> {

@@ -10,11 +10,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Skeleton } from '@/components/ui/skeleton';
 import { CustomerMetrics } from '@/components/customers/CustomerMetrics';
 import { CustomerActivity } from '@/components/customers/CustomerActivity';
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { AddPaymentDialog } from '@/components/payments/AddPaymentDialog';
 import { SaleDetailsDialog } from '@/components/sales/SaleDetailsDialog';
 import { ReturnDetailsDialog } from '@/components/returns/ReturnDetailsDialog';
-import type { Sale, ProductReturn, Customer, Payment } from '@/lib/types';
+import type { Sale, ProductReturn, Customer } from '@/lib/types';
 import { PrintStatementDialog } from '@/components/customers/PrintStatementDialog';
 import { PageHeader } from '@/components/layout/PageHeader';
 
@@ -22,7 +22,7 @@ const ITEMS_PER_PAGE = 10;
 
 export default function CustomerDetailPage() {
     const params = useParams();
-    const customerId = Number(params.id);
+    const customerUuid = params.uuid as string;
 
     const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
     const [isStatementDialogOpen, setIsStatementDialogOpen] = useState(false);
@@ -32,30 +32,51 @@ export default function CustomerDetailPage() {
     const [isReturnDetailsOpen, setIsReturnDetailsOpen] = useState(false);
 
     // States for activity pagination
+    const [activity, setActivity] = useState<any[]>([]);
     const [activityPage, setActivityPage] = useState(1);
+    const [isLoadingActivity, setIsLoadingActivity] = useState(true);
+    const [hasMoreActivity, setHasMoreActivity] = useState(true);
 
     const customer = useLiveQuery<Customer | undefined>(
-        () => !isNaN(customerId) ? customerService.getCustomerById(customerId) : undefined,
-        [customerId]
-    );
-    const allActivity = useLiveQuery(() => 
-        customer?.uuid ? customerService.getCustomerActivity(customer.uuid) : undefined,
-        [customer?.uuid]
+        () => customerUuid ? customerService.getCustomerByUuid(customerUuid) : undefined,
+        [customerUuid]
     );
 
-    const activity = useMemo(() => {
-        if (!allActivity) return [];
-        return allActivity.slice(0, activityPage * ITEMS_PER_PAGE);
-    }, [allActivity, activityPage]);
+    // Reset pagination when customer changes
+    useEffect(() => {
+        setActivity([]);
+        setActivityPage(1);
+        setHasMoreActivity(true);
+        setIsLoadingActivity(true);
+    }, [customerUuid]);
 
-    const hasMoreActivity = allActivity ? activity.length < allActivity.length : false;
+    useEffect(() => {
+        if (!customer?.uuid) return;
 
-    const isLoading = customer === undefined;
-    const isLoadingActivity = allActivity === undefined;
-
+        let isCancelled = false;
+        setIsLoadingActivity(true);
+        customerService.getCustomerActivity(customer.uuid, activityPage, ITEMS_PER_PAGE)
+            .then(newActivity => {
+                if (!isCancelled) {
+                    setActivity(prev => activityPage === 1 ? newActivity : [...prev, ...newActivity]);
+                    if (newActivity.length < ITEMS_PER_PAGE) {
+                        setHasMoreActivity(false);
+                    }
+                }
+            })
+            .finally(() => {
+                if (!isCancelled) {
+                    setIsLoadingActivity(false);
+                }
+            });
+        
+        return () => { isCancelled = true; };
+    }, [customer?.uuid, activityPage]);
 
     const handleLoadMore = () => {
-        setActivityPage(prev => prev + 1);
+        if (!isLoadingActivity && hasMoreActivity) {
+            setActivityPage(prev => prev + 1);
+        }
     };
 
     const handleSaleClick = useCallback((sale: Sale) => {
@@ -68,7 +89,7 @@ export default function CustomerDetailPage() {
         setIsReturnDetailsOpen(true);
     }, []);
 
-    if (isLoading) {
+    if (customer === undefined) {
         return (
              <div className="p-4 sm:p-6 space-y-6">
                 <Skeleton className="h-8 w-48" />
@@ -118,7 +139,7 @@ export default function CustomerDetailPage() {
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
-                           {isLoadingActivity ? (
+                           {isLoadingActivity && activity.length === 0 ? (
                                 <div className="flex justify-center items-center h-60">
                                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
                                 </div>
@@ -132,7 +153,8 @@ export default function CustomerDetailPage() {
                         </CardContent>
                         {hasMoreActivity && (
                             <CardFooter>
-                                <Button onClick={handleLoadMore} className="w-full">
+                                <Button onClick={handleLoadMore} className="w-full" disabled={isLoadingActivity}>
+                                    {isLoadingActivity ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                                     Charger plus
                                 </Button>
                             </CardFooter>
@@ -161,12 +183,14 @@ export default function CustomerDetailPage() {
                 </div>
             </div>
             
-             <AddPaymentDialog 
-                isOpen={isPaymentDialogOpen}
-                onOpenChange={setIsPaymentDialogOpen}
-                customer={customer}
-                outstandingBalance={customer.outstandingBalance}
-            />
+             {customer && (
+                <AddPaymentDialog 
+                    isOpen={isPaymentDialogOpen}
+                    onOpenChange={setIsPaymentDialogOpen}
+                    customer={customer}
+                    outstandingBalance={customer.outstandingBalance}
+                />
+            )}
 
             <PrintStatementDialog
                 isOpen={isStatementDialogOpen}

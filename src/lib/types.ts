@@ -1,16 +1,13 @@
 
 export type SyncStatus = 'synced' | 'pending_create' | 'pending_update' | 'pending_delete';
 
-export interface BaseEntity {
+export interface Product {
     id?: number;
     uuid: string; // For remote identification
     createdAt?: Date;
     updatedAt?: Date;
     sync_status?: SyncStatus;
     last_modified_by?: string; // To track origin of last change (local device ID)
-}
-
-export interface Product extends BaseEntity {
     name: string;
     category?: string;
     price: number;
@@ -26,7 +23,13 @@ export interface Product extends BaseEntity {
     stockStatus?: 'in_stock' | 'low_stock' | 'out_of_stock';
 }
 
-export interface Customer extends BaseEntity {
+export interface Customer {
+    id?: number;
+    uuid: string; // For remote identification
+    createdAt?: Date;
+    updatedAt?: Date;
+    sync_status?: SyncStatus;
+    last_modified_by?: string; // To track origin of last change (local device ID)
     firstName: string;
     lastName: string;
     searchName?: string;
@@ -74,7 +77,13 @@ export interface SalePayment {
     amount: number;
 }
 
-export interface Sale extends BaseEntity {
+export interface Sale {
+    id?: number;
+    uuid: string; // For remote identification
+    createdAt?: Date;
+    updatedAt?: Date;
+    sync_status?: SyncStatus;
+    last_modified_by?: string; // To track origin of last change (local device ID)
     invoiceNumber: string;
     items: SaleItem[];
     subtotal: number;
@@ -91,7 +100,13 @@ export interface Sale extends BaseEntity {
     dueDate?: Date;
 }
 
-export interface Payment extends BaseEntity {
+export interface Payment {
+    id?: number;
+    uuid: string; // For remote identification
+    createdAt?: Date;
+    updatedAt?: Date;
+    sync_status?: SyncStatus;
+    last_modified_by?: string; // To track origin of last change (local device ID)
     customerUuid: string;
     customerName?: string;
     amount: number;
@@ -115,8 +130,13 @@ export interface Draft {
   updatedAt?: Date;
 }
 
-export interface CompanyProfile extends BaseEntity {
+export interface CompanyProfile {
     id: 1;
+    uuid: string; // For remote identification
+    createdAt?: Date;
+    updatedAt?: Date;
+    sync_status?: SyncStatus;
+    last_modified_by?: string; // To track origin of last change (local device ID)
     companyName?: string;
     address?: string;
     city?: string;
@@ -144,7 +164,13 @@ export interface StockIntakeItem {
     isNew: boolean;
 }
 
-export interface StockIntake extends BaseEntity {
+export interface StockIntake {
+    id?: number;
+    uuid: string; // For remote identification
+    createdAt?: Date;
+    updatedAt?: Date;
+    sync_status?: SyncStatus;
+    last_modified_by?: string; // To track origin of last change (local device ID)
     supplierUuid: string;
     supplierName?: string;
     invoiceNumber: string;
@@ -168,7 +194,13 @@ export interface ReturnItem {
     wasRestocked: boolean;
 }
 
-export interface ProductReturn extends BaseEntity {
+export interface ProductReturn {
+    id?: number;
+    uuid: string; // For remote identification
+    createdAt?: Date;
+    updatedAt?: Date;
+    sync_status?: SyncStatus;
+    last_modified_by?: string; // To track origin of last change (local device ID)
     originalSaleId?: number;
     originalInvoiceNumber: string;
     items: ReturnItem[];
@@ -181,7 +213,13 @@ export interface ProductReturn extends BaseEntity {
 
 export type ExpenseCategory = 'Loyer' | 'Salaires' | 'Fournisseurs' | 'Services Publics' | 'Marketing' | 'Maintenance' | 'Autre';
 
-export interface Expense extends BaseEntity {
+export interface Expense {
+    id?: number;
+    uuid: string; // For remote identification
+    createdAt?: Date;
+    updatedAt?: Date;
+    sync_status?: SyncStatus;
+    last_modified_by?: string; // To track origin of last change (local device ID)
     description: string;
     category: ExpenseCategory;
     amount: number;
@@ -190,24 +228,18 @@ export interface Expense extends BaseEntity {
 
 export type InventoryLogReason = 'sale' | 'return' | 'stock_intake' | 'cancellation' | 'manual_adjustment';
 
-export interface InventoryLog extends BaseEntity {
+export interface InventoryLog {
+    id?: number;
+    uuid: string; // For remote identification
+    createdAt?: Date;
+    updatedAt?: Date;
+    sync_status?: SyncStatus;
+    last_modified_by?: string; // To track origin of last change (local device ID)
     productId: number;
     change: number; // e.g., -2 for a sale, +50 for stock intake
     newQuantity: number;
     reason: InventoryLogReason;
     relatedId?: number | string; // ID of the sale, return, intake, etc.
-}
-
-export interface CostingItem {
-    id: string | number;
-    name: string;
-    purchasePrice: number;
-    quantity: number;
-    totalPurchasePrice: number;
-    allocatedDeliveryCost: number;
-    finalCostPerUnit: number;
-    totalFinalCost: number;
-    productId?: number;
 }
 
 export interface ImportAnalysis {
@@ -226,12 +258,13 @@ export interface ProductImportAnalysis {
     totalRows: number;
 }
 
-export interface ZakatData {
-    inventoryValue: number;
-    totalReceivables: number;
-}
-
-export interface Supplier extends BaseEntity {
+export interface Supplier {
+    id?: number;
+    uuid: string; // For remote identification
+    createdAt?: Date;
+    updatedAt?: Date;
+    sync_status?: SyncStatus;
+    last_modified_by?: string; // To track origin of last change (local device ID)
     name: string;
     contactPerson?: string;
     phone?: string;
@@ -242,7 +275,13 @@ export interface Supplier extends BaseEntity {
 
 // =================== Bread Types ===================
 
-export interface BreadClient extends BaseEntity {
+export interface BreadClient {
+    id?: number;
+    uuid: string; // For remote identification
+    createdAt?: Date;
+    updatedAt?: Date;
+    sync_status?: SyncStatus;
+    last_modified_by?: string; // To track origin of last change (local device ID)
     nom: string;
     actif: boolean;
     type_recurrence: 'quotidien' | 'jours_specifiques' | 'aucun';
@@ -258,7 +297,13 @@ export interface BreadClient extends BaseEntity {
     };
 }
 
-export interface BreadOrder extends BaseEntity {
+export interface BreadOrder {
+    id?: number;
+    uuid: string; // For remote identification
+    createdAt?: Date;
+    updatedAt?: Date;
+    sync_status?: SyncStatus;
+    last_modified_by?: string; // To track origin of last change (local device ID)
     clientPainUuid: string;
     date: string; // YYYY-MM-DD
     quantite: number;
@@ -280,23 +325,4 @@ export interface SyncQueueItem {
     payload: any;
     createdAt: Date;
     attempts?: number;
-}
-
-
-export interface DB {
-    products: Product[];
-    customers: Customer[];
-    sales: Sale[];
-    payments: Payment[];
-    stockIntakes: StockIntake[];
-    returns: ProductReturn[];
-    carts: Cart[];
-    drafts: Draft[];
-    companyProfile: CompanyProfile[];
-    expenses: Expense[];
-    inventoryLogs: InventoryLog[];
-    suppliers: Supplier[];
-    clients_pain: BreadClient[];
-    commandes_pain: BreadOrder[];
-    sync_queue: SyncQueueItem[];
 }

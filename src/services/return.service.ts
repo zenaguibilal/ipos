@@ -1,3 +1,4 @@
+
 'use client';
 
 import { db } from '@/lib/database';
@@ -9,16 +10,21 @@ import { inventoryService } from './inventory.service';
 
 export class ReturnService {
     async getReturns(params: { query?: string, from?: Date, to?: Date }): Promise<ProductReturn[]> {
-        let collection = db.returns.where('sync_status').notEqual('pending_delete').reverse();
+        let collection;
 
         if (params.from && params.to) {
-             collection = collection.filter(s => s.createdAt! >= params.from! && s.createdAt! <= params.to!);
+             collection = db.returns.where('createdAt').between(params.from, params.to, true, true);
+        } else {
+            collection = db.returns.toCollection();
         }
+        
+        collection = collection.and(r => r.sync_status !== 'pending_delete');
+
         if (params.query) {
             const q = params.query.toLowerCase();
             collection = collection.filter(s => s.originalInvoiceNumber.toLowerCase().includes(q) || s.customerName?.toLowerCase().includes(q));
         }
-        return await collection.sortBy('createdAt');
+        return await collection.orderBy('createdAt').reverse().toArray();
     }
     
     async addReturn(returnData: Omit<ProductReturn, 'id' | 'uuid'>): Promise<ProductReturn> {

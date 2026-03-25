@@ -1,3 +1,4 @@
+
 'use client';
 
 import { db } from '@/lib/database';
@@ -18,15 +19,35 @@ export class CustomerService {
         return customer;
     }
     
-    async getCustomerActivity(customerUuid: string): Promise<(Sale | Payment | ProductReturn)[]> {
-        const sales = await db.sales.where({ customerUuid }).and(s => s.sync_status !== 'pending_delete').toArray();
-        const payments = await db.payments.where({ customerUuid }).and(p => p.sync_status !== 'pending_delete').toArray();
-        const returns = await db.returns.where({ customerUuid }).and(r => r.sync_status !== 'pending_delete').toArray();
+    async getCustomerActivity(customerUuid: string, page: number = 1, pageSize: number = 10): Promise<(Sale | Payment | ProductReturn)[]> {
+        const offset = (page - 1) * pageSize;
+
+        // 1. Fetch only keys and dates
+        const salesKeys = await db.sales.where({ customerUuid }).and(s => s.sync_status !== 'pending_delete').toArray(r => ({ id: r.id, date: r.createdAt, type: 'sale' }));
+        const paymentsKeys = await db.payments.where({ customerUuid }).and(p => p.sync_status !== 'pending_delete').toArray(r => ({ id: r.id, date: r.paymentDate, type: 'payment' }));
+        const returnsKeys = await db.returns.where({ customerUuid }).and(r => r.sync_status !== 'pending_delete').toArray(r => ({ id: r.id, date: r.createdAt, type: 'return' }));
+
+        // 2. Merge, sort, and paginate keys
+        const allKeys = [...salesKeys, ...paymentsKeys, ...returnsKeys]
+            .sort((a, b) => b.date!.getTime() - a.date!.getTime())
+            .slice(offset, offset + pageSize);
+
+        // 3. Bulk fetch full records for the paginated keys
+        const salesToFetch = allKeys.filter(k => k.type === 'sale').map(k => k.id!);
+        const paymentsToFetch = allKeys.filter(k => k.type === 'payment').map(k => k.id!);
+        const returnsToFetch = allKeys.filter(k => k.type === 'return').map(k => k.id!);
         
+        const [sales, payments, returns] = await Promise.all([
+            db.sales.bulkGet(salesToFetch),
+            db.payments.bulkGet(paymentsToFetch),
+            db.returns.bulkGet(returnsToFetch)
+        ]);
+        
+        // 4. Merge full records and sort again (to maintain order)
         const activity = [
-            ...sales.map(s => ({ ...s, type: 'sale', date: s.createdAt!, id: `sale-${s.id}` })),
-            ...payments.map(p => ({ ...p, type: 'payment', date: p.paymentDate, id: `payment-${p.id}` })),
-            ...returns.map(r => ({ ...r, type: 'return', date: r.createdAt!, id: `return-${r.id}` })),
+            ...sales.filter(Boolean).map(s => ({ ...s, type: 'sale', date: s!.createdAt!, id: `sale-${s!.id}` })),
+            ...payments.filter(Boolean).map(p => ({ ...p, type: 'payment', date: p!.paymentDate, id: `payment-${p!.id}` })),
+            ...returns.filter(Boolean).map(r => ({ ...r, type: 'return', date: r!.createdAt!, id: `return-${r!.id}` })),
         ];
 
         return activity.sort((a, b) => b.date.getTime() - a.date.getTime());
@@ -61,10 +82,19 @@ export class CustomerService {
         
         if (params.query) {
             const q = params.query.toLowerCase();
-            collection = collection.filter(c => c.searchName?.toLowerCase().includes(q) || c.phone?.includes(q));
+            const byName = await collection.clone().filter(c => c.searchName?.toLowerCase().includes(q)).toArray();
+            const byPhone = await collection.clone().filter(c => c.phone?.includes(q)).toArray();
+            
+            const combined = [...byName, ...byPhone];
+            const uniqueIds = new Set();
+            return combined.filter(element => {
+                const isDuplicate = uniqueIds.has(element.id);
+                uniqueIds.add(element.id);
+                return !isDuplicate;
+            }).sort((a, b) => (b.lastActivityDate?.getTime() ?? 0) - (a.lastActivityDate?.getTime() ?? 0));
         }
         
-        return await collection.sortBy('lastActivityDate').then(res => res.reverse());
+        return await collection.orderBy('lastActivityDate').reverse().toArray();
     }
 
     async addCustomer(customer: Omit<Customer, 'id' | 'uuid' | 'totalSpent' | 'outstandingBalance' | 'lastActivityDate'>): Promise<Customer> {
@@ -107,7 +137,7 @@ export class CustomerService {
     }
     
     async deleteCustomer(id: number): Promise<void> {
-        await db.transaction('rw', db.customers, db.sales, db.payments, db.sync_queue, async () => {
+        await db.transaction('rw', db.customers, db.sales, db.payments, db.returns, db.sync_queue, async () => {
             const customer = await db.customers.get(id);
             if (!customer || !customer.uuid) return;
 
@@ -115,21 +145,22 @@ export class CustomerService {
             if (salesCount > 0) {
                 throw new Error("Impossible de supprimer un client avec un historique de ventes.");
             }
-
-            if (customer.outstandingBalance > 0) {
-                throw new Error("Impossible de supprimer un client avec une dette existante.");
+            
+            const paymentsCount = await db.payments.where('customerUuid').equals(customer.uuid).and(s => s.sync_status !== 'pending_delete').count();
+            if (paymentsCount > 0) {
+                throw new Error("Impossible de supprimer un client avec un historique de paiements.");
             }
 
-            // Soft delete payments
-            const paymentsToDelete = await db.payments.where('customerUuid').equals(customer.uuid).toArray();
-            for (const payment of paymentsToDelete) {
-                if (payment.uuid) {
-                    await db.payments.update(payment.id!, { sync_status: 'pending_delete', updatedAt: new Date(), last_modified_by: syncService.getLocalDeviceId() });
-                    await syncService.queueSyncOperation('payments', payment.uuid, 'delete', {});
-                }
+            const returnsCount = await db.returns.where('customerUuid').equals(customer.uuid).and(s => s.sync_status !== 'pending_delete').count();
+            if (returnsCount > 0) {
+                throw new Error("Impossible de supprimer un client avec un historique de retours.");
             }
 
-            // Soft delete customer
+            if (customer.outstandingBalance !== 0) {
+                throw new Error("Impossible de supprimer un client avec un solde non nul.");
+            }
+            
+            // Soft delete customer - no need to soft-delete related items as we've checked they don't exist
             await db.customers.update(id, { sync_status: 'pending_delete', updatedAt: new Date(), last_modified_by: syncService.getLocalDeviceId() });
             await syncService.queueSyncOperation('customers', customer.uuid, 'delete', {});
         });

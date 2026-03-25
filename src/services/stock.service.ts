@@ -18,11 +18,9 @@ export class StockService {
 
             // 1. Find or Create Supplier
             let supplier: Supplier | undefined;
-            // Prioritize finding by UUID if provided.
             if (intakeData.supplierUuid) {
                 supplier = await db.suppliers.where({ uuid: intakeData.supplierUuid }).first();
             }
-            // Fallback to finding by name if UUID search fails or wasn't provided.
             if (!supplier) {
                 supplier = await db.suppliers.where('name').equalsIgnoreCase(supplierName).and(s => s.sync_status !== 'pending_delete').first();
             }
@@ -128,15 +126,19 @@ export class StockService {
     }
 
     async getStockIntakes(params: { query?: string, from?: Date, to?: Date } = {}): Promise<StockIntake[]> {
-        let collection = db.stockIntakes.where('sync_status').notEqual('pending_delete');
+        let collection;
         if (params.from && params.to) {
-            collection = db.stockIntakes.where('createdAt').between(params.from, params.to, true, true)
-                .and(i => i.sync_status !== 'pending_delete');
+            collection = db.stockIntakes.where('createdAt').between(params.from, params.to, true, true);
+        } else {
+            collection = db.stockIntakes.toCollection();
         }
+
+        collection = collection.and(i => i.sync_status !== 'pending_delete');
+
         if (params.query) {
             const q = params.query.toLowerCase();
             collection = collection.filter(i => i.supplierName?.toLowerCase().includes(q) || i.invoiceNumber.toLowerCase().includes(q));
         }
-        return await collection.reverse().sortBy('createdAt');
+        return await collection.orderBy('createdAt').reverse().toArray();
     }
 }
