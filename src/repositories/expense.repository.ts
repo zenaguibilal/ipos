@@ -1,74 +1,28 @@
-'use client';
-
-import { createClient } from '@/utils/supabase/client';
+// This is a placeholder for the Supabase repository.
+// It's designed to throw errors if used before being implemented.
 import type { Expense } from '@/lib/types';
-import { fromSnakeCase, toSnakeCase } from './utils';
+
+const NOT_IMPLEMENTED = "Repository not implemented. Backend connection is required.";
 
 class ExpenseRepository {
-    private supabase = createClient();
-
-    async get(id: number): Promise<Expense | null> {
-        const { data, error } = await this.supabase
-            .from('expenses')
-            .select('*')
-            .eq('id', id)
-            .single();
-        if (error) throw error;
-        return fromSnakeCase(data);
-    }
-    
-    async filter({ category, from, to }: { category?: string, from?: Date, to?: Date }): Promise<Expense[]> {
-        let query = this.supabase.from('expenses').select('*');
-
-        if (from) {
-            query = query.gte('expense_date', from.toISOString());
-        }
-        if (to) {
-            query = query.lte('expense_date', to.toISOString());
-        }
-        if (category && category !== 'all') {
-            query = query.eq('category', category);
-        }
-
-        const { data, error } = await query.order('expense_date', { ascending: false });
-
-        if (error) throw error;
-        return fromSnakeCase(data);
+    async filter(filters: { category?: string, from?: Date, to?: Date }): Promise<Expense[]> {
+        throw new Error(NOT_IMPLEMENTED);
     }
 
-    async getCategories(): Promise<string[]> {
-        const { data, error } = await this.supabase.rpc('get_distinct_expense_categories');
-        if (error) throw error;
-        return data;
+    async getUniqueCategories(): Promise<string[]> {
+        throw new Error(NOT_IMPLEMENTED);
     }
 
-    async add(expense: Omit<Expense, 'id' | 'created_at' | 'user_id'>): Promise<Expense> {
-        const { data, error } = await this.supabase
-            .from('expenses')
-            .insert(toSnakeCase(expense))
-            .select()
-            .single();
-        if (error) throw error;
-        return fromSnakeCase(data);
+    async add(expense: Expense): Promise<Expense> {
+        throw new Error(NOT_IMPLEMENTED);
     }
 
-    async update(id: number, expenseData: Partial<Omit<Expense, 'id' | 'created_at' | 'user_id'>>): Promise<Expense> {
-        const { data, error } = await this.supabase
-            .from('expenses')
-            .update(toSnakeCase(expenseData))
-            .eq('id', id)
-            .select()
-            .single();
-        if (error) throw error;
-        return fromSnakeCase(data);
+    async update(uuid: string, data: Partial<Expense>): Promise<Expense> {
+        throw new Error(NOT_IMPLEMENTED);
     }
 
-    async delete(id: number): Promise<void> {
-        const { error } = await this.supabase
-            .from('expenses')
-            .delete()
-            .eq('id', id);
-        if (error) throw error;
+    async delete(uuid: string): Promise<void> {
+        throw new Error(NOT_IMPLEMENTED);
     }
 }
 

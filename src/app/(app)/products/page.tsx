@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useDebounce } from '@/hooks/useDebounce';
-import type { Product, ProductImportAnalysis, Supplier } from '@/lib/types';
+import type { Product, Supplier } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, Search, LayoutGrid, List, Printer, Trash2, PackageCheck, PackageX, AlertTriangle, Archive, SortAsc, FileDown, FileUp, Building, Package } from 'lucide-react';
@@ -13,7 +13,6 @@ import { ProductDialog } from '@/components/products/product-dialog';
 import { DeleteProductDialog } from '@/components/products/delete-product-dialog';
 import { DeleteMultipleProductsDialog } from '@/components/products/DeleteMultipleProductsDialog';
 import { PrintLabelsDialog } from '@/components/products/PrintLabelsDialog';
-import { ProductImportPreviewDialog } from '@/components/products/ProductImportPreviewDialog';
 import { InventoryStats } from '@/components/products/InventoryStats';
 import {
   DropdownMenu,
@@ -27,13 +26,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
-import Papa from 'papaparse';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { productService } from '@/services/product.service';
-import { supplierService } from '@/services/supplier.service';
+import { productService, supplierService } from '@/services';
 
 type ViewMode = 'grid' | 'list';
 type StockStatus = 'all' | 'in_stock' | 'low_stock' | 'out_of_stock';
@@ -52,8 +49,8 @@ const sortOptions: { [key: string]: string } = {
     'price_asc': 'Prix (croissant)',
     'quantity_desc': 'Stock (décroissant)',
     'quantity_asc': 'Stock (croissant)',
-    'created_at_desc': 'Plus récents',
-    'created_at_asc': 'Plus anciens',
+    'createdAt_desc': 'Plus récents',
+    'createdAt_asc': 'Plus anciens',
 };
 
 export default function ProductsPage() {
@@ -62,7 +59,7 @@ export default function ProductsPage() {
     const [selectedSupplier, setSelectedSupplier] = useState<string>('all');
     const [stockStatus, setStockStatus] = useState<StockStatus>('all');
     const [viewMode, setViewMode] = useState<ViewMode>('grid');
-    const [sortBy, setSortBy] = useState('created_at_desc');
+    const [sortBy, setSortBy] = useState('createdAt_desc');
 
     const [isProductDialogOpen, setIsProductDialogOpen] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -71,10 +68,6 @@ export default function ProductsPage() {
 
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
     const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
-    
-    const [isProductImportPreviewOpen, setIsProductImportPreviewOpen] = useState(false);
-    const [productImportAnalysis, setProductImportAnalysis] = useState<ProductImportAnalysis | null>(null);
-    const [isImporting, setIsImporting] = useState(false);
 
     const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
@@ -88,7 +81,7 @@ export default function ProductsPage() {
             const data = await productService.filterProducts({ 
                 query: debouncedSearchQuery, 
                 category: selectedCategory, 
-                supplierId: selectedSupplier,
+                supplierUuid: selectedSupplier,
                 stockStatus, 
                 sortBy 
             });
@@ -103,21 +96,22 @@ export default function ProductsPage() {
         fetchProducts();
     }, [fetchProducts]);
 
-    useEffect(() => {
-        const fetchMeta = async () => {
-            try {
-                const [cats, sups] = await Promise.all([
-                    productService.getCategories(),
-                    supplierService.getSuppliers()
-                ]);
-                setCategories(cats);
-                setSuppliers(sups);
-            } catch(error) {
-                toast.error("Impossible de charger les catégories et fournisseurs.");
-            }
-        };
-        fetchMeta();
+    const fetchMeta = useCallback(async () => {
+        try {
+            const [cats, sups] = await Promise.all([
+                productService.getCategories(),
+                supplierService.getSuppliers()
+            ]);
+            setCategories(cats);
+            setSuppliers(sups);
+        } catch(error) {
+            toast.error("Impossible de charger les catégories et fournisseurs.");
+        }
     }, []);
+
+    useEffect(() => {
+        fetchMeta();
+    }, [fetchMeta]);
 
 
     useEffect(() => {
@@ -143,6 +137,10 @@ export default function ProductsPage() {
         setSelectedProducts(new Set());
     }, [products]);
 
+    const onDialogSuccess = () => {
+        fetchProducts();
+        fetchMeta(); // Re-fetch categories/suppliers in case they were changed
+    }
 
     const handleEditProduct = useCallback((product: Product) => {
         setSelectedProduct(product);
@@ -151,7 +149,7 @@ export default function ProductsPage() {
 
     const handleDeleteProduct = useCallback(async (product: Product) => {
         try {
-            await productService.deleteProduct(product.id);
+            await productService.deleteProduct(product.uuid);
             toast.success(`Produit "${product.name}" supprimé.`);
             fetchProducts();
         } catch (e: any) {
@@ -159,13 +157,13 @@ export default function ProductsPage() {
         }
     }, [fetchProducts]);
 
-    const handleToggleSelection = useCallback((productId: string) => {
+    const handleToggleSelection = useCallback((productUuid: string) => {
         setSelectedProducts(prev => {
             const newSet = new Set(prev);
-            if (newSet.has(productId)) {
-                newSet.delete(productId);
+            if (newSet.has(productUuid)) {
+                newSet.delete(productUuid);
             } else {
-                newSet.add(productId);
+                newSet.add(productUuid);
             }
             return newSet;
         });
@@ -176,28 +174,14 @@ export default function ProductsPage() {
         if (selectedProducts.size === products.length) {
             setSelectedProducts(new Set());
         } else {
-            setSelectedProducts(new Set(products.map(p => p.id)));
+            setSelectedProducts(new Set(products.map(p => p.uuid)));
         }
     }, [products, selectedProducts.size]);
 
     const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
-        toast.info("L'importation CSV n'est pas encore implémentée dans la nouvelle architecture.");
+        toast.info("L'importation CSV n'est pas encore implémentée.");
     };
 
-    const handleConfirmImport = async (confirmedData: { toAdd: any[], toUpdate: any[] }) => {
-        setIsImporting(true);
-        try {
-            // await productService.processProductImport(confirmedData.toAdd, confirmedData.toUpdate);
-            toast.success("Importation des produits terminée avec succès !");
-            setIsProductImportPreviewOpen(false);
-            setProductImportAnalysis(null);
-        } catch (error: any) {
-            toast.error("Une erreur est survenue lors de l'importation.", { description: error.message });
-        } finally {
-            setIsImporting(false);
-        }
-    };
-    
     const handleExport = async () => {
         toast.info("Fonctionnalité d'exportation non implémentée.");
     };
@@ -238,15 +222,15 @@ export default function ProductsPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                     {products.map(p => (
                         <ProductCard 
-                            key={p.id} 
+                            key={p.uuid} 
                             product={p} 
                             onEdit={handleEditProduct} 
                             onDelete={() => {
                                 setSelectedProduct(p);
                                 setIsDeleteDialogOpen(true);
                             }}
-                            isSelected={selectedProducts.has(p.id)}
-                            onToggleSelection={() => handleToggleSelection(p.id)}
+                            isSelected={selectedProducts.has(p.uuid)}
+                            onToggleSelection={() => handleToggleSelection(p.uuid)}
                         />
                     ))}
                 </div>
@@ -277,12 +261,12 @@ export default function ProductsPage() {
                 title="Gestion des Produits"
                 description="Recherchez, filtrez et gérez votre inventaire."
             >
-                <Button onClick={handleExport} variant="outline">
-                    <FileUp className="mr-2 h-4 w-4" /> Exporter
+                <Button onClick={handleExport} variant="outline" disabled>
+                    <FileUp className="mr-2 h-4 w-4" /> Exporter (bientôt)
                 </Button>
-                <Button asChild variant="outline">
+                <Button asChild variant="outline" disabled>
                     <label htmlFor="csv-importer">
-                        <FileDown className="mr-2 h-4 w-4" /> Importer
+                        <FileDown className="mr-2 h-4 w-4" /> Importer (bientôt)
                         <input type="file" id="csv-importer" accept=".csv" className="sr-only" onChange={handleFileSelected} />
                     </label>
                 </Button>
@@ -341,9 +325,9 @@ export default function ProductsPage() {
                         >Tous</DropdownMenuCheckboxItem>
                         {suppliers?.map(sup => (
                             <DropdownMenuCheckboxItem
-                                key={sup.id}
-                                checked={selectedSupplier === sup.id}
-                                onCheckedChange={() => setSelectedSupplier(sup.id)}
+                                key={sup.uuid}
+                                checked={selectedSupplier === sup.uuid}
+                                onCheckedChange={() => setSelectedSupplier(sup.uuid)}
                             >{sup.name}</DropdownMenuCheckboxItem>
                         ))}
                     </DropdownMenuContent>
@@ -435,7 +419,7 @@ export default function ProductsPage() {
                 product={selectedProduct}
                 categories={categories || []}
                 suppliers={suppliers || []}
-                onSuccess={fetchProducts}
+                onSuccess={onDialogSuccess}
             />
             <DeleteProductDialog 
                 isOpen={isDeleteDialogOpen}
@@ -446,24 +430,17 @@ export default function ProductsPage() {
             <PrintLabelsDialog
                 isOpen={isPrintDialogOpen}
                 onOpenChange={setIsPrintDialogOpen}
-                productIds={Array.from(selectedProducts)}
+                productUuids={Array.from(selectedProducts)}
             />
              <DeleteMultipleProductsDialog
                 isOpen={isBulkDeleteDialogOpen}
                 onOpenChange={setIsBulkDeleteDialogOpen}
-                productIds={Array.from(selectedProducts)}
+                productUuids={Array.from(selectedProducts)}
                 onSuccess={() => {
                     setSelectedProducts(new Set());
                     fetchProducts();
                 }}
             />
-             {/* <ProductImportPreviewDialog
-                isOpen={isProductImportPreviewOpen}
-                onOpenChange={setIsProductImportPreviewOpen}
-                analysis={productImportAnalysis}
-                onConfirm={handleConfirmImport}
-                isImporting={isImporting}
-            /> */}
         </div>
     );
 }

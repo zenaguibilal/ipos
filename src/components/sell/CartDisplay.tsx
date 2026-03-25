@@ -15,12 +15,12 @@ export function CartDisplay() {
     const cart = useAppStore((state) => state.cart);
     const { updateCartItemQuantity, removeCartItem } = useAppStore(state => state.actions);
     
-    const handleQuantityUpdate = async (itemId: number | string, newQuantity: string) => {
+    const handleQuantityUpdate = (itemUuid: string, newQuantity: string) => {
         const quantity = parseInt(newQuantity, 10);
         if (isNaN(quantity)) return;
 
         try {
-            await updateCartItemQuantity(itemId, quantity);
+            updateCartItemQuantity(itemUuid, quantity);
         } catch (error: any) {
             toast.error(error.message);
         }
@@ -38,7 +38,7 @@ export function CartDisplay() {
                 <ScrollArea className="flex-grow -mr-4 pr-4">
                     <div className="space-y-3">
                         {cart.items.map(item => (
-                            <div key={item.id} className={cn(
+                            <div key={item.uuid} className={cn(
                                 "flex items-center gap-4 bg-background/50 border border-white/5 p-2 rounded-xl transition-all duration-300", 
                                 item.flash && "animate-flash ring-2 ring-primary/50"
                             )}>
@@ -57,12 +57,12 @@ export function CartDisplay() {
                                      <Input
                                         type="number"
                                         value={item.cartQuantity}
-                                        onChange={(e) => handleQuantityUpdate(item.id, e.target.value)}
+                                        onChange={(e) => handleQuantityUpdate(item.uuid, e.target.value)}
                                         className="w-16 h-9 text-center"
                                         min="1"
-                                        max={typeof item.id === 'number' ? item.quantity : undefined}
+                                        max={item.quantity}
                                     />
-                                    <Button variant="ghost" size="icon" className="text-destructive/70 hover:text-destructive hover:bg-destructive/10" onClick={() => removeCartItem(item.id)}>
+                                    <Button variant="ghost" size="icon" className="text-destructive/70 hover:text-destructive hover:bg-destructive/10" onClick={() => removeCartItem(item.uuid)}>
                                         <Trash2 className="h-4 w-4" />
                                     </Button>
                                 </div>

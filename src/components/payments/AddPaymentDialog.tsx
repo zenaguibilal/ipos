@@ -7,11 +7,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
-import type { Customer, Payment } from '@/lib/types';
+import type { Customer } from '@/lib/types';
 import { formatCurrency } from '@/lib/utils';
 import { Textarea } from '../ui/textarea';
 import { DatePicker } from '../ui/date-picker';
-import { paymentService } from '@/services/payment.service';
+import { paymentService, customerService } from '@/services';
 
 interface AddPaymentDialogProps {
   isOpen: boolean;
@@ -52,11 +52,14 @@ export function AddPaymentDialog({ isOpen, onOpenChange, customer, onPaymentSucc
     setIsLoading(true);
     try {
       await paymentService.addPayment({
-        customerId: customer.id,
+        customerUuid: customer.uuid,
         amount: paymentAmount,
         paymentDate: paymentDate,
         notes: notes || undefined,
       });
+
+      // After adding the payment, recalculate the customer's status
+      await customerService.recalculateCustomerStatus(customer.uuid);
 
       toast.success(`Paiement de ${formatCurrency(paymentAmount)} enregistré pour ${customer.firstName} ${customer.lastName}.`);
       onPaymentSuccess();

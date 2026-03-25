@@ -19,31 +19,32 @@ import { useAppStore } from '@/stores/appStore';
 interface BreadDayViewProps {
     orders: BreadOrderWithClient[];
     currentDate: string;
+    onOrdersChange: () => void;
 }
 
-export function BreadDayView({ orders, currentDate }: BreadDayViewProps) {
-    const [selectedOrders, setSelectedOrders] = useState<Set<number>>(new Set());
+export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayViewProps) {
+    const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
     const [isConverting, setIsConverting] = useState(false);
     const breadPrice = useAppStore((state) => state.profile?.prix_pain) || 0;
 
-    const handleToggleSelection = (orderId: number) => {
+    const handleToggleSelection = (orderUuid: string) => {
         setSelectedOrders(prev => {
             const newSet = new Set(prev);
-            if (newSet.has(orderId)) {
-                newSet.delete(orderId);
+            if (newSet.has(orderUuid)) {
+                newSet.delete(orderUuid);
             } else {
-                newSet.add(orderId);
+                newSet.add(orderUuid);
             }
             return newSet;
         });
     };
 
     const handleSelectAll = () => {
-        const unbilledOrders = orders.filter(o => !o.vente_id);
+        const unbilledOrders = orders.filter(o => !o.venteUuid);
         if (selectedOrders.size === unbilledOrders.length) {
             setSelectedOrders(new Set());
         } else {
-            setSelectedOrders(new Set(unbilledOrders.map(o => o.id!)));
+            setSelectedOrders(new Set(unbilledOrders.map(o => o.uuid)));
         }
     };
     
@@ -64,6 +65,7 @@ export function BreadDayView({ orders, currentDate }: BreadDayViewProps) {
             await breadService.convertBreadOrdersToSales(Array.from(selectedOrders), breadPrice);
             toast.success(`${selectedOrders.size} commande(s) convertie(s) en ventes.`);
             setSelectedOrders(new Set());
+            onOrdersChange();
         } catch (error: any) {
             toast.error("Erreur lors de la conversion en ventes.", { description: error.message });
         } finally {
@@ -72,7 +74,7 @@ export function BreadDayView({ orders, currentDate }: BreadDayViewProps) {
     };
 
     const isAllSelected = useMemo(() => {
-        const unbilledOrders = orders.filter(o => !o.vente_id);
+        const unbilledOrders = orders.filter(o => !o.venteUuid);
         return unbilledOrders.length > 0 && selectedOrders.size === unbilledOrders.length;
     }, [orders, selectedOrders]);
 
@@ -88,12 +90,16 @@ export function BreadDayView({ orders, currentDate }: BreadDayViewProps) {
                         title="Aucune commande pour aujourd'hui"
                         description="Aucun client n'a de commande récurrente pour ce jour. Vous pouvez en ajouter une manuellement."
                     >
-                        <ManualAddDialog currentDate={currentDate} />
+                        <ManualAddDialog currentDate={currentDate} onSuccess={onOrdersChange} />
                     </EmptyState>
                 </CardContent>
             </Card>
         );
     }
+    
+    const handleCardChange = () => {
+        onOrdersChange();
+    };
     
     return (
         <Card className="flex flex-col h-full">
@@ -111,7 +117,7 @@ export function BreadDayView({ orders, currentDate }: BreadDayViewProps) {
                             {isConverting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                             Convertir en Vente
                         </Button>
-                        <ManualAddDialog currentDate={currentDate} />
+                        <ManualAddDialog currentDate={currentDate} onSuccess={onOrdersChange} />
                         <PrintBreadListDialog orders={orders} currentDate={currentDate}/>
                     </div>
                 </div>
@@ -121,10 +127,11 @@ export function BreadDayView({ orders, currentDate }: BreadDayViewProps) {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {orders.map(order => (
                             <BreadOrderCard 
-                                key={order.id} 
+                                key={order.uuid} 
                                 order={order}
-                                isSelected={selectedOrders.has(order.id!)}
+                                isSelected={selectedOrders.has(order.uuid)}
                                 onToggleSelection={handleToggleSelection}
+                                onUpdate={handleCardChange}
                             />
                         ))}
                     </div>

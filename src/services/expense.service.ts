@@ -1,7 +1,8 @@
 'use client';
 
 import type { Expense } from '@/lib/types';
-import { expenseRepository } from '@/repositories/expense.repository';
+import { expenseRepository } from '@/repositories';
+import { v4 as uuidv4 } from 'uuid';
 
 class ExpenseService {
     
@@ -10,19 +11,30 @@ class ExpenseService {
     }
 
     async getCategories(): Promise<string[]> {
-        return expenseRepository.getCategories();
+        return expenseRepository.getUniqueCategories();
     }
     
-    async addExpense(expenseData: Omit<Expense, 'id' | 'user_id' | 'created_at'>): Promise<Expense> {
-        return expenseRepository.add(expenseData);
+    async addExpense(expenseData: Omit<Expense, 'uuid' | 'user_id' | 'createdAt' | 'updatedAt'>): Promise<Expense> {
+        const newExpense: Expense = {
+            ...expenseData,
+            uuid: uuidv4(),
+            user_id: 'user_id_placeholder', // This will be set by the repository layer
+            createdAt: new Date(),
+            updatedAt: new Date(),
+        };
+        return await expenseRepository.add(newExpense);
     }
 
-    async updateExpense(id: number, expenseData: Partial<Omit<Expense, 'id' | 'user_id' | 'created_at'>>): Promise<Expense> {
-        return expenseRepository.update(id, expenseData);
+    async updateExpense(uuid: string, expenseData: Partial<Expense>): Promise<Expense> {
+        const dataToUpdate: Partial<Expense> = {
+            ...expenseData,
+            updatedAt: new Date(),
+        };
+        return await expenseRepository.update(uuid, dataToUpdate);
     }
 
-    async deleteExpense(id: number): Promise<void> {
-        await expenseRepository.delete(id);
+    async deleteExpense(uuid: string): Promise<void> {
+        await expenseRepository.delete(uuid);
     }
 }
 

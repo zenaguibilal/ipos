@@ -1,6 +1,6 @@
 'use client';
 
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, HandCoins, Printer, Loader2 } from 'lucide-react';
@@ -12,19 +12,18 @@ import { useState, useCallback, useEffect } from 'react';
 import { AddPaymentDialog } from '@/components/payments/AddPaymentDialog';
 import { SaleDetailsDialog } from '@/components/sales/SaleDetailsDialog';
 import { ReturnDetailsDialog } from '@/components/returns/ReturnDetailsDialog';
-import type { Sale, ProductReturn, Customer, SaleItem } from '@/lib/types';
+import type { Sale, ProductReturn, Customer } from '@/lib/types';
 import { PrintStatementDialog } from '@/components/customers/PrintStatementDialog';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { customerService } from '@/services/customer.service';
+import { customerService, salesService, returnService } from '@/services';
 import { toast } from 'sonner';
-import { saleService } from '@/services/sales.service';
-import { returnService } from '@/services/return.service';
 
 const ITEMS_PER_PAGE = 10;
 
 export default function CustomerDetailPage() {
     const params = useParams();
-    const customerId = params.uuid as string;
+    const router = useRouter();
+    const customerUuid = params.uuid as string;
 
     const [customer, setCustomer] = useState<Customer | undefined | null>(undefined);
     const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
@@ -41,20 +40,30 @@ export default function CustomerDetailPage() {
     const [hasMoreActivity, setHasMoreActivity] = useState(true);
 
     const fetchCustomerData = useCallback(async () => {
-        if (!customerId) return;
+        if (!customerUuid) {
+            router.push('/customers');
+            return;
+        }
         try {
-            const cust = await customerService.getCustomerById(customerId);
+            const cust = await customerService.getCustomerByUuid(customerUuid);
             setCustomer(cust);
+            if (!cust) {
+                toast.error("Client non trouvé.");
+            }
         } catch (error) {
             console.error(error);
             toast.error("Impossible de charger les informations du client.");
             setCustomer(null);
         }
-    }, [customerId]);
+    }, [customerUuid, router]);
     
     useEffect(() => {
         fetchCustomerData();
     },[fetchCustomerData]);
+
+    const handleSuccessfulPayment = useCallback(async () => {
+        await fetchCustomerData();
+    }, [fetchCustomerData]);
 
     // Reset pagination when customer changes
     useEffect(() => {
@@ -62,14 +71,14 @@ export default function CustomerDetailPage() {
         setActivityPage(1);
         setHasMoreActivity(true);
         setIsLoadingActivity(true);
-    }, [customerId]);
+    }, [customerUuid]);
 
     useEffect(() => {
-        if (!customerId) return;
+        if (!customerUuid || !hasMoreActivity) return;
 
         let isCancelled = false;
         setIsLoadingActivity(true);
-        customerService.getCustomerActivity(customerId, activityPage, ITEMS_PER_PAGE)
+        customerService.getCustomerActivity(customerUuid, activityPage, ITEMS_PER_PAGE)
             .then(newActivity => {
                 if (!isCancelled) {
                     setActivity(prev => activityPage === 1 ? newActivity : [...prev, ...newActivity]);
@@ -86,7 +95,7 @@ export default function CustomerDetailPage() {
             });
         
         return () => { isCancelled = true; };
-    }, [customerId, activityPage]);
+    }, [customerUuid, activityPage, hasMoreActivity]);
 
     const handleLoadMore = () => {
         if (!isLoadingActivity && hasMoreActivity) {
@@ -96,7 +105,11 @@ export default function CustomerDetailPage() {
 
     const handleSaleClick = useCallback(async (sale: Sale) => {
         try {
-            const saleWithItems = await saleService.getSaleById(sale.id!);
+            const saleWithItems = await salesService.getSaleByUuid(sale.uuid);
+            if (!saleWithItems) {
+                toast.error("Détails de la vente introuvables.");
+                return;
+            }
             setSelectedSale(saleWithItems);
             setIsSaleDetailsOpen(true);
         } catch (error) {
@@ -106,7 +119,11 @@ export default function CustomerDetailPage() {
 
     const handleReturnClick = useCallback(async (pr: ProductReturn) => {
         try {
-            const returnWithItems = await returnService.getReturnById(pr.id!);
+            const returnWithItems = await returnService.getReturnByUuid(pr.uuid);
+             if (!returnWithItems) {
+                toast.error("Détails du retour introuvables.");
+                return;
+            }
             setSelectedReturn(returnWithItems);
             setIsReturnDetailsOpen(true);
         } catch (error) {
@@ -150,7 +167,7 @@ export default function CustomerDetailPage() {
                  </Button>
                  <PageHeader 
                     title={`${customer.firstName} ${customer.lastName}`}
-                    description={`ID Client: ${customer.id}`}
+                    description={`ID Client: ${customer.uuid}`}
                  />
             </div>
 
@@ -213,7 +230,7 @@ export default function CustomerDetailPage() {
                     isOpen={isPaymentDialogOpen}
                     onOpenChange={setIsPaymentDialogOpen}
                     customer={customer}
-                    onPaymentSuccess={fetchCustomerData}
+                    onPaymentSuccess={handleSuccessfulPayment}
                 />
             )}
 

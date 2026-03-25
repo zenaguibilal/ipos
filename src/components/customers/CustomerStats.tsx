@@ -3,24 +3,32 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Users, AlertTriangle, UserX } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { customerService } from '@/services/customer.service';
 import { toast } from 'sonner';
 
-export function CustomerStats() {
+interface CustomerStatsProps {
+    onRefresh: () => void;
+}
+
+export function CustomerStats({ onRefresh }: CustomerStatsProps) {
   const [stats, setStats] = useState<{ total: number; overdue: number; overLimit: number; } | undefined>(undefined);
 
-  useEffect(() => {
-    const fetchStats = async () => {
-        try {
-            const data = await customerService.getStats();
-            setStats(data);
-        } catch (error) {
-            toast.error("Impossible de charger les statistiques des clients.");
-        }
+  const fetchStats = useCallback(async () => {
+    try {
+        const data = await customerService.getStats();
+        setStats(data);
+    } catch (error) {
+        toast.error("Impossible de charger les statistiques des clients.");
     }
-    fetchStats();
   }, []);
+
+  useEffect(() => {
+    fetchStats();
+    // This is a simple way to keep stats somewhat in sync. A more robust solution might involve a pub/sub system.
+    const interval = setInterval(fetchStats, 30000); // Refresh stats every 30 seconds
+    return () => clearInterval(interval);
+  }, [fetchStats, onRefresh]);
 
   const isLoading = stats === undefined;
 

@@ -7,16 +7,16 @@ import { ConfirmAlertDialog } from '@/components/ui/ConfirmAlertDialog';
 interface DeleteMultipleProductsDialogProps {
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
-    productIds: number[];
+    productUuids: string[];
     onSuccess: () => void;
 }
 
-export function DeleteMultipleProductsDialog({ isOpen, onOpenChange, productIds, onSuccess }: DeleteMultipleProductsDialogProps) {
+export function DeleteMultipleProductsDialog({ isOpen, onOpenChange, productUuids, onSuccess }: DeleteMultipleProductsDialogProps) {
 
     const handleDelete = async () => {
-        if (productIds.length === 0) return;
-        await productService.deleteProducts(productIds);
-        toast.success(`${productIds.length} produit(s) supprimé(s) avec succès.`);
+        if (productUuids.length === 0) return;
+        await productService.deleteProducts(productUuids);
+        toast.success(`${productUuids.length} produit(s) supprimé(s) avec succès.`);
         onSuccess();
     };
 
@@ -25,7 +25,7 @@ export function DeleteMultipleProductsDialog({ isOpen, onOpenChange, productIds,
             isOpen={isOpen}
             onOpenChange={onOpenChange}
             title='Êtes-vous absolument sûr ?'
-            description={`Cette action est irréversible. ${productIds.length} produit(s) sélectionné(s) seront définitivement supprimé(s).`}
+            description={`Cette action est irréversible. ${productUuids.length} produit(s) sélectionné(s) seront définitivement supprimé(s).`}
             onConfirm={handleDelete}
             confirmText="Continuer et supprimer"
         />

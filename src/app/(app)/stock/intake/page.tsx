@@ -23,7 +23,7 @@ import { supplierService } from '@/services/supplier.service';
 
 export default function NewStockIntakePage() {
     const router = useRouter();
-    const [supplierId, setSupplierId] = useState<string>('');
+    const [supplierUuid, setSupplierUuid] = useState<string>('');
     const [supplierName, setSupplierName] = useState('');
     const [supplierSearch, setSupplierSearch] = useState('');
     const [supplierPopoverOpen, setSupplierPopoverOpen] = useState(false);
@@ -55,7 +55,7 @@ export default function NewStockIntakePage() {
 
 
     const handleAddProduct = useCallback((product: any) => {
-        const existingItemIndex = items.findIndex(item => item.productId === product.id);
+        const existingItemIndex = items.findIndex(item => item.productUuid === product.uuid);
         if (existingItemIndex > -1) {
             const newItems = [...items];
             newItems[existingItemIndex].quantity += 1;
@@ -66,7 +66,7 @@ export default function NewStockIntakePage() {
                 ...prev,
                 {
                     id: uuidv4(),
-                    productId: product.id,
+                    productUuid: product.uuid,
                     name: product.name,
                     barcodes: product.barcodes || [],
                     category: product.category,
@@ -143,7 +143,7 @@ export default function NewStockIntakePage() {
 
         setIsSaving(true);
         try {
-            const intakeData = { supplierId, supplierName, invoiceNumber, invoiceDate: invoiceDate || new Date() };
+            const intakeData = { supplierUuid, supplierName, invoiceNumber, invoiceDate: invoiceDate || new Date() };
             await stockService.addStockIntake(intakeData, items);
             toast.success("Réception de stock enregistrée avec succès !");
             router.push('/stock');
@@ -154,17 +154,17 @@ export default function NewStockIntakePage() {
         }
     };
 
-    const handleSupplierSelect = (id: string) => {
-        const selected = suppliers?.find(s => s.id === id);
+    const handleSupplierSelect = (uuid: string) => {
+        const selected = suppliers?.find(s => s.uuid === uuid);
         if (selected) {
-            setSupplierId(selected.id);
+            setSupplierUuid(selected.uuid);
             setSupplierName(selected.name);
         }
         setSupplierPopoverOpen(false);
     };
 
     const handleSupplierCreate = () => {
-        setSupplierId('');
+        setSupplierUuid('');
         setSupplierName(supplierSearch);
         setSupplierPopoverOpen(false);
     };
@@ -220,9 +220,9 @@ export default function NewStockIntakePage() {
                                         <CommandGroup>
                                             {supplierOptions?.map((supplier) => (
                                                 <CommandItem
-                                                    key={supplier.id}
-                                                    value={supplier.id}
-                                                    onSelect={() => handleSupplierSelect(supplier.id)}
+                                                    key={supplier.uuid}
+                                                    value={supplier.uuid}
+                                                    onSelect={() => handleSupplierSelect(supplier.uuid)}
                                                 >
                                                     {supplier.name}
                                                 </CommandItem>

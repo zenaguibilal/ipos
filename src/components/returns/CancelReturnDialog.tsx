@@ -2,21 +2,29 @@
 
 import { toast } from 'sonner';
 import type { ProductReturn } from '@/lib/types';
-import { returnService } from '@/services';
+import { returnService, customerService } from '@/services';
 import { ConfirmAlertDialog } from '@/components/ui/ConfirmAlertDialog';
 
 interface CancelReturnDialogProps {
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
     productReturn: ProductReturn | null;
+    onSuccess: () => void;
 }
 
-export function CancelReturnDialog({ isOpen, onOpenChange, productReturn }: CancelReturnDialogProps) {
+export function CancelReturnDialog({ isOpen, onOpenChange, productReturn, onSuccess }: CancelReturnDialogProps) {
     
     const handleCancel = async () => {
-        if (!productReturn || !productReturn.id) return;
-        await returnService.deleteReturn(productReturn.id);
+        if (!productReturn) return;
+        
+        const cancelledReturn = await returnService.deleteReturn(productReturn.uuid);
+        
+        if (cancelledReturn.customerUuid) {
+            await customerService.recalculateCustomerStatus(cancelledReturn.customerUuid);
+        }
+
         toast.success(`Retour sur facture #${productReturn.originalInvoiceNumber} annulé.`);
+        onSuccess();
     };
 
     return (

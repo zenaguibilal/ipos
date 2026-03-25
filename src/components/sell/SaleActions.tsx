@@ -23,25 +23,23 @@ import { useAppStore, useAppActions } from '@/stores/appStore';
 
 interface SaleActionsProps {
     onSaleFinalized: () => void;
-    onOpenDrafts: () => void;
 }
 
 export const SaleActions = React.forwardRef<
-    { payment: () => void, draft: () => void }, 
+    { payment: () => void }, 
     SaleActionsProps
->(({ onSaleFinalized, onOpenDrafts }, ref) => {
+>(({ onSaleFinalized }, ref) => {
     const { cart } = useAppStore();
     const { clearCart, setCartDiscount } = useAppActions();
     const [isPaymentOpen, setIsPaymentOpen] = useState(false);
     
-    const totalItems = cart?.items.reduce((acc, item) => acc + item.quantity, 0) || 0;
+    const totalItems = cart?.items.reduce((acc, item) => acc + item.cartQuantity, 0) || 0;
     const { subtotal, discountAmount, total } = cart ? calculateCartTotals(cart) : { subtotal: 0, discountAmount: 0, total: 0 };
     
     const discountValue = cart?.discount.value || 0;
     const discountType = cart?.discount.type || 'fixed';
     
     const paymentButtonRef = React.useRef<HTMLButtonElement>(null);
-    const draftButtonRef = React.useRef<HTMLButtonElement>(null);
 
     React.useImperativeHandle(ref, () => ({
         payment: () => {
@@ -51,10 +49,6 @@ export const SaleActions = React.forwardRef<
                  setIsPaymentOpen(true);
             }
         },
-        draft: () => {
-            // Brouillons désactivés dans la nouvelle architecture
-            // draftButtonRef.current?.click();
-        }
     }));
 
     if (!cart) return null;

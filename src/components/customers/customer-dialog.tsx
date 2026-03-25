@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import type { Customer } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
-import { customerService } from '@/services/customer.service';
+import { customerService } from '@/services';
 
 interface CustomerDialogProps {
     isOpen: boolean;
@@ -54,24 +54,18 @@ export function CustomerDialog({ isOpen, onOpenChange, customer, onSuccess }: Cu
 
         const { firstName, lastName, phone, address, settlementDay, creditLimit } = formState;
 
-        if (!firstName || !lastName) {
-            setError("Le prénom et le nom sont requis.");
-            setIsLoading(false);
-            return;
-        }
-
         const customerData = {
             firstName,
             lastName,
-            phone: phone || null,
-            address: address || null,
-            settlementDay: settlementDay ? parseInt(settlementDay, 10) : null,
-            creditLimit: creditLimit ? parseFloat(creditLimit) : null,
+            phone: phone || undefined,
+            address: address || undefined,
+            settlementDay: settlementDay ? parseInt(settlementDay, 10) : undefined,
+            creditLimit: creditLimit ? parseFloat(creditLimit) : undefined,
         };
 
         try {
-            if (customer && customer.id) { // Editing
-                await customerService.updateCustomer(customer.id, customerData);
+            if (customer) { // Editing
+                await customerService.updateCustomer(customer.uuid, customerData);
                 toast.success(`Client ${firstName} ${lastName} mis à jour.`);
             } else { // Adding
                 await customerService.addCustomer(customerData);
@@ -81,7 +75,7 @@ export function CustomerDialog({ isOpen, onOpenChange, customer, onSuccess }: Cu
             onOpenChange(false);
         } catch (err: any) {
             setError(err.message || "Une erreur est survenue.");
-            toast.error("Échec de l'opération.");
+            toast.error("Échec de l'opération.", { description: err.message });
         } finally {
             setIsLoading(false);
         }

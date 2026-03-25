@@ -1,7 +1,6 @@
 'use client';
 
-import { useState } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
+import { useState, useEffect, useCallback } from 'react';
 import type { BreadClient } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -11,13 +10,27 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BREAD_WEEK_DAY_LABELS, BREAD_WEEK_DAYS } from '@/lib/constants';
-import { breadRepository } from '@/repositories';
+import { breadService } from '@/services';
+import { toast } from 'sonner';
 
 export function BreadClientList() {
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [selectedClient, setSelectedClient] = useState<BreadClient | null>(null);
+    const [clients, setClients] = useState<BreadClient[] | undefined>(undefined);
 
-    const clients = useLiveQuery(() => breadRepository.getAllClients());
+    const fetchClients = useCallback(async () => {
+        try {
+            const data = await breadService.getBreadClients();
+            setClients(data);
+        } catch (error) {
+            toast.error("Impossible de charger les clients de pain.");
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchClients();
+    }, [fetchClients]);
+
     const isLoading = clients === undefined;
 
     const handleEdit = (client: BreadClient) => {
@@ -60,7 +73,7 @@ export function BreadClientList() {
                             {isLoading && [...Array(5)].map((_, i) => <Skeleton key={i} className="h-14 w-full" />)}
                             
                             {!isLoading && clients?.map(client => (
-                                <div key={client.id} className="flex items-center p-2 rounded-md hover:bg-accent">
+                                <div key={client.uuid} className="flex items-center p-2 rounded-md hover:bg-accent">
                                     <div className="flex-grow">
                                         <p className="font-semibold">{client.nom}</p>
                                         <p className="text-sm text-muted-foreground">{client.actif ? 'Actif' : 'Inactif'}</p>
@@ -84,6 +97,7 @@ export function BreadClientList() {
                 isOpen={isFormOpen}
                 onOpenChange={setIsFormOpen}
                 client={selectedClient}
+                onSuccess={fetchClients}
             />
         </>
     );

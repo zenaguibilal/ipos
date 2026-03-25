@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -9,22 +9,26 @@ import { Label } from '@/components/ui/label';
 import { breadService } from '@/services';
 import { toast } from 'sonner';
 import { Plus } from 'lucide-react';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { breadRepository } from '@/repositories';
+import type { BreadClient } from '@/lib/types';
 
 interface ManualAddDialogProps {
     currentDate: string;
+    onSuccess: () => void;
 }
 
-export function ManualAddDialog({ currentDate }: ManualAddDialogProps) {
+export function ManualAddDialog({ currentDate, onSuccess }: ManualAddDialogProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [selectedClientUuid, setSelectedClientUuid] = useState<string>('');
     const [quantity, setQuantity] = useState(10);
-    
-    const manualClients = useLiveQuery(
-        () => isOpen ? breadRepository.getManualClients() : Promise.resolve([]),
-        [isOpen]
-    );
+    const [manualClients, setManualClients] = useState<BreadClient[]>([]);
+
+    useEffect(() => {
+        if(isOpen) {
+            breadService.getManualClients()
+                .then(setManualClients)
+                .catch(() => toast.error("Impossible de charger les clients manuels."));
+        }
+    }, [isOpen]);
 
     const handleAdd = async () => {
         if (!selectedClientUuid) {
@@ -39,6 +43,7 @@ export function ManualAddDialog({ currentDate }: ManualAddDialogProps) {
         try {
             await breadService.addManualBreadOrder(selectedClientUuid, currentDate, quantity);
             toast.success("Commande manuelle ajoutée.");
+            onSuccess();
             setIsOpen(false);
             setSelectedClientUuid('');
             setQuantity(10);

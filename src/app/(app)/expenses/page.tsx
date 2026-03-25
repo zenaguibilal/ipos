@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { expenseService } from '@/services';
 import type { Expense } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -36,7 +36,7 @@ export default function ExpensesPage() {
 
     const isLoading = expenses === undefined || categories === undefined;
     
-    const fetchExpenses = async () => {
+    const fetchExpenses = useCallback(async () => {
          if (!isMounted || !dateRange?.from || !dateRange?.to) return;
         try {
             const data = await expenseService.filter({
@@ -49,24 +49,25 @@ export default function ExpensesPage() {
             console.error(error);
             toast.error("Impossible de charger les dépenses.");
         }
-    }
+    }, [isMounted, selectedCategory, dateRange]);
     
     useEffect(() => {
         fetchExpenses();
-    }, [isMounted, selectedCategory, dateRange]);
+    }, [fetchExpenses]);
+
+    const fetchCategories = useCallback(async () => {
+        try {
+            const cats = await expenseService.getCategories();
+            setCategories(cats);
+        } catch (error) {
+            console.error(error);
+            toast.error("Impossible de charger les catégories de dépenses.");
+        }
+    }, []);
 
     useEffect(() => {
-        const fetchCategories = async () => {
-            try {
-                const cats = await expenseService.getCategories();
-                setCategories(cats);
-            } catch (error) {
-                console.error(error);
-                toast.error("Impossible de charger les catégories de dépenses.");
-            }
-        }
         fetchCategories();
-    }, [])
+    }, [fetchCategories])
 
     const handleEditExpense = (expense: Expense) => {
         setSelectedExpense(expense);
@@ -77,6 +78,11 @@ export default function ExpensesPage() {
         setSelectedExpense(expense);
         setIsDeleteDialogOpen(true);
     };
+    
+    const onDialogSuccess = () => {
+        fetchExpenses();
+        fetchCategories(); // Re-fetch categories in case a new one was added via "Autre"
+    }
 
     const totalExpenses = expenses ? expenses.reduce((acc, expense) => acc + expense.amount, 0) : 0;
     
@@ -109,7 +115,7 @@ export default function ExpensesPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {expenses.map(e => (
                     <ExpenseCard 
-                        key={e.id} 
+                        key={e.uuid} 
                         expense={e} 
                         onEdit={handleEditExpense} 
                         onDelete={handleDeleteExpense}
@@ -175,7 +181,8 @@ export default function ExpensesPage() {
                 isOpen={isExpenseDialogOpen}
                 onOpenChange={setIsExpenseDialogOpen}
                 expense={selectedExpense}
-                onSuccess={fetchExpenses}
+                onSuccess={onDialogSuccess}
+                existingCategories={categories || []}
             />
             <DeleteExpenseDialog 
                 isOpen={isDeleteDialogOpen}

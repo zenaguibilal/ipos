@@ -1,3 +1,4 @@
+import { authService } from './auth.service';
 import { breadService } from './bread.service';
 import { customerService } from './customer.service';
 import { expenseService } from './expense.service';
@@ -8,8 +9,11 @@ import { salesService } from './sales.service';
 import { stockService } from './stock.service';
 import { supplierService } from './supplier.service';
 import { profileService } from './profile.service';
+import { inventoryService } from './inventory.service';
+import { backupService } from './backup.service';
 
 export {
+    authService,
     breadService,
     customerService,
     expenseService,
@@ -19,5 +23,7 @@ export {
     salesService,
     stockService,
     supplierService,
-    profileService
+    profileService,
+    inventoryService,
+    backupService
 };

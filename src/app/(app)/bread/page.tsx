@@ -1,7 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
+import { useState, useEffect, useCallback } from 'react';
 import { formatDateToYYYYMMDD } from '@/lib/utils';
 import { addDays, format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -14,45 +13,41 @@ import { Loader2 } from 'lucide-react';
 import type { BreadOrderWithClient } from '@/lib/types';
 import { breadService } from '@/services';
 import { useAppStore } from '@/stores/appStore';
-import { breadRepository } from '@/repositories';
+import { toast } from 'sonner';
 
 export default function BreadPage() {
     const [currentDate, setCurrentDate] = useState(new Date());
     const formattedDate = formatDateToYYYYMMDD(currentDate);
 
-    const orders = useLiveQuery<BreadOrderWithClient[]>(
-        () => breadService.getBreadOrdersForDate(formattedDate),
-        [formattedDate]
-    );
-
+    const [orders, setOrders] = useState<BreadOrderWithClient[] | undefined>(undefined);
+    const [isGenerating, setIsGenerating] = useState(false);
+    
     const companyProfile = useAppStore((state) => state.profile);
 
-    const [isGenerating, setIsGenerating] = useState(false);
-    const isLoading = orders === undefined || isGenerating;
-    
-    // Auto-generate orders for the current day if they don't exist
+    const fetchAndGenerateOrders = useCallback(async (date: string) => {
+        setIsGenerating(true);
+        try {
+            const generatedOrders = await breadService.generateAndGetOrdersForDate(date);
+            setOrders(generatedOrders);
+        } catch (error) {
+            console.error("Failed to generate or fetch daily bread orders:", error);
+            toast.error("Erreur lors de la génération des commandes de pain.");
+        } finally {
+            setIsGenerating(false);
+        }
+    }, []);
+
     useEffect(() => {
-        const generate = async () => {
-            setIsGenerating(true);
-            try {
-                const ordersExist = await breadRepository.ordersExistForDate(formattedDate);
-                if (!ordersExist) {
-                    await breadService.createDayOrders(formattedDate);
-                }
-            } catch (error) {
-                console.error("Failed to generate daily bread orders:", error);
-            } finally {
-                setIsGenerating(false);
-            }
-        };
-        generate();
-    }, [formattedDate]);
+        fetchAndGenerateOrders(formattedDate);
+    }, [formattedDate, fetchAndGenerateOrders]);
+
 
     const handleDateChange = (days: number) => {
         setCurrentDate(prev => addDays(prev, days));
     };
 
     const isToday = formatDateToYYYYMMDD(new Date()) === formattedDate;
+    const isLoading = orders === undefined || isGenerating;
 
     return (
         <div className="p-4 sm:p-6 space-y-6 flex flex-col h-full">
@@ -77,6 +72,7 @@ export default function BreadPage() {
                         <BreadDayView 
                             orders={orders || []} 
                             currentDate={formattedDate}
+                            onOrdersChange={() => fetchAndGenerateOrders(formattedDate)}
                         />
                     )}
                 </div>

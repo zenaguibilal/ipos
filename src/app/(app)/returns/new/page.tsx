@@ -15,8 +15,9 @@ import { formatCurrency, cn } from '@/lib/utils';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { v4 as uuidv4 } from 'uuid';
 
-type ReturnItemState = ReturnItem & { originalQuantity: number, returnQuantity: number };
+type ReturnItemState = ReturnItem & { originalQuantity: number, returnQuantity: number, productUuid: string };
 
 export default function NewReturnPage() {
     const router = useRouter();
@@ -37,7 +38,7 @@ export default function NewReturnPage() {
             if (sale) {
                 setFoundSale(sale);
                 const items: ReturnItemState[] = sale.items.map(item => ({
-                    productId: typeof item.id === 'number' ? item.id : null,
+                    productUuid: item.productUuid,
                     productName: item.name,
                     price: item.price,
                     purchasePrice: item.purchasePrice,
@@ -86,10 +87,10 @@ export default function NewReturnPage() {
 
         setIsSaving(true);
         try {
-            const itemsForService = returnItems
+            const itemsForService: ReturnItem[] = returnItems
                 .filter(item => item.returnQuantity > 0)
                 .map(item => ({
-                    productId: item.productId,
+                    productUuid: item.productUuid,
                     productName: item.productName,
                     quantity: item.returnQuantity,
                     price: item.price,
@@ -98,8 +99,7 @@ export default function NewReturnPage() {
                 }));
 
             await returnService.addReturn({
-                originalSaleId: foundSale.id,
-                originalInvoiceNumber: foundSale.invoiceNumber,
+                originalSaleUuid: foundSale.uuid,
                 items: itemsForService,
                 totalReturnValue,
                 amountRefunded,
@@ -185,7 +185,7 @@ export default function NewReturnPage() {
                                     </thead>
                                     <tbody>
                                         {returnItems.map((item, index) => (
-                                            <tr key={index} className="border-b">
+                                            <tr key={item.productUuid + index} className="border-b">
                                                 <td className="p-2 font-medium">{item.productName}</td>
                                                 <td className="p-2 text-center">{item.originalQuantity}</td>
                                                 <td className="p-2">
@@ -203,7 +203,7 @@ export default function NewReturnPage() {
                                                     <Switch
                                                         checked={item.wasRestocked}
                                                         onCheckedChange={value => handleItemChange(index, 'wasRestocked', value)}
-                                                        disabled={item.productId === null}
+                                                        disabled={item.productUuid === null}
                                                     />
                                                 </td>
                                             </tr>

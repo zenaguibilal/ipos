@@ -1,7 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, forwardRef, useImperativeHandle, useRef, useEffect } from 'react';
-import { productService } from '@/services';
+import React, { useState, useMemo, forwardRef, useImperativeHandle, useRef, useEffect, useCallback } from 'react';
 import type { Product } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
@@ -14,8 +13,7 @@ import { formatCurrency, getPlaceholder } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useDebounce } from '@/hooks/useDebounce';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { productRepository } from '@/repositories';
+import { productService } from '@/services';
 
 interface ProductSearchProps {
     onProductSelect: (product: Product, quantity: number) => void;
@@ -74,16 +72,36 @@ export const ProductSearch = forwardRef<{focus: () => void}, ProductSearchProps>
     const [selectedCategory, setSelectedCategory] = useState('all');
     const inputRef = useRef<HTMLInputElement>(null);
     
-    const categories = useLiveQuery(() => productRepository.getCategories());
+    const [categories, setCategories] = useState<string[]>([]);
+    const [products, setProducts] = useState<Product[]>([]);
+    
+    const fetchCategories = useCallback(async () => {
+        try {
+            const cats = await productService.getCategories();
+            setCategories(cats);
+        } catch (e) { toast.error("Impossible de charger les catégories de produits.")}
+    }, []);
 
-    const filteredProducts = useLiveQuery(
-        () => productRepository.filter({ query: debouncedQuery, category: selectedCategory, stockStatus: 'in_stock' }),
-        [debouncedQuery, selectedCategory]
-    );
+    const fetchProducts = useCallback(async () => {
+        try {
+            const prods = await productService.filterProducts({ query: debouncedQuery, category: selectedCategory, stockStatus: 'in_stock' });
+            setProducts(prods);
+        } catch (e) { toast.error("Impossible de charger les produits.")}
+    }, [debouncedQuery, selectedCategory]);
+
+    useEffect(() => {
+        fetchCategories();
+    }, [fetchCategories]);
+
+    useEffect(() => {
+        fetchProducts();
+    }, [fetchProducts]);
+
 
     useImperativeHandle(ref, () => ({
         focus: () => {
             inputRef.current?.focus();
+            inputRef.current?.select();
         },
     }));
 
@@ -104,14 +122,14 @@ export const ProductSearch = forwardRef<{focus: () => void}, ProductSearchProps>
     
     const addCustomProduct = (name: string, price: number) => {
         const customProduct: Product = {
-            id: `custom-${Date.now()}`,
             uuid: `custom-${Date.now()}`,
             name: `(Perso) ${name}`,
             price,
             purchasePrice: price, // Assume purchase price is same as selling for custom items
-            quantity: 1, // Represents one-time item
+            quantity: Infinity, // Represents one-time item
             minStockLevel: 0,
-            category: 'Personnalisé'
+            category: 'Personnalisé',
+            user_id: 'custom',
         };
         onProductSelect(customProduct, 1);
     };
@@ -129,7 +147,12 @@ export const ProductSearch = forwardRef<{focus: () => void}, ProductSearchProps>
                     onKeyDown={(e) => {
                         if (e.key === 'Enter') {
                             e.preventDefault();
-                            handleBarcodeScanned(e.currentTarget.value);
+                            if (products?.length === 1) {
+                                onProductSelect(products[0], 1);
+                                setQuery('');
+                            } else {
+                                handleBarcodeScanned(e.currentTarget.value);
+                            }
                         }
                     }}
                     autoFocus
@@ -163,18 +186,18 @@ export const ProductSearch = forwardRef<{focus: () => void}, ProductSearchProps>
 
             <ScrollArea className="flex-grow -mx-4 mt-2">
                 <div className="space-y-1 px-4">
-                    {filteredProducts?.map((product, index) => (
+                    {products?.map((product, index) => (
                         <ListItem
-                            key={product.id}
+                            key={product.uuid}
                             product={product}
                             onClick={() => {
                                 onProductSelect(product, 1);
                                 setQuery(''); // Clear search after selection
                             }}
-                            isLast={index === filteredProducts.length - 1}
+                            isLast={index === products.length - 1}
                         />
                     ))}
-                     {filteredProducts?.length === 0 && (
+                     {products?.length === 0 && (
                         <div className="text-center text-muted-foreground py-8">
                             {query.trim() ? (
                                 <p>Aucun produit trouvé pour votre recherche.</p>
@@ -200,7 +223,7 @@ interface ListItemProps {
 }
 
 const ListItem = React.memo(({ product, onClick, isLast }: ListItemProps) => {
-    const isAvailable = typeof product.id === 'string' || product.quantity > 0;
+    const isAvailable = product.quantity > 0;
     const placeholder = getPlaceholder(product.category);
 
     return (

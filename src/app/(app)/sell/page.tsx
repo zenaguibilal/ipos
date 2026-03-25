@@ -13,41 +13,49 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { AddPaymentDialog } from '@/components/payments/AddPaymentDialog';
 import { CartTotalBar } from '@/components/sell/CartTotalBar';
-import { DraftsDialog } from '@/components/sell/DraftsDialog';
-import type { Product } from '@/lib/types';
+import type { Product, Customer } from '@/lib/types';
 import { useAppStore, useAppActions } from '@/stores/appStore';
-import { customerService } from '@/services/customer.service';
+import { customerService } from '@/services';
 
 export default function SellPage() {
-    const { cart, cartCustomer: customer, isCartLoading: isLoading } = useAppStore();
-    const { addProductToCart, clearCart } = useAppActions();
+    const { cart, cartCustomer, isCartLoading } = useAppStore(state => ({
+        cart: state.cart,
+        cartCustomer: state.cartCustomer,
+        isCartLoading: state.isCartLoading,
+    }));
+    const { addProductToCart, clearCart, finalizeSale } = useAppActions();
     
     const [isProductSheetOpen, setIsProductSheetOpen] = useState(false);
     const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
-    const [isDraftsDialogOpen, setIsDraftsDialogOpen] = useState(false);
 
     const productSearchRef = useRef<{ focus: () => void }>(null);
     const customerComboboxRef = useRef<HTMLButtonElement>(null);
-    const saleActionsRef = useRef<{ payment: () => void; draft: () => void; }>(null);
+    const saleActionsRef = useRef<{ payment: () => void; }>(null);
 
     const cartItemsCountRef = useRef(cart?.items.length ?? 0);
     useEffect(() => {
         cartItemsCountRef.current = cart?.items.length ?? 0;
     }, [cart?.items.length]);
-    
-    const fetchCustomer = useCallback(async () => {
-        if (!customer) return;
+
+    const handleSuccessfulPayment = useCallback(async () => {
+        if (!cartCustomer) return;
         try {
-            await customerService.getCustomerById(customer.id);
+            // Re-fetch customer to update state after payment
+            const updatedCustomer = await customerService.recalculateCustomerStatus(cartCustomer.uuid);
+            useAppActions.setCartCustomer(updatedCustomer || null);
         } catch (error) {
             console.error("Failed to refetch customer data", error);
+            toast.error("Impossible de rafraîchir les données du client.");
         }
-    }, [customer]);
-
+    }, [cartCustomer]);
 
     const handleSaleFinalized = useCallback(() => {
-        clearCart();
-    }, [clearCart]);
+        // The store action now handles clearing the cart.
+        // We might want to refresh the customer here too if they were involved.
+        if (cart.customerUuid) {
+            handleSuccessfulPayment();
+        }
+    }, [cart.customerUuid, handleSuccessfulPayment]);
 
     const handleKeyDown = useCallback((e: KeyboardEvent) => {
         if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
@@ -62,14 +70,6 @@ export default function SellPage() {
                 e.preventDefault();
                 customerComboboxRef.current?.click();
                 break;
-            case 'F4':
-                 e.preventDefault();
-                 saleActionsRef.current?.draft();
-                break;
-            case 'F6':
-                e.preventDefault();
-                setIsDraftsDialogOpen(true);
-                break;
             case 'F9':
                 e.preventDefault();
                 if (cartItemsCountRef.current > 0) {
@@ -79,7 +79,7 @@ export default function SellPage() {
                 }
                 break;
         }
-    }, []); // Dependencies are removed for performance, logic now uses refs
+    }, []);
 
     useEffect(() => {
         document.addEventListener('keydown', handleKeyDown);
@@ -88,7 +88,7 @@ export default function SellPage() {
         };
     }, [handleKeyDown]);
 
-    const isDataLoading = isLoading || !cart;
+    const isDataLoading = isCartLoading || !cart;
 
     if (isDataLoading) {
         return (
@@ -120,7 +120,7 @@ export default function SellPage() {
                                 <CustomerCombobox ref={customerComboboxRef} />
                             </div>
                             <div className="flex gap-2">
-                                {customer && customer.outstandingBalance > 0 && (
+                                {cartCustomer && cartCustomer.outstandingBalance > 0 && (
                                     <Button 
                                         variant="outline" 
                                         className="h-auto" 
@@ -155,7 +155,6 @@ export default function SellPage() {
                                 <SaleActions
                                     ref={saleActionsRef}
                                     onSaleFinalized={handleSaleFinalized}
-                                    onOpenDrafts={() => setIsDraftsDialogOpen(true)}
                                 />
                             </CardContent>
                         </Card>
@@ -169,18 +168,14 @@ export default function SellPage() {
                     </div>
                 </div>
             </div>
-            {customer && (
+            {cartCustomer && (
                  <AddPaymentDialog 
                     isOpen={isPaymentDialogOpen}
                     onOpenChange={setIsPaymentDialogOpen}
-                    customer={customer}
-                    onPaymentSuccess={fetchCustomer}
+                    customer={cartCustomer}
+                    onPaymentSuccess={handleSuccessfulPayment}
                 />
             )}
-            <DraftsDialog
-                isOpen={isDraftsDialogOpen}
-                onOpenChange={setIsDraftsDialogOpen}
-            />
         </>
     );
 }

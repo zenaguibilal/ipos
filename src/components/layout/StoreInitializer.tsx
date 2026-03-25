@@ -5,14 +5,15 @@ import { useEffect, useRef } from "react";
 
 export function StoreInitializer() {
     const initialized = useRef(false);
-    const { initSession } = useAppStore(state => state.actions);
+    const { initSession, fetchProfile } = useAppStore(state => state.actions);
 
     useEffect(() => {
         if (!initialized.current) {
             initSession();
+            fetchProfile();
             initialized.current = true;
         }
-    }, [initSession]);
+    }, [initSession, fetchProfile]);
 
     return null;
 }

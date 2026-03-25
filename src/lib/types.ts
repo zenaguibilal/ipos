@@ -1,54 +1,54 @@
-import { type User } from "@supabase/supabase-js";
-
-export type { User };
-
 export interface Product {
-    id: number;
+    uuid: string;
     user_id: string;
-    created_at?: string;
     name: string;
     category?: string;
     price: number;
-    purchase_price: number;
+    purchasePrice: number;
     quantity: number; 
-    min_stock_level: number;
+    minStockLevel: number;
     barcodes?: string[];
-    image_url?: string;
+    imageUrl?: string;
     unite?: 'Pièce' | 'Kg' | 'Litre' | 'Boîte' | 'Carton' | 'Sachet' | 'Bouteille';
-    date_expiration?: string;
-    supplier_id?: number;
+    dateExpiration?: Date;
+    supplierUuid?: string;
+    dateMajPrix?: Date;
+    createdAt?: Date;
+    updatedAt?: Date;
+    stockStatus?: 'in_stock' | 'low_stock' | 'out_of_stock';
 }
 
 export interface Customer {
-    id: number;
+    uuid: string;
     user_id: string;
-    created_at?: string;
-    first_name: string;
-    last_name: string;
-    search_name?: string;
+    firstName: string;
+    lastName: string;
+    searchName?: string;
     phone?: string;
     address?: string;
-    settlement_day?: number;
-    credit_limit?: number;
-    total_spent: number;
-    outstanding_balance: number;
-    last_activity_date?: string;
-    debt_status?: 'none' | 'due_soon' | 'overdue';
-    is_over_limit?: boolean;
+    settlementDay?: number;
+    creditLimit?: number;
+    totalSpent: number;
+    outstandingBalance: number;
+    lastActivityDate?: Date;
+    createdAt?: Date;
+    updatedAt?: Date;
+    debtStatus?: 'none' | 'due_soon' | 'overdue';
+    isOverLimit?: boolean;
 }
 
 export interface SaleItem {
-    id: number | string; // string for custom items
+    productUuid: string;
     name: string;
     price: number;
-    purchase_price: number;
+    purchasePrice: number;
     quantity: number;
 }
 
 // Represents an item in the live shopping cart
 export interface CartItem extends Product {
-    id: number | string; // Can be a string for custom products
     cartQuantity: number;
+    flash?: boolean; // For UI animation
 }
 
 // Represents a single shopping cart session
@@ -56,7 +56,7 @@ export interface Cart {
     id:string;
     name: string;
     items: CartItem[];
-    customer_id: number | null;
+    customerUuid: string | null;
     customerName: string;
     discount: {
         type: 'fixed' | 'percentage';
@@ -70,147 +70,190 @@ export interface SalePayment {
 }
 
 export interface Sale {
-    id: number;
+    uuid: string;
     user_id: string;
-    created_at?: string;
-    invoice_number: string;
+    invoiceNumber: string;
     items: SaleItem[];
     subtotal: number;
-    discount_type?: 'percentage' | 'fixed';
-    discount_amount?: number;
+    discountType?: 'percentage' | 'fixed';
+    discountAmount?: number;
     total: number;
-    amount_paid: number;
-    remaining_balance: number;
-    payment_status: 'paid' | 'partial' | 'unpaid';
+    amountPaid: number;
+    remainingBalance: number;
+    paymentStatus: 'paid' | 'partial' | 'unpaid';
     payments: SalePayment[];
-    customer_id?: number;
+    customerUuid?: string;
     customerName?: string;
-    client_pain_id?: number;
-    due_date?: string;
+    clientPainUuid?: string;
+    createdAt?: Date;
+    updatedAt?: Date;
+    dueDate?: Date;
 }
 
 export interface Payment {
-    id: number;
+    uuid: string;
     user_id: string;
-    created_at?: string;
-    customer_id: number;
+    customerUuid: string;
     customerName?: string;
     amount: number;
-    payment_date: string;
+    paymentDate: Date;
     notes?: string;
-}
-
-export interface Draft {
-  id?: number;
-  date: Date;
-  customer_id: number | null;
-  customerName: string;
-  items: CartItem[];
-  total: number;
-  discount: {
-      type: 'fixed' | 'percentage';
-      value: number;
-  };
-  notes?: string;
-  created_at?: string;
-  updated_at?: string;
+    createdAt?: Date;
+    updatedAt?: Date;
 }
 
 export interface CompanyProfile {
-    id: number;
+    uuid: string;
     user_id: string;
-    updated_at?: string;
-    company_name?: string;
+    id: 1; // This is a client-side concept for singleton
+    companyName?: string;
     address?: string;
     city?: string;
-    zip_code?: string;
+    zipCode?: string;
     country?: string;
     phone?: string;
     email?: string;
     website?: string;
-    vat_number?: string;
-    rc_number?: string;
-    gold_price_per_gram?: number;
+    vatNumber?: string;
+    rcNumber?: string;
+    goldPricePerGram?: number;
     prix_pain?: number;
+    updatedAt?: Date;
 }
 
 export interface StockIntakeItem {
     id: string; // Unique ID for the item row in UI, not persisted
-    product_id?: number; // ID of the product if it exists
+    productUuid?: string; // UUID of the product if it exists
     barcodes: string[];
     name: string;
     category?: string;
     quantity: number;
-    quantity_damaged: number;
-    purchase_price: number;
+    quantityDamaged: number;
+    purchasePrice: number;
     price: number;
-    is_new: boolean;
+    isNew: boolean;
 }
 
 export interface StockIntake {
-    id: number;
+    uuid: string;
     user_id: string;
-    created_at?: string;
-    supplier_id: number;
+    supplierUuid?: string;
     supplierName?: string;
-    invoice_number: string;
-    invoice_date: string;
+    invoiceNumber: string;
+    invoiceDate: Date;
     items: {
-        product_id?: number;
-        product_name: string;
-        quantity_received: number;
-        quantity_damaged: number;
-        purchase_price: number;
+        productUuid?: string;
+        productName: string;
+        quantityReceived: number;
+        quantityDamaged: number;
+        purchasePrice: number;
     }[];
-    total_value: number;
+    totalValue: number;
+    createdAt?: Date;
+    updatedAt?: Date;
 }
 
 export interface ReturnItem {
-    product_id: number | null;
-    product_name: string;
+    productUuid: string | null;
+    productName: string;
     quantity: number;
     price: number; // The price at which it was sold
-    purchase_price: number;
-    was_restocked: boolean;
+    purchasePrice: number;
+    wasRestocked: boolean;
 }
 
 export interface ProductReturn {
-    id: number;
+    uuid: string;
     user_id: string;
-    created_at?: string;
-    original_sale_id?: number;
-    original_invoice_number: string;
+    originalSaleUuid?: string;
+    originalInvoiceNumber: string;
     items: ReturnItem[];
-    total_return_value: number;
-    amount_refunded: number;
-    customer_id?: number;
+    totalReturnValue: number;
+    amountRefunded: number;
+    customerUuid?: string;
     customerName?: string;
+    createdAt?: Date;
+    updatedAt?: Date;
     notes?: string;
 }
 
 export type ExpenseCategory = 'Loyer' | 'Salaires' | 'Fournisseurs' | 'Services Publics' | 'Marketing' | 'Maintenance' | 'Autre';
 
 export interface Expense {
-    id: number;
+    uuid: string;
     user_id: string;
-    created_at?: string;
     description: string;
     category: ExpenseCategory;
     amount: number;
-    expense_date: string;
+    expenseDate: Date;
+    createdAt?: Date;
+    updatedAt?: Date;
 }
 
 export type InventoryLogReason = 'sale' | 'return' | 'stock_intake' | 'cancellation' | 'manual_adjustment';
 
 export interface InventoryLog {
-    id: number;
+    uuid: string;
     user_id: string;
-    created_at: string;
-    product_id: number;
+    productUuid: string;
     change: number; // e.g., -2 for sale, +50 for stock intake
-    new_quantity: number;
+    newQuantity: number;
     reason: InventoryLogReason;
-    related_id?: number | string; // ID of the sale, return, intake, etc.
+    relatedUuid?: string; // UUID of the sale, return, intake, etc.
+    createdAt: Date;
+}
+
+export interface Supplier {
+    uuid: string;
+    user_id: string;
+    name: string;
+    contactPerson?: string;
+    phone?: string;
+    email?: string;
+    address?: string;
+    balance: number; // Solde de la dette envers le fournisseur
+    createdAt?: Date;
+    updatedAt?: Date;
+}
+
+// =================== Bread Types ===================
+
+export interface BreadClient {
+    uuid: string;
+    user_id: string;
+    nom: string;
+    actif: boolean;
+    type_recurrence: 'quotidien' | 'jours_specifiques' | 'aucun';
+    quantite_defaut?: number;
+    jours_semaine?: {
+        lundi:    { actif: boolean, quantite: number },
+        mardi:    { actif: boolean, quantite: number },
+        mercredi: { actif: boolean, quantite: number },
+        jeudi:    { actif: boolean, quantite: number },
+        vendredi: { actif: boolean, quantite: number },
+        samedi:   { actif: boolean, quantite: number },
+        dimanche: { actif: boolean, quantite: number }
+    };
+    createdAt?: Date;
+    updatedAt?: Date;
+}
+
+export interface BreadOrder {
+    uuid: string;
+    user_id: string;
+    clientPainUuid: string;
+    date: string; // YYYY-MM-DD
+    quantite: number;
+    quantite_origine?: number;
+    est_paye: boolean;
+    est_livre: boolean;
+    venteUuid: string | null;
+    createdAt?: Date;
+    updatedAt?: Date;
+}
+
+export interface BreadOrderWithClient extends BreadOrder {
+    client: BreadClient;
 }
 
 export interface ImportAnalysis {
@@ -227,71 +270,4 @@ export interface ProductImportAnalysis {
     skippedRows: any[];
     errorRows: any[];
     totalRows: number;
-}
-
-export interface Supplier {
-    id: number;
-    user_id: string;
-    created_at?: string;
-    name: string;
-    contact_person?: string;
-    phone?: string;
-    email?: string;
-    address?: string;
-    balance: number; // Solde de la dette envers le fournisseur
-}
-
-// =================== Bread Types ===================
-
-export interface BreadClient {
-    id: number;
-    user_id: string;
-    created_at?: string;
-    nom: string;
-    actif: boolean;
-    type_recurrence: 'quotidien' | 'jours_specifiques' | 'aucun';
-    quantite_defaut?: number;
-    jours_semaine?: {
-        lundi:    { actif: boolean, quantite: number },
-        mardi:    { actif: boolean, quantite: number },
-        mercredi: { actif: boolean, quantite: number },
-        jeudi:    { actif: boolean, quantite: number },
-        vendredi: { actif: boolean, quantite: number },
-        samedi:   { actif: boolean, quantite: number },
-        dimanche: { actif: boolean, quantite: number }
-    };
-}
-
-export interface BreadOrder {
-    id: number;
-    user_id: string;
-    created_at?: string;
-    client_pain_id: number;
-    date: string; // YYYY-MM-DD
-    quantite: number;
-    quantite_origine?: number;
-    est_paye: boolean;
-    est_livre: boolean;
-    vente_id: number | null;
-}
-
-export interface BreadOrderWithClient extends BreadOrder {
-    client: BreadClient;
-}
-
-export interface DB {
-    products: Product[];
-    customers: Customer[];
-    sales: Sale[];
-    payments: Payment[];
-    stockIntakes: StockIntake[];
-    returns: ProductReturn[];
-    carts: Cart[];
-    drafts: Draft[];
-    companyProfile: CompanyProfile[];
-    expenses: Expense[];
-    inventoryLogs: InventoryLog[];
-    suppliers: Supplier[];
-    clients_pain: BreadClient[];
-    commandes_pain: BreadOrder[];
 }

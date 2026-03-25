@@ -8,7 +8,7 @@ import { Printer } from 'lucide-react';
 import { CustomerStatement } from './CustomerStatement';
 import { Skeleton } from '../ui/skeleton';
 import { useAppStore } from '@/stores/appStore';
-import { customerService } from '@/services/customer.service';
+import { customerService } from '@/services';
 import { toast } from 'sonner';
 
 interface PrintStatementDialogProps {
@@ -32,7 +32,7 @@ export function PrintStatementDialog({ isOpen, onOpenChange, customer }: PrintSt
 
         const fetchStatement = async () => {
             try {
-                const data = await customerService.getCustomerStatementData(customer.id);
+                const data = await customerService.getCustomerStatementData(customer.uuid);
                 setStatementData(data);
             } catch (error) {
                 toast.error("Impossible de charger les données du relevé.");

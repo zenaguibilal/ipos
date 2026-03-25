@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { salesService } from '@/services';
 import { useDebounce } from '@/hooks/useDebounce';
 import type { Sale } from '@/lib/types';
@@ -14,8 +14,7 @@ import { CancelSaleDialog } from '@/components/sales/CancelSaleDialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { saleRepository } from '@/repositories';
+import { toast } from 'sonner';
 
 export default function SalesHistoryPage() {
     const [searchQuery, setSearchQuery] = useState('');
@@ -26,15 +25,27 @@ export default function SalesHistoryPage() {
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
     const [isCancelOpen, setIsCancelOpen] = useState(false);
 
-    const sales = useLiveQuery(() => {
-        if (!isMounted || !dateRange) return undefined;
-        return saleRepository.filter({
-            query: debouncedSearchQuery,
-            from: dateRange.from,
-            to: dateRange.to
-        });
-    }, [isMounted, debouncedSearchQuery, dateRange]);
+    const [sales, setSales] = useState<Sale[] | undefined>(undefined);
     const isLoading = sales === undefined;
+
+    const fetchSales = useCallback(async () => {
+        if (!isMounted || !dateRange) return;
+        try {
+            const data = await salesService.filterSales({
+                query: debouncedSearchQuery,
+                from: dateRange.from,
+                to: dateRange.to
+            });
+            setSales(data);
+        } catch (error) {
+            console.error(error);
+            toast.error("Impossible de charger l'historique des ventes.");
+        }
+    }, [isMounted, debouncedSearchQuery, dateRange]);
+
+    useEffect(() => {
+        fetchSales();
+    }, [fetchSales]);
 
     const handleViewDetails = (sale: Sale) => {
         setSelectedSale(sale);
@@ -71,7 +82,7 @@ export default function SalesHistoryPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {sales.map(s => (
                     <SalesHistoryCard 
-                        key={s.id} 
+                        key={s.uuid} 
                         sale={s}
                         onViewDetails={handleViewDetails}
                         onCancelSale={handleCancelSale}
@@ -114,6 +125,7 @@ export default function SalesHistoryPage() {
                 isOpen={isCancelOpen}
                 onOpenChange={setIsCancelOpen}
                 sale={selectedSale}
+                onSuccess={fetchSales}
             />
         </div>
     );

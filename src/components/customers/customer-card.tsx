@@ -64,7 +64,7 @@ const CustomerCardComponent = ({ customer, onEdit, onDelete }: CustomerCardProps
                 <div className="flex justify-between items-start">
                     <div className="space-y-1">
                         <CardTitle className="text-xl">
-                            <Link href={`/customers/${customer.id}`} className="hover:underline">
+                            <Link href={`/customers/${customer.uuid}`} className="hover:underline">
                                 {customer.firstName} {customer.lastName}
                             </Link>
                         </CardTitle>
@@ -91,7 +91,7 @@ const CustomerCardComponent = ({ customer, onEdit, onDelete }: CustomerCardProps
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                             <DropdownMenuItem asChild>
-                                <Link href={`/customers/${customer.id}`}>
+                                <Link href={`/customers/${customer.uuid}`}>
                                     <FileText className="mr-2 h-4 w-4" />
                                     Voir les détails
                                 </Link>
@@ -138,7 +138,7 @@ const CustomerCardComponent = ({ customer, onEdit, onDelete }: CustomerCardProps
             </CardContent>
             <CardFooter className="pt-0">
                 <Button variant="outline" asChild className="w-full">
-                    <Link href={`/customers/${customer.id}`}>
+                    <Link href={`/customers/${customer.uuid}`}>
                         Voir l'historique
                     </Link>
                 </Button>

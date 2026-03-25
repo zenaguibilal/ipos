@@ -12,14 +12,13 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import type { SalePayment, CartItem } from '@/lib/types';
+import type { CartItem } from '@/lib/types';
 import { Loader2, CreditCard, Banknote, AlertTriangle } from 'lucide-react';
 import { formatCurrency, calculateCartTotals } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Separator } from '@/components/ui/separator';
-import { useAppStore } from '@/stores/appStore';
-import { saleService } from '@/services/sales.service';
+import { useAppStore, useAppActions } from '@/stores/appStore';
 
 interface PaymentDialogProps {
     isOpen: boolean;
@@ -30,7 +29,9 @@ interface PaymentDialogProps {
 type PaymentMode = 'cash' | 'card' | 'other' | 'credit' | 'mixed';
 
 export function PaymentDialog({ isOpen, onOpenChange, onSaleFinalized }: PaymentDialogProps) {
-    const { cart, cartCustomer: customer } = useAppStore();
+    const { cart, cartCustomer } = useAppStore();
+    const { finalizeSale } = useAppActions();
+
     const [paymentMode, setPaymentMode] = useState<PaymentMode>('cash');
     const [cashAmount, setCashAmount] = useState('');
     const [creditAmount, setCreditAmount] = useState('');
@@ -49,20 +50,20 @@ export function PaymentDialog({ isOpen, onOpenChange, onSaleFinalized }: Payment
 
     const change = (paymentMode === 'cash' || paymentMode === 'card' || paymentMode === 'other') ? cashAmountNum - total : 0;
     const debtFromThisSale = paymentMode === 'credit' ? total : (paymentMode === 'mixed' ? creditAmountNum : 0);
-    const newTotalOutstanding = (customer?.outstandingBalance ?? 0) + debtFromThisSale;
-    const creditAvailable = (customer?.creditLimit ?? 0) - (customer?.outstandingBalance ?? 0);
-    const creditUsage = customer?.creditLimit && customer.creditLimit > 0 ? (newTotalOutstanding / customer.creditLimit) * 100 : 0;
+    const newTotalOutstanding = (cartCustomer?.outstandingBalance ?? 0) + debtFromThisSale;
+    const creditAvailable = (cartCustomer?.creditLimit ?? 0) - (cartCustomer?.outstandingBalance ?? 0);
+    const creditUsage = cartCustomer?.creditLimit && cartCustomer.creditLimit > 0 ? (newTotalOutstanding / cartCustomer.creditLimit) * 100 : 0;
 
     useEffect(() => {
         if (isOpen && cart) {
-            const itemsSoldAtLoss = cart.items.filter(item => item.price < item.purchasePrice);
+            const itemsSoldAtLoss = cart.items.filter(item => item.purchasePrice > 0 && item.price < item.purchasePrice);
             if (itemsSoldAtLoss.length > 0) {
                 setLossItems(itemsSoldAtLoss);
                 setShowLossAlert(true);
             } else {
                 initializePayment();
             }
-        } else {
+        } else if (!isOpen) {
             setIsLoading(false);
         }
     }, [isOpen, cart, total]);
@@ -85,7 +86,7 @@ export function PaymentDialog({ isOpen, onOpenChange, onSaleFinalized }: Payment
         }
     }
 
-    const handleFinalizeSale = async () => {
+    const handleFinalize = async () => {
         if (!cart) return;
 
         if (paymentMode === 'mixed' && (cashAmountNum + creditAmountNum !== total)) {
@@ -93,30 +94,27 @@ export function PaymentDialog({ isOpen, onOpenChange, onSaleFinalized }: Payment
             return;
         }
 
-        if (customer && customer.creditLimit && newTotalOutstanding > customer.creditLimit) {
+        if (cartCustomer && cartCustomer.creditLimit && newTotalOutstanding > cartCustomer.creditLimit) {
             toast.error("La limite de crédit du client est dépassée.", {
-                description: `Le nouveau solde (${formatCurrency(newTotalOutstanding)}) dépasse la limite (${formatCurrency(customer.creditLimit)}).`
+                description: `Le nouveau solde (${formatCurrency(newTotalOutstanding)}) dépasse la limite (${formatCurrency(cartCustomer.creditLimit)}).`
             });
             return;
         }
 
         setIsLoading(true);
 
-        const payments: SalePayment[] = [];
+        const payments: { method: 'cash' | 'card' | 'other', amount: number }[] = [];
         if (amountPaidNum > 0) {
             payments.push({ method: paymentMode === 'card' ? 'card' : (paymentMode === 'other' ? 'other' : 'cash'), amount: amountPaidNum });
         }
         
         try {
-            await saleService.createSale({
-                items: cart.items,
-                discountType: cart.discount.type,
-                discountValue: cart.discount.value,
+            await finalizeSale({
                 amountPaid: amountPaidNum,
                 payments,
-                customerId: cart.customerId,
                 dueDate: debtFromThisSale > 0 ? dueDate : undefined,
             });
+            toast.success("Vente finalisée avec succès !");
             onSaleFinalized();
             onOpenChange(false);
         } catch (error: any) {
@@ -146,7 +144,7 @@ export function PaymentDialog({ isOpen, onOpenChange, onSaleFinalized }: Payment
                         <AlertDialogDescription>
                             Les produits suivants ont un prix de vente inférieur à leur prix d'achat. Êtes-vous sûr de vouloir continuer ?
                             <ul className="list-disc pl-5 mt-2 text-destructive/80 font-medium">
-                                {lossItems.map(item => <li key={item.productId}>{item.name}</li>)}
+                                {lossItems.map(item => <li key={item.uuid}>{item.name}</li>)}
                             </ul>
                         </AlertDialogDescription>
                     </AlertDialogHeader>
@@ -162,9 +160,9 @@ export function PaymentDialog({ isOpen, onOpenChange, onSaleFinalized }: Payment
                     <>
                         <DialogHeader>
                             <DialogTitle>Finaliser la vente</DialogTitle>
-                            {customer && (
+                            {cartCustomer && (
                                 <DialogDescription>
-                                    Client: <span className="font-bold">{customer.firstName} {customer.lastName}</span>
+                                    Client: <span className="font-bold">{cartCustomer.firstName} {cartCustomer.lastName}</span>
                                 </DialogDescription>
                             )}
                         </DialogHeader>
@@ -174,14 +172,14 @@ export function PaymentDialog({ isOpen, onOpenChange, onSaleFinalized }: Payment
                                 <p className="text-4xl font-bold text-primary">{formatCurrency(total)}</p>
                             </div>
                             
-                            {customer && (
+                            {cartCustomer && (
                                 <div className={cn("grid grid-cols-2 gap-2 text-center p-2 rounded-lg text-sm", creditUsage > 90 ? "bg-destructive/10 text-destructive" : "bg-muted")}>
                                     <div>
-                                        <p className="font-semibold">{formatCurrency(customer.outstandingBalance)}</p>
+                                        <p className="font-semibold">{formatCurrency(cartCustomer.outstandingBalance)}</p>
                                         <p className="text-xs">Solde actuel</p>
                                     </div>
                                     <div>
-                                        <p className="font-semibold">{customer.creditLimit ? formatCurrency(customer.creditLimit) : 'N/A'}</p>
+                                        <p className="font-semibold">{cartCustomer.creditLimit ? formatCurrency(cartCustomer.creditLimit) : 'N/A'}</p>
                                         <p className="text-xs">Plafond de crédit</p>
                                     </div>
                                 </div>
@@ -192,8 +190,8 @@ export function PaymentDialog({ isOpen, onOpenChange, onSaleFinalized }: Payment
                                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
                                     <Button type="button" variant={paymentMode === 'cash' ? 'secondary' : 'outline'} onClick={() => handlePaymentModeChange('cash')}><Banknote className="mr-2 h-4 w-4"/>Espèces</Button>
                                     <Button type="button" variant={paymentMode === 'card' ? 'secondary' : 'outline'} onClick={() => handlePaymentModeChange('card')}><CreditCard className="mr-2 h-4 w-4"/>Carte</Button>
-                                    {customer && <Button type="button" variant={paymentMode === 'credit' ? 'secondary' : 'outline'} onClick={() => handlePaymentModeChange('credit')}>Crédit</Button>}
-                                    {customer && <Button type="button" variant={paymentMode === 'mixed' ? 'secondary' : 'outline'} onClick={() => handlePaymentModeChange('mixed')}>Mixte</Button>}
+                                    {cartCustomer && <Button type="button" variant={paymentMode === 'credit' ? 'secondary' : 'outline'} onClick={() => handlePaymentModeChange('credit')}>Crédit</Button>}
+                                    {cartCustomer && <Button type="button" variant={paymentMode === 'mixed' ? 'secondary' : 'outline'} onClick={() => handlePaymentModeChange('mixed')}>Mixte</Button>}
                                 </div>
                             </div>
 
@@ -223,7 +221,7 @@ export function PaymentDialog({ isOpen, onOpenChange, onSaleFinalized }: Payment
                                 </div>
                             )}
 
-                            {(paymentMode === 'credit' || paymentMode === 'mixed') && customer && (
+                            {(paymentMode === 'credit' || paymentMode === 'mixed') && cartCustomer && (
                                 <>
                                     <Separator />
                                     <div className="space-y-2">
@@ -243,7 +241,7 @@ export function PaymentDialog({ isOpen, onOpenChange, onSaleFinalized }: Payment
                         </div>
                         <DialogFooter>
                             <Button type="button" variant="secondary" onClick={closeAndReset} disabled={isLoading}>Annuler</Button>
-                            <Button type="submit" onClick={handleFinalizeSale} disabled={isLoading}>
+                            <Button type="submit" onClick={handleFinalize} disabled={isLoading}>
                                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 Valider la vente
                             </Button>

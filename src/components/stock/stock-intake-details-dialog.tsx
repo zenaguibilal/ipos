@@ -20,7 +20,7 @@ import { Button } from '@/components/ui/button';
 import type { StockIntake } from '@/lib/types';
 import { formatCurrency } from '@/lib/utils';
 import { useEffect, useState } from 'react';
-import { supplierService } from '@/services/supplier.service';
+import { supplierService } from '@/services';
 import { toast } from 'sonner';
 
 export function StockIntakeDetailsDialog({
@@ -35,12 +35,14 @@ export function StockIntakeDetailsDialog({
     const [supplierName, setSupplierName] = useState('Fournisseur inconnu');
     
     useEffect(() => {
-        if(intake?.supplierId) {
-            supplierService.getSupplierById(intake.supplierId)
+        if(intake?.supplierUuid) {
+            supplierService.getSupplierByUuid(intake.supplierUuid)
                 .then(sup => {
                     if (sup) setSupplierName(sup.name);
                 })
                 .catch(() => toast.error("Impossible de charger le nom du fournisseur."));
+        } else if (intake) {
+            setSupplierName(intake.supplierName || 'Fournisseur inconnu');
         }
     }, [intake]);
 

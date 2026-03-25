@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { DatePicker } from '../ui/date-picker';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
 import { Combobox } from '../ui/combobox';
-import { productService } from '@/services/product.service';
+import { productService } from '@/services';
 
 interface ProductDialogProps {
     isOpen: boolean;
@@ -35,7 +35,7 @@ const initialFormState: Partial<Product> = {
     imageUrl: '',
     unite: 'Pièce',
     dateExpiration: undefined,
-    supplierId: undefined,
+    supplierUuid: undefined,
 };
 
 const units: NonNullable<Product['unite']>[] = ['Pièce', 'Kg', 'Litre', 'Boîte', 'Carton', 'Sachet', 'Bouteille'];
@@ -82,26 +82,26 @@ export function ProductDialog({ isOpen, onOpenChange, product, categories, suppl
         setError(null);
         setIsLoading(true);
 
-        try {
-            const productData: Omit<Product, 'id' | 'createdAt' | 'updatedAt' | 'userId' | 'stockStatus'> = {
-                name: formState.name!,
-                category: formState.category || 'Non classé',
-                price: Number(formState.price) || 0,
-                purchasePrice: Number(formState.purchasePrice) || 0,
-                quantity: Number(formState.quantity) || 0,
-                minStockLevel: Number(formState.minStockLevel) || 0,
-                barcodes: formState.barcodes || [],
-                imageUrl: formState.imageUrl || null,
-                unite: formState.unite || 'Pièce',
-                dateExpiration: formState.dateExpiration || null,
-                supplierId: formState.supplierId || null,
-            };
+        const productData: Omit<Product, 'uuid' | 'id'> = {
+            name: formState.name!,
+            category: formState.category || 'Non classé',
+            price: Number(formState.price) || 0,
+            purchasePrice: Number(formState.purchasePrice) || 0,
+            quantity: Number(formState.quantity) || 0,
+            minStockLevel: Number(formState.minStockLevel) || 0,
+            barcodes: formState.barcodes || [],
+            imageUrl: formState.imageUrl || undefined,
+            unite: formState.unite || 'Pièce',
+            dateExpiration: formState.dateExpiration || undefined,
+            supplierUuid: formState.supplierUuid || undefined,
+        };
 
-            if (product && product.id) {
-                await productService.updateProduct(product.id, productData);
+        try {
+            if (product) {
+                await productService.updateProduct(product.uuid, productData);
                 toast.success(`Produit ${productData.name} mis à jour.`);
             } else {
-                await productService.addProduct(productData);
+                await productService.addProduct(productData as Product);
                 toast.success(`Produit ${productData.name} ajouté.`);
             }
             onSuccess();
@@ -123,7 +123,7 @@ export function ProductDialog({ isOpen, onOpenChange, product, categories, suppl
         }
     };
     
-    const supplierOptions = suppliers.map(s => ({ value: s.id, label: s.name }));
+    const supplierOptions = suppliers.map(s => ({ value: s.uuid, label: s.name }));
 
     return (
         <>
@@ -198,8 +198,8 @@ export function ProductDialog({ isOpen, onOpenChange, product, categories, suppl
                             <Label>Fournisseur (Optionnel)</Label>
                              <Combobox
                                 options={supplierOptions}
-                                value={formState.supplierId || ''}
-                                onSelect={(value) => setFormState(s => ({ ...s, supplierId: value }))}
+                                value={formState.supplierUuid || ''}
+                                onSelect={(value) => setFormState(s => ({ ...s, supplierUuid: value }))}
                                 placeholder="Sélectionner un fournisseur..."
                                 searchPlaceholder="Rechercher..."
                                 notFoundMessage="Aucun fournisseur trouvé."

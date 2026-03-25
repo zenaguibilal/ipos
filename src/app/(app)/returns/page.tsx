@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { returnService } from '@/services';
 import { useDebounce } from '@/hooks/useDebounce';
 import type { ProductReturn } from '@/lib/types';
@@ -16,8 +16,7 @@ import { CancelReturnDialog } from '@/components/returns/CancelReturnDialog';
 import Link from 'next/link';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { returnRepository } from '@/repositories';
+import { toast } from 'sonner';
 
 export default function ReturnsPage() {
     const [searchQuery, setSearchQuery] = useState('');
@@ -28,15 +27,27 @@ export default function ReturnsPage() {
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
     const [isCancelOpen, setIsCancelOpen] = useState(false);
 
-    const returns = useLiveQuery(() => {
-        if (!isMounted || !dateRange) return undefined;
-        return returnRepository.filter({
-            query: debouncedSearchQuery,
-            from: dateRange.from,
-            to: dateRange.to
-        });
-    }, [isMounted, debouncedSearchQuery, dateRange]);
+    const [returns, setReturns] = useState<ProductReturn[] | undefined>(undefined);
     const isLoading = returns === undefined;
+    
+    const fetchReturns = useCallback(async () => {
+        if (!isMounted || !dateRange) return;
+        try {
+            const data = await returnService.filterReturns({
+                query: debouncedSearchQuery,
+                from: dateRange.from,
+                to: dateRange.to
+            });
+            setReturns(data);
+        } catch (error) {
+            console.error(error);
+            toast.error("Impossible de charger l'historique des retours.");
+        }
+    }, [isMounted, debouncedSearchQuery, dateRange]);
+
+    useEffect(() => {
+        fetchReturns();
+    }, [fetchReturns]);
 
 
     const handleViewDetails = (pr: ProductReturn) => {
@@ -78,7 +89,7 @@ export default function ReturnsPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {returns.map(r => (
                     <ReturnHistoryCard 
-                        key={r.id} 
+                        key={r.uuid} 
                         productReturn={r}
                         onViewDetails={handleViewDetails}
                         onCancelReturn={handleCancelReturn}
@@ -123,6 +134,7 @@ export default function ReturnsPage() {
                 isOpen={isCancelOpen}
                 onOpenChange={setIsCancelOpen}
                 productReturn={selectedReturn}
+                onSuccess={fetchReturns}
             />
         </div>
     );

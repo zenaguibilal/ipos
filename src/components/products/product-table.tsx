@@ -16,8 +16,8 @@ interface ProductTableProps {
     products: Product[];
     onEdit: (product: Product) => void;
     onDelete: (product: Product) => void;
-    selectedProducts: Set<number>;
-    onToggleProductSelection: (productId: number) => void;
+    selectedProducts: Set<string>;
+    onToggleProductSelection: (productUuid: string) => void;
     onToggleSelectAll: () => void;
     suppliers: Supplier[];
 }
@@ -51,8 +51,7 @@ export function ProductTable({ products, onEdit, onDelete, selectedProducts, onT
                 </TableHeader>
                 <TableBody>
                     {products.map(product => {
-                        if (!product.id || typeof product.id !== 'number') return null;
-                        const productId = product.id;
+                        const productUuid = product.uuid;
 
                         const placeholder = getPlaceholder(product.category);
                         const imageUrl = product.imageUrl || placeholder.url;
@@ -70,11 +69,11 @@ export function ProductTable({ products, onEdit, onDelete, selectedProducts, onT
                         const isPriceOld = product.dateMajPrix && differenceInDays(new Date(), new Date(product.dateMajPrix)) > 30;
 
                         return (
-                            <TableRow key={productId} data-state={selectedProducts.has(productId) ? "selected" : ""}>
+                            <TableRow key={productUuid} data-state={selectedProducts.has(productUuid) ? "selected" : ""}>
                                  <TableCell className="px-4">
                                     <Checkbox
-                                        checked={selectedProducts.has(productId)}
-                                        onCheckedChange={() => onToggleProductSelection(productId)}
+                                        checked={selectedProducts.has(productUuid)}
+                                        onCheckedChange={() => onToggleProductSelection(productUuid)}
                                         aria-label={`Select row for ${product.name}`}
                                     />
                                 </TableCell>

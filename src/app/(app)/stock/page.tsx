@@ -28,25 +28,24 @@ export default function StockPage() {
     const [stockIntakes, setStockIntakes] = useState<StockIntake[] | undefined>(undefined);
     const isLoading = stockIntakes === undefined;
 
-    useEffect(() => {
+    const fetchStockIntakes = useCallback(async () => {
         if (!isMounted || !dateRange?.from) return;
-
-        const fetchStockIntakes = async () => {
-            try {
-                const data = await stockService.getStockIntakes({
-                    query: debouncedSearchQuery,
-                    from: dateRange.from,
-                    to: dateRange.to
-                });
-                setStockIntakes(data);
-            } catch (error) {
-                console.error(error);
-                toast.error("Impossible de charger l'historique des réceptions.");
-            }
-        };
-
-        fetchStockIntakes();
+        try {
+            const data = await stockService.getStockIntakes({
+                query: debouncedSearchQuery,
+                from: dateRange.from,
+                to: dateRange.to
+            });
+            setStockIntakes(data);
+        } catch (error) {
+            console.error(error);
+            toast.error("Impossible de charger l'historique des réceptions.");
+        }
     }, [isMounted, debouncedSearchQuery, dateRange]);
+
+    useEffect(() => {
+        fetchStockIntakes();
+    }, [fetchStockIntakes]);
 
 
     const handleViewDetails = useCallback((intake: StockIntake) => {
@@ -83,7 +82,7 @@ export default function StockPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {stockIntakes.map(s => (
                     <StockIntakeCard 
-                        key={s.id} 
+                        key={s.uuid} 
                         intake={s}
                         onViewDetails={handleViewDetails}
                     />

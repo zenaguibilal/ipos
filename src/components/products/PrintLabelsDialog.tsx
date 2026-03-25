@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
 import type { Product } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -14,50 +13,52 @@ import { productRepository } from '@/repositories';
 interface PrintLabelsDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  productIds: number[];
+  productUuids: string[];
 }
 
-export function PrintLabelsDialog({ isOpen, onOpenChange, productIds }: PrintLabelsDialogProps) {
-  const products = useLiveQuery(
-    () => (isOpen ? productRepository.bulkGet(productIds.map(Number)) : Promise.resolve(undefined)),
-    [isOpen, productIds]
-  );
+export function PrintLabelsDialog({ isOpen, onOpenChange, productUuids }: PrintLabelsDialogProps) {
+  const [products, setProducts] = useState<Product[]>([]);
   
-  const [labelQuantities, setLabelQuantities] = useState<Record<number, number>>({});
-
-  const validProducts = useMemo(() => products?.filter((p): p is Product => p !== undefined) || [], [products]);
+  const [labelQuantities, setLabelQuantities] = useState<Record<string, number>>({});
 
   useEffect(() => {
-    if (isOpen && validProducts.length > 0) {
-      const initialQuantities: Record<number, number> = {};
-      validProducts.forEach(p => {
-        if(typeof p.id === 'number') {
-            initialQuantities[p.id] = 1;
-        }
-      });
-      setLabelQuantities(initialQuantities);
+    if (isOpen && productUuids.length > 0) {
+        productRepository.bulkGetByUuid(productUuids).then(prods => {
+            const validProducts = prods.filter((p): p is Product => !!p);
+            setProducts(validProducts);
+            const initialQuantities: Record<string, number> = {};
+            validProducts.forEach(p => {
+                if (p.uuid) {
+                    initialQuantities[p.uuid] = 1;
+                }
+            });
+            setLabelQuantities(initialQuantities);
+        });
+    } else {
+        setProducts([]);
     }
-  }, [isOpen, validProducts]);
+  }, [isOpen, productUuids]);
 
-  const handleQuantityChange = (productId: number, quantity: string) => {
+
+  const handleQuantityChange = (productUuid: string, quantity: string) => {
     const num = parseInt(quantity, 10);
-    setLabelQuantities(prev => ({ ...prev, [productId]: Math.max(0, isNaN(num) ? 0 : num) }));
+    setLabelQuantities(prev => ({ ...prev, [productUuid]: Math.max(0, isNaN(num) ? 0 : num) }));
   };
 
   const labelsToPrint = useMemo(() => {
-    if (!validProducts) return [];
+    if (!products) return [];
     const labels: React.ReactElement[] = [];
     
-    const sortedProducts = [...validProducts].sort((a,b) => a.name.localeCompare(b.name));
+    const sortedProducts = [...products].sort((a,b) => a.name.localeCompare(b.name));
     sortedProducts.forEach(product => {
-      if (typeof product.id !== 'number') return;
-      const quantity = labelQuantities[product.id] || 0;
-      for (let i = 0; i < quantity; i++) {
-        labels.push(<BarcodeLabel key={`${product.id}-${i}`} product={product} />);
-      }
+        if (!product.uuid) return;
+        const quantity = labelQuantities[product.uuid] || 0;
+        for (let i = 0; i < quantity; i++) {
+            labels.push(<BarcodeLabel key={`${product.uuid}-${i}`} product={product} />);
+        }
     });
     return labels;
-  }, [validProducts, labelQuantities]);
+  }, [products, labelQuantities]);
 
   const handlePrint = () => {
     window.print();
@@ -77,15 +78,15 @@ export function PrintLabelsDialog({ isOpen, onOpenChange, productIds }: PrintLab
             <div className="col-span-3 overflow-y-auto pr-4 border-r print-hide">
                 <h3 className="font-semibold mb-4">Produits sélectionnés</h3>
                 <div className="space-y-4">
-                    {validProducts?.sort((a,b) => a.name.localeCompare(b.name)).map(product => (
-                        <div key={product.id} className="flex items-center justify-between gap-2">
-                            <Label htmlFor={`qty-${product.id}`} className="flex-grow truncate" title={product.name}>{product.name}</Label>
+                    {products?.sort((a,b) => a.name.localeCompare(b.name)).map(product => (
+                        <div key={product.uuid} className="flex items-center justify-between gap-2">
+                            <Label htmlFor={`qty-${product.uuid}`} className="flex-grow truncate" title={product.name}>{product.name}</Label>
                             <Input
-                                id={`qty-${product.id}`}
+                                id={`qty-${product.uuid}`}
                                 type="number"
                                 min="0"
-                                value={labelQuantities[product.id as number] ?? 0}
-                                onChange={(e) => handleQuantityChange(product.id as number, e.target.value)}
+                                value={labelQuantities[product.uuid] ?? 0}
+                                onChange={(e) => handleQuantityChange(product.uuid, e.target.value)}
                                 className="w-20 h-8 text-center"
                             />
                         </div>

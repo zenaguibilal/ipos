@@ -2,20 +2,28 @@
 
 import { toast } from 'sonner';
 import type { Sale } from '@/lib/types';
-import { salesService } from '@/services';
+import { salesService, customerService } from '@/services';
 import { ConfirmAlertDialog } from '@/components/ui/ConfirmAlertDialog';
 
 interface CancelSaleDialogProps {
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
     sale: Sale | null;
+    onSuccess: () => void;
 }
 
-export function CancelSaleDialog({ isOpen, onOpenChange, sale }: CancelSaleDialogProps) {
+export function CancelSaleDialog({ isOpen, onOpenChange, sale, onSuccess }: CancelSaleDialogProps) {
     const handleCancel = async () => {
-        if (!sale || !sale.id) return;
-        await salesService.deleteSale(sale.id);
+        if (!sale) return;
+        const cancelledSale = await salesService.deleteSale(sale.uuid);
+        
+        // After sale is cancelled and stock restored, recalculate customer status
+        if (cancelledSale.customerUuid) {
+            await customerService.recalculateCustomerStatus(cancelledSale.customerUuid);
+        }
+
         toast.success(`Vente #${sale.invoiceNumber} annulée.`);
+        onSuccess();
     };
 
     return (

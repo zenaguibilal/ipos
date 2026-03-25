@@ -4,7 +4,8 @@ import React, { useEffect, useState } from 'react';
 import { Combobox, ComboboxOption } from '@/components/ui/combobox';
 import type { Customer } from '@/lib/types';
 import { formatCurrency } from '@/lib/utils';
-import { useAppStore } from '@/stores/appStore';
+import { useAppStore, useAppActions } from '@/stores/appStore';
+import { customerService } from '@/services';
 import { toast } from 'sonner';
 
 const WalkInCustomerOption: ComboboxOption = {
@@ -14,26 +15,32 @@ const WalkInCustomerOption: ComboboxOption = {
 };
 
 export const CustomerCombobox = React.forwardRef<HTMLButtonElement>((props, ref) => {
-    const { customerId, customers, actions } = useAppStore(state => ({
-        customerId: state.cart?.customerId,
-        customers: state.customers,
-        actions: state.actions
+    const { customerUuid } = useAppStore(state => ({
+        customerUuid: state.cart.customerUuid,
     }));
-    
+    const { setCartCustomer } = useAppActions();
+    const [customers, setCustomers] = useState<Customer[]>([]);
+
     useEffect(() => {
-        actions.fetchCustomers();
-    }, [actions]);
+        const fetch = async () => {
+            try {
+                const data = await customerService.getCustomers();
+                setCustomers(data);
+            } catch (e) {
+                toast.error("Impossible de charger la liste des clients.");
+            }
+        };
+        fetch();
+    }, []);
 
     const customerOptions = React.useMemo<ComboboxOption[]>(() => {
-        if (!customers) return [WalkInCustomerOption];
-
         const options = customers.map(c => {
             const availableCredit = (c.creditLimit || 0) - c.outstandingBalance;
             return {
-                value: c.id,
+                value: c.uuid,
                 label: `${c.firstName} ${c.lastName}`,
                 subLabel: `Dette: ${formatCurrency(c.outstandingBalance)} | Disponible: ${formatCurrency(availableCredit)}`,
-                subLabelClassName: c.outstandingBalance > 0 ? 'text-destructive' : 'text-green-600',
+                subLabelClassName: c.outstandingBalance > 0 ? 'text-destructive' : 'text-chart-quaternary',
             };
         });
 
@@ -42,10 +49,10 @@ export const CustomerCombobox = React.forwardRef<HTMLButtonElement>((props, ref)
 
     const handleSelect = (value: string) => {
         if (value === 'walk-in') {
-            actions.setCartCustomer(null);
+            setCartCustomer(null);
         } else {
-            const selectedCustomer = customers?.find(c => c.id === value);
-            actions.setCartCustomer(selectedCustomer || null);
+            const selectedCustomer = customers?.find(c => c.uuid === value);
+            setCartCustomer(selectedCustomer || null);
         }
     };
     
@@ -54,7 +61,7 @@ export const CustomerCombobox = React.forwardRef<HTMLButtonElement>((props, ref)
             ref={ref}
             options={customerOptions}
             onSelect={handleSelect}
-            value={customerId || 'walk-in'}
+            value={customerUuid || 'walk-in'}
             placeholder="Sélectionner un client..."
             searchPlaceholder="Rechercher un client..."
             notFoundMessage="Aucun client trouvé."

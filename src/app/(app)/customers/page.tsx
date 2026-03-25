@@ -2,16 +2,14 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { useDebounce } from '@/hooks/useDebounce';
-import type { Customer, ImportAnalysis } from '@/lib/types';
+import type { Customer } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, Search, Users, FileDown } from 'lucide-react';
 import { CustomerCard } from '@/components/customers/customer-card';
 import { CustomerDialog } from '@/components/customers/customer-dialog';
 import { DeleteCustomerDialog } from '@/components/customers/delete-customer-dialog';
-import { ImportPreviewDialog } from '@/components/customers/import-preview-dialog';
 import { toast } from 'sonner';
-import Papa from 'papaparse';
 import { CustomerStats } from '@/components/customers/CustomerStats';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -28,10 +26,6 @@ export default function CustomersPage() {
     const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
-
-    const [isImportPreviewOpen, setIsImportPreviewOpen] = useState(false);
-    const [importAnalysis, setImportAnalysis] = useState<ImportAnalysis | null>(null);
-    const [isImporting, setIsImporting] = useState(false);
     
     const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
@@ -39,12 +33,14 @@ export default function CustomersPage() {
     const isLoading = customers === undefined;
 
     const fetchCustomers = useCallback(async () => {
+        setCustomers(undefined); // Set to loading state
         try {
             const data = await customerService.filterCustomers({ query: debouncedSearchQuery, status: filterStatus });
             setCustomers(data);
         } catch (error) {
             console.error(error);
             toast.error("Impossible de charger les clients.");
+            setCustomers([]); // Set to empty array on error
         }
     }, [debouncedSearchQuery, filterStatus]);
     
@@ -61,42 +57,6 @@ export default function CustomersPage() {
         setSelectedCustomer(customer);
         setIsDeleteDialogOpen(true);
     }, []);
-
-    const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            Papa.parse(file, {
-                header: true,
-                skipEmptyLines: true,
-                complete: async (results) => {
-                    // TODO: Re-implement CSV import if needed, requires backend logic.
-                    toast.info("L'importation CSV n'est pas encore implémentée dans la nouvelle architecture.");
-                    // const analysis = await customerService.analyzeCustomerImport(results.data);
-                    // setImportAnalysis(analysis);
-                    // setIsImportPreviewOpen(true);
-                },
-                error: (error) => {
-                    toast.error("Erreur lors de l'analyse du fichier CSV.", { description: error.message });
-                }
-            });
-        }
-        if (e.target) e.target.value = '';
-    };
-
-    const handleConfirmImport = async (confirmedData: { toAdd: any[], toUpdate: any[] }) => {
-        setIsImporting(true);
-        try {
-            // await customerService.processCustomerImport(confirmedData.toAdd, confirmedData.toUpdate);
-            toast.success("Importation des clients terminée avec succès !");
-            setIsImportPreviewOpen(false);
-            setImportAnalysis(null);
-            fetchCustomers();
-        } catch (error) {
-            toast.error("Une erreur est survenue lors de l'importation.");
-        } finally {
-            setIsImporting(false);
-        }
-    };
     
     const renderSkeletons = () => (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -127,7 +87,7 @@ export default function CustomersPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {customers.map(c => (
                     <CustomerCard 
-                        key={c.id} 
+                        key={c.uuid} 
                         customer={c} 
                         onEdit={handleEditCustomer} 
                         onDelete={handleDeleteCustomer}
@@ -143,10 +103,10 @@ export default function CustomersPage() {
                 title="Gestion des Clients"
                 description="Recherchez, ajoutez et gérez vos clients."
             >
-                <Button asChild variant="outline">
+                <Button asChild variant="outline" disabled>
                     <label htmlFor="csv-importer">
-                        <FileDown className="mr-2 h-4 w-4" /> Importer
-                        <input type="file" id="csv-importer" accept=".csv" className="sr-only" onChange={handleFileSelected} />
+                        <FileDown className="mr-2 h-4 w-4" /> Importer (bientôt)
+                        <input type="file" id="csv-importer" accept=".csv" className="sr-only" />
                     </label>
                 </Button>
                 <Button onClick={() => { setSelectedCustomer(null); setIsCustomerDialogOpen(true); }}>
@@ -154,7 +114,7 @@ export default function CustomersPage() {
                 </Button>
             </PageHeader>
 
-            <CustomerStats />
+            <CustomerStats onRefresh={fetchCustomers} />
 
             <div className="flex flex-col sm:flex-row gap-2">
                 <div className="relative flex-grow">
@@ -199,13 +159,6 @@ export default function CustomersPage() {
                 customer={selectedCustomer}
                 onSuccess={fetchCustomers}
             />
-            {/* <ImportPreviewDialog
-                isOpen={isImportPreviewOpen}
-                onOpenChange={setIsImportPreviewOpen}
-                analysis={importAnalysis}
-                onConfirm={handleConfirmImport}
-                isImporting={isImporting}
-            /> */}
         </div>
     );
 }

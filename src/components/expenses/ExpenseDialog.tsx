@@ -9,27 +9,28 @@ import { toast } from 'sonner';
 import type { Expense, ExpenseCategory } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
 import { expenseService } from '@/services';
-import { format } from 'date-fns';
 import { DatePicker } from '../ui/date-picker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { Combobox } from '../ui/combobox';
 
-const expenseCategories: ExpenseCategory[] = ['Loyer', 'Salaires', 'Fournisseurs', 'Services Publics', 'Marketing', 'Maintenance', 'Autre'];
+const defaultCategories: ExpenseCategory[] = ['Loyer', 'Salaires', 'Fournisseurs', 'Services Publics', 'Marketing', 'Maintenance', 'Autre'];
 
 interface ExpenseDialogProps {
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
     expense: Expense | null;
     onSuccess: () => void;
+    existingCategories: string[];
 }
 
-const initialFormState: Omit<Expense, 'id' | 'createdAt' | 'updatedAt' | 'user_id'> = {
+const initialFormState: Omit<Expense, 'uuid' | 'id' | 'createdAt' | 'updatedAt'> = {
     description: '',
     category: 'Autre',
     amount: 0,
     expenseDate: new Date(),
 };
 
-export default function ExpenseDialog({ isOpen, onOpenChange, expense, onSuccess }: ExpenseDialogProps) {
+export default function ExpenseDialog({ isOpen, onOpenChange, expense, onSuccess, existingCategories }: ExpenseDialogProps) {
     const [formState, setFormState] = useState(initialFormState);
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -52,8 +53,8 @@ export default function ExpenseDialog({ isOpen, onOpenChange, expense, onSuccess
         setFormState(prev => ({ ...prev, [id]: value }));
     };
     
-    const handleCategoryChange = (value: ExpenseCategory) => {
-        setFormState(prev => ({ ...prev, category: value }));
+    const handleCategoryChange = (value: string) => {
+        setFormState(prev => ({ ...prev, category: value as ExpenseCategory }));
     };
 
     const handleDateChange = (date?: Date) => {
@@ -85,8 +86,8 @@ export default function ExpenseDialog({ isOpen, onOpenChange, expense, onSuccess
         const expenseData = { ...formState, amount: amountNum };
 
         try {
-            if (expense && expense.id) { // Editing
-                await expenseService.updateExpense(expense.id, expenseData);
+            if (expense && expense.uuid) { // Editing
+                await expenseService.updateExpense(expense.uuid, expenseData);
                 toast.success(`Dépense modifiée.`);
             } else { // Adding
                 await expenseService.addExpense(expenseData);
@@ -101,6 +102,8 @@ export default function ExpenseDialog({ isOpen, onOpenChange, expense, onSuccess
             setIsLoading(false);
         }
     };
+    
+    const categoryOptions = Array.from(new Set([...defaultCategories, ...existingCategories])).map(c => ({ value: c, label: c }));
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -125,16 +128,14 @@ export default function ExpenseDialog({ isOpen, onOpenChange, expense, onSuccess
                          <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label htmlFor="category">Catégorie</Label>
-                                <Select value={formState.category} onValueChange={handleCategoryChange}>
-                                    <SelectTrigger id="category">
-                                        <SelectValue placeholder="Sélectionner..." />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {expenseCategories.map(cat => (
-                                            <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                <Combobox 
+                                    options={categoryOptions}
+                                    value={formState.category}
+                                    onSelect={handleCategoryChange}
+                                    placeholder="Sélectionner..."
+                                    searchPlaceholder="Rechercher..."
+                                    notFoundMessage="Aucune catégorie trouvée."
+                                />
                             </div>
                             <div className="space-y-2">
                                 <Label>Date</Label>
