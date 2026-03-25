@@ -49,7 +49,6 @@ export default function ExpensesPage() {
             });
             setExpenses(data);
         } catch (error: any) {
-            console.error(error);
             toast.error("Impossible de charger les dépenses.", { description: error.message });
         }
     }, [isMounted, selectedCategory, dateRange]);
@@ -63,7 +62,6 @@ export default function ExpensesPage() {
             const cats = await expenseService.getCategories();
             setCategories(cats);
         } catch (error: any) {
-            console.error(error);
             toast.error("Impossible de charger les catégories de dépenses.", { description: error.message });
         }
     }, []);

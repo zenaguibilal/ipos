@@ -1,4 +1,3 @@
-
 'use client';
 import { v4 as uuidv4 } from 'uuid';
 import type { ProductReturn, ReturnItem } from '@/lib/types';
@@ -19,11 +18,19 @@ class ReturnService {
     }
 
     async getReturnByUuid(uuid: string): Promise<ProductReturn | undefined> {
-        return returnRepository.findByUuid(uuid);
+        try {
+            return await returnRepository.findByUuid(uuid);
+        } catch (error) {
+            throw error;
+        }
     }
 
     async filterReturns(filters: { query?: string; from?: Date; to?: Date }): Promise<ProductReturn[]> {
-        return returnRepository.filter(filters);
+        try {
+            return await returnRepository.filter(filters);
+        } catch (error) {
+            throw error;
+        }
     }
     
     async addReturn(returnData: {
@@ -34,50 +41,53 @@ class ReturnService {
         customerUuid?: string,
         notes?: string
     }): Promise<ProductReturn> {
-        
-        const sale = await saleRepository.findByUuid(returnData.originalSaleUuid);
-        if (!sale) {
-            throw new Error("La vente originale est introuvable.");
+        try {
+            const sale = await saleRepository.findByUuid(returnData.originalSaleUuid);
+            if (!sale) {
+                throw new Error("La vente originale est introuvable.");
+            }
+
+            const now = new Date();
+            const newReturn: ProductReturn = {
+                uuid: uuidv4(),
+                user_id: this.getUserId(),
+                originalSaleUuid: returnData.originalSaleUuid,
+                originalInvoiceNumber: sale.invoiceNumber,
+                items: returnData.items,
+                totalReturnValue: returnData.totalReturnValue,
+                amountRefunded: returnData.amountRefunded,
+                customerUuid: returnData.customerUuid,
+                createdAt: now,
+                updatedAt: now,
+                notes: returnData.notes,
+            };
+
+            return await returnRepository.add(newReturn);
+        } catch (error) {
+            throw error;
         }
-
-        const now = new Date();
-        const newReturn: ProductReturn = {
-            uuid: uuidv4(),
-            user_id: this.getUserId(),
-            originalSaleUuid: returnData.originalSaleUuid,
-            originalInvoiceNumber: sale.invoiceNumber,
-            items: returnData.items,
-            totalReturnValue: returnData.totalReturnValue,
-            amountRefunded: returnData.amountRefunded,
-            customerUuid: returnData.customerUuid,
-            createdAt: now,
-            updatedAt: now,
-            notes: returnData.notes,
-        };
-
-        return await returnRepository.add(newReturn);
     }
 
     async processReturnCancellation(uuid: string): Promise<void> {
-        const productReturn = await returnRepository.findByUuid(uuid);
-        if (!productReturn) {
-            throw new Error("Retour non trouvé.");
-        }
-
-        // 1. Delete the return record
-        await returnRepository.delete(uuid);
-        
-        // 2. Reverse stock adjustment for restocked items
-        for (const item of productReturn.items) {
-            if (item.wasRestocked && item.productUuid) {
-                // We add a negative quantity because the original return added a positive quantity
-                await inventoryService.adjustStock(item.productUuid, -item.quantity, 'cancellation', productReturn.uuid);
+        try {
+            const productReturn = await returnRepository.findByUuid(uuid);
+            if (!productReturn) {
+                throw new Error("Retour non trouvé.");
             }
-        }
-        
-        // 3. Recalculate customer status
-        if (productReturn.customerUuid) {
-            await customerService.recalculateCustomerStatus(productReturn.customerUuid);
+
+            await returnRepository.delete(uuid);
+            
+            for (const item of productReturn.items) {
+                if (item.wasRestocked && item.productUuid) {
+                    await inventoryService.adjustStock(item.productUuid, -item.quantity, 'cancellation', productReturn.uuid);
+                }
+            }
+            
+            if (productReturn.customerUuid) {
+                await customerService.recalculateCustomerStatus(productReturn.customerUuid);
+            }
+        } catch (error) {
+            throw error;
         }
     }
 }

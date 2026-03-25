@@ -1,4 +1,3 @@
-
 'use client';
 import { v4 as uuidv4 } from 'uuid';
 import type { Customer, Sale, ImportAnalysis } from '@/lib/types';
@@ -7,6 +6,7 @@ import { saleRepository } from '@/repositories/sale.repository';
 import { returnRepository } from '@/repositories/return.repository';
 import { paymentRepository } from '@/repositories/payment.repository';
 import { useAppStore } from '@/stores/appStore';
+import Papa from 'papaparse';
 
 class CustomerService {
     
@@ -19,222 +19,290 @@ class CustomerService {
     }
 
     async getCustomers(): Promise<Customer[]> {
-        return customerRepository.getAll();
+        try {
+            return await customerRepository.getAll();
+        } catch (error) {
+            throw error;
+        }
     }
     
     async getCustomerByUuid(uuid: string): Promise<Customer | undefined> {
-        return customerRepository.findByUuid(uuid);
+        try {
+            return await customerRepository.findByUuid(uuid);
+        } catch (error) {
+            throw error;
+        }
     }
 
     async filterCustomers(filters: { query?: string; status?: string }): Promise<Customer[]> {
-        return customerRepository.filter(filters);
+        try {
+            return await customerRepository.filter(filters);
+        } catch (error) {
+            throw error;
+        }
     }
     
     async addCustomer(customerData: Partial<Omit<Customer, 'uuid' | 'user_id'>>): Promise<Customer> {
-        if (!customerData.firstName || !customerData.lastName) {
-            throw new Error("Le prénom et le nom sont requis.");
-        }
+        try {
+            if (!customerData.firstName || !customerData.lastName) {
+                throw new Error("Le prénom et le nom sont requis.");
+            }
 
-        const now = new Date();
-        const searchName = `${customerData.firstName} ${customerData.lastName}`.toLowerCase();
-        
-        const existing = await customerRepository.findByName(searchName);
-        if (existing) {
-            throw new Error("Un client avec ce nom et prénom existe déjà.");
-        }
-        
-        const newCustomer: Customer = {
-            uuid: uuidv4(),
-            user_id: this.getUserId(),
-            firstName: customerData.firstName,
-            lastName: customerData.lastName,
-            searchName,
-            phone: customerData.phone,
-            address: customerData.address,
-            settlementDay: customerData.settlementDay,
-            creditLimit: customerData.creditLimit,
-            totalSpent: 0,
-            outstandingBalance: 0,
-            createdAt: now,
-            updatedAt: now,
-        };
+            const now = new Date();
+            const searchName = `${customerData.firstName} ${customerData.lastName}`.toLowerCase();
+            
+            const existing = await customerRepository.findByName(searchName);
+            if (existing) {
+                throw new Error("Un client avec ce nom et prénom existe déjà.");
+            }
+            
+            const newCustomer: Customer = {
+                uuid: uuidv4(),
+                user_id: this.getUserId(),
+                firstName: customerData.firstName,
+                lastName: customerData.lastName,
+                searchName,
+                phone: customerData.phone,
+                address: customerData.address,
+                settlementDay: customerData.settlementDay,
+                creditLimit: customerData.creditLimit,
+                totalSpent: 0,
+                outstandingBalance: 0,
+                createdAt: now,
+                updatedAt: now,
+            };
 
-        return await customerRepository.add(newCustomer);
+            return await customerRepository.add(newCustomer);
+        } catch (error) {
+            throw error;
+        }
     }
 
     async updateCustomer(uuid: string, customerData: Partial<Customer>): Promise<Customer> {
-        const existing = await customerRepository.findByUuid(uuid);
-        if (!existing) {
-            throw new Error("Client non trouvé.");
+        try {
+            const existing = await customerRepository.findByUuid(uuid);
+            if (!existing) {
+                throw new Error("Client non trouvé.");
+            }
+            
+            const searchName = `${customerData.firstName || existing.firstName} ${customerData.lastName || existing.lastName}`.toLowerCase();
+            
+            const dataToUpdate: Partial<Customer> = {
+                ...customerData,
+                searchName,
+                updatedAt: new Date(),
+            };
+            
+            return await customerRepository.update(uuid, dataToUpdate);
+        } catch (error) {
+            throw error;
         }
-        
-        const searchName = `${customerData.firstName || existing.firstName} ${customerData.lastName || existing.lastName}`.toLowerCase();
-        
-        const dataToUpdate: Partial<Customer> = {
-            ...customerData,
-            searchName,
-            updatedAt: new Date(),
-        };
-        
-        return await customerRepository.update(uuid, dataToUpdate);
     }
 
     async deleteCustomer(uuid: string): Promise<void> {
-        const sales = await saleRepository.findByCustomerUuid(uuid);
-        if (sales.length > 0) {
-            throw new Error("Impossible de supprimer un client avec un historique de ventes.");
+        try {
+            const sales = await saleRepository.findByCustomerUuid(uuid);
+            if (sales.length > 0) {
+                throw new Error("Impossible de supprimer un client avec un historique de ventes.");
+            }
+            await customerRepository.delete(uuid);
+        } catch (error) {
+            throw error;
         }
-        await customerRepository.delete(uuid);
     }
     
     async getStats(): Promise<{ total: number; overdue: number; overLimit: number; }> {
-        const allCustomers = await customerRepository.getAll();
-        return {
-            total: allCustomers.length,
-            overdue: allCustomers.filter(c => c.debtStatus === 'overdue').length,
-            overLimit: allCustomers.filter(c => c.isOverLimit === true).length,
-        };
+        try {
+            const allCustomers = await customerRepository.getAll();
+            return {
+                total: allCustomers.length,
+                overdue: allCustomers.filter(c => c.debtStatus === 'overdue').length,
+                overLimit: allCustomers.filter(c => c.isOverLimit === true).length,
+            };
+        } catch (error) {
+            throw error;
+        }
     }
     
     async getCustomerActivity(customerUuid: string, page: number, pageSize: number): Promise<any[]> {
-        const [sales, payments, returns] = await Promise.all([
-            saleRepository.findByCustomerUuid(customerUuid),
-            paymentRepository.findByCustomerUuid(customerUuid),
-            returnRepository.findByCustomerUuid(customerUuid)
-        ]);
+        try {
+            const [sales, payments, returns] = await Promise.all([
+                saleRepository.findByCustomerUuid(customerUuid),
+                paymentRepository.findByCustomerUuid(customerUuid),
+                returnRepository.findByCustomerUuid(customerUuid)
+            ]);
 
-        const activity = [
-            ...sales.map(s => ({ ...s, type: 'sale', date: s.createdAt })),
-            ...payments.map(p => ({ ...p, type: 'payment', date: p.paymentDate })),
-            ...returns.map(r => ({ ...r, type: 'return', date: r.createdAt })),
-        ];
+            const activity = [
+                ...sales.map(s => ({ ...s, type: 'sale', date: s.createdAt })),
+                ...payments.map(p => ({ ...p, type: 'payment', date: p.paymentDate })),
+                ...returns.map(r => ({ ...r, type: 'return', date: r.createdAt })),
+            ];
 
-        activity.sort((a, b) => new Date(b.date!).getTime() - new Date(a.date!).getTime());
+            activity.sort((a, b) => new Date(b.date!).getTime() - new Date(a.date!).getTime());
 
-        const startIndex = (page - 1) * pageSize;
-        const endIndex = startIndex + pageSize;
+            const startIndex = (page - 1) * pageSize;
+            const endIndex = startIndex + pageSize;
 
-        return activity.slice(startIndex, endIndex);
+            return activity.slice(startIndex, endIndex);
+        } catch (error) {
+            throw error;
+        }
     }
 
     async getCustomerStatementData(customerUuid: string): Promise<{ customer: Customer, unpaidSales: Sale[] }> {
-        const customer = await this.getCustomerByUuid(customerUuid);
-        if (!customer) throw new Error("Client non trouvé");
+        try {
+            const customer = await this.getCustomerByUuid(customerUuid);
+            if (!customer) throw new Error("Client non trouvé");
 
-        const unpaidSales = await saleRepository.findUnpaidByCustomerUuid(customerUuid);
-        return { customer, unpaidSales };
+            const unpaidSales = await saleRepository.findUnpaidByCustomerUuid(customerUuid);
+            return { customer, unpaidSales };
+        } catch (error) {
+            throw error;
+        }
     }
 
     async recalculateCustomerStatus(customerUuid: string): Promise<Customer> {
-        const customer = await customerRepository.findByUuid(customerUuid);
-        if (!customer) throw new Error("Customer not found during recalculation.");
+        try {
+            const customer = await customerRepository.findByUuid(customerUuid);
+            if (!customer) throw new Error("Customer not found during recalculation.");
 
-        const now = new Date();
+            const now = new Date();
 
-        const [sales, payments, returns] = await Promise.all([
-             saleRepository.findByCustomerUuid(customerUuid),
-             paymentRepository.findByCustomerUuid(customerUuid),
-             returnRepository.findByCustomerUuid(customerUuid)
-        ]);
-        
+            const [sales, payments, returns] = await Promise.all([
+                 saleRepository.findByCustomerUuid(customerUuid),
+                 paymentRepository.findByCustomerUuid(customerUuid),
+                 returnRepository.findByCustomerUuid(customerUuid)
+            ]);
+            
 
-        const totalInvoiced = sales.reduce((sum, s) => sum + s.total, 0);
-        const totalPaidViaPayments = payments.reduce((sum, p) => sum + p.amount, 0);
-        const netCreditFromReturns = returns.reduce((sum, r) => sum + (r.totalReturnValue - r.amountRefunded), 0);
-        
-        const totalPaidOnSales = sales.reduce((sum, s) => sum + s.amountPaid, 0);
-        
-        const newBalance = totalInvoiced - totalPaidViaPayments - totalPaidOnSales - netCreditFromReturns;
-        const totalSpent = totalInvoiced;
+            const totalInvoiced = sales.reduce((sum, s) => sum + s.total, 0);
+            const totalPaidViaPayments = payments.reduce((sum, p) => sum + p.amount, 0);
+            const netCreditFromReturns = returns.reduce((sum, r) => sum + (r.totalReturnValue - r.amountRefunded), 0);
+            
+            const totalPaidOnSales = sales.reduce((sum, s) => sum + s.amountPaid, 0);
+            
+            const newBalance = totalInvoiced - totalPaidViaPayments - totalPaidOnSales - netCreditFromReturns;
+            const totalSpent = totalInvoiced;
 
-        const isOverLimit = customer.creditLimit != null && customer.creditLimit > 0 ? newBalance > customer.creditLimit : false;
+            const isOverLimit = customer.creditLimit != null && customer.creditLimit > 0 ? newBalance > customer.creditLimit : false;
 
-        let debtStatus: Customer['debtStatus'] = 'none';
-        if (newBalance > 0.01) {
-            const unpaidSales = sales.filter(s => s.paymentStatus !== 'paid');
-            const isOverdue = unpaidSales.some(s => s.dueDate && new Date(s.dueDate) < now);
-            debtStatus = isOverdue ? 'overdue' : 'due_soon';
+            let debtStatus: Customer['debtStatus'] = 'none';
+            if (newBalance > 0.01) {
+                const unpaidSales = sales.filter(s => s.paymentStatus !== 'paid');
+                const isOverdue = unpaidSales.some(s => s.dueDate && new Date(s.dueDate) < now);
+                debtStatus = isOverdue ? 'overdue' : 'due_soon';
+            }
+
+            const customerUpdate: Partial<Customer> = {
+                totalSpent,
+                outstandingBalance: newBalance,
+                lastActivityDate: now,
+                isOverLimit,
+                debtStatus,
+                updatedAt: now,
+            };
+            
+            return await customerRepository.update(customer.uuid, customerUpdate);
+        } catch (error) {
+            throw error;
         }
+    }
 
-        const customerUpdate: Partial<Customer> = {
-            totalSpent,
-            outstandingBalance: newBalance,
-            lastActivityDate: now,
-            isOverLimit,
-            debtStatus,
-            updatedAt: now,
-        };
-        
-        return await customerRepository.update(customer.uuid, customerUpdate);
+    async parseAndAnalyzeImport(file: File): Promise<ImportAnalysis> {
+        return new Promise((resolve, reject) => {
+            Papa.parse(file, {
+                header: true,
+                skipEmptyLines: true,
+                complete: async (results) => {
+                    try {
+                        const analysis = await this.analyzeImport(results.data);
+                        resolve(analysis);
+                    } catch (error) {
+                        reject(error);
+                    }
+                },
+                error: (error) => {
+                    reject(error);
+                }
+            });
+        });
     }
 
     async analyzeImport(csvData: any[]): Promise<ImportAnalysis> {
-        const existingCustomers = await this.getCustomers();
-        const existingNames = new Map(existingCustomers.map(c => [c.searchName, c]));
+        try {
+            const existingCustomers = await this.getCustomers();
+            const existingNames = new Map(existingCustomers.map(c => [c.searchName, c]));
 
-        const analysis: ImportAnalysis = {
-            customersToAdd: [],
-            customersToUpdate: [],
-            skippedRows: [],
-            errorRows: [],
-            totalRows: csvData.length,
-        };
-
-        for (const row of csvData) {
-            const firstName = row.firstName || row.prenom || row.first_name;
-            const lastName = row.lastName || row.nom || row.last_name;
-
-            if (!firstName || !lastName) {
-                analysis.errorRows.push({ ...row, error: "Prénom ou nom manquant" });
-                continue;
-            }
-            
-            const searchName = `${firstName} ${lastName}`.toLowerCase().trim();
-            const existingCustomer = existingNames.get(searchName);
-
-            const customerData = {
-                firstName,
-                lastName,
-                phone: row.phone || row.telephone,
-                address: row.address || row.adresse,
-                creditLimit: row.creditLimit ? parseFloat(row.creditLimit) : undefined,
-                outstandingBalance: row.outstandingBalance ? parseFloat(row.outstandingBalance) : undefined,
+            const analysis: ImportAnalysis = {
+                customersToAdd: [],
+                customersToUpdate: [],
+                skippedRows: [],
+                errorRows: [],
+                totalRows: csvData.length,
             };
 
-            if (existingCustomer) {
-                analysis.customersToUpdate.push({ ...customerData, uuid: existingCustomer.uuid });
-            } else {
-                analysis.customersToAdd.push(customerData);
+            for (const row of csvData) {
+                const firstName = row.firstName || row.prenom || row.first_name;
+                const lastName = row.lastName || row.nom || row.last_name;
+
+                if (!firstName || !lastName) {
+                    analysis.errorRows.push({ ...row, error: "Prénom ou nom manquant" });
+                    continue;
+                }
+                
+                const searchName = `${firstName} ${lastName}`.toLowerCase().trim();
+                const existingCustomer = existingNames.get(searchName);
+
+                const customerData = {
+                    firstName,
+                    lastName,
+                    phone: row.phone || row.telephone,
+                    address: row.address || row.adresse,
+                    creditLimit: row.creditLimit ? parseFloat(row.creditLimit) : undefined,
+                    outstandingBalance: row.outstandingBalance ? parseFloat(row.outstandingBalance) : undefined,
+                };
+
+                if (existingCustomer) {
+                    analysis.customersToUpdate.push({ ...customerData, uuid: existingCustomer.uuid });
+                } else {
+                    analysis.customersToAdd.push(customerData);
+                }
             }
+            return analysis;
+        } catch (error) {
+            throw error;
         }
-        return analysis;
     }
 
     async executeImport(confirmedData: { toAdd: any[], toUpdate: any[] }): Promise<void> {
-        const userId = this.getUserId();
-        const now = new Date();
+        try {
+            const userId = this.getUserId();
+            const now = new Date();
 
-        const toAdd = confirmedData.toAdd.map(c => ({
-            ...c,
-            uuid: uuidv4(),
-            user_id: userId,
-            searchName: `${c.firstName} ${c.lastName}`.toLowerCase().trim(),
-            totalSpent: 0,
-            outstandingBalance: c.outstandingBalance || 0,
-            createdAt: now,
-            updatedAt: now,
-        }));
+            const toAdd = confirmedData.toAdd.map(c => ({
+                ...c,
+                uuid: uuidv4(),
+                user_id: userId,
+                searchName: `${c.firstName} ${c.lastName}`.toLowerCase().trim(),
+                totalSpent: 0,
+                outstandingBalance: c.outstandingBalance || 0,
+                createdAt: now,
+                updatedAt: now,
+            }));
 
-         const toUpdate = confirmedData.toUpdate.map(c => ({
-            ...c,
-            searchName: `${c.firstName} ${c.lastName}`.toLowerCase().trim(),
-            updatedAt: now,
-        }));
-        
-        const upsertData = [...toAdd, ...toUpdate];
-        
-        if (upsertData.length > 0) {
-            await customerRepository.bulkUpsert(upsertData);
+             const toUpdate = confirmedData.toUpdate.map(c => ({
+                ...c,
+                searchName: `${c.firstName} ${c.lastName}`.toLowerCase().trim(),
+                updatedAt: now,
+            }));
+            
+            const upsertData = [...toAdd, ...toUpdate];
+            
+            if (upsertData.length > 0) {
+                await customerRepository.bulkUpsert(upsertData);
+            }
+        } catch (error) {
+            throw error;
         }
     }
 }

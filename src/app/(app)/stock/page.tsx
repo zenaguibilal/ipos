@@ -48,7 +48,6 @@ export default function StockPage() {
             setStockIntakes(intakesData);
             setSupplierMap(new Map(suppliersData.map(s => [s.uuid, s])));
         } catch (error: any) {
-            console.error(error);
             toast.error("Impossible de charger l'historique des réceptions.", { description: error.message });
             setStockIntakes([]);
         }

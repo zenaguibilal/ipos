@@ -6,54 +6,70 @@ class AuthService {
     private supabase = createClient();
 
     async signIn(email: string, password?: string) {
-        if (!password) {
-            throw new Error("Le mot de passe est requis.");
-        }
-        const { data, error } = await this.supabase.auth.signInWithPassword({
-            email,
-            password,
-        });
-
-        if (error) {
-            if (error.message === 'Invalid login credentials') {
-                throw new Error("Email ou mot de passe incorrect.");
+        try {
+            if (!password) {
+                throw new Error("Le mot de passe est requis.");
             }
-            throw new Error(error.message);
+            const { data, error } = await this.supabase.auth.signInWithPassword({
+                email,
+                password,
+            });
+
+            if (error) {
+                if (error.message === 'Invalid login credentials') {
+                    throw new Error("Email ou mot de passe incorrect.");
+                }
+                throw new Error(error.message);
+            }
+            return data.session;
+        } catch (error) {
+            throw error;
         }
-        return data.session;
     }
     
     async signUp(email: string, password?: string) {
-        if (!password) {
-            throw new Error("Le mot de passe est requis.");
-        }
-        const { data, error } = await this.supabase.auth.signUp({
-            email,
-            password,
-        });
+        try {
+            if (!password) {
+                throw new Error("Le mot de passe est requis.");
+            }
+            const { data, error } = await this.supabase.auth.signUp({
+                email,
+                password,
+            });
 
-        if (error) {
-            throw new Error(error.message);
+            if (error) {
+                throw new Error(error.message);
+            }
+            if (!data.session) {
+                throw new Error("L'inscription a réussi, mais la session n'a pas pu être créée. Veuillez vous connecter.");
+            }
+            return data.session;
+        } catch (error) {
+            throw error;
         }
-        if (!data.session) {
-            throw new Error("L'inscription a réussi, mais la session n'a pas pu être créée. Veuillez vous connecter.");
-        }
-        return data.session;
     }
 
     async signOut() {
-        const { error } = await this.supabase.auth.signOut();
-        if (error) {
-            throw new Error(error.message);
+        try {
+            const { error } = await this.supabase.auth.signOut();
+            if (error) {
+                throw new Error(error.message);
+            }
+        } catch (error) {
+            throw error;
         }
     }
 
     async getSession() {
-        const { data, error } = await this.supabase.auth.getSession();
-        if (error) {
-            throw new Error(error.message);
+        try {
+            const { data, error } = await this.supabase.auth.getSession();
+            if (error) {
+                throw new Error(error.message);
+            }
+            return data.session;
+        } catch (error) {
+            throw error;
         }
-        return data.session;
     }
 }
 

@@ -102,7 +102,6 @@ export default function ProductsPage() {
             setProducts(data);
         } catch(error: any) {
             toast.error("Impossible de charger les produits.", { description: error.message });
-            console.error(error);
             setProducts([]);
         }
     }, [debouncedSearchQuery, selectedCategory, selectedSupplier, stockStatus, sortBy]);
@@ -181,7 +180,7 @@ export default function ProductsPage() {
 
         setIsAnalyzing(true);
         try {
-            const analysis = await productService.parseAndAnalyzeImport(file);
+            const analysis = await productService.analyzeImport(file);
             setImportAnalysis(analysis);
             setIsImportPreviewOpen(true);
         } catch (error: any) {

@@ -52,9 +52,8 @@ export default function CustomerDetailPage() {
             if (!cust) {
                 toast.error("Client non trouvé.");
             }
-        } catch (error) {
-            console.error(error);
-            toast.error("Impossible de charger les informations du client.");
+        } catch (error: any) {
+            toast.error("Impossible de charger les informations du client.", { description: error.message });
             setCustomer(null);
         }
     }, [customerUuid, router]);

@@ -38,16 +38,18 @@ class PaymentService {
             
             await paymentRepository.add(newPayment);
 
-            // After adding the payment, recalculate the customer's status
             await customerService.recalculateCustomerStatus(customerUuid);
         } catch (error: any) {
-            console.error("Error adding payment:", error);
-            throw new Error(error.message || "Une erreur est survenue lors de l'ajout du paiement.");
+            throw error;
         }
     }
 
     async getPaymentsByCustomerUuid(customerUuid: string): Promise<Payment[]> {
-        return paymentRepository.findByCustomerUuid(customerUuid);
+        try {
+            return await paymentRepository.findByCustomerUuid(customerUuid);
+        } catch (error) {
+            throw error;
+        }
     }
 }
 

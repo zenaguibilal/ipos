@@ -47,7 +47,6 @@ export default function CustomersPage() {
             const data = await customerService.filterCustomers({ query: debouncedSearchQuery, status: filterStatus });
             setCustomers(data);
         } catch (error: any) {
-            console.error(error);
             toast.error("Impossible de charger les clients.", { description: error.message });
             setCustomers([]); // Set to empty array on error
         }
@@ -73,7 +72,7 @@ export default function CustomersPage() {
 
         setIsAnalyzing(true);
         try {
-            const analysis = await customerService.parseAndAnalyzeImport(file);
+            const analysis = await customerService.analyzeImport(file);
             setImportAnalysis(analysis);
             setIsImportPreviewOpen(true);
         } catch (error: any) {

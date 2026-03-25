@@ -1,4 +1,3 @@
-
 'use client';
 
 import { v4 as uuidv4 } from 'uuid';
@@ -17,31 +16,43 @@ class SupplierService {
     }
 
     async getSuppliers(): Promise<Supplier[]> {
-        return supplierRepository.getAll();
+        try {
+            return await supplierRepository.getAll();
+        } catch (error) {
+            throw error;
+        }
     }
 
     async getSupplierByUuid(uuid: string): Promise<Supplier | undefined> {
-        return supplierRepository.findByUuid(uuid);
+        try {
+            return await supplierRepository.findByUuid(uuid);
+        } catch (error) {
+            throw error;
+        }
     }
 
     async findOrCreateSupplier(name: string, uuid?: string): Promise<Supplier> {
-        if (uuid) {
-            const existing = await supplierRepository.findByUuid(uuid);
-            if (existing) return existing;
+        try {
+            if (uuid) {
+                const existing = await supplierRepository.findByUuid(uuid);
+                if (existing) return existing;
+            }
+
+            const existingByName = await supplierRepository.findByName(name);
+            if (existingByName) return existingByName;
+
+            const newSupplier: Supplier = {
+                uuid: uuidv4(),
+                user_id: this.getUserId(),
+                name: name,
+                balance: 0,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+            };
+            return await supplierRepository.add(newSupplier);
+        } catch (error) {
+            throw error;
         }
-
-        const existingByName = await supplierRepository.findByName(name);
-        if (existingByName) return existingByName;
-
-        const newSupplier: Supplier = {
-            uuid: uuidv4(),
-            user_id: this.getUserId(),
-            name: name,
-            balance: 0,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-        };
-        return supplierRepository.add(newSupplier);
     }
 }
 
