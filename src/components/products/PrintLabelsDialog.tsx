@@ -8,7 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Printer } from 'lucide-react';
 import { BarcodeLabel } from './BarcodeLabel';
-import { productRepository } from '@/repositories';
+import { productService } from '@/services/product.service';
+import { toast } from 'sonner';
 
 interface PrintLabelsDialogProps {
   isOpen: boolean;
@@ -23,17 +24,18 @@ export function PrintLabelsDialog({ isOpen, onOpenChange, productUuids }: PrintL
 
   useEffect(() => {
     if (isOpen && productUuids.length > 0) {
-        productRepository.bulkGetByUuid(productUuids).then(prods => {
-            const validProducts = prods.filter((p): p is Product => !!p);
-            setProducts(validProducts);
-            const initialQuantities: Record<string, number> = {};
-            validProducts.forEach(p => {
-                if (p.uuid) {
-                    initialQuantities[p.uuid] = 1;
-                }
-            });
-            setLabelQuantities(initialQuantities);
-        });
+        productService.getProductsByUuids(productUuids)
+            .then(prods => {
+                setProducts(prods);
+                const initialQuantities: Record<string, number> = {};
+                prods.forEach(p => {
+                    if (p.uuid) {
+                        initialQuantities[p.uuid] = 1;
+                    }
+                });
+                setLabelQuantities(initialQuantities);
+            })
+            .catch(() => toast.error("Impossible de charger les détails des produits pour l'impression."));
     } else {
         setProducts([]);
     }

@@ -18,19 +18,16 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import type { Sale, Customer } from '@/lib/types';
+import type { Sale } from '@/lib/types';
 import { formatCurrency, safeToDate } from '@/lib/utils';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { useEffect, useState } from 'react';
-import { customerService } from '@/services/customer.service';
-import { toast } from 'sonner';
 
 export function SaleDetailsDialog({
     isOpen,
     onOpenChange,
     sale,
-    customerName: initialCustomerName,
+    customerName,
 }: {
     isOpen: boolean;
     onOpenChange: (open: boolean) => void;
@@ -45,7 +42,7 @@ export function SaleDetailsDialog({
                 <DialogHeader>
                     <DialogTitle>Détails de la vente</DialogTitle>
                     <DialogDescription>
-                        Facture n°: <span className="font-mono font-semibold">{sale.invoiceNumber}</span> | Client: {initialCustomerName || 'Client de passage'}
+                        Facture n°: <span className="font-mono font-semibold">{sale.invoiceNumber}</span> | Client: {customerName || 'Client de passage'}
                         <br />
                         Date: {format(safeToDate(sale.createdAt!), 'd MMMM yyyy HH:mm', { locale: fr })}
                     </DialogDescription>
