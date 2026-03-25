@@ -43,20 +43,22 @@ export class CustomerService {
     }
 
     async getCustomers(params: { query?: string, status?: string } = {}): Promise<Customer[]> {
-        let collection = db.customers.where('sync_status').notEqual('pending_delete');
+        let collection;
 
-        if (params.status && params.status !== 'all') {
-            if (params.status === 'has_debt') {
-                collection = collection.filter(c => c.outstandingBalance > 0);
-            }
-            if (params.status === 'overdue') {
-                collection = db.customers.where({ debtStatus: 'overdue' }).and(c => c.sync_status !== 'pending_delete');
-            }
-            if (params.status === 'over_limit') {
-                collection = collection.filter(c => c.isOverLimit === true);
-            }
+        if (params.status === 'overdue') {
+            collection = db.customers.where({ debtStatus: 'overdue' });
+        } else if (params.status === 'over_limit') {
+            collection = db.customers.where({ isOverLimit: 1 });
+        } else {
+            collection = db.customers.toCollection();
         }
 
+        collection = collection.and(c => c.sync_status !== 'pending_delete');
+
+        if (params.status === 'has_debt') {
+            collection = collection.filter(c => c.outstandingBalance > 0);
+        }
+        
         if (params.query) {
             const q = params.query.toLowerCase();
             collection = collection.filter(c => c.searchName?.toLowerCase().includes(q) || c.phone?.includes(q));

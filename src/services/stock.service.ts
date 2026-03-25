@@ -5,6 +5,7 @@ import type { StockIntake, StockIntakeItem, Product, Supplier } from '@/lib/type
 import { v4 as uuidv4 } from 'uuid';
 import { syncService } from './sync.service';
 import { inventoryService } from './inventory.service';
+import { calculateStockStatus } from '@/lib/utils';
 
 export class StockService {
     async addStockIntake(intakeData: { supplierName: string; invoiceNumber: string; invoiceDate: Date }, items: StockIntakeItem[]): Promise<StockIntake> {
@@ -63,7 +64,7 @@ export class StockService {
                         category: item.category,
                         price: item.price,
                         purchasePrice: item.purchasePrice,
-                        quantity: 0, // Initial quantity is 0, will be updated below
+                        quantity: 0, // Initial quantity is 0, will be updated by inventoryService
                         minStockLevel: 10,
                         barcodes: item.barcodes,
                         supplierUuid: supplierUuid,
@@ -71,6 +72,7 @@ export class StockService {
                         uuid: newProductUuid,
                         createdAt: now,
                         updatedAt: now,
+                        stockStatus: calculateStockStatus(0, 10),
                         sync_status: 'pending_create',
                         last_modified_by: deviceId,
                     };
@@ -81,27 +83,18 @@ export class StockService {
 
                 if (product && product.id) {
                     const stockChange = item.quantity - item.quantityDamaged;
-                    const newQuantity = product.quantity + stockChange;
-                    
+                    await inventoryService.adjustStock(product.id, stockChange, 'stock_intake', intakeId);
+
                     const productUpdatePayload: Partial<Product> = {
-                        quantity: newQuantity,
                         purchasePrice: item.purchasePrice,
                         dateMajPrix: now,
                         supplierUuid: supplierUuid,
-                        updatedAt: now,
-                        last_modified_by: deviceId,
                         ...(item.isNew && { price: item.price })
                     };
 
-                    if (product.sync_status !== 'pending_create') {
-                        productUpdatePayload.sync_status = 'pending_update';
-                    }
-
-                    await db.products.update(product.id, productUpdatePayload);
-                    await syncService.queueSyncOperation('products', product.uuid, 'update', productUpdatePayload);
-                    
-                    await inventoryService.logChange(product.id, stockChange, newQuantity, 'stock_intake', intakeId);
-
+                     await db.products.update(product.id, productUpdatePayload);
+                     await syncService.queueSyncOperation('products', product.uuid, 'update', { ...productUpdatePayload, updatedAt: now, last_modified_by: deviceId });
+                     
                      processedItems.push({
                         productId: product.id,
                         productName: item.name,
@@ -114,9 +107,10 @@ export class StockService {
 
             // 4. Finalize StockIntake record
             const totalValue = processedItems.reduce((acc, item) => acc + item.quantityReceived * item.purchasePrice, 0);
-            const finalIntakePayload = { items: processedItems, totalValue, sync_status: 'pending_create' as const, last_modified_by: deviceId };
+            const finalIntakePayload = { items: processedItems, totalValue };
             await db.stockIntakes.update(intakeId, finalIntakePayload);
-            await syncService.queueSyncOperation('stock_intakes', intakeUuid, 'create', { ...newIntake, ...finalIntakePayload, id: undefined });
+            await syncService.queueSyncOperation('stock_intakes', intakeUuid, 'update', { ...finalIntakePayload, updatedAt: now, last_modified_by: deviceId });
+
 
             const finalRecord = await db.stockIntakes.get(intakeId);
             return finalRecord!;

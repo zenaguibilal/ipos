@@ -51,3 +51,10 @@ export const getPlaceholder = (category?: string): Placeholder => {
     }
     return placeholders.default;
 };
+
+
+export function calculateStockStatus(quantity: number, minStockLevel: number): Product['stockStatus'] {
+  if (quantity <= 0) return 'out_of_stock';
+  if (quantity <= minStockLevel) return 'low_stock';
+  return 'in_stock';
+}

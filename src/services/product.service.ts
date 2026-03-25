@@ -6,6 +6,7 @@ import { format } from 'date-fns';
 import Papa from 'papaparse';
 import { v4 as uuidv4 } from 'uuid';
 import { syncService } from './sync.service';
+import { calculateStockStatus } from '@/lib/utils';
 
 export class ProductService {
     async getProductByBarcode(barcode: string): Promise<Product | undefined> {
@@ -15,9 +16,12 @@ export class ProductService {
     async addProduct(productData: Omit<Product, 'id' | 'uuid'>): Promise<Product> {
         const now = new Date();
         const uuid = uuidv4();
+        const stockStatus = calculateStockStatus(productData.quantity, productData.minStockLevel);
+
         const newProduct = {
             ...productData,
             uuid,
+            stockStatus,
             createdAt: now,
             updatedAt: now,
             dateMajPrix: now,
@@ -37,6 +41,11 @@ export class ProductService {
             if (!product || !product.uuid) return;
 
             const dataToUpdate: any = { ...productData, updatedAt: now, last_modified_by: syncService.getLocalDeviceId() };
+
+            const quantity = productData.quantity ?? product.quantity;
+            const minStockLevel = productData.minStockLevel ?? product.minStockLevel;
+            dataToUpdate.stockStatus = calculateStockStatus(quantity, minStockLevel);
+
             if (productData.purchasePrice && productData.purchasePrice !== product.purchasePrice) {
                  dataToUpdate.dateMajPrix = now;
             }
@@ -100,31 +109,28 @@ export class ProductService {
     async getProducts(params: { query?: string, category?: string, supplierUuid?: string, stockStatus?: string, sortBy?: string } = {}): Promise<Product[]> {
         const [sortKey, sortOrder] = (params.sortBy || 'createdAt_desc').split('_');
         
-        let collection = db.products.where('sync_status').notEqual('pending_delete');
+        let collection;
 
-        // Apply most selective filters first
+        if (params.stockStatus && params.stockStatus !== 'all') {
+            collection = db.products.where({ stockStatus: params.stockStatus });
+        } else {
+            collection = db.products.toCollection();
+        }
+
+        collection = collection.and(p => p.sync_status !== 'pending_delete');
+
         if (params.category && params.category !== 'all') {
-            collection = db.products.where({ category: params.category }).and(p => p.sync_status !== 'pending_delete');
+            collection = collection.filter(p => p.category === params.category);
         }
         if (params.supplierUuid && params.supplierUuid !== 'all') {
-            collection = collection.where({ supplierUuid: params.supplierUuid });
+            collection = collection.filter(p => p.supplierUuid === params.supplierUuid);
         }
         
-        // Apply less selective filters
-        collection = collection.filter(p => {
-            let passes = true;
-            if (params.query) {
-                const q = params.query.toLowerCase();
-                passes = passes && (p.name.toLowerCase().includes(q) || (p.barcodes && p.barcodes.some(b => b.includes(q))));
-            }
-            if (params.stockStatus && params.stockStatus !== 'all') {
-                if (params.stockStatus === 'in_stock') passes = passes && p.quantity > 0;
-                if (params.stockStatus === 'low_stock') passes = passes && (p.quantity > 0 && p.quantity <= p.minStockLevel);
-                if (params.stockStatus === 'out_of_stock') passes = passes && p.quantity <= 0;
-            }
-            return passes;
-        });
-
+        if (params.query) {
+            const q = params.query.toLowerCase();
+            collection = collection.filter(p => p.name.toLowerCase().includes(q) || (p.barcodes && p.barcodes.some(b => b.includes(q))));
+        }
+        
         const sortedCollection = sortOrder === 'desc' ? collection.reverse() : collection;
         return await sortedCollection.sortBy(sortKey);
     }
@@ -147,9 +153,7 @@ export class ProductService {
     async analyzeProductImport(data: any[]): Promise<ProductImportAnalysis> {
         const analysis: ProductImportAnalysis = { productsToAdd: [], productsToUpdate: [], skippedRows: [], errorRows: [], totalRows: data.length };
         const existingProducts = await db.products.where('sync_status').notEqual('pending_delete').toArray();
-        const existingBarcodes = new Map<string, number>();
-        existingProducts.forEach(p => p.barcodes?.forEach(b => existingBarcodes.set(b, p.id as number)));
-
+        
         for (const row of data) {
             const name = row.name?.trim();
             if (!name) {
@@ -170,7 +174,7 @@ export class ProductService {
     }
 
     async processProductImport(toAdd: any[], toUpdate: any[]): Promise<void> {
-        const parseRow = (row: any) => ({
+        const parseRow = (row: any): Omit<Product, 'id' | 'uuid'> => ({
             name: row.name || 'Sans nom',
             category: row.category || 'Non classé',
             price: parseFloat(row.price) || 0,
@@ -181,9 +185,8 @@ export class ProductService {
         });
 
         await db.transaction('rw', db.products, db.sync_queue, async () => {
-            const productsToAdd = toAdd.map(parseRow);
-            for(const p of productsToAdd) {
-                await this.addProduct(p);
+            for(const p of toAdd) {
+                await this.addProduct(parseRow(p));
             }
 
             for (const p of toUpdate) {

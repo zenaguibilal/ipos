@@ -1,6 +1,7 @@
 import Dexie, { type EntityTable, type Transaction } from 'dexie';
 import type { Product, Customer, Sale, Payment, StockIntake, ProductReturn, Cart, Draft, CompanyProfile, Expense, InventoryLog, Supplier, BreadClient, BreadOrder, SyncQueueItem } from '@/lib/types';
 import { v4 as uuidv4 } from 'uuid';
+import { calculateStockStatus } from './utils';
 
 class iPOSDatabase extends Dexie {
     products!: EntityTable<Product, 'id'>;
@@ -21,8 +22,8 @@ class iPOSDatabase extends Dexie {
 
     constructor() {
         super('iPOSDatabase');
-        this.version(4).stores({
-            products: '++id, &uuid, *barcodes, name, category, supplierUuid, createdAt, updatedAt, price, quantity, sync_status',
+        this.version(5).stores({
+            products: '++id, &uuid, *barcodes, name, category, supplierUuid, createdAt, updatedAt, price, quantity, stockStatus, sync_status',
             customers: '++id, &uuid, &searchName, phone, debtStatus, isOverLimit, createdAt, updatedAt, lastActivityDate, sync_status',
             sales: '++id, &uuid, &invoiceNumber, customerUuid, createdAt, updatedAt, sync_status',
             payments: '++id, &uuid, customerUuid, paymentDate, createdAt, updatedAt, sync_status',
@@ -38,18 +39,37 @@ class iPOSDatabase extends Dexie {
             commandes_pain: '++id, &uuid, clientPainUuid, date, &[clientPainUuid+date], createdAt, updatedAt, sync_status',
             sync_queue: '++id, createdAt',
         }).upgrade(tx => {
-            // This is a migration script to ensure data integrity when moving from numeric IDs to UUIDs for relations.
-            // It will only run once if the database version is less than 4.
-            console.log("Running Dexie schema migration to version 4: Switching foreign keys to UUIDs.");
+            return tx.table('products').toCollection().modify(product => {
+                product.stockStatus = calculateStockStatus(product.quantity, product.minStockLevel);
+            });
+        });
 
+        this.version(4).stores({
+            products: '++id, &uuid, *barcodes, name, category, supplierUuid, createdAt, updatedAt, price, quantity, sync_status',
+            customers: '++id, &uuid, &searchName, phone, debtStatus, createdAt, updatedAt, lastActivityDate, sync_status',
+            sales: '++id, &uuid, &invoiceNumber, customerUuid, createdAt, updatedAt, sync_status',
+            payments: '++id, &uuid, customerUuid, paymentDate, createdAt, updatedAt, sync_status',
+            stockIntakes: '++id, &uuid, supplierUuid, invoiceDate, createdAt, updatedAt, sync_status',
+            returns: '++id, &uuid, originalSaleId, customerUuid, createdAt, updatedAt, sync_status',
+            carts: 'id',
+            drafts: '++id, createdAt',
+            companyProfile: 'id, &uuid, sync_status, updatedAt',
+            expenses: '++id, &uuid, category, expenseDate, createdAt, updatedAt, sync_status',
+            inventoryLogs: '++id, &uuid, productId, reason, createdAt',
+            suppliers: '++id, &uuid, &name, createdAt, updatedAt, sync_status',
+            clients_pain: '++id, &uuid, nom, createdAt, updatedAt, sync_status',
+            commandes_pain: '++id, &uuid, clientPainUuid, date, &[clientPainUuid+date], createdAt, updatedAt, sync_status',
+            sync_queue: '++id, createdAt',
+        }).upgrade(tx => {
+            console.log("Running Dexie schema migration to version 4: Switching foreign keys to UUIDs.");
             return Promise.all([
                 tx.table('sales').toCollection().modify(async (sale: Sale) => {
-                    if (sale.customerId && !sale.customerUuid) {
-                        const customer = await tx.table('customers').get(sale.customerId);
+                    if ((sale as any).customerId && !sale.customerUuid) {
+                        const customer = await tx.table('customers').get((sale as any).customerId);
                         if (customer) sale.customerUuid = customer.uuid;
                     }
-                    if (sale.clientPainId && !sale.clientPainUuid) {
-                         const clientPain = await tx.table('clients_pain').get(sale.clientPainId);
+                    if ((sale as any).clientPainId && !sale.clientPainUuid) {
+                         const clientPain = await tx.table('clients_pain').get((sale as any).clientPainId);
                          if (clientPain) sale.clientPainUuid = clientPain.uuid;
                     }
                 }),

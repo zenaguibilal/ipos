@@ -49,16 +49,10 @@ export class SalesService {
             const sale = await db.sales.get(saleId);
             if (!sale || !sale.uuid) return;
     
-            // Restore product stock and log it
+            // Restore product stock
             for (const item of sale.items) {
                 if (typeof item.id === 'number') {
-                    const product = await db.products.get(item.id);
-                    if (product && product.uuid) {
-                        const newQuantity = product.quantity + item.quantity;
-                        await db.products.update(item.id, { quantity: newQuantity });
-                        await inventoryService.logChange(item.id, item.quantity, newQuantity, 'cancellation', sale.id);
-                        await syncService.queueSyncOperation('products', product.uuid, 'update', { quantity: newQuantity, updatedAt: new Date(), last_modified_by: syncService.getLocalDeviceId() });
-                    }
+                    await inventoryService.adjustStock(item.id, item.quantity, 'cancellation', sale.id);
                 }
             }
     

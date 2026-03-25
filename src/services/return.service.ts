@@ -21,7 +21,7 @@ export class ReturnService {
         return await collection.sortBy('createdAt');
     }
     
-    async addReturn(returnData: Omit<ProductReturn, 'id'>): Promise<ProductReturn> {
+    async addReturn(returnData: Omit<ProductReturn, 'id' | 'uuid'>): Promise<ProductReturn> {
         return db.transaction('rw', db.returns, db.products, db.customers, db.sales, db.sync_queue, db.payments, db.inventoryLogs, async () => {
             const now = new Date();
             const uuid = uuidv4();
@@ -33,23 +33,13 @@ export class ReturnService {
                 sync_status: 'pending_create',
                 last_modified_by: syncService.getLocalDeviceId(),
             };
-            const id = await db.returns.add(newReturn);
+            const id = await db.returns.add(newReturn as any);
             await syncService.queueSyncOperation('returns', uuid, 'create', { ...newReturn, id: undefined });
 
 
             for (const item of newReturn.items) {
                 if (item.wasRestocked && item.productId) {
-                    let newQuantity = 0;
-                    await db.products.where('id').equals(item.productId).modify(p => { 
-                        p.quantity += item.quantity;
-                        newQuantity = p.quantity;
-                    });
-                    await inventoryService.logChange(item.productId, item.quantity, newQuantity, 'return', id);
-
-                    const product = await db.products.get(item.productId);
-                    if(product && product.uuid) {
-                        await syncService.queueSyncOperation('products', product.uuid, 'update', { quantity: newQuantity, updatedAt: now, last_modified_by: syncService.getLocalDeviceId() });
-                    }
+                    await inventoryService.adjustStock(item.productId, item.quantity, 'return', id);
                 }
             }
 
@@ -69,13 +59,7 @@ export class ReturnService {
             // Reverse the stock updates and log them
             for (const item of pr.items) {
                 if (item.wasRestocked && item.productId) {
-                    const product = await db.products.get(item.productId);
-                    if (product && product.uuid) {
-                        const newQuantity = product.quantity - item.quantity;
-                        await db.products.update(product.id!, { quantity: newQuantity });
-                        await inventoryService.logChange(product.id!, -item.quantity, newQuantity, 'cancellation', `return-${pr.id}`);
-                        await syncService.queueSyncOperation('products', product.uuid, 'update', { quantity: newQuantity, updatedAt: new Date(), last_modified_by: syncService.getLocalDeviceId() });
-                    }
+                    await inventoryService.adjustStock(item.productId, -item.quantity, 'cancellation', `return-${pr.id}`);
                 }
             }
     

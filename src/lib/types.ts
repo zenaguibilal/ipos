@@ -22,6 +22,7 @@ export interface Product extends BaseEntity {
     dateExpiration?: Date;
     supplierUuid?: string;
     dateMajPrix?: Date;
+    stockStatus?: 'in_stock' | 'low_stock' | 'out_of_stock';
 }
 
 export interface Customer extends BaseEntity {
@@ -190,7 +191,7 @@ export type InventoryLogReason = 'sale' | 'return' | 'stock_intake' | 'cancellat
 
 export interface InventoryLog extends BaseEntity {
     productId: number;
-    change: number; // e.g., -2 for sale, +50 for stock intake
+    change: number; // e.g., -2 for a sale, +50 for stock intake
     newQuantity: number;
     reason: InventoryLogReason;
     relatedId?: number | string; // ID of the sale, return, intake, etc.

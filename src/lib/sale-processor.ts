@@ -80,24 +80,14 @@ export async function processSaleTransaction(saleData: any): Promise<{ saleId: n
         last_modified_by: syncService.getLocalDeviceId(),
     };
 
-    const saleId = await db.sales.add(finalSaleData);
+    const saleId = await db.sales.add(finalSaleData as any);
     await syncService.queueSyncOperation('sales', uuid, 'create', { ...finalSaleData, id: undefined });
 
 
     // 5. Update Product Stock & Log Inventory Change
     for (const item of finalSaleData.items) {
         if (typeof item.id === 'number') {
-            let newQuantity = 0;
-            await db.products.where('id').equals(item.id).modify(p => {
-                p.quantity -= item.quantity;
-                newQuantity = p.quantity;
-            });
-            await inventoryService.logChange(item.id, -item.quantity, newQuantity, 'sale', saleId);
-
-            const product = await db.products.get(item.id);
-            if (product && product.uuid) {
-                 await syncService.queueSyncOperation('products', product.uuid, 'update', { quantity: newQuantity, updatedAt: new Date(), last_modified_by: syncService.getLocalDeviceId() });
-            }
+            await inventoryService.adjustStock(item.id, -item.quantity, 'sale', saleId);
         }
     }
     
