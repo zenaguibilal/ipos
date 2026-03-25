@@ -7,7 +7,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 type SyncStatus = 'syncing' | 'online' | 'offline';
 
-export class SyncService {
+class SyncServiceSingleton {
     private isSyncing = false;
     private localDeviceId: string;
     private supabase: SupabaseClient;
@@ -39,31 +39,31 @@ export class SyncService {
     }
 
     private _toSnakeCase(obj: any): any {
-        if (obj === null || typeof obj !== 'object' || Array.isArray(obj)) {
-            return obj;
+        if (Array.isArray(obj)) {
+            return obj.map(v => this._toSnakeCase(v));
         }
-        const newObj: any = {};
-        for (const key in obj) {
-            if (Object.prototype.hasOwnProperty.call(obj, key)) {
-                const snakeKey = key.replace(/([A-Z])/g, "_$1").toLowerCase();
-                newObj[snakeKey] = obj[key];
-            }
+        if (obj !== null && typeof obj === 'object' && !(obj instanceof Date)) {
+            return Object.keys(obj).reduce((acc, key) => {
+                const snakeKey = key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+                acc[snakeKey] = this._toSnakeCase(obj[key]);
+                return acc;
+            }, {} as any);
         }
-        return newObj;
+        return obj;
     }
 
     private _fromSnakeCase(obj: any): any {
-        if (obj === null || typeof obj !== 'object' || Array.isArray(obj)) {
-            return obj;
+        if (Array.isArray(obj)) {
+            return obj.map(v => this._fromSnakeCase(v));
         }
-        const newObj: any = {};
-        for (const key in obj) {
-            if (Object.prototype.hasOwnProperty.call(obj, key)) {
+        if (obj !== null && typeof obj === 'object' && !(obj instanceof Date)) {
+            return Object.keys(obj).reduce((acc, key) => {
                 const camelKey = key.replace(/_([a-z])/g, g => g[1].toUpperCase());
-                newObj[camelKey] = obj[key];
-            }
+                acc[camelKey] = this._fromSnakeCase(obj[key]);
+                return acc;
+            }, {} as any);
         }
-        return newObj;
+        return obj;
     }
     
     private async _syncNow() {
@@ -182,8 +182,6 @@ export class SyncService {
                 if (data && data.length > 0) {
                      const localData = data.map(record => this._fromSnakeCase(record));
 
-                    // Radical Fix: Prevent data loss from overwriting pending local changes.
-                    // Get UUIDs of all local records that are waiting to be synced.
                     const localPendingUuids = new Set(
                         (await (db as any)[tableName]
                             .where('sync_status').notEqual('synced')
@@ -191,7 +189,6 @@ export class SyncService {
                             .map((r: any) => r.uuid).filter(Boolean)
                     );
 
-                    // Filter out any incoming changes that would conflict with a pending local change.
                     const safeDataToPut = localData.filter(
                         (remoteRecord: any) => !localPendingUuids.has(remoteRecord.uuid)
                     );
@@ -224,3 +221,6 @@ export class SyncService {
         setInterval(() => this._syncNow(), 5 * 60 * 1000);
     }
 }
+
+
+export const syncService = new SyncServiceSingleton();

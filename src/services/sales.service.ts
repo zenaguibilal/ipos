@@ -4,7 +4,8 @@ import { db } from '@/lib/database';
 import type { Sale, Customer } from '@/lib/types';
 import { toast } from 'sonner';
 import { processSaleTransaction } from '@/lib/sale-processor';
-import { syncService } from './sync.service';
+import { syncService } from '@/services/sync.service';
+import { recalculateCustomerStatus } from '@/lib/customer-recalcs';
 
 export class SalesService {
     async getSaleByInvoiceNumber(invoiceNumber: string): Promise<Sale | undefined> {
@@ -29,15 +30,21 @@ export class SalesService {
     }
 
     async addSale(saleData: any): Promise<number> {
-        return db.transaction('rw', db.sales, db.products, db.customers, db.sync_queue, async () => {
+        const customerUuid = saleData.customerUuid;
+        return db.transaction('rw', db.sales, db.products, db.customers, db.sync_queue, db.returns, db.payments, async () => {
             const { saleId, invoiceNumber } = await processSaleTransaction(saleData);
+
+            if (customerUuid) {
+                await recalculateCustomerStatus(customerUuid);
+            }
+
             toast.success(`Vente #${invoiceNumber} finalisée.`);
             return saleId;
         });
     }
     
     async deleteSale(saleId: number): Promise<void> {
-        await db.transaction('rw', db.sales, db.products, db.customers, db.sync_queue, async () => {
+        await db.transaction('rw', db.sales, db.products, db.customers, db.sync_queue, db.returns, db.payments, async () => {
             const sale = await db.sales.get(saleId);
             if (!sale || !sale.uuid) return;
     
@@ -53,38 +60,16 @@ export class SalesService {
                 }
             }
     
-            // Adjust customer balance
-            if (sale.customerUuid) {
-                const customer = await db.customers.where({ uuid: sale.customerUuid }).first();
-                if (customer && customer.uuid) {
-                    const newBalance = customer.outstandingBalance - sale.remainingBalance;
-                    const newTotalSpent = customer.totalSpent - sale.total;
-                    const isOverLimit = customer.creditLimit != null && newBalance > customer.creditLimit;
-                    
-                    let debtStatus: Customer['debtStatus'] = 'none';
-                    if (newBalance > 0) {
-                        const unpaidSales = await db.sales.where('customerUuid').equals(customer.uuid).and(s => s.id !== saleId && s.sync_status !== 'pending_delete').toArray();
-                        const isOverdue = unpaidSales.some(s => s.dueDate && new Date(s.dueDate) < new Date());
-                        debtStatus = isOverdue ? 'overdue' : 'due_soon';
-                    }
-    
-                    const customerUpdate = {
-                        outstandingBalance: newBalance,
-                        totalSpent: newTotalSpent,
-                        isOverLimit,
-                        debtStatus,
-                        updatedAt: new Date(),
-                        sync_status: 'pending_update' as const,
-                        last_modified_by: syncService.getLocalDeviceId()
-                    };
-                    await db.customers.update(customer.id!, customerUpdate);
-                    await syncService.queueSyncOperation('customers', customer.uuid, 'update', customerUpdate);
-                }
-            }
+            const customerUuid = sale.customerUuid;
     
             // Soft delete the sale
             await db.sales.update(saleId, { sync_status: 'pending_delete', updatedAt: new Date(), last_modified_by: syncService.getLocalDeviceId() });
             await syncService.queueSyncOperation('sales', sale.uuid, 'delete', {});
+
+            // Adjust customer balance
+            if (customerUuid) {
+                await recalculateCustomerStatus(customerUuid);
+            }
         });
     }
 }

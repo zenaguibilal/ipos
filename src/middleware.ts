@@ -1,11 +1,10 @@
-import { type NextRequest } from 'next/server'
-import { updateSession } from '@/utils/supabase/middleware'
+import { NextResponse, type NextRequest } from 'next/server'
 
-export async function middleware(request: NextRequest) {
-  // return await updateSession(request)
-  // The above line is commented out to prevent middleware from running on every request.
-  // This is a temporary measure to avoid potential issues with server-side rendering and API routes.
-  // The session is still managed on the client side and through server components where needed.
+// This middleware is currently neutralized to prevent routing issues at startup.
+// It simply passes the request through without modification.
+// Supabase session handling is managed on the client-side.
+export function middleware(request: NextRequest) {
+  return NextResponse.next()
 }
 
 export const config = {

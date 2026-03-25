@@ -12,7 +12,7 @@ import { ReturnService } from './return.service';
 import { SalesService } from './sales.service';
 import { StockService } from './stock.service';
 import { ZakatService } from './zakat.service';
-import { SyncService } from './sync.service';
+import { syncService as singletonSyncService } from './sync.service';
 
 export const backupService = new BackupService();
 export const breadService = new BreadService();
@@ -28,7 +28,7 @@ export const returnService = new ReturnService();
 export const salesService = new SalesService();
 export const stockService = new StockService();
 export const zakatService = new ZakatService();
-export const syncService = new SyncService();
+export const syncService = singletonSyncService;
 
 // Start the sync engine when the app loads
 syncService.startSync();

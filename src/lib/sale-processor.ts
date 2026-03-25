@@ -8,8 +8,8 @@ import { syncService } from '@/services/sync.service';
 
 /**
  * This function processes a sale transaction. It must be called from within a Dexie transaction.
- * It handles stock checking, stock reduction, invoice number generation, sale record creation,
- * and customer balance updates.
+ * It handles stock checking, stock reduction, invoice number generation, and sale record creation.
+ * Crucially, it DOES NOT handle customer balance updates, which are orchestrated by the calling service.
  * @param saleData - The data for the sale to be processed.
  * @returns An object containing the new saleId and invoiceNumber.
  */
@@ -87,7 +87,6 @@ export async function processSaleTransaction(saleData: any): Promise<{ saleId: n
     for (const item of finalSaleData.items) {
         if (typeof item.id === 'number') {
             await db.products.where('id').equals(item.id).modify(p => { p.quantity -= item.quantity; });
-            // Queue sync for product quantity change
             const product = await db.products.get(item.id);
             if (product && product.uuid) {
                  await syncService.queueSyncOperation('products', product.uuid, 'update', { quantity: product.quantity, updatedAt: new Date(), last_modified_by: syncService.getLocalDeviceId() });
@@ -95,36 +94,7 @@ export async function processSaleTransaction(saleData: any): Promise<{ saleId: n
         }
     }
     
-    // 6. Update Customer Balance
-    if (customer && customer.uuid) {
-        const newBalance = customer.outstandingBalance + finalSaleData.remainingBalance;
-        const isOverLimit = customer.creditLimit != null ? newBalance > customer.creditLimit : false;
-        
-        let debtStatus: Customer['debtStatus'] = 'none';
-        if (newBalance > 0) {
-            // Check all unpaid sales for this customer, including the one just created
-            const unpaidSales = await db.sales
-                .where('customerUuid').equals(customer.uuid)
-                .and(s => s.sync_status !== 'pending_delete')
-                .toArray();
-            const isOverdue = unpaidSales.some(s => s.dueDate && new Date(s.dueDate) < now);
-            debtStatus = isOverdue ? 'overdue' : 'due_soon';
-        }
-        
-        const customerUpdate = {
-            outstandingBalance: newBalance,
-            totalSpent: customer.totalSpent + finalSaleData.total,
-            lastActivityDate: now,
-            isOverLimit,
-            debtStatus,
-            sync_status: 'pending_update' as const,
-            updatedAt: now,
-            last_modified_by: syncService.getLocalDeviceId(),
-        };
-
-        await db.customers.update(customer.id!, customerUpdate);
-        await syncService.queueSyncOperation('customers', customer.uuid, 'update', customerUpdate);
-    }
+    // Customer balance update is now handled by the calling service to ensure atomicity with other operations.
     
     return { saleId, invoiceNumber };
 }
