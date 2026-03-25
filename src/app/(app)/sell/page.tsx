@@ -5,7 +5,6 @@ import { ProductSearch } from '@/components/sell/ProductSearch';
 import { SaleActions } from '@/components/sell/SaleActions';
 import { Card, CardContent } from '@/components/ui/card';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { useCart } from '@/hooks/useCart';
 import { Button } from '@/components/ui/button';
 import { CustomerCombobox } from '@/components/sell/CustomerCombobox';
 import { PackageSearch, HandCoins } from 'lucide-react';
@@ -15,29 +14,13 @@ import { toast } from 'sonner';
 import { AddPaymentDialog } from '@/components/payments/AddPaymentDialog';
 import { CartTotalBar } from '@/components/sell/CartTotalBar';
 import { DraftsDialog } from '@/components/sell/DraftsDialog';
-import type { Customer, Product } from '@/lib/types';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { customerService } from '@/services';
+import type { Product } from '@/lib/types';
+import { useCartStore, useCartActions } from '@/stores/cartStore';
 
 export default function SellPage() {
-    const {
-        cart,
-        isLoading,
-        addProductToCart,
-        updateCartItemQuantity,
-        removeCartItem,
-        clearCart,
-        setCartCustomer,
-        setCartDiscount,
-        saveCartAsDraft,
-        loadDraftToCart,
-    } = useCart();
-
-    const customer = useLiveQuery(
-        () => cart?.customerUuid ? customerService.getCustomerByUuid(cart.customerUuid) : Promise.resolve(undefined),
-        [cart?.customerUuid]
-    );
-
+    const { cart, customer, isLoading } = useCartStore();
+    const { addProductToCart, clearCart } = useCartActions();
+    
     const [isProductSheetOpen, setIsProductSheetOpen] = useState(false);
     const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
     const [isDraftsDialogOpen, setIsDraftsDialogOpen] = useState(false);
@@ -99,7 +82,7 @@ export default function SellPage() {
     if (isDataLoading) {
         return (
             <div className="h-full flex flex-col p-4 gap-4">
-                <Skeleton className="h-12 flex-grow" />
+                <Skeleton className="h-12 w-full" />
                 <div className="grid md:grid-cols-3 gap-4 flex-grow">
                     <Skeleton className="md:col-span-2 h-full" />
                     <Skeleton className="h-full" />
@@ -116,18 +99,14 @@ export default function SellPage() {
     return (
         <>
             <div className="h-full flex flex-col">
-                <CartTotalBar cart={cart} customer={customer} />
+                <CartTotalBar />
 
                 <div className="grid md:grid-cols-3 gap-4 flex-grow min-h-0 p-4">
                     {/* Main column */}
                     <div className="md:col-span-2 flex flex-col gap-4">
                         <div className="flex flex-col sm:flex-row gap-4">
                             <div className="flex-grow w-full sm:w-64">
-                                <CustomerCombobox
-                                    ref={customerComboboxRef}
-                                    customerUuid={cart.customerUuid}
-                                    onSelectCustomer={(c) => setCartCustomer(c)}
-                                />
+                                <CustomerCombobox ref={customerComboboxRef} />
                             </div>
                             <div className="flex gap-2">
                                 {customer && customer.outstandingBalance > 0 && (
@@ -157,24 +136,15 @@ export default function SellPage() {
                         </div>
 
                         <Card className="flex-grow flex flex-col min-h-0">
-                            <CartDisplay
-                                cart={cart}
-                                onQuantityChange={updateCartItemQuantity}
-                                onRemoveItem={removeCartItem}
-                            />
+                            <CartDisplay />
                         </Card>
 
                         <Card>
                             <CardContent className="p-4 sm:p-6">
                                 <SaleActions
                                     ref={saleActionsRef}
-                                    cart={cart}
-                                    customer={customer}
-                                    onClearCart={clearCart}
-                                    onSetDiscount={setCartDiscount}
-                                    onSaveDraft={saveCartAsDraft}
-                                    onOpenDrafts={() => setIsDraftsDialogOpen(true)}
                                     onSaleFinalized={handleSaleFinalized}
+                                    onOpenDrafts={() => setIsDraftsDialogOpen(true)}
                                 />
                             </CardContent>
                         </Card>
@@ -199,7 +169,6 @@ export default function SellPage() {
             <DraftsDialog
                 isOpen={isDraftsDialogOpen}
                 onOpenChange={setIsDraftsDialogOpen}
-                onLoadDraft={loadDraftToCart}
             />
         </>
     );

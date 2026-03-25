@@ -1,17 +1,19 @@
 'use client';
 
-import type { Cart, Customer } from '@/lib/types';
 import { calculateCartTotals, formatCurrency } from '@/lib/utils';
 import { ShoppingCart, User, Tag, Minus } from 'lucide-react';
+import { useCartStore } from '@/stores/cartStore';
 
-interface CartTotalBarProps {
-    cart: Cart | undefined;
-    customer: Customer | undefined;
-}
+export function CartTotalBar() {
+    const { cart, customer } = useCartStore();
 
-export function CartTotalBar({ cart, customer }: CartTotalBarProps) {
     if (!cart) {
-        return null;
+        return (
+             <div className="sticky top-0 z-20 bg-background/80 backdrop-blur-lg border-b border-primary/20 p-3 shadow-md print-hide">
+                <div className="mx-auto flex flex-wrap items-center justify-between gap-x-6 gap-y-2 text-sm px-4">
+                </div>
+            </div>
+        );
     }
 
     const { subtotal, discountAmount, total } = calculateCartTotals(cart);

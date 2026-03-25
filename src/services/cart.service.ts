@@ -2,10 +2,15 @@
 
 import { db } from '@/lib/database';
 import type { Cart, CartItem, Product, Customer } from '@/lib/types';
-import { CART_ID } from '@/hooks/useCart';
+
+export const CART_ID = 'default-cart';
 
 export class CartService {
     
+    async getCart(cartId: string): Promise<Cart | null> {
+        return await db.carts.get(cartId) ?? null;
+    }
+
     async initCart(): Promise<void> {
         const existingCart = await db.carts.get(CART_ID);
         if (!existingCart) {
@@ -35,7 +40,6 @@ export class CartService {
                 await db.carts.update(cartId, { items: [...cart.items, newCartItem] });
             }
         });
-        setTimeout(() => this.removeFlashFromCartItems(cartId), 500);
     }
     
     async updateCartItemQuantity(cartId: string, itemId: string | number, newQuantity: number): Promise<{ capped: boolean, maxQuantity?: number }> {

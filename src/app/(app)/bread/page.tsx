@@ -12,9 +12,9 @@ import { BreadClientList } from '@/components/bread/BreadClientList';
 import { BreadDayView } from '@/components/bread/BreadDayView';
 import { BreadStats } from '@/components/bread/BreadStats';
 import { Loader2 } from 'lucide-react';
-import type { BreadOrderWithClient, CompanyProfile } from '@/lib/types';
+import type { BreadOrderWithClient } from '@/lib/types';
 import { breadService } from '@/services';
-import { Skeleton } from '@/components/ui/skeleton';
+import { useSettingsStore } from '@/stores/settingsStore';
 
 export default function BreadPage() {
     const [currentDate, setCurrentDate] = useState(new Date());
@@ -25,9 +25,7 @@ export default function BreadPage() {
         [formattedDate]
     );
 
-    const companyProfile = useLiveQuery<CompanyProfile | undefined>(
-        () => db.companyProfile.get(1)
-    );
+    const companyProfile = useSettingsStore((state) => state.profile);
 
     const [isGenerating, setIsGenerating] = useState(false);
     const isLoading = orders === undefined || isGenerating;

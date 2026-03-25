@@ -21,19 +21,20 @@ import { ScrollArea } from '../ui/scroll-area';
 import { Trash2 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { ConfirmAlertDialog } from '../ui/ConfirmAlertDialog';
+import { useCartActions } from '@/stores/cartStore';
 
 interface DraftsDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onLoadDraft: (draftId: number) => void;
 }
 
-export function DraftsDialog({ isOpen, onOpenChange, onLoadDraft }: DraftsDialogProps) {
+export function DraftsDialog({ isOpen, onOpenChange }: DraftsDialogProps) {
     const drafts = useLiveQuery(() => db.drafts.orderBy('createdAt').reverse().toArray());
+    const { loadDraftToCart } = useCartActions();
     const [draftToDelete, setDraftToDelete] = useState<Draft | null>(null);
 
     const handleLoad = (draftId: number) => {
-        onLoadDraft(draftId);
+        loadDraftToCart(draftId);
         onOpenChange(false);
     };
     

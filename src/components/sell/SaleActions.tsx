@@ -1,11 +1,8 @@
-
-
 'use client';
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Trash2, Save, FolderOpen } from 'lucide-react';
-import type { Cart, Customer } from '@/lib/types';
 import { PaymentDialog } from './PaymentDialog';
 import {
   AlertDialog,
@@ -22,33 +19,26 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { formatCurrency, calculateCartTotals } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
-import { toast } from 'sonner';
+import { useCartStore, useCartActions } from '@/stores/cartStore';
 
 interface SaleActionsProps {
-    cart: Cart;
-    customer: Customer | null | undefined;
-    onClearCart: () => void;
-    onSetDiscount: (discount: { type: 'fixed' | 'percentage'; value: number }) => void;
-    onSaveDraft: () => void;
-    onOpenDrafts: () => void;
     onSaleFinalized: () => void;
+    onOpenDrafts: () => void;
 }
 
 export const SaleActions = React.forwardRef<
     { payment: () => void, draft: () => void }, 
     SaleActionsProps
->(({ cart, customer, onClearCart, onSetDiscount, onSaveDraft, onOpenDrafts, onSaleFinalized }, ref) => {
+>(({ onSaleFinalized, onOpenDrafts }, ref) => {
+    const { cart } = useCartStore();
+    const { clearCart, setCartDiscount, saveCartAsDraft } = useCartActions();
     const [isPaymentOpen, setIsPaymentOpen] = useState(false);
     
-    const totalItems = cart.items.reduce((acc, item) => acc + item.cartQuantity, 0);
-    const { subtotal, discountAmount, total } = calculateCartTotals(cart);
+    const totalItems = cart?.items.reduce((acc, item) => acc + item.cartQuantity, 0) || 0;
+    const { subtotal, discountAmount, total } = cart ? calculateCartTotals(cart) : { subtotal: 0, discountAmount: 0, total: 0 };
     
-    const discountValue = cart.discount.value || 0;
-    const discountType = cart.discount.type || 'fixed';
-
-    const handleSaveDraft = () => {
-        onSaveDraft();
-    };
+    const discountValue = cart?.discount.value || 0;
+    const discountType = cart?.discount.type || 'fixed';
     
     const paymentButtonRef = React.useRef<HTMLButtonElement>(null);
     const draftButtonRef = React.useRef<HTMLButtonElement>(null);
@@ -66,14 +56,13 @@ export const SaleActions = React.forwardRef<
         }
     }));
 
+    if (!cart) return null;
 
     return (
         <>
             <PaymentDialog 
                 isOpen={isPaymentOpen}
                 onOpenChange={setIsPaymentOpen}
-                cart={cart}
-                customer={customer}
                 onSaleFinalized={onSaleFinalized}
             />
              <div className="space-y-4">
@@ -89,16 +78,16 @@ export const SaleActions = React.forwardRef<
                             type="number"
                             placeholder="0"
                             value={discountValue || ''}
-                            onChange={(e) => onSetDiscount({ type: discountType, value: parseFloat(e.target.value) })}
+                            onChange={(e) => setCartDiscount({ type: discountType, value: parseFloat(e.target.value) || 0 })}
                             className="h-10 flex-grow"
                         />
                         <Button 
                             variant={discountType === 'fixed' ? 'secondary' : 'ghost'}
-                            onClick={() => onSetDiscount({ type: 'fixed', value: discountValue })}
+                            onClick={() => setCartDiscount({ type: 'fixed', value: discountValue })}
                         >DA</Button>
                         <Button 
                             variant={discountType === 'percentage' ? 'secondary' : 'ghost'}
-                            onClick={() => onSetDiscount({ type: 'percentage', value: discountValue })}
+                            onClick={() => setCartDiscount({ type: 'percentage', value: discountValue })}
                         >%</Button>
                     </div>
                 </div>
@@ -122,7 +111,7 @@ export const SaleActions = React.forwardRef<
                  <div className="grid grid-cols-2 gap-4 pt-2">
                     <div>
                         <div className="flex gap-2">
-                            <Button ref={draftButtonRef} variant="outline" className="flex-1" onClick={handleSaveDraft}>
+                            <Button ref={draftButtonRef} variant="outline" className="flex-1" onClick={saveCartAsDraft}>
                                 <Save className="mr-2 h-4 w-4" /> Brouillon (F4)
                             </Button>
                              <Button variant="outline" size="icon" onClick={onOpenDrafts}>
@@ -145,7 +134,7 @@ export const SaleActions = React.forwardRef<
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                                 <AlertDialogCancel>Annuler</AlertDialogCancel>
-                                <AlertDialogAction onClick={onClearCart} className="bg-destructive hover:bg-destructive/90">
+                                <AlertDialogAction onClick={clearCart} className="bg-destructive hover:bg-destructive/90">
                                     Confirmer et vider
                                 </AlertDialogAction>
                             </AlertDialogFooter>
@@ -165,5 +154,4 @@ export const SaleActions = React.forwardRef<
         </>
     );
 });
-
 SaleActions.displayName = 'SaleActions';

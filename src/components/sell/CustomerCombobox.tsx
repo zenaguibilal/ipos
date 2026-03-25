@@ -6,11 +6,7 @@ import { customerService } from '@/services';
 import { Combobox, ComboboxOption } from '@/components/ui/combobox';
 import type { Customer } from '@/lib/types';
 import { formatCurrency } from '@/lib/utils';
-
-interface CustomerComboboxProps {
-    customerUuid: string | null;
-    onSelectCustomer: (customer: Customer | null) => void;
-}
+import { useCartStore, useCartActions } from '@/stores/cartStore';
 
 const WalkInCustomerOption: ComboboxOption = {
     value: 'walk-in',
@@ -18,8 +14,9 @@ const WalkInCustomerOption: ComboboxOption = {
     subLabel: 'Aucun client sélectionné',
 };
 
-export const CustomerCombobox = React.forwardRef<HTMLButtonElement, CustomerComboboxProps>(({ customerUuid, onSelectCustomer }, ref) => {
-    
+export const CustomerCombobox = React.forwardRef<HTMLButtonElement>((props, ref) => {
+    const customerUuid = useCartStore((state) => state.cart?.customerUuid);
+    const { setCartCustomer } = useCartActions();
     const customers = useLiveQuery(() => customerService.getCustomers({}));
 
     const customerOptions = React.useMemo<ComboboxOption[]>(() => {
@@ -40,10 +37,10 @@ export const CustomerCombobox = React.forwardRef<HTMLButtonElement, CustomerComb
 
     const handleSelect = (value: string) => {
         if (value === 'walk-in') {
-            onSelectCustomer(null);
+            setCartCustomer(null);
         } else {
             const selectedCustomer = customers?.find(c => c.uuid === value);
-            onSelectCustomer(selectedCustomer || null);
+            setCartCustomer(selectedCustomer || null);
         }
     };
     

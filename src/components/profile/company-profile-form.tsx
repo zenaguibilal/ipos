@@ -9,17 +9,13 @@ import { toast } from 'sonner';
 import type { CompanyProfile } from '@/lib/types';
 import { Skeleton } from '../ui/skeleton';
 import { Loader2 } from 'lucide-react';
-import { profileService } from '@/services';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '@/lib/database';
+import { useSettingsStore } from '@/stores/settingsStore';
 
 export function CompanyProfileForm() {
+    const { profile, isLoading, updateProfile } = useSettingsStore();
     const [formState, setFormState] = useState<Partial<CompanyProfile>>({});
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    
-    const profile = useLiveQuery(() => db.companyProfile.get(1));
-    const isLoading = profile === undefined;
 
     useEffect(() => {
         if (profile) {
@@ -45,7 +41,7 @@ export function CompanyProfileForm() {
         };
 
         try {
-            await profileService.updateCompanyProfile(dataToSave);
+            await updateProfile(dataToSave);
             toast.success('Profil de l\'entreprise mis à jour avec succès.');
         } catch (err) {
             setError("Une erreur est survenue lors de la mise à jour du profil.");

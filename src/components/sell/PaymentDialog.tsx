@@ -12,25 +12,25 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import type { Cart, SalePayment, Customer, Product } from '@/lib/types';
+import type { SalePayment, Product } from '@/lib/types';
 import { Loader2, CreditCard, Banknote, AlertTriangle } from 'lucide-react';
 import { salesService } from '@/services';
 import { formatCurrency, calculateCartTotals } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Separator } from '@/components/ui/separator';
+import { useCartStore } from '@/stores/cartStore';
 
 interface PaymentDialogProps {
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
-    cart: Cart;
-    customer: Customer | null | undefined;
     onSaleFinalized: () => void;
 }
 
 type PaymentMode = 'cash' | 'card' | 'other' | 'credit' | 'mixed';
 
-export function PaymentDialog({ isOpen, onOpenChange, cart, customer, onSaleFinalized }: PaymentDialogProps) {
+export function PaymentDialog({ isOpen, onOpenChange, onSaleFinalized }: PaymentDialogProps) {
+    const { cart, customer } = useCartStore();
     const [paymentMode, setPaymentMode] = useState<PaymentMode>('cash');
     const [cashAmount, setCashAmount] = useState('');
     const [creditAmount, setCreditAmount] = useState('');
@@ -41,7 +41,7 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, customer, onSaleFina
     const [showLossAlert, setShowLossAlert] = useState(false);
     const [lossItems, setLossItems] = useState<Product[]>([]);
 
-    const { subtotal, discountAmount, total } = calculateCartTotals(cart);
+    const { subtotal, discountAmount, total } = cart ? calculateCartTotals(cart) : { subtotal: 0, discountAmount: 0, total: 0 };
 
     const cashAmountNum = parseFloat(cashAmount) || 0;
     const creditAmountNum = parseFloat(creditAmount) || 0;
@@ -54,10 +54,10 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, customer, onSaleFina
     const creditUsage = customer?.creditLimit && customer.creditLimit > 0 ? (newTotalOutstanding / customer.creditLimit) * 100 : 0;
 
     useEffect(() => {
-        if (isOpen) {
+        if (isOpen && cart) {
             const itemsSoldAtLoss = cart.items.filter(item => item.price < item.purchasePrice);
             if (itemsSoldAtLoss.length > 0) {
-                setLossItems(itemsSoldAtLoss);
+                setLossItems(itemsSoldAtLoss as Product[]);
                 setShowLossAlert(true);
             } else {
                 initializePayment();
@@ -65,7 +65,7 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, customer, onSaleFina
         } else {
             setIsLoading(false);
         }
-    }, [isOpen, cart.items, total]);
+    }, [isOpen, cart, total]);
 
     const initializePayment = () => {
         setPaymentMode('cash');
@@ -86,6 +86,8 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, customer, onSaleFina
     }
 
     const handleFinalizeSale = async () => {
+        if (!cart) return;
+
         if (paymentMode === 'mixed' && (cashAmountNum + creditAmountNum !== total)) {
             toast.error("Le montant en espèces et le montant à crédit doivent correspondre au total.");
             return;
@@ -113,7 +115,7 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, customer, onSaleFina
             total,
             amountPaid: amountPaidNum,
             payments,
-            customerId: cart.customerId ?? undefined,
+            customerUuid: cart.customerUuid ?? undefined,
             customerName: cart.customerName ?? undefined,
             dueDate: debtFromThisSale > 0 ? dueDate : undefined,
         };
