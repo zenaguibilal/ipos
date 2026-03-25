@@ -1,0 +1,21 @@
+{
+  "name": "iPOS - Point de Vente Complet",
+  "short_name": "iPOS",
+  "description": "Application de point de vente SaaS (Software as a Service) complète, conçue pour la vente au détail.",
+  "start_url": "/sell",
+  "display": "standalone",
+  "background_color": "#1a120c",
+  "theme_color": "#ffb74d",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml"
+    }
+  ]
+}

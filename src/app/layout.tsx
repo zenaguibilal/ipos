@@ -1,8 +1,8 @@
+
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
-import { Toaster } from '@/components/ui/sonner';
 import { Inter } from 'next/font/google';
-import { ThemeProvider } from '@/components/layout/theme-provider';
+import { ClientProviders } from '@/components/layout/ClientProviders';
 
 const APP_NAME = "iPOS";
 const APP_DEFAULT_TITLE = "iPOS - Point de Vente";
@@ -11,6 +11,7 @@ const APP_DESCRIPTION = "Application de point de vente intelligente pour le comm
 
 const inter = Inter({ subsets: ['latin'] });
 
+// These exports are still needed for static metadata generation
 export const metadata: Metadata = {
   applicationName: APP_NAME,
   title: {
@@ -18,6 +19,7 @@ export const metadata: Metadata = {
     template: APP_TITLE_TEMPLATE,
   },
   description: APP_DESCRIPTION,
+  manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -61,20 +63,16 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+
   return (
     <html lang="fr" suppressHydrationWarning>
-      <head />
+      <head>
+         <link rel="manifest" href="/manifest.json" />
+      </head>
       <body className={inter.className}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="dark"
-          enableSystem={false}
-          disableTransitionOnChange
-        >
-          {children}
-          <Toaster richColors />
-          <div id="receipt-for-print" className="hidden"></div>
-        </ThemeProvider>
+        <ClientProviders>
+            {children}
+        </ClientProviders>
       </body>
     </html>
   );
