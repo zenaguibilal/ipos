@@ -2,7 +2,6 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
-  // Start with a response object that can be modified.
   let response = NextResponse.next({
     request: {
       headers: request.headers,
@@ -17,38 +16,65 @@ export async function middleware(request: NextRequest) {
         get(name: string) {
           return request.cookies.get(name)?.value
         },
-        // The 'set' and 'remove' handlers will be called by Supabase functions
-        // if the session needs to be updated (e.g., token refreshed).
         set(name: string, value: string, options: CookieOptions) {
-          response.cookies.set({ name, value, ...options })
+          // If the cookie is set, update the request's headers so that
+          // a server component can read the updated cookie value.
+          request.cookies.set({
+            name,
+            value,
+            ...options,
+          })
+          response = NextResponse.next({
+            request: {
+              headers: request.headers,
+            },
+          })
+          response.cookies.set({
+            name,
+            value,
+            ...options,
+          })
         },
         remove(name: string, options: CookieOptions) {
-          response.cookies.set({ name, value: '', ...options })
+          // If the cookie is removed, update the request's headers so that
+          // a server component can read the updated cookie value.
+          request.cookies.set({
+            name,
+            value: '',
+            ...options,
+          })
+          response = NextResponse.next({
+            request: {
+              headers: request.headers,
+            },
+          })
+          response.cookies.delete(name, options)
         },
       },
     }
   )
 
-  // This will read the session and refresh it if necessary, calling the
-  // 'set' or 'remove' handlers above which modifies the 'response' object.
-  const { data: { user } } = await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  const isAuthRoute = request.nextUrl.pathname.startsWith('/login')
+  const isAuthRoute = request.nextUrl.pathname.startsWith('/login');
 
-  // If user is not logged in and is trying to access a protected route,
-  // redirect them to the login page.
+  // if user is not signed in and the current path is not /login,
+  // redirect the user to the /login page
   if (!user && !isAuthRoute) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  // If user is logged in and is trying to access the login page,
-  // redirect them to the main app page.
+  // if user is signed in and the current path is /login,
+  // redirect the user to the /sell page
   if (user && isAuthRoute) {
     return NextResponse.redirect(new URL('/sell', request.url))
   }
 
-  // If no redirect is needed, return the response object. It may have been
-  // modified with updated session cookies.
+  // refresh the session cookie
+  await supabase.auth.getSession()
+
   return response
 }
 
