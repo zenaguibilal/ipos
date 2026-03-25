@@ -156,7 +156,7 @@ export default function NewStockIntakePage() {
         try {
             await processStockIntake({
                 supplierName,
-                supplierUuid,
+                supplierUuid: supplierUuid || undefined,
                 invoiceNumber,
                 invoiceDate: invoiceDate || new Date(),
                 items,
@@ -167,6 +167,7 @@ export default function NewStockIntakePage() {
             router.push('/stock');
         } catch (error: any) {
             // Error is already toasted by the store action
+            console.error("Failed to save stock intake:", error);
         } finally {
             setIsSaving(false);
         }

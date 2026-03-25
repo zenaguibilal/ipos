@@ -42,13 +42,7 @@ export interface Customer {
     bread_type_recurrence?: 'quotidien' | 'jours_specifiques' | 'aucun';
     bread_quantite_defaut?: number;
     bread_jours_semaine?: {
-        lundi:    { actif: boolean, quantite: number },
-        mardi:    { actif: boolean, quantite: number },
-        mercredi: { actif: boolean, quantite: number },
-        jeudi:    { actif: boolean, quantite: number },
-        vendredi: { actif: boolean, quantite: number },
-        samedi:   { actif: boolean, quantite: number },
-        dimanche: { actif: boolean, quantite: number }
+        [key: string]: { actif: boolean, quantite: number };
     };
 }
 
@@ -186,7 +180,7 @@ export interface ProductReturn {
     notes?: string;
 }
 
-export type ExpenseCategory = 'Loyer' | 'Salaires' | 'Fournisseurs' | 'Services Publics' | 'Marketing' | 'Maintenance' | 'Autre';
+export type ExpenseCategory = 'Loyer' | 'Salaires' | 'Fournisseurs' | 'Services Publics' | 'Marketing' | 'Maintenance' | 'Autre' | string;
 
 export interface Expense {
     uuid: string;

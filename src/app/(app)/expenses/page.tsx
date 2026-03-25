@@ -40,6 +40,7 @@ export default function ExpensesPage() {
     
     const fetchExpenses = useCallback(async () => {
          if (!isMounted || !dateRange?.from || !dateRange?.to) return;
+        setExpenses(undefined);
         try {
             const data = await expenseService.filter({
                 category: selectedCategory,

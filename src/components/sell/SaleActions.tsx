@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState } from 'react';
@@ -22,14 +21,10 @@ import { formatCurrency, calculateCartTotals } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import { useAppStore, useAppActions } from '@/stores/appStore';
 
-interface SaleActionsProps {
-    onSaleFinalized: () => void;
-}
-
 export const SaleActions = React.forwardRef<
     { payment: () => void }, 
-    SaleActionsProps
->(({ onSaleFinalized }, ref) => {
+    {}
+>(({}, ref) => {
     const { cart } = useAppStore();
     const { clearCart, setCartDiscount } = useAppActions();
     const [isPaymentOpen, setIsPaymentOpen] = useState(false);
@@ -59,7 +54,6 @@ export const SaleActions = React.forwardRef<
             <PaymentDialog 
                 isOpen={isPaymentOpen}
                 onOpenChange={setIsPaymentOpen}
-                onSaleFinalized={onSaleFinalized}
             />
              <div className="space-y-4">
                 <div className="flex justify-between items-center text-lg">

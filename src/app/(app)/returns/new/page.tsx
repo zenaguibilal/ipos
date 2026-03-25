@@ -54,8 +54,8 @@ export default function NewReturnPage() {
                 setFoundSale(null);
                 setReturnItems([]);
             }
-        } catch (error) {
-            toast.error("Erreur lors de la recherche de la facture.");
+        } catch (error: any) {
+            toast.error("Erreur lors de la recherche de la facture.", { description: error.message });
         } finally {
             setIsSearching(false);
         }
@@ -103,7 +103,8 @@ export default function NewReturnPage() {
             router.push('/returns');
 
         } catch (error: any) {
-            // Error is already toasted by the store action
+            // Error is already toasted by the store action, but we can log it too.
+            console.error("Failed to save return:", error);
         } finally {
             setIsSaving(false);
         }

@@ -95,7 +95,7 @@ export default function CustomerDetailPage() {
                     }
                 }
             })
-            .catch(() => toast.error("Impossible de charger l'activité du client."))
+            .catch((error) => toast.error("Impossible de charger l'activité du client.", { description: error.message }))
             .finally(() => {
                 if (!isCancelled) {
                     setIsLoadingActivity(false);
@@ -120,8 +120,8 @@ export default function CustomerDetailPage() {
             }
             setSelectedSale(saleWithItems);
             setIsSaleDetailsOpen(true);
-        } catch (error) {
-            toast.error("Impossible de charger les détails de la vente.");
+        } catch (error: any) {
+            toast.error("Impossible de charger les détails de la vente.", { description: error.message });
         }
     }, []);
 
@@ -134,8 +134,8 @@ export default function CustomerDetailPage() {
             }
             setSelectedReturn(returnWithItems);
             setIsReturnDetailsOpen(true);
-        } catch (error) {
-            toast.error("Impossible de charger les détails du retour.");
+        } catch (error: any) {
+            toast.error("Impossible de charger les détails du retour.", { description: error.message });
         }
     }, []);
 

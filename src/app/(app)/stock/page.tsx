@@ -50,6 +50,7 @@ export default function StockPage() {
         } catch (error: any) {
             console.error(error);
             toast.error("Impossible de charger l'historique des réceptions.", { description: error.message });
+            setStockIntakes([]);
         }
     }, [isMounted, debouncedSearchQuery, dateRange]);
 

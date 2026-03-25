@@ -11,7 +11,7 @@ import { useAppActions } from '@/stores/appStore';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useRouter } from 'next/navigation';
 
-export default function AuthPage() {
+export default function LoginPage() {
     const { signIn, signUp } = useAppActions();
     const router = useRouter();
 

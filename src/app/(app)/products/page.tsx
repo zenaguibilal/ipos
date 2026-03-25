@@ -91,6 +91,7 @@ export default function ProductsPage() {
     const [isImporting, setIsImporting] = useState(false);
 
     const fetchProducts = useCallback(async () => {
+        setProducts(undefined);
         try {
             const data = await productService.filterProducts({ 
                 query: debouncedSearchQuery, 
@@ -103,6 +104,7 @@ export default function ProductsPage() {
         } catch(error: any) {
             toast.error("Impossible de charger les produits.", { description: error.message });
             console.error(error);
+            setProducts([]);
         }
     }, [debouncedSearchQuery, selectedCategory, selectedSupplier, stockStatus, sortBy]);
 
@@ -120,6 +122,8 @@ export default function ProductsPage() {
             setSuppliers(sups);
         } catch(error: any) {
             toast.error("Impossible de charger les métadonnées.", { description: error.message });
+            setCategories([]);
+            setSuppliers([]);
         }
     }, []);
 
@@ -142,10 +146,13 @@ export default function ProductsPage() {
     }, []);
 
     const handleDeleteProduct = useCallback(async (product: Product) => {
-        // The business logic is now in the service layer, the dialog will show the error.
-        await productService.deleteProduct(product.uuid);
-        toast.success(`Produit "${product.name}" supprimé.`);
-        fetchProducts();
+        try {
+            await productService.deleteProduct(product.uuid);
+            toast.success(`Produit "${product.name}" supprimé.`);
+            fetchProducts();
+        } catch (error: any) {
+            toast.error("Échec de la suppression.", { description: error.message });
+        }
     }, [fetchProducts]);
 
     const handleToggleSelection = useCallback((productUuid: string) => {

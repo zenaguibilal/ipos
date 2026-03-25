@@ -44,9 +44,10 @@ export default function SalesHistoryPage() {
             ]);
             setSales(salesData);
             setCustomerMap(new Map(customersData.map(c => [c.uuid, c])));
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
-            toast.error("Impossible de charger l'historique des ventes ou les clients.");
+            toast.error("Impossible de charger l'historique des ventes ou les clients.", { description: error.message });
+            setSales([]);
         }
     }, [isMounted, debouncedSearchQuery, dateRange]);
 

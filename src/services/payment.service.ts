@@ -1,4 +1,3 @@
-
 'use client';
 import { v4 as uuidv4 } from 'uuid';
 import type { Payment, Customer } from '@/lib/types';
@@ -17,7 +16,7 @@ class PaymentService {
         return session.user.id;
     }
 
-    async addPayment(paymentData: { customerUuid: string, amount: number, paymentDate: Date, notes?: string }): Promise<Customer> {
+    async addPayment(paymentData: { customerUuid: string, amount: number, paymentDate: Date, notes?: string }): Promise<void> {
         const { customerUuid, amount, paymentDate, notes } = paymentData;
 
         const customer = await customerRepository.findByUuid(customerUuid);
@@ -39,9 +38,15 @@ class PaymentService {
         await paymentRepository.add(newPayment);
 
         // After adding the payment, recalculate the customer's status
-        const updatedCustomer = await customerService.recalculateCustomerStatus(customerUuid);
-        
-        return updatedCustomer;
+        await customerService.recalculateCustomerStatus(customerUuid);
+    }
+    
+    async getUpdatedCustomer(customerUuid: string): Promise<Customer> {
+        const customer = await customerRepository.findByUuid(customerUuid);
+        if (!customer) {
+            throw new Error("Client non trouvé après la mise à jour.");
+        }
+        return customer;
     }
 
     async getPaymentsByCustomerUuid(customerUuid: string): Promise<Payment[]> {

@@ -46,9 +46,10 @@ export default function ReturnsPage() {
             ]);
             setReturns(returnsData);
             setCustomerMap(new Map(customersData.map(c => [c.uuid, c])));
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
-            toast.error("Impossible de charger l'historique des retours ou les clients.");
+            toast.error("Impossible de charger l'historique des retours ou les clients.", { description: error.message });
+            setReturns([]);
         }
     }, [isMounted, debouncedSearchQuery, dateRange]);
 

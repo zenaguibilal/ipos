@@ -17,6 +17,8 @@ export async function middleware(request: NextRequest) {
           return request.cookies.get(name)?.value
         },
         set(name: string, value: string, options: CookieOptions) {
+          // If the cookie is set, update the request cookies as well.
+          // This is required for Server Components to work correctly.
           request.cookies.set({
             name,
             value,
@@ -34,6 +36,8 @@ export async function middleware(request: NextRequest) {
           })
         },
         remove(name: string, options: CookieOptions) {
+          // If the cookie is removed, update the request cookies as well.
+          // This is required for Server Components to work correctly.
           request.cookies.set({
             name,
             value: '',
@@ -56,11 +60,11 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  const isAuthRoute = request.nextUrl.pathname.startsWith('/auth')
+  const isAuthRoute = request.nextUrl.pathname.startsWith('/login')
 
   // if user is not signed in and the current path is not an auth route, redirect the user to the auth page
   if (!user && !isAuthRoute) {
-    return NextResponse.redirect(new URL('/auth', request.url))
+    return NextResponse.redirect(new URL('/login', request.url))
   }
 
   // if user is signed in and the current path is an auth route, redirect the user to the sell page

@@ -15,6 +15,7 @@ import { AddPaymentDialog } from '@/components/payments/AddPaymentDialog';
 import { CartTotalBar } from '@/components/sell/CartTotalBar';
 import type { Product, Customer } from '@/lib/types';
 import { useAppStore, useAppActions } from '@/stores/appStore';
+import { paymentService } from '@/services/payment.service';
 
 export default function SellPage() {
     const { cart, cartCustomer, isCartLoading } = useAppStore(state => ({
@@ -36,10 +37,17 @@ export default function SellPage() {
         cartItemsCountRef.current = cart?.items.length ?? 0;
     }, [cart?.items.length]);
 
-    const handleSuccessfulPayment = useCallback(async (updatedCustomer: Customer) => {
-        toast.success("Paiement enregistré. Mise à jour du statut du client...");
-        setCartCustomer(updatedCustomer);
-    }, [setCartCustomer]);
+    const handleSuccessfulPayment = useCallback(async (amount: number) => {
+        if (!cartCustomer) return;
+        toast.success(`Paiement de ${amount} DA enregistré.`);
+        try {
+            // Re-fetch customer to update their status in the store
+            const updatedCustomer = await paymentService.getUpdatedCustomer(cartCustomer.uuid);
+            setCartCustomer(updatedCustomer);
+        } catch (error: any) {
+            toast.error("Erreur lors de la mise à jour du client.", { description: error.message });
+        }
+    }, [cartCustomer, setCartCustomer]);
 
 
     const handleKeyDown = useCallback((e: KeyboardEvent) => {
@@ -143,7 +151,6 @@ export default function SellPage() {
                             <CardContent className="p-4 sm:p-6">
                                 <SaleActions
                                     ref={saleActionsRef}
-                                    onSaleFinalized={() => { /* Store now handles all post-sale logic */}}
                                 />
                             </CardContent>
                         </Card>
