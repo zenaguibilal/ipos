@@ -3,14 +3,13 @@ import { db } from '@/lib/database';
 import { createClient } from '@/utils/supabase/client';
 import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
-import type { SupabaseClient } from '@supabase/supabase-js';
 
 type SyncStatus = 'syncing' | 'online' | 'offline';
 
 class SyncServiceSingleton {
     private isSyncing = false;
     private localDeviceId: string;
-    private supabase: SupabaseClient;
+    private supabase: ReturnType<typeof createClient>;
 
     constructor() {
         let deviceId = localStorage.getItem('localDeviceId');
@@ -20,6 +19,12 @@ class SyncServiceSingleton {
         }
         this.localDeviceId = deviceId;
         this.supabase = createClient();
+        
+        if(!this.supabase) {
+            console.warn("Supabase URL or Key is not set in .env file. Sync functionality will be disabled.");
+        } else {
+            console.log("Supabase sync is enabled.");
+        }
     }
     
     private _dispatchStatus() {
@@ -67,7 +72,7 @@ class SyncServiceSingleton {
     }
     
     private async _syncNow() {
-        if (this.isSyncing || !navigator.onLine) {
+        if (!this.supabase || this.isSyncing || !navigator.onLine) {
             this._dispatchStatus();
             return;
         }
@@ -103,10 +108,14 @@ class SyncServiceSingleton {
             attempts: 0,
         });
         
-        setTimeout(() => this._syncNow(), 100);
+        if (this.supabase) {
+            setTimeout(() => this._syncNow(), 100);
+        }
     }
 
     private async _processPushQueue() {
+        if (!this.supabase) return;
+
         const queueItems = await db.sync_queue.orderBy('createdAt').limit(100).toArray();
 
         for (const item of queueItems) {
@@ -142,18 +151,19 @@ class SyncServiceSingleton {
                 if (error) throw error;
                 
                 await db.transaction('rw', db.sync_queue, (db as any)[item.tableName], async () => {
+                    // Operation was successful, remove from queue
                     await db.sync_queue.delete(item.id!);
-                    const table = (db as any)[item.tableName];
-                    const record = await table?.where('uuid').equals(item.recordUuid).first();
-
-                    if (record) {
-                        if (item.action === 'delete') {
-                             await table.delete(record.id);
-                        } else {
-                            await table.update(record.id, { sync_status: 'synced' });
+                
+                    // If it wasn't a delete, mark the local item as 'synced'
+                    if (item.action !== 'delete') {
+                        const record = await (db as any)[item.tableName]?.where('uuid').equals(item.recordUuid).first();
+                        if (record) {
+                            await (db as any)[item.tableName].update(record.id, { sync_status: 'synced' });
                         }
                     }
+                    // If it was a delete, we do nothing. The local record remains as a 'pending_delete' tombstone.
                 });
+
 
             } catch (e: any) {
                 console.error('Push sync error for item:', item, e);
@@ -163,6 +173,8 @@ class SyncServiceSingleton {
     }
 
     private async _pullChanges() {
+        if (!this.supabase) return;
+
         for (const tableDef of db.tables) {
             const tableName = tableDef.name;
             if (['sync_queue', 'carts', 'drafts'].includes(tableName)) continue;
@@ -205,6 +217,11 @@ class SyncServiceSingleton {
     }
 
     startSync() {
+        if (!this.supabase) {
+            this._dispatchStatus();
+            return;
+        }
+
         window.addEventListener('online', () => {
             toast.success('Connexion rétablie.');
             this._dispatchStatus();

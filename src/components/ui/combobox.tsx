@@ -71,7 +71,7 @@ export const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(({ op
                       {selectedOption.subLabel && <p className={cn("text-xs font-medium truncate", selectedOption.subLabelClassName || 'text-muted-foreground')}>{selectedOption.subLabel}</p>}
                     </>
                   ) : (
-                    <p className="font-medium">{placeholder}</p> // Fallback
+                    <p className="font-medium">{placeholder}</p> 
                   )}
                 </div>
             </div>
@@ -87,13 +87,10 @@ export const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(({ op
               {options.map((option) => (
                 <CommandItem
                   key={option.value}
-                  value={option.label}
+                  value={option.value}
                   disabled={option.disabled}
                   onSelect={(currentValue) => {
-                    const selected = options.find(opt => opt.label.toLowerCase() === currentValue.toLowerCase());
-                    if (selected) {
-                        onSelect(selected.value)
-                    }
+                    onSelect(currentValue === value ? "" : currentValue)
                     setOpen(false)
                   }}
                 >
@@ -117,5 +114,3 @@ export const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(({ op
   )
 });
 Combobox.displayName = "Combobox";
-
-    

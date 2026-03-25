@@ -35,7 +35,7 @@ const initialFormState = {
     imageUrl: '',
     unite: 'Pièce' as Product['unite'],
     dateExpiration: undefined as Date | undefined,
-    fournisseurId: undefined as number | undefined,
+    supplierUuid: undefined as string | undefined,
 };
 
 const units: NonNullable<Product['unite']>[] = ['Pièce', 'Kg', 'Litre', 'Boîte', 'Carton', 'Sachet', 'Bouteille'];
@@ -60,7 +60,7 @@ export function ProductDialog({ isOpen, onOpenChange, product, categories, suppl
                 imageUrl: product.imageUrl || '',
                 unite: product.unite || 'Pièce',
                 dateExpiration: product.dateExpiration ? new Date(product.dateExpiration) : undefined,
-                fournisseurId: product.fournisseurId,
+                supplierUuid: product.supplierUuid,
             });
         } else if (!product && isOpen) {
             setFormState(initialFormState);
@@ -91,7 +91,7 @@ export function ProductDialog({ isOpen, onOpenChange, product, categories, suppl
         setError(null);
         setIsLoading(true);
 
-        const { name, category, price, purchasePrice, quantity, minStockLevel, barcodes, imageUrl, unite, dateExpiration, fournisseurId } = formState;
+        const { name, category, price, purchasePrice, quantity, minStockLevel, barcodes, imageUrl, unite, dateExpiration, supplierUuid } = formState;
 
         if (!name) {
             setError("Le nom du produit est requis.");
@@ -110,9 +110,9 @@ export function ProductDialog({ isOpen, onOpenChange, product, categories, suppl
             return;
         }
         
-        const productData: Omit<Product, 'id'> = {
+        const productData: Omit<Product, 'id' | 'uuid'> = {
             name, category, price: priceNum, purchasePrice: purchasePriceNum, quantity: quantityNum,
-            minStockLevel: minStockNum, barcodes, imageUrl, unite, dateExpiration, fournisseurId,
+            minStockLevel: minStockNum, barcodes, imageUrl, unite, dateExpiration, supplierUuid,
         };
 
         try {
@@ -141,7 +141,7 @@ export function ProductDialog({ isOpen, onOpenChange, product, categories, suppl
         }
     };
     
-    const supplierOptions = suppliers.map(s => ({ value: String(s.id), label: s.name }));
+    const supplierOptions = suppliers.map(s => ({ value: s.uuid, label: s.name }));
 
     return (
         <>
@@ -216,8 +216,8 @@ export function ProductDialog({ isOpen, onOpenChange, product, categories, suppl
                             <Label>Fournisseur (Optionnel)</Label>
                              <Combobox
                                 options={supplierOptions}
-                                value={formState.fournisseurId ? String(formState.fournisseurId) : ''}
-                                onSelect={(value) => setFormState(s => ({ ...s, fournisseurId: value ? parseInt(value) : undefined }))}
+                                value={formState.supplierUuid || ''}
+                                onSelect={(value) => setFormState(s => ({ ...s, supplierUuid: value }))}
                                 placeholder="Sélectionner un fournisseur..."
                                 searchPlaceholder="Rechercher..."
                                 notFoundMessage="Aucun fournisseur trouvé."

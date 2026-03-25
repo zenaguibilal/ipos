@@ -5,6 +5,7 @@ import type { Product, Sale, Customer, SaleItem } from '@/lib/types';
 import { startOfDay, endOfDay, format } from 'date-fns';
 import { v4 as uuidv4 } from 'uuid';
 import { syncService } from '@/services/sync.service';
+import { inventoryService } from '@/services/inventory.service';
 
 /**
  * This function processes a sale transaction. It must be called from within a Dexie transaction.
@@ -83,13 +84,19 @@ export async function processSaleTransaction(saleData: any): Promise<{ saleId: n
     await syncService.queueSyncOperation('sales', uuid, 'create', { ...finalSaleData, id: undefined });
 
 
-    // 5. Update Product Stock
+    // 5. Update Product Stock & Log Inventory Change
     for (const item of finalSaleData.items) {
         if (typeof item.id === 'number') {
-            await db.products.where('id').equals(item.id).modify(p => { p.quantity -= item.quantity; });
+            let newQuantity = 0;
+            await db.products.where('id').equals(item.id).modify(p => {
+                p.quantity -= item.quantity;
+                newQuantity = p.quantity;
+            });
+            await inventoryService.logChange(item.id, -item.quantity, newQuantity, 'sale', saleId);
+
             const product = await db.products.get(item.id);
             if (product && product.uuid) {
-                 await syncService.queueSyncOperation('products', product.uuid, 'update', { quantity: product.quantity, updatedAt: new Date(), last_modified_by: syncService.getLocalDeviceId() });
+                 await syncService.queueSyncOperation('products', product.uuid, 'update', { quantity: newQuantity, updatedAt: new Date(), last_modified_by: syncService.getLocalDeviceId() });
             }
         }
     }

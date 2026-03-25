@@ -4,71 +4,106 @@ import { db } from '@/lib/database';
 import type { StockIntake, StockIntakeItem, Product, Supplier } from '@/lib/types';
 import { v4 as uuidv4 } from 'uuid';
 import { syncService } from './sync.service';
+import { inventoryService } from './inventory.service';
 
 export class StockService {
-    async addStockIntake(intakeData: { supplierUuid: string; supplierName: string; invoiceNumber: string; invoiceDate: Date }, items: StockIntakeItem[]): Promise<StockIntake> {
-        return db.transaction('rw', db.stockIntakes, db.products, db.suppliers, db.sync_queue, async () => {
+    async addStockIntake(intakeData: { supplierName: string; invoiceNumber: string; invoiceDate: Date }, items: StockIntakeItem[]): Promise<StockIntake> {
+        return db.transaction('rw', db.stockIntakes, db.products, db.suppliers, db.sync_queue, db.inventoryLogs, async () => {
             const now = new Date();
             const deviceId = syncService.getLocalDeviceId();
-            let supplierUuid = intakeData.supplierUuid;
+            let supplierUuid: string;
+            let supplierName = intakeData.supplierName;
 
-            if (!supplierUuid && intakeData.supplierName) {
-                let supplier = await db.suppliers.where('name').equalsIgnoreCase(intakeData.supplierName).and(s => s.sync_status !== 'pending_delete').first();
-                if (!supplier) {
-                    const newSupplierUuid = uuidv4();
-                    const newSupplier: Omit<Supplier, 'id'> = {
-                        name: intakeData.supplierName, 
-                        balance: 0, 
-                        uuid: newSupplierUuid,
-                        createdAt: now, 
-                        updatedAt: now,
-                        sync_status: 'pending_create',
-                        last_modified_by: deviceId
-                    };
-                    const supplierId = await db.suppliers.add(newSupplier as Supplier);
-                    await syncService.queueSyncOperation('suppliers', newSupplierUuid, 'create', { ...newSupplier, id: undefined });
-                    supplier = await db.suppliers.get(supplierId);
-                }
-                supplierUuid = supplier!.uuid;
+            // 1. Find or Create Supplier
+            let supplier = await db.suppliers.where('name').equalsIgnoreCase(supplierName).and(s => s.sync_status !== 'pending_delete').first();
+            if (!supplier) {
+                const newSupplierUuid = uuidv4();
+                const newSupplier: Omit<Supplier, 'id'> = {
+                    name: supplierName,
+                    balance: 0,
+                    uuid: newSupplierUuid,
+                    createdAt: now,
+                    updatedAt: now,
+                    sync_status: 'pending_create',
+                    last_modified_by: deviceId
+                };
+                const supplierId = await db.suppliers.add(newSupplier as Supplier);
+                await syncService.queueSyncOperation('suppliers', newSupplierUuid, 'create', { ...newSupplier, id: undefined });
+                supplierUuid = newSupplierUuid;
+            } else {
+                supplierUuid = supplier.uuid;
             }
 
-            if (!supplierUuid) {
-                throw new Error("Supplier information is missing.");
-            }
+            // 2. Create placeholder StockIntake record
+            const intakeUuid = uuidv4();
+            const newIntake: Omit<StockIntake, 'id'> = {
+                uuid: intakeUuid,
+                supplierUuid,
+                supplierName: supplierName,
+                invoiceNumber: intakeData.invoiceNumber,
+                invoiceDate: intakeData.invoiceDate,
+                items: [], // Will be populated later
+                totalValue: 0,
+                createdAt: now,
+                updatedAt: now,
+                sync_status: 'pending_create',
+                last_modified_by: deviceId
+            };
+            const intakeId = await db.stockIntakes.add(newIntake as StockIntake);
 
+            // 3. Process items, creating/updating products
             const processedItems = [];
             for (const item of items) {
                 let product = item.productId ? await db.products.get(item.productId) : null;
                 
-                if (item.isNew) {
-                    const productUuid = uuidv4();
-                    const newProductData: Omit<Product, 'id' | 'uuid'> = {
+                if (item.isNew && !product) {
+                    const newProductUuid = uuidv4();
+                    const newProductData: Omit<Product, 'id'> = {
                         name: item.name,
                         category: item.category,
                         price: item.price,
                         purchasePrice: item.purchasePrice,
-                        quantity: 0,
+                        quantity: 0, // Initial quantity is 0, will be updated below
                         minStockLevel: 10,
                         barcodes: item.barcodes,
                         supplierUuid: supplierUuid,
                         unite: 'Pièce',
+                        uuid: newProductUuid,
+                        createdAt: now,
+                        updatedAt: now,
+                        sync_status: 'pending_create',
+                        last_modified_by: deviceId,
                     };
-                    product = await productService.addProduct(newProductData);
+                    const newProductId = await db.products.add(newProductData as Product);
+                    await syncService.queueSyncOperation('products', newProductUuid, 'create', { ...newProductData, id: undefined });
+                    product = { ...newProductData, id: newProductId };
                 }
 
-                if (product && product.uuid) {
-                    const updateData: Partial<Product> = {
-                        quantity: product.quantity + (item.quantity - item.quantityDamaged),
+                if (product && product.id) {
+                    const stockChange = item.quantity - item.quantityDamaged;
+                    const newQuantity = product.quantity + stockChange;
+                    
+                    const productUpdatePayload: Partial<Product> = {
+                        quantity: newQuantity,
                         purchasePrice: item.purchasePrice,
                         dateMajPrix: now,
                         supplierUuid: supplierUuid,
+                        updatedAt: now,
+                        last_modified_by: deviceId,
                         ...(item.isNew && { price: item.price })
                     };
 
-                    await productService.updateProduct(product.id!, updateData);
+                    if (product.sync_status !== 'pending_create') {
+                        productUpdatePayload.sync_status = 'pending_update';
+                    }
+
+                    await db.products.update(product.id, productUpdatePayload);
+                    await syncService.queueSyncOperation('products', product.uuid, 'update', productUpdatePayload);
+                    
+                    await inventoryService.logChange(product.id, stockChange, newQuantity, 'stock_intake', intakeId);
 
                      processedItems.push({
-                        productId: product.id!,
+                        productId: product.id,
                         productName: item.name,
                         quantityReceived: item.quantity,
                         quantityDamaged: item.quantityDamaged,
@@ -77,26 +112,14 @@ export class StockService {
                 }
             }
 
+            // 4. Finalize StockIntake record
             const totalValue = processedItems.reduce((acc, item) => acc + item.quantityReceived * item.purchasePrice, 0);
+            const finalIntakePayload = { items: processedItems, totalValue, sync_status: 'pending_create' as const, last_modified_by: deviceId };
+            await db.stockIntakes.update(intakeId, finalIntakePayload);
+            await syncService.queueSyncOperation('stock_intakes', intakeUuid, 'create', { ...newIntake, ...finalIntakePayload, id: undefined });
 
-            const intakeUuid = uuidv4();
-            const newIntake: Omit<StockIntake, 'id'> = {
-                uuid: intakeUuid,
-                supplierUuid,
-                supplierName: intakeData.supplierName,
-                invoiceNumber: intakeData.invoiceNumber,
-                invoiceDate: intakeData.invoiceDate,
-                items: processedItems,
-                totalValue,
-                createdAt: now,
-                updatedAt: now,
-                sync_status: 'pending_create',
-                last_modified_by: deviceId
-            };
-
-            const id = await db.stockIntakes.add(newIntake as StockIntake);
-            await syncService.queueSyncOperation('stockIntakes', intakeUuid, 'create', { ...newIntake, id: undefined });
-            return { ...newIntake, id };
+            const finalRecord = await db.stockIntakes.get(intakeId);
+            return finalRecord!;
         });
     }
 
@@ -113,6 +136,3 @@ export class StockService {
         return await collection.reverse().sortBy('createdAt');
     }
 }
-
-// Need to import productService to avoid circular dependency issues at runtime
-import { productService } from './product.service';

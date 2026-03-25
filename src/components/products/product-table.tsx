@@ -23,7 +23,7 @@ interface ProductTableProps {
 }
 
 export function ProductTable({ products, onEdit, onDelete, selectedProducts, onToggleProductSelection, onToggleSelectAll, suppliers }: ProductTableProps) {
-    const supplierMap = useMemo(() => new Map(suppliers.map(s => [s.id, s.name])), [suppliers]);
+    const supplierMap = useMemo(() => new Map(suppliers.map(s => [s.uuid, s.name])), [suppliers]);
 
     return (
         <div className="rounded-md border">
@@ -90,7 +90,7 @@ export function ProductTable({ products, onEdit, onDelete, selectedProducts, onT
                                 </TableCell>
                                 <TableCell className="font-medium">{product.name}</TableCell>
                                 <TableCell>{product.category || 'N/A'}</TableCell>
-                                <TableCell>{product.fournisseurId ? supplierMap.get(product.fournisseurId) : 'N/A'}</TableCell>
+                                <TableCell>{product.supplierUuid ? supplierMap.get(product.supplierUuid) : 'N/A'}</TableCell>
                                 <TableCell className={cn("text-xs font-semibold", expirationStatus?.color)}>
                                     {expirationStatus ? (
                                         <div className="flex items-center gap-1">

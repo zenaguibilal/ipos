@@ -196,7 +196,11 @@ export interface InventoryLog extends BaseEntity {
     relatedId?: number | string; // ID of the sale, return, intake, etc.
 }
 
-export interface CostingItem extends SaleItem {
+export interface CostingItem {
+    id: string | number;
+    name: string;
+    purchasePrice: number;
+    quantity: number;
     totalPurchasePrice: number;
     allocatedDeliveryCost: number;
     finalCostPerUnit: number;
