@@ -1,4 +1,7 @@
 
+
+export type AppRole = 'admin' | 'manager' | 'cashier';
+
 export interface Product {
     uuid: string;
     user_id: string;
@@ -36,6 +39,19 @@ export interface Customer {
     updatedAt?: Date;
     debtStatus?: 'none' | 'due_soon' | 'overdue';
     isOverLimit?: boolean;
+    // Bread feature fields
+    isBreadClient?: boolean;
+    bread_type_recurrence?: 'quotidien' | 'jours_specifiques' | 'aucun';
+    bread_quantite_defaut?: number;
+    bread_jours_semaine?: {
+        lundi:    { actif: boolean, quantite: number },
+        mardi:    { actif: boolean, quantite: number },
+        mercredi: { actif: boolean, quantite: number },
+        jeudi:    { actif: boolean, quantite: number },
+        vendredi: { actif: boolean, quantite: number },
+        samedi:   { actif: boolean, quantite: number },
+        dimanche: { actif: boolean, quantite: number }
+    };
 }
 
 export interface SaleItem {
@@ -115,6 +131,7 @@ export interface CompanyProfile {
     goldPricePerGram?: number;
     prix_pain?: number;
     updatedAt?: Date;
+    role: AppRole;
 }
 
 export interface StockIntakeItem {
@@ -212,30 +229,10 @@ export interface Supplier {
 
 // =================== Bread Types ===================
 
-export interface BreadClient {
-    uuid: string;
-    user_id: string;
-    nom: string;
-    actif: boolean;
-    type_recurrence: 'quotidien' | 'jours_specifiques' | 'aucun';
-    quantite_defaut?: number;
-    jours_semaine?: {
-        lundi:    { actif: boolean, quantite: number },
-        mardi:    { actif: boolean, quantite: number },
-        mercredi: { actif: boolean, quantite: number },
-        jeudi:    { actif: boolean, quantite: number },
-        vendredi: { actif: boolean, quantite: number },
-        samedi:   { actif: boolean, quantite: number },
-        dimanche: { actif: boolean, quantite: number }
-    };
-    createdAt?: Date;
-    updatedAt?: Date;
-}
-
 export interface BreadOrder {
     uuid: string;
     user_id: string;
-    breadClientUuid: string;
+    customerUuid: string;
     date: string; // YYYY-MM-DD
     quantite: number;
     quantite_origine?: number;
@@ -246,8 +243,8 @@ export interface BreadOrder {
     updatedAt?: Date;
 }
 
-export interface BreadOrderWithClient extends BreadOrder {
-    client: BreadClient;
+export interface BreadOrderWithCustomer extends BreadOrder {
+    customer: Customer;
 }
 
 export interface ImportAnalysis {

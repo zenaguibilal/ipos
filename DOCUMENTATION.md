@@ -1,6 +1,6 @@
 # iPOS - Application de Point de Vente Complète
 
-**iPOS** est une application de point de vente (POS) complète, fonctionnelle et conçue pour fonctionner entièrement hors ligne. Elle utilise la base de données IndexedDB de votre navigateur, via la bibliothèque Dexie.js, pour stocker toutes les données de manière sécurisée et rapide, garantissant un fonctionnement ininterrompu même sans connexion internet.
+**iPOS** est une application de point de vente (POS) SaaS (Software as a Service) complète, conçue pour la vente au détail. Elle utilise Supabase comme backend, garantissant que vos données sont sécurisées, persistantes et accessibles de n'importe où.
 
 ## 🚀 Pile Technique
 
@@ -8,7 +8,8 @@
 *   **Bibliothèque UI :** React
 *   **Composants :** ShadCN UI
 *   **Style :** Tailwind CSS
-*   **Base de Données Locale :** Dexie.js (wrapper pour IndexedDB)
+*   **Backend & Base de Données :** Supabase (PostgreSQL, Auth, Storage)
+*   **Gestion d'état :** Zustand
 *   **Langage :** TypeScript
 
 ## ✨ Fonctionnalités
@@ -17,32 +18,28 @@ L'application iPOS est dotée d'un ensemble riche de fonctionnalités pour répo
 
 ### Gestion des Ventes (Caisse)
 - Interface de vente rapide et intuitive.
-- Gestion de plusieurs paniers simultanément.
 - Recherche de produits par nom ou code-barres.
 - Ajout de produits personnalisés (non inventoriés) à la volée.
 - Association des ventes à des clients existants ou à un "client de passage".
 - Application de remises (fixes ou en pourcentage).
 - Gestion des paiements (espèces, carte, crédit, mixte).
-- Sauvegarde et chargement de paniers sous forme de brouillons.
-- Impression de reçus (format A4 ou thermique 80mm).
+- **Architecture Cloud :** Les paniers ne sont plus sauvegardés en brouillon localement ; les ventes sont finalisées directement.
 
 ### Gestion des Produits
-- CRUD complet pour les produits.
+- CRUD complet pour les produits, sécurisé par rôle.
 - Suivi des quantités en stock, prix d'achat et de vente.
 - Définition de niveaux de stock minimum avec alertes visuelles.
 - Gestion des codes-barres multiples.
 - Organisation par catégories et par fournisseurs.
-- Importation et exportation de la liste des produits via des fichiers CSV.
 - Impression d'étiquettes avec codes-barres.
 
 ### Gestion des Clients
-- CRUD complet pour les clients.
+- CRUD complet pour les clients, sécurisé par rôle.
 - Suivi détaillé des dettes et de l'historique des paiements.
 - Définition de limites de crédit et de délais de paiement.
 - Alertes visuelles pour les retards de paiement et les dépassements de limite.
 - Consultation de l'historique complet d'activité d'un client.
 - Impression de relevés de compte détaillés.
-- Importation d'une liste de clients depuis un fichier CSV.
 
 ### Gestion des Stocks
 - Enregistrement des réceptions de stock (entrées de marchandises).
@@ -56,13 +53,11 @@ L'application iPOS est dotée d'un ensemble riche de fonctionnalités pour répo
 
 ### Finances et Rapports
 - **Gestion des Dépenses :** Suivi et catégorisation de toutes les charges de l'entreprise.
-- **Calcul des Coûts :** Calcul du coût de revient final des produits en incluant les frais de transport par réception.
-- **Calculateur de Zakat :** Outil d'aide au calcul de la Zakat commerciale basé sur la valeur du stock et les créances.
 
 ### Commandes Spécifiques
 - **Gestion du Pain :** Module dédié à la gestion des commandes de pain récurrentes (quotidiennes ou par jours spécifiques) ou manuelles, avec conversion facile en ventes.
 
 ### Administration et Données
 - **Profil de l'Entreprise :** Personnalisation des informations de l'entreprise pour les reçus et documents.
-- **Sauvegarde et Restauration :** Exportation de l'intégralité de la base de données dans un fichier JSON et restauration à partir de celui-ci.
-- **Réinitialisation des Données :** Option de suppression complète de toutes les données pour repartir de zéro.
+- **Gestion des Rôles (RBAC) :** Différents niveaux d'accès (Admin, Manager, Caissier) pour sécuriser les fonctionnalités sensibles.
+- **Sauvegarde et Restauration Cloud :** Exportation de l'intégralité de la base de données vers Supabase Storage et restauration à partir d'un fichier de sauvegarde en un clic.
