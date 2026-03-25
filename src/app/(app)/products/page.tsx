@@ -5,7 +5,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import type { Product, Supplier, ProductImportAnalysis } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, LayoutGrid, List, Printer, Trash2, PackageCheck, PackageX, AlertTriangle, Archive, SortAsc, FileDown, FileUp, Building, Package, Loader2 } from 'lucide-react';
+import { Plus, Search, LayoutGrid, List, Printer, Trash2, PackageCheck, PackageX, AlertTriangle, Archive, SortAsc, FileDown, Building, Package, Loader2 } from 'lucide-react';
 import { ProductCard } from '@/components/products/product-card';
 import { ProductTable } from '@/components/products/product-table';
 import { ProductTableSkeleton } from '@/components/products/product-table-skeleton';
@@ -34,7 +34,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { productService } from '@/services/product.service';
 import { supplierService } from '@/services/supplier.service';
 import { useAppStore, useIsManagerOrAdmin } from '@/stores/appStore';
-import Papa from 'papaparse';
 
 type StockStatus = 'all' | 'in_stock' | 'low_stock' | 'out_of_stock';
 
@@ -176,31 +175,21 @@ export default function ProductsPage() {
         }
     }, [products, selectedProducts.size]);
 
-    const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
         setIsAnalyzing(true);
-        Papa.parse(file, {
-            header: true,
-            skipEmptyLines: true,
-            complete: async (results) => {
-                try {
-                    const analysis = await productService.analyzeImport(results.data);
-                    setImportAnalysis(analysis);
-                    setIsImportPreviewOpen(true);
-                } catch (error: any) {
-                    toast.error("Erreur lors de l'analyse du fichier.", { description: error.message });
-                } finally {
-                    setIsAnalyzing(false);
-                    e.target.value = ''; // Reset input
-                }
-            },
-            error: (error: any) => {
-                toast.error("Erreur de lecture du fichier CSV.", { description: error.message });
-                setIsAnalyzing(false);
-            }
-        });
+        try {
+            const analysis = await productService.parseAndAnalyzeImport(file);
+            setImportAnalysis(analysis);
+            setIsImportPreviewOpen(true);
+        } catch (error: any) {
+            toast.error("Erreur lors de l'analyse du fichier.", { description: error.message });
+        } finally {
+            setIsAnalyzing(false);
+            e.target.value = ''; // Reset input
+        }
     };
 
     const handleConfirmImport = async (confirmedData: { toAdd: any[], toUpdate: any[] }) => {
@@ -295,9 +284,6 @@ export default function ProductsPage() {
             >
                 {isManagerOrAdmin && (
                     <>
-                        <Button variant="outline" disabled>
-                            <FileUp className="mr-2 h-4 w-4" /> Exporter (bientôt)
-                        </Button>
                         <Button asChild variant="outline" disabled={isAnalyzing}>
                             <label htmlFor="csv-product-importer">
                                 {isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}

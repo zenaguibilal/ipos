@@ -19,7 +19,6 @@ import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/card'
 import { customerService } from '@/services/customer.service';
 import { useIsManagerOrAdmin } from '@/stores/appStore';
 import { ImportPreviewDialog } from '@/components/customers/import-preview-dialog';
-import Papa from 'papaparse';
 
 type FilterStatus = 'all' | 'has_debt' | 'overdue' | 'over_limit';
 
@@ -68,32 +67,22 @@ export default function CustomersPage() {
         setIsDeleteDialogOpen(true);
     }, []);
 
-    const handleFileSelected = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileSelected = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (!file) return;
 
         setIsAnalyzing(true);
-        Papa.parse(file, {
-            header: true,
-            skipEmptyLines: true,
-            complete: async (results) => {
-                try {
-                    const analysis = await customerService.analyzeImport(results.data);
-                    setImportAnalysis(analysis);
-                    setIsImportPreviewOpen(true);
-                } catch (error: any) {
-                    toast.error("Erreur lors de l'analyse du fichier.", { description: error.message });
-                } finally {
-                    setIsAnalyzing(false);
-                    // Reset file input to allow re-uploading the same file
-                    event.target.value = '';
-                }
-            },
-            error: (error: any) => {
-                toast.error("Erreur de lecture du fichier CSV.", { description: error.message });
-                setIsAnalyzing(false);
-            }
-        });
+        try {
+            const analysis = await customerService.parseAndAnalyzeImport(file);
+            setImportAnalysis(analysis);
+            setIsImportPreviewOpen(true);
+        } catch (error: any) {
+            toast.error("Erreur lors de l'analyse du fichier.", { description: error.message });
+        } finally {
+            setIsAnalyzing(false);
+            // Reset file input to allow re-uploading the same file
+            event.target.value = '';
+        }
     };
 
     const handleConfirmImport = async (confirmedData: { toAdd: any[], toUpdate: any[] }) => {

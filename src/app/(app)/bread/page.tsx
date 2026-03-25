@@ -27,7 +27,6 @@ export default function BreadPage() {
             const generatedOrders = await breadService.generateAndGetOrdersForDate(date);
             setOrders(generatedOrders);
         } catch (error: any) {
-            console.error("Failed to generate or fetch daily bread orders:", error);
             toast.error("Erreur lors de la génération des commandes de pain.", { description: error.message });
         } finally {
             setIsGenerating(false);

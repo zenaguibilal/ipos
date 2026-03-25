@@ -1,4 +1,3 @@
-
 import { create } from 'zustand';
 import { produce } from 'immer';
 import type { Session, User } from '@supabase/supabase-js';
@@ -46,7 +45,7 @@ interface AppActions {
         amountPaid: number;
         payments: { method: 'cash' | 'card' | 'other'; amount: number }[];
         dueDate?: Date;
-    }) => Promise<void>;
+    }) => Promise<boolean>;
     processReturn: (returnData: {
         originalSaleUuid: string,
         items: ReturnItem[],
@@ -54,7 +53,7 @@ interface AppActions {
         amountRefunded: number,
         customerUuid?: string,
         notes?: string
-    }) => Promise<void>;
+    }) => Promise<boolean>;
     processStockIntake: (intakeData: {
         supplierName: string,
         supplierUuid?: string,
@@ -62,7 +61,7 @@ interface AppActions {
         invoiceDate: Date,
         items: StockIntakeItem[],
         totalValue: number
-    }) => Promise<void>;
+    }) => Promise<boolean>;
     setProductViewMode: (mode: 'grid' | 'list') => void;
 }
 
@@ -167,7 +166,10 @@ export const useAppStore = create<AppState>()((set, get) => ({
         })),
         finalizeSale: async (paymentData) => {
             const { cart } = get();
-            if (cart.items.length === 0) throw new Error("Le panier est vide.");
+            if (cart.items.length === 0) {
+                toast.error("Le panier est vide.");
+                return false;
+            }
 
             try {
                 const sale = await salesService.createSale({
@@ -188,10 +190,11 @@ export const useAppStore = create<AppState>()((set, get) => ({
                 }
 
                 get().actions.clearCart();
+                toast.success("Vente finalisée avec succès !");
+                return true;
             } catch (error: any) {
-                console.error("Failed to finalize sale:", error);
                 toast.error("Échec de la finalisation de la vente", { description: error.message });
-                throw error;
+                return false;
             }
         },
         processReturn: async (returnData) => {
@@ -205,9 +208,11 @@ export const useAppStore = create<AppState>()((set, get) => ({
                 if (newReturn.customerUuid) {
                     await customerService.recalculateCustomerStatus(newReturn.customerUuid);
                 }
+                toast.success("Retour de produit enregistré avec succès.");
+                return true;
             } catch (error: any) {
                 toast.error("Échec du traitement du retour.", { description: error.message });
-                throw error;
+                return false;
             }
         },
         processStockIntake: async (intakeData) => {
@@ -258,9 +263,11 @@ export const useAppStore = create<AppState>()((set, get) => ({
                     items: finalItems,
                     totalValue: intakeData.totalValue,
                 });
+                toast.success("Réception de stock enregistrée avec succès.");
+                return true;
             } catch (error: any) {
                 toast.error("Échec du traitement de la réception de stock.", { description: error.message });
-                throw error;
+                return false;
             }
         },
         setProductViewMode: (mode) => set({ productViewMode: mode }),

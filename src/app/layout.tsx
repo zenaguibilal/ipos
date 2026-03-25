@@ -11,7 +11,6 @@ const APP_DESCRIPTION = "Application de point de vente intelligente pour le comm
 
 const inter = Inter({ subsets: ['latin'] });
 
-// These exports are still needed for static metadata generation
 export const metadata: Metadata = {
   applicationName: APP_NAME,
   title: {

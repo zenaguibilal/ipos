@@ -1,11 +1,10 @@
 'use client';
 import { v4 as uuidv4 } from 'uuid';
-import type { Payment, Customer } from '@/lib/types';
+import type { Payment } from '@/lib/types';
 import { paymentRepository } from '@/repositories/payment.repository';
 import { customerRepository } from '@/repositories/customer.repository';
 import { customerService } from './customer.service';
 import { useAppStore } from '@/stores/appStore';
-import { toast } from 'sonner';
 
 class PaymentService {
     

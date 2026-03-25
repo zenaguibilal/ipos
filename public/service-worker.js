@@ -1,92 +1,107 @@
 const CACHE_NAME = 'ipos-cache-v1';
+const urlsToCache = [
+  '/',
+  '/sell',
+  '/products',
+  '/customers',
+  '/sales-history',
+  '/stock',
+  '/returns',
+  '/profile',
+  '/expenses',
+  '/bread',
+  '/login'
+];
 
-// On install, skip waiting to activate faster. Caching is done on-the-fly.
-self.addEventListener('install', (event) => {
-    self.skipWaiting();
+self.addEventListener('install', event => {
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then(cache => {
+        return cache.addAll(urlsToCache);
+      })
+  );
+  self.skipWaiting();
 });
 
-// On activate, clean up old caches to ensure the latest version is used.
-self.addEventListener('activate', (event) => {
-    event.waitUntil(
-        caches.keys().then((cacheNames) => {
-            return Promise.all(
-                cacheNames.map((cacheName) => {
-                    if (cacheName !== CACHE_NAME) {
-                        return caches.delete(cacheName);
-                    }
-                })
-            );
+self.addEventListener('activate', event => {
+  const cacheWhitelist = [CACHE_NAME];
+  event.waitUntil(
+    caches.keys().then(cacheNames => {
+      return Promise.all(
+        cacheNames.map(cacheName => {
+          if (cacheWhitelist.indexOf(cacheName) === -1) {
+            return caches.delete(cacheName);
+          }
         })
-    );
-    return self.clients.claim();
+      );
+    })
+  );
+  return self.clients.claim();
 });
 
-// On fetch, implement caching strategies based on the request type.
-self.addEventListener('fetch', (event) => {
-    const { request } = event;
-    const url = new URL(request.url);
+self.addEventListener('fetch', event => {
+  const { request } = event;
+  const url = new URL(request.url);
 
-    // Ignore non-GET requests as they modify data and should not be cached.
-    if (request.method !== 'GET') {
-        return;
-    }
-
-    // Strategy 1: Cache First for static assets (_next/static). These are immutable.
-    if (url.pathname.startsWith('/_next/static/')) {
-        event.respondWith(
-            caches.open(CACHE_NAME).then((cache) => {
-                return cache.match(request).then((cachedResponse) => {
-                    if (cachedResponse) {
-                        return cachedResponse;
-                    }
-                    return fetch(request).then((networkResponse) => {
-                        cache.put(request, networkResponse.clone());
-                        return networkResponse;
-                    });
-                });
-            })
-        );
-        return;
-    }
-
-    // Strategy 2: Stale-While-Revalidate for images.
-    if (request.headers.get('destination') === 'image') {
-        event.respondWith(
-            caches.open(CACHE_NAME).then((cache) => {
-                return cache.match(request).then((cachedResponse) => {
-                    const fetchPromise = fetch(request).then((networkResponse) => {
-                        if (networkResponse.type !== 'opaque') {
-                            cache.put(request, networkResponse.clone());
-                        }
-                        return networkResponse;
-                    });
-                    // Return cached response immediately if available, otherwise wait for the network.
-                    return cachedResponse || fetchPromise;
-                });
-            })
-        );
-        return;
-    }
-
-    // Strategy 3: Network First for all other requests (navigation, API calls).
+  // Ignore Supabase and other external requests
+  if (url.origin !== self.location.origin || url.pathname.startsWith('/_next/static/development')) {
+    return;
+  }
+  
+  if (request.method !== 'GET') {
+    return;
+  }
+  
+  // Cache First for static assets
+  if (url.pathname.startsWith('/_next/static/')) {
     event.respondWith(
-        fetch(request)
-            .then((networkResponse) => {
-                // If the request is successful, update the cache.
-                if (networkResponse && networkResponse.status === 200) {
-                     // Only cache requests from our origin or Supabase API.
-                    if (url.origin === self.location.origin || url.hostname.endsWith('supabase.co')) {
-                        const responseToCache = networkResponse.clone();
-                        caches.open(CACHE_NAME).then((cache) => {
-                            cache.put(request, responseToCache);
-                        });
-                    }
-                }
-                return networkResponse;
-            })
-            .catch(() => {
-                // If the network request fails, try to serve from the cache as a fallback.
-                return caches.match(request);
-            })
+      caches.open(CACHE_NAME).then(cache => {
+        return cache.match(request).then(cachedResponse => {
+          if (cachedResponse) {
+            return cachedResponse;
+          }
+          return fetch(request).then(networkResponse => {
+            cache.put(request, networkResponse.clone());
+            return networkResponse;
+          });
+        });
+      })
     );
+    return;
+  }
+  
+  // Stale-While-Revalidate for images
+  if (/\.(png|jpg|jpeg|svg|gif|webp)$/.test(url.pathname)) {
+      event.respondWith(
+        caches.open(CACHE_NAME).then(cache => {
+            return cache.match(request).then(cachedResponse => {
+                const fetchPromise = fetch(request).then(networkResponse => {
+                    cache.put(request, networkResponse.clone());
+                    return networkResponse;
+                });
+                return cachedResponse || fetchPromise;
+            });
+        })
+      );
+      return;
+  }
+
+  // Network First for pages and API calls
+  event.respondWith(
+    fetch(request)
+      .then(networkResponse => {
+        return caches.open(CACHE_NAME).then(cache => {
+          // Do not cache Supabase auth or API calls
+          if (!url.pathname.includes('/rest/v1') && !url.pathname.includes('/auth/v1')) {
+             cache.put(request, networkResponse.clone());
+          }
+          return networkResponse;
+        });
+      })
+      .catch(() => {
+        return caches.match(request).then(cachedResponse => {
+          return cachedResponse || caches.match('/');
+        });
+      })
+  );
 });

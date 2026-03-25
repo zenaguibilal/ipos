@@ -115,8 +115,8 @@ export function PaymentDialog({ isOpen, onOpenChange }: PaymentDialogProps) {
                 payments,
                 dueDate: debtFromThisSale > 0 ? dueDate : undefined,
             });
-            toast.success("Vente finalisée avec succès !");
             onOpenChange(false);
+            // The finalizeSale action in the store handles success toast and redirection.
         } catch (error: any) {
             // Error is already toasted by the finalizeSale action in the store
         } finally {

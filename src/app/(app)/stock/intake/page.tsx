@@ -153,24 +153,19 @@ export default function NewStockIntakePage() {
         }
 
         setIsSaving(true);
-        try {
-            await processStockIntake({
-                supplierName,
-                supplierUuid: supplierUuid || undefined,
-                invoiceNumber,
-                invoiceDate: invoiceDate || new Date(),
-                items,
-                totalValue
-            });
+        const success = await processStockIntake({
+            supplierName,
+            supplierUuid: supplierUuid || undefined,
+            invoiceNumber,
+            invoiceDate: invoiceDate || new Date(),
+            items,
+            totalValue
+        });
 
-            toast.success("Réception de stock enregistrée avec succès !");
+        if (success) {
             router.push('/stock');
-        } catch (error: any) {
-            // Error is already toasted by the store action
-            console.error("Failed to save stock intake:", error);
-        } finally {
-            setIsSaving(false);
         }
+        setIsSaving(false);
     };
 
     const handleSupplierSelect = (uuid: string) => {

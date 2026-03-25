@@ -17,7 +17,12 @@ class SalesService {
     }
 
     async getAllSales(): Promise<Sale[]> {
-        return saleRepository.getAll();
+        try {
+            return await saleRepository.getAll();
+        } catch (error: any) {
+            console.error("Error fetching all sales:", error);
+            throw new Error(error.message || "Une erreur est survenue lors de la récupération des ventes.");
+        }
     }
 
     async getSaleByUuid(uuid: string): Promise<Sale | undefined> {

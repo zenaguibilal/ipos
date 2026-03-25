@@ -87,27 +87,19 @@ export default function NewReturnPage() {
         }
 
         setIsSaving(true);
-        try {
-            const itemsForService = returnItems.filter(item => item.returnQuantity > 0);
+        const success = await processReturn({
+            originalSaleUuid: foundSale.uuid,
+            items: returnItems.filter(item => item.returnQuantity > 0),
+            totalReturnValue,
+            amountRefunded,
+            customerUuid: foundSale.customerUuid,
+            notes,
+        });
 
-            await processReturn({
-                originalSaleUuid: foundSale.uuid,
-                items: itemsForService,
-                totalReturnValue,
-                amountRefunded,
-                customerUuid: foundSale.customerUuid,
-                notes,
-            });
-
-            toast.success("Retour enregistré avec succès !");
+        if (success) {
             router.push('/returns');
-
-        } catch (error: any) {
-            // Error is already toasted by the store action, but we can log it too.
-            console.error("Failed to save return:", error);
-        } finally {
-            setIsSaving(false);
         }
+        setIsSaving(false);
     };
 
 
