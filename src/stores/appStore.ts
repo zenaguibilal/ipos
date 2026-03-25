@@ -38,6 +38,7 @@ interface AppActions {
     addProductToCart: (product: Product, quantity: number) => void;
     updateCartItemQuantity: (productUuid: string, newQuantity: number) => void;
     removeCartItem: (productUuid: string) => void;
+    clearCartFlashes: () => void;
     setCartCustomer: (customer: Customer | null) => void;
     setCartDiscount: (discount: { type: 'fixed' | 'percentage'; value: number }) => void;
     clearCart: () => void;
@@ -154,6 +155,13 @@ export const useAppStore = create<AppState>()((set, get) => ({
         })),
         removeCartItem: (productUuid) => set(produce((state: AppState) => {
             state.cart.items = state.cart.items.filter(item => item.uuid !== productUuid);
+        })),
+        clearCartFlashes: () => set(produce((state: AppState) => {
+            state.cart.items.forEach(item => {
+                if (item.flash) {
+                    delete item.flash;
+                }
+            });
         })),
         setCartCustomer: (customer) => set(produce((state: AppState) => {
             state.cartCustomer = customer;

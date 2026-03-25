@@ -2,6 +2,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import type { StockIntake } from '@/lib/types';
 import { stockRepository } from '@/repositories/stock.repository';
+import { supplierRepository } from '@/repositories/supplier.repository';
 import { useAppStore } from '@/stores/appStore';
 
 class StockService {
@@ -16,7 +17,21 @@ class StockService {
 
     async getStockIntakes(filters: { query?: string; from?: Date; to?: Date }): Promise<StockIntake[]> {
         try {
-            return await stockRepository.filter(filters);
+            let supplierUuids: string[] | undefined = undefined;
+
+            if (filters.query) {
+                const suppliers = await supplierRepository.getAll(); // Assuming RLS filters by user
+                supplierUuids = suppliers
+                    .filter(s => s.name.toLowerCase().includes(filters.query!.toLowerCase()))
+                    .map(s => s.uuid);
+            }
+
+            return await stockRepository.filter({
+                invoiceNumberQuery: filters.query,
+                supplierUuids,
+                from: filters.from,
+                to: filters.to
+            });
         } catch (error) {
             throw error;
         }

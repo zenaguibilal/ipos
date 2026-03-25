@@ -9,12 +9,13 @@ import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { formatCurrency, getPlaceholder } from '@/lib/utils';
 import { CardContent } from '../ui/card';
-import { useAppStore } from '@/stores/appStore';
+import { useAppStore, useAppActions } from '@/stores/appStore';
 import { toast } from 'sonner';
+import { useEffect } from 'react';
 
 export function CartDisplay() {
     const cart = useAppStore((state) => state.cart);
-    const { updateCartItemQuantity, removeCartItem } = useAppStore(state => state.actions);
+    const { updateCartItemQuantity, removeCartItem, clearCartFlashes } = useAppActions();
     
     const handleQuantityUpdate = (itemUuid: string, newQuantity: string) => {
         const quantity = parseInt(newQuantity, 10);
@@ -27,6 +28,16 @@ export function CartDisplay() {
         }
     };
     
+    useEffect(() => {
+        const hasFlashedItems = cart?.items.some(item => item.flash);
+        if (hasFlashedItems) {
+            const timer = setTimeout(() => {
+                clearCartFlashes();
+            }, 500); // Duration of the flash animation
+            return () => clearTimeout(timer);
+        }
+    }, [cart?.items, clearCartFlashes]);
+
     return (
         <CardContent className="p-4 sm:p-6 flex-grow flex flex-col min-h-0">
             {!cart || cart.items.length === 0 ? (
@@ -41,7 +52,7 @@ export function CartDisplay() {
                         {cart.items.map(item => (
                             <div key={item.uuid} className={cn(
                                 "flex items-center gap-4 bg-background/50 border border-white/5 p-2 rounded-xl transition-all duration-300", 
-                                item.flash && "animate-flash ring-2 ring-primary/50"
+                                item.flash && "animate-flash"
                             )}>
                                 <Image 
                                     src={item.imageUrl || getPlaceholder(item.category).url}

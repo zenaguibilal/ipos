@@ -77,11 +77,16 @@ const config: Config = {
           '0%, 100%': { backgroundPosition: '0% 50%' },
           '50%': { backgroundPosition: '100% 50%' },
         },
+        "flash": {
+          '0%, 100%': { background: 'transparent' },
+          '50%': { background: 'hsl(var(--primary) / 0.2)' },
+        }
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "warm-gradient": "warm-gradient 15s ease infinite",
+        "flash": "flash 0.5s ease-out",
       },
     },
   },
