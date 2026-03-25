@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription
@@ -24,12 +23,11 @@ import { useAppStore, useAppActions } from '@/stores/appStore';
 interface PaymentDialogProps {
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
-    onSaleFinalized: () => void;
 }
 
 type PaymentMode = 'cash' | 'card' | 'other' | 'credit' | 'mixed';
 
-export function PaymentDialog({ isOpen, onOpenChange, onSaleFinalized }: PaymentDialogProps) {
+export function PaymentDialog({ isOpen, onOpenChange }: PaymentDialogProps) {
     const { cart, cartCustomer } = useAppStore();
     const { finalizeSale } = useAppActions();
 
@@ -55,6 +53,14 @@ export function PaymentDialog({ isOpen, onOpenChange, onSaleFinalized }: Payment
     const creditAvailable = (cartCustomer?.creditLimit ?? 0) - (cartCustomer?.outstandingBalance ?? 0);
     const creditUsage = cartCustomer?.creditLimit && cartCustomer.creditLimit > 0 ? (newTotalOutstanding / cartCustomer.creditLimit) * 100 : 0;
 
+    const initializePayment = useCallback(() => {
+        setPaymentMode('cash');
+        setCashAmount(String(total));
+        setCreditAmount('0');
+        setDueDate(undefined);
+        setShowLossAlert(false);
+    }, [total]);
+
     useEffect(() => {
         if (isOpen && cart) {
             const itemsSoldAtLoss = cart.items.filter(item => item.purchasePrice > 0 && item.price < item.purchasePrice);
@@ -66,17 +72,10 @@ export function PaymentDialog({ isOpen, onOpenChange, onSaleFinalized }: Payment
             }
         } else if (!isOpen) {
             setIsLoading(false);
+            initializePayment(); // Reset state on close
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isOpen, cart]);
+    }, [isOpen, cart, initializePayment]);
 
-    const initializePayment = useCallback(() => {
-        setPaymentMode('cash');
-        setCashAmount(String(total));
-        setCreditAmount('0');
-        setDueDate(undefined);
-        setShowLossAlert(false);
-    }, [total]);
 
     const handlePaymentModeChange = (mode: PaymentMode) => {
         setPaymentMode(mode);
@@ -117,10 +116,9 @@ export function PaymentDialog({ isOpen, onOpenChange, onSaleFinalized }: Payment
                 dueDate: debtFromThisSale > 0 ? dueDate : undefined,
             });
             toast.success("Vente finalisée avec succès !");
-            onSaleFinalized();
             onOpenChange(false);
         } catch (error: any) {
-            toast.error(error.message || "Erreur lors de la finalisation de la vente.");
+            // Error is already toasted by the finalizeSale action in the store
         } finally {
             setIsLoading(false);
         }

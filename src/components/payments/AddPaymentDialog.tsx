@@ -17,7 +17,7 @@ interface AddPaymentDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   customer: Customer;
-  onPaymentSuccess: (updatedCustomer: Customer) => void;
+  onPaymentSuccess: () => void;
 }
 
 export function AddPaymentDialog({ isOpen, onOpenChange, customer, onPaymentSuccess }: AddPaymentDialogProps) {
@@ -51,8 +51,7 @@ export function AddPaymentDialog({ isOpen, onOpenChange, customer, onPaymentSucc
     
     setIsLoading(true);
     try {
-      // The service now handles the full transaction, including customer status recalculation
-      const updatedCustomer = await paymentService.addPayment({
+      await paymentService.addPayment({
         customerUuid: customer.uuid,
         amount: paymentAmount,
         paymentDate: paymentDate,
@@ -60,9 +59,8 @@ export function AddPaymentDialog({ isOpen, onOpenChange, customer, onPaymentSucc
       });
 
       toast.success(`Paiement de ${formatCurrency(paymentAmount)} enregistré pour ${customer.firstName} ${customer.lastName}.`);
-      onPaymentSuccess(updatedCustomer); // Pass the updated customer back to the parent
+      onPaymentSuccess();
       onOpenChange(false);
-      setAmount('');
     } catch (error: any) {
       toast.error("Erreur lors de l'enregistrement du paiement.", { description: error.message });
     } finally {

@@ -5,6 +5,7 @@ import { paymentRepository } from '@/repositories/payment.repository';
 import { customerRepository } from '@/repositories/customer.repository';
 import { customerService } from './customer.service';
 import { useAppStore } from '@/stores/appStore';
+import { toast } from 'sonner';
 
 class PaymentService {
     
@@ -19,34 +20,31 @@ class PaymentService {
     async addPayment(paymentData: { customerUuid: string, amount: number, paymentDate: Date, notes?: string }): Promise<void> {
         const { customerUuid, amount, paymentDate, notes } = paymentData;
 
-        const customer = await customerRepository.findByUuid(customerUuid);
-        if (!customer) {
-            throw new Error("Client non trouvé.");
-        }
+        try {
+            const customer = await customerRepository.findByUuid(customerUuid);
+            if (!customer) {
+                throw new Error("Client non trouvé.");
+            }
 
-        const newPayment: Payment = {
-            uuid: uuidv4(),
-            user_id: this.getUserId(),
-            customerUuid,
-            amount,
-            paymentDate,
-            notes,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-        };
-        
-        await paymentRepository.add(newPayment);
+            const newPayment: Payment = {
+                uuid: uuidv4(),
+                user_id: this.getUserId(),
+                customerUuid,
+                amount,
+                paymentDate,
+                notes,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+            };
+            
+            await paymentRepository.add(newPayment);
 
-        // After adding the payment, recalculate the customer's status
-        await customerService.recalculateCustomerStatus(customerUuid);
-    }
-    
-    async getUpdatedCustomer(customerUuid: string): Promise<Customer> {
-        const customer = await customerRepository.findByUuid(customerUuid);
-        if (!customer) {
-            throw new Error("Client non trouvé après la mise à jour.");
+            // After adding the payment, recalculate the customer's status
+            await customerService.recalculateCustomerStatus(customerUuid);
+        } catch (error: any) {
+            console.error("Error adding payment:", error);
+            throw new Error(error.message || "Une erreur est survenue lors de l'ajout du paiement.");
         }
-        return customer;
     }
 
     async getPaymentsByCustomerUuid(customerUuid: string): Promise<Payment[]> {
