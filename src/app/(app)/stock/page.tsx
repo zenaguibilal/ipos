@@ -1,7 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
-import { stockService } from '@/services';
+import { useState, useCallback, useEffect } from 'react';
 import { useDebounce } from '@/hooks/useDebounce';
 import type { StockIntake } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -15,7 +14,8 @@ import Link from 'next/link';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useLiveQuery } from 'dexie-react-hooks';
+import { toast } from 'sonner';
+import { stockService } from '@/services/stock.service';
 
 export default function StockPage() {
     const [searchQuery, setSearchQuery] = useState('');
@@ -25,15 +25,28 @@ export default function StockPage() {
     const [selectedIntake, setSelectedIntake] = useState<StockIntake | null>(null);
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
-    const stockIntakes = useLiveQuery(() => {
-        if (!isMounted || !dateRange) return undefined;
-        return stockService.getStockIntakes({
-            query: debouncedSearchQuery,
-            from: dateRange.from,
-            to: dateRange.to
-        });
-    }, [isMounted, debouncedSearchQuery, dateRange]);
+    const [stockIntakes, setStockIntakes] = useState<StockIntake[] | undefined>(undefined);
     const isLoading = stockIntakes === undefined;
+
+    useEffect(() => {
+        if (!isMounted || !dateRange?.from) return;
+
+        const fetchStockIntakes = async () => {
+            try {
+                const data = await stockService.getStockIntakes({
+                    query: debouncedSearchQuery,
+                    from: dateRange.from,
+                    to: dateRange.to
+                });
+                setStockIntakes(data);
+            } catch (error) {
+                console.error(error);
+                toast.error("Impossible de charger l'historique des réceptions.");
+            }
+        };
+
+        fetchStockIntakes();
+    }, [isMounted, debouncedSearchQuery, dateRange]);
 
 
     const handleViewDetails = useCallback((intake: StockIntake) => {
@@ -69,13 +82,11 @@ export default function StockPage() {
         return (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {stockIntakes.map(s => (
-                    s.id ?
                     <StockIntakeCard 
                         key={s.id} 
                         intake={s}
                         onViewDetails={handleViewDetails}
                     />
-                    : null
                 ))}
             </div>
         );

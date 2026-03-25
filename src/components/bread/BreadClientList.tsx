@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '@/lib/database';
 import type { BreadClient } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -12,12 +11,13 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BREAD_WEEK_DAY_LABELS, BREAD_WEEK_DAYS } from '@/lib/constants';
+import { breadRepository } from '@/repositories';
 
 export function BreadClientList() {
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [selectedClient, setSelectedClient] = useState<BreadClient | null>(null);
 
-    const clients = useLiveQuery(() => db.clients_pain.orderBy('nom').toArray());
+    const clients = useLiveQuery(() => breadRepository.getAllClients());
     const isLoading = clients === undefined;
 
     const handleEdit = (client: BreadClient) => {

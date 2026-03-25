@@ -1,12 +1,11 @@
 'use client';
 
-import React from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { customerService } from '@/services';
+import React, { useEffect, useState } from 'react';
 import { Combobox, ComboboxOption } from '@/components/ui/combobox';
 import type { Customer } from '@/lib/types';
 import { formatCurrency } from '@/lib/utils';
-import { useCartStore, useCartActions } from '@/stores/cartStore';
+import { useAppStore } from '@/stores/appStore';
+import { toast } from 'sonner';
 
 const WalkInCustomerOption: ComboboxOption = {
     value: 'walk-in',
@@ -15,9 +14,15 @@ const WalkInCustomerOption: ComboboxOption = {
 };
 
 export const CustomerCombobox = React.forwardRef<HTMLButtonElement>((props, ref) => {
-    const customerUuid = useCartStore((state) => state.cart?.customerUuid);
-    const { setCartCustomer } = useCartActions();
-    const customers = useLiveQuery(() => customerService.getCustomers({}));
+    const { customerId, customers, actions } = useAppStore(state => ({
+        customerId: state.cart?.customerId,
+        customers: state.customers,
+        actions: state.actions
+    }));
+    
+    useEffect(() => {
+        actions.fetchCustomers();
+    }, [actions]);
 
     const customerOptions = React.useMemo<ComboboxOption[]>(() => {
         if (!customers) return [WalkInCustomerOption];
@@ -25,7 +30,7 @@ export const CustomerCombobox = React.forwardRef<HTMLButtonElement>((props, ref)
         const options = customers.map(c => {
             const availableCredit = (c.creditLimit || 0) - c.outstandingBalance;
             return {
-                value: c.uuid!,
+                value: c.id,
                 label: `${c.firstName} ${c.lastName}`,
                 subLabel: `Dette: ${formatCurrency(c.outstandingBalance)} | Disponible: ${formatCurrency(availableCredit)}`,
                 subLabelClassName: c.outstandingBalance > 0 ? 'text-destructive' : 'text-green-600',
@@ -37,10 +42,10 @@ export const CustomerCombobox = React.forwardRef<HTMLButtonElement>((props, ref)
 
     const handleSelect = (value: string) => {
         if (value === 'walk-in') {
-            setCartCustomer(null);
+            actions.setCartCustomer(null);
         } else {
-            const selectedCustomer = customers?.find(c => c.uuid === value);
-            setCartCustomer(selectedCustomer || null);
+            const selectedCustomer = customers?.find(c => c.id === value);
+            actions.setCartCustomer(selectedCustomer || null);
         }
     };
     
@@ -49,7 +54,7 @@ export const CustomerCombobox = React.forwardRef<HTMLButtonElement>((props, ref)
             ref={ref}
             options={customerOptions}
             onSelect={handleSelect}
-            value={customerUuid || 'walk-in'}
+            value={customerId || 'walk-in'}
             placeholder="Sélectionner un client..."
             searchPlaceholder="Rechercher un client..."
             notFoundMessage="Aucun client trouvé."

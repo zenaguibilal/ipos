@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -12,18 +12,19 @@ import { DatePicker } from '@/components/ui/date-picker';
 import type { StockIntakeItem, Supplier } from '@/lib/types';
 import { v4 as uuidv4 } from 'uuid';
 import { toast } from 'sonner';
+import { stockService } from '@/services';
 import { formatCurrency } from '@/lib/utils';
 import { Loader2 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { ProductIntakeCombobox } from '@/components/stock/ProductIntakeCombobox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { stockService } from '@/services/stock.service';
-import { supplierService } from '@/services/supplier.service';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { supplierRepository } from '@/repositories';
 
 export default function NewStockIntakePage() {
     const router = useRouter();
-    const [supplierId, setSupplierId] = useState<string>('');
+    const [supplierUuid, setSupplierUuid] = useState<string>('');
     const [supplierName, setSupplierName] = useState('');
     const [supplierSearch, setSupplierSearch] = useState('');
     const [supplierPopoverOpen, setSupplierPopoverOpen] = useState(false);
@@ -33,19 +34,7 @@ export default function NewStockIntakePage() {
     const [items, setItems] = useState<StockIntakeItem[]>([]);
     const [isSaving, setIsSaving] = useState(false);
     
-    const [suppliers, setSuppliers] = useState<Supplier[] | undefined>(undefined);
-
-    useEffect(() => {
-        const fetchSuppliers = async () => {
-            try {
-                const data = await supplierService.getSuppliers();
-                setSuppliers(data);
-            } catch (error) {
-                toast.error("Impossible de charger les fournisseurs.");
-            }
-        };
-        fetchSuppliers();
-    }, []);
+    const suppliers = useLiveQuery(() => supplierRepository.getAll());
 
     const supplierOptions = useMemo(() => {
         if (!suppliers) return [];
@@ -66,7 +55,7 @@ export default function NewStockIntakePage() {
                 ...prev,
                 {
                     id: uuidv4(),
-                    productId: product.id,
+                    productId: product.id as number,
                     name: product.name,
                     barcodes: product.barcodes || [],
                     category: product.category,
@@ -143,7 +132,7 @@ export default function NewStockIntakePage() {
 
         setIsSaving(true);
         try {
-            const intakeData = { supplierId, supplierName, invoiceNumber, invoiceDate: invoiceDate || new Date() };
+            const intakeData = { supplierUuid, supplierName, invoiceNumber, invoiceDate: invoiceDate || new Date() };
             await stockService.addStockIntake(intakeData, items);
             toast.success("Réception de stock enregistrée avec succès !");
             router.push('/stock');
@@ -154,17 +143,17 @@ export default function NewStockIntakePage() {
         }
     };
 
-    const handleSupplierSelect = (id: string) => {
-        const selected = suppliers?.find(s => s.id === id);
+    const handleSupplierSelect = (uuid: string) => {
+        const selected = suppliers?.find(s => s.uuid === uuid);
         if (selected) {
-            setSupplierId(selected.id);
+            setSupplierUuid(selected.uuid!);
             setSupplierName(selected.name);
         }
         setSupplierPopoverOpen(false);
     };
 
     const handleSupplierCreate = () => {
-        setSupplierId('');
+        setSupplierUuid('');
         setSupplierName(supplierSearch);
         setSupplierPopoverOpen(false);
     };
@@ -220,9 +209,9 @@ export default function NewStockIntakePage() {
                                         <CommandGroup>
                                             {supplierOptions?.map((supplier) => (
                                                 <CommandItem
-                                                    key={supplier.id}
-                                                    value={supplier.id}
-                                                    onSelect={() => handleSupplierSelect(supplier.id)}
+                                                    key={supplier.uuid}
+                                                    value={supplier.uuid}
+                                                    onSelect={() => handleSupplierSelect(supplier.uuid!)}
                                                 >
                                                     {supplier.name}
                                                 </CommandItem>

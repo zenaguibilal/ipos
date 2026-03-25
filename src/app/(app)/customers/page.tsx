@@ -1,7 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
-import { customerService } from '@/services';
+import { useState, useCallback, useEffect } from 'react';
 import { useDebounce } from '@/hooks/useDebounce';
 import type { Customer, ImportAnalysis } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -18,8 +17,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMe
 import { PageHeader } from '@/components/layout/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useLiveQuery } from 'dexie-react-hooks';
 import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/card';
+import { customerService } from '@/services/customer.service';
 
 type FilterStatus = 'all' | 'has_debt' | 'overdue' | 'over_limit';
 
@@ -36,12 +35,22 @@ export default function CustomersPage() {
     
     const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
-    const customers = useLiveQuery(() => 
-        customerService.getCustomers({ query: debouncedSearchQuery, status: filterStatus }),
-        [debouncedSearchQuery, filterStatus]
-    );
+    const [customers, setCustomers] = useState<Customer[] | undefined>(undefined);
     const isLoading = customers === undefined;
 
+    const fetchCustomers = useCallback(async () => {
+        try {
+            const data = await customerService.filterCustomers({ query: debouncedSearchQuery, status: filterStatus });
+            setCustomers(data);
+        } catch (error) {
+            console.error(error);
+            toast.error("Impossible de charger les clients.");
+        }
+    }, [debouncedSearchQuery, filterStatus]);
+    
+    useEffect(() => {
+        fetchCustomers();
+    }, [fetchCustomers]);
 
     const handleEditCustomer = useCallback((customer: Customer) => {
         setSelectedCustomer(customer);
@@ -60,9 +69,11 @@ export default function CustomersPage() {
                 header: true,
                 skipEmptyLines: true,
                 complete: async (results) => {
-                    const analysis = await customerService.analyzeCustomerImport(results.data);
-                    setImportAnalysis(analysis);
-                    setIsImportPreviewOpen(true);
+                    // TODO: Re-implement CSV import if needed, requires backend logic.
+                    toast.info("L'importation CSV n'est pas encore implémentée dans la nouvelle architecture.");
+                    // const analysis = await customerService.analyzeCustomerImport(results.data);
+                    // setImportAnalysis(analysis);
+                    // setIsImportPreviewOpen(true);
                 },
                 error: (error) => {
                     toast.error("Erreur lors de l'analyse du fichier CSV.", { description: error.message });
@@ -75,10 +86,11 @@ export default function CustomersPage() {
     const handleConfirmImport = async (confirmedData: { toAdd: any[], toUpdate: any[] }) => {
         setIsImporting(true);
         try {
-            await customerService.processCustomerImport(confirmedData.toAdd, confirmedData.toUpdate);
+            // await customerService.processCustomerImport(confirmedData.toAdd, confirmedData.toUpdate);
             toast.success("Importation des clients terminée avec succès !");
             setIsImportPreviewOpen(false);
             setImportAnalysis(null);
+            fetchCustomers();
         } catch (error) {
             toast.error("Une erreur est survenue lors de l'importation.");
         } finally {
@@ -114,14 +126,12 @@ export default function CustomersPage() {
         return (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {customers.map(c => (
-                    c.id ? 
                     <CustomerCard 
                         key={c.id} 
                         customer={c} 
                         onEdit={handleEditCustomer} 
                         onDelete={handleDeleteCustomer}
                     />
-                    : null
                 ))}
             </div>
         );
@@ -181,19 +191,21 @@ export default function CustomersPage() {
                 isOpen={isCustomerDialogOpen}
                 onOpenChange={setIsCustomerDialogOpen}
                 customer={selectedCustomer}
+                onSuccess={fetchCustomers}
             />
             <DeleteCustomerDialog 
                 isOpen={isDeleteDialogOpen}
                 onOpenChange={setIsDeleteDialogOpen}
                 customer={selectedCustomer}
+                onSuccess={fetchCustomers}
             />
-            <ImportPreviewDialog
+            {/* <ImportPreviewDialog
                 isOpen={isImportPreviewOpen}
                 onOpenChange={setIsImportPreviewOpen}
                 analysis={importAnalysis}
                 onConfirm={handleConfirmImport}
                 isImporting={isImporting}
-            />
+            /> */}
         </div>
     );
 }

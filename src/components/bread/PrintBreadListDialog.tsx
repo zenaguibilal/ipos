@@ -14,8 +14,7 @@ import { Printer } from 'lucide-react';
 import type { BreadOrder, BreadOrderWithClient, CompanyProfile } from '@/lib/types';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '@/lib/database';
+import { useAppStore } from '@/stores/appStore';
 
 interface PrintBreadListDialogProps {
     orders: BreadOrderWithClient[];
@@ -29,7 +28,7 @@ const getStatusLabel = (order: BreadOrder) => {
     return 'En attente';
 };
 
-const PrintableList = React.forwardRef<HTMLDivElement, PrintBreadListDialogProps & { profile: CompanyProfile | null }>(({ orders, currentDate, profile }, ref) => {
+const PrintableList = React.forwardRef<HTMLDivElement, { orders: BreadOrderWithClient[], currentDate: string, profile: CompanyProfile | null }>(({ orders, currentDate, profile }, ref) => {
     const totalQuantity = orders.reduce((acc, order) => acc + order.quantite, 0);
     const formattedDate = format(new Date(currentDate.replace(/-/g, '/')), 'EEEE d MMMM yyyy', { locale: fr });
     
@@ -71,7 +70,7 @@ PrintableList.displayName = 'PrintableList';
 
 export function PrintBreadListDialog({ orders, currentDate }: PrintBreadListDialogProps) {
     const [isOpen, setIsOpen] = useState(false);
-    const profile = useLiveQuery(() => db.companyProfile.get(1));
+    const profile = useAppStore((state) => state.profile);
     const printRef = useRef<HTMLDivElement>(null);
 
     const handlePrint = () => {

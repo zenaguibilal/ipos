@@ -1,8 +1,6 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { customerService } from '@/services';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, HandCoins, Printer, Loader2 } from 'lucide-react';
@@ -14,16 +12,21 @@ import { useState, useCallback, useEffect } from 'react';
 import { AddPaymentDialog } from '@/components/payments/AddPaymentDialog';
 import { SaleDetailsDialog } from '@/components/sales/SaleDetailsDialog';
 import { ReturnDetailsDialog } from '@/components/returns/ReturnDetailsDialog';
-import type { Sale, ProductReturn, Customer } from '@/lib/types';
+import type { Sale, ProductReturn, Customer, SaleItem } from '@/lib/types';
 import { PrintStatementDialog } from '@/components/customers/PrintStatementDialog';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { customerService } from '@/services/customer.service';
+import { toast } from 'sonner';
+import { saleService } from '@/services/sales.service';
+import { returnService } from '@/services/return.service';
 
 const ITEMS_PER_PAGE = 10;
 
 export default function CustomerDetailPage() {
     const params = useParams();
-    const customerUuid = params.uuid as string;
+    const customerId = params.uuid as string;
 
+    const [customer, setCustomer] = useState<Customer | undefined | null>(undefined);
     const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
     const [isStatementDialogOpen, setIsStatementDialogOpen] = useState(false);
     const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
@@ -37,10 +40,21 @@ export default function CustomerDetailPage() {
     const [isLoadingActivity, setIsLoadingActivity] = useState(true);
     const [hasMoreActivity, setHasMoreActivity] = useState(true);
 
-    const customer = useLiveQuery<Customer | undefined>(
-        () => customerUuid ? customerService.getCustomerByUuid(customerUuid) : undefined,
-        [customerUuid]
-    );
+    const fetchCustomerData = useCallback(async () => {
+        if (!customerId) return;
+        try {
+            const cust = await customerService.getCustomerById(customerId);
+            setCustomer(cust);
+        } catch (error) {
+            console.error(error);
+            toast.error("Impossible de charger les informations du client.");
+            setCustomer(null);
+        }
+    }, [customerId]);
+    
+    useEffect(() => {
+        fetchCustomerData();
+    },[fetchCustomerData]);
 
     // Reset pagination when customer changes
     useEffect(() => {
@@ -48,14 +62,14 @@ export default function CustomerDetailPage() {
         setActivityPage(1);
         setHasMoreActivity(true);
         setIsLoadingActivity(true);
-    }, [customerUuid]);
+    }, [customerId]);
 
     useEffect(() => {
-        if (!customer?.uuid) return;
+        if (!customerId) return;
 
         let isCancelled = false;
         setIsLoadingActivity(true);
-        customerService.getCustomerActivity(customer.uuid, activityPage, ITEMS_PER_PAGE)
+        customerService.getCustomerActivity(customerId, activityPage, ITEMS_PER_PAGE)
             .then(newActivity => {
                 if (!isCancelled) {
                     setActivity(prev => activityPage === 1 ? newActivity : [...prev, ...newActivity]);
@@ -64,6 +78,7 @@ export default function CustomerDetailPage() {
                     }
                 }
             })
+            .catch(() => toast.error("Impossible de charger l'activité du client."))
             .finally(() => {
                 if (!isCancelled) {
                     setIsLoadingActivity(false);
@@ -71,7 +86,7 @@ export default function CustomerDetailPage() {
             });
         
         return () => { isCancelled = true; };
-    }, [customer?.uuid, activityPage]);
+    }, [customerId, activityPage]);
 
     const handleLoadMore = () => {
         if (!isLoadingActivity && hasMoreActivity) {
@@ -79,14 +94,24 @@ export default function CustomerDetailPage() {
         }
     };
 
-    const handleSaleClick = useCallback((sale: Sale) => {
-        setSelectedSale(sale);
-        setIsSaleDetailsOpen(true);
+    const handleSaleClick = useCallback(async (sale: Sale) => {
+        try {
+            const saleWithItems = await saleService.getSaleById(sale.id!);
+            setSelectedSale(saleWithItems);
+            setIsSaleDetailsOpen(true);
+        } catch (error) {
+            toast.error("Impossible de charger les détails de la vente.");
+        }
     }, []);
 
-    const handleReturnClick = useCallback((pr: ProductReturn) => {
-        setSelectedReturn(pr);
-        setIsReturnDetailsOpen(true);
+    const handleReturnClick = useCallback(async (pr: ProductReturn) => {
+        try {
+            const returnWithItems = await returnService.getReturnById(pr.id!);
+            setSelectedReturn(returnWithItems);
+            setIsReturnDetailsOpen(true);
+        } catch (error) {
+            toast.error("Impossible de charger les détails du retour.");
+        }
     }, []);
 
     if (customer === undefined) {
@@ -188,7 +213,7 @@ export default function CustomerDetailPage() {
                     isOpen={isPaymentDialogOpen}
                     onOpenChange={setIsPaymentDialogOpen}
                     customer={customer}
-                    outstandingBalance={customer.outstandingBalance}
+                    onPaymentSuccess={fetchCustomerData}
                 />
             )}
 

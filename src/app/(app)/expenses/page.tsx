@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { expenseService } from '@/services';
 import type { Expense } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -23,7 +23,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { formatCurrency } from '@/lib/utils';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { useLiveQuery } from 'dexie-react-hooks';
+import { toast } from 'sonner';
 
 export default function ExpensesPage() {
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -31,19 +31,42 @@ export default function ExpensesPage() {
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
     const { dateRange, setDate, isMounted } = useDateRange(29);
+    const [expenses, setExpenses] = useState<Expense[] | undefined>(undefined);
+    const [categories, setCategories] = useState<string[] | undefined>(undefined);
 
-    const expenses = useLiveQuery(() => {
-        if (!isMounted || !dateRange?.from || !dateRange?.to) return undefined;
-        return expenseService.getExpenses({
-            category: selectedCategory,
-            from: dateRange.from,
-            to: dateRange.to
-        });
+    const isLoading = expenses === undefined || categories === undefined;
+    
+    const fetchExpenses = async () => {
+         if (!isMounted || !dateRange?.from || !dateRange?.to) return;
+        try {
+            const data = await expenseService.filter({
+                category: selectedCategory,
+                from: dateRange.from,
+                to: dateRange.to
+            });
+            setExpenses(data);
+        } catch (error) {
+            console.error(error);
+            toast.error("Impossible de charger les dépenses.");
+        }
+    }
+    
+    useEffect(() => {
+        fetchExpenses();
     }, [isMounted, selectedCategory, dateRange]);
 
-    const categories = useLiveQuery(() => expenseService.getExpenseCategories(), []);
-    
-    const isLoading = expenses === undefined || categories === undefined;
+    useEffect(() => {
+        const fetchCategories = async () => {
+            try {
+                const cats = await expenseService.getCategories();
+                setCategories(cats);
+            } catch (error) {
+                console.error(error);
+                toast.error("Impossible de charger les catégories de dépenses.");
+            }
+        }
+        fetchCategories();
+    }, [])
 
     const handleEditExpense = (expense: Expense) => {
         setSelectedExpense(expense);
@@ -152,11 +175,13 @@ export default function ExpensesPage() {
                 isOpen={isExpenseDialogOpen}
                 onOpenChange={setIsExpenseDialogOpen}
                 expense={selectedExpense}
+                onSuccess={fetchExpenses}
             />
             <DeleteExpenseDialog 
                 isOpen={isDeleteDialogOpen}
                 onOpenChange={setIsDeleteDialogOpen}
                 expense={selectedExpense}
+                onSuccess={fetchExpenses}
             />
         </div>
     );

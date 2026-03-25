@@ -1,72 +1,29 @@
-
 'use client';
 
-import { db } from '@/lib/database';
 import type { Expense } from '@/lib/types';
-import { v4 as uuidv4 } from 'uuid';
-import { syncService } from './sync.service';
+import { expenseRepository } from '@/repositories/expense.repository';
 
-export class ExpenseService {
-    async getExpenses(params: { category?: string, from?: Date, to?: Date }): Promise<Expense[]> {
-        let collection;
+class ExpenseService {
+    
+    async filter(params: { category?: string; from?: Date; to?: Date }): Promise<Expense[]> {
+        return expenseRepository.filter(params);
+    }
 
-        if (params.from && params.to) {
-            collection = db.expenses.where('expenseDate').between(params.from, params.to, true, true);
-        } else {
-            collection = db.expenses.toCollection();
-        }
-        
-        collection = collection.and(e => e.sync_status !== 'pending_delete');
-
-        if (params.category && params.category !== 'all') {
-            collection = collection.filter(e => e.category === params.category);
-        }
-
-        return await collection.orderBy('expenseDate').reverse().toArray();
+    async getCategories(): Promise<string[]> {
+        return expenseRepository.getCategories();
     }
     
-    async getExpenseCategories(): Promise<string[]> {
-        const expenses = await db.expenses.where('sync_status').notEqual('pending_delete').toArray();
-        const categories = new Set(expenses.map(e => e.category));
-        return Array.from(categories).sort();
-    }
-    
-    async addExpense(expense: Omit<Expense, 'id' | 'uuid'>): Promise<Expense> {
-        const now = new Date();
-        const uuid = uuidv4();
-        const newExpense = { 
-            ...expense, 
-            uuid,
-            createdAt: now, 
-            updatedAt: now,
-            sync_status: 'pending_create' as const,
-            last_modified_by: syncService.getLocalDeviceId(),
-        };
-        const id = await db.expenses.add(newExpense as Expense);
-        await syncService.queueSyncOperation('expenses', uuid, 'create', { ...newExpense, id: undefined });
-        return { ...newExpense, id };
+    async addExpense(expenseData: Omit<Expense, 'id' | 'user_id' | 'created_at'>): Promise<Expense> {
+        return expenseRepository.add(expenseData);
     }
 
-    async updateExpense(id: number, expenseData: Partial<Omit<Expense, 'id'>>): Promise<void> {
-        const expense = await db.expenses.get(id);
-        if (!expense || !expense.uuid) return;
-
-        const updateData = { 
-            ...expenseData, 
-            updatedAt: new Date(),
-            sync_status: expense.sync_status === 'pending_create' ? 'pending_create' : 'pending_update' as const,
-            last_modified_by: syncService.getLocalDeviceId(),
-        };
-
-        await db.expenses.update(id, updateData);
-        await syncService.queueSyncOperation('expenses', expense.uuid, 'update', updateData);
+    async updateExpense(id: number, expenseData: Partial<Omit<Expense, 'id' | 'user_id' | 'created_at'>>): Promise<Expense> {
+        return expenseRepository.update(id, expenseData);
     }
 
     async deleteExpense(id: number): Promise<void> {
-        const expense = await db.expenses.get(id);
-        if (!expense || !expense.uuid) return;
-        
-        await db.expenses.update(id, { sync_status: 'pending_delete', updatedAt: new Date(), last_modified_by: syncService.getLocalDeviceId() });
-        await syncService.queueSyncOperation('expenses', expense.uuid, 'delete', {});
+        await expenseRepository.delete(id);
     }
 }
+
+export const expenseService = new ExpenseService();

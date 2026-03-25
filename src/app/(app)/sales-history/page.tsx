@@ -15,6 +15,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { saleRepository } from '@/repositories';
 
 export default function SalesHistoryPage() {
     const [searchQuery, setSearchQuery] = useState('');
@@ -27,7 +28,7 @@ export default function SalesHistoryPage() {
 
     const sales = useLiveQuery(() => {
         if (!isMounted || !dateRange) return undefined;
-        return salesService.getSales({
+        return saleRepository.filter({
             query: debouncedSearchQuery,
             from: dateRange.from,
             to: dateRange.to

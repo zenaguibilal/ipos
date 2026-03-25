@@ -15,11 +15,12 @@ import { AddPaymentDialog } from '@/components/payments/AddPaymentDialog';
 import { CartTotalBar } from '@/components/sell/CartTotalBar';
 import { DraftsDialog } from '@/components/sell/DraftsDialog';
 import type { Product } from '@/lib/types';
-import { useCartStore, useCartActions } from '@/stores/cartStore';
+import { useAppStore, useAppActions } from '@/stores/appStore';
+import { customerService } from '@/services/customer.service';
 
 export default function SellPage() {
-    const { cart, customer, isLoading } = useCartStore();
-    const { addProductToCart, clearCart } = useCartActions();
+    const { cart, cartCustomer: customer, isCartLoading: isLoading } = useAppStore();
+    const { addProductToCart, clearCart } = useAppActions();
     
     const [isProductSheetOpen, setIsProductSheetOpen] = useState(false);
     const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
@@ -33,6 +34,16 @@ export default function SellPage() {
     useEffect(() => {
         cartItemsCountRef.current = cart?.items.length ?? 0;
     }, [cart?.items.length]);
+    
+    const fetchCustomer = useCallback(async () => {
+        if (!customer) return;
+        try {
+            await customerService.getCustomerById(customer.id);
+        } catch (error) {
+            console.error("Failed to refetch customer data", error);
+        }
+    }, [customer]);
+
 
     const handleSaleFinalized = useCallback(() => {
         clearCart();
@@ -163,7 +174,7 @@ export default function SellPage() {
                     isOpen={isPaymentDialogOpen}
                     onOpenChange={setIsPaymentDialogOpen}
                     customer={customer}
-                    outstandingBalance={customer.outstandingBalance}
+                    onPaymentSuccess={fetchCustomer}
                 />
             )}
             <DraftsDialog

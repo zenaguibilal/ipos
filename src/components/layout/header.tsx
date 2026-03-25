@@ -1,8 +1,7 @@
-
 'use client';
 
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import {
   User as UserIcon,
   Settings,
@@ -13,9 +12,7 @@ import {
   Undo2,
   Archive,
   Wallet,
-  HandHeart,
-  Calculator,
-  LayoutDashboard,
+  LogOut,
   Wheat,
 } from 'lucide-react';
 import Image from 'next/image';
@@ -34,8 +31,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { ThemeToggle } from './theme-toggle';
-import { SyncStatusIndicator } from './SyncStatusIndicator';
+import { useAppStore } from '@/stores/appStore';
+import { toast } from 'sonner';
 
 const navLinks = [
   { href: '/stock', label: 'Stock', icon: Archive },
@@ -44,12 +41,22 @@ const navLinks = [
   { href: '/sales-history', label: 'Ventes', icon: History },
   { href: '/returns', label: 'Retours', icon: Undo2 },
   { href: '/expenses', label: 'Dépenses', icon: Wallet },
-  { href: '/bread', label: 'Commandes de Pain', icon: Wheat },
+  { href: '/bread', label: 'Pain', icon: Wheat },
 ];
 
 export function AppHeader() {
-  const router = useRouter();
   const pathname = usePathname();
+  const { user } = useAppStore(state => state);
+  const { signOut } = useAppStore(state => state.actions);
+
+  const handleSignOut = async () => {
+    try {
+        await signOut();
+        toast.success("Vous avez été déconnecté.");
+    } catch(error: any) {
+        toast.error(error.message);
+    }
+  }
 
   const mainActionLinks = [
     { href: '/sell', label: 'Point de Vente', icon: ShoppingCart },
@@ -120,8 +127,6 @@ export function AppHeader() {
         <div className="flex-1 flex justify-end">
             <div className="flex items-center gap-2 sm:gap-4">
                 <Clock />
-                <SyncStatusIndicator />
-                <ThemeToggle />
                 <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                     <Button variant="secondary" size="icon" className="rounded-full">
@@ -132,14 +137,21 @@ export function AppHeader() {
                 <DropdownMenuContent align="end">
                     <DropdownMenuItem disabled>
                         <div className="flex flex-col">
-                        <span className="text-sm font-medium">Utilisateur Local</span>
-                        <span className="text-xs text-muted-foreground">Mode hors ligne</span>
+                        <span className="text-sm font-medium">Connecté en tant que</span>
+                        <span className="text-xs text-muted-foreground truncate">{user?.email}</span>
                         </div>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => router.push('/profile')}>
-                    <Settings className="mr-2 h-4 w-4" />
-                    <span>Profil & Paramètres</span>
+                    <DropdownMenuItem asChild>
+                        <Link href="/profile">
+                            <Settings className="mr-2 h-4 w-4" />
+                            <span>Profil & Paramètres</span>
+                        </Link>
+                    </DropdownMenuItem>
+                     <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive">
+                        <LogOut className="mr-2 h-4 w-4" />
+                        <span>Se déconnecter</span>
                     </DropdownMenuItem>
                 </DropdownMenuContent>
                 </DropdownMenu>

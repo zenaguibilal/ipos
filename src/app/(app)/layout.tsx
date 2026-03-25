@@ -1,12 +1,35 @@
+'use client';
+
 import { AppHeader } from '@/components/layout/header';
 import { BottomNavBar } from '@/components/layout/bottom-navbar';
 import { StoreInitializer } from '@/components/layout/StoreInitializer';
+import { useAppStore } from '@/stores/appStore';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
+import { Loader2 } from 'lucide-react';
 
 export default function AppLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const { session, sessionLoading } = useAppStore();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!sessionLoading && !session) {
+      router.replace('/auth');
+    }
+  }, [session, sessionLoading, router]);
+
+  if (sessionLoading || !session) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      </div>
+    );
+  }
+  
   return (
     <>
       <StoreInitializer />

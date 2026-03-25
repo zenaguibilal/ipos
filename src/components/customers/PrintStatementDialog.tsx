@@ -1,16 +1,15 @@
-
 'use client';
 
-import { useRef } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { customerService } from '@/services';
-import { db } from '@/lib/database';
+import { useRef, useState, useEffect } from 'react';
 import type { Customer, Sale, CompanyProfile } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Printer } from 'lucide-react';
 import { CustomerStatement } from './CustomerStatement';
 import { Skeleton } from '../ui/skeleton';
+import { useAppStore } from '@/stores/appStore';
+import { customerService } from '@/services/customer.service';
+import { toast } from 'sonner';
 
 interface PrintStatementDialogProps {
   isOpen: boolean;
@@ -19,15 +18,29 @@ interface PrintStatementDialogProps {
 }
 
 export function PrintStatementDialog({ isOpen, onOpenChange, customer }: PrintStatementDialogProps) {
-    const profile = useLiveQuery<CompanyProfile | undefined>(() => db.companyProfile.get(1));
+    const profile = useAppStore((state) => state.profile);
     const printRef = useRef<HTMLDivElement>(null);
 
-    const statementData = useLiveQuery(() => {
-        if (!isOpen || !customer?.uuid) return undefined;
-        return customerService.getCustomerStatementData(customer.uuid);
-    }, [isOpen, customer?.uuid]);
+    const [statementData, setStatementData] = useState<{ customer: Customer, unpaidSales: Sale[]}| undefined>(undefined);
+    const isLoading = isOpen && statementData === undefined;
     
-    const isLoading = statementData === undefined && isOpen;
+    useEffect(() => {
+        if (!isOpen || !customer) {
+            setStatementData(undefined);
+            return;
+        };
+
+        const fetchStatement = async () => {
+            try {
+                const data = await customerService.getCustomerStatementData(customer.id);
+                setStatementData(data);
+            } catch (error) {
+                toast.error("Impossible de charger les données du relevé.");
+            }
+        };
+
+        fetchStatement();
+    }, [isOpen, customer]);
 
   const handlePrint = () => {
     const printableContent = document.getElementById('receipt-for-print');

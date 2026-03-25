@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { paymentService } from '@/services';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -12,15 +11,16 @@ import type { Customer, Payment } from '@/lib/types';
 import { formatCurrency } from '@/lib/utils';
 import { Textarea } from '../ui/textarea';
 import { DatePicker } from '../ui/date-picker';
+import { paymentService } from '@/services/payment.service';
 
 interface AddPaymentDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   customer: Customer;
-  outstandingBalance: number;
+  onPaymentSuccess: () => void;
 }
 
-export function AddPaymentDialog({ isOpen, onOpenChange, customer, outstandingBalance }: AddPaymentDialogProps) {
+export function AddPaymentDialog({ isOpen, onOpenChange, customer, onPaymentSuccess }: AddPaymentDialogProps) {
   const [amount, setAmount] = useState('');
   const [paymentDate, setPaymentDate] = useState<Date | undefined>();
   const [notes, setNotes] = useState('');
@@ -28,11 +28,11 @@ export function AddPaymentDialog({ isOpen, onOpenChange, customer, outstandingBa
 
   useEffect(() => {
     if (isOpen) {
-      setAmount(String(outstandingBalance > 0 ? outstandingBalance : ''));
+      setAmount(String(customer.outstandingBalance > 0 ? customer.outstandingBalance : ''));
       setPaymentDate(new Date());
       setNotes('');
     }
-  }, [isOpen, outstandingBalance]);
+  }, [isOpen, customer.outstandingBalance]);
 
   const handleAddPayment = async () => {
     const paymentAmount = parseFloat(amount);
@@ -40,7 +40,7 @@ export function AddPaymentDialog({ isOpen, onOpenChange, customer, outstandingBa
       toast.error('Veuillez entrer un montant valide.');
       return;
     }
-    if (paymentAmount > outstandingBalance) {
+    if (paymentAmount > customer.outstandingBalance) {
         toast.error('Le montant du paiement ne peut pas dépasser le solde impayé.');
         return;
     }
@@ -51,16 +51,15 @@ export function AddPaymentDialog({ isOpen, onOpenChange, customer, outstandingBa
     
     setIsLoading(true);
     try {
-      const paymentData: Omit<Payment, 'id' | 'createdAt' | 'updatedAt'> = {
-        customerId: customer.id!,
-        customerName: `${customer.firstName} ${customer.lastName}`,
+      await paymentService.addPayment({
+        customerId: customer.id,
         amount: paymentAmount,
         paymentDate: paymentDate,
         notes: notes || undefined,
-      };
-      await paymentService.addPayment(paymentData);
+      });
 
       toast.success(`Paiement de ${formatCurrency(paymentAmount)} enregistré pour ${customer.firstName} ${customer.lastName}.`);
+      onPaymentSuccess();
       onOpenChange(false);
       setAmount('');
     } catch (error) {
@@ -76,7 +75,7 @@ export function AddPaymentDialog({ isOpen, onOpenChange, customer, outstandingBa
         <DialogHeader>
           <DialogTitle>Enregistrer un paiement pour {customer.firstName}</DialogTitle>
           <DialogDescription>
-             Le solde impayé actuel est de <span className="font-bold text-destructive">{formatCurrency(outstandingBalance)}</span>.
+             Le solde impayé actuel est de <span className="font-bold text-destructive">{formatCurrency(customer.outstandingBalance)}</span>.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">

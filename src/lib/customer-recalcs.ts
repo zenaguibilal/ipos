@@ -1,8 +1,8 @@
 'use client';
 
-import { db } from '@/lib/database';
 import type { Customer } from '@/lib/types';
 import { syncService } from '@/services/sync.service';
+import { customerRepository, paymentRepository, returnRepository, saleRepository } from '@/repositories';
 
 /**
  * Recalculates a customer's financial status from scratch based on their entire transaction history.
@@ -11,14 +11,14 @@ import { syncService } from '@/services/sync.service';
  * @param customerUuid The UUID of the customer to recalculate.
  */
 export async function recalculateCustomerStatus(customerUuid: string): Promise<void> {
-    const customer = await db.customers.where({ uuid: customerUuid }).first();
+    const customer = await customerRepository.findByUuid(customerUuid);
     if (!customer) return;
 
     const now = new Date();
 
-    const sales = await db.sales.where({ customerUuid }).and(s => s.sync_status !== 'pending_delete').toArray();
-    const payments = await db.payments.where({ customerUuid }).and(p => p.sync_status !== 'pending_delete').toArray();
-    const returns = await db.returns.where({ customerUuid }).and(r => r.sync_status !== 'pending_delete').toArray();
+    const sales = await saleRepository.findByCustomerUuid(customerUuid);
+    const payments = await paymentRepository.findByCustomerUuid(customerUuid);
+    const returns = await returnRepository.findByCustomerUuid(customerUuid);
 
     const totalInvoiced = sales.reduce((sum, s) => sum + s.total, 0);
     const totalPaidViaPayments = payments.reduce((sum, p) => sum + p.amount, 0);
@@ -43,15 +43,22 @@ export async function recalculateCustomerStatus(customerUuid: string): Promise<v
         isOverLimit,
         debtStatus,
         updatedAt: now,
-        sync_status: customer.sync_status === 'pending_create' ? 'pending_create' : 'pending_update',
-        last_modified_by: syncService.getLocalDeviceId(),
     };
     
-    await db.customers.update(customer.id!, customerUpdate);
-    
     if (customer.sync_status !== 'pending_create') {
+        customerUpdate.sync_status = 'pending_update';
+        customerUpdate.last_modified_by = syncService.getLocalDeviceId();
         // We only need to queue the final state for sync
-        const { id, ...payloadForSync } = customerUpdate;
-        await syncService.queueSyncOperation('customers', customer.uuid, 'update', payloadForSync);
+        await syncService.queueSyncOperation('customers', customer.uuid, 'update', { 
+            totalSpent: customerUpdate.totalSpent,
+            outstandingBalance: customerUpdate.outstandingBalance,
+            lastActivityDate: customerUpdate.lastActivityDate,
+            isOverLimit: customerUpdate.isOverLimit,
+            debtStatus: customerUpdate.debtStatus,
+            updatedAt: customerUpdate.updatedAt,
+            last_modified_by: customerUpdate.last_modified_by
+        });
     }
+    
+    await customerRepository.update(customer.id!, customerUpdate);
 }

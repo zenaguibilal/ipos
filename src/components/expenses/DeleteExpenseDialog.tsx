@@ -9,13 +9,20 @@ interface DeleteExpenseDialogProps {
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
     expense: Expense | null;
+    onSuccess: () => void;
 }
 
-export default function DeleteExpenseDialog({ isOpen, onOpenChange, expense }: DeleteExpenseDialogProps) {
+export default function DeleteExpenseDialog({ isOpen, onOpenChange, expense, onSuccess }: DeleteExpenseDialogProps) {
     const handleDelete = async () => {
         if (!expense || !expense.id) return;
-        await expenseService.deleteExpense(expense.id);
-        toast.success(`Dépense "${expense.description}" supprimée.`);
+        try {
+            await expenseService.deleteExpense(expense.id);
+            toast.success(`Dépense "${expense.description}" supprimée.`);
+            onSuccess();
+        } catch (error: any) {
+             toast.error("Erreur lors de la suppression", { description: error.message });
+             throw error;
+        }
     };
 
     return (

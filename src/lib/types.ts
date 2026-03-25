@@ -1,54 +1,47 @@
+import { type User } from "@supabase/supabase-js";
 
-export type SyncStatus = 'synced' | 'pending_create' | 'pending_update' | 'pending_delete';
+export type { User };
 
 export interface Product {
-    id?: number;
-    uuid: string; // For remote identification
-    createdAt?: Date;
-    updatedAt?: Date;
-    sync_status?: SyncStatus;
-    last_modified_by?: string; // To track origin of last change (local device ID)
+    id: number;
+    user_id: string;
+    created_at?: string;
     name: string;
     category?: string;
     price: number;
-    purchasePrice: number;
+    purchase_price: number;
     quantity: number; 
-    minStockLevel: number;
+    min_stock_level: number;
     barcodes?: string[];
-    imageUrl?: string;
+    image_url?: string;
     unite?: 'Pièce' | 'Kg' | 'Litre' | 'Boîte' | 'Carton' | 'Sachet' | 'Bouteille';
-    dateExpiration?: Date;
-    supplierUuid?: string;
-    dateMajPrix?: Date;
-    stockStatus?: 'in_stock' | 'low_stock' | 'out_of_stock';
+    date_expiration?: string;
+    supplier_id?: number;
 }
 
 export interface Customer {
-    id?: number;
-    uuid: string; // For remote identification
-    createdAt?: Date;
-    updatedAt?: Date;
-    sync_status?: SyncStatus;
-    last_modified_by?: string; // To track origin of last change (local device ID)
-    firstName: string;
-    lastName: string;
-    searchName?: string;
+    id: number;
+    user_id: string;
+    created_at?: string;
+    first_name: string;
+    last_name: string;
+    search_name?: string;
     phone?: string;
     address?: string;
-    settlementDay?: number;
-    creditLimit?: number;
-    totalSpent: number;
-    outstandingBalance: number;
-    lastActivityDate?: Date;
-    debtStatus?: 'none' | 'due_soon' | 'overdue';
-    isOverLimit?: boolean;
+    settlement_day?: number;
+    credit_limit?: number;
+    total_spent: number;
+    outstanding_balance: number;
+    last_activity_date?: string;
+    debt_status?: 'none' | 'due_soon' | 'overdue';
+    is_over_limit?: boolean;
 }
 
 export interface SaleItem {
     id: number | string; // string for custom items
     name: string;
     price: number;
-    purchasePrice: number;
+    purchase_price: number;
     quantity: number;
 }
 
@@ -56,15 +49,14 @@ export interface SaleItem {
 export interface CartItem extends Product {
     id: number | string; // Can be a string for custom products
     cartQuantity: number;
-    flash?: boolean; // For UI animation
 }
 
-// Represents a single shopping cart session - LOCAL ONLY
+// Represents a single shopping cart session
 export interface Cart {
     id:string;
     name: string;
     items: CartItem[];
-    customerUuid: string | null;
+    customer_id: number | null;
     customerName: string;
     discount: {
         type: 'fixed' | 'percentage';
@@ -78,47 +70,40 @@ export interface SalePayment {
 }
 
 export interface Sale {
-    id?: number;
-    uuid: string; // For remote identification
-    createdAt?: Date;
-    updatedAt?: Date;
-    sync_status?: SyncStatus;
-    last_modified_by?: string; // To track origin of last change (local device ID)
-    invoiceNumber: string;
+    id: number;
+    user_id: string;
+    created_at?: string;
+    invoice_number: string;
     items: SaleItem[];
     subtotal: number;
-    discountType?: 'percentage' | 'fixed';
-    discountAmount?: number;
+    discount_type?: 'percentage' | 'fixed';
+    discount_amount?: number;
     total: number;
-    amountPaid: number;
-    remainingBalance: number;
-    paymentStatus: 'paid' | 'partial' | 'unpaid';
+    amount_paid: number;
+    remaining_balance: number;
+    payment_status: 'paid' | 'partial' | 'unpaid';
     payments: SalePayment[];
-    customerUuid?: string;
+    customer_id?: number;
     customerName?: string;
-    clientPainUuid?: string;
-    dueDate?: Date;
+    client_pain_id?: number;
+    due_date?: string;
 }
 
 export interface Payment {
-    id?: number;
-    uuid: string; // For remote identification
-    createdAt?: Date;
-    updatedAt?: Date;
-    sync_status?: SyncStatus;
-    last_modified_by?: string; // To track origin of last change (local device ID)
-    customerUuid: string;
+    id: number;
+    user_id: string;
+    created_at?: string;
+    customer_id: number;
     customerName?: string;
     amount: number;
-    paymentDate: Date;
+    payment_date: string;
     notes?: string;
 }
 
-// LOCAL ONLY
 export interface Draft {
   id?: number;
   date: Date;
-  customerUuid: string | null;
+  customer_id: number | null;
   customerName: string;
   items: CartItem[];
   total: number;
@@ -126,87 +111,79 @@ export interface Draft {
       type: 'fixed' | 'percentage';
       value: number;
   };
-  createdAt?: Date;
-  updatedAt?: Date;
+  notes?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface CompanyProfile {
-    id: 1;
-    uuid: string; // For remote identification
-    createdAt?: Date;
-    updatedAt?: Date;
-    sync_status?: SyncStatus;
-    last_modified_by?: string; // To track origin of last change (local device ID)
-    companyName?: string;
+    id: number;
+    user_id: string;
+    updated_at?: string;
+    company_name?: string;
     address?: string;
     city?: string;
-    zipCode?: string;
+    zip_code?: string;
     country?: string;
     phone?: string;
     email?: string;
     website?: string;
-    vatNumber?: string;
-    rcNumber?: string;
-    goldPricePerGram?: number;
+    vat_number?: string;
+    rc_number?: string;
+    gold_price_per_gram?: number;
     prix_pain?: number;
 }
 
 export interface StockIntakeItem {
     id: string; // Unique ID for the item row in UI, not persisted
-    productId?: number; // ID of the product if it exists
+    product_id?: number; // ID of the product if it exists
     barcodes: string[];
     name: string;
     category?: string;
     quantity: number;
-    quantityDamaged: number;
-    purchasePrice: number;
+    quantity_damaged: number;
+    purchase_price: number;
     price: number;
-    isNew: boolean;
+    is_new: boolean;
 }
 
 export interface StockIntake {
-    id?: number;
-    uuid: string; // For remote identification
-    createdAt?: Date;
-    updatedAt?: Date;
-    sync_status?: SyncStatus;
-    last_modified_by?: string; // To track origin of last change (local device ID)
-    supplierUuid: string;
+    id: number;
+    user_id: string;
+    created_at?: string;
+    supplier_id: number;
     supplierName?: string;
-    invoiceNumber: string;
-    invoiceDate: Date;
+    invoice_number: string;
+    invoice_date: string;
     items: {
-        productId?: number;
-        productName: string;
-        quantityReceived: number;
-        quantityDamaged: number;
-        purchasePrice: number;
+        product_id?: number;
+        product_name: string;
+        quantity_received: number;
+        quantity_damaged: number;
+        purchase_price: number;
     }[];
-    totalValue: number;
+    total_value: number;
 }
 
 export interface ReturnItem {
-    productId: number | null;
-    productName: string;
+    product_id: number | null;
+    product_name: string;
     quantity: number;
     price: number; // The price at which it was sold
-    purchasePrice: number;
-    wasRestocked: boolean;
+    purchase_price: number;
+    was_restocked: boolean;
 }
 
 export interface ProductReturn {
-    id?: number;
-    uuid: string; // For remote identification
-    createdAt?: Date;
-    updatedAt?: Date;
-    sync_status?: SyncStatus;
-    last_modified_by?: string; // To track origin of last change (local device ID)
-    originalSaleId?: number;
-    originalInvoiceNumber: string;
+    id: number;
+    user_id: string;
+    created_at?: string;
+    original_sale_id?: number;
+    original_invoice_number: string;
     items: ReturnItem[];
-    totalReturnValue: number;
-    amountRefunded: number;
-    customerUuid?: string;
+    total_return_value: number;
+    amount_refunded: number;
+    customer_id?: number;
     customerName?: string;
     notes?: string;
 }
@@ -214,32 +191,26 @@ export interface ProductReturn {
 export type ExpenseCategory = 'Loyer' | 'Salaires' | 'Fournisseurs' | 'Services Publics' | 'Marketing' | 'Maintenance' | 'Autre';
 
 export interface Expense {
-    id?: number;
-    uuid: string; // For remote identification
-    createdAt?: Date;
-    updatedAt?: Date;
-    sync_status?: SyncStatus;
-    last_modified_by?: string; // To track origin of last change (local device ID)
+    id: number;
+    user_id: string;
+    created_at?: string;
     description: string;
     category: ExpenseCategory;
     amount: number;
-    expenseDate: Date;
+    expense_date: string;
 }
 
 export type InventoryLogReason = 'sale' | 'return' | 'stock_intake' | 'cancellation' | 'manual_adjustment';
 
 export interface InventoryLog {
-    id?: number;
-    uuid: string; // For remote identification
-    createdAt?: Date;
-    updatedAt?: Date;
-    sync_status?: SyncStatus;
-    last_modified_by?: string; // To track origin of last change (local device ID)
-    productId: number;
-    change: number; // e.g., -2 for a sale, +50 for stock intake
-    newQuantity: number;
+    id: number;
+    user_id: string;
+    created_at: string;
+    product_id: number;
+    change: number; // e.g., -2 for sale, +50 for stock intake
+    new_quantity: number;
     reason: InventoryLogReason;
-    relatedId?: number | string; // ID of the sale, return, intake, etc.
+    related_id?: number | string; // ID of the sale, return, intake, etc.
 }
 
 export interface ImportAnalysis {
@@ -259,14 +230,11 @@ export interface ProductImportAnalysis {
 }
 
 export interface Supplier {
-    id?: number;
-    uuid: string; // For remote identification
-    createdAt?: Date;
-    updatedAt?: Date;
-    sync_status?: SyncStatus;
-    last_modified_by?: string; // To track origin of last change (local device ID)
+    id: number;
+    user_id: string;
+    created_at?: string;
     name: string;
-    contactPerson?: string;
+    contact_person?: string;
     phone?: string;
     email?: string;
     address?: string;
@@ -276,12 +244,9 @@ export interface Supplier {
 // =================== Bread Types ===================
 
 export interface BreadClient {
-    id?: number;
-    uuid: string; // For remote identification
-    createdAt?: Date;
-    updatedAt?: Date;
-    sync_status?: SyncStatus;
-    last_modified_by?: string; // To track origin of last change (local device ID)
+    id: number;
+    user_id: string;
+    created_at?: string;
     nom: string;
     actif: boolean;
     type_recurrence: 'quotidien' | 'jours_specifiques' | 'aucun';
@@ -298,13 +263,10 @@ export interface BreadClient {
 }
 
 export interface BreadOrder {
-    id?: number;
-    uuid: string; // For remote identification
-    createdAt?: Date;
-    updatedAt?: Date;
-    sync_status?: SyncStatus;
-    last_modified_by?: string; // To track origin of last change (local device ID)
-    clientPainUuid: string;
+    id: number;
+    user_id: string;
+    created_at?: string;
+    client_pain_id: number;
     date: string; // YYYY-MM-DD
     quantite: number;
     quantite_origine?: number;
@@ -317,12 +279,19 @@ export interface BreadOrderWithClient extends BreadOrder {
     client: BreadClient;
 }
 
-export interface SyncQueueItem {
-    id?: number;
-    tableName: string;
-    recordUuid: string;
-    action: 'create' | 'update' | 'delete';
-    payload: any;
-    createdAt: Date;
-    attempts?: number;
+export interface DB {
+    products: Product[];
+    customers: Customer[];
+    sales: Sale[];
+    payments: Payment[];
+    stockIntakes: StockIntake[];
+    returns: ProductReturn[];
+    carts: Cart[];
+    drafts: Draft[];
+    companyProfile: CompanyProfile[];
+    expenses: Expense[];
+    inventoryLogs: InventoryLog[];
+    suppliers: Supplier[];
+    clients_pain: BreadClient[];
+    commandes_pain: BreadOrder[];
 }

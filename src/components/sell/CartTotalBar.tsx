@@ -2,10 +2,10 @@
 
 import { calculateCartTotals, formatCurrency } from '@/lib/utils';
 import { ShoppingCart, User, Tag, Minus } from 'lucide-react';
-import { useCartStore } from '@/stores/cartStore';
+import { useAppStore } from '@/stores/appStore';
 
 export function CartTotalBar() {
-    const { cart, customer } = useCartStore();
+    const { cart, cartCustomer: customer } = useAppStore();
 
     if (!cart) {
         return (

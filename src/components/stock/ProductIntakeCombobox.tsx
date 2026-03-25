@@ -1,8 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { productService } from '@/services';
+import { useState, useMemo, useEffect } from 'react';
 import type { Product } from '@/lib/types';
 import {
   Popover,
@@ -21,6 +19,8 @@ import { Button } from '@/components/ui/button';
 import { ChevronsUpDown, Plus } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { useDebounce } from '@/hooks/useDebounce';
+import { productService } from '@/services/product.service';
+import { toast } from 'sonner';
 
 interface ProductIntakeComboboxProps {
     onProductSelected: (product: Product) => void;
@@ -32,7 +32,19 @@ export function ProductIntakeCombobox({ onProductSelected, onNewProductCreated }
     const [searchQuery, setSearchQuery] = useState('');
     const debouncedSearchQuery = useDebounce(searchQuery, 200);
 
-    const products = useLiveQuery(() => productService.getProducts({}), []);
+    const [products, setProducts] = useState<Product[]>([]);
+
+    useEffect(() => {
+        const fetchProducts = async () => {
+            try {
+                const data = await productService.filterProducts({});
+                setProducts(data);
+            } catch (error) {
+                toast.error("Impossible de charger les produits.");
+            }
+        };
+        fetchProducts();
+    }, []);
 
     const filteredProducts = useMemo(() => {
         if (!products) return [];
@@ -45,7 +57,7 @@ export function ProductIntakeCombobox({ onProductSelected, onNewProductCreated }
     }, [products, debouncedSearchQuery]);
 
     const handleSelect = (productId: string) => {
-        const product = products?.find(p => String(p.id!) === productId);
+        const product = products?.find(p => p.id === productId);
         if (product) {
             onProductSelected(product);
         }
@@ -98,8 +110,8 @@ export function ProductIntakeCombobox({ onProductSelected, onNewProductCreated }
                             {filteredProducts?.map((product) => (
                                 <CommandItem
                                     key={product.id}
-                                    value={String(product.id)}
-                                    onSelect={() => handleSelect(String(product.id))}
+                                    value={product.id}
+                                    onSelect={() => handleSelect(product.id)}
                                 >
                                     <div>
                                         <p>{product.name}</p>

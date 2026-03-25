@@ -7,12 +7,24 @@ import { Trash2, ShoppingCart } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { formatCurrency, getPlaceholder } from '@/lib/utils';
-import { Card, CardContent } from '../ui/card';
-import { useCartStore, useCartActions } from '@/stores/cartStore';
+import { CardContent } from '../ui/card';
+import { useAppStore } from '@/stores/appStore';
+import { toast } from 'sonner';
 
 export function CartDisplay() {
-    const cart = useCartStore((state) => state.cart);
-    const { updateCartItemQuantity, removeCartItem } = useCartActions();
+    const cart = useAppStore((state) => state.cart);
+    const { updateCartItemQuantity, removeCartItem } = useAppStore(state => state.actions);
+    
+    const handleQuantityUpdate = async (itemId: number | string, newQuantity: string) => {
+        const quantity = parseInt(newQuantity, 10);
+        if (isNaN(quantity)) return;
+
+        try {
+            await updateCartItemQuantity(itemId, quantity);
+        } catch (error: any) {
+            toast.error(error.message);
+        }
+    };
     
     return (
         <CardContent className="p-4 sm:p-6 flex-grow flex flex-col min-h-0">
@@ -45,7 +57,7 @@ export function CartDisplay() {
                                      <Input
                                         type="number"
                                         value={item.cartQuantity}
-                                        onChange={(e) => updateCartItemQuantity(item.id, parseInt(e.target.value, 10) || 0)}
+                                        onChange={(e) => handleQuantityUpdate(item.id, e.target.value)}
                                         className="w-16 h-9 text-center"
                                         min="1"
                                         max={typeof item.id === 'number' ? item.quantity : undefined}

@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { db } from '@/lib/database';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { formatDateToYYYYMMDD } from '@/lib/utils';
 import { addDays, format } from 'date-fns';
@@ -14,7 +13,8 @@ import { BreadStats } from '@/components/bread/BreadStats';
 import { Loader2 } from 'lucide-react';
 import type { BreadOrderWithClient } from '@/lib/types';
 import { breadService } from '@/services';
-import { useSettingsStore } from '@/stores/settingsStore';
+import { useAppStore } from '@/stores/appStore';
+import { breadRepository } from '@/repositories';
 
 export default function BreadPage() {
     const [currentDate, setCurrentDate] = useState(new Date());
@@ -25,7 +25,7 @@ export default function BreadPage() {
         [formattedDate]
     );
 
-    const companyProfile = useSettingsStore((state) => state.profile);
+    const companyProfile = useAppStore((state) => state.profile);
 
     const [isGenerating, setIsGenerating] = useState(false);
     const isLoading = orders === undefined || isGenerating;
@@ -35,7 +35,7 @@ export default function BreadPage() {
         const generate = async () => {
             setIsGenerating(true);
             try {
-                const ordersExist = await breadService.checkIfBreadOrdersExist(formattedDate);
+                const ordersExist = await breadRepository.ordersExistForDate(formattedDate);
                 if (!ordersExist) {
                     await breadService.createDayOrders(formattedDate);
                 }
@@ -76,8 +76,7 @@ export default function BreadPage() {
                     ) : (
                         <BreadDayView 
                             orders={orders || []} 
-                            currentDate={formattedDate} 
-                            breadPrice={companyProfile?.prix_pain || 0}
+                            currentDate={formattedDate}
                         />
                     )}
                 </div>

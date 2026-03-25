@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Trash2, Save, FolderOpen } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import { PaymentDialog } from './PaymentDialog';
 import {
   AlertDialog,
@@ -19,7 +19,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { formatCurrency, calculateCartTotals } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
-import { useCartStore, useCartActions } from '@/stores/cartStore';
+import { useAppStore, useAppActions } from '@/stores/appStore';
 
 interface SaleActionsProps {
     onSaleFinalized: () => void;
@@ -30,11 +30,11 @@ export const SaleActions = React.forwardRef<
     { payment: () => void, draft: () => void }, 
     SaleActionsProps
 >(({ onSaleFinalized, onOpenDrafts }, ref) => {
-    const { cart } = useCartStore();
-    const { clearCart, setCartDiscount, saveCartAsDraft } = useCartActions();
+    const { cart } = useAppStore();
+    const { clearCart, setCartDiscount } = useAppActions();
     const [isPaymentOpen, setIsPaymentOpen] = useState(false);
     
-    const totalItems = cart?.items.reduce((acc, item) => acc + item.cartQuantity, 0) || 0;
+    const totalItems = cart?.items.reduce((acc, item) => acc + item.quantity, 0) || 0;
     const { subtotal, discountAmount, total } = cart ? calculateCartTotals(cart) : { subtotal: 0, discountAmount: 0, total: 0 };
     
     const discountValue = cart?.discount.value || 0;
@@ -52,7 +52,8 @@ export const SaleActions = React.forwardRef<
             }
         },
         draft: () => {
-            draftButtonRef.current?.click();
+            // Brouillons désactivés dans la nouvelle architecture
+            // draftButtonRef.current?.click();
         }
     }));
 
@@ -109,17 +110,7 @@ export const SaleActions = React.forwardRef<
                  </div>
 
                  <div className="grid grid-cols-2 gap-4 pt-2">
-                    <div>
-                        <div className="flex gap-2">
-                            <Button ref={draftButtonRef} variant="outline" className="flex-1" onClick={saveCartAsDraft}>
-                                <Save className="mr-2 h-4 w-4" /> Brouillon (F4)
-                            </Button>
-                             <Button variant="outline" size="icon" onClick={onOpenDrafts}>
-                                <FolderOpen className="h-4 w-4" />
-                            </Button>
-                        </div>
-                    </div>
-                     <AlertDialog>
+                    <AlertDialog>
                         <AlertDialogTrigger asChild>
                             <Button variant="destructive" size="lg" disabled={cart.items.length === 0}>
                                 <Trash2 className="mr-2 h-5 w-5" /> Vider
@@ -140,16 +131,16 @@ export const SaleActions = React.forwardRef<
                             </AlertDialogFooter>
                         </AlertDialogContent>
                     </AlertDialog>
+                    <Button 
+                        ref={paymentButtonRef}
+                        size="lg" 
+                        className="w-full text-lg py-6"
+                        disabled={cart.items.length === 0}
+                        onClick={() => setIsPaymentOpen(true)}
+                    >
+                        Payer (F9)
+                    </Button>
                 </div>
-                 <Button 
-                    ref={paymentButtonRef}
-                    size="lg" 
-                    className="w-full text-lg py-6"
-                    disabled={cart.items.length === 0}
-                    onClick={() => setIsPaymentOpen(true)}
-                >
-                    Payer (F9)
-                </Button>
             </div>
         </>
     );

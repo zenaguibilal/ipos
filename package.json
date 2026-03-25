@@ -32,8 +32,6 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.0.0",
     "date-fns": "^3.6.0",
-    "dexie": "^4.0.7",
-    "dexie-react-hooks": "^1.1.7",
     "immer": "^10.1.1",
     "jsbarcode": "^3.11.6",
     "lucide-react": "^0.417.0",
@@ -48,7 +46,8 @@
     "tailwind-merge": "^2.4.0",
     "tailwindcss-animate": "^1.0.0",
     "uuid": "^10.0.0",
-    "zustand": "^4.5.4"
+    "zustand": "^4.5.4",
+    "@supabase/supabase-js": "^2.44.4"
   },
   "devDependencies": {
     "@types/node": "^20.14.12",

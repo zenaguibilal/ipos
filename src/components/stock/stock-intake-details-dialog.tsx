@@ -19,6 +19,9 @@ import {
 import { Button } from '@/components/ui/button';
 import type { StockIntake } from '@/lib/types';
 import { formatCurrency } from '@/lib/utils';
+import { useEffect, useState } from 'react';
+import { supplierService } from '@/services/supplier.service';
+import { toast } from 'sonner';
 
 export function StockIntakeDetailsDialog({
     isOpen,
@@ -29,9 +32,19 @@ export function StockIntakeDetailsDialog({
     onOpenChange: (open: boolean) => void;
     intake: StockIntake | null;
 }) {
-    if (!intake) return null;
+    const [supplierName, setSupplierName] = useState('Fournisseur inconnu');
     
-    const supplierName = intake.supplierName || 'Fournisseur inconnu';
+    useEffect(() => {
+        if(intake?.supplierId) {
+            supplierService.getSupplierById(intake.supplierId)
+                .then(sup => {
+                    if (sup) setSupplierName(sup.name);
+                })
+                .catch(() => toast.error("Impossible de charger le nom du fournisseur."));
+        }
+    }, [intake]);
+
+    if (!intake) return null;
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>

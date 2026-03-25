@@ -19,16 +19,17 @@ interface ExpenseDialogProps {
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
     expense: Expense | null;
+    onSuccess: () => void;
 }
 
-const initialFormState: Omit<Expense, 'id' | 'createdAt' | 'updatedAt'> = {
+const initialFormState: Omit<Expense, 'id' | 'createdAt' | 'updatedAt' | 'user_id'> = {
     description: '',
     category: 'Autre',
     amount: 0,
     expenseDate: new Date(),
 };
 
-export default function ExpenseDialog({ isOpen, onOpenChange, expense }: ExpenseDialogProps) {
+export default function ExpenseDialog({ isOpen, onOpenChange, expense, onSuccess }: ExpenseDialogProps) {
     const [formState, setFormState] = useState(initialFormState);
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -91,9 +92,10 @@ export default function ExpenseDialog({ isOpen, onOpenChange, expense }: Expense
                 await expenseService.addExpense(expenseData);
                 toast.success(`Dépense ajoutée.`);
             }
+            onSuccess();
             onOpenChange(false);
-        } catch (err) {
-            setError("Une erreur est survenue.");
+        } catch (err: any) {
+            setError(err.message || "Une erreur est survenue.");
             toast.error("Échec de l'opération.");
         } finally {
             setIsLoading(false);

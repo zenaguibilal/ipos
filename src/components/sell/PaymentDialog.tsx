@@ -12,14 +12,14 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import type { SalePayment, Product } from '@/lib/types';
+import type { SalePayment, CartItem } from '@/lib/types';
 import { Loader2, CreditCard, Banknote, AlertTriangle } from 'lucide-react';
-import { salesService } from '@/services';
 import { formatCurrency, calculateCartTotals } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Separator } from '@/components/ui/separator';
-import { useCartStore } from '@/stores/cartStore';
+import { useAppStore } from '@/stores/appStore';
+import { saleService } from '@/services/sales.service';
 
 interface PaymentDialogProps {
     isOpen: boolean;
@@ -30,7 +30,7 @@ interface PaymentDialogProps {
 type PaymentMode = 'cash' | 'card' | 'other' | 'credit' | 'mixed';
 
 export function PaymentDialog({ isOpen, onOpenChange, onSaleFinalized }: PaymentDialogProps) {
-    const { cart, customer } = useCartStore();
+    const { cart, cartCustomer: customer } = useAppStore();
     const [paymentMode, setPaymentMode] = useState<PaymentMode>('cash');
     const [cashAmount, setCashAmount] = useState('');
     const [creditAmount, setCreditAmount] = useState('');
@@ -39,7 +39,7 @@ export function PaymentDialog({ isOpen, onOpenChange, onSaleFinalized }: Payment
     const [isLoading, setIsLoading] = useState(false);
 
     const [showLossAlert, setShowLossAlert] = useState(false);
-    const [lossItems, setLossItems] = useState<Product[]>([]);
+    const [lossItems, setLossItems] = useState<CartItem[]>([]);
 
     const { subtotal, discountAmount, total } = cart ? calculateCartTotals(cart) : { subtotal: 0, discountAmount: 0, total: 0 };
 
@@ -57,7 +57,7 @@ export function PaymentDialog({ isOpen, onOpenChange, onSaleFinalized }: Payment
         if (isOpen && cart) {
             const itemsSoldAtLoss = cart.items.filter(item => item.price < item.purchasePrice);
             if (itemsSoldAtLoss.length > 0) {
-                setLossItems(itemsSoldAtLoss as Product[]);
+                setLossItems(itemsSoldAtLoss);
                 setShowLossAlert(true);
             } else {
                 initializePayment();
@@ -107,21 +107,16 @@ export function PaymentDialog({ isOpen, onOpenChange, onSaleFinalized }: Payment
             payments.push({ method: paymentMode === 'card' ? 'card' : (paymentMode === 'other' ? 'other' : 'cash'), amount: amountPaidNum });
         }
         
-        const saleData = {
-            items: cart.items.map(i => ({ id: i.id, name: i.name, price: i.price, purchasePrice: i.purchasePrice, quantity: i.cartQuantity })),
-            subtotal,
-            discountType: cart.discount.type,
-            discountAmount: discountAmount,
-            total,
-            amountPaid: amountPaidNum,
-            payments,
-            customerUuid: cart.customerUuid ?? undefined,
-            customerName: cart.customerName ?? undefined,
-            dueDate: debtFromThisSale > 0 ? dueDate : undefined,
-        };
-
         try {
-            await salesService.addSale(saleData);
+            await saleService.createSale({
+                items: cart.items,
+                discountType: cart.discount.type,
+                discountValue: cart.discount.value,
+                amountPaid: amountPaidNum,
+                payments,
+                customerId: cart.customerId,
+                dueDate: debtFromThisSale > 0 ? dueDate : undefined,
+            });
             onSaleFinalized();
             onOpenChange(false);
         } catch (error: any) {
@@ -151,7 +146,7 @@ export function PaymentDialog({ isOpen, onOpenChange, onSaleFinalized }: Payment
                         <AlertDialogDescription>
                             Les produits suivants ont un prix de vente inférieur à leur prix d'achat. Êtes-vous sûr de vouloir continuer ?
                             <ul className="list-disc pl-5 mt-2 text-destructive/80 font-medium">
-                                {lossItems.map(item => <li key={item.id}>{item.name}</li>)}
+                                {lossItems.map(item => <li key={item.productId}>{item.name}</li>)}
                             </ul>
                         </AlertDialogDescription>
                     </AlertDialogHeader>

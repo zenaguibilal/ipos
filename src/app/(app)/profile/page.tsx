@@ -1,39 +1,55 @@
 'use client';
 
-import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { CompanyProfileForm } from "@/components/profile/company-profile-form";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { BackupAndRestore } from "@/components/profile/BackupAndRestore";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { useAppStore } from "@/stores/appStore";
 
 export default function ProfilePage() {
+    const { signOut } = useAppStore(state => state.actions);
+
+    const handleSignOut = async () => {
+        try {
+            await signOut();
+            toast.success("Vous avez été déconnecté.");
+        } catch (error: any) {
+            toast.error(error.message);
+        }
+    };
+
     return (
         <div className="p-4 sm:p-6 space-y-6">
             <PageHeader 
                 title="Profil & Paramètres"
-                description="Gérez les informations de votre entreprise et vos données."
+                description="Gérez les informations de votre entreprise et votre session."
             />
 
-            <Tabs defaultValue="profile" className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="profile">Profil de l'Entreprise</TabsTrigger>
-                    <TabsTrigger value="backup">Sauvegarde & Restauration</TabsTrigger>
-                </TabsList>
-                <TabsContent value="profile">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Informations sur l'entreprise</CardTitle>
-                            <CardDescription>
-                                Ces informations seront utilisées sur les reçus et autres documents.
-                            </CardDescription>
-                        </CardHeader>
-                        <CompanyProfileForm />
-                    </Card>
-                </TabsContent>
-                <TabsContent value="backup">
-                     <BackupAndRestore />
-                </TabsContent>
-            </Tabs>
+            <Card>
+                <CardHeader>
+                    <CardTitle>Informations sur l'entreprise</CardTitle>
+                    <CardDescription>
+                        Ces informations seront utilisées sur les reçus et autres documents.
+                    </CardDescription>
+                </CardHeader>
+                <CompanyProfileForm />
+            </Card>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle>Session</CardTitle>
+                    <CardDescription>
+                        Gérez votre session utilisateur.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <p className="text-sm text-muted-foreground">Vous êtes actuellement connecté. Vous pouvez vous déconnecter en cliquant sur le bouton ci-dessous.</p>
+                </CardContent>
+                <CardFooter>
+                     <Button variant="destructive" onClick={handleSignOut}>Se déconnecter</Button>
+                </CardFooter>
+            </Card>
         </div>
     );
 }

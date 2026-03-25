@@ -8,12 +8,13 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import type { Customer } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
-import { customerService } from '@/services';
+import { customerService } from '@/services/customer.service';
 
 interface CustomerDialogProps {
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
     customer: Customer | null;
+    onSuccess: () => void;
 }
 
 const initialFormState = {
@@ -25,7 +26,7 @@ const initialFormState = {
     creditLimit: '',
 };
 
-export function CustomerDialog({ isOpen, onOpenChange, customer }: CustomerDialogProps) {
+export function CustomerDialog({ isOpen, onOpenChange, customer, onSuccess }: CustomerDialogProps) {
     const [formState, setFormState] = useState(initialFormState);
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -59,13 +60,13 @@ export function CustomerDialog({ isOpen, onOpenChange, customer }: CustomerDialo
             return;
         }
 
-        const customerData: Partial<Customer> = {
+        const customerData = {
             firstName,
             lastName,
-            phone,
-            address,
-            settlementDay: settlementDay ? parseInt(settlementDay, 10) : undefined,
-            creditLimit: creditLimit ? parseFloat(creditLimit) : undefined,
+            phone: phone || null,
+            address: address || null,
+            settlementDay: settlementDay ? parseInt(settlementDay, 10) : null,
+            creditLimit: creditLimit ? parseFloat(creditLimit) : null,
         };
 
         try {
@@ -73,12 +74,13 @@ export function CustomerDialog({ isOpen, onOpenChange, customer }: CustomerDialo
                 await customerService.updateCustomer(customer.id, customerData);
                 toast.success(`Client ${firstName} ${lastName} mis à jour.`);
             } else { // Adding
-                await customerService.addCustomer(customerData as any);
+                await customerService.addCustomer(customerData);
                 toast.success(`Client ${firstName} ${lastName} ajouté.`);
             }
+            onSuccess();
             onOpenChange(false);
-        } catch (err) {
-            setError("Une erreur est survenue.");
+        } catch (err: any) {
+            setError(err.message || "Une erreur est survenue.");
             toast.error("Échec de l'opération.");
         } finally {
             setIsLoading(false);

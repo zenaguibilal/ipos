@@ -17,6 +17,7 @@ import Link from 'next/link';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { returnRepository } from '@/repositories';
 
 export default function ReturnsPage() {
     const [searchQuery, setSearchQuery] = useState('');
@@ -29,7 +30,7 @@ export default function ReturnsPage() {
 
     const returns = useLiveQuery(() => {
         if (!isMounted || !dateRange) return undefined;
-        return returnService.getReturns({
+        return returnRepository.filter({
             query: debouncedSearchQuery,
             from: dateRange.from,
             to: dateRange.to

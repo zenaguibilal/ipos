@@ -1,8 +1,6 @@
-
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { productService } from '@/services';
 import { useDebounce } from '@/hooks/useDebounce';
 import type { Product, ProductImportAnalysis, Supplier } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -34,7 +32,8 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useLiveQuery } from 'dexie-react-hooks';
+import { productService } from '@/services/product.service';
+import { supplierService } from '@/services/supplier.service';
 
 type ViewMode = 'grid' | 'list';
 type StockStatus = 'all' | 'in_stock' | 'low_stock' | 'out_of_stock';
@@ -53,8 +52,8 @@ const sortOptions: { [key: string]: string } = {
     'price_asc': 'Prix (croissant)',
     'quantity_desc': 'Stock (décroissant)',
     'quantity_asc': 'Stock (croissant)',
-    'createdAt_desc': 'Plus récents',
-    'createdAt_asc': 'Plus anciens',
+    'created_at_desc': 'Plus récents',
+    'created_at_asc': 'Plus anciens',
 };
 
 export default function ProductsPage() {
@@ -63,7 +62,7 @@ export default function ProductsPage() {
     const [selectedSupplier, setSelectedSupplier] = useState<string>('all');
     const [stockStatus, setStockStatus] = useState<StockStatus>('all');
     const [viewMode, setViewMode] = useState<ViewMode>('grid');
-    const [sortBy, setSortBy] = useState('createdAt_desc');
+    const [sortBy, setSortBy] = useState('created_at_desc');
 
     const [isProductDialogOpen, setIsProductDialogOpen] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -71,7 +70,7 @@ export default function ProductsPage() {
     const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false);
 
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-    const [selectedProducts, setSelectedProducts] = useState<Set<number>>(new Set());
+    const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
     
     const [isProductImportPreviewOpen, setIsProductImportPreviewOpen] = useState(false);
     const [productImportAnalysis, setProductImportAnalysis] = useState<ProductImportAnalysis | null>(null);
@@ -79,19 +78,47 @@ export default function ProductsPage() {
 
     const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
-    const products = useLiveQuery(() => 
-        productService.getProducts({ 
-            query: debouncedSearchQuery, 
-            category: selectedCategory, 
-            supplierUuid: selectedSupplier,
-            stockStatus, 
-            sortBy 
-        }),
-        [debouncedSearchQuery, selectedCategory, selectedSupplier, stockStatus, sortBy]
-    );
-    const categories = useLiveQuery(() => productService.getProductCategories());
-    const suppliers = useLiveQuery(() => productService.getSuppliers());
+    const [products, setProducts] = useState<Product[] | undefined>(undefined);
+    const [categories, setCategories] = useState<string[] | undefined>(undefined);
+    const [suppliers, setSuppliers] = useState<Supplier[] | undefined>(undefined);
     const isLoading = products === undefined || categories === undefined || suppliers === undefined;
+
+    const fetchProducts = useCallback(async () => {
+        try {
+            const data = await productService.filterProducts({ 
+                query: debouncedSearchQuery, 
+                category: selectedCategory, 
+                supplierId: selectedSupplier,
+                stockStatus, 
+                sortBy 
+            });
+            setProducts(data);
+        } catch(error) {
+            toast.error("Impossible de charger les produits.");
+            console.error(error);
+        }
+    }, [debouncedSearchQuery, selectedCategory, selectedSupplier, stockStatus, sortBy]);
+
+    useEffect(() => {
+        fetchProducts();
+    }, [fetchProducts]);
+
+    useEffect(() => {
+        const fetchMeta = async () => {
+            try {
+                const [cats, sups] = await Promise.all([
+                    productService.getCategories(),
+                    supplierService.getSuppliers()
+                ]);
+                setCategories(cats);
+                setSuppliers(sups);
+            } catch(error) {
+                toast.error("Impossible de charger les catégories et fournisseurs.");
+            }
+        };
+        fetchMeta();
+    }, []);
+
 
     useEffect(() => {
         try {
@@ -124,14 +151,15 @@ export default function ProductsPage() {
 
     const handleDeleteProduct = useCallback(async (product: Product) => {
         try {
-            await productService.deleteProduct(product.id as number);
+            await productService.deleteProduct(product.id);
             toast.success(`Produit "${product.name}" supprimé.`);
+            fetchProducts();
         } catch (e: any) {
             toast.error("Suppression impossible", { description: e.message });
         }
-    }, []);
+    }, [fetchProducts]);
 
-    const handleToggleSelection = useCallback((productId: number) => {
+    const handleToggleSelection = useCallback((productId: string) => {
         setSelectedProducts(prev => {
             const newSet = new Set(prev);
             if (newSet.has(productId)) {
@@ -148,37 +176,18 @@ export default function ProductsPage() {
         if (selectedProducts.size === products.length) {
             setSelectedProducts(new Set());
         } else {
-            setSelectedProducts(new Set(products.map(p => p.id as number).filter(id => typeof id === 'number')));
+            setSelectedProducts(new Set(products.map(p => p.id)));
         }
     }, [products, selectedProducts.size]);
 
     const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            Papa.parse(file, {
-                header: true,
-                skipEmptyLines: true,
-                complete: async (results) => {
-                    try {
-                        const analysis = await productService.analyzeProductImport(results.data);
-                        setProductImportAnalysis(analysis);
-                        setIsProductImportPreviewOpen(true);
-                    } catch (e: any) {
-                        toast.error("Erreur d'analyse CSV", { description: e.message });
-                    }
-                },
-                error: (error) => {
-                    toast.error("Erreur lors de l'analyse du fichier CSV.", { description: error.message });
-                }
-            });
-        }
-        if (e.target) e.target.value = '';
+        toast.info("L'importation CSV n'est pas encore implémentée dans la nouvelle architecture.");
     };
 
     const handleConfirmImport = async (confirmedData: { toAdd: any[], toUpdate: any[] }) => {
         setIsImporting(true);
         try {
-            await productService.processProductImport(confirmedData.toAdd, confirmedData.toUpdate);
+            // await productService.processProductImport(confirmedData.toAdd, confirmedData.toUpdate);
             toast.success("Importation des produits terminée avec succès !");
             setIsProductImportPreviewOpen(false);
             setProductImportAnalysis(null);
@@ -190,22 +199,7 @@ export default function ProductsPage() {
     };
     
     const handleExport = async () => {
-        toast.info("Préparation de l'exportation des produits...");
-        try {
-            const csvString = await productService.exportProductsToCSV();
-            const blob = new Blob([`\uFEFF${csvString}`], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement("a");
-            const url = URL.createObjectURL(blob);
-            link.setAttribute("href", url);
-            link.setAttribute("download", `export-produits-${new Date().toISOString().split('T')[0]}.csv`);
-            link.style.visibility = 'hidden';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            toast.success("Exportation terminée avec succès.");
-        } catch (error) {
-            toast.error("Erreur lors de l'exportation des produits.");
-        }
+        toast.info("Fonctionnalité d'exportation non implémentée.");
     };
     
     const renderSkeletons = () => (
@@ -243,7 +237,6 @@ export default function ProductsPage() {
             return (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                     {products.map(p => (
-                       p.id && typeof p.id === 'number' &&
                         <ProductCard 
                             key={p.id} 
                             product={p} 
@@ -253,7 +246,7 @@ export default function ProductsPage() {
                                 setIsDeleteDialogOpen(true);
                             }}
                             isSelected={selectedProducts.has(p.id)}
-                            onToggleSelection={() => handleToggleSelection(p.id as number)}
+                            onToggleSelection={() => handleToggleSelection(p.id)}
                         />
                     ))}
                 </div>
@@ -348,9 +341,9 @@ export default function ProductsPage() {
                         >Tous</DropdownMenuCheckboxItem>
                         {suppliers?.map(sup => (
                             <DropdownMenuCheckboxItem
-                                key={sup.uuid}
-                                checked={selectedSupplier === sup.uuid}
-                                onCheckedChange={() => setSelectedSupplier(sup.uuid!)}
+                                key={sup.id}
+                                checked={selectedSupplier === sup.id}
+                                onCheckedChange={() => setSelectedSupplier(sup.id)}
                             >{sup.name}</DropdownMenuCheckboxItem>
                         ))}
                     </DropdownMenuContent>
@@ -442,6 +435,7 @@ export default function ProductsPage() {
                 product={selectedProduct}
                 categories={categories || []}
                 suppliers={suppliers || []}
+                onSuccess={fetchProducts}
             />
             <DeleteProductDialog 
                 isOpen={isDeleteDialogOpen}
@@ -458,15 +452,18 @@ export default function ProductsPage() {
                 isOpen={isBulkDeleteDialogOpen}
                 onOpenChange={setIsBulkDeleteDialogOpen}
                 productIds={Array.from(selectedProducts)}
-                onSuccess={() => setSelectedProducts(new Set())}
+                onSuccess={() => {
+                    setSelectedProducts(new Set());
+                    fetchProducts();
+                }}
             />
-             <ProductImportPreviewDialog
+             {/* <ProductImportPreviewDialog
                 isOpen={isProductImportPreviewOpen}
                 onOpenChange={setIsProductImportPreviewOpen}
                 analysis={productImportAnalysis}
                 onConfirm={handleConfirmImport}
                 isImporting={isImporting}
-            />
+            /> */}
         </div>
     );
 }

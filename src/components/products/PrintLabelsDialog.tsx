@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { productService } from '@/services';
 import type { Product } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -10,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Printer } from 'lucide-react';
 import { BarcodeLabel } from './BarcodeLabel';
+import { productRepository } from '@/repositories';
 
 interface PrintLabelsDialogProps {
   isOpen: boolean;
@@ -19,23 +19,25 @@ interface PrintLabelsDialogProps {
 
 export function PrintLabelsDialog({ isOpen, onOpenChange, productIds }: PrintLabelsDialogProps) {
   const products = useLiveQuery(
-    () => (isOpen ? productService.getProductsByIds(productIds) : Promise.resolve(undefined)),
+    () => (isOpen ? productRepository.bulkGet(productIds.map(Number)) : Promise.resolve(undefined)),
     [isOpen, productIds]
   );
   
   const [labelQuantities, setLabelQuantities] = useState<Record<number, number>>({});
 
+  const validProducts = useMemo(() => products?.filter((p): p is Product => p !== undefined) || [], [products]);
+
   useEffect(() => {
-    if (isOpen && products) {
+    if (isOpen && validProducts.length > 0) {
       const initialQuantities: Record<number, number> = {};
-      products.forEach(p => {
+      validProducts.forEach(p => {
         if(typeof p.id === 'number') {
             initialQuantities[p.id] = 1;
         }
       });
       setLabelQuantities(initialQuantities);
     }
-  }, [isOpen, products]);
+  }, [isOpen, validProducts]);
 
   const handleQuantityChange = (productId: number, quantity: string) => {
     const num = parseInt(quantity, 10);
@@ -43,10 +45,10 @@ export function PrintLabelsDialog({ isOpen, onOpenChange, productIds }: PrintLab
   };
 
   const labelsToPrint = useMemo(() => {
-    if (!products) return [];
+    if (!validProducts) return [];
     const labels: React.ReactElement[] = [];
     
-    const sortedProducts = [...products].sort((a,b) => a.name.localeCompare(b.name));
+    const sortedProducts = [...validProducts].sort((a,b) => a.name.localeCompare(b.name));
     sortedProducts.forEach(product => {
       if (typeof product.id !== 'number') return;
       const quantity = labelQuantities[product.id] || 0;
@@ -55,7 +57,7 @@ export function PrintLabelsDialog({ isOpen, onOpenChange, productIds }: PrintLab
       }
     });
     return labels;
-  }, [products, labelQuantities]);
+  }, [validProducts, labelQuantities]);
 
   const handlePrint = () => {
     window.print();
@@ -75,7 +77,7 @@ export function PrintLabelsDialog({ isOpen, onOpenChange, productIds }: PrintLab
             <div className="col-span-3 overflow-y-auto pr-4 border-r print-hide">
                 <h3 className="font-semibold mb-4">Produits sélectionnés</h3>
                 <div className="space-y-4">
-                    {products?.sort((a,b) => a.name.localeCompare(b.name)).map(product => (
+                    {validProducts?.sort((a,b) => a.name.localeCompare(b.name)).map(product => (
                         <div key={product.id} className="flex items-center justify-between gap-2">
                             <Label htmlFor={`qty-${product.id}`} className="flex-grow truncate" title={product.name}>{product.name}</Label>
                             <Input

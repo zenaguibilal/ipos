@@ -9,10 +9,11 @@ import { toast } from 'sonner';
 import type { CompanyProfile } from '@/lib/types';
 import { Skeleton } from '../ui/skeleton';
 import { Loader2 } from 'lucide-react';
-import { useSettingsStore } from '@/stores/settingsStore';
+import { useAppStore } from '@/stores/appStore';
 
 export function CompanyProfileForm() {
-    const { profile, isLoading, updateProfile } = useSettingsStore();
+    const { profile, isSettingsLoading: isLoading } = useAppStore(state => state);
+    const { updateProfile } = useAppStore(state => state.actions);
     const [formState, setFormState] = useState<Partial<CompanyProfile>>({});
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -34,8 +35,17 @@ export function CompanyProfileForm() {
         setIsSaving(true);
         setError(null);
 
-        const dataToSave: Partial<CompanyProfile> = {
-            ...formState,
+        const dataToSave: Partial<Omit<CompanyProfile, 'id' | 'userId' | 'createdAt' | 'updatedAt'>> = {
+            companyName: formState.companyName || undefined,
+            address: formState.address || undefined,
+            city: formState.city || undefined,
+            zipCode: formState.zipCode || undefined,
+            country: formState.country || undefined,
+            phone: formState.phone || undefined,
+            email: formState.email || undefined,
+            website: formState.website || undefined,
+            vatNumber: formState.vatNumber || undefined,
+            rcNumber: formState.rcNumber || undefined,
             goldPricePerGram: formState.goldPricePerGram ? Number(formState.goldPricePerGram) : undefined,
             prix_pain: formState.prix_pain ? Number(formState.prix_pain) : undefined,
         };

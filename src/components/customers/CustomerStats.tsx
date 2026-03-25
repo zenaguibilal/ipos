@@ -3,22 +3,24 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Users, AlertTriangle, UserX } from 'lucide-react';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '@/lib/database';
+import { useEffect, useState } from 'react';
+import { customerService } from '@/services/customer.service';
+import { toast } from 'sonner';
 
 export function CustomerStats() {
-  const stats = useLiveQuery(() => 
-      db.customers.toArray().then(customers => {
-          if (!customers) {
-              return { total: 0, overdue: 0, overLimit: 0 };
-          }
-          return {
-              total: customers.length,
-              overdue: customers.filter(c => c.debtStatus === 'overdue').length,
-              overLimit: customers.filter(c => c.isOverLimit).length,
-          };
-      })
-  );
+  const [stats, setStats] = useState<{ total: number; overdue: number; overLimit: number; } | undefined>(undefined);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+        try {
+            const data = await customerService.getStats();
+            setStats(data);
+        } catch (error) {
+            toast.error("Impossible de charger les statistiques des clients.");
+        }
+    }
+    fetchStats();
+  }, []);
 
   const isLoading = stats === undefined;
 

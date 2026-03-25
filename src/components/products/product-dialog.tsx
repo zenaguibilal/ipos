@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -10,11 +9,11 @@ import { toast } from 'sonner';
 import type { Product, Supplier } from '@/lib/types';
 import { Loader2, X, AlertTriangle } from 'lucide-react';
 import { Badge } from '../ui/badge';
-import { productService } from '@/services';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { DatePicker } from '../ui/date-picker';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
 import { Combobox } from '../ui/combobox';
+import { productService } from '@/services/product.service';
 
 interface ProductDialogProps {
     isOpen: boolean;
@@ -22,25 +21,26 @@ interface ProductDialogProps {
     product: Product | null;
     categories: string[];
     suppliers: Supplier[];
+    onSuccess: () => void;
 }
 
-const initialFormState = {
+const initialFormState: Partial<Product> = {
     name: '',
     category: '',
-    price: '',
-    purchasePrice: '',
-    quantity: '',
-    minStockLevel: '10',
-    barcodes: [] as string[],
+    price: 0,
+    purchasePrice: 0,
+    quantity: 0,
+    minStockLevel: 10,
+    barcodes: [],
     imageUrl: '',
-    unite: 'Pièce' as Product['unite'],
-    dateExpiration: undefined as Date | undefined,
-    supplierUuid: undefined as string | undefined,
+    unite: 'Pièce',
+    dateExpiration: undefined,
+    supplierId: undefined,
 };
 
 const units: NonNullable<Product['unite']>[] = ['Pièce', 'Kg', 'Litre', 'Boîte', 'Carton', 'Sachet', 'Bouteille'];
 
-export function ProductDialog({ isOpen, onOpenChange, product, categories, suppliers }: ProductDialogProps) {
+export function ProductDialog({ isOpen, onOpenChange, product, categories, suppliers, onSuccess }: ProductDialogProps) {
     const [formState, setFormState] = useState(initialFormState);
     const [currentBarcode, setCurrentBarcode] = useState('');
     const [error, setError] = useState<string | null>(null);
@@ -50,25 +50,16 @@ export function ProductDialog({ isOpen, onOpenChange, product, categories, suppl
     useEffect(() => {
         if (product && isOpen) {
             setFormState({
-                name: product.name,
-                category: product.category || '',
-                price: String(product.price),
-                purchasePrice: String(product.purchasePrice),
-                quantity: String(product.quantity),
-                minStockLevel: String(product.minStockLevel),
-                barcodes: product.barcodes || [],
-                imageUrl: product.imageUrl || '',
-                unite: product.unite || 'Pièce',
+                ...product,
                 dateExpiration: product.dateExpiration ? new Date(product.dateExpiration) : undefined,
-                supplierUuid: product.supplierUuid,
             });
         } else if (!product && isOpen) {
             setFormState(initialFormState);
         }
     }, [product, isOpen]);
     
-    const priceNum = parseFloat(formState.price);
-    const purchasePriceNum = parseFloat(formState.purchasePrice);
+    const priceNum = Number(formState.price);
+    const purchasePriceNum = Number(formState.purchasePrice);
     const priceWarning = !isNaN(priceNum) && !isNaN(purchasePriceNum) && priceNum > 0 && purchasePriceNum > 0 && priceNum < purchasePriceNum;
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -77,56 +68,47 @@ export function ProductDialog({ isOpen, onOpenChange, product, categories, suppl
     };
 
     const handleAddBarcode = () => {
-        if (currentBarcode.trim() && !formState.barcodes.includes(currentBarcode.trim())) {
-            setFormState(prev => ({ ...prev, barcodes: [...prev.barcodes, currentBarcode.trim()] }));
+        if (currentBarcode.trim() && !formState.barcodes?.includes(currentBarcode.trim())) {
+            setFormState(prev => ({ ...prev, barcodes: [...(prev.barcodes || []), currentBarcode.trim()] }));
             setCurrentBarcode('');
         }
     };
     
     const handleRemoveBarcode = (barcodeToRemove: string) => {
-        setFormState(prev => ({...prev, barcodes: prev.barcodes.filter(b => b !== barcodeToRemove)}));
+        setFormState(prev => ({...prev, barcodes: prev.barcodes?.filter(b => b !== barcodeToRemove)}));
     };
 
     const proceedWithSubmit = async () => {
         setError(null);
         setIsLoading(true);
 
-        const { name, category, price, purchasePrice, quantity, minStockLevel, barcodes, imageUrl, unite, dateExpiration, supplierUuid } = formState;
-
-        if (!name) {
-            setError("Le nom du produit est requis.");
-            setIsLoading(false);
-            return;
-        }
-
-        const priceNum = parseFloat(price);
-        const purchasePriceNum = parseFloat(purchasePrice);
-        const quantityNum = parseInt(quantity, 10);
-        const minStockNum = parseInt(minStockLevel, 10);
-
-        if (isNaN(priceNum) || isNaN(purchasePriceNum) || isNaN(quantityNum) || isNaN(minStockNum)) {
-            setError("Veuillez entrer des valeurs numériques valides pour les prix et les quantités.");
-            setIsLoading(false);
-            return;
-        }
-        
-        const productData: Omit<Product, 'id' | 'uuid'> = {
-            name, category, price: priceNum, purchasePrice: purchasePriceNum, quantity: quantityNum,
-            minStockLevel: minStockNum, barcodes, imageUrl, unite, dateExpiration, supplierUuid,
-        };
-
         try {
+            const productData: Omit<Product, 'id' | 'createdAt' | 'updatedAt' | 'userId' | 'stockStatus'> = {
+                name: formState.name!,
+                category: formState.category || 'Non classé',
+                price: Number(formState.price) || 0,
+                purchasePrice: Number(formState.purchasePrice) || 0,
+                quantity: Number(formState.quantity) || 0,
+                minStockLevel: Number(formState.minStockLevel) || 0,
+                barcodes: formState.barcodes || [],
+                imageUrl: formState.imageUrl || null,
+                unite: formState.unite || 'Pièce',
+                dateExpiration: formState.dateExpiration || null,
+                supplierId: formState.supplierId || null,
+            };
+
             if (product && product.id) {
-                await productService.updateProduct(product.id as number, productData);
-                toast.success(`Produit ${name} mis à jour.`);
+                await productService.updateProduct(product.id, productData);
+                toast.success(`Produit ${productData.name} mis à jour.`);
             } else {
                 await productService.addProduct(productData);
-                toast.success(`Produit ${name} ajouté.`);
+                toast.success(`Produit ${productData.name} ajouté.`);
             }
+            onSuccess();
             onOpenChange(false);
         } catch (err: any) {
-            setError("Une erreur est survenue.");
-            toast.error("Échec de l'opération.", { description: err.message });
+            setError(err.message || "Une erreur est survenue.");
+            toast.error("Échec de l'opération.");
         } finally {
             setIsLoading(false);
         }
@@ -141,7 +123,7 @@ export function ProductDialog({ isOpen, onOpenChange, product, categories, suppl
         }
     };
     
-    const supplierOptions = suppliers.map(s => ({ value: s.uuid, label: s.name }));
+    const supplierOptions = suppliers.map(s => ({ value: s.id, label: s.name }));
 
     return (
         <>
@@ -216,8 +198,8 @@ export function ProductDialog({ isOpen, onOpenChange, product, categories, suppl
                             <Label>Fournisseur (Optionnel)</Label>
                              <Combobox
                                 options={supplierOptions}
-                                value={formState.supplierUuid || ''}
-                                onSelect={(value) => setFormState(s => ({ ...s, supplierUuid: value }))}
+                                value={formState.supplierId || ''}
+                                onSelect={(value) => setFormState(s => ({ ...s, supplierId: value }))}
                                 placeholder="Sélectionner un fournisseur..."
                                 searchPlaceholder="Rechercher..."
                                 notFoundMessage="Aucun fournisseur trouvé."
@@ -235,7 +217,7 @@ export function ProductDialog({ isOpen, onOpenChange, product, categories, suppl
                                 <Button type="button" variant="outline" onClick={handleAddBarcode}>Ajouter</Button>
                             </div>
                             <div className="flex flex-wrap gap-2 pt-2">
-                                {formState.barcodes.map(barcode => (
+                                {formState.barcodes?.map(barcode => (
                                     <Badge key={barcode} variant="secondary">
                                         {barcode}
                                         <button type="button" onClick={() => handleRemoveBarcode(barcode)} className="ml-2 rounded-full p-0.5 hover:bg-destructive/20 text-destructive">
@@ -247,7 +229,7 @@ export function ProductDialog({ isOpen, onOpenChange, product, categories, suppl
                         </div>
                          <div className="space-y-2">
                             <Label htmlFor="imageUrl">URL de l'image (Optionnel)</Label>
-                            <Input id="imageUrl" value={formState.imageUrl} onChange={handleInputChange} placeholder="https://exemple.com/image.jpg"/>
+                            <Input id="imageUrl" value={formState.imageUrl || ''} onChange={handleInputChange} placeholder="https://exemple.com/image.jpg"/>
                         </div>
                     </div>
                     <DialogFooter>

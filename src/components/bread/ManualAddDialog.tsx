@@ -9,8 +9,8 @@ import { Label } from '@/components/ui/label';
 import { breadService } from '@/services';
 import { toast } from 'sonner';
 import { Plus } from 'lucide-react';
-import type { BreadClient } from '@/lib/types';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { breadRepository } from '@/repositories';
 
 interface ManualAddDialogProps {
     currentDate: string;
@@ -22,7 +22,7 @@ export function ManualAddDialog({ currentDate }: ManualAddDialogProps) {
     const [quantity, setQuantity] = useState(10);
     
     const manualClients = useLiveQuery(
-        () => isOpen ? breadService.getManualBreadClients() : Promise.resolve([]),
+        () => isOpen ? breadRepository.getManualClients() : Promise.resolve([]),
         [isOpen]
     );
 

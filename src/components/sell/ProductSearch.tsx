@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '@/lib/database';
+import { productRepository } from '@/repositories';
 
 interface ProductSearchProps {
     onProductSelect: (product: Product, quantity: number) => void;
@@ -74,10 +74,10 @@ export const ProductSearch = forwardRef<{focus: () => void}, ProductSearchProps>
     const [selectedCategory, setSelectedCategory] = useState('all');
     const inputRef = useRef<HTMLInputElement>(null);
     
-    const categories = useLiveQuery(() => productService.getProductCategories());
+    const categories = useLiveQuery(() => productRepository.getCategories());
 
     const filteredProducts = useLiveQuery(
-        () => productService.getProducts({ query: debouncedQuery, category: selectedCategory, stockStatus: 'in_stock' }),
+        () => productRepository.filter({ query: debouncedQuery, category: selectedCategory, stockStatus: 'in_stock' }),
         [debouncedQuery, selectedCategory]
     );
 
@@ -105,6 +105,7 @@ export const ProductSearch = forwardRef<{focus: () => void}, ProductSearchProps>
     const addCustomProduct = (name: string, price: number) => {
         const customProduct: Product = {
             id: `custom-${Date.now()}`,
+            uuid: `custom-${Date.now()}`,
             name: `(Perso) ${name}`,
             price,
             purchasePrice: price, // Assume purchase price is same as selling for custom items

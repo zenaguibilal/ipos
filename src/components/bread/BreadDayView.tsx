@@ -14,16 +14,17 @@ import { breadService } from '@/services';
 import { Loader2 } from 'lucide-react';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Wheat } from 'lucide-react';
+import { useAppStore } from '@/stores/appStore';
 
 interface BreadDayViewProps {
     orders: BreadOrderWithClient[];
     currentDate: string;
-    breadPrice: number;
 }
 
-export function BreadDayView({ orders, currentDate, breadPrice }: BreadDayViewProps) {
+export function BreadDayView({ orders, currentDate }: BreadDayViewProps) {
     const [selectedOrders, setSelectedOrders] = useState<Set<number>>(new Set());
     const [isConverting, setIsConverting] = useState(false);
+    const breadPrice = useAppStore((state) => state.profile?.prix_pain) || 0;
 
     const handleToggleSelection = (orderId: number) => {
         setSelectedOrders(prev => {
