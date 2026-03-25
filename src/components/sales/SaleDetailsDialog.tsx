@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -29,36 +30,14 @@ export function SaleDetailsDialog({
     isOpen,
     onOpenChange,
     sale,
+    customerName: initialCustomerName,
 }: {
     isOpen: boolean;
     onOpenChange: (open: boolean) => void;
     sale: Sale | null;
+    customerName?: string;
 }) {
-    const [customer, setCustomer] = useState<Customer | null>(null);
-    const [isLoading, setIsLoading] = useState(false);
-
-    useEffect(() => {
-        const fetchCustomer = async () => {
-            if (isOpen && sale?.customerUuid) {
-                setIsLoading(true);
-                try {
-                    const cust = await customerService.getCustomerByUuid(sale.customerUuid);
-                    setCustomer(cust || null);
-                } catch (error) {
-                    toast.error("Impossible de charger les informations du client.");
-                } finally {
-                    setIsLoading(false);
-                }
-            } else {
-                setCustomer(null);
-            }
-        };
-        fetchCustomer();
-    }, [isOpen, sale]);
-
     if (!sale) return null;
-
-    const customerName = isLoading ? "Chargement..." : customer ? `${customer.firstName} ${customer.lastName}` : 'Client de passage';
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -66,7 +45,7 @@ export function SaleDetailsDialog({
                 <DialogHeader>
                     <DialogTitle>Détails de la vente</DialogTitle>
                     <DialogDescription>
-                        Facture n°: <span className="font-mono font-semibold">{sale.invoiceNumber}</span> | Client: {customerName}
+                        Facture n°: <span className="font-mono font-semibold">{sale.invoiceNumber}</span> | Client: {initialCustomerName || 'Client de passage'}
                         <br />
                         Date: {format(safeToDate(sale.createdAt!), 'd MMMM yyyy HH:mm', { locale: fr })}
                     </DialogDescription>

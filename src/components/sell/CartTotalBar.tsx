@@ -1,3 +1,4 @@
+
 'use client';
 
 import { calculateCartTotals, formatCurrency } from '@/lib/utils';

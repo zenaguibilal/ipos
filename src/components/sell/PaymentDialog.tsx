@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -42,7 +43,7 @@ export function PaymentDialog({ isOpen, onOpenChange, onSaleFinalized }: Payment
     const [showLossAlert, setShowLossAlert] = useState(false);
     const [lossItems, setLossItems] = useState<CartItem[]>([]);
 
-    const { subtotal, discountAmount, total } = cart ? calculateCartTotals(cart) : { subtotal: 0, discountAmount: 0, total: 0 };
+    const { total } = cart ? calculateCartTotals(cart) : { total: 0 };
 
     const cashAmountNum = parseFloat(cashAmount) || 0;
     const creditAmountNum = parseFloat(creditAmount) || 0;
@@ -66,15 +67,16 @@ export function PaymentDialog({ isOpen, onOpenChange, onSaleFinalized }: Payment
         } else if (!isOpen) {
             setIsLoading(false);
         }
-    }, [isOpen, cart, total]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isOpen, cart]);
 
-    const initializePayment = () => {
+    const initializePayment = useCallback(() => {
         setPaymentMode('cash');
         setCashAmount(String(total));
         setCreditAmount('0');
         setDueDate(undefined);
         setShowLossAlert(false);
-    };
+    }, [total]);
 
     const handlePaymentModeChange = (mode: PaymentMode) => {
         setPaymentMode(mode);

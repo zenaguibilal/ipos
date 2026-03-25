@@ -1,3 +1,4 @@
+
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import type { Cart, Customer, Product, CompanyProfile } from '@/lib/types';
@@ -15,6 +16,7 @@ type ViewMode = 'grid' | 'list';
 interface AppState {
     // Session Slice
     session: Session | null;
+    user: Session['user'] | null;
     sessionLoading: boolean;
 
     // Cart Slice
@@ -73,6 +75,7 @@ export const useAppStore = create<AppState>()(
     immer((set, get) => ({
         // Initial State
         session: null,
+        user: null,
         sessionLoading: true,
         cart: {
             ...initialCartState,
@@ -88,19 +91,19 @@ export const useAppStore = create<AppState>()(
         actions: {
             // == SESSION ACTIONS ==
             setSession: (session) => {
-                set({ session, sessionLoading: false });
+                set({ session, user: session?.user ?? null, sessionLoading: false });
             },
             signIn: async (email, password) => {
                 const session = await authService.signIn(email, password);
-                set({ session });
+                set({ session, user: session?.user ?? null });
             },
              signUp: async (email, password) => {
                 const session = await authService.signUp(email, password);
-                set({ session });
+                set({ session, user: session?.user ?? null });
             },
             signOut: async () => {
                 await authService.signOut();
-                set({ session: null, profile: null, cart: { ...initialCartState, customerUuid: null }, cartCustomer: null });
+                set({ session: null, user: null, profile: null, cart: { ...initialCartState, customerUuid: null }, cartCustomer: null });
             },
             
             // == DATA ACTIONS ==

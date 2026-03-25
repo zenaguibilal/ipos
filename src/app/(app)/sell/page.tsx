@@ -1,3 +1,4 @@
+
 'use client';
 
 import { CartDisplay } from '@/components/sell/CartDisplay';
@@ -23,7 +24,7 @@ export default function SellPage() {
         cartCustomer: state.cartCustomer,
         isCartLoading: state.isCartLoading,
     }));
-    const { addProductToCart, clearCart, finalizeSale } = useAppActions();
+    const { addProductToCart } = useAppActions();
     
     const [isProductSheetOpen, setIsProductSheetOpen] = useState(false);
     const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
