@@ -2,20 +2,14 @@ import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import type { Cart, Customer, Product, CompanyProfile } from '@/lib/types';
 import { toast } from 'sonner';
-import { v4 as uuidv4 } from 'uuid';
 import { authService } from '@/services/auth.service';
 import { customerService } from '@/services/customer.service';
 import { profileService } from '@/services/profile.service';
 import { salesService } from '@/services/sales.service';
 import { inventoryService } from '@/services/inventory.service';
+import type { Session } from '@supabase/supabase-js';
 
 type ViewMode = 'grid' | 'list';
-
-// This is a mock session for the new architecture. It will be replaced by Supabase's user object.
-interface Session {
-    id: string;
-    email: string;
-}
 
 // Define the state structure
 interface AppState {
@@ -38,8 +32,9 @@ interface AppState {
     // Actions
     actions: {
         // Session Actions
-        initSession: () => void;
-        signIn: (email: string, password: string) => Promise<void>;
+        setSession: (session: Session | null) => void;
+        signIn: (email: string, password?: string) => Promise<void>;
+        signUp: (email: string, password?: string) => Promise<void>;
         signOut: () => Promise<void>;
 
         // Data Actions (These are high-level actions that might interact with services)
@@ -92,17 +87,20 @@ export const useAppStore = create<AppState>()(
         // Actions Implementation
         actions: {
             // == SESSION ACTIONS ==
-            initSession: () => {
-                const session = authService.getSession();
+            setSession: (session) => {
                 set({ session, sessionLoading: false });
             },
             signIn: async (email, password) => {
                 const session = await authService.signIn(email, password);
                 set({ session });
             },
+             signUp: async (email, password) => {
+                const session = await authService.signUp(email, password);
+                set({ session });
+            },
             signOut: async () => {
                 await authService.signOut();
-                set({ session: null, cart: { ...initialCartState, customerUuid: null }, cartCustomer: null });
+                set({ session: null, profile: null, cart: { ...initialCartState, customerUuid: null }, cartCustomer: null });
             },
             
             // == DATA ACTIONS ==
@@ -210,6 +208,7 @@ export const useAppStore = create<AppState>()(
 
                 // 2. Adjust inventory for each item sold.
                 for (const item of cart.items) {
+                    // Only adjust stock for real products, not custom ones.
                     if (item.user_id !== 'custom') { 
                         await inventoryService.adjustStock(item.uuid, -item.cartQuantity, 'sale', sale.uuid);
                     }
