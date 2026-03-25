@@ -11,6 +11,7 @@ import { fr } from 'date-fns/locale';
 import { safeToDate, formatCurrency } from '@/lib/utils';
 import { Badge } from '../ui/badge';
 import { cn } from '@/lib/utils';
+import { useAppStore } from '@/stores/appStore';
 
 interface SalesHistoryCardProps {
     sale: Sale;
@@ -60,7 +61,7 @@ const SalesHistoryCardComponent = ({ sale, customerName, onViewDetails, onCancel
                 </div>
                 <div className="flex justify-between items-center text-sm">
                     <span className="text-muted-foreground">Articles</span>
-                    <span className="font-semibold">{sale.items.length}</span>
+                    <span className="font-semibold">{sale.items?.length || 0}</span>
                 </div>
                  <div className="flex justify-between items-center text-sm">
                     <span className="text-muted-foreground">Statut</span>

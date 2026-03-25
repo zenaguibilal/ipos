@@ -23,6 +23,7 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useEffect, useState } from 'react';
 import { customerService } from '@/services/customer.service';
+import { toast } from 'sonner';
 
 export function SaleDetailsDialog({
     isOpen,
@@ -34,12 +35,20 @@ export function SaleDetailsDialog({
     sale: Sale | null;
 }) {
     const [customer, setCustomer] = useState<Customer | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
         const fetchCustomer = async () => {
             if (isOpen && sale?.customerUuid) {
-                const cust = await customerService.getCustomerByUuid(sale.customerUuid);
-                setCustomer(cust || null);
+                setIsLoading(true);
+                try {
+                    const cust = await customerService.getCustomerByUuid(sale.customerUuid);
+                    setCustomer(cust || null);
+                } catch (error) {
+                    toast.error("Impossible de charger les informations du client.");
+                } finally {
+                    setIsLoading(false);
+                }
             } else {
                 setCustomer(null);
             }
@@ -49,7 +58,7 @@ export function SaleDetailsDialog({
 
     if (!sale) return null;
 
-    const customerName = customer ? `${customer.firstName} ${customer.lastName}` : 'Client de passage';
+    const customerName = isLoading ? "Chargement..." : customer ? `${customer.firstName} ${customer.lastName}` : 'Client de passage';
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -73,7 +82,7 @@ export function SaleDetailsDialog({
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {sale.items.map((item, index) => (
+                            {sale.items?.map((item, index) => (
                                 <TableRow key={index}>
                                     <TableCell>{item.name}</TableCell>
                                     <TableCell className="text-center">{item.quantity}</TableCell>

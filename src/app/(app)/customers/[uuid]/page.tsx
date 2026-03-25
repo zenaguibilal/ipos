@@ -64,7 +64,13 @@ export default function CustomerDetailPage() {
     },[fetchCustomerData]);
 
     const handleSuccessfulPayment = useCallback(async () => {
+        toast.success("Paiement enregistré. Mise à jour du statut du client...");
         await fetchCustomerData();
+        // Also refresh activity list
+        setActivity([]);
+        setActivityPage(1);
+        setHasMoreActivity(true);
+        setIsLoadingActivity(true);
     }, [fetchCustomerData]);
 
     // Reset pagination when customer changes
@@ -169,7 +175,7 @@ export default function CustomerDetailPage() {
                  </Button>
                  <PageHeader 
                     title={`${customer.firstName} ${customer.lastName}`}
-                    description={`ID Client: ${customer.uuid}`}
+                    description={`ID Client: ${customer.uuid.substring(0,8)}...`}
                  />
             </div>
 

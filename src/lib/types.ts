@@ -215,7 +215,8 @@ export interface Supplier {
 export interface BreadClient {
     uuid: string;
     user_id: string;
-    nom: string;
+    customerUuid: string;
+    nom: string; // Denormalized name for quick display
     actif: boolean;
     type_recurrence: 'quotidien' | 'jours_specifiques' | 'aucun';
     quantite_defaut?: number;

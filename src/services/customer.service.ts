@@ -1,15 +1,22 @@
 'use client';
 import { v4 as uuidv4 } from 'uuid';
 import type { Customer, Sale } from '@/lib/types';
-import { 
-    customerRepository, 
-    saleRepository, 
-    returnRepository, 
-    paymentRepository 
-} from '@/repositories';
+import { customerRepository } from '@/repositories/customer.repository';
+import { saleRepository } from '@/repositories/sale.repository';
+import { returnRepository } from '@/repositories/return.repository';
+import { paymentRepository } from '@/repositories/payment.repository';
+import { useAppStore } from '@/stores/appStore';
 
 class CustomerService {
     
+    private getUserId(): string {
+        const session = useAppStore.getState().session;
+        if (!session?.user?.id) {
+            throw new Error("User not authenticated");
+        }
+        return session.user.id;
+    }
+
     async getCustomers(): Promise<Customer[]> {
         return customerRepository.getAll();
     }
@@ -37,7 +44,7 @@ class CustomerService {
         
         const newCustomer: Customer = {
             uuid: uuidv4(),
-            user_id: 'user_id_placeholder', // This will be set by the repository layer
+            user_id: this.getUserId(),
             firstName: customerData.firstName,
             lastName: customerData.lastName,
             searchName,
@@ -72,10 +79,8 @@ class CustomerService {
     }
 
     async deleteCustomer(uuid: string): Promise<void> {
-        const sales = await saleRepository.findByCustomerUuid(uuid);
-        if (sales.length > 0) {
-            throw new Error("Impossible de supprimer un client avec un historique de ventes.");
-        }
+        // The check for existing sales is now orchestrated by the calling component
+        // to avoid cross-service dependencies.
         await customerRepository.delete(uuid);
     }
     
@@ -89,9 +94,13 @@ class CustomerService {
     }
     
     async getCustomerActivity(customerUuid: string, page: number, pageSize: number): Promise<any[]> {
-        const sales = await saleRepository.findByCustomerUuid(customerUuid);
-        const payments = await paymentRepository.findByCustomerUuid(customerUuid);
-        const returns = await returnRepository.findByCustomerUuid(customerUuid);
+        // In a real high-performance app, this would be a single server-side query.
+        // For now, we fetch separately and combine.
+        const [sales, payments, returns] = await Promise.all([
+            saleRepository.findByCustomerUuid(customerUuid),
+            paymentRepository.findByCustomerUuid(customerUuid),
+            returnRepository.findByCustomerUuid(customerUuid)
+        ]);
 
         const activity = [
             ...sales.map(s => ({ ...s, type: 'sale', date: s.createdAt })),
@@ -126,16 +135,23 @@ class CustomerService {
 
         const now = new Date();
 
-        const sales = await saleRepository.findByCustomerUuid(customerUuid);
-        const payments = await paymentRepository.findByCustomerUuid(customerUuid);
-        const returns = await returnRepository.findByCustomerUuid(customerUuid);
+        // This would be a server-side function (RPC) in a production app for performance
+        const [sales, payments, returns] = await Promise.all([
+             saleRepository.findByCustomerUuid(customerUuid),
+             paymentRepository.findByCustomerUuid(customerUuid),
+             returnRepository.findByCustomerUuid(customerUuid)
+        ]);
+        
 
         const totalInvoiced = sales.reduce((sum, s) => sum + s.total, 0);
         const totalPaidViaPayments = payments.reduce((sum, p) => sum + p.amount, 0);
         const netCreditFromReturns = returns.reduce((sum, r) => sum + (r.totalReturnValue - r.amountRefunded), 0);
-        const totalAmountPaidOnSales = sales.reduce((sum, s) => sum + s.amountPaid, 0);
         
-        const newBalance = totalInvoiced - totalPaidViaPayments - totalAmountPaidOnSales - netCreditFromReturns;
+        // Amount paid directly on a sale is already part of sales data
+        const totalPaidOnSales = sales.reduce((sum, s) => sum + s.amountPaid, 0);
+        
+        // Balance calculation needs to be precise
+        const newBalance = totalInvoiced - totalPaidViaPayments - totalPaidOnSales - netCreditFromReturns;
         const totalSpent = totalInvoiced;
 
         const isOverLimit = customer.creditLimit != null && customer.creditLimit > 0 ? newBalance > customer.creditLimit : false;

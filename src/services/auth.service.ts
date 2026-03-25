@@ -1,43 +1,59 @@
-// In a real Supabase implementation, this will interact with the Supabase client.
-// For now, it mocks session management in-memory.
+'use client';
 
-interface Session {
-    id: string;
-    email: string;
-}
-
-// In-memory session store for the duration of the app lifetime.
-let memorySession: Session | null = null;
+import { createClient } from "@/utils/supabase/client";
 
 class AuthService {
-    /**
-     * Signs a user in. In this mock, password is not checked.
-     * @param email The user's email
-     * @param password The user's password (ignored in mock)
-     * @returns A promise that resolves to the user session.
-     */
-    async signIn(email: string, password?: string): Promise<Session> {
-        console.log(`AuthService: Signing in ${email}`);
-        // In a real app, you would validate credentials here.
-        const mockSession: Session = { id: 'user_id_placeholder', email };
-        memorySession = mockSession;
-        return mockSession;
+    private supabase = createClient();
+
+    async signIn(email: string, password?: string) {
+        if (!password) {
+            throw new Error("Le mot de passe est requis.");
+        }
+        const { data, error } = await this.supabase.auth.signInWithPassword({
+            email,
+            password,
+        });
+
+        if (error) {
+            if (error.message === 'Invalid login credentials') {
+                throw new Error("Email ou mot de passe incorrect.");
+            }
+            throw new Error(error.message);
+        }
+        return data.session;
+    }
+    
+    async signUp(email: string, password?: string) {
+        if (!password) {
+            throw new Error("Le mot de passe est requis.");
+        }
+        const { data, error } = await this.supabase.auth.signUp({
+            email,
+            password,
+        });
+
+        if (error) {
+            throw new Error(error.message);
+        }
+        if (!data.session) {
+            throw new Error("L'inscription a réussi, mais la session n'a pas pu être créée. Veuillez vous connecter.");
+        }
+        return data.session;
     }
 
-    /**
-     * Signs the current user out.
-     */
-    async signOut(): Promise<void> {
-        console.log('AuthService: Signing out');
-        memorySession = null;
+    async signOut() {
+        const { error } = await this.supabase.auth.signOut();
+        if (error) {
+            throw new Error(error.message);
+        }
     }
 
-    /**
-     * Retrieves the current session from memory.
-     * @returns The session object or null if not logged in.
-     */
-    getSession(): Session | null {
-        return memorySession;
+    async getSession() {
+        const { data, error } = await this.supabase.auth.getSession();
+        if (error) {
+            throw new Error(error.message);
+        }
+        return data.session;
     }
 }
 

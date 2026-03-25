@@ -56,7 +56,7 @@ const DebtStatusIcon = ({ status }: { status: Customer['debtStatus']}) => {
 
 const CustomerCardComponent = ({ customer, onEdit, onDelete }: CustomerCardProps) => {
     
-    const creditUsage = customer.creditLimit ? (customer.outstandingBalance / customer.creditLimit) * 100 : 0;
+    const creditUsage = customer.creditLimit && customer.creditLimit > 0 ? (customer.outstandingBalance / customer.creditLimit) * 100 : 0;
 
     return (
         <Card className="flex flex-col transition-all duration-300 hover:shadow-xl hover:-translate-y-1 relative">

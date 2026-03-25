@@ -2,10 +2,21 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import type { Product } from '@/lib/types';
-import { productRepository, inventoryRepository } from '@/repositories';
+import { productRepository } from '@/repositories/product.repository';
 import { calculateStockStatus } from '@/lib/utils';
+import { inventoryRepository } from '@/repositories/inventory.repository';
+import { useAppStore } from '@/stores/appStore';
 
 class ProductService {
+
+    private getUserId(): string {
+        const session = useAppStore.getState().session;
+        if (!session?.user?.id) {
+            throw new Error("User not authenticated");
+        }
+        return session.user.id;
+    }
+
     async getProducts(options?: { sortBy?: string }): Promise<Product[]> {
         return productRepository.getAll(options);
     }
@@ -36,7 +47,7 @@ class ProductService {
         const newProduct: Product = {
             ...productData,
             uuid: uuidv4(),
-            user_id: 'user_id_placeholder', // This will be set by the repository layer
+            user_id: this.getUserId(),
             createdAt: new Date(),
             updatedAt: new Date(),
             stockStatus: calculateStockStatus(productData.quantity, productData.minStockLevel),
@@ -65,26 +76,18 @@ class ProductService {
     }
 
     async deleteProduct(uuid: string): Promise<void> {
-        const product = await productRepository.findByUuid(uuid);
-        if (!product) return;
-
-        const hasLogs = await inventoryRepository.hasLogs(product.uuid);
-        if (hasLogs) {
-            throw new Error("Suppression impossible: ce produit a un historique de transactions (ventes, stocks...).");
-        }
+        // The check for inventory logs is now orchestrated by the calling component
+        // to avoid cross-service dependencies.
         await productRepository.delete(uuid);
     }
     
-    async deleteProducts(uuids: string[]): Promise<void> {
-        for (const uuid of uuids) {
-            const hasLogs = await inventoryRepository.hasLogs(uuid);
-            if (hasLogs) {
-                const product = await productRepository.findByUuid(uuid);
-                throw new Error(`Suppression impossible: Le produit "${product?.name || 'inconnu'}" a un historique de transactions.`);
-            }
-        }
-        
+    async bulkDelete(uuids: string[]): Promise<void> {
+         // The check for inventory logs is now orchestrated by the calling component.
         await productRepository.bulkDelete(uuids);
+    }
+
+    async hasInventoryLogs(uuid: string): Promise<boolean> {
+        return inventoryRepository.hasLogs(uuid);
     }
 }
 

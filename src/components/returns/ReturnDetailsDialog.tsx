@@ -55,7 +55,7 @@ export function ReturnDetailsDialog({
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {productReturn.items.map((item, index) => (
+                            {productReturn.items?.map((item, index) => (
                                 <TableRow key={index}>
                                     <TableCell>{item.productName}</TableCell>
                                     <TableCell className="text-center">{item.quantity}</TableCell>
