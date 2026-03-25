@@ -1,7 +1,7 @@
 
-
 export interface Product {
-    id?: number | string; // string for custom products
+    uuid: string;
+    user_id: string;
     name: string;
     category?: string;
     price: number;
@@ -12,14 +12,16 @@ export interface Product {
     imageUrl?: string;
     unite?: 'Pièce' | 'Kg' | 'Litre' | 'Boîte' | 'Carton' | 'Sachet' | 'Bouteille';
     dateExpiration?: Date;
-    fournisseurId?: number;
+    supplierUuid?: string;
     dateMajPrix?: Date;
     createdAt?: Date;
     updatedAt?: Date;
+    stockStatus?: 'in_stock' | 'low_stock' | 'out_of_stock';
 }
 
 export interface Customer {
-    id?: number;
+    uuid: string;
+    user_id: string;
     firstName: string;
     lastName: string;
     searchName?: string;
@@ -37,7 +39,7 @@ export interface Customer {
 }
 
 export interface SaleItem {
-    id: number | string; // string for custom items
+    productUuid: string;
     name: string;
     price: number;
     purchasePrice: number;
@@ -46,7 +48,6 @@ export interface SaleItem {
 
 // Represents an item in the live shopping cart
 export interface CartItem extends Product {
-    id: number | string; // Can be a string for custom products
     cartQuantity: number;
     flash?: boolean; // For UI animation
 }
@@ -56,7 +57,7 @@ export interface Cart {
     id:string;
     name: string;
     items: CartItem[];
-    customerId: number | null;
+    customerUuid: string | null;
     customerName: string;
     discount: {
         type: 'fixed' | 'percentage';
@@ -70,7 +71,8 @@ export interface SalePayment {
 }
 
 export interface Sale {
-    id?: number;
+    uuid: string;
+    user_id: string;
     invoiceNumber: string;
     items: SaleItem[];
     subtotal: number;
@@ -81,17 +83,18 @@ export interface Sale {
     remainingBalance: number;
     paymentStatus: 'paid' | 'partial' | 'unpaid';
     payments: SalePayment[];
-    customerId?: number;
+    customerUuid?: string;
     customerName?: string;
-    clientPainId?: number;
+    breadClientUuid?: string;
     createdAt?: Date;
     updatedAt?: Date;
     dueDate?: Date;
 }
 
 export interface Payment {
-    id?: number;
-    customerId: number;
+    uuid: string;
+    user_id: string;
+    customerUuid: string;
     customerName?: string;
     amount: number;
     paymentDate: Date;
@@ -100,24 +103,9 @@ export interface Payment {
     updatedAt?: Date;
 }
 
-export interface Draft {
-  id?: number;
-  date: Date;
-  customerId: number | null;
-  customerName: string;
-  items: CartItem[];
-  total: number;
-  discount: {
-      type: 'fixed' | 'percentage';
-      value: number;
-  };
-  notes?: string;
-  createdAt?: Date;
-  updatedAt?: Date;
-}
-
 export interface CompanyProfile {
-    id?: 1;
+    uuid: string;
+    user_id: string;
     companyName?: string;
     address?: string;
     city?: string;
@@ -135,7 +123,7 @@ export interface CompanyProfile {
 
 export interface StockIntakeItem {
     id: string; // Unique ID for the item row in UI, not persisted
-    productId?: number; // ID of the product if it exists
+    productUuid?: string; // UUID of the product if it exists
     barcodes: string[];
     name: string;
     category?: string;
@@ -147,13 +135,14 @@ export interface StockIntakeItem {
 }
 
 export interface StockIntake {
-    id?: number;
-    supplierId: number;
+    uuid: string;
+    user_id: string;
+    supplierUuid?: string;
     supplierName?: string;
     invoiceNumber: string;
     invoiceDate: Date;
     items: {
-        productId?: number;
+        productUuid?: string;
         productName: string;
         quantityReceived: number;
         quantityDamaged: number;
@@ -165,7 +154,7 @@ export interface StockIntake {
 }
 
 export interface ReturnItem {
-    productId: number | null;
+    productUuid: string | null;
     productName: string;
     quantity: number;
     price: number; // The price at which it was sold
@@ -174,13 +163,14 @@ export interface ReturnItem {
 }
 
 export interface ProductReturn {
-    id?: number;
-    originalSaleId?: number;
+    uuid: string;
+    user_id: string;
+    originalSaleUuid?: string;
     originalInvoiceNumber: string;
     items: ReturnItem[];
     totalReturnValue: number;
     amountRefunded: number;
-    customerId?: number;
+    customerUuid?: string;
     customerName?: string;
     createdAt?: Date;
     updatedAt?: Date;
@@ -190,7 +180,8 @@ export interface ProductReturn {
 export type ExpenseCategory = 'Loyer' | 'Salaires' | 'Fournisseurs' | 'Services Publics' | 'Marketing' | 'Maintenance' | 'Autre';
 
 export interface Expense {
-    id?: number;
+    uuid: string;
+    user_id: string;
     description: string;
     category: ExpenseCategory;
     amount: number;
@@ -199,96 +190,22 @@ export interface Expense {
     updatedAt?: Date;
 }
 
-export interface Setting {
-    id: string; // The key for the setting
-    value: any;
-}
-
 export type InventoryLogReason = 'sale' | 'return' | 'stock_intake' | 'cancellation' | 'manual_adjustment';
 
 export interface InventoryLog {
-    id?: number;
-    productId: number;
+    uuid: string;
+    user_id: string;
+    productUuid: string;
     change: number; // e.g., -2 for sale, +50 for stock intake
     newQuantity: number;
     reason: InventoryLogReason;
-    relatedId?: number | string; // ID of the sale, return, intake, etc.
+    relatedUuid?: string; // UUID of the sale, return, intake, etc.
     createdAt: Date;
 }
 
-export interface CostingItem extends SaleItem {
-    totalPurchasePrice: number;
-    allocatedDeliveryCost: number;
-    finalCostPerUnit: number;
-    totalFinalCost: number;
-    productId?: number;
-}
-
-export interface DashboardStats {
-    totalRevenue: number;
-    totalProfit: number;
-    salesCount: number;
-    inventoryValue: number;
-    totalExpenses: number;
-}
-
-export interface TopProduct {
-    id: number;
-    name: string;
-    totalRevenue: number;
-    unitsSold: number;
-    totalProfit: number;
-}
-
-export interface TopCustomer {
-    id: number;
-    name: string;
-    totalSpent: number;
-}
-
-export interface DashboardData {
-    stats: DashboardStats;
-    sales: Sale[];
-    expenses: Expense[];
-    topProducts: TopProduct[];
-    topCustomers: TopCustomer[];
-    lowStockProducts: Product[];
-    recentActivity: GlobalActivityItem[];
-}
-
-export interface ImportAnalysis {
-    customersToAdd: any[];
-    customersToUpdate: any[];
-    skippedRows: any[];
-    errorRows: any[];
-    totalRows: number;
-}
-
-export interface ProductImportAnalysis {
-    productsToAdd: any[];
-    productsToUpdate: any[];
-    skippedRows: any[];
-    errorRows: any[];
-    totalRows: number;
-}
-
-export interface GlobalActivityItem {
-    type: 'sale' | 'stock_intake' | 'return' | 'customer' | 'payment';
-    date: Date;
-    id: number | string;
-    description: string;
-    details: string;
-    amount?: number;
-    amountClass?: string;
-}
-
-export interface ZakatData {
-    inventoryValue: number;
-    totalReceivables: number;
-}
-
 export interface Supplier {
-    id?: number;
+    uuid: string;
+    user_id: string;
     name: string;
     contactPerson?: string;
     phone?: string;
@@ -302,7 +219,8 @@ export interface Supplier {
 // =================== Bread Types ===================
 
 export interface BreadClient {
-    id?: number;
+    uuid: string;
+    user_id: string;
     nom: string;
     actif: boolean;
     type_recurrence: 'quotidien' | 'jours_specifiques' | 'aucun';
@@ -321,14 +239,15 @@ export interface BreadClient {
 }
 
 export interface BreadOrder {
-    id?: number;
-    client_pain_id: number;
+    uuid: string;
+    user_id: string;
+    breadClientUuid: string;
     date: string; // YYYY-MM-DD
     quantite: number;
     quantite_origine?: number;
     est_paye: boolean;
     est_livre: boolean;
-    vente_id: number | null;
+    venteUuid: string | null;
     createdAt?: Date;
     updatedAt?: Date;
 }
@@ -337,20 +256,18 @@ export interface BreadOrderWithClient extends BreadOrder {
     client: BreadClient;
 }
 
-export interface DB {
-    products: Product[];
-    customers: Customer[];
-    sales: Sale[];
-    payments: Payment[];
-    stockIntakes: StockIntake[];
-    returns: ProductReturn[];
-    carts: Cart[];
-    drafts: Draft[];
-    companyProfile: CompanyProfile[];
-    expenses: Expense[];
-    settings: Setting[];
-    inventoryLogs: InventoryLog[];
-    suppliers: Supplier[];
-    clients_pain: BreadClient[];
-    commandes_pain: BreadOrder[];
+export interface ImportAnalysis {
+    customersToAdd: any[];
+    customersToUpdate: any[];
+    skippedRows: any[];
+    errorRows: any[];
+    totalRows: number;
+}
+
+export interface ProductImportAnalysis {
+    productsToAdd: any[];
+    productsToUpdate: any[];
+    skippedRows: any[];
+    errorRows: any[];
+    totalRows: number;
 }
