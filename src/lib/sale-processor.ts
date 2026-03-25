@@ -58,7 +58,10 @@ export async function processSaleTransaction(saleData: any): Promise<{ saleId: n
         paymentStatus = 'unpaid';
     }
 
-    const customer = saleData.customerId ? await db.customers.get(saleData.customerId) : undefined;
+    let customer;
+    if (saleData.customerUuid) {
+        customer = await db.customers.where({ uuid: saleData.customerUuid }).first();
+    }
     const dueDate = customer?.settlementDay ? new Date(now.getTime() + customer.settlementDay * 86400000) : saleData.dueDate;
 
     // 4. Create Sale Record
@@ -101,7 +104,7 @@ export async function processSaleTransaction(saleData: any): Promise<{ saleId: n
         if (newBalance > 0) {
             // Check all unpaid sales for this customer, including the one just created
             const unpaidSales = await db.sales
-                .where('customerId').equals(customer.id!)
+                .where('customerUuid').equals(customer.uuid)
                 .and(s => s.sync_status !== 'pending_delete')
                 .toArray();
             const isOverdue = unpaidSales.some(s => s.dueDate && new Date(s.dueDate) < now);

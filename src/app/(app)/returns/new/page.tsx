@@ -103,7 +103,7 @@ export default function NewReturnPage() {
                 items: itemsForService,
                 totalReturnValue,
                 amountRefunded,
-                customerId: foundSale.customerId,
+                customerUuid: foundSale.customerUuid,
                 customerName: foundSale.customerName,
                 notes,
             });
@@ -256,7 +256,7 @@ export default function NewReturnPage() {
                                         {totalReturnValue - amountRefunded >= 0 ? `- ${formatCurrency(totalReturnValue - amountRefunded)}` : `+ ${formatCurrency(Math.abs(totalReturnValue - amountRefunded))}`}
                                     </span>
                                 </div>
-                                {foundSale.customerId && (
+                                {foundSale.customerUuid && (
                                      <div className="flex items-start gap-2 text-xs text-muted-foreground p-2 bg-background rounded">
                                         <Info className="h-4 w-4 flex-shrink-0 mt-0.5" />
                                         <span>Un nombre négatif réduit la dette du client. Un nombre positif l'augmente (si le remboursement est supérieur à la valeur du retour).</span>

@@ -18,7 +18,7 @@ interface ManualAddDialogProps {
 
 export function ManualAddDialog({ currentDate }: ManualAddDialogProps) {
     const [isOpen, setIsOpen] = useState(false);
-    const [selectedClientId, setSelectedClientId] = useState<string>('');
+    const [selectedClientUuid, setSelectedClientUuid] = useState<string>('');
     const [quantity, setQuantity] = useState(10);
     
     const manualClients = useLiveQuery(
@@ -27,7 +27,7 @@ export function ManualAddDialog({ currentDate }: ManualAddDialogProps) {
     );
 
     const handleAdd = async () => {
-        if (!selectedClientId) {
+        if (!selectedClientUuid) {
             toast.error("Veuillez sélectionner un client.");
             return;
         }
@@ -37,10 +37,10 @@ export function ManualAddDialog({ currentDate }: ManualAddDialogProps) {
         }
 
         try {
-            await breadService.addManualBreadOrder(parseInt(selectedClientId, 10), currentDate, quantity);
+            await breadService.addManualBreadOrder(selectedClientUuid, currentDate, quantity);
             toast.success("Commande manuelle ajoutée.");
             setIsOpen(false);
-            setSelectedClientId('');
+            setSelectedClientUuid('');
             setQuantity(10);
         } catch(error: any) {
             toast.error("Erreur lors de l'ajout.", { description: error.message });
@@ -63,11 +63,11 @@ export function ManualAddDialog({ currentDate }: ManualAddDialogProps) {
                     <div className="space-y-4 py-4">
                         <div className="space-y-2">
                             <Label htmlFor="manual-client">Client</Label>
-                            <Select value={selectedClientId} onValueChange={setSelectedClientId}>
+                            <Select value={selectedClientUuid} onValueChange={setSelectedClientUuid}>
                                 <SelectTrigger id="manual-client"><SelectValue placeholder="Sélectionnez un client..."/></SelectTrigger>
                                 <SelectContent>
                                     {manualClients?.map(client => (
-                                        <SelectItem key={client.id} value={String(client.id)}>{client.nom}</SelectItem>
+                                        <SelectItem key={client.uuid} value={client.uuid}>{client.nom}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>

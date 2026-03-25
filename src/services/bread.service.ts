@@ -13,9 +13,9 @@ export class BreadService {
             .and(c => c.sync_status !== 'pending_delete').toArray();
     }
     
-    async addManualBreadOrder(clientId: number, date: string, quantity: number): Promise<BreadOrder> {
+    async addManualBreadOrder(clientUuid: string, date: string, quantity: number): Promise<BreadOrder> {
         return await db.transaction('rw', db.commandes_pain, db.sync_queue, async () => {
-            const existingOrder = await db.commandes_pain.where({ client_pain_id: clientId, date }).first();
+            const existingOrder = await db.commandes_pain.where({ clientPainUuid: clientUuid, date }).first();
             if (existingOrder) {
                 throw new Error("Une commande manuelle existe déjà pour ce client aujourd'hui.");
             }
@@ -23,7 +23,7 @@ export class BreadService {
             const now = new Date();
             const uuid = uuidv4();
             const order: BreadOrder = {
-                client_pain_id: clientId,
+                clientPainUuid: clientUuid,
                 date,
                 quantite: quantity,
                 est_paye: false,
@@ -110,9 +110,9 @@ export class BreadService {
     async deleteBreadClient(id: number): Promise<void> {
         await db.transaction('rw', db.clients_pain, db.commandes_pain, db.sync_queue, async () => {
             const client = await db.clients_pain.get(id);
-            if (!client) return;
+            if (!client || !client.uuid) return;
             
-            const orders = await db.commandes_pain.where('client_pain_id').equals(id).toArray();
+            const orders = await db.commandes_pain.where('clientPainUuid').equals(client.uuid).toArray();
             for(const order of orders) {
                 if (order.uuid) {
                     await db.commandes_pain.update(order.id!, { sync_status: 'pending_delete', updatedAt: new Date(), last_modified_by: syncService.getLocalDeviceId() });
@@ -148,9 +148,9 @@ export class BreadService {
         const orders: Omit<BreadOrder, 'id'>[] = [];
         
         dailyClients.forEach(c => {
-            if (c.quantite_defaut && c.quantite_defaut > 0) {
+            if (c.quantite_defaut && c.quantite_defaut > 0 && c.uuid) {
                 orders.push({
-                    client_pain_id: c.id!,
+                    clientPainUuid: c.uuid,
                     date,
                     quantite: c.quantite_defaut,
                     est_paye: false, est_livre: false, vente_id: null,
@@ -163,9 +163,9 @@ export class BreadService {
         });
 
         specificDayClients.forEach(c => {
-            if (c.jours_semaine?.[weekDay].quantite && c.jours_semaine[weekDay].quantite > 0) {
+            if (c.jours_semaine?.[weekDay].quantite && c.jours_semaine[weekDay].quantite > 0 && c.uuid) {
                 orders.push({
-                    client_pain_id: c.id!,
+                    clientPainUuid: c.uuid,
                     date,
                     quantite: c.jours_semaine[weekDay].quantite,
                     est_paye: false, est_livre: false, vente_id: null,
@@ -187,14 +187,14 @@ export class BreadService {
     
     async getBreadOrdersForDate(date: string): Promise<BreadOrderWithClient[]> {
         const orders = await db.commandes_pain.where({date}).and(o => o.sync_status !== 'pending_delete').toArray();
-        const clientIds = [...new Set(orders.map(o => o.client_pain_id))];
-        const clients = await db.clients_pain.bulkGet(clientIds);
-        const clientMap = new Map(clients.map(c => c && [c.id, c]).filter(Boolean) as [number, BreadClient][]);
+        const clientUuids = [...new Set(orders.map(o => o.clientPainUuid))];
+        const clients = await db.clients_pain.where('uuid').anyOf(clientUuids).toArray();
+        const clientMap = new Map(clients.map(c => [c.uuid, c]));
 
         return orders
             .map(order => ({
                 ...order,
-                client: clientMap.get(order.client_pain_id),
+                client: clientMap.get(order.clientPainUuid),
             }))
             .filter((order): order is BreadOrderWithClient => !!order.client)
             .sort((a,b) => a.client.nom.localeCompare(b.client.nom));
@@ -215,7 +215,7 @@ export class BreadService {
             for (const order of orders) {
                 if (!order || order.vente_id) continue;
                 
-                const client = await db.clients_pain.get(order.client_pain_id);
+                const client = await db.clients_pain.where({ uuid: order.clientPainUuid }).first();
                 const customer = client ? await db.customers.where('searchName').equals(client.nom.toLowerCase()).and(c => c.sync_status !== 'pending_delete').first() : undefined;
                 
                 const saleItem = {
@@ -234,8 +234,8 @@ export class BreadService {
                     total: total,
                     amountPaid: 0,
                     payments: [],
-                    clientPainId: order.client_pain_id,
-                    customerId: customer?.id,
+                    clientPainUuid: order.clientPainUuid,
+                    customerUuid: customer?.uuid,
                     customerName: customer?.searchName || client?.nom,
                 };
                 

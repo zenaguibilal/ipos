@@ -35,20 +35,20 @@ class iPOSDatabase extends Dexie {
             clients_pain: '++id, nom',
             commandes_pain: '++id, client_pain_id, date, &[client_pain_id+date]',
         });
-        // Version 2: Add index for customer lastActivityDate for faster sorting
+        
         this.version(2).stores({
             customers: '++id, &searchName, phone, debtStatus, createdAt, lastActivityDate'
         });
-        // Version 3: Add indexes for product sorting
+        
         this.version(3).stores({
              products: '++id, *barcodes, name, category, fournisseurId, createdAt, price, quantity'
         });
-        // Version 4: Re-add inventoryLogs and remove settings
+        
         this.version(4).stores({
             inventoryLogs: '++id, productId, reason, createdAt',
-            settings: null // This explicitly removes the 'settings' table
+            settings: null
         });
-        // Version 5: Add sync queue and sync status fields to all tables, with performance indexes.
+        
         this.version(5).stores({
             products: '++id, &uuid, *barcodes, name, category, fournisseurId, createdAt, price, quantity, sync_status, updatedAt',
             customers: '++id, &uuid, &searchName, phone, debtStatus, createdAt, lastActivityDate, sync_status, updatedAt',
@@ -64,18 +64,71 @@ class iPOSDatabase extends Dexie {
             inventoryLogs: '++id, &uuid, productId, reason, createdAt, sync_status, updatedAt',
             sync_queue: '++id, createdAt',
         });
-        // Version 6: Refactor FKs to UUIDs and add relevant indexes
+        
         this.version(6).stores({
             products: '++id, &uuid, *barcodes, name, category, supplierUuid, createdAt, price, quantity, sync_status, updatedAt',
-            sales: '++id, &uuid, &invoiceNumber, customerUuid, createdAt, sync_status, updatedAt',
+            sales: '++id, &uuid, &invoiceNumber, customerUuid, createdAt, sync_status, updatedAt, clientPainUuid',
             payments: '++id, &uuid, customerUuid, paymentDate, sync_status, updatedAt',
             stockIntakes: '++id, &uuid, supplierUuid, invoiceDate, createdAt, sync_status, updatedAt',
             returns: '++id, &uuid, originalSaleId, customerUuid, createdAt, sync_status, updatedAt',
             commandes_pain: '++id, &uuid, clientPainUuid, date, &[clientPainUuid+date], sync_status, updatedAt',
-        }).upgrade(tx => {
-            // This upgrade is for schema declaration only. Data migration for FKs is complex
-            // and would require a dedicated migration script. For a fresh start, this is sufficient.
-            console.log("Upgrading to version 6: Foreign keys are now based on UUIDs.");
+        }).upgrade(async tx => {
+            console.log("Upgrading to version 6: Migrating foreign keys to UUIDs.");
+
+            const customerMap = new Map<number, string>();
+            await tx.table('customers').each(c => { if(c.id && c.uuid) customerMap.set(c.id, c.uuid) });
+
+            const supplierMap = new Map<number, string>();
+            await tx.table('suppliers').each(s => { if(s.id && s.uuid) supplierMap.set(s.id, s.uuid) });
+            
+            const breadClientMap = new Map<number, string>();
+            await tx.table('clients_pain').each(bc => { if(bc.id && bc.uuid) breadClientMap.set(bc.id, bc.uuid) });
+
+            await tx.table('products').toCollection().modify(p => {
+                if (p.fournisseurId && supplierMap.has(p.fournisseurId)) {
+                    p.supplierUuid = supplierMap.get(p.fournisseurId);
+                }
+                delete p.fournisseurId;
+            });
+
+            await tx.table('sales').toCollection().modify(s => {
+                if (s.customerId && customerMap.has(s.customerId)) {
+                    s.customerUuid = customerMap.get(s.customerId);
+                }
+                if (s.clientPainId && breadClientMap.has(s.clientPainId)) {
+                    s.clientPainUuid = breadClientMap.get(s.clientPainId);
+                }
+                delete s.customerId;
+                delete s.clientPainId;
+            });
+
+            await tx.table('payments').toCollection().modify(p => {
+                if (p.customerId && customerMap.has(p.customerId)) {
+                    p.customerUuid = customerMap.get(p.customerId);
+                }
+                delete p.customerId;
+            });
+            
+            await tx.table('stockIntakes').toCollection().modify(si => {
+                if (si.supplierId && supplierMap.has(si.supplierId)) {
+                    si.supplierUuid = supplierMap.get(si.supplierId);
+                }
+                delete si.supplierId;
+            });
+
+            await tx.table('returns').toCollection().modify(r => {
+                if (r.customerId && customerMap.has(r.customerId)) {
+                    r.customerUuid = customerMap.get(r.customerId);
+                }
+                delete r.customerId;
+            });
+
+            await tx.table('commandes_pain').toCollection().modify(cp => {
+                if (cp.client_pain_id && breadClientMap.has(cp.client_pain_id)) {
+                    cp.clientPainUuid = breadClientMap.get(cp.client_pain_id);
+                }
+                delete cp.client_pain_id;
+            });
         });
     }
 }

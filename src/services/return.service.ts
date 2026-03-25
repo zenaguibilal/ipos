@@ -45,8 +45,8 @@ export class ReturnService {
                 }
             }
 
-            if (newReturn.customerId) {
-                const customer = await db.customers.get(newReturn.customerId);
+            if (newReturn.customerUuid) {
+                const customer = await db.customers.where({ uuid: newReturn.customerUuid }).first();
                 if (customer && customer.uuid) {
                     const balanceChange = newReturn.amountRefunded - newReturn.totalReturnValue;
                     const newBalance = customer.outstandingBalance + balanceChange;
@@ -54,7 +54,7 @@ export class ReturnService {
 
                     let debtStatus: Customer['debtStatus'] = 'none';
                     if (newBalance > 0) {
-                        const unpaidSales = await db.sales.where('customerId').equals(customer.id!).and(s => s.paymentStatus !== 'paid' && s.sync_status !== 'pending_delete').toArray();
+                        const unpaidSales = await db.sales.where('customerUuid').equals(customer.uuid).and(s => s.paymentStatus !== 'paid' && s.sync_status !== 'pending_delete').toArray();
                         const isOverdue = unpaidSales.some(s => s.dueDate && new Date(s.dueDate) < new Date());
                         debtStatus = isOverdue ? 'overdue' : 'due_soon';
                     }
@@ -106,8 +106,8 @@ export class ReturnService {
                 }
             }
     
-            if (pr.customerId) {
-                const customer = await db.customers.get(pr.customerId);
+            if (pr.customerUuid) {
+                const customer = await db.customers.where({ uuid: pr.customerUuid }).first();
                 if (customer && customer.uuid) {
                     const balanceChange = pr.amountRefunded - pr.totalReturnValue;
                     const newBalance = customer.outstandingBalance - balanceChange;
@@ -115,7 +115,7 @@ export class ReturnService {
                     
                     let debtStatus: Customer['debtStatus'] = 'none';
                     if (newBalance > 0) {
-                        const unpaidSales = await db.sales.where('customerId').equals(customer.id!).and(s => s.paymentStatus !== 'paid' && s.sync_status !== 'pending_delete').toArray();
+                        const unpaidSales = await db.sales.where('customerUuid').equals(customer.uuid).and(s => s.paymentStatus !== 'paid' && s.sync_status !== 'pending_delete').toArray();
                         const isOverdue = unpaidSales.some(s => s.dueDate && new Date(s.dueDate) < new Date());
                         debtStatus = isOverdue ? 'overdue' : 'due_soon';
                     }
