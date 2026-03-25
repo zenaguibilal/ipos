@@ -1,7 +1,8 @@
 'use client';
 import { v4 as uuidv4 } from 'uuid';
-import type { InventoryLog, InventoryLogReason } from '@/lib/types';
-import { inventoryRepository, productRepository } from '@/repositories';
+import type { InventoryLog, InventoryLogReason, Product } from '@/lib/types';
+import { inventoryRepository } from '@/repositories/inventory.repository';
+import { productRepository } from '@/repositories/product.repository';
 import { calculateStockStatus } from '@/lib/utils';
 
 class InventoryService {
@@ -15,14 +16,11 @@ class InventoryService {
      * @param relatedUuid - The UUID of the related document (e.g., Sale, Return, StockIntake).
      */
     async adjustStock(productUuid: string, quantityChange: number, reason: InventoryLogReason, relatedUuid?: string): Promise<void> {
-        // Special case for non-inventoried bread product
-        if (productUuid === 'BREAD_PRODUCT') {
-            return;
-        }
-        
         const product = await productRepository.findByUuid(productUuid);
         if (!product) {
-            console.warn(`Attempted to adjust stock for a non-existent product UUID: ${productUuid}`);
+            if(productUuid !== 'BREAD_PRODUCT') { // Allow special bread product to be skipped
+                console.warn(`Attempted to adjust stock for a non-existent product UUID: ${productUuid}`);
+            }
             return;
         }
 
@@ -40,7 +38,7 @@ class InventoryService {
     /**
      * Creates an inventory log entry. This is typically called from `adjustStock`.
      */
-    private async logChange(productUuid: string, change: number, newQuantity: number, reason: InventoryLogReason, relatedUuid?: string): Promise<void> {
+    async logChange(productUuid: string, change: number, newQuantity: number, reason: InventoryLogReason, relatedUuid?: string): Promise<void> {
         const logEntry: InventoryLog = {
             uuid: uuidv4(),
             user_id: 'user_id_placeholder', // This will be set by the repository layer
@@ -53,6 +51,10 @@ class InventoryService {
         };
 
         await inventoryRepository.add(logEntry);
+    }
+
+    async getProductInfo(productUuid: string): Promise<Product | undefined> {
+        return productRepository.findByUuid(productUuid);
     }
 }
 

@@ -1,8 +1,8 @@
 'use client';
 
 import { v4 as uuidv4 } from 'uuid';
-import type { BreadClient, BreadOrder, CartItem } from '@/lib/types';
-import { breadRepository } from '@/repositories';
+import type { BreadClient, BreadOrder, CartItem, Customer } from '@/lib/types';
+import { breadRepository } from '@/repositories/bread.repository';
 import { salesService } from './sales.service';
 import { BREAD_WEEK_DAYS } from '@/lib/constants';
 
@@ -41,7 +41,11 @@ class BreadService {
         return breadRepository.getManualClients();
     }
 
-    // == Order Management ==
+    async getCustomersByUuids(uuids: string[]): Promise<Customer[]> {
+        return breadRepository.getCustomersByUuids(uuids);
+    }
+    
+    // --- Orders ---
     
     async generateAndGetOrdersForDate(date: string): Promise<any[]> {
         const ordersExist = await breadRepository.ordersExistForDate(date);
@@ -123,38 +127,12 @@ class BreadService {
         }
     }
     
-    async convertBreadOrdersToSales(orderUuids: string[], breadPrice: number): Promise<void> {
-        const orders = await breadRepository.getOrdersByUuids(orderUuids);
-        
-        for (const order of orders) {
-            if (order.venteUuid) continue; // Already converted
-            
-            const cartItem: CartItem = {
-                uuid: 'BREAD_PRODUCT', // Special ID for bread
-                user_id: 'system',
-                name: 'Pain',
-                price: breadPrice,
-                purchasePrice: 0,
-                quantity: Infinity, // Unlimited stock for bread
-                cartQuantity: order.quantite,
-                minStockLevel: 0,
-            };
-            
-            const sale = await salesService.createSale({
-                items: [cartItem],
-                discountType: 'fixed',
-                discountValue: 0,
-                amountPaid: 0, // All bread sales are credit by default
-                payments: [],
-                customerUuid: order.breadClientUuid,
-            });
-            
-            await breadRepository.updateOrder(order.uuid, { 
-                venteUuid: sale.uuid,
-                est_paye: true,
-                updatedAt: new Date()
-            });
-        }
+    async getOrdersByUuids(orderUuids: string[]): Promise<BreadOrder[]> {
+        return breadRepository.getOrdersByUuids(orderUuids);
+    }
+
+    async updateOrder(uuid: string, data: Partial<BreadOrder>): Promise<void> {
+        return breadRepository.updateOrder(uuid, data);
     }
 }
 
