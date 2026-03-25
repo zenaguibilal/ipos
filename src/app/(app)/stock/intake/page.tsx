@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { DatePicker } from '@/components/ui/date-picker';
-import type { StockIntakeItem, Supplier } from '@/lib/types';
+import type { StockIntakeItem, Supplier, Product } from '@/lib/types';
 import { v4 as uuidv4 } from 'uuid';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/utils';
@@ -20,6 +20,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { stockService } from '@/services/stock.service';
 import { supplierService } from '@/services/supplier.service';
+import { productService } from '@/services/product.service';
+import { inventoryService } from '@/services/inventory.service';
 
 export default function NewStockIntakePage() {
     const router = useRouter();
@@ -126,6 +128,7 @@ export default function NewStockIntakePage() {
             return;
         }
 
+        // --- Validation ---
         for (const item of items) {
             if (!item.name || item.quantity <= 0 || item.purchasePrice < 0) {
                 toast.error(`Veuillez remplir les informations pour l'article "${item.name || 'Nouvel article'}". La quantité doit être > 0 et le prix d'achat >= 0.`);
@@ -143,8 +146,63 @@ export default function NewStockIntakePage() {
 
         setIsSaving(true);
         try {
-            const intakeData = { supplierUuid, supplierName, invoiceNumber, invoiceDate: invoiceDate || new Date() };
-            await stockService.addStockIntake(intakeData, items);
+            // --- Orchestration Logic ---
+            // 1. Find or create supplier
+            const supplier = await supplierService.findOrCreateSupplier(supplierName, supplierUuid);
+
+            // 2. Create the stock intake record
+            const intakeItems = items.map(item => ({
+                productUuid: item.productUuid,
+                productName: item.name,
+                quantityReceived: item.quantity,
+                quantityDamaged: item.quantityDamaged,
+                purchasePrice: item.purchasePrice,
+            }));
+            const createdIntake = await stockService.addStockIntake({
+                supplierUuid: supplier.uuid,
+                invoiceNumber,
+                invoiceDate: invoiceDate || new Date(),
+                items: intakeItems,
+                totalValue,
+            });
+
+            // 3. Process each item: create new product OR update existing stock
+            for (const item of items) {
+                const effectiveQuantity = item.quantity - item.quantityDamaged;
+                if (effectiveQuantity <= 0 && !item.isNew) continue;
+                
+                let productUuidToAdjust = item.productUuid;
+
+                if (item.isNew) {
+                    const newProductData: Omit<Product, 'uuid' | 'user_id'> = {
+                        name: item.name,
+                        category: item.category || 'Non classé',
+                        price: item.price,
+                        purchasePrice: item.purchasePrice,
+                        quantity: 0, // Will be set by adjustStock
+                        minStockLevel: 10,
+                        barcodes: item.barcodes,
+                        supplierUuid: supplier.uuid,
+                        dateMajPrix: new Date(),
+                    };
+                    const newProduct = await productService.addProduct(newProductData);
+                    productUuidToAdjust = newProduct.uuid;
+
+                } else if (item.productUuid) {
+                    // Update prices first for existing product
+                    await productService.updateProduct(item.productUuid, {
+                        purchasePrice: item.purchasePrice,
+                        price: item.price,
+                        dateMajPrix: new Date(),
+                    });
+                }
+
+                // Adjust stock for the new or existing product
+                if (productUuidToAdjust) {
+                    await inventoryService.adjustStock(productUuidToAdjust, effectiveQuantity, 'stock_intake', createdIntake.uuid);
+                }
+            }
+
             toast.success("Réception de stock enregistrée avec succès !");
             router.push('/stock');
         } catch (error: any) {

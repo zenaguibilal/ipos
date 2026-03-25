@@ -17,23 +17,39 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import type { Sale } from '@/lib/types';
+import type { Sale, Customer } from '@/lib/types';
 import { formatCurrency, safeToDate } from '@/lib/utils';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { useEffect, useState } from 'react';
+import { customerService } from '@/services/customer.service';
 
 export function SaleDetailsDialog({
     isOpen,
     onOpenChange,
     sale,
-    customerName,
 }: {
     isOpen: boolean;
     onOpenChange: (open: boolean) => void;
     sale: Sale | null;
-    customerName?: string;
 }) {
+    const [customer, setCustomer] = useState<Customer | null>(null);
+
+    useEffect(() => {
+        const fetchCustomer = async () => {
+            if (isOpen && sale?.customerUuid) {
+                const cust = await customerService.getCustomerByUuid(sale.customerUuid);
+                setCustomer(cust || null);
+            } else {
+                setCustomer(null);
+            }
+        };
+        fetchCustomer();
+    }, [isOpen, sale]);
+
     if (!sale) return null;
+
+    const customerName = customer ? `${customer.firstName} ${customer.lastName}` : 'Client de passage';
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -41,7 +57,7 @@ export function SaleDetailsDialog({
                 <DialogHeader>
                     <DialogTitle>Détails de la vente</DialogTitle>
                     <DialogDescription>
-                        Facture n°: <span className="font-mono font-semibold">{sale.invoiceNumber}</span> | Client: {customerName || 'Client de passage'}
+                        Facture n°: <span className="font-mono font-semibold">{sale.invoiceNumber}</span> | Client: {customerName}
                         <br />
                         Date: {format(safeToDate(sale.createdAt!), 'd MMMM yyyy HH:mm', { locale: fr })}
                     </DialogDescription>

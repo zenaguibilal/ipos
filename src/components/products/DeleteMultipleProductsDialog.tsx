@@ -15,7 +15,17 @@ export function DeleteMultipleProductsDialog({ isOpen, onOpenChange, productUuid
 
     const handleDelete = async () => {
         if (productUuids.length === 0) return;
-        await productService.deleteProducts(productUuids);
+
+        // Orchestration: check for dependencies before deleting
+        for (const uuid of productUuids) {
+            const hasLogs = await productService.hasInventoryLogs(uuid);
+            if (hasLogs) {
+                const product = await productService.getProductByUuid(uuid);
+                throw new Error(`Suppression impossible: Le produit "${product?.name || 'inconnu'}" a un historique de transactions.`);
+            }
+        }
+        
+        await productService.bulkDelete(productUuids);
         toast.success(`${productUuids.length} produit(s) supprimé(s) avec succès.`);
         onSuccess();
     };

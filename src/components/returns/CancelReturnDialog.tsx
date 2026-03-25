@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import type { ProductReturn } from '@/lib/types';
 import { returnService } from '@/services/return.service';
 import { customerService } from '@/services/customer.service';
+import { inventoryService } from '@/services/inventory.service';
 import { ConfirmAlertDialog } from '@/components/ui/ConfirmAlertDialog';
 
 interface CancelReturnDialogProps {
@@ -18,8 +19,18 @@ export function CancelReturnDialog({ isOpen, onOpenChange, productReturn, onSucc
     const handleCancel = async () => {
         if (!productReturn) return;
         
+        // Orchestration:
+        // 1. Delete the return record
         const cancelledReturn = await returnService.deleteReturn(productReturn.uuid);
+
+        // 2. Reverse stock adjustment for restocked items
+        for (const item of cancelledReturn.items) {
+            if (item.wasRestocked && item.productUuid) {
+                await inventoryService.adjustStock(item.productUuid, -item.quantity, 'cancellation', cancelledReturn.uuid);
+            }
+        }
         
+        // 3. Recalculate customer status
         if (cancelledReturn.customerUuid) {
             await customerService.recalculateCustomerStatus(cancelledReturn.customerUuid);
         }

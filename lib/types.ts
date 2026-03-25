@@ -58,7 +58,6 @@ export interface Cart {
     name: string;
     items: CartItem[];
     customerUuid: string | null;
-    customerName: string;
     discount: {
         type: 'fixed' | 'percentage';
         value: number;
@@ -84,8 +83,6 @@ export interface Sale {
     paymentStatus: 'paid' | 'partial' | 'unpaid';
     payments: SalePayment[];
     customerUuid?: string;
-    customerName?: string;
-    breadClientUuid?: string;
     createdAt?: Date;
     updatedAt?: Date;
     dueDate?: Date;
@@ -95,7 +92,6 @@ export interface Payment {
     uuid: string;
     user_id: string;
     customerUuid: string;
-    customerName?: string;
     amount: number;
     paymentDate: Date;
     notes?: string;
@@ -138,7 +134,6 @@ export interface StockIntake {
     uuid: string;
     user_id: string;
     supplierUuid?: string;
-    supplierName?: string;
     invoiceNumber: string;
     invoiceDate: Date;
     items: {
@@ -171,7 +166,6 @@ export interface ProductReturn {
     totalReturnValue: number;
     amountRefunded: number;
     customerUuid?: string;
-    customerName?: string;
     createdAt?: Date;
     updatedAt?: Date;
     notes?: string;

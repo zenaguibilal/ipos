@@ -1,9 +1,8 @@
 'use client';
 
 import { v4 as uuidv4 } from 'uuid';
-import type { BreadClient, BreadOrder, CartItem } from '@/lib/types';
-import { breadRepository } from '@/repositories';
-import { salesService } from './sales.service';
+import type { BreadClient, BreadOrder, CartItem, Customer } from '@/lib/types';
+import { breadRepository } from '@/repositories/bread.repository';
 import { BREAD_WEEK_DAYS } from '@/lib/constants';
 
 class BreadService {
@@ -41,6 +40,10 @@ class BreadService {
         return breadRepository.getManualClients();
     }
 
+    async getCustomersByUuids(uuids: string[]): Promise<Customer[]> {
+        return breadRepository.getCustomersByUuids(uuids);
+    }
+
     // == Order Management ==
     
     async generateAndGetOrdersForDate(date: string): Promise<any[]> {
@@ -51,8 +54,8 @@ class BreadService {
         return breadRepository.getOrdersForDate(date);
     }
     
-    async addManualBreadOrder(clientUuid: string, date: string, quantity: number): Promise<BreadOrder> {
-        const existingOrder = await breadRepository.findClientOrderForDate(clientUuid, date);
+    async addManualBreadOrder(breadClientUuid: string, date: string, quantity: number): Promise<BreadOrder> {
+        const existingOrder = await breadRepository.findClientOrderForDate(breadClientUuid, date);
         if (existingOrder) {
             throw new Error("Une commande existe déjà pour ce client à cette date.");
         }
@@ -60,7 +63,7 @@ class BreadService {
         const newOrder: BreadOrder = {
             uuid: uuidv4(),
             user_id: 'user_id_placeholder',
-            breadClientUuid: clientUuid,
+            breadClientUuid,
             date,
             quantite: quantity,
             est_paye: false,
@@ -123,44 +126,12 @@ class BreadService {
         }
     }
     
-    async convertBreadOrdersToSales(orderUuids: string[], breadPrice: number): Promise<void> {
-        const orders = await breadRepository.getOrdersByUuids(orderUuids);
-        const customerUuids = [...new Set(orders.map(o => o.breadClientUuid))];
-        const customers = await breadRepository.getCustomersByUuids(customerUuids);
-        const customerMap = new Map(customers.map(c => [c.uuid, c]));
-        
-        for (const order of orders) {
-            if (order.venteUuid) continue; // Already converted
+    async getOrdersByUuids(orderUuids: string[]): Promise<BreadOrder[]> {
+        return breadRepository.getOrdersByUuids(orderUuids);
+    }
 
-            const customer = customerMap.get(order.breadClientUuid);
-            
-            const cartItem: CartItem = {
-                uuid: 'BREAD_PRODUCT', // Special ID for bread
-                user_id: 'system',
-                name: 'Pain',
-                price: breadPrice,
-                purchasePrice: 0,
-                quantity: Infinity, // Unlimited stock for bread
-                cartQuantity: order.quantite,
-                minStockLevel: 0,
-            };
-            
-            const sale = await salesService.createSale({
-                items: [cartItem],
-                discountType: 'fixed',
-                discountValue: 0,
-                amountPaid: 0, // All bread sales are credit by default
-                payments: [],
-                customerUuid: customer?.uuid,
-                customerName: customer?.searchName,
-            });
-            
-            await breadRepository.updateOrder(order.uuid, { 
-                venteUuid: sale.uuid,
-                est_paye: true,
-                updatedAt: new Date()
-            });
-        }
+    async updateOrder(uuid: string, data: Partial<BreadOrder>): Promise<void> {
+        return breadRepository.updateOrder(uuid, data);
     }
 }
 

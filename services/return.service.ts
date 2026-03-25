@@ -1,9 +1,8 @@
 'use client';
 import { v4 as uuidv4 } from 'uuid';
 import type { ProductReturn, ReturnItem } from '@/lib/types';
-import { returnRepository, saleRepository } from '@/repositories';
-import { inventoryService } from './inventory.service';
-import { customerService } from './customer.service';
+import { returnRepository } from '@/repositories/return.repository';
+import { saleRepository } from '@/repositories/sale.repository';
 
 class ReturnService {
 
@@ -21,7 +20,6 @@ class ReturnService {
         totalReturnValue: number,
         amountRefunded: number,
         customerUuid?: string,
-        customerName?: string,
         notes?: string
     }): Promise<ProductReturn> {
         
@@ -40,26 +38,14 @@ class ReturnService {
             totalReturnValue: returnData.totalReturnValue,
             amountRefunded: returnData.amountRefunded,
             customerUuid: returnData.customerUuid,
-            customerName: returnData.customerName,
             createdAt: now,
             updatedAt: now,
             notes: returnData.notes,
         };
 
-        const createdReturn = await returnRepository.add(newReturn);
-
-        // Adjust stock for restocked items
-        for (const item of returnData.items) {
-            if (item.wasRestocked && item.productUuid) {
-                await inventoryService.adjustStock(item.productUuid, item.quantity, 'return', newReturn.uuid);
-            }
-        }
-        
-        if (createdReturn.customerUuid) {
-            await customerService.recalculateCustomerStatus(createdReturn.customerUuid);
-        }
-
-        return createdReturn;
+        // The service's responsibility ends at creating the return record.
+        // Orchestration of inventory and customer updates is handled by the calling layer.
+        return await returnRepository.add(newReturn);
     }
 
     async deleteReturn(uuid: string): Promise<ProductReturn> {
@@ -68,19 +54,9 @@ class ReturnService {
             throw new Error("Retour non trouvé.");
         }
 
-        // Reverse stock adjustment
-        for (const item of productReturn.items) {
-            if (item.wasRestocked && item.productUuid) {
-                await inventoryService.adjustStock(item.productUuid, -item.quantity, 'cancellation', productReturn.uuid);
-            }
-        }
-
         await returnRepository.delete(uuid);
         
-        if (productReturn.customerUuid) {
-            await customerService.recalculateCustomerStatus(productReturn.customerUuid);
-        }
-
+        // Return the deleted object so the orchestrator knows what to revert.
         return productReturn;
     }
 }

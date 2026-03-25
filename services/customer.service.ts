@@ -1,12 +1,10 @@
 'use client';
 import { v4 as uuidv4 } from 'uuid';
 import type { Customer, Sale } from '@/lib/types';
-import { 
-    customerRepository, 
-    saleRepository, 
-    returnRepository, 
-    paymentRepository 
-} from '@/repositories';
+import { customerRepository } from '@/repositories/customer.repository';
+import { saleRepository } from '@/repositories/sale.repository';
+import { returnRepository } from '@/repositories/return.repository';
+import { paymentRepository } from '@/repositories/payment.repository';
 
 class CustomerService {
     
@@ -72,10 +70,8 @@ class CustomerService {
     }
 
     async deleteCustomer(uuid: string): Promise<void> {
-        const sales = await saleRepository.findByCustomerUuid(uuid);
-        if (sales.length > 0) {
-            throw new Error("Impossible de supprimer un client avec un historique de ventes.");
-        }
+        // The check for existing sales is now orchestrated by the calling component
+        // to avoid cross-service dependencies.
         await customerRepository.delete(uuid);
     }
     

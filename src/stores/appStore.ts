@@ -7,7 +7,9 @@ import { authService } from '@/services/auth.service';
 import { customerService } from '@/services/customer.service';
 import { profileService } from '@/services/profile.service';
 import { salesService } from '@/services/sales.service';
+import { inventoryService } from '@/services/inventory.service';
 
+type ViewMode = 'grid' | 'list';
 
 // This is a mock session for the new architecture. It will be replaced by Supabase's user object.
 interface Session {
@@ -29,6 +31,9 @@ interface AppState {
     // Settings Slice
     profile: CompanyProfile | null;
     isSettingsLoading: boolean;
+
+    // UI State Slice
+    productViewMode: ViewMode;
 
     // Actions
     actions: {
@@ -55,6 +60,9 @@ interface AppState {
             payments: { method: 'cash' | 'card' | 'other', amount: number }[],
             dueDate?: Date,
         }) => Promise<void>;
+
+        // UI Actions
+        setProductViewMode: (mode: ViewMode) => void;
     }
 }
 
@@ -79,6 +87,7 @@ export const useAppStore = create<AppState>()(
         isCartLoading: false,
         profile: null,
         isSettingsLoading: true,
+        productViewMode: 'grid',
 
         // Actions Implementation
         actions: {
@@ -186,12 +195,11 @@ export const useAppStore = create<AppState>()(
                 });
             },
             
-            // == SALE FINALIZATION ACTION ==
+            // == SALE FINALIZATION (ORCHESTRATION) ==
             finalizeSale: async (saleData) => {
                 const { cart, cartCustomer } = get();
 
-                // 1. Create the sale. The service is responsible for the entire transaction,
-                // including creating the sale record and updating inventory.
+                // 1. Create the sale.
                 const sale = await salesService.createSale({
                     ...saleData,
                     items: cart.items,
@@ -199,8 +207,15 @@ export const useAppStore = create<AppState>()(
                     discountValue: cart.discount.value,
                     customerUuid: cart.customerUuid,
                 });
+
+                // 2. Adjust inventory for each item sold.
+                for (const item of cart.items) {
+                    if (item.user_id !== 'custom') { 
+                        await inventoryService.adjustStock(item.uuid, -item.cartQuantity, 'sale', sale.uuid);
+                    }
+                }
                 
-                // 2. Recalculate customer status if a customer was associated
+                // 3. Recalculate customer status if a customer was associated.
                 if (sale.customerUuid) {
                     const updatedCustomer = await customerService.recalculateCustomerStatus(sale.customerUuid);
                     // Update customer in the store if it's the current one
@@ -209,8 +224,13 @@ export const useAppStore = create<AppState>()(
                     }
                 }
                 
-                // 3. Reset cart. The customer selection is preserved by clearCart.
+                // 4. Reset cart.
                 get().actions.clearCart();
+            },
+
+            // == UI ACTIONS ==
+            setProductViewMode: (mode: ViewMode) => {
+                set({ productViewMode: mode });
             }
         }
     }))

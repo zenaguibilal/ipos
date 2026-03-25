@@ -12,7 +12,6 @@ import { PrintBreadListDialog } from './PrintBreadListDialog';
 import { toast } from 'sonner';
 import { breadService } from '@/services/bread.service';
 import { salesService } from '@/services/sales.service';
-import { breadRepository, customerRepository } from '@/repositories';
 import { Loader2 } from 'lucide-react';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Wheat } from 'lucide-react';
@@ -25,7 +24,7 @@ interface BreadDayViewProps {
 }
 
 export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayViewProps) {
-    const [selectedOrders, setSelectedOrders] = new Set<string>();
+    const [selectedOrders, setSelectedOrders] = useState(new Set<string>());
     const [isConverting, setIsConverting] = useState(false);
     const breadPrice = useAppStore((state) => state.profile?.prix_pain) || 0;
 
@@ -64,7 +63,38 @@ export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayVi
         
         setIsConverting(true);
         try {
-            await breadService.convertBreadOrdersToSales(Array.from(selectedOrders), breadPrice);
+            const ordersToConvert = await breadService.getOrdersByUuids(Array.from(selectedOrders));
+            
+            for (const order of ordersToConvert) {
+                if (order.venteUuid) continue;
+
+                const cartItem: CartItem = {
+                    uuid: 'BREAD_PRODUCT', // Special ID for bread
+                    user_id: 'system',
+                    name: 'Pain',
+                    price: breadPrice,
+                    purchasePrice: 0,
+                    quantity: Infinity, // Unlimited stock for bread
+                    cartQuantity: order.quantite,
+                    minStockLevel: 0,
+                };
+                
+                const sale = await salesService.createSale({
+                    items: [cartItem],
+                    discountType: 'fixed',
+                    discountValue: 0,
+                    amountPaid: 0, // All bread sales are credit by default
+                    payments: [],
+                    customerUuid: order.breadClientUuid,
+                });
+                
+                await breadService.updateOrder(order.uuid, { 
+                    venteUuid: sale.uuid,
+                    est_paye: true,
+                    updatedAt: new Date()
+                });
+            }
+
             toast.success(`${selectedOrders.size} commande(s) convertie(s) en ventes.`);
             setSelectedOrders(new Set());
             onOrdersChange();

@@ -2,6 +2,7 @@
 
 import type { Product } from '@/lib/types';
 import { ConfirmAlertDialog } from '@/components/ui/ConfirmAlertDialog';
+import { productService } from '@/services/product.service';
 
 interface DeleteProductDialogProps {
     isOpen: boolean;
@@ -14,6 +15,13 @@ export function DeleteProductDialog({ isOpen, onOpenChange, product, onConfirmDe
     
     const handleConfirm = async () => {
         if (!product) return;
+        
+        // Orchestration: Check for dependencies before deleting
+        const hasLogs = await productService.hasInventoryLogs(product.uuid);
+        if (hasLogs) {
+            throw new Error("Suppression impossible: ce produit a un historique de transactions (ventes, stocks...).");
+        }
+
         await onConfirmDelete(product);
     };
 
@@ -28,5 +36,3 @@ export function DeleteProductDialog({ isOpen, onOpenChange, product, onConfirmDe
         />
     );
 }
-
-    

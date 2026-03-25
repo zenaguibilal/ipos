@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { salesService } from '@/services/sales.service';
 import { returnService } from '@/services/return.service';
+import { inventoryService } from '@/services/inventory.service';
+import { customerService } from '@/services/customer.service';
 import type { Sale, ReturnItem } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -99,7 +101,8 @@ export default function NewReturnPage() {
                     wasRestocked: item.wasRestocked,
                 }));
 
-            await returnService.addReturn({
+            // Orchestration logic is now in the component
+            const createdReturn = await returnService.addReturn({
                 originalSaleUuid: foundSale.uuid,
                 items: itemsForService,
                 totalReturnValue,
@@ -107,6 +110,18 @@ export default function NewReturnPage() {
                 customerUuid: foundSale.customerUuid,
                 notes,
             });
+
+            // Adjust stock for restocked items
+            for (const item of createdReturn.items) {
+                if (item.wasRestocked && item.productUuid) {
+                    await inventoryService.adjustStock(item.productUuid, item.quantity, 'return', createdReturn.uuid);
+                }
+            }
+            
+            // Recalculate customer status
+            if (createdReturn.customerUuid) {
+                await customerService.recalculateCustomerStatus(createdReturn.customerUuid);
+            }
 
             toast.success("Retour enregistré avec succès !");
             router.push('/returns');
@@ -168,7 +183,7 @@ export default function NewReturnPage() {
                         <CardHeader>
                             <CardTitle>2. Sélectionner les Articles à Retourner</CardTitle>
                             <CardDescription>
-                                Facture: {foundSale.invoiceNumber} | Client: {foundSale.customerUuid || 'N/A'}
+                                Facture: {foundSale.invoiceNumber} | Client: {foundSale.customerUuid ? 'Associé' : 'Client de passage'}
                             </CardDescription>
                         </CardHeader>
                         <CardContent>

@@ -3,6 +3,7 @@
 import { toast } from 'sonner';
 import type { Customer } from '@/lib/types';
 import { customerService } from '@/services/customer.service';
+import { salesService } from '@/services/sales.service';
 import { ConfirmAlertDialog } from '@/components/ui/ConfirmAlertDialog';
 
 interface DeleteCustomerDialogProps {
@@ -15,14 +16,16 @@ interface DeleteCustomerDialogProps {
 export function DeleteCustomerDialog({ isOpen, onOpenChange, customer, onSuccess }: DeleteCustomerDialogProps) {
     const handleDelete = async () => {
         if (!customer) return;
-        try {
-            await customerService.deleteCustomer(customer.uuid);
-            toast.success(`Client "${customer.firstName} ${customer.lastName}" supprimé.`);
-            onSuccess();
-        } catch (error: any) {
-            toast.error("Erreur lors de la suppression", { description: error.message });
-            throw error; // Re-throw to keep the dialog open on failure
+
+        // Orchestration: Check for dependencies before deleting
+        const sales = await salesService.findSalesByCustomerUuid(customer.uuid);
+        if (sales.length > 0) {
+            throw new Error("Impossible de supprimer un client avec un historique de ventes.");
         }
+        
+        await customerService.deleteCustomer(customer.uuid);
+        toast.success(`Client "${customer.firstName} ${customer.lastName}" supprimé.`);
+        onSuccess();
     };
 
     return (

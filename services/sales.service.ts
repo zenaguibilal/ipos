@@ -1,9 +1,7 @@
 'use client';
 import { v4 as uuidv4 } from 'uuid';
 import type { Sale, CartItem, SaleItem } from '@/lib/types';
-import { saleRepository } from '@/repositories';
-import { inventoryService } from './inventory.service';
-import { customerService } from './customer.service';
+import { saleRepository } from '@/repositories/sale.repository';
 
 class SalesService {
 
@@ -13,6 +11,10 @@ class SalesService {
     
     async getSaleByInvoiceNumber(invoiceNumber: string): Promise<Sale | undefined> {
         return saleRepository.findByInvoiceNumber(invoiceNumber);
+    }
+
+    async findSalesByCustomerUuid(customerUuid: string): Promise<Sale[]> {
+        return saleRepository.findByCustomerUuid(customerUuid);
     }
 
     async filterSales(filters: { query?: string, from?: Date, to?: Date }): Promise<Sale[]> {
@@ -26,7 +28,6 @@ class SalesService {
         amountPaid: number,
         payments: { method: 'cash' | 'card' | 'other', amount: number }[],
         customerUuid?: string | null,
-        customerName?: string,
         dueDate?: Date,
     }): Promise<Sale> {
         
@@ -66,26 +67,14 @@ class SalesService {
             paymentStatus,
             payments: saleData.payments,
             customerUuid: saleData.customerUuid || undefined,
-            customerName: saleData.customerName,
             createdAt: now,
             updatedAt: now,
             dueDate: saleData.dueDate,
         };
 
-        const createdSale = await saleRepository.add(newSale);
-
-        for (const item of saleData.items) {
-            // Only adjust stock for real products, not custom items
-            if (item.user_id !== 'custom') { 
-               await inventoryService.adjustStock(item.uuid, -item.cartQuantity, 'sale', newSale.uuid);
-            }
-        }
-        
-        if (createdSale.customerUuid) {
-            await customerService.recalculateCustomerStatus(createdSale.customerUuid);
-        }
-
-        return createdSale;
+        // The service's responsibility ends here. It creates the sale record.
+        // Orchestration of inventory and customer updates is handled by the calling layer (e.g., appStore).
+        return await saleRepository.add(newSale);
     }
 
     async deleteSale(uuid: string): Promise<Sale> {
@@ -94,20 +83,9 @@ class SalesService {
             throw new Error("Vente non trouvée.");
         }
 
-        // Restore stock
-        for (const item of sale.items) {
-            const product = await inventoryService.getProductInfo(item.productUuid);
-            if (product) {
-                await inventoryService.adjustStock(item.productUuid, item.quantity, 'cancellation', sale.uuid);
-            }
-        }
-
         await saleRepository.delete(uuid);
         
-        if (sale.customerUuid) {
-            await customerService.recalculateCustomerStatus(sale.customerUuid);
-        }
-
+        // Return the deleted sale so the orchestrator knows what to revert.
         return sale;
     }
 }

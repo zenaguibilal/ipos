@@ -1,7 +1,7 @@
 'use client';
 
 import { v4 as uuidv4 } from 'uuid';
-import { companyRepository } from '@/repositories';
+import { companyRepository } from '@/repositories/company.repository';
 import type { CompanyProfile } from '@/lib/types';
 
 class ProfileService {
