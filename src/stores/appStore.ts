@@ -92,10 +92,12 @@ export const useAppStore = create<AppState>()((set, get) => ({
     actions: {
         setSession: (session) => set({ session, user: session?.user ?? null, sessionLoading: false }),
         signIn: async (email, password) => {
-            await authService.signIn(email, password);
+            const session = await authService.signIn(email, password);
+            set({ session, user: session?.user ?? null, sessionLoading: false });
         },
         signUp: async (email, password) => {
-            await authService.signUp(email, password);
+            const session = await authService.signUp(email, password);
+            set({ session, user: session?.user ?? null, sessionLoading: false });
         },
         signOut: async () => {
             await authService.signOut();
