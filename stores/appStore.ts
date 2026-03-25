@@ -3,12 +3,10 @@ import { immer } from 'zustand/middleware/immer';
 import type { Cart, Customer, Product, CompanyProfile } from '@/lib/types';
 import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
-import { 
-    authService,
-    customerService, 
-    profileService,
-    salesService
-} from '@/services';
+import { authService } from '@/services/auth.service';
+import { customerService } from '@/services/customer.service';
+import { profileService } from '@/services/profile.service';
+import { salesService } from '@/services/sales.service';
 
 // This is a mock session for the new architecture. It will be replaced by Supabase's user object.
 interface Session {
@@ -65,7 +63,6 @@ const initialCartState: Cart = {
     name: 'Panier Principal',
     items: [],
     customerUuid: null,
-    customerName: 'Client de passage',
     discount: { type: 'fixed', value: 0 },
 };
 
@@ -178,10 +175,8 @@ export const useAppStore = create<AppState>()(
 
             clearCart: () => {
                 set(state => {
-                    state.cart = initialCartState;
-                    // Preserve customer selection
-                    state.cart.customerUuid = get().cart.customerUuid;
-                    state.cart.customerName = get().cart.customerName;
+                    const currentCustomerUuid = state.cart.customerUuid;
+                    state.cart = { ...initialCartState, customerUuid: currentCustomerUuid };
                 });
                 toast.info("Le panier a été vidé.");
             },
@@ -189,7 +184,6 @@ export const useAppStore = create<AppState>()(
             setCartCustomer: (customer) => {
                 set(state => {
                     state.cart.customerUuid = customer?.uuid ?? null;
-                    state.cart.customerName = customer ? `${customer.firstName} ${customer.lastName}` : 'Client de passage';
                     state.cartCustomer = customer;
                 });
             },

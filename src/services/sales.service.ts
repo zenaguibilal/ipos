@@ -26,6 +26,7 @@ class SalesService {
         amountPaid: number,
         payments: { method: 'cash' | 'card' | 'other', amount: number }[],
         customerUuid?: string | null,
+        customerName?: string,
         dueDate?: Date,
     }): Promise<Sale> {
         
@@ -65,6 +66,7 @@ class SalesService {
             paymentStatus,
             payments: saleData.payments,
             customerUuid: saleData.customerUuid || undefined,
+            customerName: saleData.customerName,
             createdAt: now,
             updatedAt: now,
             dueDate: saleData.dueDate,
@@ -94,10 +96,8 @@ class SalesService {
 
         // Restore stock
         for (const item of sale.items) {
-            const product = await inventoryService.getProductInfo(item.productUuid);
-            if (product) {
-                await inventoryService.adjustStock(item.productUuid, item.quantity, 'cancellation', sale.uuid);
-            }
+            // No need to fetch product info first, adjustStock handles non-existent products.
+            await inventoryService.adjustStock(item.productUuid, item.quantity, 'cancellation', sale.uuid);
         }
 
         await saleRepository.delete(uuid);

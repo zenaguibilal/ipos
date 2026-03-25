@@ -8,7 +8,7 @@ import { Printer } from 'lucide-react';
 import { CustomerStatement } from './CustomerStatement';
 import { Skeleton } from '../ui/skeleton';
 import { useAppStore } from '@/stores/appStore';
-import { customerService } from '@/services';
+import { customerService } from '@/services/customer.service';
 import { toast } from 'sonner';
 
 interface PrintStatementDialogProps {

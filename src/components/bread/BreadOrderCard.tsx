@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import type { BreadOrderWithClient } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { breadService } from '@/services';
+import { breadService } from '@/services/bread.service';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useDebounce } from '@/hooks/useDebounce';
 import { AlertTriangle } from 'lucide-react';

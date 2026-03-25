@@ -5,7 +5,7 @@ import { Combobox, ComboboxOption } from '@/components/ui/combobox';
 import type { Customer } from '@/lib/types';
 import { formatCurrency } from '@/lib/utils';
 import { useAppStore, useAppActions } from '@/stores/appStore';
-import { customerService } from '@/services';
+import { customerService } from '@/services/customer.service';
 import { toast } from 'sonner';
 
 const WalkInCustomerOption: ComboboxOption = {

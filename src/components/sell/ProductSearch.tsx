@@ -13,7 +13,7 @@ import { formatCurrency, getPlaceholder } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useDebounce } from '@/hooks/useDebounce';
-import { productService } from '@/services';
+import { productService } from '@/services/product.service';
 
 interface ProductSearchProps {
     onProductSelect: (product: Product, quantity: number) => void;

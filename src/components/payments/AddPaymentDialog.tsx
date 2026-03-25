@@ -11,7 +11,8 @@ import type { Customer } from '@/lib/types';
 import { formatCurrency } from '@/lib/utils';
 import { Textarea } from '../ui/textarea';
 import { DatePicker } from '../ui/date-picker';
-import { paymentService, customerService } from '@/services';
+import { paymentService } from '@/services/payment.service';
+import { customerService } from '@/services/customer.service';
 
 interface AddPaymentDialogProps {
   isOpen: boolean;

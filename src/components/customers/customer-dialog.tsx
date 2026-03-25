@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import type { Customer } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
-import { customerService } from '@/services';
+import { customerService } from '@/services/customer.service';
 
 interface CustomerDialogProps {
     isOpen: boolean;
