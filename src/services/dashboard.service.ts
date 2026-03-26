@@ -27,6 +27,9 @@ class DashboardService {
             const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
             const netProfit = totalRevenue - totalExpenses;
             const saleCount = sales.length;
+            const totalOutstandingDebt = customers.reduce((sum, c) => sum + c.outstandingBalance, 0);
+            const totalInventoryValue = allProducts.reduce((sum, p) => sum + (p.quantity * p.purchasePrice), 0);
+
 
             // Process sales by day for chart
             const salesByDayMap = new Map<string, { total: number, profit: number }>();
@@ -140,6 +143,8 @@ class DashboardService {
                     totalExpenses,
                     netProfit,
                     saleCount,
+                    totalOutstandingDebt,
+                    totalInventoryValue,
                 },
                 salesByDay,
                 recentSales,

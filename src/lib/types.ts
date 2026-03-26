@@ -295,6 +295,8 @@ export interface DashboardData {
         totalExpenses: number;
         netProfit: number;
         saleCount: number;
+        totalOutstandingDebt: number;
+        totalInventoryValue: number;
     };
     salesByDay: SalesByDay[];
     recentSales: RecentSale[];

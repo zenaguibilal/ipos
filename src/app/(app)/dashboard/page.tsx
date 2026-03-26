@@ -5,10 +5,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { PageHeader } from '@/components/layout/PageHeader';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { useDateRange } from '@/hooks/useDateRange';
-import type { DashboardData, RecentSale, RecentReturn, SalesByDay, TopProduct, LowStockProduct, TopCustomer } from '@/lib/types';
+import type { DashboardData, RecentSale, RecentReturn, SalesByDay, TopProduct, TopCustomer } from '@/lib/types';
 import { dashboardService } from '@/services/dashboard.service';
 import { toast } from 'sonner';
-import { Loader2, TrendingUp, TrendingDown, DollarSign, Receipt, Undo2, Users } from 'lucide-react';
+import { Loader2, TrendingUp, TrendingDown, DollarSign, Receipt, Undo2, Users, CreditCard, Archive } from 'lucide-react';
 import { formatCurrency, safeToDate, getPlaceholder } from '@/lib/utils';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -286,10 +286,12 @@ export default function DashboardPage() {
                 <DateRangePicker date={dateRange} setDate={setDate} />
             </PageHeader>
             
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                 <StatCard title="Total des Ventes" value={formatCurrency(data?.stats.totalRevenue ?? 0)} icon={TrendingUp} isLoading={isLoading} />
-                <StatCard title="Total des Dépenses" value={formatCurrency(data?.stats.totalExpenses ?? 0)} icon={TrendingDown} isLoading={isLoading} />
                 <StatCard title="Bénéfice Net" value={formatCurrency(data?.stats.netProfit ?? 0)} icon={DollarSign} isLoading={isLoading} />
+                <StatCard title="Total des Dépenses" value={formatCurrency(data?.stats.totalExpenses ?? 0)} icon={TrendingDown} isLoading={isLoading} />
+                <StatCard title="Dette Client Totale" value={formatCurrency(data?.stats.totalOutstandingDebt ?? 0)} icon={CreditCard} isLoading={isLoading} />
+                <StatCard title="Valeur de l'Inventaire" value={formatCurrency(data?.stats.totalInventoryValue ?? 0)} icon={Archive} isLoading={isLoading} />
                 <StatCard title="Nombre de Ventes" value={String(data?.stats.saleCount ?? 0)} icon={Receipt} isLoading={isLoading} />
             </div>
 
