@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -8,7 +7,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { zakatService } from '@/services/zakat.service';
-import { explainZakat } from '@/ai/flows/zakat-explanation-flow';
 import { formatCurrency, cn } from '@/lib/utils';
 import { 
     Coins, 
@@ -21,19 +19,15 @@ import {
     RefreshCw, 
     Info, 
     AlertTriangle, 
-    CheckCircle2, 
-    Scale,
     HandHelping,
     UserX,
     TrendingUp,
-    PieChart,
     Save,
     History as HistoryIcon,
     Trash2,
     Loader2,
-    Sparkles,
-    Lightbulb,
-    FileText
+    FileText,
+    Scale
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -51,8 +45,6 @@ export default function ZakatPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
-    const [isAiLoading, setIsAiLoading] = useState(false);
-    const [aiExplanation, setAiExplanation] = useState<any>(null);
     
     const [history, setHistory] = useState<SavedZakatCalculation[]>([]);
     
@@ -143,19 +135,6 @@ export default function ZakatPage() {
             setHistory(prev => prev.filter(h => h.uuid !== uuid));
         } catch (error) {
             toast.error("Erreur de suppression.");
-        }
-    };
-
-    const handleAiExplanation = async () => {
-        setIsAiLoading(true);
-        setAiExplanation(null);
-        try {
-            const explanation = await explainZakat({ calculation: result });
-            setAiExplanation(explanation);
-        } catch (error) {
-            toast.error("L'IA n'a pas pu analyser les données.");
-        } finally {
-            setIsAiLoading(false);
         }
     };
 
@@ -421,64 +400,8 @@ export default function ZakatPage() {
                                     </CardFooter>
                                 )}
                             </Card>
-
-                            <Button 
-                                variant="outline" 
-                                className="w-full h-12 rounded-xl luxury-glass border-primary/20 gap-2 font-bold group"
-                                onClick={handleAiExplanation}
-                                disabled={isAiLoading}
-                            >
-                                {isAiLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4 text-primary group-hover:scale-110 transition-transform" />}
-                                Analyser avec l'IA iPOS
-                            </Button>
                         </div>
                     </div>
-
-                    {/* AI Explanation Content */}
-                    {aiExplanation && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in slide-in-from-bottom-4 duration-700">
-                            <Card className="luxury-glass border-primary/20 bg-primary/5">
-                                <CardHeader>
-                                    <CardTitle className="flex items-center gap-2 text-primary">
-                                        <Lightbulb className="h-5 w-5" />
-                                        Résumé de l'Expert
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent className="space-y-4">
-                                    <p className="text-sm leading-relaxed font-medium">{aiExplanation.summary}</p>
-                                    <div className="space-y-2">
-                                        <h4 className="text-xs font-black uppercase tracking-widest text-muted-foreground">Conseils Financiers :</h4>
-                                        <ul className="space-y-2">
-                                            {aiExplanation.advice.map((tip: string, i: number) => (
-                                                <li key={i} className="text-xs flex items-start gap-2 bg-background/40 p-2 rounded-lg border border-white/5">
-                                                    <CheckCircle2 className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
-                                                    {tip}
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                            <Card className="luxury-glass border-white/10">
-                                <CardHeader>
-                                    <CardTitle className="text-sm font-black uppercase tracking-tight">Détails des postes</CardTitle>
-                                </CardHeader>
-                                <CardContent className="p-0">
-                                    <div className="divide-y divide-white/5">
-                                        {aiExplanation.breakdown.map((item: any, i: number) => (
-                                            <div key={i} className="p-4 flex flex-col gap-1">
-                                                <div className="flex justify-between items-center">
-                                                    <span className="font-bold text-sm text-primary">{item.item}</span>
-                                                    <span className="text-[10px] font-black uppercase px-2 py-0.5 bg-muted rounded-full">{item.impact}</span>
-                                                </div>
-                                                <p className="text-xs text-muted-foreground">{item.explanation}</p>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        </div>
-                    )}
                 </TabsContent>
 
                 <TabsContent value="history" className="animate-in fade-in-50 duration-500">
@@ -633,7 +556,7 @@ export default function ZakatPage() {
                     </div>
                     <div className="space-y-12">
                         <div className="h-px bg-black w-full" />
-                        <span className="text-[10px] font-black uppercase tracking-widest">Cachet Etablissement</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest">Cacheت Etablissement</span>
                     </div>
                 </div>
 
