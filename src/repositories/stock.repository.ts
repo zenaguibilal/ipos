@@ -1,7 +1,7 @@
 'use client';
 
 import { createClient } from "@/utils/supabase/client";
-import type { StockIntake, Supplier } from "@/lib/types";
+import type { StockIntake } from "@/lib/types";
 
 const fromSupabase = (intake: any): StockIntake => ({
     uuid: intake.uuid,
@@ -44,10 +44,16 @@ class StockRepository {
         return data.map(fromSupabase);
     }
 
+    async findByUuid(uuid: string): Promise<StockIntake | undefined> {
+        const { data, error } = await this.baseQuery.eq('uuid', uuid).single();
+        if (error && error.code !== 'PGRST116') throw error;
+        return data ? fromSupabase(data) : undefined;
+    }
+
     async filter(filters: { invoiceNumberQuery?: string; supplierUuids?: string[]; from?: Date; to?: Date }): Promise<StockIntake[]> {
         let query = this.baseQuery.order('created_at', { ascending: false });
 
-        if (filters.invoiceNumberQuery || filters.supplierUuids) {
+        if (filters.invoiceNumberQuery || (filters.supplierUuids && filters.supplierUuids.length > 0)) {
             const orConditions = [];
             if (filters.invoiceNumberQuery) {
                 orConditions.push(`invoice_number.ilike.%${filters.invoiceNumberQuery}%`);
@@ -104,6 +110,11 @@ class StockRepository {
         }
 
         return fromSupabase({ ...newIntake, stock_intake_items: items });
+    }
+
+    async delete(uuid: string): Promise<void> {
+        const { error } = await this.supabase.from('stock_intakes').delete().eq('uuid', uuid);
+        if (error) throw error;
     }
 
     async deleteAllForUser(userId: string): Promise<void> {

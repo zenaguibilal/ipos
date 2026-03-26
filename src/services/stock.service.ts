@@ -6,6 +6,7 @@ import { supplierRepository } from '@/repositories/supplier.repository';
 import { useAppStore } from '@/stores/appStore';
 import { productService } from './product.service';
 import { inventoryService } from './inventory.service';
+import { supplierService } from './supplier.service';
 
 class StockService {
     
@@ -51,6 +52,29 @@ class StockService {
         } catch (error) {
             throw error;
         }
+    }
+
+    async processStockIntakeCancellation(intakeUuid: string): Promise<void> {
+        const intake = await stockRepository.findByUuid(intakeUuid);
+        if (!intake) {
+            throw new Error("Réception de stock non trouvée.");
+        }
+
+        // Revert product quantities
+        for (const item of intake.items) {
+            if (item.productUuid) {
+                const quantityToRevert = item.quantityReceived - item.quantityDamaged;
+                await inventoryService.adjustStock(item.productUuid, -quantityToRevert, 'cancellation', intake.uuid);
+            }
+        }
+
+        // Revert supplier balance
+        if (intake.supplierUuid && intake.totalValue > 0) {
+            await supplierService.updateSupplierBalance(intake.supplierUuid, -intake.totalValue);
+        }
+
+        // Delete the intake record
+        await stockRepository.delete(intake.uuid);
     }
 }
 

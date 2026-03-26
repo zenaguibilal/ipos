@@ -18,6 +18,7 @@ import { toast } from 'sonner';
 import { stockService } from '@/services/stock.service';
 import { supplierService } from '@/services/supplier.service';
 import { useIsManagerOrAdmin } from '@/stores/appStore';
+import { CancelIntakeDialog } from '@/components/stock/CancelIntakeDialog';
 
 export default function StockPage() {
     const isManagerOrAdmin = useIsManagerOrAdmin();
@@ -27,6 +28,7 @@ export default function StockPage() {
     
     const [selectedIntake, setSelectedIntake] = useState<StockIntake | null>(null);
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+    const [isCancelOpen, setIsCancelOpen] = useState(false);
 
     const [stockIntakes, setStockIntakes] = useState<StockIntake[] | undefined>(undefined);
     const [supplierMap, setSupplierMap] = useState<Map<string, Supplier>>(new Map());
@@ -61,6 +63,11 @@ export default function StockPage() {
     const handleViewDetails = useCallback((intake: StockIntake) => {
         setSelectedIntake(intake);
         setIsDetailsOpen(true);
+    }, []);
+
+    const handleCancelIntake = useCallback((intake: StockIntake) => {
+        setSelectedIntake(intake);
+        setIsCancelOpen(true);
     }, []);
 
     const renderSkeletons = () => (
@@ -98,6 +105,7 @@ export default function StockPage() {
                             intake={s}
                             supplierName={supplier?.name}
                             onViewDetails={handleViewDetails}
+                            onCancelIntake={handleCancelIntake}
                         />
                     );
                 })}
@@ -139,6 +147,15 @@ export default function StockPage() {
                 intake={selectedIntake}
                 supplierName={selectedIntake?.supplierUuid ? supplierMap.get(selectedIntake.supplierUuid)?.name : 'Fournisseur Inconnu'}
             />
+
+            {isManagerOrAdmin && (
+                <CancelIntakeDialog
+                    isOpen={isCancelOpen}
+                    onOpenChange={setIsCancelOpen}
+                    intake={selectedIntake}
+                    onSuccess={fetchStockIntakesAndSuppliers}
+                />
+            )}
         </div>
     );
 }
