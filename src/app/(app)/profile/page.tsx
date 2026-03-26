@@ -1,3 +1,4 @@
+
 'use client';
 
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -8,9 +9,10 @@ import { DataManagementCard } from "@/components/profile/DataManagementCard";
 import { useAppStore, useIsManagerOrAdmin } from "@/stores/appStore";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { User, Building2, Database, Settings2, LogOut, ShieldCheck, Mail, BadgeCheck, LayoutDashboard } from "lucide-react";
+import { User, Building2, Database, Settings2, LogOut, ShieldCheck, Mail, BadgeCheck, LayoutDashboard, Activity, CloudCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
 
 export default function ProfilePage() {
     const { user, profile, actions } = useAppStore();
@@ -25,10 +27,22 @@ export default function ProfilePage() {
         }
     };
 
-    const roleLabels: Record<string, { label: string, color: string }> = {
-        admin: { label: 'Administrateur', color: 'bg-primary text-primary-foreground shadow-lg shadow-primary/20' },
-        manager: { label: 'Gérant', color: 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' },
-        cashier: { label: 'Caissier', color: 'bg-muted text-muted-foreground' },
+    const roleLabels: Record<string, { label: string, color: string, description: string }> = {
+        admin: { 
+            label: 'Administrateur', 
+            color: 'bg-primary text-primary-foreground shadow-lg shadow-primary/20',
+            description: 'Accès total à toutes les fonctions système et sécurité.'
+        },
+        manager: { 
+            label: 'Gérant', 
+            color: 'bg-blue-500 text-white shadow-lg shadow-blue-500/20',
+            description: 'Gestion des stocks, ventes et rapports financiers.'
+        },
+        cashier: { 
+            label: 'Caissier', 
+            color: 'bg-muted text-muted-foreground',
+            description: 'Opérations de caisse et retours clients uniquement.'
+        },
     };
 
     const currentRole = profile?.role || 'cashier';
@@ -70,7 +84,7 @@ export default function ProfilePage() {
                                 <div className="space-y-3 flex-grow text-center md:text-left">
                                     <div className="flex flex-col md:flex-row items-center gap-3">
                                         <h3 className="text-3xl font-black uppercase tracking-tighter">{user?.email?.split('@')[0]}</h3>
-                                        <Badge className={roleLabels[currentRole].color + " px-3 py-1 rounded-lg text-[10px] font-black tracking-widest uppercase"}>
+                                        <Badge className={cn(roleLabels[currentRole].color, "px-3 py-1 rounded-lg text-[10px] font-black tracking-widest uppercase")}>
                                             <ShieldCheck className="h-3 w-3 mr-1.5" />
                                             {roleLabels[currentRole].label}
                                         </Badge>
@@ -87,21 +101,33 @@ export default function ProfilePage() {
                             </div>
                         </CardHeader>
                         <CardContent className="pt-8 pb-8">
-                            <div className="max-w-2xl mx-auto">
+                            <div className="max-w-2xl mx-auto space-y-8">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="p-4 rounded-2xl bg-muted/20 border border-white/5 flex flex-col items-center text-center">
-                                        <LayoutDashboard className="h-6 w-6 text-primary mb-2 opacity-50" />
+                                    <div className="p-4 rounded-2xl bg-muted/20 border border-white/5 flex flex-col items-center text-center group hover:border-primary/30 transition-all">
+                                        <LayoutDashboard className="h-6 w-6 text-primary mb-2 opacity-50 group-hover:opacity-100 transition-opacity" />
                                         <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Accès Système</p>
                                         <p className="text-sm font-bold">Tableau de bord complet</p>
                                     </div>
-                                    <div className="p-4 rounded-2xl bg-muted/20 border border-white/5 flex flex-col items-center text-center">
-                                        <Database className="h-6 w-6 text-primary mb-2 opacity-50" />
+                                    <div className="p-4 rounded-2xl bg-muted/20 border border-white/5 flex flex-col items-center text-center group hover:border-primary/30 transition-all">
+                                        <Database className="h-6 w-6 text-primary mb-2 opacity-50 group-hover:opacity-100 transition-opacity" />
                                         <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Stockage Cloud</p>
                                         <p className="text-sm font-bold">Activé & Sécurisé</p>
                                     </div>
                                 </div>
+
+                                <div className="space-y-4">
+                                    <h4 className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                                        <Activity className="h-4 w-4 text-primary" />
+                                        Statut des Privilèges
+                                    </h4>
+                                    <div className="p-5 rounded-2xl bg-primary/5 border border-primary/10">
+                                        <p className="text-sm font-medium leading-relaxed">
+                                            <span className="text-primary font-bold">Note :</span> {roleLabels[currentRole].description}
+                                        </p>
+                                    </div>
+                                </div>
                                 
-                                <div className="mt-8 bg-primary/5 p-6 rounded-[2rem] border border-primary/10 relative overflow-hidden group">
+                                <div className="bg-muted/10 p-6 rounded-[2rem] border border-white/5 relative overflow-hidden group">
                                     <ShieldCheck className="absolute -right-4 -bottom-4 h-24 w-24 text-primary opacity-[0.03] group-hover:rotate-12 transition-transform duration-700" />
                                     <p className="text-xs text-muted-foreground italic leading-relaxed text-center relative z-10">
                                         "Votre session est protégée par un cryptage de bout en bout via Supabase. En tant que <b>{roleLabels[currentRole].label}</b>, vous disposez des privilèges nécessaires pour gérer les opérations critiques de <b>{profile?.companyName}</b>."
@@ -121,12 +147,12 @@ export default function ProfilePage() {
                 <TabsContent value="company" className="mt-6 animate-in fade-in-50 duration-500 slide-in-from-bottom-2">
                     <Card className="luxury-glass border-white/5 overflow-hidden">
                         <CardHeader className="bg-primary/5 border-b border-white/5">
-                            <CardTitle className="flex items-center gap-2">
+                            <CardTitle className="flex items-center gap-2 font-black uppercase tracking-tight">
                                 <Building2 className="h-5 w-5 text-primary" />
                                 Identité de l'Établissement
                             </CardTitle>
                             <CardDescription>
-                                Informations figurant sur vos documents officiels et tickets.
+                                Informations figurant sur vos documents officiels, rapports et tickets de caisse.
                             </CardDescription>
                         </CardHeader>
                         <CompanyProfileForm mode="company" />
@@ -137,12 +163,12 @@ export default function ProfilePage() {
                 <TabsContent value="settings" className="mt-6 animate-in fade-in-50 duration-500 slide-in-from-bottom-2">
                     <Card className="luxury-glass border-white/5 overflow-hidden">
                         <CardHeader className="bg-primary/5 border-b border-white/5">
-                            <CardTitle className="flex items-center gap-2">
+                            <CardTitle className="flex items-center gap-2 font-black uppercase tracking-tight">
                                 <Settings2 className="h-5 w-5 text-primary" />
                                 Paramètres Opérationnels
                             </CardTitle>
                             <CardDescription>
-                                Valeurs de référence pour les calculs automatiques.
+                                Valeurs de référence globales utilisées pour les calculs automatiques du système.
                             </CardDescription>
                         </CardHeader>
                         <CompanyProfileForm mode="settings" />
