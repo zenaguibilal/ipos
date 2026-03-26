@@ -15,7 +15,7 @@ class BreadService {
     private getUserId(): string {
         const session = useAppStore.getState().session;
         if (!session?.user?.id) {
-            throw new Error("User not authenticated");
+            throw new Error("Utilisateur non authentifié");
         }
         return session.user.id;
     }
@@ -24,6 +24,7 @@ class BreadService {
         try {
             return await breadOrderRepository.getOrdersForDate(date);
         } catch (error) {
+            console.error("Error fetching orders for date:", error);
             throw error;
         }
     }
@@ -53,18 +54,23 @@ class BreadService {
 
     async generateOrdersFromRecurrence(date: string): Promise<number> {
         try {
-            const userId = this.getUserId();
-            // Utiliser repository directement pour contourner le typage partiel si nécessaire
+            // Get all bread clients
             const customersResult = await customerRepository.filter({ status: 'is_bread_client' });
             const customers = customersResult.data;
             
+            // Get existing orders for this date to avoid duplicates
             const existingOrders = await this.getOrdersForDate(date);
             const existingCustomerUuids = new Set(existingOrders.map(o => o.customerUuid).filter(Boolean));
 
-            const dayOfWeek = format(new Date(date.replace(/-/g, '/')), 'eeee', { locale: fr }).toLowerCase();
+            // Determine the day of the week in French lowercase (lundi, mardi...)
+            // Note: Replace '-' with '/' for browser compatibility when creating Date object from YYYY-MM-DD
+            const dateObj = new Date(date.replace(/-/g, '/'));
+            const dayOfWeek = format(dateObj, 'eeee', { locale: fr }).toLowerCase();
+            
             let count = 0;
 
             for (const customer of customers) {
+                // Skip if client already has an order for this day
                 if (existingCustomerUuids.has(customer.uuid)) continue;
 
                 let quantity = 0;
@@ -89,6 +95,7 @@ class BreadService {
             }
             return count;
         } catch (error) {
+            console.error("Error generating bread orders:", error);
             throw error;
         }
     }
@@ -112,11 +119,12 @@ class BreadService {
     async convertBreadOrdersToSales(orderUuids: string[], breadPrice: number): Promise<void> {
         try {
             const orders = await breadOrderRepository.getOrdersByUuids(orderUuids);
+            // Only process orders that are not already billed
             const ordersToProcess = orders.filter(o => !o.venteUuid);
             
             if (ordersToProcess.length === 0) return;
 
-            // Group by customer or Name
+            // Group by customer UUID or by Order Name if no customer linked
             const grouped = ordersToProcess.reduce((acc, order) => {
                 const key = order.customerUuid || `NAME_${order.orderName}`;
                 if (!acc[key]) acc[key] = [];
@@ -131,7 +139,8 @@ class BreadService {
                 const firstOrder = customerOrders[0];
                 const customerUuid = key.startsWith('NAME_') ? null : key;
 
-                // Virtual item for the sale
+                // Create a virtual cart item for the sale
+                // Inventory service will ignore "BREAD_PRODUCT" as per current logic
                 const breadCartItem: CartItem = {
                     uuid: 'BREAD_PRODUCT',
                     user_id: this.getUserId(),
@@ -141,23 +150,27 @@ class BreadService {
                     quantity: Infinity,
                     cartQuantity: totalQuantity,
                     minStockLevel: 0,
+                    category: 'Boulangerie'
                 };
 
+                // Create the sale
                 const sale = await salesService.createSale({
                     items: [breadCartItem],
                     discountType: 'fixed',
                     discountValue: 0,
-                    amountPaid: 0, 
+                    amountPaid: 0, // Assume unpaid (added to debt)
                     payments: [],
                     customerUuid: customerUuid,
                 });
 
+                // Update orders to link them to this sale
                 await breadOrderRepository.bulkUpdateSaleRelation(
                     customerOrders.map(o => o.uuid),
                     sale.uuid
                 );
             }
         } catch (error) {
+            console.error("Error converting bread orders to sales:", error);
             throw error;
         }
     }

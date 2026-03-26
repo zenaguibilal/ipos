@@ -56,13 +56,13 @@ export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayVi
         try {
             const count = await breadService.generateOrdersFromRecurrence(currentDate);
             if (count > 0) {
-                toast.success(`${count} commande(s) générée(s) selon les réglages clients.`);
+                toast.success(`${count} commande(s) générée(s) avec succès.`);
                 onOrdersChange();
             } else {
-                toast.info("Aucune nouvelle commande à générer pour ce jour.");
+                toast.info("Aucune commande à générer (tous les clients sont déjà servis ou non programmés).");
             }
         } catch (error: any) {
-            toast.error("Échec de la génération.", { description: error.message });
+            toast.error("Échec de la génération automatique.", { description: error.message });
         } finally {
             setIsGenerating(false);
         }
@@ -70,22 +70,22 @@ export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayVi
 
     const handleConvertToSales = async () => {
         if (selectedOrders.size === 0) {
-            toast.info("Sélectionnez les commandes à facturer.");
+            toast.info("Veuillez sélectionner au moins une commande à facturer.");
             return;
         }
         if (breadPrice <= 0) {
-            toast.error("Le prix du pain n'est pas configuré dans votre profil.");
+            toast.error("Le prix du pain n'est pas configuré. Veuillez le régler dans votre profil.");
             return;
         }
         
         setIsConverting(true);
         try {
             await breadService.convertBreadOrdersToSales(Array.from(selectedOrders), breadPrice);
-            toast.success(`${selectedOrders.size} commande(s) facturées et ajoutées aux comptes clients.`);
+            toast.success(`${selectedOrders.size} commande(s) transformée(s) en factures.`);
             setSelectedOrders(new Set());
             onOrdersChange();
         } catch (error: any) {
-            toast.error("Erreur de conversion en ventes.", { description: error.message });
+            toast.error("Erreur lors de la facturation.", { description: error.message });
         } finally {
             setIsConverting(false);
         }
@@ -101,7 +101,7 @@ export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayVi
             setSelectedOrders(new Set());
             onOrdersChange();
         } catch (error) {
-            toast.error("Échec de la mise à jour des statuts de livraison.");
+            toast.error("Erreur de mise à jour des statuts.");
         }
     };
 
@@ -110,11 +110,11 @@ export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayVi
         setIsDeleting(true);
         try {
             await breadService.bulkDeleteOrders(Array.from(selectedOrders));
-            toast.success("Sélection supprimée.");
+            toast.success("Commandes supprimées.");
             setSelectedOrders(new Set());
             onOrdersChange();
         } catch (error: any) {
-            toast.error("Échec de la suppression.");
+            toast.error("Erreur de suppression.");
         } finally {
             setIsDeleting(false);
         }
@@ -129,7 +129,7 @@ export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayVi
                 <div className="flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center">
                     <div className="flex items-center space-x-3">
                         <Checkbox id="select-all-bread" checked={isAllSelected} onCheckedChange={handleSelectAll} className="h-5 w-5" />
-                        <label htmlFor="select-all-bread" className="text-sm font-black uppercase tracking-widest text-muted-foreground cursor-pointer">
+                        <label htmlFor="select-all-bread" className="text-sm font-black uppercase tracking-widest text-muted-foreground cursor-pointer select-none">
                             {selectedOrders.size > 0 ? `${selectedOrders.size} sélectionné(s)` : 'Tout sélectionner'}
                         </label>
                     </div>
@@ -146,7 +146,7 @@ export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayVi
                                 </Button>
                                 <Button size="sm" onClick={handleConvertToSales} disabled={isConverting} className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl shadow-lg shadow-primary/20 px-6">
                                     {isConverting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ShoppingCart className="h-4 w-4 mr-2" />}
-                                    Facturer la sélection
+                                    Facturer ({selectedOrders.size})
                                 </Button>
                             </>
                         ) : (
@@ -167,14 +167,14 @@ export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayVi
                     {orders.length === 0 ? (
                         <EmptyState
                             icon={Wheat}
-                            title="Aucune commande enregistrée"
-                            description="Générez les commandes récurrentes ou ajoutez-en une manuellement pour ce jour."
+                            title="Aucune commande pour ce jour"
+                            description="Générez les commandes programmées ou ajoutez une commande ponctuelle manuellement."
                             className="py-24"
                         >
                             <div className="flex gap-2 justify-center">
                                 <Button onClick={handleGenerate} disabled={isGenerating} className="rounded-xl px-8 h-12 text-lg">
-                                    {isGenerating && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
-                                    Lancer la génération
+                                    {isGenerating ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Sparkles className="mr-2 h-5 w-5" />}
+                                    Lancer la génération automatique
                                 </Button>
                             </div>
                         </EmptyState>

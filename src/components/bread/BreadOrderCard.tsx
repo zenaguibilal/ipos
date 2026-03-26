@@ -34,7 +34,7 @@ export function BreadOrderCard({ order, isSelected, onToggleSelection, onUpdate 
             await breadService.updateOrder(order.uuid, { quantite: newQuantity });
             onUpdate();
         } catch (error) {
-            toast.error("Erreur de mise à jour quantité.");
+            toast.error("Erreur de mise à jour.");
         }
     }, [order.uuid, onUpdate]);
 
@@ -86,14 +86,14 @@ export function BreadOrderCard({ order, isSelected, onToggleSelection, onUpdate 
                         checked={isSelected} 
                         onCheckedChange={() => onToggleSelection(order.uuid)} 
                         disabled={isPaid} 
-                        className="h-5 w-5 rounded-md border-primary/30"
+                        className="h-5 w-5 rounded-md border-primary/30 data-[state=checked]:bg-primary"
                     />
                 </div>
             </CardHeader>
             <CardContent className="p-4 pt-0">
                 <div className="flex items-center justify-between bg-background/40 p-3 rounded-xl mt-1 border border-white/5">
-                    <Label htmlFor={`qty-${order.uuid}`} className="flex items-center gap-2 text-[10px] uppercase font-black tracking-widest text-muted-foreground">
-                        <Package className="h-3 w-3"/> Qté
+                    <Label htmlFor={`qty-${order.uuid}`} className="flex items-center gap-2 text-[10px] uppercase font-black tracking-widest text-muted-foreground select-none">
+                        <Package className="h-3 w-3"/> Qté Livrée
                     </Label>
                     <div className="flex items-center gap-2">
                         <Input 
@@ -110,7 +110,7 @@ export function BreadOrderCard({ order, isSelected, onToggleSelection, onUpdate 
                                     <TooltipTrigger asChild>
                                         <AlertCircle className="h-3.5 w-3.5 text-orange-500 animate-pulse cursor-help" />
                                     </TooltipTrigger>
-                                    <TooltipContent><p>Modifié (Initial: {order.quantite_origine})</p></TooltipContent>
+                                    <TooltipContent className="luxury-glass"><p>Quantité modifiée (Initial: {order.quantite_origine})</p></TooltipContent>
                                 </Tooltip>
                             </TooltipProvider>
                         )}
