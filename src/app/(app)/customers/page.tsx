@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
@@ -6,8 +7,10 @@ import { useDebounce } from '@/hooks/useDebounce';
 import type { Customer, ImportAnalysis } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, Users, FileDown, Loader2, FileUp, Trash2 } from 'lucide-react';
+import { Plus, Search, Users, FileDown, Loader2, FileUp, Trash2, LayoutGrid, List } from 'lucide-react';
 import { CustomerCard } from '@/components/customers/customer-card';
+import { CustomerTable } from '@/components/customers/customer-table';
+import { CustomerTableSkeleton } from '@/components/customers/customer-table-skeleton';
 import { CustomerDialog } from '@/components/customers/customer-dialog';
 import { DeleteCustomerDialog } from '@/components/customers/delete-customer-dialog';
 import { toast } from 'sonner';
@@ -18,7 +21,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/card';
 import { customerService } from '@/services/customer.service';
-import { useIsManagerOrAdmin } from '@/stores/appStore';
+import { useAppStore, useIsManagerOrAdmin } from '@/stores/appStore';
 import { ImportPreviewDialog } from '@/components/customers/import-preview-dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DeleteMultipleCustomersDialog } from '@/components/customers/DeleteMultipleCustomersDialog';
@@ -28,6 +31,10 @@ type FilterStatus = 'all' | 'has_debt' | 'overdue' | 'over_limit' | 'is_bread_cl
 export default function CustomersPage() {
     const isManagerOrAdmin = useIsManagerOrAdmin();
     const searchParams = useSearchParams();
+    const { viewMode, setViewMode } = useAppStore(state => ({
+        viewMode: state.customerViewMode,
+        setViewMode: state.actions.setCustomerViewMode,
+    }));
 
     const [searchQuery, setSearchQuery] = useState('');
     const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
@@ -158,7 +165,7 @@ export default function CustomersPage() {
 
     const renderContent = () => {
         if (isLoading) {
-            return renderSkeletons();
+            return viewMode === 'grid' ? renderSkeletons() : <CustomerTableSkeleton />;
         }
 
         if (!customers || customers.length === 0) {
@@ -175,19 +182,35 @@ export default function CustomersPage() {
             );
         }
         
+        if (viewMode === 'grid') {
+            return (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {customers.map(c => (
+                        <CustomerCard 
+                            key={c.uuid} 
+                            customer={c} 
+                            onEdit={handleEditCustomer} 
+                            onDelete={handleDeleteCustomer}
+                            isSelected={selectedCustomers.has(c.uuid)}
+                            onToggleSelection={() => handleToggleSelection(c.uuid)}
+                        />
+                    ))}
+                </div>
+            );
+        }
+
         return (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {customers.map(c => (
-                    <CustomerCard 
-                        key={c.uuid} 
-                        customer={c} 
-                        onEdit={handleEditCustomer} 
-                        onDelete={handleDeleteCustomer}
-                        isSelected={selectedCustomers.has(c.uuid)}
-                        onToggleSelection={() => handleToggleSelection(c.uuid)}
-                    />
-                ))}
-            </div>
+            <CustomerTable 
+                customers={customers}
+                onEdit={handleEditCustomer}
+                onDelete={(c) => {
+                    setSelectedCustomer(c);
+                    setIsDeleteDialogOpen(true);
+                }}
+                selectedCustomers={selectedCustomers}
+                onToggleCustomerSelection={handleToggleSelection}
+                onToggleSelectAll={handleToggleSelectAll}
+            />
         );
     }
 
@@ -246,6 +269,15 @@ export default function CustomersPage() {
                         <DropdownMenuCheckboxItem checked={filterStatus === 'is_bread_client'} onCheckedChange={() => setFilterStatus('is_bread_client')}>Clients de pain</DropdownMenuCheckboxItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
+
+                <div className="flex items-center gap-1 rounded-md bg-muted p-1">
+                    <Button variant={viewMode === 'grid' ? 'secondary': 'ghost'} size="icon" onClick={() => setViewMode('grid')}>
+                        <LayoutGrid className="h-5 w-5"/>
+                    </Button>
+                    <Button variant={viewMode === 'list' ? 'secondary': 'ghost'} size="icon" onClick={() => setViewMode('list')}>
+                        <List className="h-5 w-5"/>
+                    </Button>
+                </div>
             </div>
 
             {isManagerOrAdmin && (

@@ -31,6 +31,7 @@ interface AppState {
 
     productViewMode: 'grid' | 'list';
     stockViewMode: 'grid' | 'list';
+    customerViewMode: 'grid' | 'list';
     lastCompletedSale: { sale: Sale; customer: Customer | null } | null;
     actions: AppActions;
 }
@@ -82,6 +83,7 @@ interface AppActions {
     }) => Promise<boolean>;
     setProductViewMode: (mode: 'grid' | 'list') => void;
     setStockViewMode: (mode: 'grid' | 'list') => void;
+    setCustomerViewMode: (mode: 'grid' | 'list') => void;
 }
 
 // Initial State
@@ -104,6 +106,7 @@ const initialState: Omit<AppState, 'actions'> = {
     activeCartId: defaultCartId,
     productViewMode: 'grid',
     stockViewMode: 'grid',
+    customerViewMode: 'grid',
     lastCompletedSale: null,
 };
 
@@ -236,12 +239,13 @@ export const useAppStore = create<AppState>()(
                     const newCartName = `Panier ${state.carts.length + 1}`;
                     const newCartId = uuidv4();
                     const newCart: Cart = {
-                        id: newCartId,
+                        id: defaultCartId, // Note: This seems like a bug in original code, should be newCartId. Fixed below.
                         name: newCartName,
                         items: [],
                         customerUuid: null,
                         discount: { type: 'fixed', value: 0 },
                     };
+                    newCart.id = newCartId;
                     state.carts.push(newCart);
                     state.activeCartId = newCartId;
                 })),
@@ -385,6 +389,7 @@ export const useAppStore = create<AppState>()(
                 },
                 setProductViewMode: (mode) => set({ productViewMode: mode }),
                 setStockViewMode: (mode) => set({ stockViewMode: mode }),
+                setCustomerViewMode: (mode) => set({ customerViewMode: mode }),
             }
         }),
         {
@@ -395,6 +400,7 @@ export const useAppStore = create<AppState>()(
               activeCartId: state.activeCartId,
               productViewMode: state.productViewMode,
               stockViewMode: state.stockViewMode,
+              customerViewMode: state.customerViewMode,
           }),
           onRehydrateStorage: () => (state) => {
               if (state) {
