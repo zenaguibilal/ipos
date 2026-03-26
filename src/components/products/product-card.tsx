@@ -36,8 +36,20 @@ const ProductCardComponent = ({ product, onEdit, onDelete, isSelected, onToggleS
         return null;
     }, [product.dateExpiration]);
 
+    const handleCardClick = () => {
+        if (!isManagerOrAdmin) return;
+        onEdit(product);
+    };
+
     return (
-        <Card className={cn("flex flex-col transition-all duration-300 hover:shadow-xl hover:-translate-y-1 relative", isSelected && "ring-2 ring-primary")}>
+        <Card
+            onClick={handleCardClick}
+            className={cn(
+                "flex flex-col transition-all duration-300 hover:shadow-xl hover:-translate-y-1 relative",
+                isSelected && "ring-2 ring-primary",
+                isManagerOrAdmin && "cursor-pointer"
+            )}
+        >
             <CardHeader className="p-0 relative">
                 <Image
                     src={imageUrl}
@@ -68,16 +80,18 @@ const ProductCardComponent = ({ product, onEdit, onDelete, isSelected, onToggleS
                         <p className="text-sm text-muted-foreground">{product.category || 'Non classé'}</p>
                     </div>
                     {isManagerOrAdmin && (
-                        <Checkbox
-                            checked={isSelected}
-                            onCheckedChange={onToggleSelection}
-                            className="h-5 w-5 flex-shrink-0"
-                            aria-label={`Select ${product.name}`}
-                        />
+                        <div onClick={(e) => e.stopPropagation()}>
+                            <Checkbox
+                                checked={isSelected}
+                                onCheckedChange={onToggleSelection}
+                                className="h-5 w-5 flex-shrink-0"
+                                aria-label={`Select ${product.name}`}
+                            />
+                        </div>
                     )}
                 </div>
             </CardContent>
-            <CardFooter className="p-4 pt-0 flex justify-between items-center">
+            <CardFooter className="p-4 pt-0 flex justify-between items-center" onClick={(e) => e.stopPropagation()}>
                  <div>
                     <p className="text-lg font-bold text-primary">{formatCurrency(product.price)}</p>
                     <p className="text-xs font-semibold">Stock: {product.quantity} {product.unite || ''}</p>

@@ -27,6 +27,11 @@ export function ProductTable({ products, onEdit, onDelete, selectedProducts, onT
     const isManagerOrAdmin = useIsManagerOrAdmin();
     const supplierMap = useMemo(() => new Map(suppliers.map(s => [s.uuid, s.name])), [suppliers]);
 
+    const handleRowClick = (product: Product) => {
+        if (!isManagerOrAdmin) return;
+        onEdit(product);
+    };
+
     return (
         <div className="rounded-md border">
             <Table>
@@ -71,8 +76,13 @@ export function ProductTable({ products, onEdit, onDelete, selectedProducts, onT
                         const isPriceOld = product.dateMajPrix && differenceInDays(new Date(), new Date(product.dateMajPrix)) > 30;
 
                         return (
-                            <TableRow key={productUuid} data-state={selectedProducts.has(productUuid) ? "selected" : ""}>
-                                 <TableCell className="px-4">
+                            <TableRow 
+                                key={productUuid} 
+                                data-state={selectedProducts.has(productUuid) ? "selected" : ""}
+                                onClick={() => handleRowClick(product)}
+                                className={cn(isManagerOrAdmin && "cursor-pointer")}
+                            >
+                                 <TableCell className="px-4" onClick={(e) => e.stopPropagation()}>
                                     <Checkbox
                                         checked={selectedProducts.has(productUuid)}
                                         onCheckedChange={() => onToggleProductSelection(productUuid)}
@@ -137,7 +147,7 @@ export function ProductTable({ products, onEdit, onDelete, selectedProducts, onT
                                     </div>
                                 </TableCell>
                                 <TableCell className="text-right font-bold text-primary">{formatCurrency(product.price)}</TableCell>
-                                <TableCell className="text-right">
+                                <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                                     {isManagerOrAdmin && (
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
