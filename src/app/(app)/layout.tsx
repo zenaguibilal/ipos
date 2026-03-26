@@ -1,3 +1,4 @@
+
 'use client';
 
 import { AppHeader } from '@/components/layout/header';
@@ -11,26 +12,24 @@ export default function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { session, sessionLoading } = useAppStore();
+  const { sessionLoading } = useAppStore();
 
-  // The middleware protects this route. This client-side check only shows a
-  // loading state while the session is being hydrated, preventing UI flicker.
-  if (sessionLoading) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center bg-background">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-      </div>
-    );
-  }
-  
+  // StoreInitializer must be rendered unconditionally to be able to update the sessionLoading state.
+  // The loading guard is now a ternary that decides whether to show the loader or the children.
   return (
     <>
       <StoreInitializer />
-      <div className="flex h-screen flex-col bg-transparent">
-        <AppHeader />
-        <main className="flex-1 overflow-y-auto pb-16 md:pb-0">{children}</main>
-        <BottomNavBar />
-      </div>
+      {sessionLoading ? (
+        <div className="flex h-screen w-full items-center justify-center bg-background">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        </div>
+      ) : (
+        <div className="flex h-screen flex-col bg-transparent">
+          <AppHeader />
+          <main className="flex-1 overflow-y-auto pb-16 md:pb-0">{children}</main>
+          <BottomNavBar />
+        </div>
+      )}
     </>
   );
 }
