@@ -9,7 +9,7 @@ import { DataManagementCard } from "@/components/profile/DataManagementCard";
 import { useAppStore, useIsManagerOrAdmin } from "@/stores/appStore";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { User, Building2, Database, Settings2, LogOut, ShieldCheck, Mail, BadgeCheck, LayoutDashboard, Activity, CloudCheck } from "lucide-react";
+import { User, Building2, Database, Settings2, LogOut, ShieldCheck, Mail, BadgeCheck, LayoutDashboard, Activity, CloudCheck, ShieldAlert, Wifi } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
@@ -94,7 +94,7 @@ export default function ProfilePage() {
                                             <Mail className="h-4 w-4 text-primary" /> {user?.email}
                                         </span>
                                         <span className="flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded-xl border border-white/5">
-                                            <BadgeCheck className="h-4 w-4 text-primary" /> ID: {user?.id.substring(0, 12)}
+                                            <Wifi className="h-4 w-4 text-chart-quaternary" /> Status: Connecté
                                         </span>
                                     </div>
                                 </div>
@@ -106,19 +106,19 @@ export default function ProfilePage() {
                                     <div className="p-4 rounded-2xl bg-muted/20 border border-white/5 flex flex-col items-center text-center group hover:border-primary/30 transition-all">
                                         <LayoutDashboard className="h-6 w-6 text-primary mb-2 opacity-50 group-hover:opacity-100 transition-opacity" />
                                         <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Accès Système</p>
-                                        <p className="text-sm font-bold">Tableau de bord complet</p>
+                                        <p className="text-sm font-bold">Session active</p>
                                     </div>
                                     <div className="p-4 rounded-2xl bg-muted/20 border border-white/5 flex flex-col items-center text-center group hover:border-primary/30 transition-all">
-                                        <Database className="h-6 w-6 text-primary mb-2 opacity-50 group-hover:opacity-100 transition-opacity" />
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Stockage Cloud</p>
-                                        <p className="text-sm font-bold">Activé & Sécurisé</p>
+                                        <CloudCheck className="h-6 w-6 text-primary mb-2 opacity-50 group-hover:opacity-100 transition-opacity" />
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Synchronisation</p>
+                                        <p className="text-sm font-bold">Temps réel activé</p>
                                     </div>
                                 </div>
 
                                 <div className="space-y-4">
                                     <h4 className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
                                         <Activity className="h-4 w-4 text-primary" />
-                                        Statut des Privilèges
+                                        Privilèges et Sécurité
                                     </h4>
                                     <div className="p-5 rounded-2xl bg-primary/5 border border-primary/10">
                                         <p className="text-sm font-medium leading-relaxed">
@@ -130,7 +130,7 @@ export default function ProfilePage() {
                                 <div className="bg-muted/10 p-6 rounded-[2rem] border border-white/5 relative overflow-hidden group">
                                     <ShieldCheck className="absolute -right-4 -bottom-4 h-24 w-24 text-primary opacity-[0.03] group-hover:rotate-12 transition-transform duration-700" />
                                     <p className="text-xs text-muted-foreground italic leading-relaxed text-center relative z-10">
-                                        "Votre session est protégée par un cryptage de bout en bout via Supabase. En tant que <b>{roleLabels[currentRole].label}</b>, vous disposez des privilèges nécessaires pour gérer les opérations critiques de <b>{profile?.companyName}</b>."
+                                        "Votre connexion est sécurisée via Supabase Auth. Les données sont chiffrées de bout en bout."
                                     </p>
                                 </div>
                             </div>
@@ -183,7 +183,7 @@ export default function ProfilePage() {
                         <Card className="luxury-glass border-destructive/20 bg-destructive/5 overflow-hidden">
                             <CardContent className="pt-16 pb-16 flex flex-col items-center justify-center text-center space-y-6">
                                 <div className="p-6 rounded-[2rem] bg-destructive/10 border border-destructive/20 shadow-inner">
-                                    <ShieldCheck className="h-16 w-16 text-destructive animate-pulse" />
+                                    <ShieldAlert className="h-16 w-16 text-destructive animate-pulse" />
                                 </div>
                                 <div className="space-y-2">
                                     <h3 className="text-2xl font-black uppercase tracking-tighter text-destructive">Accès Restreint</h3>
@@ -191,9 +191,6 @@ export default function ProfilePage() {
                                         Désolé, seul un <b>Administrateur</b> ou un <b>Gérant</b> peut accéder au coffre-fort des données pour les opérations de sauvegarde.
                                     </p>
                                 </div>
-                                <Button variant="outline" className="rounded-xl border-destructive/20 text-destructive hover:bg-destructive/10">
-                                    Demander l'accès
-                                </Button>
                             </CardContent>
                         </Card>
                     )}

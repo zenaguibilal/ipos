@@ -14,8 +14,9 @@ import { Button } from '@/components/ui/button';
 import { BackupTableList } from './BackupTableList';
 import { BackupTableEditor } from './BackupTableEditor';
 import { BackupStats } from './BackupStats';
-import { Database, FileJson, Info } from 'lucide-react';
+import { Database, FileJson, Info, Search } from 'lucide-react';
 import { Separator } from '../ui/separator';
+import { Input } from '../ui/input';
 
 interface BackupPreviewProps {
     isOpen: boolean;
@@ -25,13 +26,16 @@ interface BackupPreviewProps {
 
 export function BackupPreview({ isOpen, onOpenChange, data }: BackupPreviewProps) {
     const [selectedTable, setSelectedTable] = useState<string | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
 
     const handleSelectTable = (tableName: string) => {
         setSelectedTable(tableName);
+        setSearchQuery('');
     };
 
     const handleBack = () => {
         setSelectedTable(null);
+        setSearchQuery('');
     };
 
     const stats = useMemo(() => {
@@ -42,6 +46,19 @@ export function BackupPreview({ isOpen, onOpenChange, data }: BackupPreviewProps
             sales: data.sales?.length || 0,
         };
     }, [data]);
+
+    const filteredTableData = useMemo(() => {
+        if (!selectedTable || !data[selectedTable]) return [];
+        const tableRows = data[selectedTable];
+        if (!searchQuery.trim()) return tableRows;
+
+        const q = searchQuery.toLowerCase().trim();
+        return tableRows.filter((row: any) => 
+            Object.values(row).some(val => 
+                String(val).toLowerCase().includes(q)
+            )
+        );
+    }, [selectedTable, data, searchQuery]);
 
     if (!data) return null;
 
@@ -63,8 +80,8 @@ export function BackupPreview({ isOpen, onOpenChange, data }: BackupPreviewProps
                 </DialogHeader>
 
                 <div className="flex-grow overflow-hidden flex flex-col p-6">
-                    {!selectedTable && (
-                        <div className="mb-6 animate-in fade-in slide-in-from-top-2 duration-500">
+                    {!selectedTable ? (
+                        <div className="flex flex-col h-full animate-in fade-in slide-in-from-top-2 duration-500">
                             <BackupStats stats={stats} />
                             <div className="mt-6 p-4 bg-blue-500/5 rounded-2xl border border-blue-500/10 flex items-start gap-3">
                                 <Info className="h-5 w-5 text-blue-400 shrink-0 mt-0.5" />
@@ -73,26 +90,37 @@ export function BackupPreview({ isOpen, onOpenChange, data }: BackupPreviewProps
                                 </p>
                             </div>
                             <Separator className="my-6 bg-white/5" />
-                        </div>
-                    )}
-
-                    <div className="flex-grow overflow-hidden">
-                        {selectedTable ? (
-                            <BackupTableEditor
-                                tableName={selectedTable}
-                                tableData={data[selectedTable] || []}
-                                onBack={handleBack}
-                            />
-                        ) : (
-                            <div className="h-full">
+                            <div className="flex-grow overflow-hidden">
                                 <h4 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-4 flex items-center gap-2">
                                     <Database className="h-3 w-3" />
                                     Architecture des données ({Object.keys(data).length} tables)
                                 </h4>
                                 <BackupTableList data={data} onSelectTable={handleSelectTable} />
                             </div>
-                        )}
-                    </div>
+                        </div>
+                    ) : (
+                        <div className="h-full flex flex-col">
+                            <div className="flex items-center justify-between mb-4">
+                                <Button variant="ghost" onClick={handleBack} className="rounded-xl font-bold uppercase text-[10px] tracking-widest h-9">
+                                    ← Retour
+                                </Button>
+                                <div className="relative w-64">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                                    <Input 
+                                        placeholder="Filtrer dans la table..." 
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        className="h-9 pl-9 rounded-xl border-white/10 bg-background/50 text-xs"
+                                    />
+                                </div>
+                            </div>
+                            <BackupTableEditor
+                                tableName={selectedTable}
+                                tableData={filteredTableData}
+                                onBack={handleBack}
+                            />
+                        </div>
+                    )}
                 </div>
 
                 <DialogFooter className="p-4 bg-white/5 border-t border-white/5">

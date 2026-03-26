@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import type { CompanyProfile } from '@/lib/types';
 import { Skeleton } from '../ui/skeleton';
-import { Loader2, Save, Globe, Phone, Mail, MapPin, Hash, ShoppingBag, Coins, Scale, FileText } from 'lucide-react';
+import { Loader2, Save, Globe, Phone, Mail, MapPin, Hash, ShoppingBag, Coins, Scale, FileText, BadgeCheck } from 'lucide-react';
 import { useAppStore } from '@/stores/appStore';
 import { Separator } from '../ui/separator';
 
@@ -91,29 +91,29 @@ export function CompanyProfileForm({ mode }: CompanyProfileFormProps) {
                                     <Label htmlFor="companyName" className="text-[10px] font-black uppercase tracking-widest opacity-70">Nom commercial</Label>
                                     <div className="relative">
                                         <ShoppingBag className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary" />
-                                        <Input id="companyName" value={formState.companyName || ''} onChange={handleInputChange} disabled={isSaving} className="pl-10 h-12 rounded-xl bg-background/50" placeholder="Ex: Boutique iPOS" />
+                                        <Input id="companyName" value={formState.companyName || ''} onChange={handleInputChange} disabled={isSaving} className="pl-10 h-12 rounded-xl bg-background/50 border-white/5 focus:border-primary/50" placeholder="Ex: Boutique iPOS" />
                                     </div>
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="address" className="text-[10px] font-black uppercase tracking-widest opacity-70">Adresse Siège</Label>
                                     <div className="relative">
                                         <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary" />
-                                        <Input id="address" value={formState.address || ''} onChange={handleInputChange} disabled={isSaving} className="pl-10 h-12 rounded-xl bg-background/50" placeholder="Ex: 12 Rue de la Liberté" />
+                                        <Input id="address" value={formState.address || ''} onChange={handleInputChange} disabled={isSaving} className="pl-10 h-12 rounded-xl bg-background/50 border-white/5 focus:border-primary/50" placeholder="Ex: 12 Rue de la Liberté" />
                                     </div>
                                 </div>
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="city" className="text-[10px] font-black uppercase tracking-widest opacity-70">Ville</Label>
-                                    <Input id="city" value={formState.city || ''} onChange={handleInputChange} disabled={isSaving} className="h-12 rounded-xl bg-background/50" />
+                                    <Input id="city" value={formState.city || ''} onChange={handleInputChange} disabled={isSaving} className="h-12 rounded-xl bg-background/50 border-white/5 focus:border-primary/50" />
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="zipCode" className="text-[10px] font-black uppercase tracking-widest opacity-70">Code Postal</Label>
-                                    <Input id="zipCode" value={formState.zipCode || ''} onChange={handleInputChange} disabled={isSaving} className="h-12 rounded-xl bg-background/50" />
+                                    <Input id="zipCode" value={formState.zipCode || ''} onChange={handleInputChange} disabled={isSaving} className="h-12 rounded-xl bg-background/50 border-white/5 focus:border-primary/50" />
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="country" className="text-[10px] font-black uppercase tracking-widest opacity-70">Pays</Label>
-                                    <Input id="country" value={formState.country || ''} onChange={handleInputChange} disabled={isSaving} className="h-12 rounded-xl bg-background/50" />
+                                    <Input id="country" value={formState.country || ''} onChange={handleInputChange} disabled={isSaving} className="h-12 rounded-xl bg-background/50 border-white/5 focus:border-primary/50" />
                                 </div>
                             </div>
                         </div>
@@ -129,14 +129,14 @@ export function CompanyProfileForm({ mode }: CompanyProfileFormProps) {
                                     <Label htmlFor="phone" className="text-[10px] font-black uppercase tracking-widest opacity-70">Téléphone Professionnel</Label>
                                     <div className="relative">
                                         <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary" />
-                                        <Input id="phone" type="tel" value={formState.phone || ''} onChange={handleInputChange} disabled={isSaving} className="pl-10 h-12 rounded-xl font-mono bg-background/50" />
+                                        <Input id="phone" type="tel" value={formState.phone || ''} onChange={handleInputChange} disabled={isSaving} className="pl-10 h-12 rounded-xl font-mono bg-background/50 border-white/5 focus:border-primary/50" />
                                     </div>
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="email" className="text-[10px] font-black uppercase tracking-widest opacity-70">Email de Contact</Label>
                                     <div className="relative">
                                         <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary" />
-                                        <Input id="email" type="email" value={formState.email || ''} onChange={handleInputChange} disabled={isSaving} className="pl-10 h-12 rounded-xl bg-background/50" />
+                                        <Input id="email" type="email" value={formState.email || ''} onChange={handleInputChange} disabled={isSaving} className="pl-10 h-12 rounded-xl bg-background/50 border-white/5 focus:border-primary/50" />
                                     </div>
                                 </div>
                             </div>
@@ -144,7 +144,7 @@ export function CompanyProfileForm({ mode }: CompanyProfileFormProps) {
                                 <Label htmlFor="website" className="text-[10px] font-black uppercase tracking-widest opacity-70">Site Web / Portails</Label>
                                 <div className="relative">
                                     <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary" />
-                                    <Input id="website" value={formState.website || ''} onChange={handleInputChange} disabled={isSaving} placeholder="https://..." className="pl-10 h-12 rounded-xl bg-background/50" />
+                                    <Input id="website" value={formState.website || ''} onChange={handleInputChange} disabled={isSaving} placeholder="https://..." className="pl-10 h-12 rounded-xl bg-background/50 border-white/5 focus:border-primary/50" />
                                 </div>
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -152,14 +152,14 @@ export function CompanyProfileForm({ mode }: CompanyProfileFormProps) {
                                     <Label htmlFor="vatNumber" className="text-[10px] font-black uppercase tracking-widest opacity-70">NIF / Matricule Fiscal</Label>
                                     <div className="relative">
                                         <FileText className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary" />
-                                        <Input id="vatNumber" value={formState.vatNumber || ''} onChange={handleInputChange} disabled={isSaving} className="pl-10 h-12 rounded-xl bg-background/50 font-mono" />
+                                        <Input id="vatNumber" value={formState.vatNumber || ''} onChange={handleInputChange} disabled={isSaving} className="pl-10 h-12 rounded-xl bg-background/50 border-white/5 focus:border-primary/50 font-mono" />
                                     </div>
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="rcNumber" className="text-[10px] font-black uppercase tracking-widest opacity-70">Registre du Commerce (RC)</Label>
                                     <div className="relative">
                                         <Hash className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary" />
-                                        <Input id="rcNumber" value={formState.rcNumber || ''} onChange={handleInputChange} disabled={isSaving} className="pl-10 h-12 rounded-xl bg-background/50 font-mono" />
+                                        <Input id="rcNumber" value={formState.rcNumber || ''} onChange={handleInputChange} disabled={isSaving} className="pl-10 h-12 rounded-xl bg-background/50 border-white/5 focus:border-primary/50 font-mono" />
                                     </div>
                                 </div>
                             </div>

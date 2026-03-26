@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -119,7 +120,7 @@ export function DataManagementCard() {
         <>
             <Card className="luxury-glass border-white/5 overflow-hidden">
                 <CardHeader className="bg-primary/5 border-b border-white/5">
-                    <CardTitle className="flex items-center gap-2">
+                    <CardTitle className="flex items-center gap-2 font-black uppercase tracking-tight">
                         <DatabaseBackup className="h-5 w-5 text-primary" />
                         Coffre-fort des Données
                     </CardTitle>
