@@ -71,6 +71,17 @@ class AuthService {
             throw error;
         }
     }
+
+    async sendPasswordResetEmail(email: string): Promise<void> {
+        try {
+            const { error } = await this.supabase.auth.resetPasswordForEmail(email);
+            if (error) {
+                throw new Error(error.message);
+            }
+        } catch(error: any) {
+            throw new Error(error.message || "Une erreur est survenue lors de l'envoi de l'email.");
+        }
+    }
 }
 
 export const authService = new AuthService();
