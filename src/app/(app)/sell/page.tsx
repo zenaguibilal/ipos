@@ -119,17 +119,16 @@ export default function SellPage() {
                 <div className="grid md:grid-cols-3 gap-4 flex-grow min-h-0 p-4">
                     {/* Main column */}
                     <div className="md:col-span-2 flex flex-col gap-4">
-                         <div className="flex flex-col sm:flex-row gap-4">
-                            <div className="w-full sm:max-w-xs">
+                        <div className="flex flex-wrap items-center justify-between gap-4">
+                            <div className="w-full sm:w-auto sm:min-w-[300px]">
                                 <CustomerCombobox ref={customerComboboxRef} />
                             </div>
-                            <div className="flex-grow"></div> {/* Spacer */}
-                            <div className="md:hidden">
+                            <div className="w-full sm:w-auto md:hidden">
                                 <Sheet open={isProductSheetOpen} onOpenChange={setIsProductSheetOpen}>
                                     <SheetTrigger asChild>
-                                        <Button variant="outline" className="w-full sm:w-auto h-full">
+                                        <Button variant="outline" className="w-full">
                                             <PackageSearch className="mr-2 h-4 w-4" />
-                                            Produits
+                                            Rechercher des produits
                                         </Button>
                                     </SheetTrigger>
                                     <SheetContent side="right" className="p-0 w-full max-w-full sm:max-w-md">
@@ -138,7 +137,6 @@ export default function SellPage() {
                                 </Sheet>
                             </div>
                         </div>
-
 
                         <Card className="flex-grow flex flex-col min-h-0">
                             <CardContent className="p-4 sm:p-6 flex-grow flex flex-col min-h-0">
