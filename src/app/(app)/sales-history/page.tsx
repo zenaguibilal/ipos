@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -7,7 +8,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import type { Sale, Customer } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, History, FileUp, Filter, TrendingUp, Receipt as ReceiptIcon, ShoppingBag, LayoutGrid, List, SortAsc, RefreshCw, Loader2 } from 'lucide-react';
+import { Search, History, FileUp, Filter, TrendingUp, Receipt as ReceiptIcon, ShoppingBag, LayoutGrid, List, SortAsc, RefreshCw, Loader2, Wallet, HandCoins } from 'lucide-react';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { useDateRange } from '@/hooks/useDateRange';
 import { SalesHistoryCard } from '@/components/sales/SalesHistoryCard';
@@ -102,12 +103,10 @@ export default function SalesHistoryPage() {
         
         let result = [...allSales];
         
-        // Payment Filter
         if (paymentFilter !== 'all') {
             result = result.filter(s => s.paymentStatus === paymentFilter);
         }
 
-        // Sorting
         const [field, order] = sortBy.split('_');
         const isAsc = order === 'asc';
 
@@ -132,9 +131,11 @@ export default function SalesHistoryPage() {
 
     const stats = useMemo(() => {
         const totalRevenue = filteredAndSortedSales.reduce((sum, s) => sum + s.total, 0);
+        const totalCollected = filteredAndSortedSales.reduce((sum, s) => sum + s.amountPaid, 0);
+        const totalDebt = filteredAndSortedSales.reduce((sum, s) => sum + s.remainingBalance, 0);
         const count = filteredAndSortedSales.length;
         const avgBasket = count > 0 ? totalRevenue / count : 0;
-        return { totalRevenue, count, avgBasket };
+        return { totalRevenue, totalCollected, totalDebt, count, avgBasket };
     }, [filteredAndSortedSales]);
 
     const handleViewDetails = (sale: Sale) => {
@@ -190,7 +191,7 @@ export default function SalesHistoryPage() {
                 <EmptyState
                     icon={History}
                     title="Aucune vente trouvée"
-                    description="Essayez d'ajuster votre recherche ou vos filtres de période."
+                    description="Ajustez vos filtres ou la période pour voir plus de résultats."
                 />
             );
         }
@@ -226,7 +227,7 @@ export default function SalesHistoryPage() {
 
                 {visibleSalesCount < filteredAndSortedSales.length && (
                     <div className="flex justify-center pt-4">
-                        <Button variant="outline" size="lg" onClick={handleLoadMore} className="min-w-[200px]">
+                        <Button variant="outline" size="lg" onClick={handleLoadMore} className="min-w-[200px] luxury-glass border-primary/20">
                             {isRefreshing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                             Charger plus ({visibleSales.length} / {filteredAndSortedSales.length})
                         </Button>
@@ -240,50 +241,65 @@ export default function SalesHistoryPage() {
         <div className="p-4 sm:p-6 space-y-6">
             <PageHeader
                 title="Historique des Ventes"
-                description="Consultez et gérez vos transactions passées."
+                description="Suivez vos transactions et gérez vos encaissements."
             >
                 <div className="flex gap-2 w-full sm:w-auto">
-                    <Button variant="outline" onClick={handleExport} disabled={allSales === undefined || isExporting}>
+                    <Button variant="outline" onClick={handleExport} disabled={allSales === undefined || isExporting} className="border-primary/20">
                         <FileUp className={cn("mr-2 h-4 w-4", isExporting && "animate-pulse")} />
                         Exporter CSV
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => fetchSalesAndCustomers(true)} disabled={isRefreshing}>
+                    <Button variant="ghost" size="icon" onClick={() => fetchSalesAndCustomers(true)} disabled={isRefreshing} className="hover:bg-primary/10">
                         <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
                     </Button>
                 </div>
             </PageHeader>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <Card className="bg-primary/5 border-primary/20 luxury-glass">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <Card className="bg-primary/5 border-primary/20 luxury-glass overflow-hidden relative group">
+                    <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <TrendingUp className="h-12 w-12 text-primary" />
+                    </div>
                     <CardHeader className="py-3">
-                        <CardTitle className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-2">
-                            <TrendingUp className="h-4 w-4 text-primary" />
-                            Recettes Totales
-                        </CardTitle>
+                        <CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Ventes Totales</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <p className="text-2xl font-black text-primary">{formatCurrency(stats.totalRevenue)}</p>
-                        <p className="text-[10px] text-muted-foreground mt-1">Sur la période filtrée</p>
+                        <p className="text-[10px] text-muted-foreground mt-1">{stats.count} transactions effectuées</p>
                     </CardContent>
                 </Card>
-                <Card className="bg-chart-quaternary/5 border-chart-quaternary/20 luxury-glass">
+
+                <Card className="bg-chart-quaternary/5 border-chart-quaternary/20 luxury-glass overflow-hidden relative group">
+                    <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <Wallet className="h-12 w-12 text-chart-quaternary" />
+                    </div>
                     <CardHeader className="py-3">
-                        <CardTitle className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-2">
-                            <ReceiptIcon className="h-4 w-4 text-chart-quaternary" />
-                            Nombre de Ventes
-                        </CardTitle>
+                        <CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Encaissé</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <p className="text-2xl font-black text-chart-quaternary">{stats.count}</p>
-                        <p className="text-[10px] text-muted-foreground mt-1">Transactions validées</p>
+                        <p className="text-2xl font-black text-chart-quaternary">{formatCurrency(stats.totalCollected)}</p>
+                        <p className="text-[10px] text-muted-foreground mt-1">Argent perçu réellement</p>
                     </CardContent>
                 </Card>
-                <Card className="bg-chart-secondary/5 border-chart-secondary/20 luxury-glass">
+
+                <Card className="bg-destructive/5 border-destructive/20 luxury-glass overflow-hidden relative group">
+                    <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <HandCoins className="h-12 w-12 text-destructive" />
+                    </div>
                     <CardHeader className="py-3">
-                        <CardTitle className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-2">
-                            <ShoppingBag className="h-4 w-4 text-chart-secondary" />
-                            Panier Moyen
-                        </CardTitle>
+                        <CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Dettes Générées</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-2xl font-black text-destructive">{formatCurrency(stats.totalDebt)}</p>
+                        <p className="text-[10px] text-muted-foreground mt-1">Reste à percevoir sur cette période</p>
+                    </CardContent>
+                </Card>
+
+                <Card className="bg-chart-secondary/5 border-chart-secondary/20 luxury-glass overflow-hidden relative group">
+                    <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <ShoppingBag className="h-12 w-12 text-chart-secondary" />
+                    </div>
+                    <CardHeader className="py-3">
+                        <CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Panier Moyen</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <p className="text-2xl font-black text-chart-secondary">{formatCurrency(stats.avgBasket)}</p>
@@ -292,12 +308,12 @@ export default function SalesHistoryPage() {
                 </Card>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-2">
+            <div className="flex flex-col lg:flex-row gap-3">
                 <div className="relative flex-grow">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input 
                         placeholder="Rechercher par N° Facture ou Nom Client..."
-                        className="pl-10 h-11"
+                        className="pl-10 h-11 border-primary/10 bg-background/50 focus:border-primary/30"
                         value={searchQuery}
                         onChange={e => setSearchQuery(e.target.value)}
                     />
@@ -306,13 +322,15 @@ export default function SalesHistoryPage() {
                 <div className="flex flex-wrap gap-2">
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="outline" className="w-full sm:w-auto h-11">
-                                <Filter className="mr-2 h-4 w-4" />
-                                Statut: {paymentFilter === 'all' ? 'Tous' : paymentFilter === 'paid' ? 'Payé' : paymentFilter === 'partial' ? 'Partiel' : 'Impayé'}
+                            <Button variant="outline" className="h-11 min-w-[140px] justify-between border-primary/10">
+                                <span className="flex items-center gap-2">
+                                    <Filter className="h-4 w-4 text-primary" />
+                                    {paymentFilter === 'all' ? 'Tous les paiements' : paymentFilter === 'paid' ? 'Payé' : paymentFilter === 'partial' ? 'Partiel' : 'Impayé'}
+                                </span>
                             </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Filtrer par paiement</DropdownMenuLabel>
+                        <DropdownMenuContent align="end" className="w-56">
+                            <DropdownMenuLabel>Statut de paiement</DropdownMenuLabel>
                             <DropdownMenuSeparator />
                             <DropdownMenuRadioGroup value={paymentFilter} onValueChange={(val) => setPaymentFilter(val as PaymentFilter)}>
                                 <DropdownMenuRadioItem value="all">Tout afficher</DropdownMenuRadioItem>
@@ -325,13 +343,15 @@ export default function SalesHistoryPage() {
 
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="outline" className="w-full sm:w-auto h-11">
-                                <SortAsc className="mr-2 h-4 w-4" />
-                                Trier: {sortOptions[sortBy]}
+                            <Button variant="outline" className="h-11 min-w-[140px] justify-between border-primary/10">
+                                <span className="flex items-center gap-2">
+                                    <SortAsc className="h-4 w-4 text-primary" />
+                                    {sortOptions[sortBy]}
+                                </span>
                             </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Trier les ventes par</DropdownMenuLabel>
+                        <DropdownMenuContent align="end" className="w-56">
+                            <DropdownMenuLabel>Trier par</DropdownMenuLabel>
                             <DropdownMenuSeparator />
                             <DropdownMenuRadioGroup value={sortBy} onValueChange={setSortBy}>
                                 {Object.entries(sortOptions).map(([key, value]) => (
@@ -341,11 +361,9 @@ export default function SalesHistoryPage() {
                         </DropdownMenuContent>
                     </DropdownMenu>
 
-                    <div className="h-11">
-                        <DateRangePicker date={dateRange} setDate={setDate} />
-                    </div>
+                    <DateRangePicker date={dateRange} setDate={setDate} />
 
-                    <div className="flex items-center gap-1 rounded-md bg-muted p-1 h-11">
+                    <div className="flex items-center gap-1 rounded-md bg-muted/50 p-1 border border-primary/10 h-11">
                         <Button variant={viewMode === 'grid' ? 'secondary': 'ghost'} size="icon" className="h-9 w-9" onClick={() => setViewMode('grid')} title="Vue Grille">
                             <LayoutGrid className="h-5 w-5"/>
                         </Button>
