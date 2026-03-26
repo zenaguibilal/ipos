@@ -9,7 +9,7 @@ import { useDateRange } from '@/hooks/useDateRange';
 import type { DashboardData, RecentSale, RecentReturn, SalesByDay, TopProduct, TopCustomer, LowStockProduct } from '@/lib/types';
 import { dashboardService } from '@/services/dashboard.service';
 import { toast } from 'sonner';
-import { TrendingUp, TrendingDown, DollarSign, Receipt, Undo2, Users, CreditCard, Archive } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Receipt, Undo2, Users, CreditCard, Archive, RefreshCw } from 'lucide-react';
 import { formatCurrency, safeToDate, getPlaceholder, cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -320,6 +320,14 @@ export default function DashboardPage() {
                 description="Vue d'ensemble de l'activité de votre commerce."
             >
                 <DateRangePicker date={dateRange} setDate={setDate} />
+                <Button 
+                    variant="outline" 
+                    size="icon" 
+                    onClick={() => dateRange?.from && dateRange?.to && fetchData(dateRange.from, dateRange.to)}
+                    disabled={isLoading}
+                >
+                    <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
+                </Button>
             </PageHeader>
             
             <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
