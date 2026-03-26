@@ -1,11 +1,13 @@
+
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { expenseService } from '@/services/expense.service';
 import type { Expense } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Plus, Filter, Search, FileUp, TrendingDown, Tag, X, RefreshCw, Loader2, BarChart as BarChartIcon, ArrowUpRight, ArrowDownRight, Calendar, Wallet, PieChart } from 'lucide-react';
+import { Plus, Filter, Search, FileUp, TrendingDown, Tag, X, RefreshCw, Loader2, BarChart as BarChartIcon, ArrowUpRight, ArrowDownRight, Calendar, Wallet, PieChart, LayoutGrid, List } from 'lucide-react';
 import { ExpenseCard } from '@/components/expenses/ExpenseCard';
+import { ExpenseTable } from '@/components/expenses/ExpenseTable';
 import ExpenseDialog from '@/components/expenses/ExpenseDialog';
 import DeleteExpenseDialog from '@/components/expenses/DeleteExpenseDialog';
 import {
@@ -24,7 +26,7 @@ import { formatCurrency, cn } from '@/lib/utils';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { toast } from 'sonner';
-import { useIsManagerOrAdmin } from '@/stores/appStore';
+import { useAppStore, useIsManagerOrAdmin } from '@/stores/appStore';
 import { Input } from '@/components/ui/input';
 import { useDebounce } from '@/hooks/useDebounce';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell, CartesianGrid } from 'recharts';
@@ -32,6 +34,11 @@ import { startOfDay, endOfDay, subDays, startOfMonth } from 'date-fns';
 
 export default function ExpensesPage() {
     const isManagerOrAdmin = useIsManagerOrAdmin();
+    const { viewMode, setViewMode } = useAppStore(state => ({
+        viewMode: state.expenseViewMode,
+        setViewMode: state.actions.setExpenseViewMode,
+    }));
+
     const [searchQuery, setSearchQuery] = useState('');
     const debouncedSearch = useDebounce(searchQuery, 300);
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -197,6 +204,16 @@ export default function ExpensesPage() {
             );
         }
         
+        if (viewMode === 'list') {
+            return (
+                <ExpenseTable 
+                    expenses={filteredExpenses}
+                    onEdit={handleEditExpense}
+                    onDelete={handleDeleteExpense}
+                />
+            );
+        }
+
         return (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredExpenses.map(e => (
@@ -379,13 +396,22 @@ export default function ExpensesPage() {
 
                     <DateRangePicker date={dateRange} setDate={setDate} />
                     
+                    <div className="flex items-center gap-1 rounded-xl bg-muted/50 p-1 border border-primary/10 h-11 luxury-glass">
+                        <Button variant={viewMode === 'grid' ? 'secondary': 'ghost'} size="icon" className="h-9 w-9 rounded-lg" onClick={() => setViewMode('grid')} title="Vue Grille">
+                            <LayoutGrid className="h-5 w-5"/>
+                        </Button>
+                        <Button variant={viewMode === 'list' ? 'secondary': 'ghost'} size="icon" className="h-9 w-9 rounded-lg" onClick={() => setViewMode('list')} title="Vue Liste">
+                            <List className="h-5 w-5"/>
+                        </Button>
+                    </div>
+
                     <Button variant="ghost" size="icon" className="h-11 w-11 hover:bg-primary/10 rounded-xl luxury-glass" onClick={() => fetchExpenses(true)} disabled={isRefreshing}>
                         <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
                     </Button>
                 </div>
             </div>
             
-            {/* Results Grid */}
+            {/* Results */}
             <div className="min-h-[400px]">
                {renderContent()}
             </div>

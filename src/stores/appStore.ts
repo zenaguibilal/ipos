@@ -2,7 +2,7 @@
 import { create } from 'zustand';
 import { produce } from 'immer';
 import type { Session, User } from '@supabase/supabase-js';
-import type { Cart, Customer, CompanyProfile, Product, CartItem, ReturnItem, StockIntakeItem, Sale } from '@/lib/types';
+import type { Cart, Customer, CompanyProfile, Product, CartItem, ReturnItem, StockIntakeItem, Sale, Expense } from '@/lib/types';
 import { toast } from 'sonner';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
@@ -34,6 +34,7 @@ interface AppState {
     customerViewMode: 'grid' | 'list';
     salesHistoryViewMode: 'grid' | 'list';
     returnViewMode: 'grid' | 'list';
+    expenseViewMode: 'grid' | 'list';
     lastCompletedSale: { sale: Sale; customer: Customer | null } | null;
     actions: AppActions;
 }
@@ -88,6 +89,7 @@ interface AppActions {
     setCustomerViewMode: (mode: 'grid' | 'list') => void;
     setSalesHistoryViewMode: (mode: 'grid' | 'list') => void;
     setReturnViewMode: (mode: 'grid' | 'list') => void;
+    setExpenseViewMode: (mode: 'grid' | 'list') => void;
 }
 
 // Initial State
@@ -113,6 +115,7 @@ const initialState: Omit<AppState, 'actions'> = {
     customerViewMode: 'grid',
     salesHistoryViewMode: 'grid',
     returnViewMode: 'grid',
+    expenseViewMode: 'grid',
     lastCompletedSale: null,
 };
 
@@ -397,6 +400,7 @@ export const useAppStore = create<AppState>()(
                 setCustomerViewMode: (mode) => set({ customerViewMode: mode }),
                 setSalesHistoryViewMode: (mode) => set({ salesHistoryViewMode: mode }),
                 setReturnViewMode: (mode) => set({ returnViewMode: mode }),
+                setExpenseViewMode: (mode) => set({ expenseViewMode: mode }),
             }
         }),
         {
@@ -410,6 +414,7 @@ export const useAppStore = create<AppState>()(
               customerViewMode: state.customerViewMode,
               salesHistoryViewMode: state.salesHistoryViewMode,
               returnViewMode: state.returnViewMode,
+              expenseViewMode: state.expenseViewMode,
           }),
           onRehydrateStorage: () => (state) => {
               if (state) {
