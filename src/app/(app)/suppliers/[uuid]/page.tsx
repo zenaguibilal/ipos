@@ -4,20 +4,27 @@
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Banknote, Printer, Loader2, Filter, History, Package, Building2, Phone, Mail, MapPin, Tag, ArrowUpRight, TrendingUp } from 'lucide-react';
+import { ArrowLeft, Banknote, History, Package, Building2, Phone, Mail, MapPin, ArrowRight, TrendingUp, BarChart3, ListFilter, Search, MessageSquare, ExternalLink } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useState, useCallback, useEffect, useMemo } from 'react';
-import type { Supplier, StockIntake } from '@/lib/types';
+import type { Supplier, StockIntake, Product } from '@/lib/types';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { supplierService } from '@/services/supplier.service';
 import { productService } from '@/services/product.service';
 import { toast } from 'sonner';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { SupplierActivity } from '@/components/suppliers/SupplierActivity';
 import { SupplierPaymentDialog } from '@/components/suppliers/SupplierPaymentDialog';
 import { StockIntakeDetailsDialog } from '@/components/stock/stock-intake-details-dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
+import { format, startOfMonth, eachMonthOfInterval, subMonths } from 'date-fns';
+import { fr } from 'date-fns/locale';
+import Image from 'next/image';
+import { getPlaceholder } from '@/lib/utils';
 
 export default function SupplierDetailPage() {
     const params = useParams();
@@ -26,8 +33,9 @@ export default function SupplierDetailPage() {
 
     const [supplier, setSupplier] = useState<Supplier | undefined | null>(undefined);
     const [activity, setActivity] = useState<any[]>([]);
-    const [linkedProductsCount, setLinkedProductsCount] = useState(0);
+    const [linkedProducts, setLinkedProducts] = useState<Product[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [productSearch, setProductSearch] = useState('');
     
     const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
     const [selectedIntake, setSelectedIntake] = useState<StockIntake | null>(null);
@@ -45,7 +53,7 @@ export default function SupplierDetailPage() {
             
             setSupplier(sup);
             setActivity(act);
-            setLinkedProductsCount(prods.length);
+            setLinkedProducts(prods);
             
             if (!sup) {
                 toast.error("Le fournisseur est introuvable.");
@@ -63,15 +71,50 @@ export default function SupplierDetailPage() {
     },[fetchSupplierData]);
 
     const stats = useMemo(() => {
-        if (!activity.length) return { totalBought: 0, intakeCount: 0 };
+        if (!activity.length) return { totalBought: 0, intakeCount: 0, avgIntake: 0 };
         const intakes = activity.filter(a => a.type === 'intake');
         const totalBought = intakes.reduce((sum, i) => sum + i.totalValue, 0);
-        return { totalBought, intakeCount: intakes.length };
+        return { 
+            totalBought, 
+            intakeCount: intakes.length,
+            avgIntake: intakes.length > 0 ? totalBought / intakes.length : 0
+        };
     }, [activity]);
+
+    const chartData = useMemo(() => {
+        const months = eachMonthOfInterval({
+            start: subMonths(new Date(), 5),
+            end: new Date()
+        });
+
+        return months.map(month => {
+            const monthStr = format(month, 'yyyy-MM');
+            const total = activity
+                .filter(a => a.type === 'intake' && format(new Date(a.date), 'yyyy-MM') === monthStr)
+                .reduce((sum, i) => sum + i.totalValue, 0);
+            
+            return {
+                name: format(month, 'MMM', { locale: fr }),
+                total
+            };
+        });
+    }, [activity]);
+
+    const filteredProducts = useMemo(() => {
+        return linkedProducts.filter(p => 
+            p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
+            p.category?.toLowerCase().includes(productSearch.toLowerCase())
+        );
+    }, [linkedProducts, productSearch]);
 
     const handleIntakeClick = (intake: StockIntake) => {
         setSelectedIntake(intake);
         setIsIntakeDetailsOpen(true);
+    };
+
+    const handleWhatsApp = () => {
+        if (!supplier?.phone) return;
+        window.open(`https://wa.me/${supplier.phone}`, '_blank');
     };
 
     if (isLoading && !supplier) {
@@ -121,55 +164,158 @@ export default function SupplierDetailPage() {
 
             <div className="grid md:grid-cols-3 gap-6">
                 <div className="md:col-span-2 space-y-6">
-                    <div className="grid sm:grid-cols-2 gap-4">
+                    <div className="grid sm:grid-cols-3 gap-4">
                         <Card className="luxury-glass bg-primary/5 border-primary/10">
                             <CardHeader className="py-3">
                                 <CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
                                     <TrendingUp className="h-4 w-4 text-primary" />
-                                    Volume d'Achat Total
+                                    Achat Total
                                 </CardTitle>
                             </CardHeader>
                             <CardContent>
                                 <p className="text-2xl font-black">{formatCurrency(stats.totalBought)}</p>
-                                <p className="text-[10px] text-muted-foreground font-medium mt-1 uppercase">{stats.intakeCount} Factures enregistrées</p>
+                                <p className="text-[10px] text-muted-foreground font-medium mt-1 uppercase">{stats.intakeCount} Réceptions</p>
                             </CardContent>
                         </Card>
                         <Card className="luxury-glass bg-blue-500/5 border-blue-500/10">
                             <CardHeader className="py-3">
                                 <CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
                                     <Package className="h-4 w-4 text-blue-400" />
-                                    Articles référencés
+                                    Articles
                                 </CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <p className="text-2xl font-black text-blue-400">{linkedProductsCount}</p>
-                                <p className="text-[10px] text-muted-foreground font-medium mt-1 uppercase">Produits liés à ce fournisseur</p>
+                                <p className="text-2xl font-black text-blue-400">{linkedProducts.length}</p>
+                                <p className="text-[10px] text-muted-foreground font-medium mt-1 uppercase">Produits référencés</p>
+                            </CardContent>
+                        </Card>
+                        <Card className="luxury-glass bg-chart-quaternary/5 border-chart-quaternary/10">
+                            <CardHeader className="py-3">
+                                <CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                                    <BarChart3 className="h-4 w-4 text-chart-quaternary" />
+                                    Panier Moyen
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <p className="text-2xl font-black text-chart-quaternary">{formatCurrency(stats.avgIntake)}</p>
+                                <p className="text-[10px] text-muted-foreground font-medium mt-1 uppercase">Valeur/Facture</p>
                             </CardContent>
                         </Card>
                     </div>
 
-                     <Card className="luxury-glass border-white/5">
-                        <CardHeader className="flex flex-row items-center justify-between border-b border-white/5 bg-white/5 px-6">
-                            <div className="space-y-1">
-                                <CardTitle className="flex items-center gap-2 text-lg font-black uppercase tracking-tight">
-                                    <History className="h-5 w-5 text-primary" />
-                                    Historique des Opérations
-                                </CardTitle>
-                                <CardDescription className="text-xs">Suivi des réceptions de stock et des règlements financiers.</CardDescription>
-                            </div>
+                    <Card className="luxury-glass border-white/5 overflow-hidden">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-sm font-bold flex items-center gap-2 uppercase tracking-widest">
+                                <TrendingUp className="h-4 w-4 text-primary" />
+                                Évolution des Commandes (6 mois)
+                            </CardTitle>
                         </CardHeader>
-                        <CardContent className="p-6">
-                           <SupplierActivity 
-                                activity={activity} 
-                                onIntakeClick={handleIntakeClick}
-                            />
+                        <CardContent className="h-48 pt-4">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={chartData}>
+                                    <defs>
+                                        <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
+                                            <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
+                                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 10, fill: 'gray'}} />
+                                    <YAxis hide />
+                                    <Tooltip 
+                                        contentStyle={{ backgroundColor: '#1a120c', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
+                                        formatter={(val: number) => [formatCurrency(val), 'Montant']}
+                                    />
+                                    <Area type="monotone" dataKey="total" stroke="hsl(var(--primary))" fillOpacity={1} fill="url(#colorTotal)" />
+                                </AreaChart>
+                            </ResponsiveContainer>
                         </CardContent>
                     </Card>
+
+                    <Tabs defaultValue="activity" className="w-full">
+                        <TabsList className="grid w-full grid-cols-2 luxury-glass p-1 mb-4 h-12 bg-muted/20">
+                            <TabsTrigger value="activity" className="rounded-xl gap-2 font-bold data-[state=active]:bg-background">
+                                <History className="h-4 w-4" /> Historique
+                            </TabsTrigger>
+                            <TabsTrigger value="products" className="rounded-xl gap-2 font-bold data-[state=active]:bg-background">
+                                <Package className="h-4 w-4" /> Produits ({linkedProducts.length})
+                            </TabsTrigger>
+                        </TabsList>
+
+                        <TabsContent value="activity">
+                            <Card className="luxury-glass border-white/5">
+                                <CardContent className="p-6">
+                                    <SupplierActivity 
+                                        activity={activity} 
+                                        onIntakeClick={handleIntakeClick}
+                                    />
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
+
+                        <TabsContent value="products">
+                            <Card className="luxury-glass border-white/5">
+                                <CardHeader className="px-6 py-4 border-b border-white/5">
+                                    <div className="relative">
+                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                        <Input 
+                                            placeholder="Filtrer les produits du fournisseur..." 
+                                            className="pl-10 h-10 bg-background/50 rounded-xl"
+                                            value={productSearch}
+                                            onChange={(e) => setProductSearch(e.target.value)}
+                                        />
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="p-0">
+                                    <div className="divide-y divide-white/5">
+                                        {filteredProducts.map(product => (
+                                            <div key={product.uuid} className="flex items-center justify-between p-4 hover:bg-white/5 transition-colors">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="h-10 w-10 relative rounded-lg overflow-hidden border border-white/10 bg-muted">
+                                                        <Image 
+                                                            src={product.imageUrl || getPlaceholder(product.category).url} 
+                                                            alt={product.name} 
+                                                            fill 
+                                                            className="object-cover"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-bold text-sm">{product.name}</p>
+                                                        <p className="text-[10px] text-muted-foreground uppercase">{product.category}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="text-right flex items-center gap-6">
+                                                    <div className="hidden sm:block">
+                                                        <p className="text-[10px] text-muted-foreground font-black uppercase">Dernier Achat</p>
+                                                        <p className="text-xs font-bold">{formatCurrency(product.purchasePrice)}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[10px] text-muted-foreground font-black uppercase">Stock</p>
+                                                        <Badge variant={product.quantity <= product.minStockLevel ? 'destructive' : 'outline'} className="text-[10px] h-5">
+                                                            {product.quantity} {product.unite}
+                                                        </Badge>
+                                                    </div>
+                                                    <Button variant="ghost" size="icon" asChild className="h-8 w-8 rounded-lg">
+                                                        <Link href={`/products?query=${product.name}`}><ExternalLink className="h-4 w-4" /></Link>
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                        {filteredProducts.length === 0 && (
+                                            <div className="p-12 text-center text-muted-foreground italic text-sm">
+                                                Aucun produit ne correspond à votre recherche.
+                                            </div>
+                                        )}
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
+                    </Tabs>
                 </div>
 
                 <div className="space-y-6">
                     <Card className={cn(
-                        "luxury-glass border-2",
+                        "luxury-glass border-2 overflow-hidden",
                         supplier.balance > 0 ? "border-destructive/30 bg-destructive/5" : "border-chart-quaternary/30 bg-chart-quaternary/5"
                     )}>
                         <CardHeader className="pb-2">
@@ -215,39 +361,51 @@ export default function SupplierDetailPage() {
                             <div className="space-y-3">
                                 <div className="flex items-center justify-between group">
                                     <span className="text-muted-foreground flex items-center gap-2 text-[10px] font-black uppercase tracking-tighter opacity-70">
-                                        <User className="h-3 w-3"/> Contact
+                                        Contact
                                     </span>
                                     <span className="font-bold">{supplier.contactPerson || 'N/A'}</span>
                                 </div>
                                 <div className="flex items-center justify-between group">
                                     <span className="text-muted-foreground flex items-center gap-2 text-[10px] font-black uppercase tracking-tighter opacity-70">
-                                        <Phone className="h-3 w-3"/> Téléphone
+                                        Téléphone
                                     </span>
                                     <div className="flex gap-2">
                                         <span className="font-mono font-bold">{supplier.phone || 'N/A'}</span>
                                         {supplier.phone && (
-                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-primary hover:bg-primary/10 rounded-lg" asChild>
-                                                <a href={`tel:${supplier.phone}`}><Phone className="h-3 w-3" /></a>
-                                            </Button>
+                                            <div className="flex gap-1">
+                                                <Button variant="ghost" size="icon" className="h-7 w-7 text-green-500 hover:bg-green-500/10 rounded-lg" onClick={handleWhatsApp}>
+                                                    <MessageSquare className="h-3.5 w-3.5" />
+                                                </Button>
+                                                <Button variant="ghost" size="icon" className="h-7 w-7 text-primary hover:bg-primary/10 rounded-lg" asChild>
+                                                    <a href={`tel:${supplier.phone}`}><Phone className="h-3.5 w-3.5" /></a>
+                                                </Button>
+                                            </div>
                                         )}
                                     </div>
                                 </div>
                                 <div className="flex items-center justify-between group">
                                     <span className="text-muted-foreground flex items-center gap-2 text-[10px] font-black uppercase tracking-tighter opacity-70">
-                                        <Mail className="h-3 w-3"/> E-mail
+                                        E-mail
                                     </span>
                                     <span className="font-medium text-right max-w-[150px] truncate">{supplier.email || 'N/A'}</span>
                                 </div>
                                 <div className="flex items-start justify-between gap-4 group pt-2 border-t border-white/5">
                                     <span className="text-muted-foreground flex items-center gap-2 text-[10px] font-black uppercase tracking-tighter opacity-70 mt-1">
-                                        <MapPin className="h-3 w-3"/> Adresse
+                                        Adresse
                                     </span>
-                                    <span className="font-medium text-right italic leading-tight text-muted-foreground">{supplier.address || 'N/A'}</span>
+                                    <div className="text-right">
+                                        <span className="font-medium italic leading-tight text-muted-foreground block text-xs">{supplier.address || 'N/A'}</span>
+                                        {supplier.address && (
+                                            <Button variant="link" size="sm" className="h-auto p-0 text-[10px] text-primary" asChild>
+                                                <a href={`https://maps.google.com/?q=${encodeURIComponent(supplier.address)}`} target="_blank"><MapPin className="h-2 w-2 mr-1" /> Voir sur Maps</a>
+                                            </Button>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         </CardContent>
-                        <CardFooter className="bg-primary/5 p-3 text-[10px] text-muted-foreground justify-center gap-1">
-                            Partenaire depuis le {supplier.createdAt ? new Date(supplier.createdAt).toLocaleDateString('fr-FR') : 'N/A'}
+                        <CardFooter className="bg-primary/5 p-3 text-[10px] text-muted-foreground justify-center gap-1 border-t border-white/5">
+                            Partenaire iPOS depuis le {supplier.createdAt ? new Date(supplier.createdAt).toLocaleDateString('fr-FR') : 'N/A'}
                         </CardFooter>
                     </Card>
                 </div>

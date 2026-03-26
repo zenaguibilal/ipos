@@ -70,8 +70,12 @@ class SupplierService {
     async deleteSupplier(uuid: string): Promise<void> {
         try {
             // Check if supplier has intakes or payments
-            const intakes = await stockRepository.filter({ query: uuid }); // Simplified check
-            if (intakes.length > 0) throw new Error("Impossible de supprimer un fournisseur avec un historique de réceptions.");
+            const intakes = await stockRepository.filter({ query: uuid });
+            const payments = await supplierPaymentRepository.findBySupplierUuid(uuid);
+            
+            if (intakes.length > 0 || payments.length > 0) {
+                throw new Error("Impossible de supprimer un fournisseur avec un historique de transactions (réceptions ou paiements).");
+            }
             
             await supplierRepository.delete(uuid);
         } catch (error) {
@@ -138,7 +142,8 @@ class SupplierService {
             'Téléphone': s.phone || '',
             'E-mail': s.email || '',
             'Adresse': s.address || '',
-            'Solde Dû (DA)': s.balance,
+            'Solde Dû (DA)': s.balance.toFixed(1),
+            'Inscrit le': s.createdAt ? new Date(s.createdAt).toLocaleDateString('fr-FR') : 'N/A'
         }));
 
         const csv = Papa.unparse(data);
@@ -147,7 +152,7 @@ class SupplierService {
         const url = URL.createObjectURL(blob);
         
         link.setAttribute('href', url);
-        link.setAttribute('download', `fournisseurs-${new Date().toISOString().split('T')[0]}.csv`);
+        link.setAttribute('download', `fournisseurs-ipos-${new Date().toISOString().split('T')[0]}.csv`);
         link.style.visibility = 'hidden';
         document.body.appendChild(link);
         link.click();
