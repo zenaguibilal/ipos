@@ -138,6 +138,7 @@ export interface StockIntakeItem {
     purchasePrice: number;
     price: number;
     isNew: boolean;
+    unite?: 'Pièce' | 'Kg' | 'Litre' | 'Boîte' | 'Carton' | 'Sachet' | 'Bouteille';
 }
 
 export interface StockIntake {

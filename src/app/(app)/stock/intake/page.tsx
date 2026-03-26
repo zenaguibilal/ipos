@@ -18,8 +18,17 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { ProductIntakeCombobox } from '@/components/stock/ProductIntakeCombobox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { supplierService } from '@/services/supplier.service';
 import { useAppActions, useIsManagerOrAdmin } from '@/stores/appStore';
+
+const units: NonNullable<Product['unite']>[] = ['Pièce', 'Kg', 'Litre', 'Boîte', 'Carton', 'Sachet', 'Bouteille'];
 
 export default function NewStockIntakePage() {
     const router = useRouter();
@@ -85,6 +94,7 @@ export default function NewStockIntakePage() {
                     purchasePrice: product.purchasePrice,
                     price: product.price,
                     isNew: false,
+                    unite: product.unite || 'Pièce',
                 }
             ]);
         }
@@ -101,6 +111,7 @@ export default function NewStockIntakePage() {
             purchasePrice: 0,
             price: 0,
             isNew: true,
+            unite: 'Pièce',
         };
         setItems(prev => [...prev, newItem]);
     }, []);
@@ -275,7 +286,9 @@ export default function NewStockIntakePage() {
                         <table className="w-full text-sm">
                             <thead>
                                 <tr className="border-b">
-                                    <th className="p-2 text-left">Produit</th>
+                                    <th className="p-2 text-left min-w-48">Produit</th>
+                                    <th className="p-2 text-left w-40">Catégorie</th>
+                                    <th className="p-2 text-left w-32">Unité</th>
                                     <th className="p-2 text-left w-32">Qté Reçue</th>
                                     <th className="p-2 text-left w-32">Qté Endommagée</th>
                                     <th className="p-2 text-left w-40">Prix Achat U.</th>
@@ -292,6 +305,21 @@ export default function NewStockIntakePage() {
                                                 {item.isNew ? (
                                                     <Input placeholder="Nom du nouveau produit" value={item.name} onChange={e => handleItemChange(item.id, 'name', e.target.value)} />
                                                 ) : item.name}
+                                            </td>
+                                            <td className="p-2">
+                                                {item.isNew ? (
+                                                    <Input placeholder="Catégorie" value={item.category || ''} onChange={e => handleItemChange(item.id, 'category', e.target.value)} />
+                                                ) : item.category || 'N/A'}
+                                            </td>
+                                            <td className="p-2">
+                                                {item.isNew ? (
+                                                    <Select value={item.unite} onValueChange={(value) => handleItemChange(item.id, 'unite', value)}>
+                                                        <SelectTrigger><SelectValue /></SelectTrigger>
+                                                        <SelectContent>
+                                                            {units.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
+                                                        </SelectContent>
+                                                    </Select>
+                                                ) : item.unite || 'N/A'}
                                             </td>
                                             <td className="p-2"><Input type="number" min="1" value={item.quantity} onChange={e => handleItemChange(item.id, 'quantity', parseInt(e.target.value) || 0)} /></td>
                                             <td className="p-2"><Input type="number" min="0" value={item.quantityDamaged} onChange={e => handleItemChange(item.id, 'quantityDamaged', parseInt(e.target.value) || 0)} /></td>
@@ -314,7 +342,7 @@ export default function NewStockIntakePage() {
                                 })}
                                 {items.length === 0 && (
                                     <tr>
-                                        <td colSpan={6} className="p-8 text-center text-muted-foreground">Aucun article ajouté.</td>
+                                        <td colSpan={8} className="p-8 text-center text-muted-foreground">Aucun article ajouté.</td>
                                     </tr>
                                 )}
                             </tbody>

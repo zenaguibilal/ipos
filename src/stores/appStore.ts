@@ -336,6 +336,8 @@ export const useAppStore = create<AppState>()(
                                     quantity: 0, // Initial quantity is 0, will be adjusted by inventory service
                                     minStockLevel: 10,
                                     supplierUuid: supplier.uuid,
+                                    unite: item.unite,
+                                    barcodes: item.barcodes,
                                 });
                                 productUuid = newProduct.uuid;
                             } else {
