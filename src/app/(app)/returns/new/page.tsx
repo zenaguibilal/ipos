@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ArrowLeft, Search, Save, Loader2, Info, X, User } from 'lucide-react';
+import { ArrowLeft, Search, Save, Loader2, Info, X, User, Banknote } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatCurrency, cn } from '@/lib/utils';
 import { Switch } from '@/components/ui/switch';
@@ -283,7 +283,7 @@ export default function NewReturnPage() {
                                     </div>
                                 </div>
 
-                                {foundSale.customerUuid && (
+                                {foundSale?.customerUuid && (
                                      <div className="flex items-start gap-3 text-xs text-destructive/80 p-4 bg-background/50 rounded-xl mt-4">
                                         <Info className="h-5 w-5 flex-shrink-0" />
                                         <p>Ce client a une dette. Le montant non remboursé sera automatiquement déduit de son solde impayé.</p>
