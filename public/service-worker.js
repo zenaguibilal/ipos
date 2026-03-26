@@ -1,30 +1,28 @@
-
-const CACHE_NAME = 'ipos-v1';
-const STATIC_ASSETS = [
+const CACHE_NAME = 'ipos-cache-v1';
+const ASSETS_TO_CACHE = [
   '/',
   '/manifest.json',
   '/icon.svg',
-  '/login'
+  '/login',
+  '/dashboard'
 ];
 
-// Installation du Service Worker et mise en cache des fichiers de base
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(STATIC_ASSETS);
+      return cache.addAll(ASSETS_TO_CACHE);
     })
   );
   self.skipWaiting();
 });
 
-// Nettoyage des anciens caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
-        cacheNames.map((cache) => {
-          if (cache !== CACHE_NAME) {
-            return caches.delete(cache);
+        cacheNames.map((cacheName) => {
+          if (cacheName !== CACHE_NAME) {
+            return caches.delete(cacheName);
           }
         })
       );
@@ -33,30 +31,35 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Stratégie Stale-While-Revalidate pour les requêtes fetch
 self.addEventListener('fetch', (event) => {
-  // Ne pas intercepter les requêtes API (Supabase) pour garantir les données fraîches
-  if (event.request.url.includes('supabase.co')) {
-    return;
-  }
+  if (event.request.method !== 'GET') return;
 
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
-      const fetchPromise = fetch(event.request).then((networkResponse) => {
-        // Mettre à jour le cache avec la nouvelle réponse
-        if (networkResponse && networkResponse.status === 200 && event.request.method === 'GET') {
-          const responseToCache = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
-          });
-        }
-        return networkResponse;
-      }).catch(() => {
-        // En cas d'erreur réseau (Offline)
+      if (cachedResponse) {
         return cachedResponse;
-      });
+      }
 
-      return cachedResponse || fetchPromise;
+      return fetch(event.request).then((response) => {
+        if (!response || response.status !== 200 || response.type !== 'basic') {
+          return response;
+        }
+
+        const responseToCache = response.clone();
+        caches.open(CACHE_NAME).then((cache) => {
+          const url = event.request.url;
+          // Avoid caching external API calls and Supabase auth
+          if (!url.includes('/api/') && !url.includes('supabase.co')) {
+            cache.put(event.request, responseToCache);
+          }
+        });
+
+        return response;
+      }).catch(() => {
+        if (event.request.mode === 'navigate') {
+          return caches.match('/');
+        }
+      });
     })
   );
 });
