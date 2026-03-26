@@ -3,7 +3,7 @@
 import { CartDisplay } from '@/components/sell/CartDisplay';
 import { ProductSearch } from '@/components/sell/ProductSearch';
 import { SaleActions } from '@/components/sell/SaleActions';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { CustomerCombobox } from '@/components/sell/CustomerCombobox';
@@ -145,15 +145,12 @@ export default function SellPage() {
                         </div>
 
                         <Card className="flex-grow flex flex-col min-h-0">
-                            <CartDisplay />
-                        </Card>
-
-                        <Card>
-                            <CardContent className="p-4 sm:p-6">
-                                <SaleActions
-                                    ref={saleActionsRef}
-                                />
+                            <CardContent className="p-4 sm:p-6 flex-grow flex flex-col min-h-0">
+                                <CartDisplay />
                             </CardContent>
+                            <CardFooter className="p-4 sm:p-6 mt-auto border-t bg-background/30">
+                                <SaleActions ref={saleActionsRef} />
+                            </CardFooter>
                         </Card>
                     </div>
 

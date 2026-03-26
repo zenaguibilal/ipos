@@ -8,7 +8,6 @@ import { Trash2, ShoppingCart } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { formatCurrency, getPlaceholder } from '@/lib/utils';
-import { CardContent } from '../ui/card';
 import { useAppStore, useAppActions } from '@/stores/appStore';
 import { toast } from 'sonner';
 import { useEffect } from 'react';
@@ -39,7 +38,7 @@ export function CartDisplay() {
     }, [cart?.items, clearCartFlashes]);
 
     return (
-        <CardContent className="p-4 sm:p-6 flex-grow flex flex-col min-h-0">
+        <>
             {!cart || cart.items.length === 0 ? (
                 <div className="flex-grow flex flex-col items-center justify-center text-center text-muted-foreground luxury-glass p-8 rounded-2xl">
                     <ShoppingCart className="h-16 w-16 mb-4 text-primary/70" />
@@ -83,6 +82,6 @@ export function CartDisplay() {
                     </div>
                 </ScrollArea>
             )}
-        </CardContent>
+        </>
     );
 }
