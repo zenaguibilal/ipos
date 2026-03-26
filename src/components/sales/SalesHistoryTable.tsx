@@ -18,7 +18,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, FileText, Trash2, CheckCircle, AlertCircle, Clock } from 'lucide-react';
+import { MoreHorizontal, FileText, Trash2, CheckCircle, AlertCircle, Clock, Printer, Banknote, CreditCard } from 'lucide-react';
 import { formatCurrency, safeToDate, cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -30,6 +30,7 @@ interface SalesHistoryTableProps {
   customerMap: Map<string, any>;
   onViewDetails: (sale: Sale) => void;
   onCancelSale: (sale: Sale) => void;
+  onPrint: (sale: Sale) => void;
 }
 
 export function SalesHistoryTable({
@@ -37,6 +38,7 @@ export function SalesHistoryTable({
   customerMap,
   onViewDetails,
   onCancelSale,
+  onPrint,
 }: SalesHistoryTableProps) {
   const isManagerOrAdmin = useIsManagerOrAdmin();
 
@@ -65,6 +67,7 @@ export function SalesHistoryTable({
             const customer = sale.customerUuid ? customerMap.get(sale.customerUuid) : null;
             const customerName = customer ? `${customer.firstName} ${customer.lastName}` : 'Client de passage';
             const status = paymentStatusMap[sale.paymentStatus];
+            const hasCard = sale.payments.some(p => p.method === 'card');
 
             return (
               <TableRow key={sale.uuid} className="hover:bg-muted/50 transition-colors">
@@ -76,7 +79,7 @@ export function SalesHistoryTable({
                   {customerName}
                 </TableCell>
                 <TableCell className="text-center">
-                  {sale.items.length}
+                  <Badge variant="ghost" className="font-mono">{sale.items.length}</Badge>
                 </TableCell>
                 <TableCell className="text-right">
                   <Badge variant="outline" className={cn('text-[10px] uppercase font-bold', status.color, status.bg, status.color.replace('text-', 'border-'))}>
@@ -84,8 +87,14 @@ export function SalesHistoryTable({
                     {status.text}
                   </Badge>
                 </TableCell>
-                <TableCell className="text-right font-black">
-                  {formatCurrency(sale.total)}
+                <TableCell className="text-right">
+                    <div className="flex flex-col items-end">
+                        <span className="font-black">{formatCurrency(sale.total)}</span>
+                        <div className="flex items-center gap-1 text-[9px] text-muted-foreground">
+                            {hasCard ? <CreditCard className="h-2.5 w-2.5" /> : <Banknote className="h-2.5 w-2.5" />}
+                            {hasCard ? 'CARTE' : 'ESPÈCES'}
+                        </div>
+                    </div>
                 </TableCell>
                 <TableCell className="text-right">
                   <DropdownMenu>
@@ -98,12 +107,15 @@ export function SalesHistoryTable({
                       <DropdownMenuItem onClick={() => onViewDetails(sale)}>
                         <FileText className="mr-2 h-4 w-4" /> Détails
                       </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => onPrint(sale)}>
+                        <Printer className="mr-2 h-4 w-4" /> Imprimer reçu
+                      </DropdownMenuItem>
                       {isManagerOrAdmin && (
                         <DropdownMenuItem 
                           onClick={() => onCancelSale(sale)} 
                           className="text-destructive focus:text-destructive"
                         >
-                          <Trash2 className="mr-2 h-4 w-4" /> Annuler
+                          <Trash2 className="mr-2 h-4 w-4" /> Annuler vente
                         </DropdownMenuItem>
                       )}
                     </DropdownMenuContent>

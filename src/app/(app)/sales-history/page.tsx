@@ -8,7 +8,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import type { Sale, Customer } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, History, FileUp, Filter, TrendingUp, Receipt, ShoppingBag, LayoutGrid, List, SortAsc } from 'lucide-react';
+import { Search, History, FileUp, Filter, TrendingUp, Receipt as ReceiptIcon, ShoppingBag, LayoutGrid, List, SortAsc, RefreshCw, Printer } from 'lucide-react';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { useDateRange } from '@/hooks/useDateRange';
 import { SalesHistoryCard } from '@/components/sales/SalesHistoryCard';
@@ -16,6 +16,7 @@ import { SalesHistoryTable } from '@/components/sales/SalesHistoryTable';
 import { SalesHistoryTableSkeleton } from '@/components/sales/SalesHistoryTableSkeleton';
 import { SaleDetailsDialog } from '@/components/sales/SaleDetailsDialog';
 import { CancelSaleDialog } from '@/components/sales/CancelSaleDialog';
+import { PrintSaleReceiptDialog } from '@/components/sales/PrintSaleReceiptDialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -56,16 +57,19 @@ export default function SalesHistoryPage() {
     const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
     const [isCancelOpen, setIsCancelOpen] = useState(false);
+    const [isPrintOpen, setIsPrintOpen] = useState(false);
+    
     const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>('all');
     const [sortBy, setSortBy] = useState('createdAt_desc');
 
     const [sales, setSales] = useState<Sale[] | undefined>(undefined);
     const [customerMap, setCustomerMap] = useState<Map<string, Customer>>(new Map());
     const [isExporting, setIsExporting] = useState(false);
-    const isLoading = sales === undefined;
+    const [isRefreshing, setIsRefreshing] = useState(false);
 
-    const fetchSalesAndCustomers = useCallback(async () => {
+    const fetchSalesAndCustomers = useCallback(async (manual = false) => {
         if (!isMounted || !dateRange) return;
+        if (manual) setIsRefreshing(true);
         setSales(undefined);
         try {
             const [salesData, customersData] = await Promise.all([
@@ -81,6 +85,8 @@ export default function SalesHistoryPage() {
         } catch (error: any) {
             toast.error("Impossible de charger l'historique des ventes.", { description: error.message });
             setSales([]);
+        } finally {
+            if (manual) setIsRefreshing(false);
         }
     }, [isMounted, debouncedSearchQuery, dateRange]);
 
@@ -134,6 +140,11 @@ export default function SalesHistoryPage() {
         setIsCancelOpen(true);
     };
 
+    const handlePrintSale = (sale: Sale) => {
+        setSelectedSale(sale);
+        setIsPrintOpen(true);
+    };
+
     const handleExport = async () => {
         if (!filteredAndSortedSales.length) {
             toast.info("Aucune vente à exporter.");
@@ -159,7 +170,7 @@ export default function SalesHistoryPage() {
     );
 
     const renderContent = () => {
-        if (isLoading) {
+        if (sales === undefined) {
             return renderSkeletons();
         }
 
@@ -186,6 +197,7 @@ export default function SalesHistoryPage() {
                                 customerName={customerName}
                                 onViewDetails={handleViewDetails}
                                 onCancelSale={handleCancelSale}
+                                onPrint={handlePrintSale}
                             />
                         )
                     })}
@@ -199,6 +211,7 @@ export default function SalesHistoryPage() {
                 customerMap={customerMap}
                 onViewDetails={handleViewDetails}
                 onCancelSale={handleCancelSale}
+                onPrint={handlePrintSale}
             />
         );
     }
@@ -209,10 +222,15 @@ export default function SalesHistoryPage() {
                 title="Historique des Ventes"
                 description="Consultez et gérez vos transactions passées."
             >
-                <Button variant="outline" onClick={handleExport} disabled={isLoading || isExporting}>
-                    <FileUp className={cn("mr-2 h-4 w-4", isExporting && "animate-pulse")} />
-                    Exporter
-                </Button>
+                <div className="flex gap-2 w-full sm:w-auto">
+                    <Button variant="outline" onClick={handleExport} disabled={sales === undefined || isExporting}>
+                        <FileUp className={cn("mr-2 h-4 w-4", isExporting && "animate-pulse")} />
+                        Exporter CSV
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => fetchSalesAndCustomers(true)} disabled={isRefreshing}>
+                        <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
+                    </Button>
+                </div>
             </PageHeader>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -225,28 +243,31 @@ export default function SalesHistoryPage() {
                     </CardHeader>
                     <CardContent>
                         <p className="text-2xl font-black text-primary">{formatCurrency(stats.totalRevenue)}</p>
+                        <p className="text-[10px] text-muted-foreground mt-1">Sur la période sélectionnée</p>
                     </CardContent>
                 </Card>
-                <Card>
+                <Card className="bg-chart-quaternary/5 border-chart-quaternary/20">
                     <CardHeader className="py-3">
                         <CardTitle className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-2">
-                            <Receipt className="h-4 w-4 text-muted-foreground" />
+                            <ReceiptIcon className="h-4 w-4 text-chart-quaternary" />
                             Nombre de Ventes
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <p className="text-2xl font-black">{stats.count}</p>
+                        <p className="text-2xl font-black text-chart-quaternary">{stats.count}</p>
+                        <p className="text-[10px] text-muted-foreground mt-1">Transactions validées</p>
                     </CardContent>
                 </Card>
-                <Card>
+                <Card className="bg-chart-secondary/5 border-chart-secondary/20">
                     <CardHeader className="py-3">
                         <CardTitle className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-2">
-                            <ShoppingBag className="h-4 w-4 text-muted-foreground" />
+                            <ShoppingBag className="h-4 w-4 text-chart-secondary" />
                             Panier Moyen
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <p className="text-2xl font-black">{formatCurrency(stats.avgBasket)}</p>
+                        <p className="text-2xl font-black text-chart-secondary">{formatCurrency(stats.avgBasket)}</p>
+                        <p className="text-[10px] text-muted-foreground mt-1">Valeur moyenne par ticket</p>
                     </CardContent>
                 </Card>
             </div>
@@ -262,50 +283,52 @@ export default function SalesHistoryPage() {
                     />
                 </div>
                 
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="outline" className="w-full sm:w-auto">
-                            <Filter className="mr-2 h-4 w-4" />
-                            Statut: {paymentFilter === 'all' ? 'Tous' : paymentFilter === 'paid' ? 'Payé' : paymentFilter === 'partial' ? 'Partiel' : 'Impayé'}
+                <div className="flex flex-wrap gap-2">
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline" className="w-full sm:w-auto">
+                                <Filter className="mr-2 h-4 w-4" />
+                                Statut: {paymentFilter === 'all' ? 'Tous' : paymentFilter === 'paid' ? 'Payé' : paymentFilter === 'partial' ? 'Partiel' : 'Impayé'}
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Filtrer par paiement</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuCheckboxItem checked={paymentFilter === 'all'} onCheckedChange={() => setPaymentFilter('all')}>Tout afficher</DropdownMenuCheckboxItem>
+                            <DropdownMenuCheckboxItem checked={paymentFilter === 'paid'} onCheckedChange={() => setPaymentFilter('paid')}>Payées uniquement</DropdownMenuCheckboxItem>
+                            <DropdownMenuCheckboxItem checked={paymentFilter === 'partial'} onCheckedChange={() => setPaymentFilter('partial')}>Partielles uniquement</DropdownMenuCheckboxItem>
+                            <DropdownMenuCheckboxItem checked={paymentFilter === 'unpaid'} onCheckedChange={() => setPaymentFilter('unpaid')}>Impayées uniquement</DropdownMenuCheckboxItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline" className="w-full sm:w-auto">
+                                <SortAsc className="mr-2 h-4 w-4" />
+                                Trier: {sortOptions[sortBy]}
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Trier les ventes par</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuRadioGroup value={sortBy} onValueChange={setSortBy}>
+                                {Object.entries(sortOptions).map(([key, value]) => (
+                                    <DropdownMenuRadioItem key={key} value={key}>{value}</DropdownMenuRadioItem>
+                                ))}
+                            </DropdownMenuRadioGroup>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+
+                    <DateRangePicker date={dateRange} setDate={setDate} />
+
+                    <div className="flex items-center gap-1 rounded-md bg-muted p-1">
+                        <Button variant={viewMode === 'grid' ? 'secondary': 'ghost'} size="icon" onClick={() => setViewMode('grid')} title="Vue Grille">
+                            <LayoutGrid className="h-5 w-5"/>
                         </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Filtrer par paiement</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuCheckboxItem checked={paymentFilter === 'all'} onCheckedChange={() => setPaymentFilter('all')}>Tout afficher</DropdownMenuCheckboxItem>
-                        <DropdownMenuCheckboxItem checked={paymentFilter === 'paid'} onCheckedChange={() => setPaymentFilter('paid')}>Payées uniquement</DropdownMenuCheckboxItem>
-                        <DropdownMenuCheckboxItem checked={paymentFilter === 'partial'} onCheckedChange={() => setPaymentFilter('partial')}>Partielles uniquement</DropdownMenuCheckboxItem>
-                        <DropdownMenuCheckboxItem checked={paymentFilter === 'unpaid'} onCheckedChange={() => setPaymentFilter('unpaid')}>Impayées uniquement</DropdownMenuCheckboxItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
-
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="outline" className="w-full sm:w-auto">
-                            <SortAsc className="mr-2 h-4 w-4" />
-                            Trier: {sortOptions[sortBy]}
+                        <Button variant={viewMode === 'list' ? 'secondary': 'ghost'} size="icon" onClick={() => setViewMode('list')} title="Vue Liste">
+                            <List className="h-5 w-5"/>
                         </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Trier les ventes par</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuRadioGroup value={sortBy} onValueChange={setSortBy}>
-                            {Object.entries(sortOptions).map(([key, value]) => (
-                                <DropdownMenuRadioItem key={key} value={key}>{value}</DropdownMenuRadioItem>
-                            ))}
-                        </DropdownMenuRadioGroup>
-                    </DropdownMenuContent>
-                </DropdownMenu>
-
-                <DateRangePicker date={dateRange} setDate={setDate} />
-
-                <div className="flex items-center gap-1 rounded-md bg-muted p-1">
-                    <Button variant={viewMode === 'grid' ? 'secondary': 'ghost'} size="icon" onClick={() => setViewMode('grid')}>
-                        <LayoutGrid className="h-5 w-5"/>
-                    </Button>
-                    <Button variant={viewMode === 'list' ? 'secondary': 'ghost'} size="icon" onClick={() => setViewMode('list')}>
-                        <List className="h-5 w-5"/>
-                    </Button>
+                    </div>
                 </div>
             </div>
             
@@ -313,18 +336,32 @@ export default function SalesHistoryPage() {
                {renderContent()}
             </div>
 
-            <SaleDetailsDialog 
-                isOpen={isDetailsOpen}
-                onOpenChange={setIsDetailsOpen}
-                sale={selectedSale}
-                customerName={selectedSale?.customerUuid ? (customerMap.get(selectedSale.customerUuid) ? `${customerMap.get(selectedSale.customerUuid)?.firstName} ${customerMap.get(selectedSale.customerUuid)?.lastName}` : 'Client Inconnu') : 'Client de passage'}
-            />
-            <CancelSaleDialog 
-                isOpen={isCancelOpen}
-                onOpenChange={setIsCancelOpen}
-                sale={selectedSale}
-                onSuccess={fetchSalesAndCustomers}
-            />
+            {selectedSale && (
+                <>
+                    <SaleDetailsDialog 
+                        isOpen={isDetailsOpen}
+                        onOpenChange={setIsDetailsOpen}
+                        sale={selectedSale}
+                        customerName={selectedSale.customerUuid ? (customerMap.get(selectedSale.customerUuid) ? `${customerMap.get(selectedSale.customerUuid)?.firstName} ${customerMap.get(selectedSale.customerUuid)?.lastName}` : 'Client Inconnu') : 'Client de passage'}
+                        onPrint={() => {
+                            setIsDetailsOpen(false);
+                            setIsPrintOpen(true);
+                        }}
+                    />
+                    <CancelSaleDialog 
+                        isOpen={isCancelOpen}
+                        onOpenChange={setIsCancelOpen}
+                        sale={selectedSale}
+                        onSuccess={() => fetchSalesAndCustomers(true)}
+                    />
+                    <PrintSaleReceiptDialog
+                        isOpen={isPrintOpen}
+                        onOpenChange={setIsPrintOpen}
+                        sale={selectedSale}
+                        customer={selectedSale.customerUuid ? customerMap.get(selectedSale.customerUuid) || null : null}
+                    />
+                </>
+            )}
         </div>
     );
 }
