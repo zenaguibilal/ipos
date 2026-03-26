@@ -27,7 +27,7 @@ import { toast } from 'sonner';
 import { useIsManagerOrAdmin } from '@/stores/appStore';
 import { Input } from '@/components/ui/input';
 import { useDebounce } from '@/hooks/useDebounce';
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from 'recharts';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell, CartesianGrid } from 'recharts';
 import { startOfDay, endOfDay, subDays, startOfMonth } from 'date-fns';
 
 export default function ExpensesPage() {
@@ -121,7 +121,7 @@ export default function ExpensesPage() {
         return Array.from(map.entries())
             .map(([name, value]) => ({ name, value }))
             .sort((a, b) => b.value - a.value)
-            .slice(0, 8);
+            .slice(0, 10);
     }, [expenses]);
 
     const handleEditExpense = (expense: Expense) => {
@@ -214,26 +214,26 @@ export default function ExpensesPage() {
             >
                 <div className="flex gap-2 w-full sm:w-auto">
                     <Button variant="outline" onClick={handleExport} disabled={!filteredExpenses.length} className="border-primary/20 luxury-glass h-11">
-                        <FileUp className="mr-2 h-4 w-4" /> Exporter
+                        <FileUp className="mr-2 h-4 w-4" /> Exporter CSV
                     </Button>
                     <Button 
                         onClick={() => { setSelectedExpense(null); setIsExpenseDialogOpen(true); }}
                         disabled={!isManagerOrAdmin}
                         className="bg-destructive hover:bg-destructive/90 shadow-lg shadow-destructive/20 h-11 px-6 rounded-xl"
                     >
-                        <Plus className="mr-2 h-4 w-4" /> Ajouter
+                        <Plus className="mr-2 h-4 w-4" /> Nouvelle Dépense
                     </Button>
                 </div>
             </PageHeader>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Main Stats Card */}
+                {/* Global Stats with Trends */}
                 <Card className="luxury-glass bg-destructive/5 border-destructive/20 overflow-hidden relative group h-full">
                     <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                         <TrendingDown className="h-16 w-16 text-destructive" />
                     </div>
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-xs font-black uppercase tracking-widest text-muted-foreground">Dépenses Totales</CardTitle>
+                        <CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Total des Sorties</CardTitle>
                     </CardHeader>
                     <CardContent>
                         {isLoading ? <Skeleton className="h-10 w-32" /> : (
@@ -254,52 +254,57 @@ export default function ExpensesPage() {
                     </CardContent>
                 </Card>
 
-                {/* Category Breakdown Chart */}
+                {/* Analytical Breakdown Chart */}
                 <Card className="lg:col-span-2 luxury-glass border-primary/10 h-full overflow-hidden">
                     <CardHeader className="pb-2 flex flex-row items-center justify-between">
                         <div className="flex items-center gap-2">
                             <BarChartIcon className="h-4 w-4 text-primary" />
-                            <CardTitle className="text-sm font-bold uppercase">Répartition Analytique</CardTitle>
+                            <CardTitle className="text-sm font-bold uppercase">Répartition par Catégorie</CardTitle>
                         </div>
                         <span className="text-[10px] text-muted-foreground font-black uppercase tracking-widest">{chartData.length} Catégories</span>
                     </CardHeader>
-                    <CardContent className="h-40">
+                    <CardContent className="h-44 pt-4">
                         {isLoading ? <Skeleton className="h-full w-full" /> : chartData.length > 0 ? (
                             <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={chartData} layout="vertical" margin={{ left: -20 }}>
+                                <BarChart data={chartData} layout="vertical" margin={{ left: -10, right: 20 }}>
+                                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border) / 0.1)" />
                                     <XAxis type="number" hide />
                                     <YAxis 
                                         dataKey="name" 
                                         type="category" 
                                         axisLine={false} 
                                         tickLine={false} 
-                                        width={80} 
-                                        tick={{ fontSize: 9, fontWeight: 800, fill: 'hsl(var(--muted-foreground))' }}
+                                        width={100} 
+                                        tick={{ fontSize: 10, fontWeight: 700, fill: 'hsl(var(--muted-foreground))' }}
                                     />
                                     <Tooltip 
                                         cursor={{ fill: 'rgba(255,255,255,0.05)' }}
-                                        contentStyle={{ backgroundColor: 'hsl(var(--card))', borderRadius: '12px', border: '1px solid hsl(var(--border) / 0.2)' }}
+                                        contentStyle={{ backgroundColor: 'hsl(var(--card))', borderRadius: '12px', border: '1px solid hsl(var(--border) / 0.2)', fontSize: '12px' }}
                                         formatter={(val: number) => [formatCurrency(val), 'Montant']}
                                     />
-                                    <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={12}>
+                                    <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={16}>
                                         {chartData.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={index === 0 ? 'hsl(var(--destructive))' : 'hsl(var(--primary))'} />
+                                            <Cell key={`cell-${index}`} fill={index === 0 ? 'hsl(var(--destructive))' : 'hsl(var(--primary))'} fillOpacity={0.8} />
                                         ))}
                                     </Bar>
                                 </BarChart>
                             </ResponsiveContainer>
                         ) : (
-                            <div className="h-full flex items-center justify-center text-xs text-muted-foreground italic">Aucune donnée graphique</div>
+                            <div className="h-full flex flex-col items-center justify-center text-xs text-muted-foreground italic gap-2">
+                                <BarChartIcon className="h-8 w-8 opacity-20" />
+                                <span>Aucune donnée analytique sur cette période</span>
+                            </div>
                         )}
                     </CardContent>
                 </Card>
             </div>
 
+            {/* Toolbar */}
             <div className="flex flex-col lg:flex-row gap-3">
                 <div className="relative flex-grow">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input 
-                        placeholder="Rechercher une dépense par description..."
+                        placeholder="Rechercher par description (ex: Loyer, Facture...)"
                         className="pl-10 h-11 border-primary/10 bg-background/50 focus:border-primary/30 luxury-glass rounded-xl"
                         value={searchQuery}
                         onChange={e => setSearchQuery(e.target.value)}
@@ -312,24 +317,25 @@ export default function ExpensesPage() {
                 </div>
                 
                 <div className="flex flex-wrap gap-2">
-                    <div className="flex items-center gap-1 rounded-xl bg-muted/50 p-1 border border-primary/10 h-11 luxury-glass">
-                        <Button variant="ghost" size="sm" className="h-8 text-[10px] px-2 font-black uppercase" onClick={() => setDateShortcut('today')}>Aujourd'hui</Button>
-                        <Button variant="ghost" size="sm" className="h-8 text-[10px] px-2 font-black uppercase" onClick={() => setDateShortcut('yesterday')}>Hier</Button>
-                        <Button variant="ghost" size="sm" className="h-8 text-[10px] px-2 font-black uppercase" onClick={() => setDateShortcut('week')}>7 j</Button>
-                        <Button variant="ghost" size="sm" className="h-8 text-[10px] px-2 font-black uppercase" onClick={() => setDateShortcut('month')}>Mois</Button>
+                    <div className="flex items-center gap-1 rounded-xl bg-muted/50 p-1 border border-primary/10 h-11 luxury-glass overflow-hidden">
+                        <Button variant="ghost" size="sm" className="h-8 text-[9px] px-2 font-black uppercase hover:bg-primary/10" onClick={() => setDateShortcut('today')}>Aujourd'hui</Button>
+                        <Button variant="ghost" size="sm" className="h-8 text-[9px] px-2 font-black uppercase hover:bg-primary/10" onClick={() => setDateShortcut('yesterday')}>Hier</Button>
+                        <Button variant="ghost" size="sm" className="h-8 text-[9px] px-2 font-black uppercase hover:bg-primary/10" onClick={() => setDateShortcut('week')}>7 j</Button>
+                        <Button variant="ghost" size="sm" className="h-8 text-[9px] px-2 font-black uppercase hover:bg-primary/10" onClick={() => setDateShortcut('month')}>Mois</Button>
                     </div>
 
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="outline" className="h-11 min-w-[160px] border-primary/10 luxury-glass rounded-xl justify-between">
                                 <span className="flex items-center gap-2">
-                                    <Filter className="h-4 w-4 text-primary" />
-                                    {selectedCategory === 'all' ? 'Toutes catégories' : selectedCategory}
+                                    <Tag className="h-4 w-4 text-primary" />
+                                    <span className="text-xs font-bold">{selectedCategory === 'all' ? 'Toutes catégories' : selectedCategory}</span>
                                 </span>
+                                <Filter className="h-3 w-3 opacity-50" />
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent className="w-56 luxury-glass">
-                            <DropdownMenuLabel className="text-[10px] font-black uppercase opacity-50">Filtrer par</DropdownMenuLabel>
+                            <DropdownMenuLabel className="text-[10px] font-black uppercase opacity-50">Filtrer par nature</DropdownMenuLabel>
                             <DropdownMenuSeparator />
                             <DropdownMenuCheckboxItem
                                 checked={selectedCategory === 'all'}
@@ -354,10 +360,12 @@ export default function ExpensesPage() {
                 </div>
             </div>
             
+            {/* Results Grid */}
             <div className="min-h-[400px]">
                {renderContent()}
             </div>
             
+            {/* Dialogs */}
             {isManagerOrAdmin && (
                 <>
                     <ExpenseDialog 
