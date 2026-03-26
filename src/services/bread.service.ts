@@ -54,23 +54,22 @@ class BreadService {
 
     async generateOrdersFromRecurrence(date: string): Promise<number> {
         try {
-            // Get all bread clients
+            // Récupérer tous les clients qui ont l'option Pain activée
             const customersResult = await customerRepository.filter({ status: 'is_bread_client' });
             const customers = customersResult.data;
             
-            // Get existing orders for this date to avoid duplicates
+            // Récupérer les commandes existantes pour cette date pour éviter les doublons
             const existingOrders = await this.getOrdersForDate(date);
             const existingCustomerUuids = new Set(existingOrders.map(o => o.customerUuid).filter(Boolean));
 
-            // Determine the day of the week in French lowercase (lundi, mardi...)
-            // Note: Replace '-' with '/' for browser compatibility when creating Date object from YYYY-MM-DD
+            // Déterminer le jour de la semaine en français minuscule (lundi, mardi...)
             const dateObj = new Date(date.replace(/-/g, '/'));
             const dayOfWeek = format(dateObj, 'eeee', { locale: fr }).toLowerCase();
             
             let count = 0;
 
             for (const customer of customers) {
-                // Skip if client already has an order for this day
+                // Sauter si le client a déjà une commande pour ce jour
                 if (existingCustomerUuids.has(customer.uuid)) continue;
 
                 let quantity = 0;
@@ -116,15 +115,19 @@ class BreadService {
         }
     }
 
+    /**
+     * Convertit une sélection de commandes en ventes réelles.
+     * Les commandes sont groupées par client pour générer une seule facture par client par jour.
+     */
     async convertBreadOrdersToSales(orderUuids: string[], breadPrice: number): Promise<void> {
         try {
             const orders = await breadOrderRepository.getOrdersByUuids(orderUuids);
-            // Only process orders that are not already billed
+            // Filtrer uniquement les commandes non facturées
             const ordersToProcess = orders.filter(o => !o.venteUuid);
             
             if (ordersToProcess.length === 0) return;
 
-            // Group by customer UUID or by Order Name if no customer linked
+            // Grouper par UUID de client (ou par nom de commande si pas de client lié)
             const grouped = ordersToProcess.reduce((acc, order) => {
                 const key = order.customerUuid || `NAME_${order.orderName}`;
                 if (!acc[key]) acc[key] = [];
@@ -139,8 +142,7 @@ class BreadService {
                 const firstOrder = customerOrders[0];
                 const customerUuid = key.startsWith('NAME_') ? null : key;
 
-                // Create a virtual cart item for the sale
-                // Inventory service will ignore "BREAD_PRODUCT" as per current logic
+                // Création d'un article de panier virtuel pour la vente
                 const breadCartItem: CartItem = {
                     uuid: 'BREAD_PRODUCT',
                     user_id: this.getUserId(),
@@ -153,17 +155,17 @@ class BreadService {
                     category: 'Boulangerie'
                 };
 
-                // Create the sale
+                // Enregistrement de la vente (par défaut à crédit pour les clients fidèles)
                 const sale = await salesService.createSale({
                     items: [breadCartItem],
                     discountType: 'fixed',
                     discountValue: 0,
-                    amountPaid: 0, // Assume unpaid (added to debt)
+                    amountPaid: 0, // Ajouté à la dette par défaut
                     payments: [],
                     customerUuid: customerUuid,
                 });
 
-                // Update orders to link them to this sale
+                // Mettre à jour les commandes pour les lier à cette vente
                 await breadOrderRepository.bulkUpdateSaleRelation(
                     customerOrders.map(o => o.uuid),
                     sale.uuid
