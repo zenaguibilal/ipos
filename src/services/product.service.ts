@@ -160,14 +160,14 @@ class ProductService {
         }
     }
 
-    async parseAndAnalyzeImport(file: File): Promise<ProductImportAnalysis> {
+    async analyzeImport(file: File): Promise<ProductImportAnalysis> {
         return new Promise((resolve, reject) => {
             Papa.parse(file, {
                 header: true,
                 skipEmptyLines: true,
                 complete: async (results) => {
                     try {
-                        const analysis = await this.analyzeImport(results.data);
+                        const analysis = await this._analyzeImportData(results.data);
                         resolve(analysis);
                     } catch (error) {
                         reject(error);
@@ -180,7 +180,7 @@ class ProductService {
         });
     }
 
-    async analyzeImport(csvData: any[]): Promise<ProductImportAnalysis> {
+    private async _analyzeImportData(csvData: any[]): Promise<ProductImportAnalysis> {
         try {
             const existingProducts = await this.getProducts();
             const existingNames = new Map(existingProducts.map(p => [p.name.toLowerCase().trim(), p]));
@@ -208,10 +208,10 @@ class ProductService {
                     name,
                     category: row.category || row.categorie || 'Non classé',
                     price: parseFloat(price),
-                    purchasePrice: row.purchasePrice ? parseFloat(row.purchasePrice) : 0,
-                    quantity: row.quantity ? parseInt(row.quantity) : 0,
-                    minStockLevel: row.minStockLevel ? parseInt(row.minStockLevel) : 10,
-                    barcodes: row.barcodes ? String(row.barcodes).split(',').map(b => b.trim()) : [],
+                    purchasePrice: row.purchasePrice || row.prix_achat ? parseFloat(row.purchasePrice || row.prix_achat) : 0,
+                    quantity: row.quantity || row.stock ? parseInt(row.quantity || row.stock) : 0,
+                    minStockLevel: row.minStockLevel || row.stock_minimum ? parseInt(row.minStockLevel || row.stock_minimum) : 10,
+                    barcodes: row.barcodes || row.codes_barres ? String(row.barcodes || row.codes_barres).split(',').map(b => b.trim()).filter(Boolean) : [],
                 };
 
                 if (isNaN(productData.price)) {

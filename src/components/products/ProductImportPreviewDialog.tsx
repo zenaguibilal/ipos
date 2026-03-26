@@ -104,8 +104,14 @@ export function ProductImportPreviewDialog({ isOpen, onOpenChange, analysis, onC
         if (!analysis) return;
 
         const confirmedData = {
-            toAdd: editableItems.filter(i => i.include && i.status === 'new').map(i => i.data),
-            toUpdate: editableItems.filter(i => i.include && i.status === 'update').map(i => i.data),
+            toAdd: editableItems.filter(i => i.include && i.status === 'new').map(i => ({
+                ...i.data,
+                barcodes: typeof i.data.barcodes === 'string' ? i.data.barcodes.split(',').map((b: string) => b.trim()).filter(Boolean) : (i.data.barcodes || []),
+            })),
+            toUpdate: editableItems.filter(i => i.include && i.status === 'update').map(i => ({
+                ...i.data,
+                barcodes: typeof i.data.barcodes === 'string' ? i.data.barcodes.split(',').map((b: string) => b.trim()).filter(Boolean) : (i.data.barcodes || []),
+            })),
         };
         onConfirm(confirmedData);
     };
@@ -135,7 +141,7 @@ export function ProductImportPreviewDialog({ isOpen, onOpenChange, analysis, onC
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-6xl h-[90vh] flex flex-col">
+            <DialogContent className="max-w-7xl h-[90vh] flex flex-col">
                 <DialogHeader>
                     <DialogTitle>Aperçu de l'importation de produits</DialogTitle>
                     <DialogDescription>
@@ -188,7 +194,10 @@ export function ProductImportPreviewDialog({ isOpen, onOpenChange, analysis, onC
                                     <TableHead>Nom</TableHead>
                                     <TableHead>Catégorie</TableHead>
                                     <TableHead>Prix Vente</TableHead>
+                                    <TableHead>Prix Achat</TableHead>
                                     <TableHead>Stock</TableHead>
+                                    <TableHead>Stock Min.</TableHead>
+                                    <TableHead>Codes-barres</TableHead>
                                     <TableHead>Action</TableHead>
                                     <TableHead className="w-12"></TableHead>
                                 </TableRow>
@@ -200,16 +209,25 @@ export function ProductImportPreviewDialog({ isOpen, onOpenChange, analysis, onC
                                             <Checkbox checked={item.include} onCheckedChange={() => handleToggleInclude(item.key)} disabled={item.status === 'error'}/>
                                         </TableCell>
                                         <TableCell>
-                                            <Input value={item.data.name || ''} onChange={e => handleItemChange(item.key, 'name', e.target.value)} className="h-8" disabled={!item.include} />
+                                            <Input value={item.data.name || ''} onChange={e => handleItemChange(item.key, 'name', e.target.value)} className="h-8 min-w-[150px]" disabled={!item.include} />
                                         </TableCell>
                                         <TableCell>
-                                            <Input value={item.data.category || ''} onChange={e => handleItemChange(item.key, 'category', e.target.value)} className="h-8" disabled={!item.include} />
+                                            <Input value={item.data.category || ''} onChange={e => handleItemChange(item.key, 'category', e.target.value)} className="h-8 min-w-[120px]" disabled={!item.include} />
                                         </TableCell>
                                         <TableCell>
                                             <Input type="number" value={item.data.price || ''} onChange={e => handleItemChange(item.key, 'price', e.target.value)} className="h-8" disabled={!item.include} />
                                         </TableCell>
                                          <TableCell>
+                                            <Input type="number" value={item.data.purchasePrice || ''} onChange={e => handleItemChange(item.key, 'purchasePrice', e.target.value)} className="h-8" disabled={!item.include} />
+                                        </TableCell>
+                                         <TableCell>
                                             <Input type="number" value={item.data.quantity || ''} onChange={e => handleItemChange(item.key, 'quantity', e.target.value)} className="h-8" disabled={!item.include} />
+                                        </TableCell>
+                                        <TableCell>
+                                            <Input type="number" value={item.data.minStockLevel || ''} onChange={e => handleItemChange(item.key, 'minStockLevel', e.target.value)} className="h-8" disabled={!item.include} />
+                                        </TableCell>
+                                        <TableCell>
+                                            <Input value={Array.isArray(item.data.barcodes) ? item.data.barcodes.join(', ') : item.data.barcodes || ''} onChange={e => handleItemChange(item.key, 'barcodes', e.target.value)} className="h-8 min-w-[150px]" disabled={!item.include} />
                                         </TableCell>
                                         <TableCell>
                                             {item.status === 'new' && <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300">Nouveau</Badge>}
@@ -224,7 +242,7 @@ export function ProductImportPreviewDialog({ isOpen, onOpenChange, analysis, onC
                                     </TableRow>
                                 )) : (
                                     <TableRow>
-                                        <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                                        <TableCell colSpan={10} className="h-24 text-center text-muted-foreground">
                                             {editableItems.length > 0 ? "Aucun produit ne correspond à votre recherche." : "Aucune donnée à importer."}
                                         </TableCell>
                                     </TableRow>
