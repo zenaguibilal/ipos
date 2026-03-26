@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { salesService } from '@/services/sales.service';
@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ArrowLeft, Search, Save, Loader2, Info, X, User, Banknote, PackageCheck, PackageX } from 'lucide-react';
+import { ArrowLeft, Search, Save, Loader2, Info, X, User, Banknote, PackageCheck, PackageX, Scan, Undo2, AlertTriangle, HandCoins } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatCurrency, cn } from '@/lib/utils';
 import { Switch } from '@/components/ui/switch';
@@ -18,6 +18,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { useAppActions } from '@/stores/appStore';
 import { Badge } from '@/components/ui/badge';
+import { BarcodeScannerDialog } from '@/components/products/BarcodeScannerDialog';
 
 type ReturnItemState = ReturnItem & { originalQuantity: number, returnQuantity: number };
 
@@ -27,17 +28,20 @@ export default function NewReturnPage() {
     const [invoiceNumber, setInvoiceNumber] = useState('');
     const [foundSale, setFoundSale] = useState<Sale | null>(null);
     const [isSearching, setIsSearching] = useState(false);
+    const [isScannerOpen, setIsScannerOpen] = useState(false);
 
     const [returnItems, setReturnItems] = useState<ReturnItemState[]>([]);
     const [amountRefunded, setAmountRefunded] = useState(0);
     const [notes, setNotes] = useState('');
     const [isSaving, setIsSaving] = useState(false);
 
-    const handleSearchSale = async () => {
-        if (!invoiceNumber) return;
+    const handleSearchSale = useCallback(async (invNum?: string) => {
+        const targetInv = invNum || invoiceNumber;
+        if (!targetInv) return;
+        
         setIsSearching(true);
         try {
-            const sale = await salesService.getSaleByInvoiceNumber(invoiceNumber);
+            const sale = await salesService.getSaleByInvoiceNumber(targetInv);
             if (sale) {
                 setFoundSale(sale);
                 const items: ReturnItemState[] = sale.items.map(item => ({
@@ -54,7 +58,7 @@ export default function NewReturnPage() {
                 setAmountRefunded(0);
                 toast.success("Facture trouvée.");
             } else {
-                toast.error(`Facture n° ${invoiceNumber} non trouvée.`);
+                toast.error(`Facture n° ${targetInv} non trouvée.`);
                 setFoundSale(null);
                 setReturnItems([]);
             }
@@ -63,7 +67,7 @@ export default function NewReturnPage() {
         } finally {
             setIsSearching(false);
         }
-    };
+    }, [invoiceNumber]);
 
     const handleItemChange = (index: number, field: 'returnQuantity' | 'wasRestocked', value: any) => {
         setReturnItems(items => {
@@ -111,6 +115,11 @@ export default function NewReturnPage() {
         }
     };
 
+    const handleScanSuccess = (scannedValue: string) => {
+        setInvoiceNumber(scannedValue);
+        handleSearchSale(scannedValue);
+    };
+
 
     return (
         <div className="p-4 sm:p-6 space-y-6">
@@ -137,22 +146,33 @@ export default function NewReturnPage() {
                         <Search className="h-5 w-5 text-primary" />
                         1. Rechercher la Vente Originale
                     </CardTitle>
-                    <CardDescription>Saisissez le numéro de facture pour charger les articles.</CardDescription>
+                    <CardDescription>Saisissez ou scannez le numéro de facture pour charger les articles.</CardDescription>
                 </CardHeader>
                 <CardContent className="p-6">
                     <div className="flex flex-col sm:flex-row gap-3">
-                        <div className="relative flex-grow">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input
-                                placeholder="Ex: 240815-123"
-                                className="pl-10 h-12 rounded-xl border-primary/10 bg-background/50 text-lg font-mono"
-                                value={invoiceNumber}
-                                onChange={(e) => setInvoiceNumber(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && handleSearchSale()}
+                        <div className="relative flex-grow flex gap-2">
+                            <div className="relative flex-grow">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                    placeholder="Ex: 240815-123"
+                                    className="pl-10 h-12 rounded-xl border-primary/10 bg-background/50 text-lg font-mono"
+                                    value={invoiceNumber}
+                                    onChange={(e) => setInvoiceNumber(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleSearchSale()}
+                                    disabled={!!foundSale}
+                                />
+                            </div>
+                            <Button 
+                                variant="outline" 
+                                size="icon" 
+                                className="h-12 w-12 rounded-xl luxury-glass border-primary/20 shrink-0"
+                                onClick={() => setIsScannerOpen(true)}
                                 disabled={!!foundSale}
-                            />
+                            >
+                                <Scan className="h-5 w-5" />
+                            </Button>
                         </div>
-                        <Button onClick={handleSearchSale} disabled={isSearching || !!foundSale} className="h-12 px-8 rounded-xl shrink-0">
+                        <Button onClick={() => handleSearchSale()} disabled={isSearching || !!foundSale || !invoiceNumber} className="h-12 px-8 rounded-xl shrink-0">
                             {isSearching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
                             Charger Facture
                         </Button>
@@ -337,6 +357,12 @@ export default function NewReturnPage() {
                     </div>
                  </div>
             )}
+
+            <BarcodeScannerDialog 
+                isOpen={isScannerOpen}
+                onOpenChange={setIsScannerOpen}
+                onScanSuccess={handleScanSuccess}
+            />
         </div>
     );
 }

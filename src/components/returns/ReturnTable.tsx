@@ -20,7 +20,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, FileText, Trash2, Printer, User, Package, Banknote, HandCoins, ExternalLink } from 'lucide-react';
+import { MoreHorizontal, FileText, Trash2, Printer, User, Package, Banknote, HandCoins } from 'lucide-react';
 import { formatCurrency, safeToDate, cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -81,12 +81,12 @@ export function ReturnTable({
                     <span className="font-bold text-chart-quaternary">{formatCurrency(pr.amountRefunded)}</span>
                 </TableCell>
                 <TableCell className="text-right">
-                    {impactDebt > 0 ? (
+                    {impactDebt > 0.01 ? (
                         <span className="font-bold text-primary flex items-center justify-end gap-1">
                             -{formatCurrency(impactDebt)}
                             <HandCoins className="h-3 w-3" />
                         </span>
-                    ) : <span className="text-muted-foreground">-</span>}
+                    ) : <span className="text-muted-foreground italic text-[10px]">Aucun</span>}
                 </TableCell>
                 <TableCell className="text-right">
                     <span className="font-black text-destructive">-{formatCurrency(pr.totalReturnValue)}</span>

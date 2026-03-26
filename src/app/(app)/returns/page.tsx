@@ -7,7 +7,6 @@ import { customerService } from '@/services/customer.service';
 import { useDebounce } from '@/hooks/useDebounce';
 import type { ProductReturn, Customer } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Search, Plus, Undo2, LayoutGrid, List, FileUp, RefreshCw, Loader2, Banknote, Package, HandCoins, X, TrendingDown, Printer, Filter } from 'lucide-react';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { useDateRange } from '@/hooks/useDateRange';
@@ -25,7 +24,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency, cn } from '@/lib/utils';
 import { useAppStore } from '@/stores/appStore';
 
-const ITEMS_PER_PAGE = 12;
+const ITEMS_PER_PAGE = 15;
 
 export default function ReturnsPage() {
     const { viewMode, setViewMode } = useAppStore(state => ({
