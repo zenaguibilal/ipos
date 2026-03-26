@@ -20,7 +20,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 
-const StatCard = ({ title, value, icon: Icon, change, isLoading, href }: { title: string, value: string, icon: React.ElementType, change?: number, isLoading: boolean, href?: string }) => {
+const StatCard = ({ title, value, icon: Icon, change, isLoading, href, positiveIsGood = true }: { title: string, value: string, icon: React.ElementType, change?: number, isLoading: boolean, href?: string, positiveIsGood?: boolean }) => {
     const cardContent = (
         <Card className="h-full">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -32,7 +32,10 @@ const StatCard = ({ title, value, icon: Icon, change, isLoading, href }: { title
                 {isLoading ? <Skeleton className="h-4 w-40 mt-1" /> : (
                     (change !== undefined && isFinite(change)) ? (
                         <p className="text-xs text-muted-foreground flex items-center gap-1">
-                            <span className={cn('font-semibold', change >= 0 ? 'text-green-500' : 'text-destructive')}>
+                            <span className={cn(
+                                'font-semibold',
+                                (positiveIsGood && change >= 0) || (!positiveIsGood && change < 0) ? 'text-green-500' : 'text-destructive'
+                            )}>
                                 {change >= 0 ? '▲' : '▼'} {Math.abs(change).toFixed(1)}%
                             </span>
                             <span>vs. période précédente</span>
@@ -333,7 +336,7 @@ export default function DashboardPage() {
             <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                 <StatCard title="Total des Ventes" value={formatCurrency(data?.stats.totalRevenue ?? 0)} icon={TrendingUp} isLoading={isLoading} href="/sales-history" change={data?.stats.totalRevenueChange} />
                 <StatCard title="Bénéfice Net" value={formatCurrency(data?.stats.netProfit ?? 0)} icon={DollarSign} isLoading={isLoading} change={data?.stats.netProfitChange} />
-                <StatCard title="Total des Dépenses" value={formatCurrency(data?.stats.totalExpenses ?? 0)} icon={TrendingDown} isLoading={isLoading} href="/expenses" change={data?.stats.totalExpensesChange} />
+                <StatCard title="Total des Dépenses" value={formatCurrency(data?.stats.totalExpenses ?? 0)} icon={TrendingDown} isLoading={isLoading} href="/expenses" change={data?.stats.totalExpensesChange} positiveIsGood={false} />
                 <StatCard title="Dette Client Totale" value={formatCurrency(data?.stats.totalOutstandingDebt ?? 0)} icon={CreditCard} isLoading={isLoading} href="/customers?status=has_debt" />
                 <StatCard title="Valeur de l'Inventaire" value={formatCurrency(data?.stats.totalInventoryValue ?? 0)} icon={Archive} isLoading={isLoading} href="/products" />
                 <StatCard title="Nombre de Ventes" value={String(data?.stats.saleCount ?? 0)} icon={Receipt} isLoading={isLoading} href="/sales-history" change={data?.stats.saleCountChange} />
