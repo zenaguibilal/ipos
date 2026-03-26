@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -7,10 +8,12 @@ import { useDebounce } from '@/hooks/useDebounce';
 import type { Sale, Customer } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, History, FileUp, Filter, TrendingUp, Receipt, ShoppingBag } from 'lucide-react';
+import { Search, History, FileUp, Filter, TrendingUp, Receipt, ShoppingBag, LayoutGrid, List, SortAsc } from 'lucide-react';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { useDateRange } from '@/hooks/useDateRange';
 import { SalesHistoryCard } from '@/components/sales/SalesHistoryCard';
+import { SalesHistoryTable } from '@/components/sales/SalesHistoryTable';
+import { SalesHistoryTableSkeleton } from '@/components/sales/SalesHistoryTableSkeleton';
 import { SaleDetailsDialog } from '@/components/sales/SaleDetailsDialog';
 import { CancelSaleDialog } from '@/components/sales/CancelSaleDialog';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -19,6 +22,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency, cn } from '@/lib/utils';
+import { useAppStore } from '@/stores/appStore';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,11 +30,25 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu";
 
 type PaymentFilter = 'all' | 'paid' | 'partial' | 'unpaid';
 
+const sortOptions: { [key: string]: string } = {
+    'createdAt_desc': 'Plus récentes',
+    'createdAt_asc': 'Plus anciennes',
+    'total_desc': 'Montant (Élevé)',
+    'total_asc': 'Montant (Bas)',
+};
+
 export default function SalesHistoryPage() {
+    const { viewMode, setViewMode } = useAppStore(state => ({
+        viewMode: state.salesHistoryViewMode,
+        setViewMode: state.actions.setSalesHistoryViewMode,
+    }));
+
     const [searchQuery, setSearchQuery] = useState('');
     const debouncedSearchQuery = useDebounce(searchQuery, 300);
     const { dateRange, setDate, isMounted } = useDateRange(29);
@@ -39,6 +57,7 @@ export default function SalesHistoryPage() {
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
     const [isCancelOpen, setIsCancelOpen] = useState(false);
     const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>('all');
+    const [sortBy, setSortBy] = useState('createdAt_desc');
 
     const [sales, setSales] = useState<Sale[] | undefined>(undefined);
     const [customerMap, setCustomerMap] = useState<Map<string, Customer>>(new Map());
@@ -60,7 +79,7 @@ export default function SalesHistoryPage() {
             setSales(salesData);
             setCustomerMap(new Map(customersData.map(c => [c.uuid, c])));
         } catch (error: any) {
-            toast.error("Impossible de charger l'historique des ventes ou les clients.", { description: error.message });
+            toast.error("Impossible de charger l'historique des ventes.", { description: error.message });
             setSales([]);
         }
     }, [isMounted, debouncedSearchQuery, dateRange]);
@@ -69,18 +88,41 @@ export default function SalesHistoryPage() {
         fetchSalesAndCustomers();
     }, [fetchSalesAndCustomers]);
 
-    const filteredSales = useMemo(() => {
+    const filteredAndSortedSales = useMemo(() => {
         if (!sales) return [];
-        if (paymentFilter === 'all') return sales;
-        return sales.filter(s => s.paymentStatus === paymentFilter);
-    }, [sales, paymentFilter]);
+        
+        let result = [...sales];
+        
+        // Payment Filter
+        if (paymentFilter !== 'all') {
+            result = result.filter(s => s.paymentStatus === paymentFilter);
+        }
+
+        // Sorting
+        const [field, order] = sortBy.split('_');
+        const isAsc = order === 'asc';
+
+        result.sort((a, b) => {
+            if (field === 'createdAt') {
+                const dateA = new Date(a.createdAt!).getTime();
+                const dateB = new Date(b.createdAt!).getTime();
+                return isAsc ? dateA - dateB : dateB - dateA;
+            }
+            if (field === 'total') {
+                return isAsc ? a.total - b.total : b.total - a.total;
+            }
+            return 0;
+        });
+
+        return result;
+    }, [sales, paymentFilter, sortBy]);
 
     const stats = useMemo(() => {
-        const totalRevenue = filteredSales.reduce((sum, s) => sum + s.total, 0);
-        const count = filteredSales.length;
+        const totalRevenue = filteredAndSortedSales.reduce((sum, s) => sum + s.total, 0);
+        const count = filteredAndSortedSales.length;
         const avgBasket = count > 0 ? totalRevenue / count : 0;
         return { totalRevenue, count, avgBasket };
-    }, [filteredSales]);
+    }, [filteredAndSortedSales]);
 
     const handleViewDetails = (sale: Sale) => {
         setSelectedSale(sale);
@@ -93,13 +135,13 @@ export default function SalesHistoryPage() {
     };
 
     const handleExport = async () => {
-        if (!filteredSales.length) {
+        if (!filteredAndSortedSales.length) {
             toast.info("Aucune vente à exporter.");
             return;
         }
         setIsExporting(true);
         try {
-            await salesService.exportToCSV(filteredSales, customerMap);
+            await salesService.exportToCSV(filteredAndSortedSales, customerMap);
             toast.success("Historique exporté avec succès.");
         } catch (error: any) {
             toast.error("Erreur lors de l'exportation.");
@@ -109,9 +151,11 @@ export default function SalesHistoryPage() {
     };
     
     const renderSkeletons = () => (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-48 w-full rounded-lg" />)}
-        </div>
+        viewMode === 'grid' ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-48 w-full rounded-lg" />)}
+            </div>
+        ) : <SalesHistoryTableSkeleton />
     );
 
     const renderContent = () => {
@@ -119,7 +163,7 @@ export default function SalesHistoryPage() {
             return renderSkeletons();
         }
 
-        if (filteredSales.length === 0) {
+        if (filteredAndSortedSales.length === 0) {
             return (
                 <EmptyState
                     icon={History}
@@ -129,22 +173,33 @@ export default function SalesHistoryPage() {
             );
         }
         
+        if (viewMode === 'grid') {
+            return (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {filteredAndSortedSales.map(s => {
+                        const customer = s.customerUuid ? customerMap.get(s.customerUuid) : undefined;
+                        const customerName = customer ? `${customer.firstName} ${customer.lastName}` : 'Client de passage';
+                        return (
+                            <SalesHistoryCard 
+                                key={s.uuid} 
+                                sale={s}
+                                customerName={customerName}
+                                onViewDetails={handleViewDetails}
+                                onCancelSale={handleCancelSale}
+                            />
+                        )
+                    })}
+                </div>
+            );
+        }
+
         return (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredSales.map(s => {
-                    const customer = s.customerUuid ? customerMap.get(s.customerUuid) : undefined;
-                    const customerName = customer ? `${customer.firstName} ${customer.lastName}` : 'Client de passage';
-                    return (
-                        <SalesHistoryCard 
-                            key={s.uuid} 
-                            sale={s}
-                            customerName={customerName}
-                            onViewDetails={handleViewDetails}
-                            onCancelSale={handleCancelSale}
-                        />
-                    )
-                })}
-            </div>
+            <SalesHistoryTable 
+                sales={filteredAndSortedSales}
+                customerMap={customerMap}
+                onViewDetails={handleViewDetails}
+                onCancelSale={handleCancelSale}
+            />
         );
     }
 
@@ -224,7 +279,34 @@ export default function SalesHistoryPage() {
                     </DropdownMenuContent>
                 </DropdownMenu>
 
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="outline" className="w-full sm:w-auto">
+                            <SortAsc className="mr-2 h-4 w-4" />
+                            Trier: {sortOptions[sortBy]}
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>Trier les ventes par</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuRadioGroup value={sortBy} onValueChange={setSortBy}>
+                            {Object.entries(sortOptions).map(([key, value]) => (
+                                <DropdownMenuRadioItem key={key} value={key}>{value}</DropdownMenuRadioItem>
+                            ))}
+                        </DropdownMenuRadioGroup>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+
                 <DateRangePicker date={dateRange} setDate={setDate} />
+
+                <div className="flex items-center gap-1 rounded-md bg-muted p-1">
+                    <Button variant={viewMode === 'grid' ? 'secondary': 'ghost'} size="icon" onClick={() => setViewMode('grid')}>
+                        <LayoutGrid className="h-5 w-5"/>
+                    </Button>
+                    <Button variant={viewMode === 'list' ? 'secondary': 'ghost'} size="icon" onClick={() => setViewMode('list')}>
+                        <List className="h-5 w-5"/>
+                    </Button>
+                </div>
             </div>
             
             <div className="min-h-[400px]">
