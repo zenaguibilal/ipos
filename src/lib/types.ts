@@ -277,6 +277,21 @@ export interface ProductImportAnalysis {
     totalRows: number;
 }
 
+// =================== Zakat Types ===================
+
+export interface ZakatCalculation {
+    inventoryValue: number;
+    customerDebts: number;
+    cashOnHand: number;
+    supplierDebts: number;
+    otherDebts: number;
+    goldPrice: number;
+    nisab: number;
+    zakatBase: number;
+    zakatAmount: number;
+    isNisabReached: boolean;
+}
+
 // =================== Dashboard Types ===================
 
 export interface RecentSale extends Pick<Sale, 'uuid' | 'invoiceNumber' | 'total' | 'createdAt'> {

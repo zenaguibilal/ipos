@@ -17,6 +17,7 @@ import {
   LayoutDashboard,
   Wheat,
   Building,
+  Coins,
 } from 'lucide-react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
@@ -48,6 +49,7 @@ const allNavLinks = [
   { href: '/returns', label: 'Retours', icon: Undo2, managerOnly: false },
   { href: '/expenses', label: 'Dépenses', icon: Wallet, managerOnly: true },
   { href: '/bread', label: 'Pain', icon: Wheat, managerOnly: true },
+  { href: '/zakat', label: 'Zakat', icon: Coins, managerOnly: true },
 ];
 
 export function AppHeader() {
