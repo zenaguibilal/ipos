@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -5,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import type { Customer } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
@@ -22,6 +24,7 @@ const initialFormState = {
     lastName: '',
     phone: '',
     address: '',
+    notes: '',
     settlementDay: '',
     creditLimit: '',
 };
@@ -38,6 +41,7 @@ export function CustomerDialog({ isOpen, onOpenChange, customer, onSuccess }: Cu
                 lastName: customer.lastName,
                 phone: customer.phone || '',
                 address: customer.address || '',
+                notes: customer.notes || '',
                 settlementDay: String(customer.settlementDay || ''),
                 creditLimit: String(customer.creditLimit || ''),
             });
@@ -52,13 +56,14 @@ export function CustomerDialog({ isOpen, onOpenChange, customer, onSuccess }: Cu
         setError(null);
         setIsLoading(true);
 
-        const { firstName, lastName, phone, address, settlementDay, creditLimit } = formState;
+        const { firstName, lastName, phone, address, notes, settlementDay, creditLimit } = formState;
 
         const customerData = {
             firstName,
             lastName,
             phone: phone || undefined,
             address: address || undefined,
+            notes: notes || undefined,
             settlementDay: settlementDay ? parseInt(settlementDay, 10) : undefined,
             creditLimit: creditLimit ? parseFloat(creditLimit) : undefined,
         };
@@ -84,7 +89,7 @@ export function CustomerDialog({ isOpen, onOpenChange, customer, onSuccess }: Cu
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="sm:max-w-md lg:max-w-lg">
                 <form onSubmit={handleSubmit}>
                     <DialogHeader>
                         <DialogTitle>{customer ? 'Modifier le client' : 'Ajouter un nouveau client'}</DialogTitle>
@@ -92,7 +97,7 @@ export function CustomerDialog({ isOpen, onOpenChange, customer, onSuccess }: Cu
                             Remplissez les informations pour {customer ? 'modifier' : 'créer'} un profil client.
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="grid gap-4 py-4">
+                    <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto px-1">
                         {error && <p className="text-sm text-red-500 text-center">{error}</p>}
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
@@ -121,6 +126,16 @@ export function CustomerDialog({ isOpen, onOpenChange, customer, onSuccess }: Cu
                                 <Label htmlFor="creditLimit">Limite de crédit (DA)</Label>
                                 <Input id="creditLimit" type="number" placeholder="Ex: 10000" value={formState.creditLimit} onChange={(e) => setFormState(s => ({...s, creditLimit: e.target.value}))} />
                             </div>
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="notes">Notes / Observations</Label>
+                            <Textarea 
+                                id="notes" 
+                                placeholder="Informations complémentaires sur le client..." 
+                                value={formState.notes} 
+                                onChange={(e) => setFormState(s => ({...s, notes: e.target.value}))}
+                                className="min-h-[100px]"
+                            />
                         </div>
                     </div>
                     <DialogFooter>

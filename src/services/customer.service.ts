@@ -1,3 +1,4 @@
+
 'use client';
 import { v4 as uuidv4 } from 'uuid';
 import type { Customer, Sale, ImportAnalysis } from '@/lib/types';
@@ -65,6 +66,7 @@ class CustomerService {
                 searchName,
                 phone: customerData.phone,
                 address: customerData.address,
+                notes: customerData.notes,
                 settlementDay: customerData.settlementDay,
                 creditLimit: customerData.creditLimit,
                 totalSpent: 0,
@@ -275,6 +277,7 @@ class CustomerService {
                     lastName,
                     phone: row.phone || row.telephone,
                     address: row.address || row.adresse,
+                    notes: row.notes || row.observations,
                     creditLimit: row.creditLimit ? parseFloat(row.creditLimit) : undefined,
                     outstandingBalance: row.outstandingBalance ? parseFloat(row.outstandingBalance) : undefined,
                 };
@@ -329,6 +332,7 @@ class CustomerService {
             'Nom': c.lastName,
             'Téléphone': c.phone || '',
             'Adresse': c.address || '',
+            'Notes': c.notes || '',
             'Délai Paiement (jours)': c.settlementDay || '',
             'Limite de Crédit': c.creditLimit || 0,
             'Total Dépensé': c.totalSpent,

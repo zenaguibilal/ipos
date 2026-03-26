@@ -29,6 +29,7 @@ export interface Customer {
     searchName?: string;
     phone?: string;
     address?: string;
+    notes?: string;
     settlementDay?: number;
     creditLimit?: number;
     totalSpent: number;
@@ -38,6 +39,12 @@ export interface Customer {
     updatedAt?: Date;
     debtStatus?: 'none' | 'due_soon' | 'overdue';
     isOverLimit?: boolean;
+    isBreadClient?: boolean;
+    bread_type_recurrence?: 'quotidien' | 'jours_specifiques' | 'aucun';
+    bread_quantite_defaut?: number;
+    bread_jours_semaine?: {
+        [key: string]: { actif: boolean; quantite: number };
+    };
 }
 
 export interface SaleItem {

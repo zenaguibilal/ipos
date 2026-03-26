@@ -1,9 +1,10 @@
+
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, HandCoins, Printer, Loader2 } from 'lucide-react';
+import { ArrowLeft, HandCoins, Printer, Loader2, Filter, FileText, Info } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CustomerMetrics } from '@/components/customers/CustomerMetrics';
@@ -19,8 +20,16 @@ import { customerService } from '@/services/customer.service';
 import { salesService } from '@/services/sales.service';
 import { returnService } from '@/services/return.service';
 import { toast } from 'sonner';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuCheckboxItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
-const ITEMS_PER_PAGE = 10;
+const ITEMS_PER_PAGE = 15;
 
 export default function CustomerDetailPage() {
     const params = useParams();
@@ -35,11 +44,12 @@ export default function CustomerDetailPage() {
     const [selectedReturn, setSelectedReturn] = useState<ProductReturn | null>(null);
     const [isReturnDetailsOpen, setIsReturnDetailsOpen] = useState(false);
 
-    // States for activity pagination
+    // States for activity pagination and filtering
     const [activity, setActivity] = useState<any[]>([]);
     const [activityPage, setActivityPage] = useState(1);
     const [isLoadingActivity, setIsLoadingActivity] = useState(true);
     const [hasMoreActivity, setHasMoreActivity] = useState(true);
+    const [filterType, setFilterType] = useState<string>('all');
 
     const fetchCustomerData = useCallback(async () => {
         if (!customerUuid) {
@@ -65,48 +75,47 @@ export default function CustomerDetailPage() {
     const handleSuccessfulPayment = useCallback(async () => {
         toast.success("Paiement enregistré. Mise à jour du statut du client...");
         await fetchCustomerData();
-        // Also refresh activity list
+        // Reset activity
         setActivity([]);
         setActivityPage(1);
         setHasMoreActivity(true);
-        setIsLoadingActivity(true);
     }, [fetchCustomerData]);
 
-    // Reset pagination when customer changes
-    useEffect(() => {
-        setActivity([]);
-        setActivityPage(1);
-        setHasMoreActivity(true);
+    // Fetch activity based on page and filter
+    const fetchActivity = useCallback(async (page: number, type: string) => {
+        if (!customerUuid) return;
+        
         setIsLoadingActivity(true);
+        try {
+            const allActivity = await customerService.getCustomerActivity(customerUuid, 1, 1000); // Fetch enough to filter locally for now as service doesn't support server-side filtering by type yet
+            
+            let filtered = allActivity;
+            if (type !== 'all') {
+                filtered = allActivity.filter(a => a.type === type);
+            }
+
+            const startIndex = (page - 1) * ITEMS_PER_PAGE;
+            const paginated = filtered.slice(0, startIndex + ITEMS_PER_PAGE);
+            
+            setActivity(paginated);
+            setHasMoreActivity(paginated.length < filtered.length);
+        } catch (error: any) {
+            toast.error("Impossible de charger l'activité du client.", { description: error.message });
+        } finally {
+            setIsLoadingActivity(false);
+        }
     }, [customerUuid]);
 
     useEffect(() => {
-        if (!customerUuid || !hasMoreActivity) return;
-
-        let isCancelled = false;
-        setIsLoadingActivity(true);
-        customerService.getCustomerActivity(customerUuid, activityPage, ITEMS_PER_PAGE)
-            .then(newActivity => {
-                if (!isCancelled) {
-                    setActivity(prev => activityPage === 1 ? newActivity : [...prev, ...newActivity]);
-                    if (newActivity.length < ITEMS_PER_PAGE) {
-                        setHasMoreActivity(false);
-                    }
-                }
-            })
-            .catch((error) => toast.error("Impossible de charger l'activité du client.", { description: error.message }))
-            .finally(() => {
-                if (!isCancelled) {
-                    setIsLoadingActivity(false);
-                }
-            });
-        
-        return () => { isCancelled = true; };
-    }, [customerUuid, activityPage, hasMoreActivity]);
+        setActivityPage(1);
+        fetchActivity(1, filterType);
+    }, [customerUuid, filterType, fetchActivity]);
 
     const handleLoadMore = () => {
         if (!isLoadingActivity && hasMoreActivity) {
-            setActivityPage(prev => prev + 1);
+            const nextPage = activityPage + 1;
+            setActivityPage(nextPage);
+            fetchActivity(nextPage, filterType);
         }
     };
 
@@ -179,13 +188,45 @@ export default function CustomerDetailPage() {
             </div>
 
             <div className="grid md:grid-cols-3 gap-6">
-                <div className="md:col-span-2">
+                <div className="md:col-span-2 space-y-6">
+                    {customer.notes && (
+                        <Card className="border-l-4 border-l-primary bg-primary/5">
+                            <CardHeader className="py-3">
+                                <CardTitle className="text-sm font-bold flex items-center gap-2">
+                                    <Info className="h-4 w-4 text-primary" />
+                                    Notes & Observations
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <p className="text-sm whitespace-pre-wrap">{customer.notes}</p>
+                            </CardContent>
+                        </Card>
+                    )}
+
                      <Card>
-                        <CardHeader>
-                            <CardTitle>Historique d'activité</CardTitle>
-                            <CardDescription>
-                                Liste chronologique des transactions. Cliquez sur une vente ou un retour pour voir les détails.
-                            </CardDescription>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                            <div className="space-y-1">
+                                <CardTitle>Historique d'activité</CardTitle>
+                                <CardDescription>
+                                    Transactions chronologiques du client.
+                                </CardDescription>
+                            </div>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="outline" size="sm">
+                                        <Filter className="mr-2 h-4 w-4" />
+                                        Filtrer: {filterType === 'all' ? 'Tout' : filterType === 'sale' ? 'Ventes' : filterType === 'payment' ? 'Paiements' : 'Retours'}
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    <DropdownMenuLabel>Type de transaction</DropdownMenuLabel>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuCheckboxItem checked={filterType === 'all'} onCheckedChange={() => setFilterType('all')}>Tout l'historique</DropdownMenuCheckboxItem>
+                                    <DropdownMenuCheckboxItem checked={filterType === 'sale'} onCheckedChange={() => setFilterType('sale')}>Ventes uniquement</DropdownMenuCheckboxItem>
+                                    <DropdownMenuCheckboxItem checked={filterType === 'payment'} onCheckedChange={() => setFilterType('payment')}>Paiements uniquement</DropdownMenuCheckboxItem>
+                                    <DropdownMenuCheckboxItem checked={filterType === 'return'} onCheckedChange={() => setFilterType('return')}>Retours uniquement</DropdownMenuCheckboxItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
                         </CardHeader>
                         <CardContent>
                            {isLoadingActivity && activity.length === 0 ? (
@@ -202,9 +243,9 @@ export default function CustomerDetailPage() {
                         </CardContent>
                         {hasMoreActivity && (
                             <CardFooter>
-                                <Button onClick={handleLoadMore} className="w-full" disabled={isLoadingActivity}>
+                                <Button onClick={handleLoadMore} className="w-full" variant="ghost" disabled={isLoadingActivity}>
                                     {isLoadingActivity ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                                    Charger plus
+                                    Afficher plus de résultats
                                 </Button>
                             </CardFooter>
                         )}
@@ -215,6 +256,7 @@ export default function CustomerDetailPage() {
                     <div className="grid grid-cols-2 gap-2">
                         <Button 
                             size="lg" 
+                            variant="outline"
                             className="w-full"
                             onClick={() => setIsStatementDialogOpen(true)}
                         >
@@ -229,6 +271,26 @@ export default function CustomerDetailPage() {
                             <HandCoins className="mr-2 h-5 w-5" /> Paiement
                         </Button>
                     </div>
+                    
+                    <Card>
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-sm font-medium">Informations de contact</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-2 text-sm">
+                            <div className="flex justify-between">
+                                <span className="text-muted-foreground">Téléphone:</span>
+                                <span className="font-medium">{customer.phone || 'N/A'}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-muted-foreground">Adresse:</span>
+                                <span className="font-medium text-right max-w-[150px]">{customer.address || 'N/A'}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-muted-foreground">Inscrit le:</span>
+                                <span className="font-medium">{customer.createdAt ? new Date(customer.createdAt).toLocaleDateString('fr-FR') : 'N/A'}</span>
+                            </div>
+                        </CardContent>
+                    </Card>
                 </div>
             </div>
             
