@@ -61,7 +61,7 @@ class CustomerRepository {
     private supabase = createClient();
 
     async getAll(): Promise<Customer[]> {
-        const { data, error } = await this.supabase.from('customers').select('*');
+        const { data, error } = await this.supabase.from('customers').select('*').order('created_at', { ascending: false });
         if (error) throw error;
         return data.map(fromSupabase);
     }
@@ -82,7 +82,6 @@ class CustomerRepository {
         let queryBuilder = this.supabase.from('customers').select('*', { count: 'exact' });
 
         if (filters.query) {
-            // Search by name OR phone
             queryBuilder = queryBuilder.or(`search_name.ilike.%${filters.query}%,phone.ilike.%${filters.query}%`);
         }
         if (filters.category && filters.category !== 'all') {
