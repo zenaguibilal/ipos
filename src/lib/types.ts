@@ -269,7 +269,18 @@ export interface RecentReturn extends Pick<ProductReturn, 'uuid' | 'originalInvo
 export interface SalesByDay {
     date: string;
     total: number;
+    profit: number;
 }
+
+export interface TopProduct {
+    productUuid: string;
+    name: string;
+    quantitySold: number;
+    imageUrl?: string;
+    category?: string;
+}
+
+export interface LowStockProduct extends Pick<Product, 'uuid' | 'name' | 'quantity' | 'minStockLevel' | 'imageUrl' | 'category' | 'unite'> {}
 
 export interface DashboardData {
     stats: {
@@ -281,4 +292,6 @@ export interface DashboardData {
     salesByDay: SalesByDay[];
     recentSales: RecentSale[];
     recentReturns: RecentReturn[];
+    topProducts: TopProduct[];
+    lowStockProducts: LowStockProduct[];
 }
