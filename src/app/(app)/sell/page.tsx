@@ -16,6 +16,7 @@ import { CartTotalBar } from '@/components/sell/CartTotalBar';
 import type { Product, Customer } from '@/lib/types';
 import { useAppStore, useAppActions } from '@/stores/appStore';
 import { customerService } from '@/services/customer.service';
+import { PrintReceiptDialog } from '@/components/sales/PrintReceiptDialog';
 
 export default function SellPage() {
     const { cart, cartCustomer, isCartLoading } = useAppStore(state => ({
@@ -170,6 +171,7 @@ export default function SellPage() {
                     onPaymentSuccess={handleSuccessfulPayment}
                 />
             )}
+            <PrintReceiptDialog />
         </>
     );
 }

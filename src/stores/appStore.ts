@@ -2,7 +2,7 @@
 import { create } from 'zustand';
 import { produce } from 'immer';
 import type { Session, User } from '@supabase/supabase-js';
-import type { Cart, Customer, CompanyProfile, Product, CartItem, ReturnItem, StockIntakeItem } from '@/lib/types';
+import type { Cart, Customer, CompanyProfile, Product, CartItem, ReturnItem, StockIntakeItem, Sale } from '@/lib/types';
 import { toast } from 'sonner';
 
 import { authService } from '@/services/auth.service';
@@ -26,6 +26,7 @@ interface AppState {
     cartCustomer: Customer | null;
     isCartLoading: boolean;
     productViewMode: 'grid' | 'list';
+    lastCompletedSale: { sale: Sale; customer: Customer | null } | null;
     actions: AppActions;
 }
 
@@ -50,6 +51,7 @@ interface AppActions {
         payments: { method: 'cash' | 'card' | 'other'; amount: number }[];
         dueDate?: Date;
     }) => Promise<boolean>;
+    clearLastCompletedSale: () => void;
     processReturn: (returnData: {
         originalSaleUuid: string,
         items: ReturnItem[],
@@ -88,6 +90,7 @@ const initialState: Omit<AppState, 'actions'> = {
     cartCustomer: null,
     isCartLoading: false,
     productViewMode: 'grid',
+    lastCompletedSale: null,
 };
 
 // Store Implementation
@@ -191,7 +194,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
             state.cart.discount = { type: 'fixed', value: 0 };
         })),
         finalizeSale: async (paymentData) => {
-            const { cart } = get();
+            const { cart, cartCustomer } = get();
             if (cart.items.length === 0) {
                 toast.error("Le panier est vide.");
                 return false;
@@ -205,6 +208,8 @@ export const useAppStore = create<AppState>()((set, get) => ({
                     ...paymentData,
                     customerUuid: cart.customerUuid,
                 });
+                
+                set({ lastCompletedSale: { sale, customer: cartCustomer } });
 
                 for (const item of sale.items) {
                     await inventoryService.adjustStock(item.productUuid, -item.quantity, 'sale', sale.uuid);
@@ -223,6 +228,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
                 return false;
             }
         },
+        clearLastCompletedSale: () => set({ lastCompletedSale: null }),
         processReturn: async (returnData) => {
              try {
                 const newReturn = await returnService.addReturn(returnData);
