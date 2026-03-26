@@ -1,46 +1,20 @@
-# Supabase Migrations
 
-This directory contains the SQL migration scripts for setting up and evolving the iPOS database schema.
+# إعداد قاعدة بيانات iPOS على Supabase
 
-## How to Apply Migrations
+تم توفير ملف تهجئة (Migration) شامل لإعداد تطبيقك بضغطة واحدة.
 
-These migrations are designed to be run using the [Supabase CLI](https://supabase.com/docs/guides/cli).
+## خطوات التنفيذ:
 
-### First Time Setup
+1. اذهب إلى **Supabase Dashboard**.
+2. اختر مشروعك، ثم اذهب إلى قسم **SQL Editor**.
+3. افتح استعلاماً جديداً (New Query).
+4. انسخ محتويات الملف `supabase/migrations/20240101000000_initial_schema.sql` والصقه هناك.
+5. اضغط على **Run**.
 
-If you are setting up a new Supabase project (local or remote), you can apply all migrations to create the database schema from scratch.
+## ماذا سيفعل هذا السكربت؟
+*   ينشئ كافة الجداول المطلوبة.
+*   يفعل نظام الحماية (RLS) لضمان خصوصية كل مستخدم.
+*   ينشئ الدوال البرمجية (RPC) التي يحتاجها التطبيق للبحث وتصنيف الفئات.
 
-1.  **Link your project:**
-    ```bash
-    supabase link --project-ref <your-project-ref>
-    ```
-
-2.  **Push the migrations:**
-    This command will run all the migration files in this directory against your linked Supabase database.
-    ```bash
-    supabase db push
-    ```
-
-This will create all the tables, functions, triggers, and RLS policies defined in the `_initial_schema.sql` file.
-
-### Creating New Migrations
-
-When you need to make changes to the database schema (e.g., add a column, create a new table):
-
-1.  **Make changes locally:** It's recommended to make schema changes using the Supabase Studio on your local instance.
-
-2.  **Generate a new migration file:**
-    Run the following command to diff your local database changes and create a new migration file.
-    ```bash
-    supabase db diff -f <migration-name>
-    ```
-    For example:
-    ```bash
-    supabase db diff -f add_notes_to_products
-    ```
-
-3.  **Apply the new migration:**
-    Push the newly created migration file to your remote database.
-    ```bash
-    supabase db push
-    ```
+## ملاحظة هامة حول Storage:
+يجب عليك إنشاء "Bucket" جديد يدوياً في قسم **Storage** باسم `backups` وتعيين خصوصيته كـ `Private` للسماح للنظام بحفظ واسترجاع النسخ الاحتياطية السحابية.
