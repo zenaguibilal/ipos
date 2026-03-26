@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -23,6 +24,7 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Badge } from '../ui/badge';
 import { PackageCheck, PackageX } from 'lucide-react';
+import { Separator } from '../ui/separator';
 
 interface ReturnDetailsDialogProps {
     isOpen: boolean;
@@ -48,7 +50,7 @@ export function ReturnDetailsDialog({
                         <span className="text-muted-foreground font-mono text-base">#{productReturn.originalInvoiceNumber}</span>
                     </DialogTitle>
                     <DialogDescription className="mt-1">
-                        Date de l'opération: <span className="font-semibold text-foreground">{format(safeToDate(productReturn.createdAt!), 'd MMMM yyyy HH:mm', { locale: fr })}</span>
+                        Opération effectuée le : <span className="font-semibold text-foreground">{format(safeToDate(productReturn.createdAt!), 'd MMMM yyyy HH:mm', { locale: fr })}</span>
                     </DialogDescription>
                 </DialogHeader>
                 
@@ -58,8 +60,8 @@ export function ReturnDetailsDialog({
                             <TableRow>
                                 <TableHead className="font-bold">Produit</TableHead>
                                 <TableHead className="text-center font-bold">Qté</TableHead>
-                                <TableHead className="text-right font-bold">Prix Vente</TableHead>
-                                <TableHead className="text-center font-bold">Stock</TableHead>
+                                <TableHead className="text-right font-bold">Prix Unitaire</TableHead>
+                                <TableHead className="text-center font-bold">État Stock</TableHead>
                                 <TableHead className="text-right font-bold">Total</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -89,15 +91,15 @@ export function ReturnDetailsDialog({
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2 p-4 bg-muted/20 rounded-2xl border border-border/50">
-                        <h4 className="text-xs font-black uppercase text-muted-foreground tracking-widest border-b border-border/50 pb-2 mb-3">Répartition Financière</h4>
+                        <h4 className="text-xs font-black uppercase text-muted-foreground tracking-widest border-b border-border/50 pb-2 mb-3">Régularisation Financière</h4>
                         <div className="space-y-2">
                             <div className="flex justify-between text-sm items-center">
-                                <span className="font-medium text-muted-foreground">💵 Remboursé (Espèces)</span>
+                                <span className="font-medium text-muted-foreground">💵 Remboursé Espèces</span>
                                 <span className="font-bold text-chart-quaternary">{formatCurrency(productReturn.amountRefunded)}</span>
                             </div>
-                            {impactDebt > 0 && (
+                            {impactDebt > 0.01 && (
                                 <div className="flex justify-between text-sm items-center">
-                                    <span className="font-medium text-muted-foreground">💳 Crédit sur solde client</span>
+                                    <span className="font-medium text-muted-foreground">💳 Crédit sur solde</span>
                                     <span className="font-bold text-primary">{formatCurrency(impactDebt)}</span>
                                 </div>
                             )}
@@ -105,7 +107,7 @@ export function ReturnDetailsDialog({
                     </div>
 
                     <div className="space-y-2 p-4 bg-destructive/5 rounded-2xl border border-destructive/20">
-                        <h4 className="text-xs font-black uppercase text-destructive tracking-widest border-b border-destructive/20 pb-2 mb-3">Impact Caisse</h4>
+                        <h4 className="text-xs font-black uppercase text-destructive tracking-widest border-b border-destructive/20 pb-2 mb-3">Impact Financier</h4>
                         <div className="space-y-1.5">
                             <div className="flex justify-between text-sm">
                                 <span className="text-muted-foreground">Valeur marchandises</span>
@@ -121,7 +123,7 @@ export function ReturnDetailsDialog({
 
                 {productReturn.notes && (
                     <div className="p-3 bg-muted/30 rounded-xl border border-border/50 text-sm">
-                        <span className="font-bold text-xs uppercase text-muted-foreground block mb-1">Raison / Notes :</span>
+                        <span className="font-bold text-xs uppercase text-muted-foreground block mb-1">Raison du retour :</span>
                         <p className="italic">"{productReturn.notes}"</p>
                     </div>
                 )}

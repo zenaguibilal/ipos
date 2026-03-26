@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -179,7 +180,7 @@ export default function ReturnsPage() {
                 </div>
             </PageHeader>
 
-            {/* Financial Dashboard */}
+            {/* Tableau de bord financier */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <Card className="luxury-glass bg-destructive/5 border-destructive/20 overflow-hidden relative group">
                     <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
@@ -234,7 +235,7 @@ export default function ReturnsPage() {
                 </Card>
             </div>
 
-            {/* Toolbar */}
+            {/* Barre d'outils */}
             <div className="flex flex-col lg:flex-row gap-3">
                 <div className="relative flex-grow">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />

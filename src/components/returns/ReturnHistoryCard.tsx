@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -24,7 +25,7 @@ export const ReturnHistoryCard = React.memo(({ productReturn, customerName, onVi
     const impactDebt = productReturn.totalReturnValue - productReturn.amountRefunded;
 
     return (
-        <Card className="flex flex-col transition-all duration-300 hover:shadow-xl hover:-translate-y-1 group relative overflow-hidden luxury-glass border-destructive/10">
+        <Card className="flex flex-col transition-all duration-200 hover:shadow-xl hover:-translate-y-1 group relative overflow-hidden luxury-glass border-destructive/10">
             <CardHeader className="pb-3">
                 <div className="flex justify-between items-start">
                     <div className="space-y-1">
@@ -66,7 +67,7 @@ export const ReturnHistoryCard = React.memo(({ productReturn, customerName, onVi
                     <span className="text-muted-foreground font-medium flex items-center gap-1.5"><Banknote className="h-3.5 w-3.5 text-chart-quaternary" /> Remboursé</span>
                     <span className="font-bold text-chart-quaternary">{formatCurrency(productReturn.amountRefunded)}</span>
                 </div>
-                {impactDebt > 0 && (
+                {impactDebt > 0.01 && (
                     <div className="flex justify-between items-center pt-1 border-t border-white/5">
                         <span className="text-muted-foreground font-medium flex items-center gap-1.5"><HandCoins className="h-3.5 w-3.5 text-primary" /> Crédit client</span>
                         <span className="font-bold text-primary">{formatCurrency(impactDebt)}</span>

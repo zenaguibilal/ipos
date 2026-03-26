@@ -18,8 +18,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, FileText, Trash2, Calendar, User, Package, Banknote, History } from 'lucide-react';
-import { formatCurrency, safeToDate, cn } from '@/lib/utils';
+import { MoreHorizontal, FileText, Trash2, Calendar, User, Package, Banknote } from 'lucide-react';
+import { formatCurrency, safeToDate } from '@/lib/utils';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
