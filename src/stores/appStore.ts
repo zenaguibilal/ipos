@@ -370,7 +370,10 @@ export const useAppStore = create<AppState>()(
                             items: finalItems,
                             totalValue: intakeData.totalValue,
                         });
-                        toast.success("Réception de stock enregistrée avec succès.");
+                        
+                        await supplierService.updateSupplierBalance(supplier.uuid, intakeData.totalValue);
+
+                        toast.success("Réception de stock enregistrée et solde fournisseur mis à jour.");
                         return true;
                     } catch (error: any) {
                         toast.error("Échec du traitement de la réception de stock.", { description: error.message });

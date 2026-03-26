@@ -54,6 +54,18 @@ class SupplierService {
             throw error;
         }
     }
+
+    async updateSupplierBalance(uuid: string, amountChange: number): Promise<void> {
+        try {
+            const supplier = await this.getSupplierByUuid(uuid);
+            if (!supplier) throw new Error("Fournisseur non trouvé.");
+            
+            const newBalance = supplier.balance + amountChange;
+            await supplierRepository.update(uuid, { balance: newBalance, updatedAt: new Date() });
+        } catch (error) {
+            throw error;
+        }
+    }
 }
 
 export const supplierService = new SupplierService();

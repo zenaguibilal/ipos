@@ -22,10 +22,8 @@ class StockService {
             let supplierUuids: string[] | undefined = undefined;
 
             if (filters.query) {
-                const suppliers = await supplierRepository.getAll(); // Assuming RLS filters by user
-                supplierUuids = suppliers
-                    .filter(s => s.name.toLowerCase().includes(filters.query!.toLowerCase()))
-                    .map(s => s.uuid);
+                const suppliers = await supplierRepository.filterByName(filters.query);
+                supplierUuids = suppliers.map(s => s.uuid);
             }
 
             return await stockRepository.filter({
