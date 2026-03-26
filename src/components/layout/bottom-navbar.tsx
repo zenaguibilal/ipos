@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import {
   Package,
   Users2,
-  History,
+  LayoutDashboard,
   ShoppingCart,
   Archive,
 } from 'lucide-react';
@@ -15,7 +15,7 @@ import { useIsManagerOrAdmin } from '@/stores/appStore';
 const allNavLinks = [
   { href: '/products', label: 'Produits', icon: Package, manager: true },
   { href: '/customers', label: 'Clients', icon: Users2, manager: false },
-  { href: '/sales-history', label: 'Historique', icon: History, manager: false },
+  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, manager: false },
   { href: '/stock', label: 'Stock', icon: Archive, manager: true },
 ];
 

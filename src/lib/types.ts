@@ -255,3 +255,30 @@ export interface ProductImportAnalysis {
     errorRows: any[];
     totalRows: number;
 }
+
+// =================== Dashboard Types ===================
+
+export interface RecentSale extends Pick<Sale, 'uuid' | 'invoiceNumber' | 'total' | 'createdAt'> {
+    customerName: string;
+}
+
+export interface RecentReturn extends Pick<ProductReturn, 'uuid' | 'originalInvoiceNumber' | 'totalReturnValue' | 'createdAt'> {
+    customerName: string;
+}
+
+export interface SalesByDay {
+    date: string;
+    total: number;
+}
+
+export interface DashboardData {
+    stats: {
+        totalRevenue: number;
+        totalExpenses: number;
+        netProfit: number;
+        saleCount: number;
+    };
+    salesByDay: SalesByDay[];
+    recentSales: RecentSale[];
+    recentReturns: RecentReturn[];
+}

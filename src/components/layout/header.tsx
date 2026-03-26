@@ -14,6 +14,7 @@ import {
   Archive,
   Wallet,
   LogOut,
+  LayoutDashboard,
   Wheat,
 } from 'lucide-react';
 import Image from 'next/image';
@@ -36,6 +37,7 @@ import { useAppStore, useIsManagerOrAdmin } from '@/stores/appStore';
 import { toast } from 'sonner';
 
 const allNavLinks = [
+  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, managerOnly: false },
   { href: '/stock', label: 'Stock', icon: Archive, managerOnly: true },
   { href: '/products', label: 'Produits', icon: Package, managerOnly: true },
   { href: '/customers', label: 'Clients', icon: Users2, managerOnly: false },
@@ -71,7 +73,7 @@ export function AppHeader() {
       <div className="flex-1 flex justify-start">
          <div className="flex items-baseline gap-2">
               <Link
-                  href="/sell"
+                  href="/dashboard"
                   className="flex items-center gap-2 font-semibold"
               >
                   <Image src="/icon.svg" alt="iPOS logo" width={32} height={32} priority />
