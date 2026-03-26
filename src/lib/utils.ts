@@ -1,6 +1,6 @@
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
-import type { Cart, Draft, Product } from "./types";
+import type { Cart, Product, SaleItem } from "./types";
 import placeholderImages from '@/lib/placeholder-images.json';
  
 export function cn(...inputs: ClassValue[]) {
@@ -28,7 +28,10 @@ export function formatCurrency(value: number, currency = 'DA') {
   return `${formattedValue} ${currency}`;
 }
 
-type CalculableCart = Pick<Cart, 'items' | 'discount'> | Pick<Draft, 'items' | 'discount'>;
+interface CalculableCart {
+    items: { price: number; cartQuantity: number }[];
+    discount: { type: 'fixed' | 'percentage'; value: number };
+}
 
 export function calculateCartTotals(cart: CalculableCart) {
     const subtotal = cart.items.reduce((acc, item) => acc + item.price * item.cartQuantity, 0);
