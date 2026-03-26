@@ -97,7 +97,7 @@ export const SaleActions = React.forwardRef<
                 </div>
                 
                 <div className="space-y-2">
-                    <Label htmlFor="discount-input">Remise (F6)</Label>
+                    <Label htmlFor="discount-input">Remise (F6) / Type (F7)</Label>
                     <div className="flex items-center gap-2">
                         <Input
                             id="discount-input"
@@ -111,13 +111,11 @@ export const SaleActions = React.forwardRef<
                         <Button 
                             variant={discountType === 'fixed' ? 'secondary' : 'ghost'}
                             onClick={() => setCartDiscount({ type: 'fixed', value: discountValue })}
-                            title="Changer le type de remise (F7)"
                             type="button"
                         >DA</Button>
                         <Button 
                             variant={discountType === 'percentage' ? 'secondary' : 'ghost'}
                             onClick={() => setCartDiscount({ type: 'percentage', value: discountValue })}
-                            title="Changer le type de remise (F7)"
                             type="button"
                         >%</Button>
                     </div>

@@ -73,6 +73,9 @@ export const ProductSearch = forwardRef<{focus: () => void}, ProductSearchProps>
     const [selectedCategory, setSelectedCategory] = useState('all');
     const inputRef = useRef<HTMLInputElement>(null);
     
+    const [selectedIndex, setSelectedIndex] = useState(-1);
+    const selectedItemRef = useRef<HTMLButtonElement>(null);
+    
     const { carts, activeCartId } = useAppStore();
     const activeCart = useMemo(() => carts.find(c => c.id === activeCartId), [carts, activeCartId]);
     
@@ -99,6 +102,7 @@ export const ProductSearch = forwardRef<{focus: () => void}, ProductSearchProps>
         } catch (e) { toast.error("Impossible de charger les produits.")}
     }, [debouncedQuery, selectedCategory]);
 
+
     useEffect(() => {
         fetchCategories();
     }, [fetchCategories]);
@@ -106,6 +110,14 @@ export const ProductSearch = forwardRef<{focus: () => void}, ProductSearchProps>
     useEffect(() => {
         fetchProducts();
     }, [fetchProducts]);
+
+    useEffect(() => {
+        setSelectedIndex(-1);
+    }, [products]);
+
+    useEffect(() => {
+        selectedItemRef.current?.scrollIntoView({ block: 'nearest' });
+    }, [selectedIndex]);
 
     const cartQuantities = useMemo(() => {
         const map = new Map<string, number>();
@@ -125,20 +137,25 @@ export const ProductSearch = forwardRef<{focus: () => void}, ProductSearchProps>
         },
     }));
 
+    const handleSelectProduct = useCallback((product: Product) => {
+        const inCartQuantity = cartQuantities.get(product.uuid) || 0;
+        const availableQuantity = product.quantity - inCartQuantity;
+        if (availableQuantity > 0) {
+            onProductSelect(product, 1);
+            setQuery(''); // Clear search after selection
+            inputRef.current?.focus();
+        } else {
+            toast.warning(`Stock insuffisant pour ${product.name}`);
+        }
+    }, [cartQuantities, onProductSelect]);
+
+
     const handleBarcodeScanned = async (scannedBarcode: string) => {
         if (!scannedBarcode.trim()) return;
         try {
             const product = await productService.getProductByBarcode(scannedBarcode.trim());
             if (product) {
-                const inCartQuantity = cartQuantities.get(product.uuid) || 0;
-                const availableQuantity = product.quantity - inCartQuantity;
-                if (availableQuantity > 0) {
-                    onProductSelect(product, 1);
-                    setQuery('');
-                    inputRef.current?.focus();
-                } else {
-                    toast.warning(`Stock insuffisant pour ${product.name}`);
-                }
+                handleSelectProduct(product);
             } else {
                 toast.error("Produit non trouvé pour ce code-barres.");
             }
@@ -161,6 +178,34 @@ export const ProductSearch = forwardRef<{focus: () => void}, ProductSearchProps>
         onProductSelect(customProduct, 1);
     };
 
+    const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (products.length > 0) {
+                setSelectedIndex(prev => Math.min(prev + 1, products.length - 1));
+            }
+            return;
+        }
+        if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (products.length > 0) {
+                setSelectedIndex(prev => Math.max(prev - 1, -1));
+            }
+            return;
+        }
+        
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            if (selectedIndex >= 0 && selectedIndex < products.length) {
+                handleSelectProduct(products[selectedIndex]);
+            } else if (products?.length === 1) {
+                handleSelectProduct(products[0]);
+            } else {
+                handleBarcodeScanned(e.currentTarget.value);
+            }
+        }
+    }, [products, selectedIndex, handleSelectProduct, handleBarcodeScanned]);
+
     return (
         <div className="p-4 flex flex-col h-full bg-transparent">
             <div className="relative mb-4">
@@ -171,25 +216,7 @@ export const ProductSearch = forwardRef<{focus: () => void}, ProductSearchProps>
                     className="pl-10 h-12 text-base"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                            e.preventDefault();
-                            if (products?.length === 1) {
-                                const product = products[0];
-                                const inCartQuantity = cartQuantities.get(product.uuid) || 0;
-                                const availableQuantity = product.quantity - inCartQuantity;
-                                if (availableQuantity > 0) {
-                                    onProductSelect(product, 1);
-                                    setQuery('');
-                                } else {
-                                    toast.warning(`Stock insuffisant pour ${product.name}`);
-                                }
-                                inputRef.current?.focus();
-                            } else {
-                                handleBarcodeScanned(e.currentTarget.value);
-                            }
-                        }
-                    }}
+                    onKeyDown={handleKeyDown}
                     autoFocus
                 />
             </div>
@@ -227,18 +254,12 @@ export const ProductSearch = forwardRef<{focus: () => void}, ProductSearchProps>
                         return (
                             <ListItem
                                 key={product.uuid}
+                                ref={index === selectedIndex ? selectedItemRef : null}
                                 product={product}
                                 availableQuantity={availableQuantity}
-                                onClick={() => {
-                                    if (availableQuantity > 0) {
-                                        onProductSelect(product, 1);
-                                        setQuery(''); // Clear search after selection
-                                        inputRef.current?.focus();
-                                    } else {
-                                        toast.warning(`Stock insuffisant pour ${product.name}`);
-                                    }
-                                }}
+                                onClick={() => handleSelectProduct(product)}
                                 isLast={index === products.length - 1}
+                                isSelected={index === selectedIndex}
                             />
                         )
                     })}
@@ -266,19 +287,22 @@ interface ListItemProps {
     availableQuantity: number;
     onClick: () => void;
     isLast: boolean;
+    isSelected: boolean;
 }
 
-const ListItem = React.memo(({ product, availableQuantity, onClick, isLast }: ListItemProps) => {
+const ListItem = React.memo(React.forwardRef<HTMLButtonElement, ListItemProps>(({ product, availableQuantity, onClick, isLast, isSelected }, ref) => {
     const isAvailable = availableQuantity > 0;
     const placeholder = getPlaceholder(product.category);
 
     return (
         <button 
+            ref={ref}
             onClick={onClick}
             disabled={!isAvailable}
             className={cn(
                 "w-full text-left flex items-center gap-4 p-2 rounded-lg hover:bg-primary/10 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed",
-                !isLast && "border-b border-white/5"
+                !isLast && "border-b border-white/5",
+                isSelected && "bg-primary/20 ring-2 ring-primary"
             )}
         >
             <Image
@@ -298,5 +322,5 @@ const ListItem = React.memo(({ product, availableQuantity, onClick, isLast }: Li
             </div>
         </button>
     );
-});
+}));
 ListItem.displayName = "ListItem";
