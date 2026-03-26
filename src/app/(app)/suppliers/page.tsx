@@ -6,7 +6,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import type { Supplier } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, Building, LayoutGrid, List, RefreshCw, Loader2, Phone, DollarSign, Wallet, FileUp, X } from 'lucide-react';
+import { Plus, Search, Building, LayoutGrid, List, RefreshCw, Loader2, Phone, DollarSign, Wallet, FileUp, X, ArrowUpRight } from 'lucide-react';
 import { SupplierCard } from '@/components/suppliers/SupplierCard';
 import { SupplierTable } from '@/components/suppliers/SupplierTable';
 import { SupplierDialog } from '@/components/suppliers/SupplierDialog';
@@ -90,8 +90,12 @@ export default function SuppliersPage() {
 
     const handleExport = () => {
         if (!filteredSuppliers.length) return;
-        // Logic for export can be added to service
-        toast.info("Fonctionnalité d'exportation bientôt disponible.");
+        try {
+            supplierService.exportToCSV(filteredSuppliers);
+            toast.success("Liste des fournisseurs exportée.");
+        } catch (e) {
+            toast.error("Erreur lors de l'exportation.");
+        }
     };
 
     const renderContent = () => {
@@ -111,7 +115,7 @@ export default function SuppliersPage() {
                     description={searchQuery ? "Aucun résultat pour cette recherche." : "Commencez par ajouter votre premier fournisseur partenaire."}
                 >
                      {!searchQuery && (
-                        <Button onClick={() => { setSelectedSupplier(null); setIsSupplierDialogOpen(true); }}>
+                        <Button onClick={() => { setSelectedSupplier(null); setIsSupplierDialogOpen(true); }} className="rounded-xl luxury-glass bg-primary/10 border-primary/20 text-primary">
                             <Plus className="mr-2 h-4 w-4" /> Ajouter un fournisseur
                         </Button>
                      )}
@@ -150,11 +154,11 @@ export default function SuppliersPage() {
                 description="Suivez vos partenaires commerciaux et l'état de vos dettes fournisseurs."
             >
                 <div className="flex gap-2 w-full sm:w-auto">
-                    <Button variant="outline" onClick={handleExport} disabled={!filteredSuppliers.length} className="border-primary/20 luxury-glass">
-                        <FileUp className="mr-2 h-4 w-4" /> Exporter
+                    <Button variant="outline" onClick={handleExport} disabled={!filteredSuppliers.length} className="border-primary/20 luxury-glass h-11">
+                        <FileUp className="mr-2 h-4 w-4" /> Exporter CSV
                     </Button>
                     {isManagerOrAdmin && (
-                        <Button onClick={() => { setSelectedSupplier(null); setIsSupplierDialogOpen(true); }} className="bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20">
+                        <Button onClick={() => { setSelectedSupplier(null); setIsSupplierDialogOpen(true); }} className="bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 h-11 px-6 rounded-xl">
                             <Plus className="mr-2 h-4 w-4" /> Nouveau Fournisseur
                         </Button>
                     )}
@@ -162,31 +166,31 @@ export default function SuppliersPage() {
             </PageHeader>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <Card className="luxury-glass bg-primary/5 border-primary/10">
+                <Card className="luxury-glass bg-primary/5 border-primary/10 group overflow-hidden">
                     <CardHeader className="py-3 px-4 flex flex-row items-center justify-between space-y-0">
                         <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Total Partenaires</span>
-                        <Building className="h-4 w-4 text-primary" />
+                        <Building className="h-4 w-4 text-primary group-hover:scale-110 transition-transform" />
                     </CardHeader>
                     <CardContent className="px-4 pb-4">
-                        <p className="text-2xl font-black">{stats.total}</p>
+                        <p className="text-3xl font-black">{stats.total}</p>
                     </CardContent>
                 </Card>
-                <Card className="luxury-glass bg-destructive/5 border-destructive/10">
+                <Card className="luxury-glass bg-destructive/5 border-destructive/10 group overflow-hidden">
                     <CardHeader className="py-3 px-4 flex flex-row items-center justify-between space-y-0">
                         <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Dette Fournisseurs</span>
-                        <Wallet className="h-4 w-4 text-destructive" />
+                        <Wallet className="h-4 w-4 text-destructive group-hover:scale-110 transition-transform" />
                     </CardHeader>
                     <CardContent className="px-4 pb-4">
-                        <p className="text-2xl font-black text-destructive">{formatCurrency(stats.totalDebt)}</p>
+                        <p className="text-3xl font-black text-destructive">{formatCurrency(stats.totalDebt)}</p>
                     </CardContent>
                 </Card>
-                <Card className="luxury-glass bg-blue-500/5 border-blue-500/10">
+                <Card className="luxury-glass bg-blue-500/5 border-blue-500/10 group overflow-hidden">
                     <CardHeader className="py-3 px-4 flex flex-row items-center justify-between space-y-0">
                         <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Comptes Actifs</span>
-                        <RefreshCw className="h-4 w-4 text-blue-400" />
+                        <RefreshCw className="h-4 w-4 text-blue-400 group-hover:rotate-180 transition-all duration-500" />
                     </CardHeader>
                     <CardContent className="px-4 pb-4">
-                        <p className="text-2xl font-black text-blue-400">{stats.activeSuppliers}</p>
+                        <p className="text-3xl font-black text-blue-400">{stats.activeSuppliers}</p>
                     </CardContent>
                 </Card>
             </div>
@@ -210,13 +214,15 @@ export default function SuppliersPage() {
                 <div className="flex flex-wrap gap-2">
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="outline" className="h-11 border-primary/10 luxury-glass rounded-xl">
-                                <Plus className={cn("mr-2 h-4 w-4 transition-transform", filterDebtOnly && "rotate-45")} />
-                                {filterDebtOnly ? 'Filtré: Dettes' : 'Tous les fournisseurs'}
+                            <Button variant="outline" className="h-11 border-primary/10 luxury-glass rounded-xl min-w-[180px] justify-between">
+                                <span className="flex items-center gap-2">
+                                    <Filter className={cn("h-4 w-4 text-primary", filterDebtOnly && "animate-pulse")} />
+                                    <span className="text-xs font-bold">{filterDebtOnly ? 'Filtré: Dettes' : 'Tous les fournisseurs'}</span>
+                                </span>
                             </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent className="luxury-glass">
-                            <DropdownMenuLabel className="text-[10px] font-black uppercase opacity-50">Filtrage</DropdownMenuLabel>
+                        <DropdownMenuContent className="luxury-glass w-56">
+                            <DropdownMenuLabel className="text-[10px] font-black uppercase opacity-50">Filtrage des comptes</DropdownMenuLabel>
                             <DropdownMenuSeparator />
                             <DropdownMenuCheckboxItem
                                 checked={!filterDebtOnly}
@@ -225,15 +231,15 @@ export default function SuppliersPage() {
                             <DropdownMenuCheckboxItem
                                 checked={filterDebtOnly}
                                 onCheckedChange={() => setFilterDebtOnly(true)}
-                            >Uniquement avec solde</DropdownMenuCheckboxItem>
+                            >Uniquement avec solde dû</DropdownMenuCheckboxItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
 
                     <div className="flex items-center gap-1 rounded-xl bg-muted/50 p-1 border border-primary/10 h-11 luxury-glass">
-                        <Button variant={viewMode === 'grid' ? 'secondary': 'ghost'} size="icon" className="h-9 w-9 rounded-lg" onClick={() => setViewMode('grid')}>
+                        <Button variant={viewMode === 'grid' ? 'secondary': 'ghost'} size="icon" className="h-9 w-9 rounded-lg" onClick={() => setViewMode('grid')} title="Vue Grille">
                             <LayoutGrid className="h-5 w-5"/>
                         </Button>
-                        <Button variant={viewMode === 'list' ? 'secondary': 'ghost'} size="icon" className="h-9 w-9 rounded-lg" onClick={() => setViewMode('list')}>
+                        <Button variant={viewMode === 'list' ? 'secondary': 'ghost'} size="icon" className="h-9 w-9 rounded-lg" onClick={() => setViewMode('list')} title="Vue Liste">
                             <List className="h-5 w-5"/>
                         </Button>
                     </div>
@@ -266,3 +272,5 @@ export default function SuppliersPage() {
         </div>
     );
 }
+
+import { Filter } from 'lucide-react';

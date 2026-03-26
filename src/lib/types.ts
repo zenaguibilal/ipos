@@ -231,6 +231,18 @@ export interface Supplier {
     updatedAt?: Date;
 }
 
+export interface SupplierPayment {
+    uuid: string;
+    user_id: string;
+    supplierUuid: string;
+    amount: number;
+    paymentDate: Date;
+    method: 'cash' | 'card' | 'bank_transfer';
+    notes?: string;
+    createdAt?: Date;
+    updatedAt?: Date;
+}
+
 // =================== Bread Types ===================
 
 export interface BreadOrder {

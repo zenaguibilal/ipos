@@ -2,9 +2,12 @@
 'use client';
 
 import { v4 as uuidv4 } from 'uuid';
-import type { Supplier } from '@/lib/types';
+import type { Supplier, SupplierPayment, StockIntake } from '@/lib/types';
 import { supplierRepository } from '@/repositories/supplier.repository';
+import { supplierPaymentRepository } from '@/repositories/supplierPayment.repository';
+import { stockRepository } from '@/repositories/stock.repository';
 import { useAppStore } from '@/stores/appStore';
+import Papa from 'papaparse';
 
 class SupplierService {
 
@@ -66,7 +69,10 @@ class SupplierService {
 
     async deleteSupplier(uuid: string): Promise<void> {
         try {
-            // Add business logic check here if needed (e.g. check if supplier has linked products or intakes)
+            // Check if supplier has intakes or payments
+            const intakes = await stockRepository.filter({ query: uuid }); // Simplified check
+            if (intakes.length > 0) throw new Error("Impossible de supprimer un fournisseur avec un historique de réceptions.");
+            
             await supplierRepository.delete(uuid);
         } catch (error) {
             throw error;
@@ -83,6 +89,69 @@ class SupplierService {
         } catch (error) {
             throw error;
         }
+    }
+
+    // --- Activities and Payments ---
+
+    async getSupplierActivity(supplierUuid: string): Promise<any[]> {
+        try {
+            const [intakes, payments] = await Promise.all([
+                stockRepository.filter({ query: supplierUuid }),
+                supplierPaymentRepository.findBySupplierUuid(supplierUuid)
+            ]);
+
+            const activity = [
+                ...intakes.map(i => ({ ...i, type: 'intake', date: i.createdAt })),
+                ...payments.map(p => ({ ...p, type: 'payment', date: p.paymentDate })),
+            ];
+
+            return activity.sort((a, b) => new Date(b.date!).getTime() - new Date(a.date!).getTime());
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    async addPayment(paymentData: Omit<SupplierPayment, 'uuid' | 'user_id' | 'createdAt' | 'updatedAt'>): Promise<SupplierPayment> {
+        try {
+            const newPayment: SupplierPayment = {
+                ...paymentData,
+                uuid: uuidv4(),
+                user_id: this.getUserId(),
+                createdAt: new Date(),
+                updatedAt: new Date(),
+            };
+
+            const saved = await supplierPaymentRepository.add(newPayment);
+            // Reduce supplier balance
+            await this.updateSupplierBalance(paymentData.supplierUuid, -paymentData.amount);
+            
+            return saved;
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    async exportToCSV(suppliers: Supplier[]) {
+        const data = suppliers.map(s => ({
+            'Nom': s.name,
+            'Contact': s.contactPerson || '',
+            'Téléphone': s.phone || '',
+            'E-mail': s.email || '',
+            'Adresse': s.address || '',
+            'Solde Dû (DA)': s.balance,
+        }));
+
+        const csv = Papa.unparse(data);
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        
+        link.setAttribute('href', url);
+        link.setAttribute('download', `fournisseurs-${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     }
 }
 
