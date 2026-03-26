@@ -29,8 +29,7 @@ class ProductService {
     async getProductsByUuids(uuids: string[]): Promise<Product[]> {
         try {
             if (uuids.length === 0) return [];
-            const products = await productRepository.bulkGetByUuid(uuids);
-            return products.filter((p): p is Product => !!p);
+            return await productRepository.getManyByUuids(uuids);
         } catch (error) {
             throw error;
         }

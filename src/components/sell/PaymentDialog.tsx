@@ -12,7 +12,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import type { CartItem } from '@/lib/types';
+import type { CartItem, SalePayment } from '@/lib/types';
 import { Loader2, CreditCard, Banknote, AlertTriangle } from 'lucide-react';
 import { formatCurrency, calculateCartTotals } from '@/lib/utils';
 import { cn } from '@/lib/utils';
@@ -32,8 +32,8 @@ export function PaymentDialog({ isOpen, onOpenChange }: PaymentDialogProps) {
     const { finalizeSale } = useAppActions();
 
     const [paymentMode, setPaymentMode] = useState<PaymentMode>('cash');
-    const [cashAmount, setCashAmount] = useState('');
-    const [creditAmount, setCreditAmount] = useState('');
+    const [cashAmountStr, setCashAmountStr] = useState('');
+    const [creditAmountStr, setCreditAmountStr] = useState('');
     const [dueDate, setDueDate] = useState<Date | undefined>();
     
     const [isLoading, setIsLoading] = useState(false);
@@ -43,11 +43,13 @@ export function PaymentDialog({ isOpen, onOpenChange }: PaymentDialogProps) {
 
     const { total } = cart ? calculateCartTotals(cart) : { total: 0 };
 
-    const cashAmountNum = parseFloat(cashAmount) || 0;
-    const creditAmountNum = parseFloat(creditAmount) || 0;
-    const amountPaidNum = paymentMode === 'mixed' ? cashAmountNum : (paymentMode === 'credit' ? 0 : parseFloat(cashAmount) || 0);
-
-    const change = (paymentMode === 'cash' || paymentMode === 'card' || paymentMode === 'other') ? cashAmountNum - total : 0;
+    const cashAmountNum = parseFloat(cashAmountStr) || 0;
+    const creditAmountNum = parseFloat(creditAmountStr) || 0;
+    
+    let change = 0;
+    if (paymentMode === 'cash' || paymentMode === 'card' || paymentMode === 'other') {
+        change = cashAmountNum - total;
+    }
     const debtFromThisSale = paymentMode === 'credit' ? total : (paymentMode === 'mixed' ? creditAmountNum : 0);
     const newTotalOutstanding = (cartCustomer?.outstandingBalance ?? 0) + debtFromThisSale;
     const creditAvailable = (cartCustomer?.creditLimit ?? 0) - (cartCustomer?.outstandingBalance ?? 0);
@@ -55,8 +57,8 @@ export function PaymentDialog({ isOpen, onOpenChange }: PaymentDialogProps) {
 
     const initializePayment = useCallback(() => {
         setPaymentMode('cash');
-        setCashAmount(String(total));
-        setCreditAmount('0');
+        setCashAmountStr(String(total));
+        setCreditAmountStr('0');
         setDueDate(undefined);
         setShowLossAlert(false);
     }, [total]);
@@ -72,53 +74,91 @@ export function PaymentDialog({ isOpen, onOpenChange }: PaymentDialogProps) {
             }
         } else if (!isOpen) {
             setIsLoading(false);
-            initializePayment(); // Reset state on close
+            // Don't call initializePayment here to avoid resetting state while dialog is closing
         }
     }, [isOpen, cart, initializePayment]);
-
-
+    
     const handlePaymentModeChange = (mode: PaymentMode) => {
         setPaymentMode(mode);
         if (mode === 'cash' || mode === 'card' || mode === 'other') {
-            setCashAmount(String(total));
+            setCashAmountStr(String(total));
+            setCreditAmountStr('0');
         }
         if (mode === 'credit') {
-            setCashAmount('0');
+            setCashAmountStr('0');
+            setCreditAmountStr(String(total));
+        }
+        if (mode === 'mixed') {
+            setCashAmountStr('');
+            setCreditAmountStr('');
         }
     }
 
     const handleFinalize = async () => {
         if (!cart) return;
 
-        if (paymentMode === 'mixed' && (cashAmountNum + creditAmountNum !== total)) {
-            toast.error("Le montant en espèces et le montant à crédit doivent correspondre au total.");
-            return;
+        const cashVal = parseFloat(cashAmountStr);
+        const creditVal = parseFloat(creditAmountStr);
+
+        let amountPaid = 0;
+        const payments: SalePayment[] = [];
+        let debtAmount = 0;
+        
+        // --- Validation and Logic per mode ---
+        switch (paymentMode) {
+            case 'cash':
+            case 'card':
+            case 'other':
+                if (isNaN(cashVal) || cashVal < 0) {
+                    toast.error("Veuillez entrer un montant payé valide."); return;
+                }
+                amountPaid = cashVal;
+                if(amountPaid > 0) payments.push({ method: paymentMode, amount: amountPaid });
+                break;
+
+            case 'credit':
+                amountPaid = 0;
+                debtAmount = total;
+                break;
+            
+            case 'mixed':
+                 if (isNaN(cashVal) || cashVal < 0 || isNaN(creditVal) || creditVal < 0) {
+                    toast.error("Veuillez entrer des montants valides pour le paiement mixte."); return;
+                }
+                if (Math.abs(cashVal + creditVal - total) > 0.01) {
+                    toast.error("La somme du montant payé et du montant à crédit doit être égale au total."); return;
+                }
+                amountPaid = cashVal;
+                debtAmount = creditVal;
+                if(amountPaid > 0) payments.push({ method: 'cash', amount: amountPaid });
+                break;
         }
 
-        if (cartCustomer && cartCustomer.creditLimit && newTotalOutstanding > cartCustomer.creditLimit) {
-            toast.error("La limite de crédit du client est dépassée.", {
-                description: `Le nouveau solde (${formatCurrency(newTotalOutstanding)}) dépasse la limite (${formatCurrency(cartCustomer.creditLimit)}).`
-            });
-            return;
-        }
-
-        setIsLoading(true);
-
-        const payments: { method: 'cash' | 'card' | 'other', amount: number }[] = [];
-        if (amountPaidNum > 0) {
-            payments.push({ method: paymentMode === 'card' ? 'card' : (paymentMode === 'other' ? 'other' : 'cash'), amount: amountPaidNum });
+        // --- Shared Credit Validation ---
+        if (debtAmount > 0) {
+             if (!cartCustomer) {
+                toast.error("Un client doit être sélectionné pour une vente à crédit."); return;
+            }
+            const newDebt = (cartCustomer.outstandingBalance ?? 0) + debtAmount;
+            if (cartCustomer.creditLimit != null && newDebt > cartCustomer.creditLimit) {
+                toast.error("La limite de crédit du client est dépassée.", {
+                    description: `Le nouveau solde (${formatCurrency(newDebt)}) dépasserait la limite (${formatCurrency(cartCustomer.creditLimit)}).`
+                });
+                return;
+            }
         }
         
+        setIsLoading(true);
         try {
             await finalizeSale({
-                amountPaid: amountPaidNum,
+                amountPaid: (paymentMode === 'cash' || paymentMode === 'card' || paymentMode === 'other') ? total : amountPaid,
                 payments,
-                dueDate: debtFromThisSale > 0 ? dueDate : undefined,
+                dueDate: debtAmount > 0 ? dueDate : undefined,
             });
             onOpenChange(false);
-            // The finalizeSale action in the store handles success toast and redirection.
+            initializePayment();
         } catch (error: any) {
-            // Error is already toasted by the finalizeSale action in the store
+             // Error is already toasted by the finalizeSale action
         } finally {
             setIsLoading(false);
         }
@@ -126,6 +166,7 @@ export function PaymentDialog({ isOpen, onOpenChange }: PaymentDialogProps) {
     
     const closeAndReset = () => {
         onOpenChange(false);
+        initializePayment();
     }
     
     const handleLossAlertConfirm = () => {
@@ -198,7 +239,7 @@ export function PaymentDialog({ isOpen, onOpenChange }: PaymentDialogProps) {
                             {(paymentMode === 'cash' || paymentMode === 'card' || paymentMode === 'other') && (
                                 <div className="space-y-2">
                                     <Label htmlFor="amountPaid">Montant Payé</Label>
-                                    <Input id="amountPaid" type="number" value={cashAmount} onChange={(e) => setCashAmount(e.target.value)} className="text-lg" autoFocus />
+                                    <Input id="amountPaid" type="number" value={cashAmountStr} onChange={(e) => setCashAmountStr(e.target.value)} className="text-lg" autoFocus />
                                     {change > 0 && (
                                         <div className="text-center p-2 bg-green-500/10 rounded-lg">
                                             <Label className="text-green-300">Monnaie à rendre</Label>
@@ -212,11 +253,11 @@ export function PaymentDialog({ isOpen, onOpenChange }: PaymentDialogProps) {
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <Label htmlFor="cashAmount">Montant Espèces</Label>
-                                        <Input id="cashAmount" type="number" value={cashAmount} onChange={(e) => setCashAmount(e.target.value)} autoFocus />
+                                        <Input id="cashAmount" type="number" value={cashAmountStr} onChange={(e) => setCashAmountStr(e.target.value)} autoFocus />
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="creditAmount">Montant Crédit</Label>
-                                        <Input id="creditAmount" type="number" value={creditAmount} onChange={(e) => setCreditAmount(e.target.value)} />
+                                        <Input id="creditAmount" type="number" value={creditAmountStr} onChange={(e) => setCreditAmountStr(e.target.value)} />
                                     </div>
                                 </div>
                             )}

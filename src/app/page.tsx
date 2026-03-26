@@ -1,7 +1,13 @@
+import { createClient } from '@/utils/supabase/server';
 import { redirect } from 'next/navigation';
 
-export default function RootPage() {
-  // The middleware handles redirection logic.
-  // This page can simply redirect to the main 'sell' page.
-  redirect('/sell');
+export default async function RootPage() {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (user) {
+    redirect('/sell');
+  } else {
+    redirect('/login');
+  }
 }

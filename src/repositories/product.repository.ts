@@ -135,11 +135,10 @@ class ProductRepository {
         if (error) throw error;
     }
 
-    async bulkGetByUuid(uuids: string[]): Promise<(Product | undefined)[]> {
+    async getManyByUuids(uuids: string[]): Promise<Product[]> {
         const { data, error } = await this.supabase.from('products').select('*').in('uuid', uuids);
         if (error) throw error;
-        const productMap = new Map(data.map(p => [p.uuid, fromSupabase(p)]));
-        return uuids.map(uuid => productMap.get(uuid));
+        return data.map(fromSupabase);
     }
 
     async bulkUpsert(products: Product[]): Promise<void> {
