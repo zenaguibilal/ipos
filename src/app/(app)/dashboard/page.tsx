@@ -138,7 +138,7 @@ const RecentActivity = ({ sales, returns, isLoading }: { sales: RecentSale[], re
                     <h3 className="text-sm font-semibold mb-2 flex items-center gap-2"><Receipt className="h-4 w-4"/> Ventes Récentes</h3>
                     <div className="space-y-2">
                         {sales.length > 0 ? sales.map(s => (
-                            <Link href={`/sales-history`} key={s.uuid} className="block p-2 rounded-md hover:bg-accent">
+                            <Link href={`/sales-history?query=${s.invoiceNumber}`} key={s.uuid} className="block p-2 rounded-md hover:bg-accent">
                                 <div className="flex justify-between text-sm">
                                     <span className="font-medium truncate">{s.customerName}</span>
                                     <span className="font-bold text-primary">{formatCurrency(s.total)}</span>
@@ -152,7 +152,7 @@ const RecentActivity = ({ sales, returns, isLoading }: { sales: RecentSale[], re
                     <h3 className="text-sm font-semibold mb-2 flex items-center gap-2"><Undo2 className="h-4 w-4"/> Retours Récents</h3>
                     <div className="space-y-2">
                         {returns.length > 0 ? returns.map(r => (
-                             <Link href={`/returns`} key={r.uuid} className="block p-2 rounded-md hover:bg-accent">
+                             <Link href={`/returns?query=${r.originalInvoiceNumber}`} key={r.uuid} className="block p-2 rounded-md hover:bg-accent">
                                 <div className="flex justify-between text-sm">
                                     <span className="font-medium truncate">{r.customerName}</span>
                                     <span className="font-bold text-destructive">-{formatCurrency(r.totalReturnValue)}</span>
@@ -356,3 +356,5 @@ export default function DashboardPage() {
         </div>
     );
 }
+
+    
