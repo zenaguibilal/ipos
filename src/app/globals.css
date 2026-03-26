@@ -5,79 +5,79 @@
 
 @layer base {
   :root {
-    /* Light Mode - Warm Ivory & Gold */
-    --background: 30 30% 98%; 
-    --foreground: 28 30% 12%;
+    /* Light Mode - Warm Ivory & Gold Heritage */
+    --background: 30 40% 98%; 
+    --foreground: 28 45% 10%;
 
     --card: 0 0% 100%;
-    --card-foreground: 28 30% 12%;
+    --card-foreground: 28 45% 10%;
  
     --popover: 0 0% 100%;
-    --popover-foreground: 28 30% 12%;
+    --popover-foreground: 28 45% 10%;
  
-    --primary: 34 100% 50%; /* Rich Gold/Amber */
-    --primary-foreground: 30 30% 98%;
+    --primary: 34 100% 45%; /* Deep Gold */
+    --primary-foreground: 30 40% 98%;
 
-    --secondary: 30 15% 92%;
-    --secondary-foreground: 28 30% 15%;
+    --secondary: 30 20% 92%;
+    --secondary-foreground: 28 45% 15%;
  
-    --muted: 30 15% 94%;
-    --muted-foreground: 28 10% 45%;
+    --muted: 30 20% 94%;
+    --muted-foreground: 28 15% 40%;
  
-    --accent: 34 100% 96%;
-    --accent-foreground: 34 100% 40%;
+    --accent: 34 100% 94%;
+    --accent-foreground: 34 100% 35%;
  
-    --destructive: 0 84% 60%;
+    --destructive: 0 84% 55%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 34 40% 88%;
-    --input: 30 15% 94%;
-    --ring: 34 100% 50%;
+    --border: 34 30% 85%;
+    --input: 30 20% 94%;
+    --ring: 34 100% 45%;
  
-    --radius: 1.5rem;
+    --radius: 1.25rem;
     
-    --chart-primary: 34 100% 50%;
-    --chart-secondary: 28 80% 60%;
-    --chart-tertiary: 10 70% 55%;
-    --chart-quaternary: 150 60% 45%;
-    --chart-quinary: 280 92% 55%;
+    --chart-primary: 34 100% 45%;
+    --chart-secondary: 28 85% 55%;
+    --chart-tertiary: 10 75% 50%;
+    --chart-quaternary: 155 65% 40%;
+    --chart-quinary: 285 90% 50%;
 
-    --bg-gradient-from: 30 40% 96%;
-    --bg-gradient-to: 34 30% 94%;
+    --bg-gradient-from: 30 40% 97%;
+    --bg-gradient-to: 34 35% 93%;
   }
  
   .dark {
-    /* Dark Mode - Warm Chocolate & Amber */
-    --background: 28 20% 6%; /* #1a120c */
-    --foreground: 30 25% 90%;
+    /* Dark Mode - Premium Chocolate & Amber */
+    --background: 28 25% 4%; /* Near Black Chocolate */
+    --foreground: 30 30% 92%;
 
-    --card: 28 20% 8%;
-    --card-foreground: 30 25% 90%;
+    --card: 28 25% 6%;
+    --card-foreground: 30 30% 92%;
  
-    --popover: 28 20% 6%;
-    --popover-foreground: 30 25% 90%;
+    --popover: 28 25% 4%;
+    --popover-foreground: 30 30% 92%;
  
-    --primary: 34 100% 65%; /* Bright Amber */
-    --primary-foreground: 28 30% 10%;
+    --primary: 34 100% 60%; /* Glowing Amber */
+    --primary-foreground: 28 30% 5%;
     
-    --secondary: 30 15% 20%;
-    --secondary-foreground: 30 25% 90%;
+    --secondary: 30 15% 12%;
+    --secondary-foreground: 30 30% 92%;
  
-    --muted: 30 15% 20%;
-    --muted-foreground: 30 20% 65%;
+    --muted: 30 15% 12%;
+    --muted-foreground: 30 25% 60%;
  
-    --accent: 30 15% 25%;
-    --accent-foreground: 30 25% 95%;
+    --accent: 30 20% 15%;
+    --accent-foreground: 30 30% 98%;
  
-    --destructive: 0 70% 55%;
+    --destructive: 0 75% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 34 100% 65% / 0.2;
-    --input: 30 15% 20%;
-    --ring: 34 100% 75%;
+    --border: 34 100% 60% / 0.15;
+    --input: 30 15% 12%;
+    --ring: 34 100% 70%;
 
-    --bg-gradient-from: 20 36% 8%;
-    --bg-gradient-to: 30 43% 5%;
+    --bg-gradient-from: 25 40% 5%;
+    --bg-gradient-to: 30 45% 2%;
   }
 }
  
@@ -86,189 +86,78 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground transition-colors duration-500;
-    background: linear-gradient(160deg, hsl(var(--bg-gradient-from)) 0%, hsl(var(--bg-gradient-to)) 100%);
-    background-size: 200% 200%;
-    animation: warm-gradient 15s ease infinite;
-    position: relative;
+    @apply bg-background text-foreground antialiased selection:bg-primary/30;
+    background: linear-gradient(165deg, hsl(var(--bg-gradient-from)) 0%, hsl(var(--bg-gradient-to)) 100%);
+    background-attachment: fixed;
     min-height: 100vh;
+    transition: background-color 0.5s ease, color 0.5s ease;
   }
 
-  body::after {
-    content: '';
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    width: 100vw;
-    height: 100vh;
-    background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMCIgaGVpZ2h0PSIzMCI+PHJlY3Qgd2lkdGg9IjMwIiBoZWlnaHQ9IjMwIiBmaWxsPSJub25lIi8+PHJlY3QgeD0iMTQiIHk9IjE0IiB3aWR0aD0iMSIgaGVpZ2h0PSIxIiBmaWxsPSJoc2woMzAgMjAlIDY1JCAvIDAuMDUpIi8+PC9zdmc+');
-    z-index: -1;
-    pointer-events: none;
-    opacity: 0.4;
+  /* Soft Grain Overlay for Luxury Texture */
+  body::before {
+    content: "";
+    @apply fixed inset-0 pointer-events-none opacity-[0.03] z-[100];
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
   }
 }
 
 @layer components {
   .luxury-glass {
-    @apply rounded-3xl border shadow-xl transition-all duration-300;
-    background-color: hsl(var(--card) / 0.7);
+    @apply rounded-3xl border backdrop-blur-xl transition-all duration-500;
+    background-color: hsl(var(--card) / 0.65);
     border-color: hsl(var(--border));
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
-    box-shadow:
-      inset 0 1px 1px hsl(var(--primary) / 0.05),
-      0px 0px 0px 1px hsl(var(--primary) / 0.05),
-      0px 8px 16px -4px hsl(0 0% 0% / 0.1),
-      0px 24px 48px -12px hsl(0 0% 0% / 0.15);
+    box-shadow: 
+      0 4px 6px -1px rgb(0 0 0 / 0.05), 
+      0 2px 4px -2px rgb(0 0 0 / 0.05),
+      inset 0 1px 1px 0 hsl(var(--primary) / 0.05);
   }
 
   .dark .luxury-glass {
-    box-shadow:
-      inset 0 1px 1px hsl(var(--primary) / 0.05),
-      0px 0px 0px 1px hsl(var(--primary) / 0.1),
-      0px 8px 16px -4px hsl(0 0% 0% / 0.3),
-      0px 24px 48px -12px hsl(0 0% 0% / 0.4);
+    background-color: hsl(var(--card) / 0.45);
+    box-shadow: 
+      0 10px 15px -3px rgb(0 0 0 / 0.3), 
+      0 4px 6px -4px rgb(0 0 0 / 0.3),
+      inset 0 1px 0.5px 0 hsl(var(--primary) / 0.1);
+  }
+
+  .luxury-glass:hover {
+    @apply shadow-2xl;
+    border-color: hsl(var(--primary) / 0.3);
+    background-color: hsl(var(--card) / 0.75);
   }
 }
 
-/* Custom Scrollbar */
+/* Enhanced Scrollbar */
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: hsl(var(--background) / 0.5);
+  @apply bg-transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: hsl(var(--primary) / 0.3);
-  border-radius: 10px;
-  border: 2px solid transparent;
-  background-clip: content-box;
+  @apply rounded-full bg-muted-foreground/20 border-2 border-transparent bg-clip-content;
+  transition: background 0.3s ease;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--primary) / 0.5);
-  background-clip: content-box;
+  @apply bg-primary/40;
 }
 
+/* Fluid Transitions */
+.theme-transition {
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
 
-/* Common print styles */
+/* Specific Print Styles Refinement */
 @media print {
-    body {
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-        background: #fff !important;
-    }
-
-    .print-hide {
-        display: none !important;
-    }
-
-    /* Hide everything except the specific print area */
-    body > *:not(#receipt-for-print):not(.print-dialog-content) {
-        display: none !important;
-    }
-}
-
-/* Print container for receipts */
-#receipt-for-print {
-    display: none; /* Hidden by default */
-}
-@media print {
-    #receipt-for-print {
-        display: block !important;
-        visibility: visible !important;
-        position: absolute;
-        left: 0;
-        top: 0;
-        margin: 0;
-        padding: 0;
-        width: 100%;
-    }
-    #receipt-for-print * {
-       visibility: visible !important;
-    }
-}
-
-
-/* A4 Print Specific Styles */
-@page {
-    size: a4;
-    margin: 1cm;
-}
-.a4-receipt {
-    page-break-before: always;
-}
-
-
-/* Thermal Print Specific Styles */
-@page thermal-page {
-    size: 80mm auto;
-    margin: 3mm;
-}
-html.thermal, body.thermal {
-    width: 80mm;
+  body {
     background: white !important;
-}
-.thermal-receipt {
-    page: thermal-page;
-    page-break-before: always;
-    font-family: 'Courier New', Courier, monospace !important;
-    width: 100% !important;
     color: black !important;
+  }
+  .luxury-glass {
+    border: 1px solid #ddd !important;
     background: white !important;
     box-shadow: none !important;
-    border: none !important;
-    font-size: 10pt !important;
-    line-height: 1.2 !important;
-}
-.thermal-receipt * {
-    font-family: 'Courier New', Courier, monospace !important;
-    color: black !important;
-    background: transparent !important;
-    font-size: 10pt !important;
-    line-height: 1.2 !important;
-}
-.thermal-receipt .text-lg { font-size: 12pt !important; }
-.thermal-receipt .text-base { font-size: 10pt !important; }
-.thermal-receipt .text-xs { font-size: 8pt !important; }
-.thermal-receipt table { width: 100% !important; }
-.thermal-receipt .border-dashed { border-style: dashed !important; }
-.thermal-receipt .border-black { border-color: black !important; }
-.thermal-receipt .font-bold { font-weight: 700 !important; }
-
-
-/* Barcode Label Printing Styles */
-.barcode-label {
-    break-inside: avoid;
-}
-
-@media print {
-    .print-dialog-content {
-        display: block !important;
-        position: static !important;
-        width: 100% !important;
-        max-width: none !important;
-        height: auto !important;
-        max-height: none !important;
-        border: none !important;
-        box-shadow: none !important;
-        padding: 0 !important;
-        margin: 0 !important;
-        transform: none !important;
-        animation: none !important;
-    }
-    .print-dialog-content #label-print-area-wrapper {
-        overflow: visible !important;
-    }
-    .print-dialog-content #label-print-area {
-        display: block !important;
-        overflow: visible !important;
-        background: transparent !important;
-        padding: 0 !important;
-    }
-    .label-sheet {
-        gap: 0 !important;
-    }
+    backdrop-filter: none !important;
+  }
 }
