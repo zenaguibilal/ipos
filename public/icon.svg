@@ -1,7 +1,12 @@
+
 <svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
   <rect width="512" height="512" rx="128" fill="#1A120C"/>
-  <circle cx="256" cy="256" r="180" stroke="#D4AF37" stroke-width="20" opacity="0.2"/>
-  <path d="M256 140V180M256 220V372" stroke="#D4AF37" stroke-width="40" stroke-linecap="round"/>
-  <circle cx="256" cy="140" r="20" fill="#D4AF37"/>
-  <path d="M180 256C180 214.026 214.026 180 256 180C297.974 180 332 214.026 332 256C332 297.974 297.974 332 256 332" stroke="#D4AF37" stroke-width="24" stroke-linecap="round" opacity="0.5"/>
+  <!-- i letter -->
+  <rect x="140" y="200" width="40" height="160" rx="4" fill="#D4AF37"/>
+  <circle cx="160" cy="150" r="25" fill="#D4AF37"/>
+  <!-- P letter style -->
+  <path d="M230 150V360" stroke="#D4AF37" stroke-width="40" stroke-linecap="round"/>
+  <path d="M230 150H290C330 150 360 180 360 220C360 260 330 290 290 290H230" stroke="#D4AF37" stroke-width="40" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Decorative elements -->
+  <path d="M100 420C100 420 256 440 412 420" stroke="#D4AF37" stroke-width="12" stroke-linecap="round" opacity="0.6"/>
 </svg>
