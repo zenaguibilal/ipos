@@ -21,6 +21,7 @@ import { stockService } from '@/services/stock.service';
 import { supplierService } from '@/services/supplier.service';
 import { useAppStore, useIsManagerOrAdmin } from '@/stores/appStore';
 import { CancelIntakeDialog } from '@/components/stock/CancelIntakeDialog';
+import { StockIntakeStats } from '@/components/stock/StockIntakeStats';
 
 export default function StockPage() {
     const isManagerOrAdmin = useIsManagerOrAdmin();
@@ -148,6 +149,8 @@ export default function StockPage() {
                     </Button>
                 )}
             </PageHeader>
+
+            <StockIntakeStats intakes={stockIntakes} isLoading={isLoading} />
 
             <div className="flex flex-col sm:flex-row gap-2">
                 <div className="relative flex-grow">
