@@ -1,8 +1,16 @@
 <svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="512" height="512" rx="128" fill="#1a120c"/>
-  <path d="M160 160H352V224H160V160Z" fill="#f59e0b"/>
-  <path d="M160 256H352V352H160V256Z" fill="#f59e0b" fill-opacity="0.8"/>
-  <rect x="200" y="280" width="112" height="12" rx="6" fill="#1a120c"/>
-  <rect x="200" y="310" width="80" height="12" rx="6" fill="#1a120c"/>
-  <circle cx="256" cy="256" r="200" stroke="#f59e0b" stroke-width="10" stroke-opacity="0.2"/>
+  <defs>
+    <linearGradient id="goldGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFD700;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#B8860B;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="120" fill="#1A120C"/>
+  <g filter="drop-shadow(0px 4px 10px rgba(0,0,0,0.5))">
+    <path d="M140 160H372V200H140V160Z" fill="url(#goldGradient)"/>
+    <path d="M140 240H372V280H140V240Z" fill="url(#goldGradient)"/>
+    <path d="M140 320H280V360H140V320Z" fill="url(#goldGradient)"/>
+    <circle cx="380" cy="340" r="45" fill="url(#goldGradient)"/>
+    <path d="M365 340L375 355L395 325" stroke="#1A120C" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
 </svg>
