@@ -87,6 +87,12 @@ export const ProductSearch = forwardRef<{focus: () => void}, ProductSearchProps>
     }, []);
 
     const fetchProducts = useCallback(async () => {
+        // If no search query and no specific category is selected, show nothing.
+        if (!debouncedQuery.trim() && selectedCategory === 'all') {
+            setProducts([]);
+            return;
+        }
+
         try {
             const prods = await productService.filterProducts({ query: debouncedQuery, category: selectedCategory, stockStatus: 'in_stock' });
             setProducts(prods);
@@ -238,7 +244,7 @@ export const ProductSearch = forwardRef<{focus: () => void}, ProductSearchProps>
                     })}
                      {products?.length === 0 && (
                         <div className="text-center text-muted-foreground py-8">
-                            {query.trim() ? (
+                            {query.trim() || selectedCategory !== 'all' ? (
                                 <p>Aucun produit trouvé pour votre recherche.</p>
                             ) : (
                                 <p>Commencez à taper pour rechercher des produits.</p>
