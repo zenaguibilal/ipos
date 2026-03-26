@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -8,7 +7,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import type { ProductReturn, Customer } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, Plus, Undo2, LayoutGrid, List, FileUp, RefreshCw, Loader2, Banknote, Package, HandCoins, X } from 'lucide-react';
+import { Search, Plus, Undo2, LayoutGrid, List, FileUp, RefreshCw, Loader2, Banknote, Package, HandCoins, X, TrendingDown } from 'lucide-react';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { useDateRange } from '@/hooks/useDateRange';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -110,7 +109,7 @@ export default function ReturnsPage() {
     
     const renderSkeletons = () => (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-56 w-full rounded-2xl" />)}
+            {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-56 w-full rounded-3xl" />)}
         </div>
     );
 
@@ -124,9 +123,9 @@ export default function ReturnsPage() {
                 <EmptyState
                     icon={Undo2}
                     title="Aucun retour de produit trouvé"
-                    description="Ajustez vos filtres ou créez un nouveau retour."
+                    description="Ajustez vos filtres ou créez un nouveau retour pour régulariser un stock ou une dette."
                 >
-                     <Button asChild>
+                     <Button asChild className="luxury-glass bg-primary/10 border-primary/20 hover:bg-primary/20 text-primary">
                         <Link href="/returns/new"><Plus className="mr-2 h-4 w-4" /> Nouveau Retour</Link>
                     </Button>
                 </EmptyState>
@@ -166,24 +165,25 @@ export default function ReturnsPage() {
     return (
         <div className="p-4 sm:p-6 space-y-6">
             <PageHeader
-                title="Historique des Retours"
-                description="Consultez et gérez les retours de marchandises et les remboursements."
+                title="Gestion des Retours"
+                description="Historique des marchandises retournées et impact sur les soldes clients."
             >
                 <div className="flex gap-2 w-full sm:w-auto">
-                    <Button variant="outline" onClick={handleExport} disabled={!returns?.length || isExporting} className="border-primary/20">
+                    <Button variant="outline" onClick={handleExport} disabled={!returns?.length || isExporting} className="border-primary/20 luxury-glass">
                         <FileUp className={cn("mr-2 h-4 w-4", isExporting && "animate-pulse")} />
                         Exporter CSV
                     </Button>
-                    <Button asChild className="bg-primary hover:bg-primary/90">
+                    <Button asChild className="bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20">
                         <Link href="/returns/new"><Plus className="mr-2 h-4 w-4" /> Nouveau Retour</Link>
                     </Button>
                 </div>
             </PageHeader>
 
+            {/* Financial Dashboard */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <Card className="bg-destructive/5 border-destructive/20 luxury-glass overflow-hidden relative group">
+                <Card className="luxury-glass bg-destructive/5 border-destructive/20 overflow-hidden relative group">
                     <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
-                        <Undo2 className="h-12 w-12 text-destructive" />
+                        <TrendingDown className="h-12 w-12 text-destructive" />
                     </div>
                     <CardHeader className="py-3">
                         <CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Valeur Retours</CardTitle>
@@ -194,7 +194,7 @@ export default function ReturnsPage() {
                     </CardContent>
                 </Card>
 
-                <Card className="bg-chart-quaternary/5 border-chart-quaternary/20 luxury-glass overflow-hidden relative group">
+                <Card className="luxury-glass bg-chart-quaternary/5 border-chart-quaternary/20 overflow-hidden relative group">
                     <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
                         <Banknote className="h-12 w-12 text-chart-quaternary" />
                     </div>
@@ -203,11 +203,11 @@ export default function ReturnsPage() {
                     </CardHeader>
                     <CardContent>
                         <p className="text-2xl font-black text-chart-quaternary">{formatCurrency(stats.totalRefunded)}</p>
-                        <p className="text-[10px] text-muted-foreground mt-1">Montant déduit de la caisse</p>
+                        <p className="text-[10px] text-muted-foreground mt-1">Argent sorti de caisse</p>
                     </CardContent>
                 </Card>
 
-                <Card className="bg-primary/5 border-primary/20 luxury-glass overflow-hidden relative group">
+                <Card className="luxury-glass bg-primary/5 border-primary/20 overflow-hidden relative group">
                     <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
                         <HandCoins className="h-12 w-12 text-primary" />
                     </div>
@@ -216,11 +216,11 @@ export default function ReturnsPage() {
                     </CardHeader>
                     <CardContent>
                         <p className="text-2xl font-black text-primary">{formatCurrency(stats.impactDebt)}</p>
-                        <p className="text-[10px] text-muted-foreground mt-1">Impact sur soldes clients</p>
+                        <p className="text-[10px] text-muted-foreground mt-1">Crédits portés aux comptes</p>
                     </CardContent>
                 </Card>
 
-                <Card className="bg-secondary/5 border-border/20 luxury-glass overflow-hidden relative group">
+                <Card className="luxury-glass bg-secondary/5 border-border/20 overflow-hidden relative group">
                     <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
                         <Package className="h-12 w-12 text-muted-foreground" />
                     </div>
@@ -229,37 +229,38 @@ export default function ReturnsPage() {
                     </CardHeader>
                     <CardContent>
                         <p className="text-2xl font-black">{returns?.length || 0}</p>
-                        <p className="text-[10px] text-muted-foreground mt-1">Opérations de retour</p>
+                        <p className="text-[10px] text-muted-foreground mt-1">Opérations sur la période</p>
                     </CardContent>
                 </Card>
             </div>
 
+            {/* Toolbar */}
             <div className="flex flex-col lg:flex-row gap-3">
                 <div className="relative flex-grow">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input 
                         placeholder="Rechercher par N° Facture ou Nom Client..."
-                        className="pl-10 h-11 border-primary/10 bg-background/50 focus:border-primary/30"
+                        className="pl-10 h-11 border-primary/10 bg-background/50 focus:border-primary/30 luxury-glass rounded-xl"
                         value={searchQuery}
                         onChange={e => setSearchQuery(e.target.value)}
                     />
                     {searchQuery && (
-                        <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                        <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                             <X className="h-4 w-4" />
                         </button>
                     )}
                 </div>
                 <div className="flex flex-wrap gap-2">
                     <DateRangePicker date={dateRange} setDate={setDate} />
-                    <div className="flex items-center gap-1 rounded-md bg-muted/50 p-1 border border-primary/10 h-11">
-                        <Button variant={viewMode === 'grid' ? 'secondary': 'ghost'} size="icon" className="h-9 w-9" onClick={() => setViewMode('grid')}>
+                    <div className="flex items-center gap-1 rounded-xl bg-muted/50 p-1 border border-primary/10 h-11 luxury-glass">
+                        <Button variant={viewMode === 'grid' ? 'secondary': 'ghost'} size="icon" className="h-9 w-9 rounded-lg" onClick={() => setViewMode('grid')}>
                             <LayoutGrid className="h-5 w-5"/>
                         </Button>
-                        <Button variant={viewMode === 'list' ? 'secondary': 'ghost'} size="icon" className="h-9 w-9" onClick={() => setViewMode('list')}>
+                        <Button variant={viewMode === 'list' ? 'secondary': 'ghost'} size="icon" className="h-9 w-9 rounded-lg" onClick={() => setViewMode('list')}>
                             <List className="h-5 w-5"/>
                         </Button>
                     </div>
-                    <Button variant="ghost" size="icon" className="h-11 w-11 hover:bg-primary/10" onClick={() => fetchReturnsAndCustomers(true)} disabled={isRefreshing}>
+                    <Button variant="ghost" size="icon" className="h-11 w-11 hover:bg-primary/10 rounded-xl" onClick={() => fetchReturnsAndCustomers(true)} disabled={isRefreshing}>
                         <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
                     </Button>
                 </div>
