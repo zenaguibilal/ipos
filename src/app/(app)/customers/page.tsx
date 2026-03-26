@@ -1,6 +1,8 @@
+
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useDebounce } from '@/hooks/useDebounce';
 import type { Customer, ImportAnalysis } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -24,6 +26,8 @@ type FilterStatus = 'all' | 'has_debt' | 'overdue' | 'over_limit';
 
 export default function CustomersPage() {
     const isManagerOrAdmin = useIsManagerOrAdmin();
+    const searchParams = useSearchParams();
+
     const [searchQuery, setSearchQuery] = useState('');
     const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
     const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
@@ -40,6 +44,13 @@ export default function CustomersPage() {
     const [importAnalysis, setImportAnalysis] = useState<ImportAnalysis | null>(null);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [isImporting, setIsImporting] = useState(false);
+
+    useEffect(() => {
+        const statusFromQuery = searchParams.get('status') as FilterStatus;
+        if (statusFromQuery && ['all', 'has_debt', 'overdue', 'over_limit'].includes(statusFromQuery)) {
+            setFilterStatus(statusFromQuery);
+        }
+    }, [searchParams]);
 
     const fetchCustomers = useCallback(async () => {
         setCustomers(undefined); // Set to loading state

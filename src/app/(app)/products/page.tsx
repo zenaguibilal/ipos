@@ -1,6 +1,8 @@
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useDebounce } from '@/hooks/useDebounce';
 import type { Product, Supplier, ProductImportAnalysis } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -57,6 +59,7 @@ const sortOptions: { [key: string]: string } = {
 
 export default function ProductsPage() {
     const isManagerOrAdmin = useIsManagerOrAdmin();
+    const searchParams = useSearchParams();
     const { viewMode, setViewMode } = useAppStore(state => ({
         viewMode: state.productViewMode,
         setViewMode: state.actions.setProductViewMode,
@@ -88,6 +91,17 @@ export default function ProductsPage() {
     const [importAnalysis, setImportAnalysis] = useState<ProductImportAnalysis | null>(null);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [isImporting, setIsImporting] = useState(false);
+
+    useEffect(() => {
+        const stockStatusFromQuery = searchParams.get('stockStatus') as StockStatus;
+        if (stockStatusFromQuery && ['all', 'in_stock', 'low_stock', 'out_of_stock'].includes(stockStatusFromQuery)) {
+            setStockStatus(stockStatusFromQuery);
+        }
+        const queryFromUrl = searchParams.get('query');
+        if (queryFromUrl) {
+            setSearchQuery(queryFromUrl);
+        }
+    }, [searchParams]);
 
     const fetchProducts = useCallback(async () => {
         setProducts(undefined);
