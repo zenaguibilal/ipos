@@ -11,7 +11,7 @@ import { stockRepository } from '@/repositories/stock.repository';
 import { paymentRepository } from '@/repositories/payment.repository';
 import { returnRepository } from '@/repositories/return.repository';
 import { breadOrderRepository } from '@/repositories/breadOrder.repository';
-import { companyRepository } from "@/services/company.repository";
+import { companyRepository } from "@/repositories/company.repository";
 import { useAppStore } from "@/stores/appStore";
 
 class BackupService {

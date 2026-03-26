@@ -4,6 +4,8 @@ import type { StockIntake } from '@/lib/types';
 import { stockRepository } from '@/repositories/stock.repository';
 import { supplierRepository } from '@/repositories/supplier.repository';
 import { useAppStore } from '@/stores/appStore';
+import { productService } from './product.service';
+import { inventoryService } from './inventory.service';
 
 class StockService {
     
