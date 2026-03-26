@@ -7,7 +7,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import type { Product, Supplier, ProductImportAnalysis } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, LayoutGrid, List, Printer, Trash2, PackageCheck, PackageX, AlertTriangle, Archive, SortAsc, FileDown, Building, Package, Loader2 } from 'lucide-react';
+import { Plus, Search, LayoutGrid, List, Printer, Trash2, PackageCheck, PackageX, AlertTriangle, Archive, SortAsc, FileDown, Building, Package, Loader2, CalendarClock, CalendarX } from 'lucide-react';
 import { ProductCard } from '@/components/products/product-card';
 import { ProductTable } from '@/components/products/product-table';
 import { ProductTableSkeleton } from '@/components/products/product-table-skeleton';
@@ -37,13 +37,15 @@ import { productService } from '@/services/product.service';
 import { supplierService } from '@/services/supplier.service';
 import { useAppStore, useIsManagerOrAdmin } from '@/stores/appStore';
 
-type StockStatus = 'all' | 'in_stock' | 'low_stock' | 'out_of_stock';
+type StockStatus = 'all' | 'in_stock' | 'low_stock' | 'out_of_stock' | 'expiring_soon' | 'expired';
 
 const stockStatusOptions: { value: StockStatus, label: string, icon: React.ElementType }[] = [
     { value: 'all', label: 'Tous les statuts', icon: Archive },
     { value: 'in_stock', label: 'En Stock', icon: PackageCheck },
     { value: 'low_stock', label: 'Stock Faible', icon: AlertTriangle },
     { value: 'out_of_stock', label: 'En Rupture', icon: PackageX },
+    { value: 'expiring_soon', label: 'Expire Bientôt', icon: CalendarClock },
+    { value: 'expired', label: 'Expiré', icon: CalendarX },
 ];
 
 const sortOptions: { [key: string]: string } = {
@@ -55,6 +57,8 @@ const sortOptions: { [key: string]: string } = {
     'quantity_asc': 'Stock (croissant)',
     'createdAt_desc': 'Plus récents',
     'createdAt_asc': 'Plus anciens',
+    'dateExpiration_asc': 'Date d\'expiration (proche)',
+    'dateExpiration_desc': 'Date d\'expiration (lointaine)',
 };
 
 export default function ProductsPage() {
@@ -94,7 +98,7 @@ export default function ProductsPage() {
 
     useEffect(() => {
         const stockStatusFromQuery = searchParams.get('stockStatus') as StockStatus;
-        if (stockStatusFromQuery && ['all', 'in_stock', 'low_stock', 'out_of_stock'].includes(stockStatusFromQuery)) {
+        if (stockStatusFromQuery && ['all', 'in_stock', 'low_stock', 'out_of_stock', 'expiring_soon', 'expired'].includes(stockStatusFromQuery)) {
             setStockStatus(stockStatusFromQuery);
         }
         const queryFromUrl = searchParams.get('query');

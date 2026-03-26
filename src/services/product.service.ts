@@ -40,7 +40,7 @@ class ProductService {
         query?: string;
         category?: string;
         supplierUuid?: string;
-        stockStatus?: 'all' | 'in_stock' | 'low_stock' | 'out_of_stock';
+        stockStatus?: 'all' | 'in_stock' | 'low_stock' | 'out_of_stock' | 'expiring_soon' | 'expired';
         sortBy?: string;
     }): Promise<Product[]> {
         try {

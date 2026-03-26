@@ -1,3 +1,4 @@
+
 'use client';
 
 import { createClient } from "@/utils/supabase/client";
@@ -84,15 +85,39 @@ class ProductRepository {
         if (filters.supplierUuid && filters.supplierUuid !== 'all') {
             query = query.eq('supplier_uuid', filters.supplierUuid);
         }
+        
         if (filters.stockStatus && filters.stockStatus !== 'all') {
-            query = query.eq('stock_status', filters.stockStatus);
+            const status = filters.stockStatus;
+            if (['in_stock', 'low_stock', 'out_of_stock'].includes(status)) {
+                query = query.eq('stock_status', status);
+            } else if (status === 'expired') {
+                query = query.lt('date_expiration', new Date().toISOString()).not('date_expiration', 'is', null);
+            } else if (status === 'expiring_soon') {
+                const now = new Date();
+                const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+                query = query.gte('date_expiration', now.toISOString());
+                query = query.lte('date_expiration', thirtyDaysFromNow.toISOString());
+            }
         }
+
         if (filters.sortBy) {
             const [field, order] = filters.sortBy.split('_');
             const isAsc = order === 'asc';
-             // Adjust for snake_case columns
-            const dbField = field === 'createdAt' ? 'created_at' : field;
-            query = query.order(dbField, { ascending: isAsc });
+            
+            const columnMap: { [key: string]: string } = {
+                name: 'name',
+                price: 'price',
+                quantity: 'quantity',
+                createdAt: 'created_at',
+                dateExpiration: 'date_expiration',
+            };
+            const dbField = columnMap[field] || 'created_at';
+            
+            if (dbField === 'date_expiration') {
+                 query = query.order(dbField, { ascending: isAsc, nullsFirst: false });
+            } else {
+                query = query.order(dbField, { ascending: isAsc });
+            }
         } else {
             query = query.order('created_at', { ascending: false });
         }
