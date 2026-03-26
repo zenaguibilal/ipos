@@ -13,6 +13,7 @@ import { profileService } from '@/services/profile.service';
 import { returnService } from '@/services/return.service';
 import { supplierService } from '@/services/supplier.service';
 import { stockService } from '@/services/stock.service';
+import { productService } from '@/services/product.service';
 
 // Main State Interface
 interface AppState {
