@@ -1,3 +1,4 @@
+
 'use client';
 
 import { createClient } from "@/utils/supabase/client";
@@ -17,6 +18,7 @@ const fromSupabase = (profile: any): CompanyProfile => profile ? ({
     website: profile.website,
     vatNumber: profile.vat_number,
     rcNumber: profile.rc_number,
+    artImposition: profile.art_imposition,
     goldPricePerGram: profile.gold_price_per_gram,
     prix_pain: profile.prix_pain,
     updatedAt: profile.updated_at,
@@ -36,6 +38,7 @@ const toSupabase = (profile: Partial<CompanyProfile>) => ({
     website: profile.website,
     vat_number: profile.vatNumber,
     rc_number: profile.rcNumber,
+    art_imposition: profile.artImposition,
     gold_price_per_gram: profile.goldPricePerGram,
     prix_pain: profile.prix_pain,
     updated_at: profile.updatedAt,

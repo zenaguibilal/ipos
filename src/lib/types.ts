@@ -44,7 +44,7 @@ export interface Customer {
     bread_type_recurrence?: 'quotidien' | 'jours_specifiques' | 'aucun';
     bread_quantite_defaut?: number;
     bread_jours_semaine?: {
-        [key: string]: { actif: boolean; quantite: number };
+        [key: string]: { actif: boolean; font-weight: number };
     };
 }
 
@@ -127,8 +127,9 @@ export interface CompanyProfile {
     phone?: string;
     email?: string;
     website?: string;
-    vatNumber?: string;
-    rcNumber?: string;
+    vatNumber?: string; // NIF
+    rcNumber?: string; // RC
+    artImposition?: string; // AI
     goldPricePerGram?: number;
     prix_pain?: number;
     updatedAt?: Date;

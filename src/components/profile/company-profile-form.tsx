@@ -53,6 +53,7 @@ export function CompanyProfileForm({ mode }: CompanyProfileFormProps) {
                 website: formState.website || undefined,
                 vatNumber: formState.vatNumber || undefined,
                 rcNumber: formState.rcNumber || undefined,
+                artImposition: formState.artImposition || undefined,
                 goldPricePerGram: formState.goldPricePerGram ? Number(formState.goldPricePerGram) : undefined,
                 prix_pain: formState.prix_pain ? Number(formState.prix_pain) : undefined,
             });
@@ -147,7 +148,7 @@ export function CompanyProfileForm({ mode }: CompanyProfileFormProps) {
                                     <Input id="website" value={formState.website || ''} onChange={handleInputChange} disabled={isSaving} placeholder="https://..." className="pl-10 h-12 rounded-xl bg-background/50 border-white/5 focus:border-primary/50" />
                                 </div>
                             </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                                 <div className="space-y-2">
                                     <Label htmlFor="vatNumber" className="text-[10px] font-black uppercase tracking-widest opacity-70">NIF / Matricule Fiscal</Label>
                                     <div className="relative">
@@ -160,6 +161,13 @@ export function CompanyProfileForm({ mode }: CompanyProfileFormProps) {
                                     <div className="relative">
                                         <Hash className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary" />
                                         <Input id="rcNumber" value={formState.rcNumber || ''} onChange={handleInputChange} disabled={isSaving} className="pl-10 h-12 rounded-xl bg-background/50 border-white/5 focus:border-primary/50 font-mono" />
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="artImposition" className="text-[10px] font-black uppercase tracking-widest opacity-70">Art. d'imposition (AI)</Label>
+                                    <div className="relative">
+                                        <FileText className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary" />
+                                        <Input id="artImposition" value={formState.artImposition || ''} onChange={handleInputChange} disabled={isSaving} className="pl-10 h-12 rounded-xl bg-background/50 border-white/5 focus:border-primary/50 font-mono" />
                                     </div>
                                 </div>
                             </div>

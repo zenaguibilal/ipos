@@ -9,14 +9,35 @@ import { DataManagementCard } from "@/components/profile/DataManagementCard";
 import { useAppStore, useIsManagerOrAdmin } from "@/stores/appStore";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { User, Building2, Database, Settings2, LogOut, ShieldCheck, Mail, BadgeCheck, LayoutDashboard, Activity, CloudCheck, ShieldAlert, Wifi } from "lucide-react";
+import { User, Building2, Database, Settings2, LogOut, ShieldCheck, Mail, BadgeCheck, LayoutDashboard, Activity, CloudCheck, ShieldAlert, Wifi, Monitor, Cpu, Fingerprint } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import { useEffect, useState } from "react";
 
 export default function ProfilePage() {
     const { user, profile, actions } = useAppStore();
     const isManagerOrAdmin = useIsManagerOrAdmin();
+    const [systemInfo, setSystemInfo] = useState({ os: 'Chargement...', browser: 'Chargement...' });
+
+    useEffect(() => {
+        // Safe access to window/navigator after hydration
+        const ua = window.navigator.userAgent;
+        let os = "Inconnu";
+        if (ua.indexOf("Win") !== -1) os = "Windows";
+        if (ua.indexOf("Mac") !== -1) os = "macOS";
+        if (ua.indexOf("Linux") !== -1) os = "Linux";
+        if (ua.indexOf("Android") !== -1) os = "Android";
+        if (ua.indexOf("like Mac") !== -1) os = "iOS";
+
+        let browser = "Inconnu";
+        if (ua.indexOf("Chrome") !== -1) browser = "Chrome";
+        else if (ua.indexOf("Firefox") !== -1) browser = "Firefox";
+        else if (ua.indexOf("Safari") !== -1) browser = "Safari";
+        else if (ua.indexOf("Edge") !== -1) browser = "Edge";
+
+        setSystemInfo({ os, browser });
+    }, []);
 
     const handleSignOut = async () => {
         try {
@@ -31,17 +52,17 @@ export default function ProfilePage() {
         admin: { 
             label: 'Administrateur', 
             color: 'bg-primary text-primary-foreground shadow-lg shadow-primary/20',
-            description: 'Accès total à toutes les fonctions système et sécurité.'
+            description: 'Accès total à toutes les fonctions système, sécurité et gestion des données.'
         },
         manager: { 
             label: 'Gérant', 
             color: 'bg-blue-500 text-white shadow-lg shadow-blue-500/20',
-            description: 'Gestion des stocks, ventes et rapports financiers.'
+            description: 'Gestion complète des stocks, ventes, fournisseurs et rapports financiers.'
         },
         cashier: { 
             label: 'Caissier', 
             color: 'bg-muted text-muted-foreground',
-            description: 'Opérations de caisse et retours clients uniquement.'
+            description: 'Opérations de caisse quotidiennes et retours clients uniquement.'
         },
     };
 
@@ -111,26 +132,50 @@ export default function ProfilePage() {
                                     <div className="p-4 rounded-2xl bg-muted/20 border border-white/5 flex flex-col items-center text-center group hover:border-primary/30 transition-all">
                                         <CloudCheck className="h-6 w-6 text-primary mb-2 opacity-50 group-hover:opacity-100 transition-opacity" />
                                         <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Synchronisation</p>
-                                        <p className="text-sm font-bold">Temps réel activé</p>
+                                        <p className="text-sm font-bold">Temps réel Cloud activé</p>
                                     </div>
                                 </div>
 
                                 <div className="space-y-4">
-                                    <h4 className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                                    <h4 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
                                         <Activity className="h-4 w-4 text-primary" />
                                         Privilèges et Sécurité
                                     </h4>
                                     <div className="p-5 rounded-2xl bg-primary/5 border border-primary/10">
                                         <p className="text-sm font-medium leading-relaxed">
-                                            <span className="text-primary font-bold">Note :</span> {roleLabels[currentRole].description}
+                                            <span className="text-primary font-bold">Rôle Actuel :</span> {roleLabels[currentRole].description}
                                         </p>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <h4 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                                        <Monitor className="h-4 w-4 text-primary" />
+                                        État du Système Local
+                                    </h4>
+                                    <div className="grid grid-cols-3 gap-3">
+                                        <div className="p-3 bg-muted/10 rounded-xl border border-white/5 flex flex-col items-center gap-1">
+                                            <Cpu className="h-4 w-4 text-muted-foreground opacity-50" />
+                                            <span className="text-[9px] uppercase font-bold text-muted-foreground">OS</span>
+                                            <span className="text-[11px] font-bold">{systemInfo.os}</span>
+                                        </div>
+                                        <div className="p-3 bg-muted/10 rounded-xl border border-white/5 flex flex-col items-center gap-1">
+                                            <Globe className="h-4 w-4 text-muted-foreground opacity-50" />
+                                            <span className="text-[9px] uppercase font-bold text-muted-foreground">Navigateur</span>
+                                            <span className="text-[11px] font-bold">{systemInfo.browser}</span>
+                                        </div>
+                                        <div className="p-3 bg-muted/10 rounded-xl border border-white/5 flex flex-col items-center gap-1">
+                                            <Fingerprint className="h-4 w-4 text-muted-foreground opacity-50" />
+                                            <span className="text-[9px] uppercase font-bold text-muted-foreground">Sécurité</span>
+                                            <span className="text-[11px] font-bold">HTTPS</span>
+                                        </div>
                                     </div>
                                 </div>
                                 
                                 <div className="bg-muted/10 p-6 rounded-[2rem] border border-white/5 relative overflow-hidden group">
                                     <ShieldCheck className="absolute -right-4 -bottom-4 h-24 w-24 text-primary opacity-[0.03] group-hover:rotate-12 transition-transform duration-700" />
                                     <p className="text-xs text-muted-foreground italic leading-relaxed text-center relative z-10">
-                                        "Votre connexion est sécurisée via Supabase Auth. Les données sont chiffrées de bout en bout."
+                                        "Votre connexion est sécurisée via iPOS Security & Supabase Auth. Les données sont chiffrées de bout en bout lors des transferts."
                                     </p>
                                 </div>
                             </div>
@@ -168,7 +213,7 @@ export default function ProfilePage() {
                                 Paramètres Opérationnels
                             </CardTitle>
                             <CardDescription>
-                                Valeurs de référence globales utilisées pour les calculs automatiques du système.
+                                Valeurs de référence globales utilisées pour les calculs automatiques du système iPOS.
                             </CardDescription>
                         </CardHeader>
                         <CompanyProfileForm mode="settings" />
