@@ -37,7 +37,7 @@ export default function SellPage() {
     const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
     const [customerListVersion, setCustomerListVersion] = useState(0);
 
-    const productSearchRef = useRef<{ focus: () => void }>(null);
+    const productSearchRef = useRef<{ focus: () => void; openCustomProductDialog: () => void; }>(null);
     const customerComboboxRef = useRef<HTMLButtonElement>(null);
     const saleActionsRef = useRef<{ 
         payment: () => void;
@@ -133,6 +133,10 @@ export default function SellPage() {
                 } else {
                     toast.info("Le panier est vide. Impossible de finaliser la vente.");
                 }
+                break;
+            case 'F10':
+                e.preventDefault();
+                productSearchRef.current?.openCustomProductDialog();
                 break;
         }
     }, []);

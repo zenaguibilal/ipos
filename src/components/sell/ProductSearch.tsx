@@ -15,31 +15,29 @@ import { toast } from 'sonner';
 import { useDebounce } from '@/hooks/useDebounce';
 import { productService } from '@/services/product.service';
 import { useAppStore } from '@/stores/appStore';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
-interface ProductSearchProps {
-    onProductSelect: (product: Product, quantity: number) => void;
-}
-
-const CustomProductDialog = ({ onAdd }: { onAdd: (name: string, price: number) => void }) => {
-    const [open, setOpen] = useState(false);
+const CustomProductDialog = ({ isOpen, onOpenChange, onAdd }: { isOpen: boolean, onOpenChange: (open: boolean) => void, onAdd: (name: string, price: number) => void }) => {
     const [name, setName] = useState('');
     const [price, setPrice] = useState('');
   
     const handleAdd = () => {
       if (name && price) {
         onAdd(name, parseFloat(price));
-        setOpen(false);
         setName('');
         setPrice('');
       }
     };
+
+    useEffect(() => {
+        if (!isOpen) {
+            setName('');
+            setPrice('');
+        }
+    }, [isOpen]);
   
     return (
-      <>
-        <Button variant="outline" onClick={() => setOpen(true)} className="w-full">
-            <PackagePlus className="mr-2 h-4 w-4" /> Ajouter un produit personnalisé
-        </Button>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={isOpen} onOpenChange={onOpenChange}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Ajouter un produit personnalisé</DialogTitle>
@@ -54,20 +52,19 @@ const CustomProductDialog = ({ onAdd }: { onAdd: (name: string, price: number) =
               </div>
               <div className="space-y-2">
                 <Label htmlFor="custom-price">Prix</Label>
-                <Input id="custom-price" type="number" value={price} onChange={(e) => setPrice(e.target.value)} />
+                <Input id="custom-price" type="number" value={price} onChange={(e) => setPrice(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleAdd()} />
               </div>
             </div>
             <DialogFooter>
-              <Button variant="ghost" onClick={() => setOpen(false)}>Annuler</Button>
+              <Button variant="ghost" onClick={() => onOpenChange(false)}>Annuler</Button>
               <Button onClick={handleAdd}>Ajouter au panier</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </>
     );
 };
 
-export const ProductSearch = forwardRef<{focus: () => void}, ProductSearchProps>(({ onProductSelect }, ref) => {
+export const ProductSearch = forwardRef<{focus: () => void, openCustomProductDialog: () => void}, ProductSearchProps>(({ onProductSelect }, ref) => {
     const [query, setQuery] = useState('');
     const debouncedQuery = useDebounce(query, 100);
     const [selectedCategory, setSelectedCategory] = useState('all');
@@ -82,6 +79,8 @@ export const ProductSearch = forwardRef<{focus: () => void}, ProductSearchProps>
     const [categories, setCategories] = useState<string[]>([]);
     const [products, setProducts] = useState<Product[]>([]);
     
+    const [isCustomProductDialogOpen, setIsCustomProductDialogOpen] = useState(false);
+
     const fetchCategories = useCallback(async () => {
         try {
             const cats = await productService.getCategories();
@@ -135,6 +134,7 @@ export const ProductSearch = forwardRef<{focus: () => void}, ProductSearchProps>
             inputRef.current?.focus();
             inputRef.current?.select();
         },
+        openCustomProductDialog: () => setIsCustomProductDialogOpen(true),
     }));
 
     const handleSelectProduct = useCallback((product: Product) => {
@@ -176,6 +176,7 @@ export const ProductSearch = forwardRef<{focus: () => void}, ProductSearchProps>
             user_id: 'custom',
         };
         onProductSelect(customProduct, 1);
+        setIsCustomProductDialogOpen(false);
     };
 
     const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -275,7 +276,23 @@ export const ProductSearch = forwardRef<{focus: () => void}, ProductSearchProps>
                 </div>
             </ScrollArea>
              <div className="mt-4 flex-shrink-0">
-                <CustomProductDialog onAdd={addCustomProduct} />
+                <TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button variant="outline" onClick={() => setIsCustomProductDialogOpen(true)} className="w-full">
+                                <PackagePlus className="mr-2 h-4 w-4" /> Ajouter un produit personnalisé
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            <p>Ajouter un article non inventorié (F10)</p>
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
+                <CustomProductDialog 
+                    isOpen={isCustomProductDialogOpen} 
+                    onOpenChange={setIsCustomProductDialogOpen} 
+                    onAdd={addCustomProduct} 
+                />
             </div>
         </div>
     );
