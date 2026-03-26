@@ -9,7 +9,7 @@ import { useDateRange } from '@/hooks/useDateRange';
 import type { DashboardData, RecentSale, RecentReturn, SalesByDay, TopProduct, TopCustomer, LowStockProduct } from '@/lib/types';
 import { dashboardService } from '@/services/dashboard.service';
 import { toast } from 'sonner';
-import { Loader2, TrendingUp, TrendingDown, DollarSign, Receipt, Undo2, Users, CreditCard, Archive } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Receipt, Undo2, Users, CreditCard, Archive } from 'lucide-react';
 import { formatCurrency, safeToDate, getPlaceholder, cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -28,15 +28,17 @@ const StatCard = ({ title, value, icon: Icon, change, isLoading, href }: { title
                 <Icon className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-                {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : <div className="text-2xl font-bold">{value}</div>}
-                {!isLoading && (change !== undefined && isFinite(change)) ? (
-                     <p className="text-xs text-muted-foreground flex items-center gap-1">
-                        <span className={cn('font-semibold', change >= 0 ? 'text-green-500' : 'text-destructive')}>
-                             {change >= 0 ? '▲' : '▼'} {Math.abs(change).toFixed(1)}%
-                        </span>
-                        <span>vs. période précédente</span>
-                    </p>
-                ) : !isLoading && <div className="h-[18px]"></div> /* Placeholder to prevent layout shift */}
+                {isLoading ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold">{value}</div>}
+                {isLoading ? <Skeleton className="h-4 w-40 mt-1" /> : (
+                    (change !== undefined && isFinite(change)) ? (
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                            <span className={cn('font-semibold', change >= 0 ? 'text-green-500' : 'text-destructive')}>
+                                {change >= 0 ? '▲' : '▼'} {Math.abs(change).toFixed(1)}%
+                            </span>
+                            <span>vs. période précédente</span>
+                        </p>
+                    ) : <div className="h-[18px]"></div> /* Placeholder to prevent layout shift */
+                )}
             </CardContent>
         </Card>
     );
@@ -56,8 +58,8 @@ const SalesChart = ({ data, isLoading }: { data: SalesByDay[], isLoading: boolea
         </CardHeader>
         <CardContent className="h-80 w-full p-2">
              {isLoading ? (
-                <div className="flex justify-center items-center h-full">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <div className="h-full w-full p-2">
+                    <Skeleton className="h-full w-full" />
                 </div>
             ) : (
             <ResponsiveContainer>
@@ -112,8 +114,20 @@ const RecentActivity = ({ sales, returns, isLoading }: { sales: RecentSale[], re
         </CardHeader>
         <CardContent className="space-y-4 max-h-80 overflow-y-auto">
              {isLoading ? (
-                <div className="flex justify-center items-center h-full min-h-[200px]">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <div className="space-y-6">
+                    <div>
+                        <Skeleton className="h-5 w-32 mb-2" />
+                        <div className="space-y-2">
+                            <Skeleton className="h-14 w-full" />
+                            <Skeleton className="h-14 w-full" />
+                        </div>
+                    </div>
+                    <div className="mt-4">
+                        <Skeleton className="h-5 w-32 mb-2" />
+                        <div className="space-y-2">
+                            <Skeleton className="h-14 w-full" />
+                        </div>
+                    </div>
                 </div>
             ) : (
                 <>
