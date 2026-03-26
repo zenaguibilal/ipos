@@ -6,10 +6,11 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { backupService } from "@/services/backup.service";
 import type { FileObject } from '@supabase/storage-js';
-import { Loader2, Download, Upload, Trash2, AlertTriangle, FileClock } from 'lucide-react';
+import { Loader2, Download, Upload, Trash2, AlertTriangle, FileClock, Eye, DatabaseBackup } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { ConfirmAlertDialog } from '../ui/ConfirmAlertDialog';
+import { BackupPreview } from './BackupPreview';
 
 export function DataManagementCard() {
     const [backups, setBackups] = useState<FileObject[]>([]);
@@ -17,10 +18,14 @@ export function DataManagementCard() {
     const [isCreating, setIsCreating] = useState(false);
     const [isRestoring, setIsRestoring] = useState<string | null>(null);
     const [isDeleting, setIsDeleting] = useState<string | null>(null);
+    const [isPreviewing, setIsPreviewing] = useState<string | null>(null);
 
     const [isRestoreConfirmOpen, setIsRestoreConfirmOpen] = useState(false);
     const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+    const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+    
     const [selectedBackupPath, setSelectedBackupPath] = useState<string | null>(null);
+    const [previewData, setPreviewData] = useState<any>(null);
 
     const fetchBackups = useCallback(async () => {
         setIsLoading(true);
@@ -48,6 +53,19 @@ export function DataManagementCard() {
             toast.error("Erreur lors de la création de la sauvegarde.", { description: error.message });
         } finally {
             setIsCreating(false);
+        }
+    };
+
+    const handlePreviewClick = async (name: string) => {
+        setIsPreviewing(name);
+        try {
+            const data = await backupService.getBackupData(name);
+            setPreviewData(data);
+            setIsPreviewOpen(true);
+        } catch (error: any) {
+            toast.error("Échec de la lecture de la sauvegarde.");
+        } finally {
+            setIsPreviewing(null);
         }
     };
 
@@ -99,93 +117,131 @@ export function DataManagementCard() {
 
     return (
         <>
-            <Card>
-                <CardHeader>
-                    <CardTitle>Gestion des Données</CardTitle>
+            <Card className="luxury-glass border-white/5 overflow-hidden">
+                <CardHeader className="bg-primary/5 border-b border-white/5">
+                    <CardTitle className="flex items-center gap-2">
+                        <DatabaseBackup className="h-5 w-5 text-primary" />
+                        Coffre-fort des Données
+                    </CardTitle>
                     <CardDescription>
-                        Créez et restaurez des sauvegardes de vos données. Les sauvegardes sont stockées de manière sécurisée.
+                        Sauvegardez l'intégralité de votre commerce dans le Cloud iPOS.
                     </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                    <h3 className="font-semibold">Sauvegardes Existantes</h3>
-                    {isLoading ? (
-                         <div className="flex items-center justify-center h-24 border-2 border-dashed rounded-lg">
-                            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                         </div>
-                    ) : backups.length === 0 ? (
-                        <p className="text-sm text-muted-foreground text-center py-4">Aucune sauvegarde trouvée.</p>
-                    ) : (
-                        <div className="border rounded-lg max-h-60 overflow-y-auto">
-                            {backups.sort((a,b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).map(backup => (
-                                <div key={backup.id} className="flex items-center justify-between p-3 border-b last:border-b-0">
-                                    <div className="flex items-center gap-3">
-                                        <FileClock className="h-5 w-5 text-muted-foreground" />
-                                        <div>
-                                            <p className="font-mono text-sm">{backup.name}</p>
-                                            <p className="text-xs text-muted-foreground">
-                                                {format(new Date(backup.created_at), 'd MMM yyyy, HH:mm', { locale: fr })}
-                                            </p>
+                <CardContent className="space-y-6 pt-6">
+                    <div className="bg-muted/30 p-4 rounded-2xl border border-white/5">
+                        <div className="flex items-center gap-3 mb-4">
+                            <FileClock className="h-5 w-5 text-primary" />
+                            <h3 className="font-bold text-sm uppercase tracking-widest">Historique des points de restauration</h3>
+                        </div>
+                        
+                        {isLoading ? (
+                            <div className="flex items-center justify-center h-32 border-2 border-dashed rounded-xl border-white/10">
+                                <Loader2 className="h-8 w-8 animate-spin text-primary/50" />
+                            </div>
+                        ) : backups.length === 0 ? (
+                            <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-xl border-white/10 bg-background/20">
+                                <p className="text-sm font-medium italic">Aucune sauvegarde trouvée dans votre espace Cloud.</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
+                                {backups.sort((a,b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).map(backup => (
+                                    <div key={backup.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 rounded-xl bg-background/40 border border-white/5 hover:border-primary/20 transition-all group">
+                                        <div className="flex items-center gap-4 mb-3 sm:mb-0">
+                                            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                                                <FileClock className="h-5 w-5 text-primary" />
+                                            </div>
+                                            <div>
+                                                <p className="font-mono text-xs font-bold text-primary/80">{backup.name}</p>
+                                                <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest mt-0.5">
+                                                    {format(new Date(backup.created_at), 'd MMMM yyyy, HH:mm', { locale: fr })}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2 w-full sm:w-auto">
+                                            <Button 
+                                                variant="ghost" 
+                                                size="sm"
+                                                className="rounded-lg h-9 text-[10px] font-black uppercase hover:bg-primary/10"
+                                                onClick={() => handlePreviewClick(backup.name)}
+                                                disabled={!!isRestoring || !!isDeleting || !!isPreviewing}
+                                            >
+                                                {isPreviewing === backup.name ? <Loader2 className="h-3 w-3 animate-spin"/> : <Eye className="h-3.5 w-3.5 mr-1.5" />}
+                                                Aperçu
+                                            </Button>
+                                            <Button 
+                                                variant="secondary"
+                                                size="sm" 
+                                                className="rounded-lg h-9 text-[10px] font-black uppercase bg-primary/10 text-primary hover:bg-primary/20 border-primary/20"
+                                                onClick={() => handleRestoreClick(backup.name)}
+                                                disabled={!!isRestoring || !!isDeleting || !!isPreviewing}
+                                            >
+                                                {isRestoring === backup.name ? <Loader2 className="h-3 w-3 animate-spin"/> : <Download className="h-3.5 w-3.5 mr-1.5" />}
+                                                Restaurer
+                                            </Button>
+                                            <Button 
+                                                variant="ghost"
+                                                size="icon" 
+                                                className="rounded-lg h-9 w-9 text-destructive hover:bg-destructive/10"
+                                                onClick={() => handleDeleteClick(backup.name)}
+                                                disabled={!!isRestoring || !!isDeleting || !!isPreviewing}
+                                            >
+                                                {isDeleting === backup.name ? <Loader2 className="h-4 w-4 animate-spin"/> : <Trash2 className="h-4 w-4" />}
+                                            </Button>
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                        <Button 
-                                            variant="outline"
-                                            size="sm" 
-                                            onClick={() => handleRestoreClick(backup.name)}
-                                            disabled={!!isRestoring || !!isDeleting}
-                                        >
-                                            {isRestoring === backup.name ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Download className="mr-2 h-4 w-4" />}
-                                            Restaurer
-                                        </Button>
-                                         <Button 
-                                            variant="destructive"
-                                            size="icon" 
-                                            onClick={() => handleDeleteClick(backup.name)}
-                                            disabled={!!isRestoring || !!isDeleting}
-                                        >
-                                            {isDeleting === backup.name ? <Loader2 className="h-4 w-4 animate-spin"/> : <Trash2 className="h-4 w-4" />}
-                                        </Button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
+                                ))}
+                            </div>
+                        )}
+                    </div>
                 </CardContent>
-                <CardFooter>
-                    <Button onClick={handleCreateBackup} disabled={isCreating || !!isRestoring}>
-                        {isCreating ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Upload className="mr-2 h-4 w-4" />}
-                        {isCreating ? 'Création en cours...' : 'Créer une nouvelle sauvegarde'}
+                <CardFooter className="bg-white/5 p-4 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <p className="text-[10px] text-muted-foreground italic max-w-sm text-center sm:text-left">
+                        * Les sauvegardes incluent les stocks, clients, fournisseurs et l'historique complet des ventes.
+                    </p>
+                    <Button 
+                        onClick={handleCreateBackup} 
+                        disabled={isCreating || !!isRestoring}
+                        className="bg-primary hover:bg-primary/90 rounded-xl px-8 h-11 font-bold shadow-lg shadow-primary/20 w-full sm:w-auto gap-2"
+                    >
+                        {isCreating ? <Loader2 className="h-4 w-4 animate-spin"/> : <Upload className="h-4 w-4" />}
+                        {isCreating ? 'Création...' : 'Nouvelle Sauvegarde Cloud'}
                     </Button>
                 </CardFooter>
             </Card>
 
+            <BackupPreview 
+                isOpen={isPreviewOpen} 
+                onOpenChange={setIsPreviewOpen} 
+                data={previewData} 
+            />
+
             <ConfirmAlertDialog
                 isOpen={isRestoreConfirmOpen}
                 onOpenChange={setIsRestoreConfirmOpen}
-                title="Êtes-vous absolument sûr de vouloir restaurer ?"
+                title="⚠️ ATTENTION : RESTAURATION"
                 description={
-                    <div className="space-y-4">
-                        <p>Cette action est <span className="font-bold text-destructive">irréversible</span> et remplacera <span className="font-bold">TOUTES</span> vos données actuelles (produits, ventes, clients, etc.) par le contenu de cette sauvegarde.</p>
-                        <div className="p-3 bg-destructive/10 rounded-lg text-destructive flex items-start gap-2">
-                            <AlertTriangle className="h-8 w-8 mt-1"/>
-                            <div>
-                                <h4 className="font-bold">Risque de perte de données !</h4>
-                                <p className="text-xs">Assurez-vous d'avoir créé une sauvegarde de vos données actuelles si vous pourriez en avoir besoin plus tard.</p>
+                    <div className="space-y-4 pt-2">
+                        <p className="text-sm">Cette action va <span className="font-bold text-destructive underline">écraser l'intégralité</span> de vos données actuelles pour les remplacer par celles de la sauvegarde.</p>
+                        <div className="p-4 bg-destructive/10 rounded-2xl text-destructive border border-destructive/20 flex items-start gap-3">
+                            <AlertTriangle className="h-10 w-10 shrink-0"/>
+                            <div className="space-y-1">
+                                <h4 className="font-black text-xs uppercase tracking-widest">Risque de perte de données</h4>
+                                <p className="text-[11px] leading-relaxed opacity-80">Si vous n'avez pas fait de sauvegarde aujourd'hui, les ventes saisies depuis votre dernier backup seront définitivement perdues.</p>
                             </div>
                         </div>
                     </div>
                 }
                 onConfirm={handleConfirmRestore}
-                confirmText="Oui, écraser et restaurer"
+                confirmText="Oui, restaurer et redémarrer"
             />
             
             <ConfirmAlertDialog
                 isOpen={isDeleteConfirmOpen}
                 onOpenChange={setIsDeleteConfirmOpen}
-                title="Supprimer cette sauvegarde ?"
-                description="Cette action supprimera définitivement le fichier de sauvegarde. Vos données actuelles ne seront pas affectées."
+                title="Supprimer la sauvegarde ?"
+                description="Ce fichier sera supprimé définitivement du Cloud iPOS. Cette action n'affecte pas vos données en cours d'utilisation."
                 onConfirm={handleConfirmDelete}
-                confirmText="Oui, supprimer la sauvegarde"
+                confirmText="Supprimer définitivement"
             />
         </>
     );

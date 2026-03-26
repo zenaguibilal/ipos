@@ -122,6 +122,21 @@ class BackupService {
         }
     }
 
+    async getBackupData(backupName: string): Promise<any> {
+        try {
+            const userId = this.getUserId();
+            const filePath = `${userId}/${backupName}`;
+            const { data: blob, error } = await this.supabase.storage
+                .from('backups')
+                .download(filePath);
+            
+            if (error) throw error;
+            return JSON.parse(await blob.text());
+        } catch (error) {
+            throw error;
+        }
+    }
+
     async restoreBackup(backupName: string) {
         try {
             const userId = this.getUserId();
@@ -137,7 +152,7 @@ class BackupService {
             const data = JSON.parse(await blob.text());
 
             // 2. Delete all existing data in order
-            toast.info("Clearing existing data...");
+            toast.info("Nettoyage des données existantes...");
             await saleRepository.deleteAllForUser(userId); // Deletes sale_items via cascade
             await returnRepository.deleteAllForUser(userId);
             await paymentRepository.deleteAllForUser(userId);
@@ -150,7 +165,7 @@ class BackupService {
             await companyRepository.deleteAllForUser(userId);
             
             // 3. Insert new data in reverse order of deletion
-            toast.info("Restoring data...");
+            toast.info("Restauration des données...");
             if (data.company_profile?.length) await companyRepository.bulkUpsert(data.company_profile);
             if (data.suppliers?.length) await supplierRepository.bulkUpsert(data.suppliers);
             if (data.customers?.length) await customerRepository.bulkUpsert(data.customers);
