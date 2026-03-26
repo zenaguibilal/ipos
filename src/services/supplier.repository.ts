@@ -51,8 +51,25 @@ class SupplierRepository {
         return data ? fromSupabase(data) : undefined;
     }
 
+    async filterByName(query: string): Promise<Supplier[]> {
+        const { data, error } = await this.supabase.from('suppliers').select('*').ilike('name', `%${query}%`);
+        if (error) throw error;
+        return data.map(fromSupabase);
+    }
+
     async add(supplier: Supplier): Promise<Supplier> {
         const { data, error } = await this.supabase.from('suppliers').insert(toSupabase(supplier)).select().single();
+        if (error) throw error;
+        return fromSupabase(data);
+    }
+    
+    async update(uuid: string, supplierData: Partial<Supplier>): Promise<Supplier> {
+        const { data, error } = await this.supabase
+            .from('suppliers')
+            .update(toSupabase(supplierData))
+            .eq('uuid', uuid)
+            .select()
+            .single();
         if (error) throw error;
         return fromSupabase(data);
     }

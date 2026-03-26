@@ -1,19 +1,20 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import type { Product, Supplier } from '@/lib/types';
-import { Loader2, X, AlertTriangle } from 'lucide-react';
+import { Loader2, X, AlertTriangle, ChevronsUpDown, Plus } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { DatePicker } from '../ui/date-picker';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
-import { Combobox } from '../ui/combobox';
 import { productService } from '@/services/product.service';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 
 interface ProductDialogProps {
     isOpen: boolean;
@@ -24,7 +25,7 @@ interface ProductDialogProps {
     onSuccess: () => void;
 }
 
-const initialFormState: Partial<Product> = {
+const initialFormState: Partial<Product> & { supplierName?: string } = {
     name: '',
     category: '',
     price: 0,
@@ -36,6 +37,7 @@ const initialFormState: Partial<Product> = {
     unite: 'Pièce',
     dateExpiration: undefined,
     supplierUuid: undefined,
+    supplierName: '',
 };
 
 const units: NonNullable<Product['unite']>[] = ['Pièce', 'Kg', 'Litre', 'Boîte', 'Carton', 'Sachet', 'Bouteille'];
@@ -47,16 +49,22 @@ export function ProductDialog({ isOpen, onOpenChange, product, categories, suppl
     const [isLoading, setIsLoading] = useState(false);
     const [showPriceConfirm, setShowPriceConfirm] = useState(false);
 
+    const [supplierSearch, setSupplierSearch] = useState('');
+    const [supplierPopoverOpen, setSupplierPopoverOpen] = useState(false);
+
     useEffect(() => {
         if (product && isOpen) {
+            const supplier = suppliers.find(s => s.uuid === product.supplierUuid);
             setFormState({
                 ...product,
                 dateExpiration: product.dateExpiration ? new Date(product.dateExpiration) : undefined,
+                supplierName: supplier?.name || '',
             });
         } else if (!product && isOpen) {
             setFormState(initialFormState);
         }
-    }, [product, isOpen]);
+        setSupplierSearch('');
+    }, [product, isOpen, suppliers]);
     
     const priceNum = Number(formState.price);
     const purchasePriceNum = Number(formState.purchasePrice);
@@ -78,11 +86,35 @@ export function ProductDialog({ isOpen, onOpenChange, product, categories, suppl
         setFormState(prev => ({...prev, barcodes: prev.barcodes?.filter(b => b !== barcodeToRemove)}));
     };
 
+    const supplierOptions = useMemo(() => {
+        if (!suppliers) return [];
+        if (!supplierSearch) return suppliers;
+        return suppliers.filter(s => s.name.toLowerCase().includes(supplierSearch.toLowerCase()));
+    }, [suppliers, supplierSearch]);
+
+    const handleSupplierSelect = (uuid: string) => {
+        const selected = suppliers.find(s => s.uuid === uuid);
+        if (selected) {
+            setFormState(prev => ({ ...prev, supplierUuid: selected.uuid, supplierName: selected.name }));
+        }
+        setSupplierPopoverOpen(false);
+    };
+
+    const handleSupplierCreate = () => {
+        setFormState(prev => ({ ...prev, supplierUuid: undefined, supplierName: supplierSearch }));
+        setSupplierPopoverOpen(false);
+    };
+
+    const handleClearSupplier = () => {
+        setFormState(prev => ({ ...prev, supplierUuid: undefined, supplierName: ''}));
+        setSupplierPopoverOpen(false);
+    }
+
     const proceedWithSubmit = async () => {
         setError(null);
         setIsLoading(true);
 
-        const productData: Omit<Product, 'uuid' | 'id'> = {
+        const productData: Omit<Product, 'uuid' | 'id'> & { supplierName?: string } = {
             name: formState.name!,
             category: formState.category || 'Non classé',
             price: Number(formState.price) || 0,
@@ -94,6 +126,7 @@ export function ProductDialog({ isOpen, onOpenChange, product, categories, suppl
             unite: formState.unite || 'Pièce',
             dateExpiration: formState.dateExpiration || undefined,
             supplierUuid: formState.supplierUuid || undefined,
+            supplierName: formState.supplierName || undefined,
         };
 
         try {
@@ -123,8 +156,6 @@ export function ProductDialog({ isOpen, onOpenChange, product, categories, suppl
         }
     };
     
-    const supplierOptions = suppliers.map(s => ({ value: s.uuid, label: s.name }));
-
     return (
         <>
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -196,14 +227,51 @@ export function ProductDialog({ isOpen, onOpenChange, product, categories, suppl
                         </div>
                          <div className="space-y-2">
                             <Label>Fournisseur (Optionnel)</Label>
-                             <Combobox
-                                options={supplierOptions}
-                                value={formState.supplierUuid || ''}
-                                onSelect={(value) => setFormState(s => ({ ...s, supplierUuid: value }))}
-                                placeholder="Sélectionner un fournisseur..."
-                                searchPlaceholder="Rechercher..."
-                                notFoundMessage="Aucun fournisseur trouvé."
-                            />
+                            <Popover open={supplierPopoverOpen} onOpenChange={setSupplierPopoverOpen}>
+                                <PopoverTrigger asChild>
+                                    <Button
+                                        variant="outline"
+                                        role="combobox"
+                                        className="w-full justify-between"
+                                    >
+                                        {formState.supplierName || "Sélectionner ou créer un fournisseur..."}
+                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
+                                    <Command>
+                                        <CommandInput 
+                                            placeholder="Rechercher ou créer..." 
+                                            onValueChange={setSupplierSearch}
+                                        />
+                                        <CommandList>
+                                            <CommandEmpty>
+                                                <Button 
+                                                    variant="link" 
+                                                    className="w-full"
+                                                    onClick={handleSupplierCreate}>
+                                                    <Plus className="mr-2 h-4 w-4" />
+                                                    Créer "{supplierSearch}"
+                                                </Button>
+                                            </CommandEmpty>
+                                            <CommandGroup>
+                                                <CommandItem onSelect={handleClearSupplier} className="text-muted-foreground">
+                                                    Aucun fournisseur
+                                                </CommandItem>
+                                                {supplierOptions?.map((supplier) => (
+                                                    <CommandItem
+                                                        key={supplier.uuid}
+                                                        value={supplier.uuid}
+                                                        onSelect={() => handleSupplierSelect(supplier.uuid)}
+                                                    >
+                                                        {supplier.name}
+                                                    </CommandItem>
+                                                ))}
+                                            </CommandGroup>
+                                        </CommandList>
+                                    </Command>
+                                </PopoverContent>
+                            </Popover>
                         </div>
                          <div className="space-y-2">
                             <Label htmlFor="barcodes">Codes-barres</Label>

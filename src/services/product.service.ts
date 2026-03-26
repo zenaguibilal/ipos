@@ -8,6 +8,7 @@ import { calculateStockStatus } from '@/lib/utils';
 import { inventoryRepository } from '@/repositories/inventory.repository';
 import { useAppStore } from '@/stores/appStore';
 import Papa from 'papaparse';
+import { supplierService } from './supplier.service';
 
 class ProductService {
 
@@ -74,12 +75,22 @@ class ProductService {
         }
     }
 
-    async addProduct(productData: Omit<Product, 'uuid' | 'user_id'>): Promise<Product> {
+    async addProduct(productData: Omit<Product, 'uuid' | 'user_id'> & { supplierName?: string }): Promise<Product> {
         try {
+            let finalSupplierUuid = productData.supplierUuid;
+            if (productData.supplierName) {
+                const supplier = await supplierService.findOrCreateSupplier(productData.supplierName);
+                finalSupplierUuid = supplier.uuid;
+            }
+
+            const dataForRepo = { ...productData };
+            delete (dataForRepo as any).supplierName;
+
             const newProduct: Product = {
-                ...productData,
+                ...(dataForRepo as Omit<Product, 'uuid' | 'user_id'>),
                 uuid: uuidv4(),
                 user_id: this.getUserId(),
+                supplierUuid: finalSupplierUuid,
                 createdAt: new Date(),
                 updatedAt: new Date(),
                 stockStatus: calculateStockStatus(productData.quantity, productData.minStockLevel),
@@ -90,17 +101,25 @@ class ProductService {
         }
     }
 
-    async updateProduct(uuid: string, productData: Partial<Product>): Promise<Product> {
+    async updateProduct(uuid: string, productData: Partial<Product> & { supplierName?: string }): Promise<Product> {
         try {
             const existingProduct = await this.getProductByUuid(uuid);
             if (!existingProduct) {
                 throw new Error("Produit non trouvé.");
             }
 
-            const dataToUpdate: Partial<Product> = {
-                ...productData,
-                updatedAt: new Date(),
-            };
+            let finalSupplierUuid = productData.supplierUuid;
+            if (productData.supplierName) {
+                const supplier = await supplierService.findOrCreateSupplier(productData.supplierName, productData.supplierUuid);
+                finalSupplierUuid = supplier.uuid;
+            } else if (productData.hasOwnProperty('supplierName') && !productData.supplierName) {
+                finalSupplierUuid = undefined;
+            }
+
+            const dataToUpdate: Partial<Product> = { ...productData };
+            delete (dataToUpdate as any).supplierName;
+            dataToUpdate.supplierUuid = finalSupplierUuid;
+            dataToUpdate.updatedAt = new Date();
 
             const newQuantity = productData.quantity ?? existingProduct.quantity;
             const newMinStock = productData.minStockLevel ?? existingProduct.minStockLevel;
