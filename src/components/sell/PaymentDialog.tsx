@@ -95,7 +95,8 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, cartCustomer }: Paym
         }
     }
 
-    const handleFinalize = async () => {
+    const handleFinalize = async (e?: React.FormEvent) => {
+        if (e) e.preventDefault();
         if (!cart) return;
 
         const cashVal = parseFloat(cashAmountStr);
@@ -203,7 +204,7 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, cartCustomer }: Paym
 
             <Dialog open={isOpen && !showLossAlert} onOpenChange={(open) => !open && closeAndReset()}>
                 <DialogContent className="sm:max-w-lg">
-                    <>
+                    <form onSubmit={handleFinalize}>
                         <DialogHeader>
                             <DialogTitle>Finaliser la vente</DialogTitle>
                             {cartCustomer && (
@@ -287,12 +288,12 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, cartCustomer }: Paym
                         </div>
                         <DialogFooter>
                             <Button type="button" variant="secondary" onClick={closeAndReset} disabled={isLoading}>Annuler</Button>
-                            <Button type="submit" onClick={handleFinalize} disabled={isLoading}>
+                            <Button type="submit" disabled={isLoading}>
                                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Valider la vente
+                                Valider la vente (Entrée)
                             </Button>
                         </DialogFooter>
-                    </>
+                    </form>
                 </DialogContent>
             </Dialog>
         </>
