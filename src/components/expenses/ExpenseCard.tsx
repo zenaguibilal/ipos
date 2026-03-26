@@ -5,7 +5,7 @@ import type { Expense } from '@/lib/types';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Edit, Trash2, Calendar, Tag, Banknote } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, Calendar, Tag, Banknote, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { formatCurrency } from '@/lib/utils';
@@ -63,6 +63,12 @@ const ExpenseCardComponent = ({ expense, onEdit, onDelete }: ExpenseCardProps) =
                     <Calendar className="h-3 w-3" />
                     <span>{format(new Date(expense.expenseDate), 'd MMMM yyyy', { locale: fr })}</span>
                 </div>
+                {expense.createdAt && (
+                    <div className="flex items-center text-[9px] text-muted-foreground italic gap-1">
+                        <Clock className="h-2.5 w-2.5" />
+                        <span>Saisi le {format(new Date(expense.createdAt), 'Pp', { locale: fr })}</span>
+                    </div>
+                )}
             </CardContent>
             <CardFooter className="bg-destructive/5 p-4 border-t border-destructive/10 mt-auto relative z-10">
                  <div className="flex justify-between items-center w-full">

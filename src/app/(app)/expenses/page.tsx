@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { expenseService } from '@/services/expense.service';
 import type { Expense } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Plus, Filter, Search, FileUp, TrendingDown, Tag, X, RefreshCw, Loader2, BarChart as BarChartIcon, ArrowUpRight, ArrowDownRight, Calendar } from 'lucide-react';
+import { Plus, Filter, Search, FileUp, TrendingDown, Tag, X, RefreshCw, Loader2, BarChart as BarChartIcon, ArrowUpRight, ArrowDownRight, Calendar, Wallet, PieChart } from 'lucide-react';
 import { ExpenseCard } from '@/components/expenses/ExpenseCard';
 import ExpenseDialog from '@/components/expenses/ExpenseDialog';
 import DeleteExpenseDialog from '@/components/expenses/DeleteExpenseDialog';
@@ -124,6 +124,11 @@ export default function ExpensesPage() {
             .slice(0, 10);
     }, [expenses]);
 
+    const topCategory = useMemo(() => {
+        if (chartData.length === 0) return null;
+        return chartData[0];
+    }, [chartData]);
+
     const handleEditExpense = (expense: Expense) => {
         setSelectedExpense(expense);
         setIsExpenseDialogOpen(true);
@@ -228,31 +233,51 @@ export default function ExpensesPage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Global Stats with Trends */}
-                <Card className="luxury-glass bg-destructive/5 border-destructive/20 overflow-hidden relative group h-full">
-                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                        <TrendingDown className="h-16 w-16 text-destructive" />
-                    </div>
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Total des Sorties</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        {isLoading ? <Skeleton className="h-10 w-32" /> : (
-                            <>
-                                <p className="text-4xl font-black text-destructive">{formatCurrency(totalAmount)}</p>
-                                <div className="mt-4 flex items-center gap-2">
-                                    <div className={cn(
-                                        "flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-black uppercase",
-                                        trendPercentage > 0 ? "bg-destructive/10 text-destructive" : "bg-green-500/10 text-green-500"
-                                    )}>
-                                        {trendPercentage > 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
-                                        {Math.abs(trendPercentage).toFixed(1)}%
+                <div className="space-y-4">
+                    <Card className="luxury-glass bg-destructive/5 border-destructive/20 overflow-hidden relative group">
+                        <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                            <TrendingDown className="h-16 w-16 text-destructive" />
+                        </div>
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Total des Sorties</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            {isLoading ? <Skeleton className="h-10 w-32" /> : (
+                                <>
+                                    <p className="text-4xl font-black text-destructive">{formatCurrency(totalAmount)}</p>
+                                    <div className="mt-4 flex items-center gap-2">
+                                        <div className={cn(
+                                            "flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-black uppercase",
+                                            trendPercentage > 0 ? "bg-destructive/10 text-destructive" : "bg-green-500/10 text-green-500"
+                                        )}>
+                                            {trendPercentage > 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+                                            {Math.abs(trendPercentage).toFixed(1)}%
+                                        </div>
+                                        <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">vs. période précédente</span>
                                     </div>
-                                    <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">vs. période précédente</span>
+                                </>
+                            )}
+                        </CardContent>
+                    </Card>
+
+                    {topCategory && (
+                        <Card className="luxury-glass border-primary/10 overflow-hidden relative">
+                            <CardHeader className="pb-2">
+                                <CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Point de vigilance</CardTitle>
+                            </CardHeader>
+                            <CardContent className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-lg font-bold">{topCategory.name}</p>
+                                    <p className="text-[10px] text-muted-foreground uppercase">Plus gros poste de dépense</p>
                                 </div>
-                            </>
-                        )}
-                    </CardContent>
-                </Card>
+                                <div className="text-right">
+                                    <p className="text-lg font-black text-primary">{formatCurrency(topCategory.value)}</p>
+                                    <p className="text-[10px] text-primary/70 font-bold">{Math.round((topCategory.value / totalAmount) * 100)}% du total</p>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
+                </div>
 
                 {/* Analytical Breakdown Chart */}
                 <Card className="lg:col-span-2 luxury-glass border-primary/10 h-full overflow-hidden">
