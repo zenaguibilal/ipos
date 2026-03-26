@@ -112,6 +112,7 @@ export const ProductSearch = forwardRef<{focus: () => void}, ProductSearchProps>
             if (product) {
                 onProductSelect(product, 1);
                 setQuery(''); // Clear query after successful scan
+                inputRef.current?.focus();
             } else {
                 toast.error("Produit non trouvé pour ce code-barres.");
             }
@@ -150,6 +151,7 @@ export const ProductSearch = forwardRef<{focus: () => void}, ProductSearchProps>
                             if (products?.length === 1) {
                                 onProductSelect(products[0], 1);
                                 setQuery('');
+                                inputRef.current?.focus();
                             } else {
                                 handleBarcodeScanned(e.currentTarget.value);
                             }
@@ -193,6 +195,7 @@ export const ProductSearch = forwardRef<{focus: () => void}, ProductSearchProps>
                             onClick={() => {
                                 onProductSelect(product, 1);
                                 setQuery(''); // Clear search after selection
+                                inputRef.current?.focus();
                             }}
                             isLast={index === products.length - 1}
                         />
