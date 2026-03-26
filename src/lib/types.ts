@@ -30,6 +30,7 @@ export interface Customer {
     phone?: string;
     address?: string;
     notes?: string;
+    category?: string; // e.g., 'Wholesale', 'Regular', 'VIP'
     settlementDay?: number;
     creditLimit?: number;
     totalSpent: number;
@@ -45,6 +46,13 @@ export interface Customer {
     bread_jours_semaine?: {
         [key: string]: { actif: boolean; quantite: number };
     };
+}
+
+export interface CustomerTopProduct {
+    productUuid: string;
+    name: string;
+    quantity: number;
+    totalAmount: number;
 }
 
 export interface SaleItem {

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
@@ -6,7 +7,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import type { Customer, ImportAnalysis } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, Users, FileDown, Loader2, FileUp, Trash2, LayoutGrid, List, RefreshCw, Printer, SortAsc } from 'lucide-react';
+import { Plus, Search, Users, FileDown, Loader2, FileUp, Trash2, LayoutGrid, List, RefreshCw, Printer, SortAsc, Tags } from 'lucide-react';
 import { CustomerCard } from '@/components/customers/customer-card';
 import { CustomerTable } from '@/components/customers/customer-table';
 import { CustomerTableSkeleton } from '@/components/customers/customer-table-skeleton';
@@ -52,6 +53,7 @@ export default function CustomersPage() {
 
     const [searchQuery, setSearchQuery] = useState('');
     const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
+    const [selectedCategory, setSelectedCategory] = useState('all');
     const [sortBy, setSortBy] = useState('createdAt_desc');
     
     // Dialog states
@@ -68,6 +70,7 @@ export default function CustomersPage() {
 
     // Data states
     const [customers, setCustomers] = useState<Customer[]>([]);
+    const [categories, setCategories] = useState<string[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
@@ -85,6 +88,8 @@ export default function CustomersPage() {
         if (statusFromQuery && ['all', 'has_debt', 'overdue', 'over_limit', 'is_bread_client'].includes(statusFromQuery)) {
             setFilterStatus(statusFromQuery);
         }
+        
+        customerService.getCategories().then(setCategories);
     }, [searchParams]);
 
     const fetchCustomers = useCallback(async (isInitial = true) => {
@@ -98,6 +103,7 @@ export default function CustomersPage() {
             const result = await customerService.filterCustomers({ 
                 query: debouncedSearchQuery, 
                 status: filterStatus,
+                category: selectedCategory,
                 page: currentPage,
                 pageSize: ITEMS_PER_PAGE,
                 sortBy: sortBy
@@ -120,11 +126,11 @@ export default function CustomersPage() {
         } finally {
             setIsLoading(false);
         }
-    }, [debouncedSearchQuery, filterStatus, page, customers, sortBy]);
+    }, [debouncedSearchQuery, filterStatus, selectedCategory, page, customers, sortBy]);
     
     useEffect(() => {
         fetchCustomers(true);
-    }, [debouncedSearchQuery, filterStatus, sortBy]);
+    }, [debouncedSearchQuery, filterStatus, selectedCategory, sortBy]);
 
     useEffect(() => {
         setSelectedCustomers(new Set());
@@ -209,7 +215,7 @@ export default function CustomersPage() {
             return;
         }
         try {
-            const result = await customerService.filterCustomers({ query: debouncedSearchQuery, status: filterStatus, pageSize: 1000 });
+            const result = await customerService.filterCustomers({ query: debouncedSearchQuery, status: filterStatus, category: selectedCategory, pageSize: 1000 });
             await customerService.exportToCSV(result.data);
             toast.success("Liste des clients exportée avec succès.");
         } catch (error: any) {
@@ -219,13 +225,14 @@ export default function CustomersPage() {
 
     const handleDownloadTemplate = () => {
         customerService.exportToCSV([
-            { firstName: 'Jean', lastName: 'Dupont', phone: '0555123456', address: '123 Rue de la Liberté', creditLimit: 5000, outstandingBalance: 0 } as any
+            { firstName: 'Jean', lastName: 'Dupont', phone: '0555123456', address: '123 Rue de la Liberté', creditLimit: 5000, outstandingBalance: 0, category: 'VIP' } as any
         ]);
     };
     
     const refreshAll = () => {
         setStatsRefreshKey(k => k + 1);
         fetchCustomers(true);
+        customerService.getCategories().then(setCategories);
     };
 
     const renderSkeletons = () => (
@@ -366,6 +373,25 @@ export default function CustomersPage() {
                         <DropdownMenuCheckboxItem checked={filterStatus === 'overdue'} onCheckedChange={() => setFilterStatus('overdue')}>En retard de paiement</DropdownMenuCheckboxItem>
                         <DropdownMenuCheckboxItem checked={filterStatus === 'over_limit'} onCheckedChange={() => setFilterStatus('over_limit')}>Plafond dépassé</DropdownMenuCheckboxItem>
                         <DropdownMenuCheckboxItem checked={filterStatus === 'is_bread_client'} onCheckedChange={() => setFilterStatus('is_bread_client')}>Clients de pain</DropdownMenuCheckboxItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="outline" className="w-full sm:w-auto">
+                            <Tags className="mr-2 h-4 w-4" />
+                            Catégorie: {selectedCategory === 'all' ? 'Toutes' : selectedCategory}
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="max-h-64 overflow-y-auto">
+                        <DropdownMenuLabel>Filtrer par groupe</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuRadioGroup value={selectedCategory} onValueChange={setSelectedCategory}>
+                            <DropdownMenuRadioItem value="all">Toutes les catégories</DropdownMenuRadioItem>
+                            {categories.map(cat => (
+                                <DropdownMenuRadioItem key={cat} value={cat}>{cat}</DropdownMenuRadioItem>
+                            ))}
+                        </DropdownMenuRadioGroup>
                     </DropdownMenuContent>
                 </DropdownMenu>
 

@@ -4,7 +4,7 @@
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, HandCoins, Printer, Loader2, Filter, FileText, Info } from 'lucide-react';
+import { ArrowLeft, HandCoins, Printer, Loader2, Filter, FileText, Info, ShoppingBag, TrendingUp, History, Tag } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CustomerMetrics } from '@/components/customers/CustomerMetrics';
@@ -13,13 +13,15 @@ import { useState, useCallback, useEffect } from 'react';
 import { AddPaymentDialog } from '@/components/payments/AddPaymentDialog';
 import { SaleDetailsDialog } from '@/components/sales/SaleDetailsDialog';
 import { ReturnDetailsDialog } from '@/components/returns/ReturnDetailsDialog';
-import type { Sale, ProductReturn, Customer } from '@/lib/types';
+import type { Sale, ProductReturn, Customer, CustomerTopProduct } from '@/lib/types';
 import { PrintStatementDialog } from '@/components/customers/PrintStatementDialog';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { customerService } from '@/services/customer.service';
 import { salesService } from '@/services/sales.service';
 import { returnService } from '@/services/return.service';
 import { toast } from 'sonner';
+import { formatCurrency } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -37,6 +39,9 @@ export default function CustomerDetailPage() {
     const customerUuid = params.uuid as string;
 
     const [customer, setCustomer] = useState<Customer | undefined | null>(undefined);
+    const [topProducts, setTopProducts] = useState<CustomerTopProduct[]>([]);
+    const [financialSummary, setFinancialSummary] = useState<{ totalSalesCount: number, averageBasketValue: number } | null>(null);
+    
     const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
     const [isStatementDialogOpen, setIsStatementDialogOpen] = useState(false);
     const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
@@ -57,8 +62,16 @@ export default function CustomerDetailPage() {
             return;
         }
         try {
-            const cust = await customerService.getCustomerByUuid(customerUuid);
+            const [cust, topProds, summary] = await Promise.all([
+                customerService.getCustomerByUuid(customerUuid),
+                customerService.getCustomerTopProducts(customerUuid),
+                customerService.getCustomerFinancialSummary(customerUuid)
+            ]);
+            
             setCustomer(cust);
+            setTopProducts(topProds);
+            setFinancialSummary(summary);
+            
             if (!cust) {
                 toast.error("Client non trouvé.");
             }
@@ -184,11 +197,43 @@ export default function CustomerDetailPage() {
                  <PageHeader 
                     title={`${customer.firstName} ${customer.lastName}`}
                     description={`ID Client: ${customer.uuid.substring(0,8)}...`}
-                 />
+                 >
+                    <Badge variant="secondary" className="px-3 py-1">
+                        <Tag className="mr-2 h-3 w-3" />
+                        {customer.category || 'Standard'}
+                    </Badge>
+                 </PageHeader>
             </div>
 
             <div className="grid md:grid-cols-3 gap-6">
                 <div className="md:col-span-2 space-y-6">
+                    <div className="grid sm:grid-cols-2 gap-4">
+                        <Card className="bg-primary/5">
+                            <CardHeader className="py-3">
+                                <CardTitle className="text-sm font-bold flex items-center gap-2">
+                                    <ShoppingBag className="h-4 w-4 text-primary" />
+                                    Nombre total d'achats
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <p className="text-2xl font-black">{financialSummary?.totalSalesCount || 0}</p>
+                                <p className="text-xs text-muted-foreground">Transactions enregistrées</p>
+                            </CardContent>
+                        </Card>
+                        <Card className="bg-chart-quaternary/5">
+                            <CardHeader className="py-3">
+                                <CardTitle className="text-sm font-bold flex items-center gap-2">
+                                    <TrendingUp className="h-4 w-4 text-chart-quaternary" />
+                                    Panier moyen
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <p className="text-2xl font-black text-chart-quaternary">{formatCurrency(financialSummary?.averageBasketValue || 0)}</p>
+                                <p className="text-xs text-muted-foreground">Valeur moyenne par visite</p>
+                            </CardContent>
+                        </Card>
+                    </div>
+
                     {customer.notes && (
                         <Card className="border-l-4 border-l-primary bg-primary/5">
                             <CardHeader className="py-3">
@@ -206,7 +251,10 @@ export default function CustomerDetailPage() {
                      <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
                             <div className="space-y-1">
-                                <CardTitle>Historique d'activité</CardTitle>
+                                <CardTitle className="flex items-center gap-2">
+                                    <History className="h-5 w-5" />
+                                    Historique d'activité
+                                </CardTitle>
                                 <CardDescription>
                                     Transactions chronologiques du client.
                                 </CardDescription>
@@ -272,6 +320,34 @@ export default function CustomerDetailPage() {
                         </Button>
                     </div>
                     
+                    <Card>
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-sm font-bold flex items-center gap-2">
+                                <ShoppingBag className="h-4 w-4" />
+                                Articles les plus achetés
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="pt-2">
+                            {topProducts.length > 0 ? (
+                                <div className="space-y-3">
+                                    {topProducts.map((p, i) => (
+                                        <div key={p.productUuid} className="flex items-center justify-between gap-2 border-b border-muted last:border-0 pb-2 last:pb-0">
+                                            <div className="min-w-0">
+                                                <p className="text-sm font-semibold truncate" title={p.name}>{p.name}</p>
+                                                <p className="text-xs text-muted-foreground">{p.quantity} unités</p>
+                                            </div>
+                                            <div className="text-right shrink-0">
+                                                <p className="text-sm font-bold text-primary">{formatCurrency(p.totalAmount)}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="text-xs text-muted-foreground text-center py-4">Aucune donnée disponible.</p>
+                            )}
+                        </CardContent>
+                    </Card>
+
                     <Card>
                         <CardHeader className="pb-2">
                             <CardTitle className="text-sm font-medium">Informations de contact</CardTitle>

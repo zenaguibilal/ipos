@@ -1,7 +1,7 @@
 
 'use client';
 import { v4 as uuidv4 } from 'uuid';
-import type { Customer, Sale, ImportAnalysis } from '@/lib/types';
+import type { Customer, Sale, ImportAnalysis, CustomerTopProduct } from '@/lib/types';
 import { customerRepository } from '@/repositories/customer.repository';
 import { saleRepository } from '@/repositories/sale.repository';
 import { returnRepository } from '@/repositories/return.repository';
@@ -35,10 +35,18 @@ class CustomerService {
         }
     }
 
-    async filterCustomers(filters: { query?: string; status?: string; page?: number; pageSize?: number; sortBy?: string }): Promise<{ data: Customer[], total: number }> {
+    async filterCustomers(filters: { query?: string; status?: string; category?: string; page?: number; pageSize?: number; sortBy?: string }): Promise<{ data: Customer[], total: number }> {
         try {
             const result = await customerRepository.filter(filters);
             return { data: result.data, total: result.count };
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    async getCategories(): Promise<string[]> {
+        try {
+            return await customerRepository.getUniqueCategories();
         } catch (error) {
             throw error;
         }
@@ -67,6 +75,7 @@ class CustomerService {
                 phone: customerData.phone,
                 address: customerData.address,
                 notes: customerData.notes,
+                category: customerData.category || 'Standard',
                 settlementDay: customerData.settlementDay,
                 creditLimit: customerData.creditLimit,
                 totalSpent: 0,
@@ -163,6 +172,52 @@ class CustomerService {
             const endIndex = startIndex + pageSize;
 
             return activity.slice(startIndex, endIndex);
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    async getCustomerTopProducts(customerUuid: string): Promise<CustomerTopProduct[]> {
+        try {
+            const sales = await saleRepository.findByCustomerUuid(customerUuid);
+            const itemMap = new Map<string, { name: string, quantity: number, total: number }>();
+            
+            sales.forEach(sale => {
+                sale.items.forEach(item => {
+                    const key = item.productUuid || item.name;
+                    const current = itemMap.get(key) || { name: item.name, quantity: 0, total: 0 };
+                    current.quantity += item.quantity;
+                    current.total += item.quantity * item.price;
+                    itemMap.set(key, current);
+                });
+            });
+            
+            return Array.from(itemMap.entries())
+                .map(([id, data]) => ({ 
+                    productUuid: id, 
+                    name: data.name, 
+                    quantity: data.quantity, 
+                    totalAmount: data.total 
+                }))
+                .sort((a, b) => b.quantity - a.quantity)
+                .slice(0, 5);
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    async getCustomerFinancialSummary(customerUuid: string) {
+        try {
+            const sales = await saleRepository.findByCustomerUuid(customerUuid);
+            const totalSalesCount = sales.length;
+            const totalInvoiced = sales.reduce((sum, s) => sum + s.total, 0);
+            const averageBasketValue = totalSalesCount > 0 ? totalInvoiced / totalSalesCount : 0;
+            
+            return {
+                totalSalesCount,
+                totalInvoiced,
+                averageBasketValue
+            };
         } catch (error) {
             throw error;
         }
@@ -278,6 +333,7 @@ class CustomerService {
                     phone: row.phone || row.telephone,
                     address: row.address || row.adresse,
                     notes: row.notes || row.observations,
+                    category: row.category || row.categorie || 'Standard',
                     creditLimit: row.creditLimit ? parseFloat(row.creditLimit) : undefined,
                     outstandingBalance: row.outstandingBalance ? parseFloat(row.outstandingBalance) : undefined,
                 };
@@ -330,6 +386,7 @@ class CustomerService {
         const data = customers.map(c => ({
             'Prénom': c.firstName,
             'Nom': c.lastName,
+            'Catégorie': c.category || 'Standard',
             'Téléphone': c.phone || '',
             'Adresse': c.address || '',
             'Notes': c.notes || '',

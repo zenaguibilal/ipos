@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -9,8 +9,10 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import type { Customer } from '@/lib/types';
-import { Loader2 } from 'lucide-react';
+import { Loader2, ChevronsUpDown, Plus } from 'lucide-react';
 import { customerService } from '@/services/customer.service';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 
 interface CustomerDialogProps {
     isOpen: boolean;
@@ -25,6 +27,7 @@ const initialFormState = {
     phone: '',
     address: '',
     notes: '',
+    category: 'Standard',
     settlementDay: '',
     creditLimit: '',
 };
@@ -33,6 +36,16 @@ export function CustomerDialog({ isOpen, onOpenChange, customer, onSuccess }: Cu
     const [formState, setFormState] = useState(initialFormState);
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+    
+    const [categories, setCategories] = useState<string[]>([]);
+    const [categorySearch, setCategorySearch] = useState('');
+    const [categoryPopoverOpen, setCategoryPopoverOpen] = useState(false);
+
+    useEffect(() => {
+        if (isOpen) {
+            customerService.getCategories().then(setCategories);
+        }
+    }, [isOpen]);
 
      useEffect(() => {
         if (customer && isOpen) {
@@ -42,6 +55,7 @@ export function CustomerDialog({ isOpen, onOpenChange, customer, onSuccess }: Cu
                 phone: customer.phone || '',
                 address: customer.address || '',
                 notes: customer.notes || '',
+                category: customer.category || 'Standard',
                 settlementDay: String(customer.settlementDay || ''),
                 creditLimit: String(customer.creditLimit || ''),
             });
@@ -50,13 +64,18 @@ export function CustomerDialog({ isOpen, onOpenChange, customer, onSuccess }: Cu
         }
     }, [customer, isOpen]);
 
+    const categoryOptions = useMemo(() => {
+        const base = Array.from(new Set(['Standard', 'VIP', 'Wholesale', ...categories]));
+        if (!categorySearch) return base;
+        return base.filter(c => c.toLowerCase().includes(categorySearch.toLowerCase()));
+    }, [categories, categorySearch]);
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setError(null);
         setIsLoading(true);
 
-        const { firstName, lastName, phone, address, notes, settlementDay, creditLimit } = formState;
+        const { firstName, lastName, phone, address, notes, category, settlementDay, creditLimit } = formState;
 
         const customerData = {
             firstName,
@@ -64,6 +83,7 @@ export function CustomerDialog({ isOpen, onOpenChange, customer, onSuccess }: Cu
             phone: phone || undefined,
             address: address || undefined,
             notes: notes || undefined,
+            category: category || 'Standard',
             settlementDay: settlementDay ? parseInt(settlementDay, 10) : undefined,
             creditLimit: creditLimit ? parseFloat(creditLimit) : undefined,
         };
@@ -109,6 +129,60 @@ export function CustomerDialog({ isOpen, onOpenChange, customer, onSuccess }: Cu
                                 <Input id="lastName" value={formState.lastName} onChange={(e) => setFormState(s => ({...s, lastName: e.target.value}))} required />
                             </div>
                         </div>
+                        
+                        <div className="space-y-2">
+                            <Label>Catégorie / Groupe</Label>
+                            <Popover open={categoryPopoverOpen} onOpenChange={setCategoryPopoverOpen}>
+                                <PopoverTrigger asChild>
+                                    <Button
+                                        variant="outline"
+                                        role="combobox"
+                                        className="w-full justify-between font-normal"
+                                    >
+                                        {formState.category || "Sélectionner une catégorie..."}
+                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
+                                    <Command>
+                                        <CommandInput 
+                                            placeholder="Rechercher ou créer..." 
+                                            onValueChange={setCategorySearch}
+                                        />
+                                        <CommandList>
+                                            <CommandEmpty>
+                                                <Button 
+                                                    variant="link" 
+                                                    className="w-full"
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setFormState(s => ({ ...s, category: categorySearch }));
+                                                        setCategoryPopoverOpen(false);
+                                                    }}>
+                                                    <Plus className="mr-2 h-4 w-4" />
+                                                    Créer "{categorySearch}"
+                                                </Button>
+                                            </CommandEmpty>
+                                            <CommandGroup>
+                                                {categoryOptions.map((cat) => (
+                                                    <CommandItem
+                                                        key={cat}
+                                                        value={cat}
+                                                        onSelect={() => {
+                                                            setFormState(s => ({ ...s, category: cat }));
+                                                            setCategoryPopoverOpen(false);
+                                                        }}
+                                                    >
+                                                        {cat}
+                                                    </CommandItem>
+                                                ))}
+                                            </CommandGroup>
+                                        </CommandList>
+                                    </Command>
+                                </PopoverContent>
+                            </Popover>
+                        </div>
+
                         <div className="space-y-2">
                             <Label htmlFor="phone">Téléphone</Label>
                             <Input id="phone" type="tel" value={formState.phone} onChange={(e) => setFormState(s => ({...s, phone: e.target.value}))} />

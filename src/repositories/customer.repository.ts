@@ -1,3 +1,4 @@
+
 'use client';
 
 import { createClient } from "@/utils/supabase/client";
@@ -12,6 +13,8 @@ const fromSupabase = (customer: any): Customer => customer ? ({
     searchName: customer.search_name,
     phone: customer.phone,
     address: customer.address,
+    notes: customer.notes,
+    category: customer.category,
     settlementDay: customer.settlement_day,
     creditLimit: customer.credit_limit,
     totalSpent: customer.total_spent,
@@ -36,6 +39,8 @@ const toSupabase = (customer: Partial<Customer>) => ({
     search_name: customer.searchName,
     phone: customer.phone,
     address: customer.address,
+    notes: customer.notes,
+    category: customer.category,
     settlement_day: customer.settlementDay,
     credit_limit: customer.creditLimit,
     total_spent: customer.totalSpent,
@@ -73,11 +78,14 @@ class CustomerRepository {
         return data ? fromSupabase(data) : undefined;
     }
 
-    async filter(filters: { query?: string; status?: string; page?: number; pageSize?: number; sortBy?: string }): Promise<{ data: Customer[], count: number }> {
+    async filter(filters: { query?: string; status?: string; category?: string; page?: number; pageSize?: number; sortBy?: string }): Promise<{ data: Customer[], count: number }> {
         let query = this.supabase.from('customers').select('*', { count: 'exact' });
 
         if (filters.query) {
             query = query.ilike('search_name', `%${filters.query}%`);
+        }
+        if (filters.category && filters.category !== 'all') {
+            query = query.eq('category', filters.category);
         }
         if (filters.status) {
             if(filters.status === 'has_debt') query = query.gt('outstanding_balance', 0);
@@ -111,6 +119,12 @@ class CustomerRepository {
         const { data, error, count } = await query;
         if (error) throw error;
         return { data: data.map(fromSupabase), count: count || 0 };
+    }
+
+    async getUniqueCategories(): Promise<string[]> {
+        const { data, error } = await this.supabase.rpc('get_unique_customer_categories');
+        if (error) throw error;
+        return data || [];
     }
 
     async add(customer: Customer): Promise<Customer> {
