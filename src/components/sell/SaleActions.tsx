@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState } from 'react';
@@ -89,7 +90,7 @@ export const SaleActions = React.forwardRef<
                     </div>
                 )}
                  
-                 <Separator className="my-4 bg-white/10" />
+                 <Separator className="my-4" />
 
                  <div className="luxury-glass p-4">
                     <div className="flex justify-between items-center text-2xl font-bold text-primary">

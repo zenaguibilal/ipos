@@ -81,7 +81,7 @@ export function CartDisplay() {
                     <div className="space-y-3">
                         {cart.items.map(item => (
                             <div key={item.uuid} className={cn(
-                                "flex items-center gap-4 bg-background/50 border border-white/5 p-2 rounded-xl transition-all duration-300", 
+                                "flex items-center gap-4 bg-background/50 border p-2 rounded-xl transition-all duration-300", 
                                 item.flash && "animate-flash"
                             )}>
                                 <Image 
