@@ -1,11 +1,11 @@
-
 'use client';
 import { v4 as uuidv4 } from 'uuid';
-import type { Sale, CartItem, SaleItem } from '@/lib/types';
+import type { Sale, CartItem, SaleItem, Customer } from '@/lib/types';
 import { saleRepository } from '@/repositories/sale.repository';
 import { inventoryService } from './inventory.service';
 import { customerService } from './customer.service';
 import { useAppStore } from '@/stores/appStore';
+import Papa from 'papaparse';
 
 class SalesService {
 
@@ -133,6 +133,40 @@ class SalesService {
         } catch (error) {
             throw error;
         }
+    }
+
+    async exportToCSV(sales: Sale[], customerMap: Map<string, Customer>) {
+        const rows = sales.flatMap(sale => {
+            const customer = sale.customerUuid ? customerMap.get(sale.customerUuid) : null;
+            const customerName = customer ? `${customer.firstName} ${customer.lastName}` : 'Client de passage';
+            
+            return sale.items.map(item => ({
+                'Date': sale.createdAt ? new Date(sale.createdAt).toLocaleString('fr-FR') : '',
+                'Facture': sale.invoiceNumber,
+                'Client': customerName,
+                'Article': item.name,
+                'Qté': item.quantity,
+                'Prix Unitaire': item.price,
+                'Sous-total Article': item.price * item.quantity,
+                'Total Facture': sale.total,
+                'Montant Payé': sale.amountPaid,
+                'Reste à payer': sale.remainingBalance,
+                'Statut': sale.paymentStatus === 'paid' ? 'Payé' : sale.paymentStatus === 'partial' ? 'Partiel' : 'Impayé',
+                'Date Échéance': sale.dueDate ? new Date(sale.dueDate).toLocaleDateString('fr-FR') : 'N/A'
+            }));
+        });
+
+        const csv = Papa.unparse(rows);
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        
+        link.setAttribute('href', url);
+        link.setAttribute('download', `historique-ventes-${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     }
 }
 
