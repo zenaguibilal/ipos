@@ -6,7 +6,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import type { Customer, ImportAnalysis } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, Users, FileDown, Loader2, FileUp, Trash2, LayoutGrid, List, RefreshCw, Printer } from 'lucide-react';
+import { Plus, Search, Users, FileDown, Loader2, FileUp, Trash2, LayoutGrid, List, RefreshCw, Printer, SortAsc } from 'lucide-react';
 import { CustomerCard } from '@/components/customers/customer-card';
 import { CustomerTable } from '@/components/customers/customer-table';
 import { CustomerTableSkeleton } from '@/components/customers/customer-table-skeleton';
@@ -14,7 +14,7 @@ import { CustomerDialog } from '@/components/customers/customer-dialog';
 import { DeleteCustomerDialog } from '@/components/customers/delete-customer-dialog';
 import { toast } from 'sonner';
 import { CustomerStats } from '@/components/customers/CustomerStats';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuItem, DropdownMenuRadioGroup, DropdownMenuRadioItem } from "@/components/ui/dropdown-menu";
 import { PageHeader } from '@/components/layout/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -26,8 +26,19 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { DeleteMultipleCustomersDialog } from '@/components/customers/DeleteMultipleCustomersDialog';
 import { AddPaymentDialog } from '@/components/payments/AddPaymentDialog';
 import { PrintStatementDialog } from '@/components/customers/PrintStatementDialog';
+import { cn } from '@/lib/utils';
 
 type FilterStatus = 'all' | 'has_debt' | 'overdue' | 'over_limit' | 'is_bread_client';
+
+const sortOptions: { [key: string]: string } = {
+    'createdAt_desc': 'Plus récents',
+    'createdAt_asc': 'Plus anciens',
+    'name_asc': 'Nom (A-Z)',
+    'name_desc': 'Nom (Z-A)',
+    'balance_desc': 'Dette (Plus élevée)',
+    'balance_asc': 'Dette (Moins élevée)',
+    'spent_desc': 'Dépenses (Plus élevées)',
+};
 
 const ITEMS_PER_PAGE = 12;
 
@@ -41,6 +52,7 @@ export default function CustomersPage() {
 
     const [searchQuery, setSearchQuery] = useState('');
     const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
+    const [sortBy, setSortBy] = useState('createdAt_desc');
     
     // Dialog states
     const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
@@ -87,7 +99,8 @@ export default function CustomersPage() {
                 query: debouncedSearchQuery, 
                 status: filterStatus,
                 page: currentPage,
-                pageSize: ITEMS_PER_PAGE
+                pageSize: ITEMS_PER_PAGE,
+                sortBy: sortBy
             });
             
             let updatedCustomers: Customer[];
@@ -107,11 +120,11 @@ export default function CustomersPage() {
         } finally {
             setIsLoading(false);
         }
-    }, [debouncedSearchQuery, filterStatus, page, customers]);
+    }, [debouncedSearchQuery, filterStatus, page, customers, sortBy]);
     
     useEffect(() => {
         fetchCustomers(true);
-    }, [debouncedSearchQuery, filterStatus]);
+    }, [debouncedSearchQuery, filterStatus, sortBy]);
 
     useEffect(() => {
         setSelectedCustomers(new Set());
@@ -353,6 +366,24 @@ export default function CustomersPage() {
                         <DropdownMenuCheckboxItem checked={filterStatus === 'overdue'} onCheckedChange={() => setFilterStatus('overdue')}>En retard de paiement</DropdownMenuCheckboxItem>
                         <DropdownMenuCheckboxItem checked={filterStatus === 'over_limit'} onCheckedChange={() => setFilterStatus('over_limit')}>Plafond dépassé</DropdownMenuCheckboxItem>
                         <DropdownMenuCheckboxItem checked={filterStatus === 'is_bread_client'} onCheckedChange={() => setFilterStatus('is_bread_client')}>Clients de pain</DropdownMenuCheckboxItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="outline" className="w-full sm:w-auto">
+                            <SortAsc className="mr-2 h-4 w-4" />
+                            Trier: {sortOptions[sortBy]}
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                        <DropdownMenuLabel>Trier les clients par</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuRadioGroup value={sortBy} onValueChange={setSortBy}>
+                            {Object.entries(sortOptions).map(([key, value]) => (
+                                <DropdownMenuRadioItem key={key} value={key}>{value}</DropdownMenuRadioItem>
+                            ))}
+                        </DropdownMenuRadioGroup>
                     </DropdownMenuContent>
                 </DropdownMenu>
 

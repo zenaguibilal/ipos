@@ -34,7 +34,7 @@ class CustomerService {
         }
     }
 
-    async filterCustomers(filters: { query?: string; status?: string; page?: number; pageSize?: number }): Promise<{ data: Customer[], total: number }> {
+    async filterCustomers(filters: { query?: string; status?: string; page?: number; pageSize?: number; sortBy?: string }): Promise<{ data: Customer[], total: number }> {
         try {
             const result = await customerRepository.filter(filters);
             return { data: result.data, total: result.count };

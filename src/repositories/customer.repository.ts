@@ -40,7 +40,7 @@ const toSupabase = (customer: Partial<Customer>) => ({
     credit_limit: customer.creditLimit,
     total_spent: customer.totalSpent,
     outstanding_balance: customer.outstandingBalance,
-    last_activity_date: customer.lastActivityDate,
+    last_activity_date: customer.last_activity_date,
     created_at: customer.createdAt,
     updated_at: customer.updated_at,
     debt_status: customer.debtStatus,
@@ -73,7 +73,7 @@ class CustomerRepository {
         return data ? fromSupabase(data) : undefined;
     }
 
-    async filter(filters: { query?: string; status?: string; page?: number; pageSize?: number }): Promise<{ data: Customer[], count: number }> {
+    async filter(filters: { query?: string; status?: string; page?: number; pageSize?: number; sortBy?: string }): Promise<{ data: Customer[], count: number }> {
         let query = this.supabase.from('customers').select('*', { count: 'exact' });
 
         if (filters.query) {
@@ -86,13 +86,27 @@ class CustomerRepository {
             if(filters.status === 'is_bread_client') query = query.eq('is_bread_client', true);
         }
 
+        if (filters.sortBy) {
+            const [field, order] = filters.sortBy.split('_');
+            const isAsc = order === 'asc';
+            
+            const columnMap: { [key: string]: string } = {
+                'name': 'search_name',
+                'balance': 'outstanding_balance',
+                'spent': 'total_spent',
+                'createdAt': 'created_at'
+            };
+            
+            query = query.order(columnMap[field] || 'created_at', { ascending: isAsc });
+        } else {
+            query = query.order('created_at', { ascending: false });
+        }
+
         if (filters.page && filters.pageSize) {
             const from = (filters.page - 1) * filters.pageSize;
             const to = from + filters.pageSize - 1;
             query = query.range(from, to);
         }
-        
-        query = query.order('created_at', { ascending: false });
         
         const { data, error, count } = await query;
         if (error) throw error;
