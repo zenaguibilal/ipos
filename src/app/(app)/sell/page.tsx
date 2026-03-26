@@ -8,7 +8,7 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { CustomerCombobox } from '@/components/sell/CustomerCombobox';
 import { DraftsDropdown } from '@/components/sell/DraftsDropdown';
-import { PackageSearch } from 'lucide-react';
+import { PackageSearch, UserPlus } from 'lucide-react';
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
@@ -18,6 +18,7 @@ import type { Product, Customer } from '@/lib/types';
 import { useAppStore, useAppActions } from '@/stores/appStore';
 import { customerService } from '@/services/customer.service';
 import { PrintReceiptDialog } from '@/components/sales/PrintReceiptDialog';
+import { CustomerDialog } from '@/components/customers/customer-dialog';
 
 export default function SellPage() {
     const { activeCartId, carts, sessionLoading } = useAppStore(state => ({
@@ -25,11 +26,15 @@ export default function SellPage() {
         carts: state.carts,
         sessionLoading: state.sessionLoading,
     }));
-    const { addProductToCart } = useAppActions();
+    const { addProductToCart, setCartCustomer } = useAppActions();
     
     const [isProductSheetOpen, setIsProductSheetOpen] = useState(false);
     const [isDebtPaymentDialogOpen, setIsDebtPaymentDialogOpen] = useState(false);
-    const [cartCustomer, setCartCustomer] = useState<Customer | null>(null);
+    const [cartCustomer, setLocalCartCustomer] = useState<Customer | null>(null);
+
+    // State for the "Add Customer" dialog
+    const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
+    const [customerListVersion, setCustomerListVersion] = useState(0);
 
     const productSearchRef = useRef<{ focus: () => void }>(null);
     const customerComboboxRef = useRef<HTMLButtonElement>(null);
@@ -41,10 +46,10 @@ export default function SellPage() {
     useEffect(() => {
         if (activeCart?.customerUuid) {
             customerService.getCustomerByUuid(activeCart.customerUuid).then(customer => {
-                setCartCustomer(customer || null);
-            }).catch(() => setCartCustomer(null));
+                setLocalCartCustomer(customer || null);
+            }).catch(() => setLocalCartCustomer(null));
         } else {
-            setCartCustomer(null);
+            setLocalCartCustomer(null);
         }
     }, [activeCart?.customerUuid]);
 
@@ -60,7 +65,7 @@ export default function SellPage() {
             // Re-fetch customer to update their status in the store
             const updatedCustomer = await customerService.getCustomerByUuid(cartCustomer.uuid);
             if (updatedCustomer) {
-                setCartCustomer(updatedCustomer);
+                setLocalCartCustomer(updatedCustomer);
             }
         } catch (error: any) {
             toast.error("Erreur lors de la mise à jour du client.", { description: error.message });
@@ -69,6 +74,15 @@ export default function SellPage() {
     
     const handlePayDebtClick = () => {
         setIsDebtPaymentDialogOpen(true);
+    };
+
+    const handleCustomerDialogSuccess = (newCustomer?: Customer) => {
+        if (newCustomer) {
+            // Automatically select the newly created customer
+            setCartCustomer(newCustomer);
+        }
+        // Trigger a re-fetch in the combobox
+        setCustomerListVersion(v => v + 1);
     };
 
 
@@ -153,8 +167,14 @@ export default function SellPage() {
                     {/* Main column */}
                     <div className="md:col-span-2 flex flex-col gap-4">
                         <div className="flex flex-wrap items-center gap-4">
-                            <div className="flex-grow sm:flex-grow-0 w-full sm:w-auto sm:min-w-[300px]">
-                                <CustomerCombobox ref={customerComboboxRef} />
+                           <div className="flex items-center gap-2 flex-grow sm:flex-grow-0 w-full sm:w-auto">
+                                <div className="flex-grow sm:min-w-[300px]">
+                                    <CustomerCombobox ref={customerComboboxRef} listVersion={customerListVersion} />
+                                </div>
+                                <Button variant="outline" size="icon" onClick={() => setIsCustomerDialogOpen(true)}>
+                                    <UserPlus className="h-4 w-4" />
+                                    <span className="sr-only">Ajouter un client</span>
+                                </Button>
                             </div>
                             <div className="flex-grow sm:flex-grow-0 w-full sm:w-auto">
                                 <DraftsDropdown />
@@ -200,6 +220,12 @@ export default function SellPage() {
                     onPaymentSuccess={handleSuccessfulPayment}
                 />
             )}
+            <CustomerDialog 
+                isOpen={isCustomerDialogOpen}
+                onOpenChange={setIsCustomerDialogOpen}
+                customer={null}
+                onSuccess={handleCustomerDialogSuccess}
+            />
             <PrintReceiptDialog />
         </>
     );

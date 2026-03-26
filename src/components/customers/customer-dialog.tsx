@@ -14,7 +14,7 @@ interface CustomerDialogProps {
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
     customer: Customer | null;
-    onSuccess: () => void;
+    onSuccess: (customer?: Customer) => void;
 }
 
 const initialFormState = {
@@ -65,13 +65,14 @@ export function CustomerDialog({ isOpen, onOpenChange, customer, onSuccess }: Cu
 
         try {
             if (customer) { // Editing
-                await customerService.updateCustomer(customer.uuid, customerData);
+                const updatedCustomer = await customerService.updateCustomer(customer.uuid, customerData);
                 toast.success(`Client ${firstName} ${lastName} mis à jour.`);
+                onSuccess(updatedCustomer);
             } else { // Adding
-                await customerService.addCustomer(customerData);
+                const newCustomer = await customerService.addCustomer(customerData);
                 toast.success(`Client ${firstName} ${lastName} ajouté.`);
+                onSuccess(newCustomer);
             }
-            onSuccess();
             onOpenChange(false);
         } catch (err: any) {
             setError(err.message || "Une erreur est survenue.");

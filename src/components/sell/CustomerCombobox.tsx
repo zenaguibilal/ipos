@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect, useState, useMemo } from 'react';
@@ -15,7 +14,11 @@ const WalkInCustomerOption: ComboboxOption = {
     subLabel: 'Aucun client sélectionné',
 };
 
-export const CustomerCombobox = React.forwardRef<HTMLButtonElement>((props, ref) => {
+interface CustomerComboboxProps {
+    listVersion: number;
+}
+
+export const CustomerCombobox = React.forwardRef<HTMLButtonElement, CustomerComboboxProps>(({ listVersion }, ref) => {
     const { carts, activeCartId } = useAppStore();
     const { setCartCustomer } = useAppActions();
     const [customers, setCustomers] = useState<Customer[]>([]);
@@ -33,7 +36,7 @@ export const CustomerCombobox = React.forwardRef<HTMLButtonElement>((props, ref)
             }
         };
         fetch();
-    }, []);
+    }, [listVersion]);
 
     const customerOptions = React.useMemo<ComboboxOption[]>(() => {
         const options = customers.map(c => {
