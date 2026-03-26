@@ -87,6 +87,23 @@ export default function SellPage() {
         };
     }, [handleKeyDown]);
 
+    // Add confirmation before leaving the page if cart is not empty
+    useEffect(() => {
+        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+          // The message is controlled by the browser, we just need to trigger it.
+          e.preventDefault();
+          e.returnValue = '';
+        };
+    
+        if (cart.items.length > 0) {
+          window.addEventListener('beforeunload', handleBeforeUnload);
+        }
+    
+        return () => {
+          window.removeEventListener('beforeunload', handleBeforeUnload);
+        };
+    }, [cart.items.length]);
+
     const isDataLoading = isCartLoading || !cart;
 
     if (isDataLoading) {
