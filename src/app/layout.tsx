@@ -72,6 +72,7 @@ export default function RootLayout({
          <meta name="mobile-web-app-capable" content="yes" />
          <meta name="apple-mobile-web-app-capable" content="yes" />
          <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+         <meta name="theme-color" content="#1a120c" />
       </head>
       <body className={inter.className}>
         <ClientProviders>
