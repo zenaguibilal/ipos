@@ -49,17 +49,17 @@ export function SalesHistoryTable({
   };
 
   return (
-    <div className="rounded-md border bg-card overflow-hidden">
+    <div className="rounded-xl border bg-card overflow-hidden">
       <Table>
-        <TableHeader>
+        <TableHeader className="bg-muted/50">
           <TableRow>
-            <TableHead>Facture</TableHead>
-            <TableHead>Date & Heure</TableHead>
-            <TableHead>Client</TableHead>
-            <TableHead className="text-center">Articles</TableHead>
-            <TableHead className="text-right">Statut</TableHead>
-            <TableHead className="text-right">Total</TableHead>
-            <TableHead className="w-[80px] text-right">Actions</TableHead>
+            <TableHead className="font-bold">Facture</TableHead>
+            <TableHead className="font-bold">Date & Heure</TableHead>
+            <TableHead className="font-bold">Client</TableHead>
+            <TableHead className="text-center font-bold">Articles</TableHead>
+            <TableHead className="text-right font-bold">Statut</TableHead>
+            <TableHead className="text-right font-bold">Total</TableHead>
+            <TableHead className="w-[80px] text-right font-bold">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -70,7 +70,7 @@ export function SalesHistoryTable({
             const hasCard = sale.payments.some(p => p.method === 'card');
 
             return (
-              <TableRow key={sale.uuid} className="hover:bg-muted/50 transition-colors">
+              <TableRow key={sale.uuid} className="hover:bg-muted/30 transition-colors">
                 <TableCell className="font-mono font-bold text-primary">{sale.invoiceNumber}</TableCell>
                 <TableCell className="text-xs">
                   {format(safeToDate(sale.createdAt!), 'dd/MM/yy HH:mm', { locale: fr })}
@@ -89,8 +89,8 @@ export function SalesHistoryTable({
                 </TableCell>
                 <TableCell className="text-right">
                     <div className="flex flex-col items-end">
-                        <span className="font-black">{formatCurrency(sale.total)}</span>
-                        <div className="flex items-center gap-1 text-[9px] text-muted-foreground uppercase font-semibold">
+                        <span className="font-black text-foreground">{formatCurrency(sale.total)}</span>
+                        <div className="flex items-center gap-1 text-[9px] text-muted-foreground uppercase font-bold">
                             {hasCard ? <CreditCard className="h-2.5 w-2.5" /> : <Banknote className="h-2.5 w-2.5" />}
                             {hasCard ? 'Carte' : 'Espèces'}
                         </div>
@@ -99,7 +99,7 @@ export function SalesHistoryTable({
                 <TableCell className="text-right">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                      <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-primary/10 hover:text-primary">
                         <MoreHorizontal className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>

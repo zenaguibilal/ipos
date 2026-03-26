@@ -255,7 +255,7 @@ export default function SalesHistoryPage() {
             </PageHeader>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <Card className="bg-primary/5 border-primary/20">
+                <Card className="bg-primary/5 border-primary/20 luxury-glass">
                     <CardHeader className="py-3">
                         <CardTitle className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-2">
                             <TrendingUp className="h-4 w-4 text-primary" />
@@ -267,7 +267,7 @@ export default function SalesHistoryPage() {
                         <p className="text-[10px] text-muted-foreground mt-1">Sur la période filtrée</p>
                     </CardContent>
                 </Card>
-                <Card className="bg-chart-quaternary/5 border-chart-quaternary/20">
+                <Card className="bg-chart-quaternary/5 border-chart-quaternary/20 luxury-glass">
                     <CardHeader className="py-3">
                         <CardTitle className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-2">
                             <ReceiptIcon className="h-4 w-4 text-chart-quaternary" />
@@ -279,7 +279,7 @@ export default function SalesHistoryPage() {
                         <p className="text-[10px] text-muted-foreground mt-1">Transactions validées</p>
                     </CardContent>
                 </Card>
-                <Card className="bg-chart-secondary/5 border-chart-secondary/20">
+                <Card className="bg-chart-secondary/5 border-chart-secondary/20 luxury-glass">
                     <CardHeader className="py-3">
                         <CardTitle className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-2">
                             <ShoppingBag className="h-4 w-4 text-chart-secondary" />
@@ -298,7 +298,7 @@ export default function SalesHistoryPage() {
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input 
                         placeholder="Rechercher par N° Facture ou Nom Client..."
-                        className="pl-10"
+                        className="pl-10 h-11"
                         value={searchQuery}
                         onChange={e => setSearchQuery(e.target.value)}
                     />
@@ -307,7 +307,7 @@ export default function SalesHistoryPage() {
                 <div className="flex flex-wrap gap-2">
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="outline" className="w-full sm:w-auto">
+                            <Button variant="outline" className="w-full sm:w-auto h-11">
                                 <Filter className="mr-2 h-4 w-4" />
                                 Statut: {paymentFilter === 'all' ? 'Tous' : paymentFilter === 'paid' ? 'Payé' : paymentFilter === 'partial' ? 'Partiel' : 'Impayé'}
                             </Button>
@@ -326,7 +326,7 @@ export default function SalesHistoryPage() {
 
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="outline" className="w-full sm:w-auto">
+                            <Button variant="outline" className="w-full sm:w-auto h-11">
                                 <SortAsc className="mr-2 h-4 w-4" />
                                 Trier: {sortOptions[sortBy]}
                             </Button>
@@ -342,13 +342,15 @@ export default function SalesHistoryPage() {
                         </DropdownMenuContent>
                     </DropdownMenu>
 
-                    <DateRangePicker date={dateRange} setDate={setDate} />
+                    <div className="h-11">
+                        <DateRangePicker date={dateRange} setDate={setDate} />
+                    </div>
 
-                    <div className="flex items-center gap-1 rounded-md bg-muted p-1">
-                        <Button variant={viewMode === 'grid' ? 'secondary': 'ghost'} size="icon" onClick={() => setViewMode('grid')} title="Vue Grille">
+                    <div className="flex items-center gap-1 rounded-md bg-muted p-1 h-11">
+                        <Button variant={viewMode === 'grid' ? 'secondary': 'ghost'} size="icon" className="h-9 w-9" onClick={() => setViewMode('grid')} title="Vue Grille">
                             <LayoutGrid className="h-5 w-5"/>
                         </Button>
-                        <Button variant={viewMode === 'list' ? 'secondary': 'ghost'} size="icon" onClick={() => setViewMode('list')} title="Vue Liste">
+                        <Button variant={viewMode === 'list' ? 'secondary': 'ghost'} size="icon" className="h-9 w-9" onClick={() => setViewMode('list')} title="Vue Liste">
                             <List className="h-5 w-5"/>
                         </Button>
                     </div>
