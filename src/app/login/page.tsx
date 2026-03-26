@@ -21,8 +21,8 @@ export default function LoginPage() {
     const [showPassword, setShowPassword] = useState(false);
     
     // Sign In State
-    const [signInEmail, setSignInEmail] = useState('demo@ipos.com');
-    const [signInPassword, setSignInPassword] = useState('password');
+    const [signInEmail, setSignInEmail] = useState('');
+    const [signInPassword, setSignInPassword] = useState('');
 
     // Sign Up State
     const [signUpEmail, setSignUpEmail] = useState('');
@@ -42,7 +42,7 @@ export default function LoginPage() {
         setIsLoading(true);
         try {
             await signIn(signInEmail, signInPassword);
-            router.replace('/sell'); // Redirect on successful sign-in
+            router.replace('/dashboard'); // Redirect on successful sign-in
         } catch (error: any) {
             setError(error.message || "La connexion a échoué.");
         } finally {
@@ -60,7 +60,7 @@ export default function LoginPage() {
         setIsLoading(true);
         try {
             await signUp(signUpEmail, signUpPassword);
-            router.replace('/sell');
+            router.replace('/dashboard');
             toast.success("Compte créé avec succès ! Bienvenue.");
         } catch (error: any) {
             setError(error.message || "L'inscription a échoué.");
@@ -97,12 +97,12 @@ export default function LoginPage() {
                                     )}
                                     <div className="space-y-2">
                                         <Label htmlFor="email-in">Email</Label>
-                                        <Input id="email-in" type="email" value={signInEmail} onChange={e => setSignInEmail(e.target.value)} required disabled={isLoading} />
+                                        <Input id="email-in" type="email" placeholder="nom@exemple.com" value={signInEmail} onChange={e => setSignInEmail(e.target.value)} required disabled={isLoading} />
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="password-in">Mot de passe</Label>
                                         <div className="relative">
-                                            <Input id="password-in" type={showPassword ? 'text' : 'password'} value={signInPassword} onChange={e => setSignInPassword(e.target.value)} required disabled={isLoading}/>
+                                            <Input id="password-in" type={showPassword ? 'text' : 'password'} placeholder="••••••••" value={signInPassword} onChange={e => setSignInPassword(e.target.value)} required disabled={isLoading}/>
                                             <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setShowPassword(!showPassword)} disabled={isLoading}>
                                                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                             </Button>

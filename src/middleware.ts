@@ -67,9 +67,9 @@ export async function middleware(request: NextRequest) {
   }
 
   // if user is signed in and the current path is /login,
-  // redirect the user to the /sell page
+  // redirect the user to the /dashboard page
   if (user && isAuthRoute) {
-    return NextResponse.redirect(new URL('/sell', request.url))
+    return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
   // refresh the session cookie
