@@ -8,7 +8,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import type { Sale, Customer } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, History, FileUp, Filter, TrendingUp, Receipt as ReceiptIcon, ShoppingBag, LayoutGrid, List, SortAsc, RefreshCw, Loader2, Wallet, HandCoins } from 'lucide-react';
+import { Search, History, FileUp, Filter, TrendingUp, Receipt as ReceiptIcon, ShoppingBag, LayoutGrid, List, SortAsc, RefreshCw, Loader2, Wallet, HandCoins, DollarSign, X } from 'lucide-react';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { useDateRange } from '@/hooks/useDateRange';
 import { SalesHistoryCard } from '@/components/sales/SalesHistoryCard';
@@ -130,12 +130,25 @@ export default function SalesHistoryPage() {
     }, [filteredAndSortedSales, visibleSalesCount]);
 
     const stats = useMemo(() => {
-        const totalRevenue = filteredAndSortedSales.reduce((sum, s) => sum + s.total, 0);
-        const totalCollected = filteredAndSortedSales.reduce((sum, s) => sum + s.amountPaid, 0);
-        const totalDebt = filteredAndSortedSales.reduce((sum, s) => sum + s.remainingBalance, 0);
+        let totalRevenue = 0;
+        let totalCollected = 0;
+        let totalDebt = 0;
+        let totalCost = 0;
         const count = filteredAndSortedSales.length;
+
+        filteredAndSortedSales.forEach(s => {
+            totalRevenue += s.total;
+            totalCollected += s.amountPaid;
+            totalDebt += s.remainingBalance;
+            s.items.forEach(item => {
+                totalCost += (item.purchasePrice || 0) * item.quantity;
+            });
+        });
+
+        const totalProfit = totalRevenue - totalCost;
         const avgBasket = count > 0 ? totalRevenue / count : 0;
-        return { totalRevenue, totalCollected, totalDebt, count, avgBasket };
+        
+        return { totalRevenue, totalCollected, totalDebt, count, avgBasket, totalProfit };
     }, [filteredAndSortedSales]);
 
     const handleViewDetails = (sale: Sale) => {
@@ -172,6 +185,12 @@ export default function SalesHistoryPage() {
             setIsExporting(false);
         }
     };
+
+    const resetFilters = () => {
+        setSearchQuery('');
+        setPaymentFilter('all');
+        setSortBy('createdAt_desc');
+    };
     
     const renderSkeletons = () => (
         viewMode === 'grid' ? (
@@ -192,7 +211,9 @@ export default function SalesHistoryPage() {
                     icon={History}
                     title="Aucune vente trouvée"
                     description="Ajustez vos filtres ou la période pour voir plus de résultats."
-                />
+                >
+                    <Button variant="outline" onClick={resetFilters}>Réinitialiser les filtres</Button>
+                </EmptyState>
             );
         }
         
@@ -254,7 +275,7 @@ export default function SalesHistoryPage() {
                 </div>
             </PageHeader>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                 <Card className="bg-primary/5 border-primary/20 luxury-glass overflow-hidden relative group">
                     <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
                         <TrendingUp className="h-12 w-12 text-primary" />
@@ -264,7 +285,7 @@ export default function SalesHistoryPage() {
                     </CardHeader>
                     <CardContent>
                         <p className="text-2xl font-black text-primary">{formatCurrency(stats.totalRevenue)}</p>
-                        <p className="text-[10px] text-muted-foreground mt-1">{stats.count} transactions effectuées</p>
+                        <p className="text-[10px] text-muted-foreground mt-1">{stats.count} transactions</p>
                     </CardContent>
                 </Card>
 
@@ -277,7 +298,7 @@ export default function SalesHistoryPage() {
                     </CardHeader>
                     <CardContent>
                         <p className="text-2xl font-black text-chart-quaternary">{formatCurrency(stats.totalCollected)}</p>
-                        <p className="text-[10px] text-muted-foreground mt-1">Argent perçu réellement</p>
+                        <p className="text-[10px] text-muted-foreground mt-1">Argent perçu</p>
                     </CardContent>
                 </Card>
 
@@ -286,24 +307,37 @@ export default function SalesHistoryPage() {
                         <HandCoins className="h-12 w-12 text-destructive" />
                     </div>
                     <CardHeader className="py-3">
-                        <CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Dettes Générées</CardTitle>
+                        <CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Dettes</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <p className="text-2xl font-black text-destructive">{formatCurrency(stats.totalDebt)}</p>
-                        <p className="text-[10px] text-muted-foreground mt-1">Reste à percevoir sur cette période</p>
+                        <p className="text-[10px] text-muted-foreground mt-1">Reste à percevoir</p>
                     </CardContent>
                 </Card>
 
                 <Card className="bg-chart-secondary/5 border-chart-secondary/20 luxury-glass overflow-hidden relative group">
                     <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
-                        <ShoppingBag className="h-12 w-12 text-chart-secondary" />
+                        <DollarSign className="h-12 w-12 text-chart-secondary" />
+                    </div>
+                    <CardHeader className="py-3">
+                        <CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Bénéfice Brut</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-2xl font-black text-chart-secondary">{formatCurrency(stats.totalProfit)}</p>
+                        <p className="text-[10px] text-muted-foreground mt-1">Basé sur prix d'achat</p>
+                    </CardContent>
+                </Card>
+
+                <Card className="bg-chart-primary/5 border-chart-primary/20 luxury-glass overflow-hidden relative group hidden lg:block">
+                    <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <ShoppingBag className="h-12 w-12 text-chart-primary" />
                     </div>
                     <CardHeader className="py-3">
                         <CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Panier Moyen</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <p className="text-2xl font-black text-chart-secondary">{formatCurrency(stats.avgBasket)}</p>
-                        <p className="text-[10px] text-muted-foreground mt-1">Valeur moyenne par ticket</p>
+                        <p className="text-2xl font-black text-chart-primary">{formatCurrency(stats.avgBasket)}</p>
+                        <p className="text-[10px] text-muted-foreground mt-1">Valeur moyenne ticket</p>
                     </CardContent>
                 </Card>
             </div>
@@ -312,11 +346,19 @@ export default function SalesHistoryPage() {
                 <div className="relative flex-grow">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input 
-                        placeholder="Rechercher par N° Facture ou Nom Client..."
+                        placeholder="N° Facture ou Nom Client..."
                         className="pl-10 h-11 border-primary/10 bg-background/50 focus:border-primary/30"
                         value={searchQuery}
                         onChange={e => setSearchQuery(e.target.value)}
                     />
+                    {searchQuery && (
+                        <button 
+                            onClick={() => setSearchQuery('')}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        >
+                            <X className="h-4 w-4" />
+                        </button>
+                    )}
                 </div>
                 
                 <div className="flex flex-wrap gap-2">
@@ -325,7 +367,7 @@ export default function SalesHistoryPage() {
                             <Button variant="outline" className="h-11 min-w-[140px] justify-between border-primary/10">
                                 <span className="flex items-center gap-2">
                                     <Filter className="h-4 w-4 text-primary" />
-                                    {paymentFilter === 'all' ? 'Tous les paiements' : paymentFilter === 'paid' ? 'Payé' : paymentFilter === 'partial' ? 'Partiel' : 'Impayé'}
+                                    {paymentFilter === 'all' ? 'Tous statuts' : paymentFilter === 'paid' ? 'Payé' : paymentFilter === 'partial' ? 'Partiel' : 'Impayé'}
                                 </span>
                             </Button>
                         </DropdownMenuTrigger>
@@ -334,9 +376,9 @@ export default function SalesHistoryPage() {
                             <DropdownMenuSeparator />
                             <DropdownMenuRadioGroup value={paymentFilter} onValueChange={(val) => setPaymentFilter(val as PaymentFilter)}>
                                 <DropdownMenuRadioItem value="all">Tout afficher</DropdownMenuRadioItem>
-                                <DropdownMenuRadioItem value="paid">Payées uniquement</DropdownMenuRadioItem>
-                                <DropdownMenuRadioItem value="partial">Partielles uniquement</DropdownMenuRadioItem>
-                                <DropdownMenuRadioItem value="unpaid">Impayées uniquement</DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value="paid">Payées</DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value="partial">Partielles</DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value="unpaid">Impayées</DropdownMenuRadioItem>
                             </DropdownMenuRadioGroup>
                         </DropdownMenuContent>
                     </DropdownMenu>
