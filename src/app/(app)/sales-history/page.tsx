@@ -8,7 +8,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import type { Sale, Customer } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, History, FileUp, Filter, TrendingUp, Receipt as ReceiptIcon, ShoppingBag, LayoutGrid, List, SortAsc, RefreshCw, Loader2, Wallet, HandCoins, DollarSign, X } from 'lucide-react';
+import { Search, History, FileUp, Filter, TrendingUp, Receipt as ReceiptIcon, ShoppingBag, LayoutGrid, List, SortAsc, RefreshCw, Loader2, Wallet, HandCoins, DollarSign, X, Calendar, PieChart } from 'lucide-react';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { useDateRange } from '@/hooks/useDateRange';
 import { SalesHistoryCard } from '@/components/sales/SalesHistoryCard';
@@ -17,6 +17,7 @@ import { SalesHistoryTableSkeleton } from '@/components/sales/SalesHistoryTableS
 import { SaleDetailsDialog } from '@/components/sales/SaleDetailsDialog';
 import { CancelSaleDialog } from '@/components/sales/CancelSaleDialog';
 import { PrintSaleReceiptDialog } from '@/components/sales/PrintSaleReceiptDialog';
+import { AddPaymentDialog } from '@/components/payments/AddPaymentDialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -24,6 +25,7 @@ import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency, cn } from '@/lib/utils';
 import { useAppStore } from '@/stores/appStore';
+import { startOfDay, endOfDay, subDays, startOfMonth } from 'date-fns';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -60,6 +62,8 @@ export default function SalesHistoryPage() {
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
     const [isCancelOpen, setIsCancelOpen] = useState(false);
     const [isPrintOpen, setIsPrintOpen] = useState(false);
+    const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+    const [customerForPayment, setCustomerForPayment] = useState<Customer | null>(null);
     
     const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>('all');
     const [sortBy, setSortBy] = useState('createdAt_desc');
@@ -134,12 +138,20 @@ export default function SalesHistoryPage() {
         let totalCollected = 0;
         let totalDebt = 0;
         let totalCost = 0;
+        let cashCollected = 0;
+        let cardCollected = 0;
         const count = filteredAndSortedSales.length;
 
         filteredAndSortedSales.forEach(s => {
             totalRevenue += s.total;
             totalCollected += s.amountPaid;
             totalDebt += s.remainingBalance;
+            
+            s.payments.forEach(p => {
+                if (p.method === 'cash') cashCollected += p.amount;
+                if (p.method === 'card') cardCollected += p.amount;
+            });
+
             s.items.forEach(item => {
                 totalCost += (item.purchasePrice || 0) * item.quantity;
             });
@@ -148,7 +160,16 @@ export default function SalesHistoryPage() {
         const totalProfit = totalRevenue - totalCost;
         const avgBasket = count > 0 ? totalRevenue / count : 0;
         
-        return { totalRevenue, totalCollected, totalDebt, count, avgBasket, totalProfit };
+        return { 
+            totalRevenue, 
+            totalCollected, 
+            totalDebt, 
+            count, 
+            avgBasket, 
+            totalProfit,
+            cashCollected,
+            cardCollected
+        };
     }, [filteredAndSortedSales]);
 
     const handleViewDetails = (sale: Sale) => {
@@ -164,6 +185,18 @@ export default function SalesHistoryPage() {
     const handlePrintSale = (sale: Sale) => {
         setSelectedSale(sale);
         setIsPrintOpen(true);
+    };
+
+    const handleRecordPayment = (sale: Sale) => {
+        if (!sale.customerUuid) {
+            toast.error("Impossible d'encaisser un solde pour un client de passage.");
+            return;
+        }
+        const customer = customerMap.get(sale.customerUuid);
+        if (customer) {
+            setCustomerForPayment(customer);
+            setIsPaymentDialogOpen(true);
+        }
     };
 
     const handleLoadMore = () => {
@@ -183,6 +216,25 @@ export default function SalesHistoryPage() {
             toast.error("Erreur lors de l'exportation.");
         } finally {
             setIsExporting(false);
+        }
+    };
+
+    const setDateShortcut = (type: 'today' | 'yesterday' | 'week' | 'month') => {
+        const now = new Date();
+        switch (type) {
+            case 'today':
+                setDate({ from: startOfDay(now), to: endOfDay(now) });
+                break;
+            case 'yesterday':
+                const yesterday = subDays(now, 1);
+                setDate({ from: startOfDay(yesterday), to: endOfDay(yesterday) });
+                break;
+            case 'week':
+                setDate({ from: startOfDay(subDays(now, 6)), to: endOfDay(now) });
+                break;
+            case 'month':
+                setDate({ from: startOfMonth(now), to: endOfDay(now) });
+                break;
         }
     };
 
@@ -232,6 +284,7 @@ export default function SalesHistoryPage() {
                                     onViewDetails={handleViewDetails}
                                     onCancelSale={handleCancelSale}
                                     onPrint={handlePrintSale}
+                                    onRecordPayment={s.remainingBalance > 0 ? () => handleRecordPayment(s) : undefined}
                                 />
                             )
                         })}
@@ -243,6 +296,7 @@ export default function SalesHistoryPage() {
                         onViewDetails={handleViewDetails}
                         onCancelSale={handleCancelSale}
                         onPrint={handlePrintSale}
+                        onRecordPayment={handleRecordPayment}
                     />
                 )}
 
@@ -294,11 +348,14 @@ export default function SalesHistoryPage() {
                         <Wallet className="h-12 w-12 text-chart-quaternary" />
                     </div>
                     <CardHeader className="py-3">
-                        <CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Encaissé</CardTitle>
+                        <CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Encaissements</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <p className="text-2xl font-black text-chart-quaternary">{formatCurrency(stats.totalCollected)}</p>
-                        <p className="text-[10px] text-muted-foreground mt-1">Argent perçu</p>
+                        <div className="flex gap-3 mt-1">
+                            <p className="text-[9px] text-muted-foreground">💵 {formatCurrency(stats.cashCollected)}</p>
+                            <p className="text-[9px] text-muted-foreground">💳 {formatCurrency(stats.cardCollected)}</p>
+                        </div>
                     </CardContent>
                 </Card>
 
@@ -307,7 +364,7 @@ export default function SalesHistoryPage() {
                         <HandCoins className="h-12 w-12 text-destructive" />
                     </div>
                     <CardHeader className="py-3">
-                        <CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Dettes</CardTitle>
+                        <CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Dettes Générées</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <p className="text-2xl font-black text-destructive">{formatCurrency(stats.totalDebt)}</p>
@@ -362,6 +419,13 @@ export default function SalesHistoryPage() {
                 </div>
                 
                 <div className="flex flex-wrap gap-2">
+                    <div className="flex items-center gap-1 rounded-md bg-muted/50 p-1 border border-primary/10 h-11">
+                        <Button variant="ghost" size="sm" className="h-8 text-[10px] px-2" onClick={() => setDateShortcut('today')}>Aujourd'hui</Button>
+                        <Button variant="ghost" size="sm" className="h-8 text-[10px] px-2" onClick={() => setDateShortcut('yesterday')}>Hier</Button>
+                        <Button variant="ghost" size="sm" className="h-8 text-[10px] px-2" onClick={() => setDateShortcut('week')}>7 j</Button>
+                        <Button variant="ghost" size="sm" className="h-8 text-[10px] px-2" onClick={() => setDateShortcut('month')}>Mois</Button>
+                    </div>
+
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="outline" className="h-11 min-w-[140px] justify-between border-primary/10">
@@ -379,26 +443,6 @@ export default function SalesHistoryPage() {
                                 <DropdownMenuRadioItem value="paid">Payées</DropdownMenuRadioItem>
                                 <DropdownMenuRadioItem value="partial">Partielles</DropdownMenuRadioItem>
                                 <DropdownMenuRadioItem value="unpaid">Impayées</DropdownMenuRadioItem>
-                            </DropdownMenuRadioGroup>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="outline" className="h-11 min-w-[140px] justify-between border-primary/10">
-                                <span className="flex items-center gap-2">
-                                    <SortAsc className="h-4 w-4 text-primary" />
-                                    {sortOptions[sortBy]}
-                                </span>
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-56">
-                            <DropdownMenuLabel>Trier par</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuRadioGroup value={sortBy} onValueChange={setSortBy}>
-                                {Object.entries(sortOptions).map(([key, value]) => (
-                                    <DropdownMenuRadioItem key={key} value={key}>{value}</DropdownMenuRadioItem>
-                                ))}
                             </DropdownMenuRadioGroup>
                         </DropdownMenuContent>
                     </DropdownMenu>
@@ -431,6 +475,7 @@ export default function SalesHistoryPage() {
                             setIsDetailsOpen(false);
                             setIsPrintOpen(true);
                         }}
+                        onRecordPayment={selectedSale.remainingBalance > 0 ? () => handleRecordPayment(selectedSale) : undefined}
                     />
                     <CancelSaleDialog 
                         isOpen={isCancelOpen}
@@ -445,6 +490,18 @@ export default function SalesHistoryPage() {
                         customer={selectedSale.customerUuid ? customerMap.get(selectedSale.customerUuid) || null : null}
                     />
                 </>
+            )}
+
+            {customerForPayment && (
+                <AddPaymentDialog 
+                    isOpen={isPaymentDialogOpen}
+                    onOpenChange={setIsPaymentDialogOpen}
+                    customer={customerForPayment}
+                    onPaymentSuccess={() => {
+                        setIsPaymentDialogOpen(false);
+                        fetchSalesAndCustomers(true);
+                    }}
+                />
             )}
         </div>
     );

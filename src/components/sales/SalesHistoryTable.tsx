@@ -18,7 +18,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, FileText, Trash2, CheckCircle, AlertCircle, Clock, Printer, Banknote, CreditCard } from 'lucide-react';
+import { MoreHorizontal, FileText, Trash2, CheckCircle, AlertCircle, Clock, Printer, Banknote, CreditCard, HandCoins } from 'lucide-react';
 import { formatCurrency, safeToDate, cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -31,6 +31,7 @@ interface SalesHistoryTableProps {
   onViewDetails: (sale: Sale) => void;
   onCancelSale: (sale: Sale) => void;
   onPrint: (sale: Sale) => void;
+  onRecordPayment?: (sale: Sale) => void;
 }
 
 export function SalesHistoryTable({
@@ -39,6 +40,7 @@ export function SalesHistoryTable({
   onViewDetails,
   onCancelSale,
   onPrint,
+  onRecordPayment,
 }: SalesHistoryTableProps) {
   const isManagerOrAdmin = useIsManagerOrAdmin();
 
@@ -110,6 +112,11 @@ export function SalesHistoryTable({
                       <DropdownMenuItem onClick={() => onPrint(sale)}>
                         <Printer className="mr-2 h-4 w-4" /> Imprimer reçu
                       </DropdownMenuItem>
+                      {onRecordPayment && sale.remainingBalance > 0 && (
+                        <DropdownMenuItem onClick={() => onRecordPayment(sale)} className="text-primary focus:bg-primary/10">
+                          <HandCoins className="mr-2 h-4 w-4" /> Encaisser solde
+                        </DropdownMenuItem>
+                      )}
                       {isManagerOrAdmin && (
                         <DropdownMenuItem 
                           onClick={() => onCancelSale(sale)} 

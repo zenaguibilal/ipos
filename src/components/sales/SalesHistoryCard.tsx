@@ -6,7 +6,7 @@ import type { Sale } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, FileText, Trash2, CheckCircle, AlertCircle, Clock, Printer, CreditCard, Banknote } from 'lucide-react';
+import { MoreHorizontal, FileText, Trash2, CheckCircle, AlertCircle, Clock, Printer, CreditCard, Banknote, HandCoins } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { safeToDate, formatCurrency } from '@/lib/utils';
@@ -20,9 +20,10 @@ interface SalesHistoryCardProps {
     onViewDetails: (sale: Sale) => void;
     onCancelSale: (sale: Sale) => void;
     onPrint: (sale: Sale) => void;
+    onRecordPayment?: () => void;
 }
 
-export const SalesHistoryCard = React.memo(({ sale, customerName, onViewDetails, onCancelSale, onPrint }: SalesHistoryCardProps) => {
+export const SalesHistoryCard = React.memo(({ sale, customerName, onViewDetails, onCancelSale, onPrint, onRecordPayment }: SalesHistoryCardProps) => {
     const isManagerOrAdmin = useIsManagerOrAdmin();
     const hasCard = sale.payments.some(p => p.method === 'card');
 
@@ -57,6 +58,11 @@ export const SalesHistoryCard = React.memo(({ sale, customerName, onViewDetails,
                             <DropdownMenuItem onClick={() => onPrint(sale)}>
                                 <Printer className="mr-2 h-4 w-4" /> Imprimer reçu
                             </DropdownMenuItem>
+                            {onRecordPayment && (
+                                <DropdownMenuItem onClick={onRecordPayment} className="text-primary focus:bg-primary/10">
+                                    <HandCoins className="mr-2 h-4 w-4" /> Encaisser solde
+                                </DropdownMenuItem>
+                            )}
                             {isManagerOrAdmin && (
                                 <DropdownMenuItem onClick={() => onCancelSale(sale)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
                                     <Trash2 className="mr-2 h-4 w-4" /> Annuler vente

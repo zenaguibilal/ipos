@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -17,12 +18,21 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Printer, X } from 'lucide-react';
+import { Printer, X, HandCoins } from 'lucide-react';
 import type { Sale } from '@/lib/types';
 import { formatCurrency, safeToDate } from '@/lib/utils';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Separator } from '@/components/ui/separator';
+
+interface SaleDetailsDialogProps {
+    isOpen: boolean;
+    onOpenChange: (open: boolean) => void;
+    sale: Sale | null;
+    customerName?: string;
+    onPrint?: () => void;
+    onRecordPayment?: () => void;
+}
 
 export function SaleDetailsDialog({
     isOpen,
@@ -30,13 +40,8 @@ export function SaleDetailsDialog({
     sale,
     customerName,
     onPrint,
-}: {
-    isOpen: boolean;
-    onOpenChange: (open: boolean) => void;
-    sale: Sale | null;
-    customerName?: string;
-    onPrint?: () => void;
-}) {
+    onRecordPayment,
+}: SaleDetailsDialogProps) {
     if (!sale) return null;
 
     return (
@@ -83,7 +88,14 @@ export function SaleDetailsDialog({
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2 p-4 bg-muted/20 rounded-xl border border-border/50">
-                        <h4 className="text-xs font-black uppercase text-muted-foreground tracking-widest border-b border-border/50 pb-2 mb-3">Paiement</h4>
+                        <div className="flex justify-between items-center border-b border-border/50 pb-2 mb-3">
+                            <h4 className="text-xs font-black uppercase text-muted-foreground tracking-widest">Paiement</h4>
+                            {onRecordPayment && (
+                                <Button variant="ghost" size="sm" onClick={onRecordPayment} className="h-6 px-2 text-[10px] bg-primary/10 text-primary hover:bg-primary/20">
+                                    <HandCoins className="h-3 w-3 mr-1" /> Encaisser solde
+                                </Button>
+                            )}
+                        </div>
                         <div className="space-y-2">
                             {sale.payments.map((p, i) => (
                                 <div key={i} className="flex justify-between text-sm items-center">
