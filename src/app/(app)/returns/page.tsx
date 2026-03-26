@@ -8,7 +8,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import type { ProductReturn, Customer } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, Plus, Undo2, LayoutGrid, List, FileUp, RefreshCw, Loader2, Banknote, Package, HandCoins, X, TrendingDown, Printer } from 'lucide-react';
+import { Search, Plus, Undo2, LayoutGrid, List, FileUp, RefreshCw, Loader2, Banknote, Package, HandCoins, X, TrendingDown, Printer, Filter } from 'lucide-react';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { useDateRange } from '@/hooks/useDateRange';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -25,6 +25,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency, cn } from '@/lib/utils';
 import { useAppStore } from '@/stores/appStore';
 
+const ITEMS_PER_PAGE = 12;
+
 export default function ReturnsPage() {
     const { viewMode, setViewMode } = useAppStore(state => ({
         viewMode: state.returnViewMode,
@@ -40,7 +42,8 @@ export default function ReturnsPage() {
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
     const [isCancelOpen, setIsCancelOpen] = useState(false);
 
-    const [returns, setReturns] = useState<ProductReturn[] | undefined>(undefined);
+    const [allReturns, setAllReturns] = useState<ProductReturn[] | undefined>(undefined);
+    const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
     const [customerMap, setCustomerMap] = useState<Map<string, Customer>>(new Map());
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
@@ -50,7 +53,7 @@ export default function ReturnsPage() {
     const fetchReturnsAndCustomers = useCallback(async (manual = false) => {
         if (!isMounted || !dateRange) return;
         if (manual) setIsRefreshing(true);
-        setReturns(undefined);
+        setAllReturns(undefined);
         try {
             const [returnsData, customersData] = await Promise.all([
                 returnService.filterReturns({
@@ -60,11 +63,12 @@ export default function ReturnsPage() {
                 }),
                 customerService.getCustomers()
             ]);
-            setReturns(returnsData);
+            setAllReturns(returnsData);
             setCustomerMap(new Map(customersData.map(c => [c.uuid, c])));
+            setVisibleCount(ITEMS_PER_PAGE);
         } catch (error: any) {
             toast.error("Impossible de charger l'historique des retours.", { description: error.message });
-            setReturns([]);
+            setAllReturns([]);
         } finally {
             if (manual) setIsRefreshing(false);
         }
@@ -75,16 +79,25 @@ export default function ReturnsPage() {
     }, [fetchReturnsAndCustomers]);
 
     const stats = useMemo(() => {
-        if (!returns) return { totalValue: 0, totalRefunded: 0, itemCount: 0, impactDebt: 0 };
+        if (!allReturns) return { totalValue: 0, totalRefunded: 0, itemCount: 0, impactDebt: 0 };
         
-        return returns.reduce((acc, r) => {
+        return allReturns.reduce((acc, r) => {
             acc.totalValue += r.totalReturnValue;
             acc.totalRefunded += r.amountRefunded;
             acc.itemCount += r.items.length;
             acc.impactDebt += (r.totalReturnValue - r.amountRefunded);
             return acc;
         }, { totalValue: 0, totalRefunded: 0, itemCount: 0, impactDebt: 0 });
-    }, [returns]);
+    }, [allReturns]);
+
+    const visibleReturns = useMemo(() => {
+        if (!allReturns) return [];
+        return allReturns.slice(0, visibleCount);
+    }, [allReturns, visibleCount]);
+
+    const handleLoadMore = () => {
+        setVisibleCount(prev => prev + ITEMS_PER_PAGE);
+    };
 
     const handleViewDetails = (pr: ProductReturn) => {
         setSelectedReturn(pr);
@@ -121,13 +134,13 @@ export default function ReturnsPage() {
     };
 
     const handleExport = async () => {
-        if (!returns || returns.length === 0) {
+        if (!allReturns || allReturns.length === 0) {
             toast.info("Aucun retour à exporter.");
             return;
         }
         setIsExporting(true);
         try {
-            await returnService.exportToCSV(returns, customerMap);
+            await returnService.exportToCSV(allReturns, customerMap);
             toast.success("Historique des retours exporté avec succès.");
         } catch (error) {
             toast.error("Erreur lors de l'exportation.");
@@ -143,11 +156,11 @@ export default function ReturnsPage() {
     );
 
     const renderContent = () => {
-        if (returns === undefined) {
+        if (allReturns === undefined) {
             return renderSkeletons();
         }
 
-        if (returns.length === 0) {
+        if (allReturns.length === 0) {
             return (
                 <EmptyState
                     icon={Undo2}
@@ -165,7 +178,7 @@ export default function ReturnsPage() {
             <div className="space-y-6">
                 {viewMode === 'grid' ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {returns.map(r => {
+                        {visibleReturns.map(r => {
                             const customer = r.customerUuid ? customerMap.get(r.customerUuid) : undefined;
                             const customerName = customer ? `${customer.firstName} ${customer.lastName}` : 'Client de passage';
                             return (
@@ -182,12 +195,20 @@ export default function ReturnsPage() {
                     </div>
                 ) : (
                     <ReturnTable 
-                        returns={returns}
+                        returns={visibleReturns}
                         customerMap={customerMap}
                         onViewDetails={handleViewDetails}
                         onCancelReturn={handleCancelReturn}
                         onPrint={(r, format) => handlePrint(r, format)}
                     />
+                )}
+
+                {allReturns.length > visibleCount && (
+                    <div className="flex justify-center pt-4">
+                        <Button variant="outline" size="lg" onClick={handleLoadMore} className="min-w-[200px] luxury-glass border-primary/20">
+                            Charger plus ({visibleReturns.length} / {allReturns.length})
+                        </Button>
+                    </div>
                 )}
             </div>
         );
@@ -200,7 +221,7 @@ export default function ReturnsPage() {
                 description="Historique des marchandises retournées et impact sur les soldes clients."
             >
                 <div className="flex gap-2 w-full sm:w-auto">
-                    <Button variant="outline" onClick={handleExport} disabled={!returns?.length || isExporting} className="border-primary/20 luxury-glass">
+                    <Button variant="outline" onClick={handleExport} disabled={!allReturns?.length || isExporting} className="border-primary/20 luxury-glass">
                         <FileUp className={cn("mr-2 h-4 w-4", isExporting && "animate-pulse")} />
                         Exporter CSV
                     </Button>
@@ -259,7 +280,7 @@ export default function ReturnsPage() {
                         <CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Volume</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <p className="text-2xl font-black">{returns?.length || 0}</p>
+                        <p className="text-2xl font-black">{allReturns?.length || 0}</p>
                         <p className="text-[10px] text-muted-foreground mt-1">Opérations enregistrées</p>
                     </CardContent>
                 </Card>
@@ -283,15 +304,17 @@ export default function ReturnsPage() {
                 </div>
                 <div className="flex flex-wrap gap-2">
                     <DateRangePicker date={dateRange} setDate={setDate} />
+                    
                     <div className="flex items-center gap-1 rounded-xl bg-muted/50 p-1 border border-primary/10 h-11 luxury-glass">
-                        <Button variant={viewMode === 'grid' ? 'secondary': 'ghost'} size="icon" className="h-9 w-9 rounded-lg" onClick={() => setViewMode('grid')}>
+                        <Button variant={viewMode === 'grid' ? 'secondary': 'ghost'} size="icon" className="h-9 w-9 rounded-lg" onClick={() => setViewMode('grid')} title="Vue Grille">
                             <LayoutGrid className="h-5 w-5"/>
                         </Button>
-                        <Button variant={viewMode === 'list' ? 'secondary': 'ghost'} size="icon" className="h-9 w-9 rounded-lg" onClick={() => setViewMode('list')}>
+                        <Button variant={viewMode === 'list' ? 'secondary': 'ghost'} size="icon" className="h-9 w-9 rounded-lg" onClick={() => setViewMode('list')} title="Vue Liste">
                             <List className="h-5 w-5"/>
                         </Button>
                     </div>
-                    <Button variant="ghost" size="icon" className="h-11 w-11 hover:bg-primary/10 rounded-xl" onClick={() => fetchReturnsAndCustomers(true)} disabled={isRefreshing}>
+                    
+                    <Button variant="ghost" size="icon" className="h-11 w-11 hover:bg-primary/10 rounded-xl luxury-glass" onClick={() => fetchReturnsAndCustomers(true)} disabled={isRefreshing}>
                         <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
                     </Button>
                 </div>
@@ -313,7 +336,7 @@ export default function ReturnsPage() {
                 onSuccess={() => fetchReturnsAndCustomers(true)}
             />
 
-            {/* Hidden printable receipt for list actions */}
+            {/* Hidden printable receipt */}
             <div className="hidden">
                 {selectedReturn && <ReturnReceipt ref={receiptRef} productReturn={selectedReturn} profile={profile} />}
             </div>
