@@ -304,6 +304,12 @@ export default function DashboardPage() {
     useEffect(() => {
         if (isMounted && dateRange?.from && dateRange?.to) {
             fetchData(dateRange.from, dateRange.to);
+
+            const intervalId = setInterval(() => {
+                fetchData(dateRange.from!, dateRange.to!);
+            }, 60000); // Rafraîchir toutes les 60 secondes
+
+            return () => clearInterval(intervalId); // Nettoyer l'intervalle
         }
     }, [dateRange, isMounted, fetchData]);
 
