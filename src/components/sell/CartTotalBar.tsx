@@ -1,9 +1,10 @@
 
 'use client';
 
-import { calculateCartTotals, formatCurrency } from '@/lib/utils';
+import { calculateCartTotals, formatCurrency, cn } from '@/lib/utils';
 import { ShoppingCart, User, Tag, Minus } from 'lucide-react';
 import { useAppStore } from '@/stores/appStore';
+import { Separator } from '@/components/ui/separator';
 
 export function CartTotalBar() {
     const { cart, cartCustomer: customer } = useAppStore();
@@ -31,10 +32,19 @@ export function CartTotalBar() {
                     </div>
                     {customer && (
                         <div className="flex items-center gap-2 text-muted-foreground">
-                            <User className="h-5 w-5" />
+                            <User className="h-5 w-5 text-primary" />
                             <span className="font-semibold">{customer.firstName} {customer.lastName}</span>
-                            {customer.outstandingBalance > 0 && (
-                                <span className="text-destructive font-bold"> (Dette: {formatCurrency(customer.outstandingBalance)})</span>
+                            <Separator orientation="vertical" className="h-4 mx-1" />
+                            <span className={cn(
+                                "font-semibold",
+                                customer.outstandingBalance > 0 ? "text-destructive" : "text-muted-foreground"
+                            )}>
+                                Solde: {formatCurrency(customer.outstandingBalance)}
+                            </span>
+                            {typeof customer.creditLimit === 'number' && (
+                                <span className="font-semibold text-chart-quaternary">
+                                    (Plafond: {formatCurrency(customer.creditLimit)})
+                                </span>
                             )}
                         </div>
                     )}
@@ -55,7 +65,7 @@ export function CartTotalBar() {
                     )}
                     <div className="flex items-baseline gap-2">
                         <span className="text-base font-medium text-foreground">Total:</span>
-                        <span className="text-2xl font-bold text-primary orange-glow">{formatCurrency(total)}</span>
+                        <span className="text-2xl font-bold text-primary">{formatCurrency(total)}</span>
                     </div>
                 </div>
 
