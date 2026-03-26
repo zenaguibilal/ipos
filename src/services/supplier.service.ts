@@ -83,6 +83,25 @@ class SupplierService {
         }
     }
 
+    async bulkDelete(uuids: string[]): Promise<void> {
+        try {
+            for (const uuid of uuids) {
+                const intakes = await stockRepository.filter({ query: uuid });
+                const payments = await supplierPaymentRepository.findBySupplierUuid(uuid);
+                if (intakes.length > 0 || payments.length > 0) {
+                    const supplier = await supplierRepository.findByUuid(uuid);
+                    throw new Error(`Suppression impossible: Le fournisseur "${supplier?.name}" a un historique de transactions.`);
+                }
+            }
+            // Actually implement a bulk delete in repo if needed, or loop
+            for (const uuid of uuids) {
+                await supplierRepository.delete(uuid);
+            }
+        } catch (error) {
+            throw error;
+        }
+    }
+
     async updateSupplierBalance(uuid: string, amountChange: number): Promise<void> {
         try {
             const supplier = await this.getSupplierByUuid(uuid);
@@ -94,8 +113,6 @@ class SupplierService {
             throw error;
         }
     }
-
-    // --- Activities and Payments ---
 
     async getSupplierActivity(supplierUuid: string): Promise<any[]> {
         try {
@@ -126,12 +143,87 @@ class SupplierService {
             };
 
             const saved = await supplierPaymentRepository.add(newPayment);
-            // Reduce supplier balance
             await this.updateSupplierBalance(paymentData.supplierUuid, -paymentData.amount);
             
             return saved;
         } catch (error) {
             throw error;
+        }
+    }
+
+    async parseAndAnalyzeImport(file: File): Promise<any> {
+        return new Promise((resolve, reject) => {
+            Papa.parse(file, {
+                header: true,
+                skipEmptyLines: true,
+                complete: async (results) => {
+                    try {
+                        const analysis = await this._analyzeImportData(results.data);
+                        resolve(analysis);
+                    } catch (error) {
+                        reject(error);
+                    }
+                },
+                error: (error) => reject(error)
+            });
+        });
+    }
+
+    private async _analyzeImportData(csvData: any[]): Promise<any> {
+        const existingSuppliers = await this.getSuppliers();
+        const existingNames = new Map(existingSuppliers.map(s => [s.name.toLowerCase().trim(), s]));
+
+        const toAdd: any[] = [];
+        const toUpdate: any[] = [];
+        const errors: any[] = [];
+
+        for (const row of csvData) {
+            const name = row.name || row.nom || row.entreprise;
+            if (!name) {
+                errors.push({ ...row, error: "Nom manquant" });
+                continue;
+            }
+
+            const supplierData = {
+                name: name.trim(),
+                contactPerson: row.contactPerson || row.contact || row.personne_contact,
+                phone: row.phone || row.telephone || row.tel,
+                email: row.email || row.courriel,
+                address: row.address || row.adresse,
+                balance: row.balance ? parseFloat(row.balance) : 0,
+            };
+
+            const existing = existingNames.get(name.toLowerCase().trim());
+            if (existing) {
+                toUpdate.push({ ...supplierData, uuid: existing.uuid });
+            } else {
+                toAdd.push(supplierData);
+            }
+        }
+
+        return { toAdd, toUpdate, errors, total: csvData.length };
+    }
+
+    async executeImport(confirmedData: { toAdd: any[], toUpdate: any[] }): Promise<void> {
+        const userId = this.getUserId();
+        const now = new Date();
+
+        const dataToAdd = confirmedData.toAdd.map(s => ({
+            ...s,
+            uuid: uuidv4(),
+            user_id: userId,
+            createdAt: now,
+            updatedAt: now,
+        }));
+
+        const dataToUpdate = confirmedData.toUpdate.map(s => ({
+            ...s,
+            updatedAt: now,
+        }));
+
+        const allData = [...dataToAdd, ...dataToUpdate];
+        if (allData.length > 0) {
+            await supplierRepository.bulkUpsert(allData);
         }
     }
 

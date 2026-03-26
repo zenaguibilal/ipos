@@ -9,41 +9,50 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { MoreHorizontal, Edit, Trash2, Phone, MapPin, User, Wallet, ArrowRight, Eye } from 'lucide-react';
 import { formatCurrency, cn } from '@/lib/utils';
 import { useIsManagerOrAdmin } from '@/stores/appStore';
+import { Checkbox } from '@/components/ui/checkbox';
 import Link from 'next/link';
 
 interface SupplierCardProps {
     supplier: Supplier;
     onEdit: (supplier: Supplier) => void;
     onDelete: (supplier: Supplier) => void;
+    isSelected: boolean;
+    onToggleSelection: () => void;
 }
 
-export const SupplierCard = React.memo(({ supplier, onEdit, onDelete }: SupplierCardProps) => {
+export const SupplierCard = React.memo(({ supplier, onEdit, onDelete, isSelected, onToggleSelection }: SupplierCardProps) => {
     const isManagerOrAdmin = useIsManagerOrAdmin();
     
     return (
-        <Card className="flex flex-col transition-all duration-300 hover:shadow-xl hover:-translate-y-1 luxury-glass border-primary/5 group relative overflow-hidden">
+        <Card className={cn(
+            "flex flex-col transition-all duration-300 hover:shadow-xl hover:-translate-y-1 luxury-glass border-primary/5 group relative overflow-hidden",
+            isSelected && "ring-2 ring-primary border-primary/50 bg-primary/5"
+        )}>
             <div className="absolute -right-4 -bottom-4 opacity-[0.03] group-hover:opacity-[0.08] transition-opacity pointer-events-none">
                 <Wallet className="h-32 w-32 rotate-12 text-primary" />
             </div>
 
             <CardHeader className="pb-3">
                 <div className="flex justify-between items-start">
-                    <Link href={`/suppliers/${supplier.uuid}`} className="flex items-center gap-3 group/link">
-                        <div className="h-12 w-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center font-black text-xl shadow-inner group-hover/link:bg-primary group-hover/link:text-primary-foreground transition-colors">
-                            {supplier.name.substring(0, 1).toUpperCase()}
-                        </div>
-                        <div className="space-y-0.5">
-                            <CardTitle className="text-lg font-bold leading-tight group-hover/link:text-primary transition-colors">
-                                {supplier.name}
-                            </CardTitle>
-                            {supplier.contactPerson && (
-                                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter flex items-center gap-1">
-                                    <User className="h-2.5 w-2.5" />
-                                    {supplier.contactPerson}
-                                </p>
-                            )}
-                        </div>
-                    </Link>
+                    <div className="flex items-center gap-3">
+                        <Checkbox checked={isSelected} onCheckedChange={onToggleSelection} className="mt-1" />
+                        <Link href={`/suppliers/${supplier.uuid}`} className="flex items-center gap-3 group/link">
+                            <div className="h-12 w-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center font-black text-xl shadow-inner group-hover/link:bg-primary group-hover/link:text-primary-foreground transition-colors">
+                                {supplier.name.substring(0, 1).toUpperCase()}
+                            </div>
+                            <div className="space-y-0.5">
+                                <CardTitle className="text-lg font-bold leading-tight group-hover/link:text-primary transition-colors">
+                                    {supplier.name}
+                                </CardTitle>
+                                {supplier.contactPerson && (
+                                    <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter flex items-center gap-1">
+                                        <User className="h-2.5 w-2.5" />
+                                        {supplier.contactPerson}
+                                    </p>
+                                )}
+                            </div>
+                        </Link>
+                    </div>
                     {isManagerOrAdmin && (
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>

@@ -6,7 +6,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import type { Supplier } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, Building, LayoutGrid, List, RefreshCw, Loader2, Phone, Wallet, FileUp, X, SortAsc, Filter } from 'lucide-react';
+import { Plus, Search, Building, LayoutGrid, List, RefreshCw, Loader2, Wallet, FileUp, X, SortAsc, Filter, FileDown, Trash2 } from 'lucide-react';
 import { SupplierCard } from '@/components/suppliers/SupplierCard';
 import { SupplierTable } from '@/components/suppliers/SupplierTable';
 import { SupplierDialog } from '@/components/suppliers/SupplierDialog';
@@ -19,6 +19,7 @@ import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { supplierService } from '@/services/supplier.service';
 import { useAppStore, useIsManagerOrAdmin } from '@/stores/appStore';
 import { cn, formatCurrency } from '@/lib/utils';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,7 +29,10 @@ import {
   DropdownMenuTrigger,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
+  DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
+import { ImportSuppliersPreviewDialog } from '@/components/suppliers/ImportSuppliersPreviewDialog';
+import { DeleteMultipleSuppliersDialog } from '@/components/suppliers/DeleteMultipleSuppliersDialog';
 
 const sortOptions: { [key: string]: string } = {
     'name_asc': 'Nom (A-Z)',
@@ -53,10 +57,18 @@ export default function SuppliersPage() {
     
     const [isSupplierDialogOpen, setIsSupplierDialogOpen] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
     const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
+    const [selectedSuppliers, setSelectedSuppliers] = useState<Set<string>>(new Set());
     
     const [suppliers, setSuppliers] = useState<Supplier[] | undefined>(undefined);
     const [isRefreshing, setIsRefreshing] = useState(false);
+
+    // Import states
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [importAnalysis, setImportAnalysis] = useState<any>(null);
+    const [isImportPreviewOpen, setIsImportPreviewOpen] = useState(false);
+    const [isImporting, setIsImporting] = useState(false);
 
     const fetchSuppliers = useCallback(async (manual = false) => {
         if (manual) setIsRefreshing(true);
@@ -108,24 +120,57 @@ export default function SuppliersPage() {
         activeSuppliers: suppliers?.filter(s => s.balance > 0).length || 0
     }), [suppliers]);
 
-    const handleEditSupplier = (supplier: Supplier) => {
-        setSelectedSupplier(supplier);
-        setIsSupplierDialogOpen(true);
+    const handleToggleSelection = (uuid: string) => {
+        setSelectedSuppliers(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(uuid)) newSet.delete(uuid);
+            else newSet.add(uuid);
+            return newSet;
+        });
     };
 
-    const handleDeleteSupplier = (supplier: Supplier) => {
-        setSelectedSupplier(supplier);
-        setIsDeleteDialogOpen(true);
+    const handleSelectAll = () => {
+        if (!suppliers) return;
+        if (selectedSuppliers.size === suppliers.length) {
+            setSelectedSuppliers(new Set());
+        } else {
+            setSelectedSuppliers(new Set(suppliers.map(s => s.uuid)));
+        }
+    };
+
+    const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setIsAnalyzing(true);
+        try {
+            const analysis = await supplierService.parseAndAnalyzeImport(file);
+            setImportAnalysis(analysis);
+            setIsImportPreviewOpen(true);
+        } catch (error: any) {
+            toast.error("Erreur d'analyse.");
+        } finally {
+            setIsAnalyzing(false);
+            e.target.value = '';
+        }
+    };
+
+    const handleConfirmImport = async (data: any) => {
+        setIsImporting(true);
+        try {
+            await supplierService.executeImport(data);
+            toast.success("Importation terminée.");
+            setIsImportPreviewOpen(false);
+            fetchSuppliers();
+        } catch (error: any) {
+            toast.error("Erreur d'importation.");
+        } finally {
+            setIsImporting(false);
+        }
     };
 
     const handleExport = () => {
         if (!filteredAndSortedSuppliers.length) return;
-        try {
-            supplierService.exportToCSV(filteredAndSortedSuppliers);
-            toast.success("Liste des fournisseurs exportée.");
-        } catch (e) {
-            toast.error("Erreur lors de l'exportation.");
-        }
+        supplierService.exportToCSV(filteredAndSortedSuppliers);
     };
 
     const renderContent = () => {
@@ -157,8 +202,11 @@ export default function SuppliersPage() {
             return (
                 <SupplierTable 
                     suppliers={filteredAndSortedSuppliers}
-                    onEdit={handleEditSupplier}
-                    onDelete={handleDeleteSupplier}
+                    onEdit={(s) => { setSelectedSupplier(s); setIsSupplierDialogOpen(true); }}
+                    onDelete={(s) => { setSelectedSupplier(s); setIsDeleteDialogOpen(true); }}
+                    selectedSuppliers={selectedSuppliers}
+                    onToggleSelection={handleToggleSelection}
+                    onToggleAll={handleSelectAll}
                 />
             );
         }
@@ -169,8 +217,10 @@ export default function SuppliersPage() {
                     <SupplierCard 
                         key={s.uuid} 
                         supplier={s} 
-                        onEdit={handleEditSupplier} 
-                        onDelete={handleDeleteSupplier}
+                        onEdit={(s) => { setSelectedSupplier(s); setIsSupplierDialogOpen(true); }}
+                        onDelete={(s) => { setSelectedSupplier(s); setIsDeleteDialogOpen(true); }}
+                        isSelected={selectedSuppliers.has(s.uuid)}
+                        onToggleSelection={() => handleToggleSelection(s.uuid)}
                     />
                 ))}
             </div>
@@ -184,12 +234,28 @@ export default function SuppliersPage() {
                 description="Suivez vos partenaires commerciaux et l'état de vos dettes fournisseurs."
             >
                 <div className="flex gap-2 w-full sm:w-auto">
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline" disabled={isAnalyzing} className="border-primary/20 luxury-glass h-11">
+                                {isAnalyzing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <FileDown className="mr-2 h-4 w-4" />}
+                                Importer
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="luxury-glass">
+                            <DropdownMenuItem asChild>
+                                <label className="cursor-pointer w-full flex items-center gap-2">
+                                    <span>Fichier CSV</span>
+                                    <input type="file" className="hidden" accept=".csv" onChange={handleFileSelected} />
+                                </label>
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                     <Button variant="outline" onClick={handleExport} disabled={!filteredAndSortedSuppliers.length} className="border-primary/20 luxury-glass h-11">
-                        <FileUp className="mr-2 h-4 w-4" /> Exporter CSV
+                        <FileUp className="mr-2 h-4 w-4" /> Exporter
                     </Button>
                     {isManagerOrAdmin && (
                         <Button onClick={() => { setSelectedSupplier(null); setIsSupplierDialogOpen(true); }} className="bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 h-11 px-6 rounded-xl">
-                            <Plus className="mr-2 h-4 w-4" /> Nouveau Fournisseur
+                            <Plus className="mr-2 h-4 w-4" /> Nouveau
                         </Button>
                     )}
                 </div>
@@ -198,7 +264,7 @@ export default function SuppliersPage() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <Card className="luxury-glass bg-primary/5 border-primary/10 group overflow-hidden">
                     <CardHeader className="py-3 px-4 flex flex-row items-center justify-between space-y-0">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Total Partenaires</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Partenaires</span>
                         <Building className="h-4 w-4 text-primary group-hover:scale-110 transition-transform" />
                     </CardHeader>
                     <CardContent className="px-4 pb-4">
@@ -207,7 +273,7 @@ export default function SuppliersPage() {
                 </Card>
                 <Card className="luxury-glass bg-destructive/5 border-destructive/10 group overflow-hidden">
                     <CardHeader className="py-3 px-4 flex flex-row items-center justify-between space-y-0">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Dette Fournisseurs</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Dette Totale</span>
                         <Wallet className="h-4 w-4 text-destructive group-hover:scale-110 transition-transform" />
                     </CardHeader>
                     <CardContent className="px-4 pb-4">
@@ -228,55 +294,33 @@ export default function SuppliersPage() {
             <div className="flex flex-col lg:flex-row gap-3">
                 <div className="relative flex-grow">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input 
-                        placeholder="Rechercher un fournisseur par nom ou téléphone..."
-                        className="pl-10 h-11 border-primary/10 bg-background/50 focus:border-primary/30 luxury-glass rounded-xl"
-                        value={searchQuery}
-                        onChange={e => setSearchQuery(e.target.value)}
-                    />
-                    {searchQuery && (
-                        <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                            <X className="h-4 w-4" />
-                        </button>
-                    )}
+                    <Input placeholder="Rechercher..." className="pl-10 h-11 luxury-glass rounded-xl" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
                 </div>
                 
                 <div className="flex flex-wrap gap-2">
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="outline" className="h-11 border-primary/10 luxury-glass rounded-xl min-w-[180px] justify-between">
+                            <Button variant="outline" className="h-11 luxury-glass rounded-xl min-w-[180px] justify-between">
                                 <span className="flex items-center gap-2">
-                                    <Filter className={cn("h-4 w-4 text-primary", filterDebtOnly && "animate-pulse")} />
-                                    <span className="text-xs font-bold">{filterDebtOnly ? 'Filtré: Dettes' : 'Tous les fournisseurs'}</span>
+                                    <Filter className="h-4 w-4 text-primary" />
+                                    <span className="text-xs font-bold">{filterDebtOnly ? 'Dettes uniquement' : 'Tous'}</span>
                                 </span>
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent className="luxury-glass w-56">
-                            <DropdownMenuLabel className="text-[10px] font-black uppercase opacity-50">Filtrage des comptes</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuCheckboxItem
-                                checked={!filterDebtOnly}
-                                onCheckedChange={() => setFilterDebtOnly(false)}
-                            >Afficher Tout</DropdownMenuCheckboxItem>
-                            <DropdownMenuCheckboxItem
-                                checked={filterDebtOnly}
-                                onCheckedChange={() => setFilterDebtOnly(true)}
-                            >Uniquement avec solde dû</DropdownMenuCheckboxItem>
+                            <DropdownMenuCheckboxItem checked={!filterDebtOnly} onCheckedChange={() => setFilterDebtOnly(false)}>Tous</DropdownMenuCheckboxItem>
+                            <DropdownMenuCheckboxItem checked={filterDebtOnly} onCheckedChange={() => setFilterDebtOnly(true)}>Avec solde dû</DropdownMenuCheckboxItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
 
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="outline" className="h-11 border-primary/10 luxury-glass rounded-xl min-w-[180px] justify-between">
-                                <span className="flex items-center gap-2">
-                                    <SortAsc className="h-4 w-4 text-primary" />
-                                    <span className="text-xs font-bold">Trier: {sortOptions[sortBy]}</span>
-                                </span>
+                            <Button variant="outline" className="h-11 luxury-glass rounded-xl min-w-[180px] justify-between">
+                                <SortAsc className="h-4 w-4 text-primary" />
+                                <span className="text-xs font-bold">{sortOptions[sortBy]}</span>
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent className="luxury-glass w-56">
-                            <DropdownMenuLabel className="text-[10px] font-black uppercase opacity-50">Trier la liste par</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
                             <DropdownMenuRadioGroup value={sortBy} onValueChange={setSortBy}>
                                 {Object.entries(sortOptions).map(([key, value]) => (
                                     <DropdownMenuRadioItem key={key} value={key}>{value}</DropdownMenuRadioItem>
@@ -286,38 +330,37 @@ export default function SuppliersPage() {
                     </DropdownMenu>
 
                     <div className="flex items-center gap-1 rounded-xl bg-muted/50 p-1 border border-primary/10 h-11 luxury-glass">
-                        <Button variant={viewMode === 'grid' ? 'secondary': 'ghost'} size="icon" className="h-9 w-9 rounded-lg" onClick={() => setViewMode('grid')} title="Vue Grille">
-                            <LayoutGrid className="h-5 w-5"/>
-                        </Button>
-                        <Button variant={viewMode === 'list' ? 'secondary': 'ghost'} size="icon" className="h-9 w-9 rounded-lg" onClick={() => setViewMode('list')} title="Vue Liste">
-                            <List className="h-5 w-5"/>
-                        </Button>
+                        <Button variant={viewMode === 'grid' ? 'secondary': 'ghost'} size="icon" onClick={() => setViewMode('grid')}><LayoutGrid className="h-5 w-5"/></Button>
+                        <Button variant={viewMode === 'list' ? 'secondary': 'ghost'} size="icon" onClick={() => setViewMode('list')}><List className="h-5 w-5"/></Button>
                     </div>
 
-                    <Button variant="ghost" size="icon" className="h-11 w-11 hover:bg-primary/10 rounded-xl luxury-glass" onClick={() => fetchSuppliers(true)} disabled={isRefreshing}>
+                    <Button variant="ghost" size="icon" className="h-11 w-11 luxury-glass" onClick={() => fetchSuppliers(true)} disabled={isRefreshing}>
                         <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
                     </Button>
                 </div>
             </div>
+
+            {selectedSuppliers.size > 0 && (
+                <div className="flex justify-between items-center bg-primary/5 border border-primary/20 rounded-xl p-3 animate-in slide-in-from-top-2">
+                    <span className="text-sm font-bold text-primary">{selectedSuppliers.size} مورد(ين) مختار(ين)</span>
+                    <Button variant="destructive" size="sm" onClick={() => setIsBulkDeleteDialogOpen(true)} className="rounded-lg h-8">
+                        <Trash2 className="h-4 w-4 mr-2" /> Supprimer la sélection
+                    </Button>
+                </div>
+            )}
             
             <div className="min-h-[400px]">
                {renderContent()}
             </div>
 
-            <SupplierDialog 
-                isOpen={isSupplierDialogOpen}
-                onOpenChange={setIsSupplierDialogOpen}
-                supplier={selectedSupplier}
-                onSuccess={fetchSuppliers}
-            />
+            <SupplierDialog isOpen={isSupplierDialogOpen} onOpenChange={setIsSupplierDialogOpen} supplier={selectedSupplier} onSuccess={fetchSuppliers} />
             
             {isManagerOrAdmin && (
-                <DeleteSupplierDialog 
-                    isOpen={isDeleteDialogOpen}
-                    onOpenChange={setIsDeleteDialogOpen}
-                    supplier={selectedSupplier}
-                    onSuccess={fetchSuppliers}
-                />
+                <>
+                    <DeleteSupplierDialog isOpen={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen} supplier={selectedSupplier} onSuccess={fetchSuppliers} />
+                    <DeleteMultipleSuppliersDialog isOpen={isBulkDeleteDialogOpen} onOpenChange={setIsBulkDeleteDialogOpen} supplierUuids={Array.from(selectedSuppliers)} onSuccess={() => { setSelectedSuppliers(new Set()); fetchSuppliers(); }} />
+                    <ImportSuppliersPreviewDialog isOpen={isImportPreviewOpen} onOpenChange={setIsImportPreviewOpen} analysis={importAnalysis} onConfirm={handleConfirmImport} isImporting={isImporting} />
+                </>
             )}
         </div>
     );
