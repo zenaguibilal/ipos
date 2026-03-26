@@ -39,6 +39,7 @@ export default function SellPage() {
     const productSearchRef = useRef<{ focus: () => void }>(null);
     const customerComboboxRef = useRef<HTMLButtonElement>(null);
     const saleActionsRef = useRef<{ payment: () => void; }>(null);
+    const draftsDropdownRef = useRef<HTMLButtonElement>(null);
 
     const activeCart = useMemo(() => carts.find(c => c.id === activeCartId), [carts, activeCartId]);
 
@@ -98,6 +99,10 @@ export default function SellPage() {
             case 'F2':
                 e.preventDefault();
                 customerComboboxRef.current?.click();
+                break;
+            case 'F4':
+                e.preventDefault();
+                draftsDropdownRef.current?.click();
                 break;
             case 'F9':
                 e.preventDefault();
@@ -177,7 +182,7 @@ export default function SellPage() {
                                 </Button>
                             </div>
                             <div className="flex-grow sm:flex-grow-0 w-full sm:w-auto">
-                                <DraftsDropdown />
+                                <DraftsDropdown ref={draftsDropdownRef} />
                             </div>
                             <div className="w-full sm:w-auto md:hidden">
                                 <Sheet open={isProductSheetOpen} onOpenChange={setIsProductSheetOpen}>

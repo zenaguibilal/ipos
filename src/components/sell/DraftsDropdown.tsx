@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useAppStore, useAppActions } from '@/stores/appStore';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -9,8 +9,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Plus, Trash2, Archive, Save } from 'lucide-react';
 import { toast } from 'sonner';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
-export function DraftsDropdown() {
+export const DraftsDropdown = React.forwardRef<HTMLButtonElement, {}>(({}, ref) => {
     const { carts, activeCartId } = useAppStore();
     const { createNewCart, switchToCart, saveActiveCartAsDraft, deleteCart } = useAppActions();
     const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
@@ -61,12 +67,22 @@ export function DraftsDropdown() {
             </Dialog>
 
             <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="w-full sm:w-auto">
-                        <Archive className="mr-2 h-4 w-4" />
-                        <span>{activeCart?.name || 'Panier Actif'}</span>
-                    </Button>
-                </DropdownMenuTrigger>
+                <TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <DropdownMenuTrigger asChild>
+                                <Button ref={ref} variant="outline" className="w-full sm:w-auto">
+                                    <Archive className="mr-2 h-4 w-4" />
+                                    <span>{activeCart?.name || 'Panier Actif'}</span>
+                                </Button>
+                            </DropdownMenuTrigger>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            <p>Gérer les paniers et brouillons (F4)</p>
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
+
                 <DropdownMenuContent align="start" className="w-64">
                     <DropdownMenuLabel>Gestion des Paniers</DropdownMenuLabel>
                     <DropdownMenuSeparator />
@@ -101,4 +117,5 @@ export function DraftsDropdown() {
             </DropdownMenu>
         </>
     );
-}
+});
+DraftsDropdown.displayName = 'DraftsDropdown';

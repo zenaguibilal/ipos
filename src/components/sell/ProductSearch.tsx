@@ -161,7 +161,7 @@ export const ProductSearch = forwardRef<{focus: () => void}, ProductSearchProps>
                 <Barcode className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input 
                     ref={inputRef}
-                    placeholder="Scanner un code-barres ou rechercher..."
+                    placeholder="Scanner ou rechercher... (F1)"
                     className="pl-10 h-12 text-base"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
