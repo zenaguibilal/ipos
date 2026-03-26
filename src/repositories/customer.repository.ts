@@ -79,19 +79,20 @@ class CustomerRepository {
     }
 
     async filter(filters: { query?: string; status?: string; category?: string; page?: number; pageSize?: number; sortBy?: string }): Promise<{ data: Customer[], count: number }> {
-        let query = this.supabase.from('customers').select('*', { count: 'exact' });
+        let queryBuilder = this.supabase.from('customers').select('*', { count: 'exact' });
 
         if (filters.query) {
-            query = query.ilike('search_name', `%${filters.query}%`);
+            // Search by name OR phone
+            queryBuilder = queryBuilder.or(`search_name.ilike.%${filters.query}%,phone.ilike.%${filters.query}%`);
         }
         if (filters.category && filters.category !== 'all') {
-            query = query.eq('category', filters.category);
+            queryBuilder = queryBuilder.eq('category', filters.category);
         }
         if (filters.status) {
-            if(filters.status === 'has_debt') query = query.gt('outstanding_balance', 0);
-            if(filters.status === 'overdue') query = query.eq('debt_status', 'overdue');
-            if(filters.status === 'over_limit') query = query.eq('is_over_limit', true);
-            if(filters.status === 'is_bread_client') query = query.eq('is_bread_client', true);
+            if(filters.status === 'has_debt') queryBuilder = queryBuilder.gt('outstanding_balance', 0);
+            if(filters.status === 'overdue') queryBuilder = queryBuilder.eq('debt_status', 'overdue');
+            if(filters.status === 'over_limit') queryBuilder = queryBuilder.eq('is_over_limit', true);
+            if(filters.status === 'is_bread_client') queryBuilder = queryBuilder.eq('is_bread_client', true);
         }
 
         if (filters.sortBy) {
@@ -105,18 +106,18 @@ class CustomerRepository {
                 'createdAt': 'created_at'
             };
             
-            query = query.order(columnMap[field] || 'created_at', { ascending: isAsc });
+            queryBuilder = queryBuilder.order(columnMap[field] || 'created_at', { ascending: isAsc });
         } else {
-            query = query.order('created_at', { ascending: false });
+            queryBuilder = queryBuilder.order('created_at', { ascending: false });
         }
 
         if (filters.page && filters.pageSize) {
             const from = (filters.page - 1) * filters.pageSize;
             const to = from + filters.pageSize - 1;
-            query = query.range(from, to);
+            queryBuilder = queryBuilder.range(from, to);
         }
         
-        const { data, error, count } = await query;
+        const { data, error, count } = await queryBuilder;
         if (error) throw error;
         return { data: data.map(fromSupabase), count: count || 0 };
     }

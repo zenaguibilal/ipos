@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -17,11 +18,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Edit, Trash2, FileText, Phone, DollarSign, ShieldCheck, HandCoins, Printer, Calendar } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, FileText, Phone, DollarSign, ShieldCheck, HandCoins, Printer, Calendar, MessageSquare } from 'lucide-react';
 import Link from 'next/link';
 import { formatCurrency, cn } from '@/lib/utils';
 import { Checkbox } from '../ui/checkbox';
-import { useIsManagerOrAdmin } from '@/stores/appStore';
+import { useIsManagerOrAdmin, useAppStore } from '@/stores/appStore';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
@@ -47,6 +48,14 @@ export function CustomerTable({
   onToggleSelectAll,
 }: CustomerTableProps) {
   const isManagerOrAdmin = useIsManagerOrAdmin();
+  const companyProfile = useAppStore(state => state.profile);
+
+  const handleWhatsAppReminder = (customer: Customer) => {
+    if (!customer.phone) return;
+    const storeName = companyProfile?.companyName || "iPOS Store";
+    const message = `Bonjour ${customer.firstName}, votre solde chez ${storeName} est de ${customer.outstandingBalance.toFixed(1)} DA. Merci.`;
+    window.open(`https://wa.me/${customer.phone}?text=${encodeURIComponent(message)}`, '_blank');
+  };
 
   return (
     <div className="rounded-md border bg-card">
@@ -66,7 +75,7 @@ export function CustomerTable({
             <TableHead className="text-right">Limite Crédit</TableHead>
             <TableHead className="text-right">Total Dépensé</TableHead>
             <TableHead className="text-right">Solde Impayé</TableHead>
-            <TableHead className="w-[120px] text-right">Actions</TableHead>
+            <TableHead className="w-[150px] text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -96,7 +105,7 @@ export function CustomerTable({
                   {customer.phone ? (
                     <div className="flex items-center gap-2">
                       <Phone className="h-3 w-3 text-muted-foreground" />
-                      <span className="text-xs">{customer.phone}</span>
+                      <a href={`tel:${customer.phone}`} className="text-xs hover:text-primary hover:underline">{customer.phone}</a>
                     </div>
                   ) : <span className="text-xs text-muted-foreground italic">Aucun tél.</span>}
                 </TableCell>
@@ -119,6 +128,17 @@ export function CustomerTable({
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-1">
+                    {customer.phone && customer.outstandingBalance > 0 && (
+                        <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8 text-green-600 hover:text-green-700" 
+                            onClick={() => handleWhatsAppReminder(customer)}
+                            title="Tappel WhatsApp"
+                        >
+                            <MessageSquare className="h-4 w-4" />
+                        </Button>
+                    )}
                     <Button 
                         variant="ghost" 
                         size="icon" 

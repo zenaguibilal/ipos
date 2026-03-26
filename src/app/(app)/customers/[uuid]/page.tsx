@@ -4,7 +4,7 @@
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, HandCoins, Printer, Loader2, Filter, FileText, Info, ShoppingBag, TrendingUp, History, Tag } from 'lucide-react';
+import { ArrowLeft, HandCoins, Printer, Loader2, Filter, FileText, Info, ShoppingBag, TrendingUp, History, Tag, Phone, MessageSquare, MapPin } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CustomerMetrics } from '@/components/customers/CustomerMetrics';
@@ -20,8 +20,10 @@ import { customerService } from '@/services/customer.service';
 import { salesService } from '@/services/sales.service';
 import { returnService } from '@/services/return.service';
 import { toast } from 'sonner';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, getPlaceholder } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
+import Image from 'next/image';
+import { useAppStore } from '@/stores/appStore';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -37,6 +39,7 @@ export default function CustomerDetailPage() {
     const params = useParams();
     const router = useRouter();
     const customerUuid = params.uuid as string;
+    const companyProfile = useAppStore(state => state.profile);
 
     const [customer, setCustomer] = useState<Customer | undefined | null>(undefined);
     const [topProducts, setTopProducts] = useState<CustomerTopProduct[]>([]);
@@ -100,7 +103,7 @@ export default function CustomerDetailPage() {
         
         setIsLoadingActivity(true);
         try {
-            const allActivity = await customerService.getCustomerActivity(customerUuid, 1, 1000); // Fetch enough to filter locally for now as service doesn't support server-side filtering by type yet
+            const allActivity = await customerService.getCustomerActivity(customerUuid, 1, 1000); 
             
             let filtered = allActivity;
             if (type !== 'all') {
@@ -159,6 +162,18 @@ export default function CustomerDetailPage() {
             toast.error("Impossible de charger les détails du retour.", { description: error.message });
         }
     }, []);
+
+    const handleWhatsAppReminder = () => {
+        if (!customer?.phone) {
+            toast.error("Numéro de téléphone manquant pour ce client.");
+            return;
+        }
+        const storeName = companyProfile?.companyName || "iPOS Store";
+        const amount = customer.outstandingBalance;
+        const message = `Bonjour ${customer.firstName}, votre solde chez ${storeName} est de ${amount.toFixed(1)} DA. Merci de régulariser dès que possible.`;
+        const encodedMessage = encodeURIComponent(message);
+        window.open(`https://wa.me/${customer.phone}?text=${encodedMessage}`, '_blank');
+    };
 
     if (customer === undefined) {
         return (
@@ -319,6 +334,16 @@ export default function CustomerDetailPage() {
                             <HandCoins className="mr-2 h-5 w-5" /> Paiement
                         </Button>
                     </div>
+
+                    {customer.outstandingBalance > 0 && (
+                        <Button 
+                            variant="secondary" 
+                            className="w-full bg-green-600 hover:bg-green-700 text-white" 
+                            onClick={handleWhatsAppReminder}
+                        >
+                            <MessageSquare className="mr-2 h-5 w-5" /> Tappel via WhatsApp
+                        </Button>
+                    )}
                     
                     <Card>
                         <CardHeader className="pb-2">
@@ -331,10 +356,21 @@ export default function CustomerDetailPage() {
                             {topProducts.length > 0 ? (
                                 <div className="space-y-3">
                                     {topProducts.map((p, i) => (
-                                        <div key={p.productUuid} className="flex items-center justify-between gap-2 border-b border-muted last:border-0 pb-2 last:pb-0">
-                                            <div className="min-w-0">
-                                                <p className="text-sm font-semibold truncate" title={p.name}>{p.name}</p>
-                                                <p className="text-xs text-muted-foreground">{p.quantity} unités</p>
+                                        <div key={p.productUuid} className="flex items-center justify-between gap-3 border-b border-muted last:border-0 pb-2 last:pb-0">
+                                            <div className="flex items-center gap-3 min-w-0">
+                                                <div className="h-10 w-10 relative flex-shrink-0 bg-muted rounded overflow-hidden">
+                                                    <Image 
+                                                        src={getPlaceholder().url} 
+                                                        alt={p.name} 
+                                                        fill 
+                                                        className="object-cover"
+                                                        data-ai-hint="product item"
+                                                    />
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <p className="text-sm font-semibold truncate" title={p.name}>{p.name}</p>
+                                                    <p className="text-xs text-muted-foreground">{p.quantity} unités</p>
+                                                </div>
                                             </div>
                                             <div className="text-right shrink-0">
                                                 <p className="text-sm font-bold text-primary">{formatCurrency(p.totalAmount)}</p>
@@ -352,18 +388,27 @@ export default function CustomerDetailPage() {
                         <CardHeader className="pb-2">
                             <CardTitle className="text-sm font-medium">Informations de contact</CardTitle>
                         </CardHeader>
-                        <CardContent className="space-y-2 text-sm">
-                            <div className="flex justify-between">
-                                <span className="text-muted-foreground">Téléphone:</span>
-                                <span className="font-medium">{customer.phone || 'N/A'}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-muted-foreground">Adresse:</span>
-                                <span className="font-medium text-right max-w-[150px]">{customer.address || 'N/A'}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-muted-foreground">Inscrit le:</span>
-                                <span className="font-medium">{customer.createdAt ? new Date(customer.createdAt).toLocaleDateString('fr-FR') : 'N/A'}</span>
+                        <CardContent className="space-y-4 text-sm pt-2">
+                            <div className="space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-muted-foreground flex items-center gap-2"><Phone className="h-3.5 w-3.5"/> Téléphone</span>
+                                    <div className="flex gap-2">
+                                        <span className="font-medium">{customer.phone || 'N/A'}</span>
+                                        {customer.phone && (
+                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-primary" asChild>
+                                                <a href={`tel:${customer.phone}`}><Phone className="h-3 w-3" /></a>
+                                            </Button>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-muted-foreground flex items-center gap-2"><MapPin className="h-3.5 w-3.5"/> Adresse</span>
+                                    <span className="font-medium text-right max-w-[150px] truncate">{customer.address || 'N/A'}</span>
+                                </div>
+                                <div className="flex items-center justify-between border-t pt-3">
+                                    <span className="text-muted-foreground">Inscrit le:</span>
+                                    <span className="font-medium">{customer.createdAt ? new Date(customer.createdAt).toLocaleDateString('fr-FR') : 'N/A'}</span>
+                                </div>
                             </div>
                         </CardContent>
                     </Card>

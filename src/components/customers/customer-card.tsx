@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -5,7 +6,7 @@ import type { Customer } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Edit, Trash2, FileText, Phone, DollarSign, BellRing, ShieldCheck, Home, Calendar, Hourglass, HandCoins, Printer } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, FileText, Phone, DollarSign, BellRing, ShieldCheck, Home, Calendar, Hourglass, HandCoins, Printer, MessageSquare } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import Link from 'next/link';
 import { formatCurrency } from '@/lib/utils';
@@ -13,7 +14,7 @@ import { Progress } from '../ui/progress';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { useIsManagerOrAdmin } from '@/stores/appStore';
+import { useIsManagerOrAdmin, useAppStore } from '@/stores/appStore';
 import { Checkbox } from '../ui/checkbox';
 
 interface CustomerCardProps {
@@ -62,7 +63,22 @@ const DebtStatusIcon = ({ status }: { status: Customer['debtStatus']}) => {
 
 const CustomerCardComponent = ({ customer, onEdit, onDelete, onPayment, onStatement, isSelected, onToggleSelection }: CustomerCardProps) => {
     const isManagerOrAdmin = useIsManagerOrAdmin();
+    const companyProfile = useAppStore(state => state.profile);
     const creditUsage = customer.creditLimit && customer.creditLimit > 0 ? (customer.outstandingBalance / customer.creditLimit) * 100 : 0;
+
+    const handleWhatsAppReminder = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!customer.phone) return;
+        const storeName = companyProfile?.companyName || "iPOS Store";
+        const message = `Bonjour ${customer.firstName}, votre solde chez ${storeName} est de ${customer.outstandingBalance.toFixed(1)} DA. Merci.`;
+        window.open(`https://wa.me/${customer.phone}?text=${encodeURIComponent(message)}`, '_blank');
+    };
+
+    const handleCall = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!customer.phone) return;
+        window.location.href = `tel:${customer.phone}`;
+    };
 
     return (
         <Card className={cn(
@@ -88,10 +104,10 @@ const CustomerCardComponent = ({ customer, onEdit, onDelete, onPayment, onStatem
                             </CardTitle>
                             <div className="flex items-center text-xs text-muted-foreground gap-3">
                                 {customer.phone && (
-                                    <div className="flex items-center gap-1">
+                                    <button onClick={handleCall} className="flex items-center gap-1 hover:text-primary transition-colors">
                                         <Phone className="h-3 w-3" />
                                         <span>{customer.phone}</span>
-                                    </div>
+                                    </button>
                                 )}
                                 {customer.address && (
                                     <div className="flex items-center gap-1">
@@ -119,6 +135,12 @@ const CustomerCardComponent = ({ customer, onEdit, onDelete, onPayment, onStatem
                                 <Printer className="mr-2 h-4 w-4" />
                                 Imprimer relevé
                             </DropdownMenuItem>
+                            {customer.phone && (
+                                <DropdownMenuItem onClick={handleWhatsAppReminder}>
+                                    <MessageSquare className="mr-2 h-4 w-4" />
+                                    Envoyer tappel (WhatsApp)
+                                </DropdownMenuItem>
+                            )}
                             <DropdownMenuItem 
                                 onClick={() => onPayment(customer)}
                                 disabled={customer.outstandingBalance <= 0}
