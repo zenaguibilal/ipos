@@ -7,8 +7,9 @@ import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { CustomerCombobox } from '@/components/sell/CustomerCombobox';
+import { DraftsDropdown } from '@/components/sell/DraftsDropdown';
 import { PackageSearch } from 'lucide-react';
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { AddPaymentDialog } from '@/components/payments/AddPaymentDialog';
@@ -19,24 +20,39 @@ import { customerService } from '@/services/customer.service';
 import { PrintReceiptDialog } from '@/components/sales/PrintReceiptDialog';
 
 export default function SellPage() {
-    const { cart, cartCustomer, isCartLoading } = useAppStore(state => ({
-        cart: state.cart,
-        cartCustomer: state.cartCustomer,
-        isCartLoading: state.isCartLoading,
+    const { activeCartId, carts, sessionLoading } = useAppStore(state => ({
+        activeCartId: state.activeCartId,
+        carts: state.carts,
+        sessionLoading: state.sessionLoading,
     }));
-    const { addProductToCart, setCartCustomer } = useAppActions();
+    const { addProductToCart } = useAppActions();
     
     const [isProductSheetOpen, setIsProductSheetOpen] = useState(false);
     const [isDebtPaymentDialogOpen, setIsDebtPaymentDialogOpen] = useState(false);
+    const [cartCustomer, setCartCustomer] = useState<Customer | null>(null);
 
     const productSearchRef = useRef<{ focus: () => void }>(null);
     const customerComboboxRef = useRef<HTMLButtonElement>(null);
     const saleActionsRef = useRef<{ payment: () => void; }>(null);
 
-    const cartItemsCountRef = useRef(cart?.items.length ?? 0);
+    const activeCart = useMemo(() => carts.find(c => c.id === activeCartId), [carts, activeCartId]);
+
+    // Effect to fetch and set the customer object when the active cart's customerUuid changes
     useEffect(() => {
-        cartItemsCountRef.current = cart?.items.length ?? 0;
-    }, [cart?.items.length]);
+        if (activeCart?.customerUuid) {
+            customerService.getCustomerByUuid(activeCart.customerUuid).then(customer => {
+                setCartCustomer(customer || null);
+            }).catch(() => setCartCustomer(null));
+        } else {
+            setCartCustomer(null);
+        }
+    }, [activeCart?.customerUuid]);
+
+
+    const cartItemsCountRef = useRef(activeCart?.items.length ?? 0);
+    useEffect(() => {
+        cartItemsCountRef.current = activeCart?.items.length ?? 0;
+    }, [activeCart?.items.length]);
 
     const handleSuccessfulPayment = useCallback(async () => {
         if (!cartCustomer?.uuid) return;
@@ -49,7 +65,7 @@ export default function SellPage() {
         } catch (error: any) {
             toast.error("Erreur lors de la mise à jour du client.", { description: error.message });
         }
-    }, [cartCustomer, setCartCustomer]);
+    }, [cartCustomer]);
     
     const handlePayDebtClick = () => {
         setIsDebtPaymentDialogOpen(true);
@@ -95,16 +111,16 @@ export default function SellPage() {
           e.returnValue = '';
         };
     
-        if (cart.items.length > 0) {
+        if (activeCart && activeCart.items.length > 0) {
           window.addEventListener('beforeunload', handleBeforeUnload);
         }
     
         return () => {
           window.removeEventListener('beforeunload', handleBeforeUnload);
         };
-    }, [cart.items.length]);
+    }, [activeCart?.items.length]);
 
-    const isDataLoading = isCartLoading || !cart;
+    const isDataLoading = sessionLoading || !activeCart;
 
     if (isDataLoading) {
         return (
@@ -131,14 +147,17 @@ export default function SellPage() {
     return (
         <>
             <div className="h-full flex flex-col">
-                <CartTotalBar onPayDebtClick={handlePayDebtClick} />
+                <CartTotalBar cart={activeCart} customer={cartCustomer} onPayDebtClick={handlePayDebtClick} />
 
                 <div className="grid md:grid-cols-3 gap-4 flex-grow min-h-0 p-4">
                     {/* Main column */}
                     <div className="md:col-span-2 flex flex-col gap-4">
-                        <div className="flex flex-wrap items-center justify-between gap-4">
-                            <div className="w-full sm:w-auto sm:min-w-[300px]">
+                        <div className="flex flex-wrap items-center gap-4">
+                            <div className="flex-grow sm:flex-grow-0 w-full sm:w-auto sm:min-w-[300px]">
                                 <CustomerCombobox ref={customerComboboxRef} />
+                            </div>
+                            <div className="flex-grow sm:flex-grow-0 w-full sm:w-auto">
+                                <DraftsDropdown />
                             </div>
                             <div className="w-full sm:w-auto md:hidden">
                                 <Sheet open={isProductSheetOpen} onOpenChange={setIsProductSheetOpen}>
@@ -149,7 +168,7 @@ export default function SellPage() {
                                         </Button>
                                     </SheetTrigger>
                                     <SheetContent side="right" className="p-0 w-full max-w-full sm:max-w-md">
-                                        <ProductSearch ref={productSearchRef} onProductSelect={handleProductSelected} />
+                                        <ProductSearch onProductSelect={handleProductSelected} />
                                     </SheetContent>
                                 </Sheet>
                             </div>
@@ -157,7 +176,7 @@ export default function SellPage() {
 
                         <Card className="flex-grow flex flex-col min-h-0">
                             <CardContent className="p-4 sm:p-6 flex-grow flex flex-col min-h-0">
-                                <CartDisplay />
+                                <CartDisplay cart={activeCart} />
                             </CardContent>
                             <CardFooter className="p-4 sm:p-6 mt-auto border-t bg-background/30">
                                 <SaleActions ref={saleActionsRef} />

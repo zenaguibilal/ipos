@@ -63,7 +63,7 @@ export interface CartItem extends Product {
 
 // Represents a single shopping cart session
 export interface Cart {
-    id:string;
+    id: string;
     name: string;
     items: CartItem[];
     customerUuid: string | null;

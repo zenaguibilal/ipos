@@ -12,23 +12,24 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import type { CartItem, SalePayment } from '@/lib/types';
+import type { Cart, CartItem, Customer, SalePayment } from '@/lib/types';
 import { Loader2, CreditCard, Banknote, AlertTriangle } from 'lucide-react';
 import { formatCurrency, calculateCartTotals } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Separator } from '@/components/ui/separator';
-import { useAppStore, useAppActions } from '@/stores/appStore';
+import { useAppActions } from '@/stores/appStore';
 
 interface PaymentDialogProps {
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
+    cart: Cart | undefined;
+    cartCustomer: Customer | null;
 }
 
 type PaymentMode = 'cash' | 'card' | 'other' | 'credit' | 'mixed';
 
-export function PaymentDialog({ isOpen, onOpenChange }: PaymentDialogProps) {
-    const { cart, cartCustomer } = useAppStore();
+export function PaymentDialog({ isOpen, onOpenChange, cart, cartCustomer }: PaymentDialogProps) {
     const { finalizeSale } = useAppActions();
 
     const [paymentMode, setPaymentMode] = useState<PaymentMode>('cash');
@@ -117,7 +118,7 @@ export function PaymentDialog({ isOpen, onOpenChange }: PaymentDialogProps) {
                     return;
                 }
                 amountPaid = cashVal;
-                if(amountPaid > 0) payments.push({ method: paymentMode, amount: amountPaid });
+                if(amountPaid > 0) payments.push({ method: paymentMode, amount: total });
                 break;
 
             case 'credit':

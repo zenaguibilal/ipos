@@ -8,11 +8,11 @@ import { Trash2, ShoppingCart } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { formatCurrency, getPlaceholder } from '@/lib/utils';
-import { useAppStore, useAppActions, useIsManagerOrAdmin } from '@/stores/appStore';
+import { useAppActions, useIsManagerOrAdmin } from '@/stores/appStore';
 import { toast } from 'sonner';
 import { useEffect, useState } from 'react';
 import { useDebounce } from '@/hooks/useDebounce';
-import type { CartItem } from '@/lib/types';
+import type { Cart, CartItem } from '@/lib/types';
 
 // New component to manage local state for price editing
 const PriceEditor = ({ item, onPriceChange }: { item: CartItem, onPriceChange: (uuid: string, price: number) => void }) => {
@@ -42,8 +42,7 @@ const PriceEditor = ({ item, onPriceChange }: { item: CartItem, onPriceChange: (
     )
 }
 
-export function CartDisplay() {
-    const cart = useAppStore((state) => state.cart);
+export function CartDisplay({ cart }: { cart: Cart | undefined }) {
     const { updateCartItemQuantity, removeCartItem, clearCartFlashes, updateCartItemPrice } = useAppActions();
     const isManagerOrAdmin = useIsManagerOrAdmin();
     

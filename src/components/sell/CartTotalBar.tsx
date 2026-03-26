@@ -3,15 +3,16 @@
 
 import { calculateCartTotals, formatCurrency, cn } from '@/lib/utils';
 import { ShoppingCart, User, Tag, Minus, HandCoins } from 'lucide-react';
-import { useAppStore } from '@/stores/appStore';
 import { Separator } from '@/components/ui/separator';
+import type { Cart, Customer } from '@/lib/types';
 
 interface CartTotalBarProps {
+  cart: Cart | undefined;
+  customer: Customer | null;
   onPayDebtClick?: () => void;
 }
 
-export function CartTotalBar({ onPayDebtClick }: CartTotalBarProps) {
-    const { cart, cartCustomer: customer } = useAppStore();
+export function CartTotalBar({ cart, customer, onPayDebtClick }: CartTotalBarProps) {
 
     if (!cart) {
         return (

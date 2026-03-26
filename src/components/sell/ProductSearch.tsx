@@ -73,7 +73,8 @@ export const ProductSearch = forwardRef<{focus: () => void}, ProductSearchProps>
     const [selectedCategory, setSelectedCategory] = useState('all');
     const inputRef = useRef<HTMLInputElement>(null);
     
-    const cart = useAppStore((state) => state.cart);
+    const { carts, activeCartId } = useAppStore();
+    const activeCart = useMemo(() => carts.find(c => c.id === activeCartId), [carts, activeCartId]);
     
     const [categories, setCategories] = useState<string[]>([]);
     const [products, setProducts] = useState<Product[]>([]);
@@ -102,11 +103,13 @@ export const ProductSearch = forwardRef<{focus: () => void}, ProductSearchProps>
 
     const cartQuantities = useMemo(() => {
         const map = new Map<string, number>();
-        cart.items.forEach(item => {
-            map.set(item.uuid, item.cartQuantity);
-        });
+        if (activeCart) {
+            activeCart.items.forEach(item => {
+                map.set(item.uuid, item.cartQuantity);
+            });
+        }
         return map;
-    }, [cart.items]);
+    }, [activeCart]);
 
 
     useImperativeHandle(ref, () => ({

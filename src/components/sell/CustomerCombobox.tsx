@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { Combobox, ComboboxOption } from '@/components/ui/combobox';
 import type { Customer } from '@/lib/types';
 import { formatCurrency } from '@/lib/utils';
@@ -16,11 +16,12 @@ const WalkInCustomerOption: ComboboxOption = {
 };
 
 export const CustomerCombobox = React.forwardRef<HTMLButtonElement>((props, ref) => {
-    const { customerUuid } = useAppStore(state => ({
-        customerUuid: state.cart.customerUuid,
-    }));
+    const { carts, activeCartId } = useAppStore();
     const { setCartCustomer } = useAppActions();
     const [customers, setCustomers] = useState<Customer[]>([]);
+
+    const activeCart = useMemo(() => carts.find(c => c.id === activeCartId), [carts, activeCartId]);
+    const customerUuid = activeCart?.customerUuid;
 
     useEffect(() => {
         const fetch = async () => {

@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Trash2 } from 'lucide-react';
 import { PaymentDialog } from './PaymentDialog';
@@ -21,20 +21,34 @@ import { Label } from '@/components/ui/label';
 import { formatCurrency, calculateCartTotals } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import { useAppStore, useAppActions } from '@/stores/appStore';
+import { customerService } from '@/services/customer.service';
 
 export const SaleActions = React.forwardRef<
     { payment: () => void }, 
     {}
 >(({}, ref) => {
-    const { cart } = useAppStore();
+    const { carts, activeCartId } = useAppStore();
     const { clearCart, setCartDiscount } = useAppActions();
     const [isPaymentOpen, setIsPaymentOpen] = useState(false);
     
-    const totalItems = cart?.items.reduce((acc, item) => acc + item.cartQuantity, 0) || 0;
-    const { subtotal, discountAmount, total } = cart ? calculateCartTotals(cart) : { subtotal: 0, discountAmount: 0, total: 0 };
+    const [cartCustomer, setCartCustomer] = React.useState(null);
+
+    const activeCart = useMemo(() => carts.find(c => c.id === activeCartId), [carts, activeCartId]);
+
+    React.useEffect(() => {
+        if (activeCart?.customerUuid) {
+            customerService.getCustomerByUuid(activeCart.customerUuid).then(setCartCustomer);
+        } else {
+            setCartCustomer(null);
+        }
+    }, [activeCart?.customerUuid]);
+
+
+    const totalItems = activeCart?.items.reduce((acc, item) => acc + item.cartQuantity, 0) || 0;
+    const { subtotal, discountAmount, total } = activeCart ? calculateCartTotals(activeCart) : { subtotal: 0, discountAmount: 0, total: 0 };
     
-    const discountValue = cart?.discount.value || 0;
-    const discountType = cart?.discount.type || 'fixed';
+    const discountValue = activeCart?.discount.value || 0;
+    const discountType = activeCart?.discount.type || 'fixed';
     
     const paymentButtonRef = React.useRef<HTMLButtonElement>(null);
 
@@ -48,13 +62,15 @@ export const SaleActions = React.forwardRef<
         },
     }));
 
-    if (!cart) return null;
+    if (!activeCart) return null;
 
     return (
         <>
             <PaymentDialog 
                 isOpen={isPaymentOpen}
                 onOpenChange={setIsPaymentOpen}
+                cart={activeCart}
+                cartCustomer={cartCustomer}
             />
              <div className="space-y-4">
                 <div className="flex justify-between items-center text-lg">
@@ -102,7 +118,7 @@ export const SaleActions = React.forwardRef<
                  <div className="grid grid-cols-2 gap-4 pt-2">
                     <AlertDialog>
                         <AlertDialogTrigger asChild>
-                            <Button variant="destructive" size="lg" disabled={cart.items.length === 0}>
+                            <Button variant="destructive" size="lg" disabled={activeCart.items.length === 0}>
                                 <Trash2 className="mr-2 h-5 w-5" /> Vider
                             </Button>
                         </AlertDialogTrigger>
@@ -125,7 +141,7 @@ export const SaleActions = React.forwardRef<
                         ref={paymentButtonRef}
                         size="lg" 
                         className="w-full text-lg py-6"
-                        disabled={cart.items.length === 0}
+                        disabled={activeCart.items.length === 0}
                         onClick={() => setIsPaymentOpen(true)}
                     >
                         Payer (F9)
