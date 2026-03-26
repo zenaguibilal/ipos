@@ -1,3 +1,4 @@
+
 'use client';
 
 import { createClient } from "@/utils/supabase/client";
@@ -34,7 +35,7 @@ class SupplierRepository {
     private supabase = createClient();
 
     async getAll(): Promise<Supplier[]> {
-        const { data, error } = await this.supabase.from('suppliers').select('*');
+        const { data, error } = await this.supabase.from('suppliers').select('*').order('name', { ascending: true });
         if (error) throw error;
         return data.map(fromSupabase);
     }
@@ -62,7 +63,7 @@ class SupplierRepository {
         if (error) throw error;
         return fromSupabase(data);
     }
-
+    
     async update(uuid: string, supplierData: Partial<Supplier>): Promise<Supplier> {
         const { data, error } = await this.supabase
             .from('suppliers')
@@ -72,6 +73,11 @@ class SupplierRepository {
             .single();
         if (error) throw error;
         return fromSupabase(data);
+    }
+
+    async delete(uuid: string): Promise<void> {
+        const { error } = await this.supabase.from('suppliers').delete().eq('uuid', uuid);
+        if (error) throw error;
     }
     
     async deleteAllForUser(userId: string): Promise<void> {

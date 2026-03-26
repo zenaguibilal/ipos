@@ -1,3 +1,4 @@
+
 'use client';
 
 import { v4 as uuidv4 } from 'uuid';
@@ -50,6 +51,23 @@ class SupplierService {
                 updatedAt: new Date(),
             };
             return await supplierRepository.add(newSupplier);
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    async updateSupplier(uuid: string, data: Partial<Supplier>): Promise<Supplier> {
+        try {
+            return await supplierRepository.update(uuid, data);
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    async deleteSupplier(uuid: string): Promise<void> {
+        try {
+            // Add business logic check here if needed (e.g. check if supplier has linked products or intakes)
+            await supplierRepository.delete(uuid);
         } catch (error) {
             throw error;
         }

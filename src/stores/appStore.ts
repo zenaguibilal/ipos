@@ -2,7 +2,7 @@
 import { create } from 'zustand';
 import { produce } from 'immer';
 import type { Session, User } from '@supabase/supabase-js';
-import type { Cart, Customer, CompanyProfile, Product, CartItem, ReturnItem, StockIntakeItem, Sale, Expense } from '@/lib/types';
+import type { Cart, Customer, CompanyProfile, Product, CartItem, ReturnItem, StockIntakeItem, Sale, Expense, Supplier } from '@/lib/types';
 import { toast } from 'sonner';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
@@ -32,6 +32,7 @@ interface AppState {
     productViewMode: 'grid' | 'list';
     stockViewMode: 'grid' | 'list';
     customerViewMode: 'grid' | 'list';
+    supplierViewMode: 'grid' | 'list';
     salesHistoryViewMode: 'grid' | 'list';
     returnViewMode: 'grid' | 'list';
     expenseViewMode: 'grid' | 'list';
@@ -88,6 +89,7 @@ interface AppActions {
     setProductViewMode: (mode: 'grid' | 'list') => void;
     setStockViewMode: (mode: 'grid' | 'list') => void;
     setCustomerViewMode: (mode: 'grid' | 'list') => void;
+    setSupplierViewMode: (mode: 'grid' | 'list') => void;
     setSalesHistoryViewMode: (mode: 'grid' | 'list') => void;
     setReturnViewMode: (mode: 'grid' | 'list') => void;
     setExpenseViewMode: (mode: 'grid' | 'list') => void;
@@ -114,6 +116,7 @@ const initialState: Omit<AppState, 'actions'> = {
     productViewMode: 'grid',
     stockViewMode: 'grid',
     customerViewMode: 'grid',
+    supplierViewMode: 'grid',
     salesHistoryViewMode: 'grid',
     returnViewMode: 'grid',
     expenseViewMode: 'grid',
@@ -405,6 +408,7 @@ export const useAppStore = create<AppState>()(
                 setProductViewMode: (mode) => set({ productViewMode: mode }),
                 setStockViewMode: (mode) => set({ stockViewMode: mode }),
                 setCustomerViewMode: (mode) => set({ customerViewMode: mode }),
+                setSupplierViewMode: (mode) => set({ supplierViewMode: mode }),
                 setSalesHistoryViewMode: (mode) => set({ salesHistoryViewMode: mode }),
                 setReturnViewMode: (mode) => set({ returnViewMode: mode }),
                 setExpenseViewMode: (mode) => set({ expenseViewMode: mode }),
@@ -419,6 +423,7 @@ export const useAppStore = create<AppState>()(
               productViewMode: state.productViewMode,
               stockViewMode: state.stockViewMode,
               customerViewMode: state.customerViewMode,
+              supplierViewMode: state.supplierViewMode,
               salesHistoryViewMode: state.salesHistoryViewMode,
               returnViewMode: state.returnViewMode,
               expenseViewMode: state.expenseViewMode,

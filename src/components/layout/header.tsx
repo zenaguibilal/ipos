@@ -16,6 +16,7 @@ import {
   LogOut,
   LayoutDashboard,
   Wheat,
+  Building,
 } from 'lucide-react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
@@ -40,6 +41,7 @@ const allNavLinks = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, managerOnly: false },
   { href: '/stock', label: 'Stock', icon: Archive, managerOnly: true },
   { href: '/products', label: 'Produits', icon: Package, managerOnly: true },
+  { href: '/suppliers', label: 'Fournisseurs', icon: Building, managerOnly: true },
   { href: '/customers', label: 'Clients', icon: Users2, managerOnly: false },
   { href: '/sales-history', label: 'Ventes', icon: History, managerOnly: false },
   { href: '/returns', label: 'Retours', icon: Undo2, managerOnly: false },
@@ -84,7 +86,7 @@ export function AppHeader() {
 
         <div className="flex-1 flex justify-center">
             <TooltipProvider>
-                <nav className="hidden md:flex items-center gap-1 rounded-full border bg-black/20 p-1">
+                <nav className="hidden xl:flex items-center gap-1 rounded-full border bg-black/20 p-1">
                     {mainActionLinks.map(link => (
                          <Tooltip key={link.href} delayDuration={0}>
                             <TooltipTrigger asChild>
