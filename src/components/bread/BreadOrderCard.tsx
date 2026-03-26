@@ -11,8 +11,9 @@ import { toast } from 'sonner';
 import { breadService } from '@/services/bread.service';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useDebounce } from '@/hooks/useDebounce';
-import { AlertTriangle, User, Package, CheckCircle2 } from 'lucide-react';
+import { User, Package, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
+import { Badge } from '@/components/ui/badge';
 
 interface BreadOrderCardProps {
     order: BreadOrder;
@@ -25,7 +26,7 @@ export function BreadOrderCard({ order, isSelected, onToggleSelection, onUpdate 
     const [quantity, setQuantity] = useState(order.quantite);
     const debouncedQuantity = useDebounce(quantity, 500);
 
-    const isPaid = order.est_paye;
+    const isPaid = !!order.venteUuid || order.est_paye;
     const isDelivered = order.est_livre;
 
     const handleQuantityChange = useCallback(async (newQuantity: number) => {
@@ -33,15 +34,15 @@ export function BreadOrderCard({ order, isSelected, onToggleSelection, onUpdate 
             await breadService.updateOrder(order.uuid, { quantite: newQuantity });
             onUpdate();
         } catch (error) {
-            toast.error("Erreur lors de la mise à jour de la quantité.");
+            toast.error("Erreur de mise à jour quantité.");
         }
     }, [order.uuid, onUpdate]);
 
     useEffect(() => {
-        if (debouncedQuantity !== order.quantite) {
+        if (debouncedQuantity !== order.quantite && !isPaid) {
             handleQuantityChange(debouncedQuantity);
         }
-    }, [debouncedQuantity, order.quantite, handleQuantityChange]);
+    }, [debouncedQuantity, order.quantite, handleQuantityChange, isPaid]);
     
     useEffect(() => {
         setQuantity(order.quantite);
@@ -58,54 +59,88 @@ export function BreadOrderCard({ order, isSelected, onToggleSelection, onUpdate 
     
     return (
         <Card className={cn(
-            "flex flex-col transition-all duration-200 border-2", 
-            isSelected && "border-primary shadow-lg scale-[1.02]",
-            !isSelected && "border-transparent",
-            isPaid ? "bg-green-500/5" : "bg-card"
+            "flex flex-col transition-all duration-300 border-2 overflow-hidden", 
+            isSelected ? "border-primary shadow-xl scale-[1.02] bg-primary/5" : "border-white/5 bg-muted/20",
+            isPaid && "border-chart-quaternary/30 opacity-90",
+            !isDelivered && !isPaid && "border-orange-500/20"
         )}>
-            <CardHeader className="flex-row items-center justify-between p-4 pb-2">
-                <div className="flex items-center gap-2 overflow-hidden">
-                    <User className="h-4 w-4 text-muted-foreground shrink-0" />
-                    <CardTitle className="text-base truncate font-bold">{order.orderName}</CardTitle>
-                </div>
-                <Checkbox 
-                    checked={isSelected} 
-                    onCheckedChange={() => onToggleSelection(order.uuid)} 
-                    disabled={isPaid} 
-                    className="h-5 w-5"
-                />
-            </CardHeader>
-            <CardContent className="p-4 pt-0">
-                <div className="flex items-center justify-between bg-muted/30 p-2 rounded-lg mt-2">
-                    <Label htmlFor={`qty-${order.uuid}`} className="flex items-center gap-2 text-xs uppercase tracking-wider font-semibold text-muted-foreground">
-                        <Package className="h-3 w-3"/> Quantité
-                    </Label>
-                    <Input 
-                        id={`qty-${order.uuid}`}
-                        type="number"
-                        value={quantity}
-                        onChange={(e) => setQuantity(parseInt(e.target.value) || 0)}
-                        className="w-20 h-8 text-center text-base font-bold bg-background"
-                        disabled={isPaid}
-                    />
-                </div>
-            </CardContent>
-            <CardFooter className="p-2 grid grid-cols-2 gap-2 border-t mt-auto bg-background/50">
-                <div className="flex flex-col items-center gap-1">
-                    <span className="text-[10px] uppercase font-bold text-muted-foreground">Paiement</span>
-                    <div className="flex items-center gap-2">
-                        <Switch id={`paid-${order.uuid}`} checked={isPaid} disabled />
-                        <span className={cn("text-xs font-bold", isPaid ? "text-green-500" : "text-muted-foreground")}>{isPaid ? 'PAYÉ' : 'À PAYER'}</span>
+            <CardHeader className="flex-row items-center justify-between p-4 pb-3">
+                <div className="flex items-center gap-3 overflow-hidden">
+                    <div className={cn(
+                        "p-2 rounded-xl shrink-0",
+                        isPaid ? "bg-chart-quaternary/20 text-chart-quaternary" : "bg-primary/10 text-primary"
+                    )}>
+                        <User className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0">
+                        <CardTitle className="text-sm truncate font-black uppercase tracking-tight" title={order.orderName}>
+                            {order.orderName}
+                        </CardTitle>
+                        {order.customerUuid && (
+                            <Badge variant="outline" className="text-[8px] h-4 py-0 font-bold bg-background/50">Client Fidèle</Badge>
+                        )}
                     </div>
                 </div>
-                <div className="flex flex-col items-center gap-1 border-l">
-                    <span className="text-[10px] uppercase font-bold text-muted-foreground">Livraison</span>
+                <div className="flex items-center gap-2">
+                    <Checkbox 
+                        checked={isSelected} 
+                        onCheckedChange={() => onToggleSelection(order.uuid)} 
+                        disabled={isPaid} 
+                        className="h-5 w-5 rounded-md"
+                    />
+                </div>
+            </CardHeader>
+            <CardContent className="p-4 pt-0">
+                <div className="flex items-center justify-between bg-background/40 p-3 rounded-xl mt-1 border border-white/5">
+                    <Label htmlFor={`qty-${order.uuid}`} className="flex items-center gap-2 text-[10px] uppercase font-black tracking-widest text-muted-foreground">
+                        <Package className="h-3 w-3"/> Qté
+                    </Label>
                     <div className="flex items-center gap-2">
-                        <Switch id={`delivered-${order.uuid}`} checked={isDelivered} onCheckedChange={handleDeliveryToggle} />
-                        <span className={cn("text-xs font-bold", isDelivered ? "text-primary" : "text-muted-foreground")}>{isDelivered ? 'LIVRÉ' : 'EN ATTENTE'}</span>
+                        <Input 
+                            id={`qty-${order.uuid}`}
+                            type="number"
+                            value={quantity}
+                            onChange={(e) => setQuantity(parseInt(e.target.value) || 0)}
+                            className="w-16 h-8 text-center text-sm font-black bg-muted border-white/10"
+                            disabled={isPaid}
+                        />
+                        {order.quantite_origine !== undefined && order.quantite !== order.quantite_origine && (
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <AlertCircle className="h-3.5 w-3.5 text-orange-500 animate-pulse cursor-help" />
+                                    </TooltipTrigger>
+                                    <TooltipContent><p>Modifié (Prévu: {order.quantite_origine})</p></TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        )}
+                    </div>
+                </div>
+            </CardContent>
+            <CardFooter className="p-0 border-t border-white/5">
+                <div className="grid grid-cols-2 w-full divide-x divide-white/5">
+                    <button 
+                        onClick={() => !isPaid && handleDeliveryToggle(!isDelivered)}
+                        disabled={isPaid}
+                        className={cn(
+                            "flex flex-col items-center gap-1.5 py-3 transition-colors",
+                            isDelivered ? "bg-primary/10 text-primary" : "hover:bg-white/5 text-muted-foreground"
+                        )}
+                    >
+                        {isDelivered ? <CheckCircle2 className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
+                        <span className="text-[9px] font-black uppercase tracking-tighter">{isDelivered ? 'LIVRÉ' : 'À LIVRER'}</span>
+                    </button>
+                    <div className={cn(
+                        "flex flex-col items-center gap-1.5 py-3",
+                        isPaid ? "bg-chart-quaternary/10 text-chart-quaternary" : "text-muted-foreground opacity-50"
+                    )}>
+                        {isPaid ? <CheckCircle2 className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
+                        <span className="text-[9px] font-black uppercase tracking-tighter">{isPaid ? 'FACTURÉ' : 'NON FACTURÉ'}</span>
                     </div>
                 </div>
             </CardFooter>
         </Card>
     );
 }
+
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';

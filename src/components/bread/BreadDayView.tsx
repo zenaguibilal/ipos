@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import type { BreadOrder } from '@/lib/types';
@@ -12,7 +12,7 @@ import { ManualAddDialog } from './ManualAddDialog';
 import { PrintBreadListDialog } from './PrintBreadListDialog';
 import { toast } from 'sonner';
 import { breadService } from '@/services/bread.service';
-import { Loader2, Wheat, ShoppingCart, Trash2 } from 'lucide-react';
+import { Loader2, Wheat, ShoppingCart, Trash2, Sparkles, PackageCheck } from 'lucide-react';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { useAppStore } from '@/stores/appStore';
 
@@ -26,6 +26,8 @@ export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayVi
     const [selectedOrders, setSelectedOrders] = useState(new Set<string>());
     const [isConverting, setIsConverting] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [isGenerating, setIsGenerating] = useState(false);
+    
     const breadPrice = useAppStore((state) => state.profile?.prix_pain) || 0;
 
     const handleToggleSelection = (orderUuid: string) => {
@@ -49,28 +51,57 @@ export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayVi
         }
     };
     
+    const handleGenerate = async () => {
+        setIsGenerating(true);
+        try {
+            const count = await breadService.generateOrdersFromRecurrence(currentDate);
+            if (count > 0) {
+                toast.success(`${count} commande(s) générée(s) selon les réglages clients.`);
+                onOrdersChange();
+            } else {
+                toast.info("Aucune nouvelle commande à générer pour ce jour.");
+            }
+        } catch (error: any) {
+            toast.error("Échec de la génération.");
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
     const handleConvertToSales = async () => {
         if (selectedOrders.size === 0) {
-            toast.info("Veuillez sélectionner au moins une commande à convertir.");
+            toast.info("Sélectionnez les commandes à facturer.");
             return;
         }
         if (breadPrice <= 0) {
-            toast.error("Le prix du pain n'est pas défini.", {
-                description: "Veuillez le configurer dans la page de profil avant de continuer."
-            });
+            toast.error("Le prix du pain n'est pas configuré dans votre profil.");
             return;
         }
         
         setIsConverting(true);
         try {
             await breadService.convertBreadOrdersToSales(Array.from(selectedOrders), breadPrice);
-            toast.success(`${selectedOrders.size} commande(s) enregistrée(s) comme ventes.`);
+            toast.success(`${selectedOrders.size} commande(s) facturées.`);
             setSelectedOrders(new Set());
             onOrdersChange();
         } catch (error: any) {
-            toast.error("Erreur lors de la conversion.", { description: error.message });
+            toast.error("Erreur de conversion.");
         } finally {
             setIsConverting(false);
+        }
+    };
+
+    const handleMarkDelivered = async () => {
+        if (selectedOrders.size === 0) return;
+        try {
+            for (const uuid of Array.from(selectedOrders)) {
+                await breadService.updateOrder(uuid, { est_livre: true });
+            }
+            toast.success("Commandes marquées comme livrées.");
+            setSelectedOrders(new Set());
+            onOrdersChange();
+        } catch (error) {
+            toast.error("Échec de la mise à jour.");
         }
     };
 
@@ -79,7 +110,7 @@ export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayVi
         setIsDeleting(true);
         try {
             await breadService.bulkDeleteOrders(Array.from(selectedOrders));
-            toast.success("Commandes supprimées.");
+            toast.success("Sélection supprimée.");
             setSelectedOrders(new Set());
             onOrdersChange();
         } catch (error: any) {
@@ -87,71 +118,79 @@ export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayVi
         } finally {
             setIsDeleting(false);
         }
-    }
+    };
 
     const unbilledOrdersCount = orders.filter(o => !o.venteUuid).length;
     const isAllSelected = unbilledOrdersCount > 0 && selectedOrders.size === unbilledOrdersCount;
 
-    if (orders.length === 0) {
-        return (
-             <Card>
-                <CardHeader>
-                    <CardTitle>Commandes du Jour</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <EmptyState
-                        icon={Wheat}
-                        title="Aucune commande pour ce jour"
-                        description="Ajoutez des commandes manuellement pour commencer le suivi."
-                    >
-                        <ManualAddDialog currentDate={currentDate} onSuccess={onOrdersChange} />
-                    </EmptyState>
-                </CardContent>
-            </Card>
-        );
-    }
-    
     return (
-        <Card className="flex flex-col h-full min-h-[500px]">
-            <CardHeader className="flex-shrink-0 border-b bg-muted/20">
-                <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
-                    <div className="flex items-center space-x-2">
-                        <Checkbox id="select-all-bread" checked={isAllSelected} onCheckedChange={handleSelectAll} />
-                        <label htmlFor="select-all-bread" className="text-sm font-medium">
-                            Tout sélectionner ({selectedOrders.size})
+        <Card className="flex flex-col h-full min-h-[500px] luxury-glass border-white/5">
+            <CardHeader className="flex-shrink-0 border-b border-white/5 bg-white/5">
+                <div className="flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center">
+                    <div className="flex items-center space-x-3">
+                        <Checkbox id="select-all-bread" checked={isAllSelected} onCheckedChange={handleSelectAll} className="h-5 w-5" />
+                        <label htmlFor="select-all-bread" className="text-sm font-black uppercase tracking-widest text-muted-foreground">
+                            {selectedOrders.size > 0 ? `${selectedOrders.size} sélectionné(s)` : 'Sélectionner'}
                         </label>
                     </div>
-                    <div className="flex gap-2 flex-wrap w-full sm:w-auto">
-                        {selectedOrders.size > 0 && (
+                    <div className="flex gap-2 flex-wrap w-full lg:w-auto">
+                        {selectedOrders.size > 0 ? (
                             <>
-                                <Button variant="destructive" size="sm" onClick={handleDeleteSelected} disabled={isDeleting}>
-                                    {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                                    <span className="ml-2 hidden sm:inline">Supprimer</span>
+                                <Button variant="outline" size="sm" onClick={handleDeleteSelected} disabled={isDeleting} className="bg-destructive/10 text-destructive border-destructive/20 hover:bg-destructive/20 rounded-xl">
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    Supprimer
                                 </Button>
-                                <Button size="sm" onClick={handleConvertToSales} disabled={isConverting}>
-                                    {isConverting ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShoppingCart className="h-4 w-4" />}
-                                    <span className="ml-2">Convertir en Vente</span>
+                                <Button variant="outline" size="sm" onClick={handleMarkDelivered} className="rounded-xl border-primary/20 bg-primary/5 text-primary">
+                                    <PackageCheck className="h-4 w-4 mr-2" />
+                                    Tout Livrer
+                                </Button>
+                                <Button size="sm" onClick={handleConvertToSales} disabled={isConverting} className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl shadow-lg shadow-primary/20 px-6">
+                                    {isConverting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ShoppingCart className="h-4 w-4 mr-2" />}
+                                    Facturer la sélection
                                 </Button>
                             </>
+                        ) : (
+                            <>
+                                <Button variant="outline" size="sm" onClick={handleGenerate} disabled={isGenerating} className="rounded-xl border-primary/30 bg-primary/10 text-primary hover:bg-primary/20">
+                                    {isGenerating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Sparkles className="h-4 w-4 mr-2" />}
+                                    Générer depuis Récurence
+                                </Button>
+                                <ManualAddDialog currentDate={currentDate} onSuccess={onOrdersChange} />
+                                <PrintBreadListDialog orders={orders} currentDate={currentDate}/>
+                            </>
                         )}
-                        <ManualAddDialog currentDate={currentDate} onSuccess={onOrdersChange} />
-                        <PrintBreadListDialog orders={orders} currentDate={currentDate}/>
                     </div>
                 </div>
             </CardHeader>
-            <CardContent className="flex-grow min-h-0 p-4">
+            <CardContent className="flex-grow min-h-0 p-6">
                 <ScrollArea className="h-full">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                        {orders.map(order => (
-                            <BreadOrderCard 
-                                key={order.uuid} 
-                                order={order}
-                                isSelected={selectedOrders.has(order.uuid)}
-                                onToggleSelection={handleToggleSelection}
-                                onUpdate={onOrdersChange}
-                            />
-                        ))}
-                    </div>
+                    {orders.length === 0 ? (
+                        <EmptyState
+                            icon={Wheat}
+                            title="Aucune commande enregistrée"
+                            description="Générez les commandes récurrentes ou ajoutez-en une manuellement."
+                            className="py-24"
+                        >
+                            <div className="flex gap-2 justify-center">
+                                <Button onClick={handleGenerate} disabled={isGenerating} className="rounded-xl">
+                                    {isGenerating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Lancer la génération
+                                </Button>
+                            </div>
+                        </EmptyState>
+                    ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-8">
+                            {orders.map(order => (
+                                <BreadOrderCard 
+                                    key={order.uuid} 
+                                    order={order}
+                                    isSelected={selectedOrders.has(order.uuid)}
+                                    onToggleSelection={handleToggleSelection}
+                                    onUpdate={onOrdersChange}
+                                />
+                            ))}
+                        </div>
+                    )}
                 </ScrollArea>
             </CardContent>
         </Card>

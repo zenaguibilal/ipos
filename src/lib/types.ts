@@ -236,6 +236,7 @@ export interface Supplier {
 export interface BreadOrder {
     uuid: string;
     user_id: string;
+    customerUuid: string | null;
     orderName: string; // Nom de la commande (ex: Resto X)
     date: string; // YYYY-MM-DD
     quantite: number;
