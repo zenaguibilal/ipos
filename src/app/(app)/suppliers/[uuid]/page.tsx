@@ -4,7 +4,7 @@
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Banknote, History, Package, Building2, Phone, Mail, MapPin, ArrowRight, TrendingUp, BarChart3, ListFilter, Search, MessageSquare, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Banknote, History, Package, Building2, Phone, Mail, MapPin, ArrowRight, TrendingUp, BarChart3, ListFilter, Search, MessageSquare, ExternalLink, Printer } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useState, useCallback, useEffect, useMemo } from 'react';
@@ -21,10 +21,11 @@ import { StockIntakeDetailsDialog } from '@/components/stock/stock-intake-detail
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
-import { format, startOfMonth, eachMonthOfInterval, subMonths } from 'date-fns';
+import { format, subMonths, eachMonthOfInterval } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import Image from 'next/image';
 import { getPlaceholder } from '@/lib/utils';
+import { PrintSupplierStatementDialog } from '@/components/suppliers/PrintSupplierStatementDialog';
 
 export default function SupplierDetailPage() {
     const params = useParams();
@@ -38,6 +39,7 @@ export default function SupplierDetailPage() {
     const [productSearch, setProductSearch] = useState('');
     
     const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+    const [isStatementDialogOpen, setIsStatementDialogOpen] = useState(false);
     const [selectedIntake, setSelectedIntake] = useState<StockIntake | null>(null);
     const [isIntakeDetailsOpen, setIsIntakeDetailsOpen] = useState(false);
 
@@ -337,16 +339,24 @@ export default function SupplierDetailPage() {
                                 </p>
                             </div>
                             
-                            <Button 
-                                className={cn(
-                                    "w-full h-12 rounded-xl font-bold gap-2 shadow-lg",
-                                    supplier.balance > 0 ? "bg-destructive hover:bg-destructive/90 shadow-destructive/20" : "bg-chart-quaternary hover:bg-chart-quaternary/90 shadow-chart-quaternary/20"
-                                )}
-                                onClick={() => setIsPaymentDialogOpen(true)}
-                            >
-                                <Banknote className="h-5 w-5" />
-                                {supplier.balance > 0 ? "Régler le solde" : "Effectuer un acompte"}
-                            </Button>
+                            <div className="grid grid-cols-2 gap-2">
+                                <Button 
+                                    variant="outline"
+                                    className="h-12 rounded-xl font-bold gap-2 luxury-glass border-white/10"
+                                    onClick={() => setIsStatementDialogOpen(true)}
+                                >
+                                    <Printer className="h-4 w-4" /> Relevé
+                                </Button>
+                                <Button 
+                                    className={cn(
+                                        "h-12 rounded-xl font-bold gap-2 shadow-lg",
+                                        supplier.balance > 0 ? "bg-destructive hover:bg-destructive/90 shadow-destructive/20" : "bg-chart-quaternary hover:bg-chart-quaternary/90 shadow-chart-quaternary/20"
+                                    )}
+                                    onClick={() => setIsPaymentDialogOpen(true)}
+                                >
+                                    <Banknote className="h-5 w-5" /> Payer
+                                </Button>
+                            </div>
                         </CardContent>
                     </Card>
 
@@ -417,6 +427,15 @@ export default function SupplierDetailPage() {
                     onOpenChange={setIsPaymentDialogOpen}
                     supplier={supplier}
                     onSuccess={fetchSupplierData}
+                />
+            )}
+
+            {supplier && (
+                <PrintSupplierStatementDialog
+                    isOpen={isStatementDialogOpen}
+                    onOpenChange={setIsStatementDialogOpen}
+                    supplier={supplier}
+                    activity={activity}
                 />
             )}
 

@@ -1,12 +1,12 @@
 
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useDebounce } from '@/hooks/useDebounce';
 import type { Supplier } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, Building, LayoutGrid, List, RefreshCw, Loader2, Phone, DollarSign, Wallet, FileUp, X, ArrowUpRight } from 'lucide-react';
+import { Plus, Search, Building, LayoutGrid, List, RefreshCw, Loader2, Phone, Wallet, FileUp, X, SortAsc, Filter } from 'lucide-react';
 import { SupplierCard } from '@/components/suppliers/SupplierCard';
 import { SupplierTable } from '@/components/suppliers/SupplierTable';
 import { SupplierDialog } from '@/components/suppliers/SupplierDialog';
@@ -26,7 +26,18 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu";
+
+const sortOptions: { [key: string]: string } = {
+    'name_asc': 'Nom (A-Z)',
+    'name_desc': 'Nom (Z-A)',
+    'balance_desc': 'Dette (Plus élevée)',
+    'balance_asc': 'Dette (Moins élevée)',
+    'createdAt_desc': 'Plus récents',
+    'createdAt_asc': 'Plus anciens',
+};
 
 export default function SuppliersPage() {
     const isManagerOrAdmin = useIsManagerOrAdmin();
@@ -38,13 +49,12 @@ export default function SuppliersPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const debouncedSearch = useDebounce(searchQuery, 300);
     const [filterDebtOnly, setFilterDebtOnly] = useState(false);
+    const [sortBy, setSortBy] = useState('name_asc');
     
-    // Dialog states
     const [isSupplierDialogOpen, setIsSupplierDialogOpen] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
     
-    // Data states
     const [suppliers, setSuppliers] = useState<Supplier[] | undefined>(undefined);
     const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -65,18 +75,38 @@ export default function SuppliersPage() {
         fetchSuppliers();
     }, [fetchSuppliers]);
 
-    const filteredSuppliers = (suppliers || []).filter(s => {
-        const matchesSearch = s.name.toLowerCase().includes(debouncedSearch.toLowerCase()) || 
-                             (s.phone && s.phone.includes(debouncedSearch));
-        const matchesDebt = filterDebtOnly ? s.balance > 0 : true;
-        return matchesSearch && matchesDebt;
-    });
+    const filteredAndSortedSuppliers = useMemo(() => {
+        if (!suppliers) return [];
+        
+        let result = suppliers.filter(s => {
+            const matchesSearch = s.name.toLowerCase().includes(debouncedSearch.toLowerCase()) || 
+                                 (s.phone && s.phone.includes(debouncedSearch));
+            const matchesDebt = filterDebtOnly ? s.balance > 0 : true;
+            return matchesSearch && matchesDebt;
+        });
 
-    const stats = {
+        const [field, order] = sortBy.split('_');
+        const isAsc = order === 'asc';
+
+        result.sort((a, b) => {
+            if (field === 'name') return isAsc ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name);
+            if (field === 'balance') return isAsc ? a.balance - b.balance : b.balance - a.balance;
+            if (field === 'createdAt') {
+                const dateA = new Date(a.createdAt || 0).getTime();
+                const dateB = new Date(b.createdAt || 0).getTime();
+                return isAsc ? dateA - dateB : dateB - dateA;
+            }
+            return 0;
+        });
+
+        return result;
+    }, [suppliers, debouncedSearch, filterDebtOnly, sortBy]);
+
+    const stats = useMemo(() => ({
         total: suppliers?.length || 0,
         totalDebt: suppliers?.reduce((sum, s) => sum + s.balance, 0) || 0,
         activeSuppliers: suppliers?.filter(s => s.balance > 0).length || 0
-    };
+    }), [suppliers]);
 
     const handleEditSupplier = (supplier: Supplier) => {
         setSelectedSupplier(supplier);
@@ -89,9 +119,9 @@ export default function SuppliersPage() {
     };
 
     const handleExport = () => {
-        if (!filteredSuppliers.length) return;
+        if (!filteredAndSortedSuppliers.length) return;
         try {
-            supplierService.exportToCSV(filteredSuppliers);
+            supplierService.exportToCSV(filteredAndSortedSuppliers);
             toast.success("Liste des fournisseurs exportée.");
         } catch (e) {
             toast.error("Erreur lors de l'exportation.");
@@ -107,7 +137,7 @@ export default function SuppliersPage() {
             );
         }
 
-        if (filteredSuppliers.length === 0) {
+        if (filteredAndSortedSuppliers.length === 0) {
             return (
                 <EmptyState
                     icon={Building}
@@ -126,7 +156,7 @@ export default function SuppliersPage() {
         if (viewMode === 'list') {
             return (
                 <SupplierTable 
-                    suppliers={filteredSuppliers}
+                    suppliers={filteredAndSortedSuppliers}
                     onEdit={handleEditSupplier}
                     onDelete={handleDeleteSupplier}
                 />
@@ -135,7 +165,7 @@ export default function SuppliersPage() {
 
         return (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredSuppliers.map(s => (
+                {filteredAndSortedSuppliers.map(s => (
                     <SupplierCard 
                         key={s.uuid} 
                         supplier={s} 
@@ -154,7 +184,7 @@ export default function SuppliersPage() {
                 description="Suivez vos partenaires commerciaux et l'état de vos dettes fournisseurs."
             >
                 <div className="flex gap-2 w-full sm:w-auto">
-                    <Button variant="outline" onClick={handleExport} disabled={!filteredSuppliers.length} className="border-primary/20 luxury-glass h-11">
+                    <Button variant="outline" onClick={handleExport} disabled={!filteredAndSortedSuppliers.length} className="border-primary/20 luxury-glass h-11">
                         <FileUp className="mr-2 h-4 w-4" /> Exporter CSV
                     </Button>
                     {isManagerOrAdmin && (
@@ -235,6 +265,26 @@ export default function SuppliersPage() {
                         </DropdownMenuContent>
                     </DropdownMenu>
 
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline" className="h-11 border-primary/10 luxury-glass rounded-xl min-w-[180px] justify-between">
+                                <span className="flex items-center gap-2">
+                                    <SortAsc className="h-4 w-4 text-primary" />
+                                    <span className="text-xs font-bold">Trier: {sortOptions[sortBy]}</span>
+                                </span>
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="luxury-glass w-56">
+                            <DropdownMenuLabel className="text-[10px] font-black uppercase opacity-50">Trier la liste par</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuRadioGroup value={sortBy} onValueChange={setSortBy}>
+                                {Object.entries(sortOptions).map(([key, value]) => (
+                                    <DropdownMenuRadioItem key={key} value={key}>{value}</DropdownMenuRadioItem>
+                                ))}
+                            </DropdownMenuRadioGroup>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+
                     <div className="flex items-center gap-1 rounded-xl bg-muted/50 p-1 border border-primary/10 h-11 luxury-glass">
                         <Button variant={viewMode === 'grid' ? 'secondary': 'ghost'} size="icon" className="h-9 w-9 rounded-lg" onClick={() => setViewMode('grid')} title="Vue Grille">
                             <LayoutGrid className="h-5 w-5"/>
@@ -272,5 +322,3 @@ export default function SuppliersPage() {
         </div>
     );
 }
-
-import { Filter } from 'lucide-react';
