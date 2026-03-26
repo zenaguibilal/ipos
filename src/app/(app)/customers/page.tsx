@@ -6,7 +6,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import type { Customer, ImportAnalysis } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, Users, FileDown, Loader2, FileUp, Trash2, LayoutGrid, List } from 'lucide-react';
+import { Plus, Search, Users, FileDown, Loader2, FileUp, Trash2, LayoutGrid, List, RefreshCw, Printer } from 'lucide-react';
 import { CustomerCard } from '@/components/customers/customer-card';
 import { CustomerTable } from '@/components/customers/customer-table';
 import { CustomerTableSkeleton } from '@/components/customers/customer-table-skeleton';
@@ -14,7 +14,7 @@ import { CustomerDialog } from '@/components/customers/customer-dialog';
 import { DeleteCustomerDialog } from '@/components/customers/delete-customer-dialog';
 import { toast } from 'sonner';
 import { CustomerStats } from '@/components/customers/CustomerStats';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { PageHeader } from '@/components/layout/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -25,6 +25,7 @@ import { ImportPreviewDialog } from '@/components/customers/import-preview-dialo
 import { Checkbox } from '@/components/ui/checkbox';
 import { DeleteMultipleCustomersDialog } from '@/components/customers/DeleteMultipleCustomersDialog';
 import { AddPaymentDialog } from '@/components/payments/AddPaymentDialog';
+import { PrintStatementDialog } from '@/components/customers/PrintStatementDialog';
 
 type FilterStatus = 'all' | 'has_debt' | 'overdue' | 'over_limit' | 'is_bread_client';
 
@@ -46,6 +47,7 @@ export default function CustomersPage() {
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
     const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+    const [isStatementDialogOpen, setIsStatementDialogOpen] = useState(false);
     
     const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
     const [selectedCustomers, setSelectedCustomers] = useState<Set<string>>(new Set());
@@ -58,6 +60,7 @@ export default function CustomersPage() {
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
     const [totalCount, setTotalCount] = useState(0);
+    const [statsRefreshKey, setStatsRefreshKey] = useState(0);
 
     // States for CSV Import
     const [isImportPreviewOpen, setIsImportPreviewOpen] = useState(false);
@@ -87,22 +90,24 @@ export default function CustomersPage() {
                 pageSize: ITEMS_PER_PAGE
             });
             
+            let updatedCustomers: Customer[];
             if (isInitial) {
-                setCustomers(result.data);
+                updatedCustomers = result.data;
             } else {
-                setCustomers(prev => [...prev, ...result.data]);
+                updatedCustomers = [...customers, ...result.data];
                 setPage(currentPage);
             }
             
+            setCustomers(updatedCustomers);
             setTotalCount(result.total);
-            setHasMore(customers.length + result.data.length < result.total);
+            setHasMore(updatedCustomers.length < result.total);
         } catch (error: any) {
             toast.error("Impossible de charger les clients.", { description: error.message });
             if (isInitial) setCustomers([]);
         } finally {
             setIsLoading(false);
         }
-    }, [debouncedSearchQuery, filterStatus, page, customers.length]);
+    }, [debouncedSearchQuery, filterStatus, page, customers]);
     
     useEffect(() => {
         fetchCustomers(true);
@@ -110,7 +115,7 @@ export default function CustomersPage() {
 
     useEffect(() => {
         setSelectedCustomers(new Set());
-    }, [customers]);
+    }, [customers.length]);
 
     const handleEditCustomer = useCallback((customer: Customer) => {
         setSelectedCustomer(customer);
@@ -125,6 +130,11 @@ export default function CustomersPage() {
     const handlePaymentClick = useCallback((customer: Customer) => {
         setSelectedCustomer(customer);
         setIsPaymentDialogOpen(true);
+    }, []);
+
+    const handleStatementClick = useCallback((customer: Customer) => {
+        setSelectedCustomer(customer);
+        setIsStatementDialogOpen(true);
     }, []);
 
     const handleToggleSelection = useCallback((customerUuid: string) => {
@@ -153,7 +163,7 @@ export default function CustomersPage() {
 
         setIsAnalyzing(true);
         try {
-            const analysis = await customerService.analyzeImport(file);
+            const analysis = await customerService.parseAndAnalyzeImport(file);
             setImportAnalysis(analysis);
             setIsImportPreviewOpen(true);
         } catch (error: any) {
@@ -171,6 +181,7 @@ export default function CustomersPage() {
             toast.success("Importation terminée avec succès !");
             setIsImportPreviewOpen(false);
             setImportAnalysis(null);
+            setStatsRefreshKey(k => k + 1);
             fetchCustomers(true);
         } catch (error: any) {
             toast.error("Erreur lors de l'importation des données.", { description: error.message });
@@ -180,23 +191,39 @@ export default function CustomersPage() {
     };
 
     const handleExportCSV = async () => {
-        if (customers.length === 0) {
+        if (totalCount === 0) {
             toast.info("Aucun client à exporter.");
             return;
         }
         try {
-            // Export all customers matches by filter, not just the currently loaded page
-            const result = await customerService.filterCustomers({ query: debouncedSearchQuery, status: filterStatus });
+            const result = await customerService.filterCustomers({ query: debouncedSearchQuery, status: filterStatus, pageSize: 1000 });
             await customerService.exportToCSV(result.data);
             toast.success("Liste des clients exportée avec succès.");
         } catch (error: any) {
             toast.error("Erreur lors de l'exportation.", { description: error.message });
         }
     };
+
+    const handleDownloadTemplate = () => {
+        customerService.exportToCSV([
+            { firstName: 'Jean', lastName: 'Dupont', phone: '0555123456', address: '123 Rue de la Liberté', creditLimit: 5000, outstandingBalance: 0 } as any
+        ]);
+    };
     
+    const refreshAll = () => {
+        setStatsRefreshKey(k => k + 1);
+        fetchCustomers(true);
+    };
+
     const renderSkeletons = () => (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[...Array(6)].map((_, i) => <Card key={i}><CardHeader><Skeleton className="h-6 w-32" /></CardHeader><CardContent><Skeleton className="h-24 w-full" /></CardContent><CardFooter><Skeleton className="h-10 w-full" /></CardFooter></Card>)}
+            {[...Array(6)].map((_, i) => (
+                <Card key={i}>
+                    <CardHeader><Skeleton className="h-6 w-32" /></CardHeader>
+                    <CardContent><Skeleton className="h-24 w-full" /></CardContent>
+                    <CardFooter><Skeleton className="h-10 w-full" /></CardFooter>
+                </Card>
+            ))}
         </div>
     );
 
@@ -210,7 +237,7 @@ export default function CustomersPage() {
                 <EmptyState
                     icon={Users}
                     title="Aucun client trouvé"
-                    description="Commencez par ajouter votre premier client ou ajustez vos filtres."
+                    description="Ajustez vos filtres ou commencez par ajouter votre premier client."
                 >
                      <Button onClick={() => { setSelectedCustomer(null); setIsCustomerDialogOpen(true); }}>
                         <Plus className="mr-2 h-4 w-4" /> Ajouter un client
@@ -230,6 +257,7 @@ export default function CustomersPage() {
                                 onEdit={handleEditCustomer} 
                                 onDelete={handleDeleteCustomer}
                                 onPayment={handlePaymentClick}
+                                onStatement={handleStatementClick}
                                 isSelected={selectedCustomers.has(c.uuid)}
                                 onToggleSelection={() => handleToggleSelection(c.uuid)}
                             />
@@ -239,11 +267,9 @@ export default function CustomersPage() {
                     <CustomerTable 
                         customers={customers}
                         onEdit={handleEditCustomer}
-                        onDelete={(c) => {
-                            setSelectedCustomer(c);
-                            setIsDeleteDialogOpen(true);
-                        }}
+                        onDelete={handleDeleteCustomer}
                         onPayment={handlePaymentClick}
+                        onStatement={handleStatementClick}
                         selectedCustomers={selectedCustomers}
                         onToggleCustomerSelection={handleToggleSelection}
                         onToggleSelectAll={handleToggleSelectAll}
@@ -252,9 +278,9 @@ export default function CustomersPage() {
 
                 {hasMore && (
                     <div className="flex justify-center pt-4">
-                        <Button variant="outline" size="lg" onClick={() => fetchCustomers(false)} disabled={isLoading}>
+                        <Button variant="outline" size="lg" onClick={() => fetchCustomers(false)} disabled={isLoading} className="min-w-[200px]">
                             {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                            Charger plus de clients ({customers.length} / {totalCount})
+                            Charger plus ({customers.length} / {totalCount})
                         </Button>
                     </div>
                 )}
@@ -266,7 +292,7 @@ export default function CustomersPage() {
         <div className="p-4 sm:p-6 space-y-6">
             <PageHeader
                 title="Gestion des Clients"
-                description="Recherchez, ajoutez et gérez vos clients."
+                description="Recherchez, ajoutez et suivez le solde de vos clients."
             >
                 <div className="flex gap-2 w-full sm:w-auto">
                     <Button variant="outline" onClick={handleExportCSV} disabled={isLoading && customers.length === 0}>
@@ -274,13 +300,25 @@ export default function CustomersPage() {
                     </Button>
                     {isManagerOrAdmin && (
                         <>
-                            <Button asChild variant="outline" disabled={isAnalyzing}>
-                                <label htmlFor="csv-customer-importer">
-                                    {isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
-                                    {isAnalyzing ? 'Analyse...' : 'Importer'}
-                                    <input type="file" id="csv-customer-importer" accept=".csv" className="sr-only" onChange={handleFileSelected} />
-                                </label>
-                            </Button>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="outline" disabled={isAnalyzing}>
+                                        {isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
+                                        Importer
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    <DropdownMenuItem asChild>
+                                        <label htmlFor="csv-customer-importer" className="cursor-pointer w-full">
+                                            Choisir un fichier CSV
+                                            <input type="file" id="csv-customer-importer" accept=".csv" className="sr-only" onChange={handleFileSelected} />
+                                        </label>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={handleDownloadTemplate}>
+                                        Télécharger le modèle
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
                             <Button onClick={() => { setSelectedCustomer(null); setIsCustomerDialogOpen(true); }}>
                                 <Plus className="mr-2 h-4 w-4" /> Ajouter
                             </Button>
@@ -289,7 +327,7 @@ export default function CustomersPage() {
                 </div>
             </PageHeader>
 
-            <CustomerStats onRefresh={() => fetchCustomers(true)} />
+            <CustomerStats key={statsRefreshKey} onRefresh={refreshAll} />
 
             <div className="flex flex-col sm:flex-row gap-2">
                 <div className="relative flex-grow">
@@ -326,32 +364,33 @@ export default function CustomersPage() {
                         <List className="h-5 w-5"/>
                     </Button>
                 </div>
+                
+                <Button variant="ghost" size="icon" onClick={refreshAll} disabled={isLoading}>
+                    <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
+                </Button>
             </div>
 
-            {isManagerOrAdmin && (
-                <div className="flex flex-col sm:flex-row gap-2 justify-between items-center bg-card border rounded-lg p-3">
+            {isManagerOrAdmin && selectedCustomers.size > 0 && (
+                <div className="flex flex-col sm:flex-row gap-2 justify-between items-center bg-primary/5 border border-primary/20 rounded-lg p-3 animate-in slide-in-from-top-2">
                     <div className="flex items-center gap-3">
                         <Checkbox
                             id="select-all-customers"
                             checked={customers.length > 0 && selectedCustomers.size === customers.length}
                             onCheckedChange={handleToggleSelectAll}
-                            disabled={isLoading && customers.length === 0}
                         />
-                        <label htmlFor="select-all-customers" className="text-sm font-medium">
-                            {selectedCustomers.size > 0 ? `${selectedCustomers.size} sélectionné(s)` : "Tout sélectionner"}
+                        <label htmlFor="select-all-customers" className="text-sm font-semibold text-primary">
+                            {selectedCustomers.size} client(s) sélectionné(s)
                         </label>
                     </div>
-                    {selectedCustomers.size > 0 && (
-                        <div className="flex gap-2">
-                            <Button variant="destructive" onClick={() => setIsBulkDeleteDialogOpen(true)}>
-                                <Trash2 className="mr-2 h-4 w-4" /> Supprimer
-                            </Button>
-                        </div>
-                    )}
+                    <div className="flex gap-2">
+                        <Button variant="destructive" size="sm" onClick={() => setIsBulkDeleteDialogOpen(true)}>
+                            <Trash2 className="mr-2 h-4 w-4" /> Supprimer la sélection
+                        </Button>
+                    </div>
                 </div>
             )}
             
-            <div>
+            <div className="min-h-[400px]">
                {renderContent()}
             </div>
 
@@ -359,7 +398,7 @@ export default function CustomersPage() {
                 isOpen={isCustomerDialogOpen}
                 onOpenChange={setIsCustomerDialogOpen}
                 customer={selectedCustomer}
-                onSuccess={() => fetchCustomers(true)}
+                onSuccess={() => refreshAll()}
             />
             
             {isManagerOrAdmin && (
@@ -368,7 +407,7 @@ export default function CustomersPage() {
                         isOpen={isDeleteDialogOpen}
                         onOpenChange={setIsDeleteDialogOpen}
                         customer={selectedCustomer}
-                        onSuccess={() => fetchCustomers(true)}
+                        onSuccess={() => refreshAll()}
                     />
                     <DeleteMultipleCustomersDialog
                         isOpen={isBulkDeleteDialogOpen}
@@ -376,7 +415,7 @@ export default function CustomersPage() {
                         customerUuids={Array.from(selectedCustomers)}
                         onSuccess={() => {
                             setSelectedCustomers(new Set());
-                            fetchCustomers(true);
+                            refreshAll();
                         }}
                     />
                     <ImportPreviewDialog
@@ -390,12 +429,19 @@ export default function CustomersPage() {
             )}
 
             {selectedCustomer && (
-                <AddPaymentDialog 
-                    isOpen={isPaymentDialogOpen}
-                    onOpenChange={setIsPaymentDialogOpen}
-                    customer={selectedCustomer}
-                    onPaymentSuccess={() => fetchCustomers(true)}
-                />
+                <>
+                    <AddPaymentDialog 
+                        isOpen={isPaymentDialogOpen}
+                        onOpenChange={setIsPaymentDialogOpen}
+                        customer={selectedCustomer}
+                        onPaymentSuccess={() => refreshAll()}
+                    />
+                    <PrintStatementDialog
+                        isOpen={isStatementDialogOpen}
+                        onOpenChange={setIsStatementDialogOpen}
+                        customer={selectedCustomer}
+                    />
+                </>
             )}
         </div>
     );
