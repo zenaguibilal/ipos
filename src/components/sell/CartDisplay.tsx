@@ -1,20 +1,21 @@
-
 'use client';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Trash2, ShoppingCart } from 'lucide-react';
+import { Trash2, ShoppingCart, CalendarClock } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { formatCurrency, getPlaceholder } from '@/lib/utils';
 import { useAppActions, useIsManagerOrAdmin } from '@/stores/appStore';
 import { toast } from 'sonner';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useDebounce } from '@/hooks/useDebounce';
 import type { Cart, CartItem } from '@/lib/types';
+import { differenceInDays } from 'date-fns';
+import { Badge } from '@/components/ui/badge';
 
-// New component to manage local state for price editing
+// Component to manage local state for price editing
 const PriceEditor = ({ item, onPriceChange }: { item: CartItem, onPriceChange: (uuid: string, price: number) => void }) => {
     const [priceStr, setPriceStr] = useState(String(item.price));
     const debouncedPrice = useDebounce(parseFloat(priceStr), 500);
@@ -41,6 +42,62 @@ const PriceEditor = ({ item, onPriceChange }: { item: CartItem, onPriceChange: (
         />
     )
 }
+
+const CartListItem = ({ item, isManagerOrAdmin, onQuantityUpdate, onPriceChange, onRemove }: { item: CartItem, isManagerOrAdmin: boolean, onQuantityUpdate: (uuid: string, qty: string) => void, onPriceChange: (uuid: string, price: number) => void, onRemove: (uuid: string) => void }) => {
+    const expirationStatus = useMemo(() => {
+        if (!item.dateExpiration) return null;
+        const today = new Date();
+        const expirationDate = new Date(item.dateExpiration);
+        const daysUntilExpiration = differenceInDays(expirationDate, today);
+
+        if (daysUntilExpiration < 0) return { color: 'bg-destructive text-destructive-foreground', text: `Expiré`, isExpired: true };
+        if (daysUntilExpiration <= 30) return { color: 'bg-yellow-500 text-black', text: `Expire dans ${daysUntilExpiration} j`, isExpired: false };
+        return null;
+    }, [item.dateExpiration]);
+
+    return (
+        <div className={cn(
+            "flex items-center gap-4 border p-2 rounded-xl transition-all duration-300",
+            item.flash && "animate-flash",
+            expirationStatus?.isExpired ? "bg-destructive/10 border-destructive/30" : "bg-background/50"
+        )}>
+            <Image
+                src={item.imageUrl || getPlaceholder(item.category).url}
+                alt={item.name}
+                width={64}
+                height={64}
+                className="h-16 w-16 object-cover rounded-md"
+            />
+            <div className="flex-grow">
+                <p className="font-semibold">{item.name}</p>
+                {isManagerOrAdmin ? (
+                    <PriceEditor item={item} onPriceChange={onPriceChange} />
+                ) : (
+                    <p className="text-sm text-muted-foreground">{formatCurrency(item.price)}</p>
+                )}
+                {expirationStatus && (
+                    <Badge className={cn("mt-1.5", expirationStatus.color)}>
+                        <CalendarClock className="h-3 w-3 mr-1" />
+                        {expirationStatus.text}
+                    </Badge>
+                )}
+            </div>
+            <div className="flex items-center gap-2">
+                 <Input
+                    type="number"
+                    value={item.cartQuantity}
+                    onChange={(e) => onQuantityUpdate(item.uuid, e.target.value)}
+                    className="w-16 h-9 text-center"
+                    min="1"
+                    max={item.quantity}
+                />
+                <Button variant="ghost" size="icon" className="text-destructive/70 hover:text-destructive hover:bg-destructive/10" onClick={() => onRemove(item.uuid)}>
+                    <Trash2 className="h-4 w-4" />
+                </Button>
+            </div>
+        </div>
+    );
+};
 
 export function CartDisplay({ cart }: { cart: Cart | undefined }) {
     const { updateCartItemQuantity, removeCartItem, clearCartFlashes, updateCartItemPrice } = useAppActions();
@@ -79,39 +136,14 @@ export function CartDisplay({ cart }: { cart: Cart | undefined }) {
                 <ScrollArea className="flex-grow -mr-4 pr-4">
                     <div className="space-y-3">
                         {cart.items.map(item => (
-                            <div key={item.uuid} className={cn(
-                                "flex items-center gap-4 bg-background/50 border p-2 rounded-xl transition-all duration-300", 
-                                item.flash && "animate-flash"
-                            )}>
-                                <Image 
-                                    src={item.imageUrl || getPlaceholder(item.category).url}
-                                    alt={item.name}
-                                    width={64}
-                                    height={64}
-                                    className="h-16 w-16 object-cover rounded-md"
-                                />
-                                <div className="flex-grow">
-                                    <p className="font-semibold">{item.name}</p>
-                                    {isManagerOrAdmin ? (
-                                        <PriceEditor item={item} onPriceChange={updateCartItemPrice} />
-                                    ) : (
-                                        <p className="text-sm text-muted-foreground">{formatCurrency(item.price)}</p>
-                                    )}
-                                </div>
-                                <div className="flex items-center gap-2">
-                                     <Input
-                                        type="number"
-                                        value={item.cartQuantity}
-                                        onChange={(e) => handleQuantityUpdate(item.uuid, e.target.value)}
-                                        className="w-16 h-9 text-center"
-                                        min="1"
-                                        max={item.quantity}
-                                    />
-                                    <Button variant="ghost" size="icon" className="text-destructive/70 hover:text-destructive hover:bg-destructive/10" onClick={() => removeCartItem(item.uuid)}>
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                </div>
-                            </div>
+                             <CartListItem
+                                key={item.uuid}
+                                item={item}
+                                isManagerOrAdmin={isManagerOrAdmin}
+                                onQuantityUpdate={handleQuantityUpdate}
+                                onPriceChange={updateCartItemPrice}
+                                onRemove={removeCartItem}
+                            />
                         ))}
                     </div>
                 </ScrollArea>
