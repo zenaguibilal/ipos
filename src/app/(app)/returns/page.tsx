@@ -1,14 +1,14 @@
 
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { returnService } from '@/services/return.service';
 import { customerService } from '@/services/customer.service';
 import { useDebounce } from '@/hooks/useDebounce';
 import type { ProductReturn, Customer } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, Plus, Undo2, LayoutGrid, List, FileUp, RefreshCw, Loader2, Banknote, Package, HandCoins, X, TrendingDown } from 'lucide-react';
+import { Search, Plus, Undo2, LayoutGrid, List, FileUp, RefreshCw, Loader2, Banknote, Package, HandCoins, X, TrendingDown, Printer } from 'lucide-react';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { useDateRange } from '@/hooks/useDateRange';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -16,6 +16,7 @@ import { ReturnHistoryCard } from '@/components/returns/ReturnHistoryCard';
 import { ReturnTable } from '@/components/returns/ReturnTable';
 import { ReturnDetailsDialog } from '@/components/returns/ReturnDetailsDialog';
 import { CancelReturnDialog } from '@/components/returns/CancelReturnDialog';
+import { ReturnReceipt } from '@/components/returns/ReturnReceipt';
 import Link from 'next/link';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -29,6 +30,7 @@ export default function ReturnsPage() {
         viewMode: state.returnViewMode,
         setViewMode: state.actions.setReturnViewMode,
     }));
+    const profile = useAppStore(state => state.profile);
 
     const [searchQuery, setSearchQuery] = useState('');
     const debouncedSearchQuery = useDebounce(searchQuery, 300);
@@ -42,6 +44,8 @@ export default function ReturnsPage() {
     const [customerMap, setCustomerMap] = useState<Map<string, Customer>>(new Map());
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
+
+    const receiptRef = useRef<HTMLDivElement>(null);
 
     const fetchReturnsAndCustomers = useCallback(async (manual = false) => {
         if (!isMounted || !dateRange) return;
@@ -90,6 +94,30 @@ export default function ReturnsPage() {
     const handleCancelReturn = (pr: ProductReturn) => {
         setSelectedReturn(pr);
         setIsCancelOpen(true);
+    };
+
+    const handlePrint = (pr: ProductReturn, format: 'thermal' | 'a4') => {
+        setSelectedReturn(pr);
+        // Wait for state to update and print
+        setTimeout(() => {
+            const printableContent = document.getElementById('receipt-for-print');
+            const receiptElement = receiptRef.current;
+
+            if (!printableContent || !receiptElement) return;
+
+            const receiptClone = receiptElement.cloneNode(true) as HTMLDivElement;
+            
+            document.documentElement.classList.toggle('thermal', format === 'thermal');
+            receiptClone.classList.add(format === 'thermal' ? 'thermal-receipt' : 'a4-receipt');
+
+            printableContent.innerHTML = '';
+            printableContent.appendChild(receiptClone);
+
+            setTimeout(() => {
+                window.print();
+                document.documentElement.classList.remove('thermal');
+            }, 100);
+        }, 50);
     };
 
     const handleExport = async () => {
@@ -147,6 +175,7 @@ export default function ReturnsPage() {
                                     customerName={customerName}
                                     onViewDetails={handleViewDetails}
                                     onCancelReturn={handleCancelReturn}
+                                    onPrint={(format) => handlePrint(r, format)}
                                 />
                             )
                         })}
@@ -157,6 +186,7 @@ export default function ReturnsPage() {
                         customerMap={customerMap}
                         onViewDetails={handleViewDetails}
                         onCancelReturn={handleCancelReturn}
+                        onPrint={(r, format) => handlePrint(r, format)}
                     />
                 )}
             </div>
@@ -180,7 +210,7 @@ export default function ReturnsPage() {
                 </div>
             </PageHeader>
 
-            {/* Tableau de bord financier */}
+            {/* Dashboard des Statistiques */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <Card className="luxury-glass bg-destructive/5 border-destructive/20 overflow-hidden relative group">
                     <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
@@ -191,7 +221,7 @@ export default function ReturnsPage() {
                     </CardHeader>
                     <CardContent>
                         <p className="text-2xl font-black text-destructive">{formatCurrency(stats.totalValue)}</p>
-                        <p className="text-[10px] text-muted-foreground mt-1">{stats.itemCount} articles retournés</p>
+                        <p className="text-[10px] text-muted-foreground mt-1">{stats.itemCount} articles au total</p>
                     </CardContent>
                 </Card>
 
@@ -204,7 +234,7 @@ export default function ReturnsPage() {
                     </CardHeader>
                     <CardContent>
                         <p className="text-2xl font-black text-chart-quaternary">{formatCurrency(stats.totalRefunded)}</p>
-                        <p className="text-[10px] text-muted-foreground mt-1">Argent sorti de caisse</p>
+                        <p className="text-[10px] text-muted-foreground mt-1">Argent rendu aux clients</p>
                     </CardContent>
                 </Card>
 
@@ -230,7 +260,7 @@ export default function ReturnsPage() {
                     </CardHeader>
                     <CardContent>
                         <p className="text-2xl font-black">{returns?.length || 0}</p>
-                        <p className="text-[10px] text-muted-foreground mt-1">Opérations sur la période</p>
+                        <p className="text-[10px] text-muted-foreground mt-1">Opérations enregistrées</p>
                     </CardContent>
                 </Card>
             </div>
@@ -239,9 +269,9 @@ export default function ReturnsPage() {
             <div className="flex flex-col lg:flex-row gap-3">
                 <div className="relative flex-grow">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input 
-                        placeholder="Rechercher par N° Facture ou Nom Client..."
-                        className="pl-10 h-11 border-primary/10 bg-background/50 focus:border-primary/30 luxury-glass rounded-xl"
+                    <input 
+                        placeholder="N° Facture originale ou Nom du client..."
+                        className="w-full pl-10 pr-10 h-11 border-primary/10 bg-background/50 focus:border-primary/30 luxury-glass rounded-xl text-sm outline-none"
                         value={searchQuery}
                         onChange={e => setSearchQuery(e.target.value)}
                     />
@@ -282,6 +312,11 @@ export default function ReturnsPage() {
                 productReturn={selectedReturn}
                 onSuccess={() => fetchReturnsAndCustomers(true)}
             />
+
+            {/* Hidden printable receipt for list actions */}
+            <div className="hidden">
+                {selectedReturn && <ReturnReceipt ref={receiptRef} productReturn={selectedReturn} profile={profile} />}
+            </div>
         </div>
     );
 }

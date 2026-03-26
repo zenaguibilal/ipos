@@ -5,8 +5,8 @@ import React from 'react';
 import type { ProductReturn } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, FileText, Trash2, Calendar, User, Package, Banknote, HandCoins } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { MoreHorizontal, FileText, Trash2, Calendar, User, Package, Banknote, HandCoins, Printer } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { safeToDate, formatCurrency } from '@/lib/utils';
@@ -18,9 +18,10 @@ interface ReturnHistoryCardProps {
     customerName?: string;
     onViewDetails: (pr: ProductReturn) => void;
     onCancelReturn: (pr: ProductReturn) => void;
+    onPrint: (format: 'thermal' | 'a4') => void;
 }
 
-export const ReturnHistoryCard = React.memo(({ productReturn, customerName, onViewDetails, onCancelReturn }: ReturnHistoryCardProps) => {
+export const ReturnHistoryCard = React.memo(({ productReturn, customerName, onViewDetails, onCancelReturn, onPrint }: ReturnHistoryCardProps) => {
     const isManagerOrAdmin = useIsManagerOrAdmin();
     const impactDebt = productReturn.totalReturnValue - productReturn.amountRefunded;
 
@@ -45,10 +46,19 @@ export const ReturnHistoryCard = React.memo(({ productReturn, customerName, onVi
                             <DropdownMenuItem onClick={() => onViewDetails(productReturn)}>
                                 <FileText className="mr-2 h-4 w-4" /> Voir détails
                             </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => onPrint('thermal')}>
+                                <Printer className="mr-2 h-4 w-4" /> Imprimer Ticket
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => onPrint('a4')}>
+                                <Printer className="mr-2 h-4 w-4" /> Imprimer A4
+                            </DropdownMenuItem>
                             {isManagerOrAdmin && (
-                                <DropdownMenuItem onClick={() => onCancelReturn(productReturn)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
-                                    <Trash2 className="mr-2 h-4 w-4" /> Annuler retour
-                                </DropdownMenuItem>
+                                <>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem onClick={() => onCancelReturn(productReturn)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                                        <Trash2 className="mr-2 h-4 w-4" /> Annuler retour
+                                    </DropdownMenuItem>
+                                </>
                             )}
                         </DropdownMenuContent>
                     </DropdownMenu>

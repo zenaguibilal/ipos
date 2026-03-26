@@ -47,7 +47,7 @@ export function ReturnDetailsDialog({
 
     const impactDebt = productReturn.totalReturnValue - productReturn.amountRefunded;
 
-    const handlePrint = (format: 'thermal' | 'a4') => {
+    const handlePrint = (formatType: 'thermal' | 'a4') => {
         const printableContent = document.getElementById('receipt-for-print');
         const receiptElement = receiptRef.current;
 
@@ -55,8 +55,8 @@ export function ReturnDetailsDialog({
 
         const receiptClone = receiptElement.cloneNode(true) as HTMLDivElement;
         
-        document.documentElement.classList.toggle('thermal', format === 'thermal');
-        receiptClone.classList.add(format === 'thermal' ? 'thermal-receipt' : 'a4-receipt');
+        document.documentElement.classList.toggle('thermal', formatType === 'thermal');
+        receiptClone.classList.add(formatType === 'thermal' ? 'thermal-receipt' : 'a4-receipt');
 
         printableContent.innerHTML = '';
         printableContent.appendChild(receiptClone);
@@ -162,10 +162,10 @@ export function ReturnDetailsDialog({
                 <DialogFooter className="mt-4 gap-2 sm:gap-0 print-hide">
                     <div className="flex w-full flex-col sm:flex-row justify-between gap-2">
                         <div className="flex gap-2">
-                            <Button variant="outline" size="sm" onClick={() => handlePrint('thermal')} className="gap-2">
-                                <Printer className="h-4 w-4" /> Ticket
+                            <Button variant="outline" size="sm" onClick={() => handlePrint('thermal')} className="gap-2 border-primary/30">
+                                <Printer className="h-4 w-4" /> Ticket (80mm)
                             </Button>
-                            <Button variant="outline" size="sm" onClick={() => handlePrint('a4')} className="gap-2">
+                            <Button variant="outline" size="sm" onClick={() => handlePrint('a4')} className="gap-2 border-primary/30">
                                 <Printer className="h-4 w-4" /> Facture A4
                             </Button>
                         </div>

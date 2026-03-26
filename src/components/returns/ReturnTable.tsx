@@ -17,8 +17,9 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, FileText, Trash2, Calendar, User, Package, Banknote } from 'lucide-react';
+import { MoreHorizontal, FileText, Trash2, Printer, User, Package, Banknote } from 'lucide-react';
 import { formatCurrency, safeToDate } from '@/lib/utils';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -30,6 +31,7 @@ interface ReturnTableProps {
   customerMap: Map<string, Customer>;
   onViewDetails: (pr: ProductReturn) => void;
   onCancelReturn: (pr: ProductReturn) => void;
+  onPrint: (pr: ProductReturn, format: 'thermal' | 'a4') => void;
 }
 
 export function ReturnTable({
@@ -37,6 +39,7 @@ export function ReturnTable({
   customerMap,
   onViewDetails,
   onCancelReturn,
+  onPrint,
 }: ReturnTableProps) {
   const isManagerOrAdmin = useIsManagerOrAdmin();
 
@@ -78,26 +81,37 @@ export function ReturnTable({
                     <span className="font-black text-destructive">-{formatCurrency(pr.totalReturnValue)}</span>
                 </TableCell>
                 <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive transition-all">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="luxury-glass">
-                      <DropdownMenuItem onClick={() => onViewDetails(pr)}>
-                        <FileText className="mr-2 h-4 w-4" /> Détails complets
-                      </DropdownMenuItem>
-                      {isManagerOrAdmin && (
-                        <DropdownMenuItem 
-                          onClick={() => onCancelReturn(pr)} 
-                          className="text-destructive focus:text-destructive focus:bg-destructive/10"
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" /> Annuler le retour
+                  <div className="flex items-center justify-end gap-1">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" onClick={() => onPrint(pr, 'thermal')}>
+                        <Printer className="h-4 w-4" />
+                    </Button>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive transition-all">
+                            <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="luxury-glass">
+                        <DropdownMenuItem onClick={() => onViewDetails(pr)}>
+                            <FileText className="mr-2 h-4 w-4" /> Détails complets
                         </DropdownMenuItem>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                        <DropdownMenuItem onClick={() => onPrint(pr, 'a4')}>
+                            <Printer className="mr-2 h-4 w-4" /> Imprimer Facture A4
+                        </DropdownMenuItem>
+                        {isManagerOrAdmin && (
+                            <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                            onClick={() => onCancelReturn(pr)} 
+                            className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                            >
+                            <Trash2 className="mr-2 h-4 w-4" /> Annuler le retour
+                            </DropdownMenuItem>
+                            </>
+                        )}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 </TableCell>
               </TableRow>
             );
