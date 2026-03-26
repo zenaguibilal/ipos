@@ -7,7 +7,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import type { Product, Supplier, ProductImportAnalysis } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, LayoutGrid, List, Printer, Trash2, PackageCheck, PackageX, AlertTriangle, Archive, SortAsc, FileDown, Building, Package, Loader2, CalendarClock, CalendarX } from 'lucide-react';
+import { Plus, Search, LayoutGrid, List, Printer, Trash2, PackageCheck, PackageX, AlertTriangle, Archive, SortAsc, FileDown, Building, Package, Loader2, CalendarClock, CalendarX, FileUp } from 'lucide-react';
 import { ProductCard } from '@/components/products/product-card';
 import { ProductTable } from '@/components/products/product-table';
 import { ProductTableSkeleton } from '@/components/products/product-table-skeleton';
@@ -161,6 +161,13 @@ export default function ProductsPage() {
         setIsProductDialogOpen(true);
     }, []);
 
+    const handleDuplicateProduct = useCallback((product: Product) => {
+        // Create a copy without unique identifiers
+        const { uuid, barcodes, ...rest } = product;
+        setSelectedProduct(rest as Product);
+        setIsProductDialogOpen(true);
+    }, []);
+
     const handleDeleteProduct = useCallback(async (product: Product) => {
         try {
             await productService.deleteProduct(product.uuid);
@@ -223,6 +230,19 @@ export default function ProductsPage() {
             setIsImporting(false);
         }
     };
+
+    const handleExportCSV = async () => {
+        if (!products || products.length === 0) {
+            toast.info("Aucun produit à exporter.");
+            return;
+        }
+        try {
+            await productService.exportToCSV(products);
+            toast.success("Inventaire exporté avec succès.");
+        } catch (error: any) {
+            toast.error("Erreur lors de l'exportation.", { description: error.message });
+        }
+    };
     
     const renderSkeletons = () => (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
@@ -263,6 +283,7 @@ export default function ProductsPage() {
                             key={p.uuid} 
                             product={p} 
                             onEdit={handleEditProduct} 
+                            onDuplicate={handleDuplicateProduct}
                             onDelete={() => {
                                 setSelectedProduct(p);
                                 setIsDeleteDialogOpen(true);
@@ -279,6 +300,7 @@ export default function ProductsPage() {
             <ProductTable 
                 products={products}
                 onEdit={handleEditProduct}
+                onDuplicate={handleDuplicateProduct}
                 onDelete={(p) => {
                     setSelectedProduct(p);
                     setIsDeleteDialogOpen(true);
@@ -299,20 +321,25 @@ export default function ProductsPage() {
                 title="Gestion des Produits"
                 description="Recherchez, filtrez et gérez votre inventaire."
             >
-                {isManagerOrAdmin && (
-                    <>
-                        <Button asChild variant="outline" disabled={isAnalyzing}>
-                            <label htmlFor="csv-product-importer">
-                                {isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
-                                {isAnalyzing ? 'Analyse...' : 'Importer'}
-                                <input type="file" id="csv-product-importer" accept=".csv" className="sr-only" onChange={handleFileSelected} />
-                            </label>
-                        </Button>
-                        <Button onClick={() => { setSelectedProduct(null); setIsProductDialogOpen(true); }}>
-                            <Plus className="mr-2 h-4 w-4" /> Ajouter
-                        </Button>
-                    </>
-                )}
+                <div className="flex gap-2 w-full sm:w-auto">
+                    <Button variant="outline" onClick={handleExportCSV} disabled={isLoading || !products || products.length === 0}>
+                        <FileUp className="mr-2 h-4 w-4" /> Exporter
+                    </Button>
+                    {isManagerOrAdmin && (
+                        <>
+                            <Button asChild variant="outline" disabled={isAnalyzing}>
+                                <label htmlFor="csv-product-importer">
+                                    {isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
+                                    {isAnalyzing ? 'Analyse...' : 'Importer'}
+                                    <input type="file" id="csv-product-importer" accept=".csv" className="sr-only" onChange={handleFileSelected} />
+                                </label>
+                            </Button>
+                            <Button onClick={() => { setSelectedProduct(null); setIsProductDialogOpen(true); }}>
+                                <Plus className="mr-2 h-4 w-4" /> Ajouter
+                            </Button>
+                        </>
+                    )}
+                </div>
             </PageHeader>
 
             <InventoryStats products={products} isLoading={isLoading} />

@@ -260,6 +260,32 @@ class ProductService {
             throw error;
         }
     }
+
+    async exportToCSV(products: Product[]) {
+        const data = products.map(p => ({
+            'Nom': p.name,
+            'Catégorie': p.category || '',
+            'Prix de Vente': p.price,
+            'Prix d\'Achat': p.purchasePrice,
+            'Stock Actuel': p.quantity,
+            'Stock Minimum': p.minStockLevel,
+            'Unité': p.unite || '',
+            'Codes-barres': p.barcodes?.join(', ') || '',
+            'Date d\'expiration': p.dateExpiration ? new Date(p.dateExpiration).toLocaleDateString() : '',
+        }));
+
+        const csv = Papa.unparse(data);
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        
+        link.setAttribute('href', url);
+        link.setAttribute('download', `inventaire-${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
 }
 
 export const productService = new ProductService();

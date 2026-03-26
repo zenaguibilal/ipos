@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useMemo } from 'react';
@@ -5,7 +6,7 @@ import type { Product } from '@/lib/types';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Edit, Trash2, CalendarClock } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, CalendarClock, Copy } from 'lucide-react';
 import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
 import { cn, formatCurrency, getPlaceholder } from '@/lib/utils';
@@ -17,11 +18,12 @@ interface ProductCardProps {
     product: Product;
     onEdit: (product: Product) => void;
     onDelete: (product: Product) => void;
+    onDuplicate: (product: Product) => void;
     isSelected: boolean;
     onToggleSelection: () => void;
 }
 
-const ProductCardComponent = ({ product, onEdit, onDelete, isSelected, onToggleSelection }: ProductCardProps) => {
+const ProductCardComponent = ({ product, onEdit, onDelete, onDuplicate, isSelected, onToggleSelection }: ProductCardProps) => {
     const isManagerOrAdmin = useIsManagerOrAdmin();
     const placeholder = getPlaceholder(product.category);
     const imageUrl = product.imageUrl || placeholder.url;
@@ -106,6 +108,9 @@ const ProductCardComponent = ({ product, onEdit, onDelete, isSelected, onToggleS
                         <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => onEdit(product)}>
                                 <Edit className="mr-2 h-4 w-4" /> Modifier
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => onDuplicate(product)}>
+                                <Copy className="mr-2 h-4 w-4" /> Dupliquer
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => onDelete(product)} className="text-destructive focus:text-destructive">
                                 <Trash2 className="mr-2 h-4 w-4" /> Supprimer

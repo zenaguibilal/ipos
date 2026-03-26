@@ -1,10 +1,11 @@
+
 'use client';
 
 import type { Product, Supplier } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Edit, Trash2, AlertCircle, PackageX, CalendarClock } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, AlertCircle, PackageX, CalendarClock, Copy } from 'lucide-react';
 import Image from 'next/image';
 import { cn, formatCurrency, getPlaceholder } from '@/lib/utils';
 import { Checkbox } from '../ui/checkbox';
@@ -17,13 +18,14 @@ interface ProductTableProps {
     products: Product[];
     onEdit: (product: Product) => void;
     onDelete: (product: Product) => void;
+    onDuplicate: (product: Product) => void;
     selectedProducts: Set<string>;
     onToggleProductSelection: (productUuid: string) => void;
     onToggleSelectAll: () => void;
     suppliers: Supplier[];
 }
 
-export function ProductTable({ products, onEdit, onDelete, selectedProducts, onToggleProductSelection, onToggleSelectAll, suppliers }: ProductTableProps) {
+export function ProductTable({ products, onEdit, onDelete, onDuplicate, selectedProducts, onToggleProductSelection, onToggleSelectAll, suppliers }: ProductTableProps) {
     const isManagerOrAdmin = useIsManagerOrAdmin();
     const supplierMap = useMemo(() => new Map(suppliers.map(s => [s.uuid, s.name])), [suppliers]);
 
@@ -158,6 +160,9 @@ export function ProductTable({ products, onEdit, onDelete, selectedProducts, onT
                                             <DropdownMenuContent align="end">
                                                 <DropdownMenuItem onClick={() => onEdit(product)}>
                                                     <Edit className="mr-2 h-4 w-4" /> Modifier
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => onDuplicate(product)}>
+                                                    <Copy className="mr-2 h-4 w-4" /> Dupliquer
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem onClick={() => onDelete(product)} className="text-destructive focus:text-destructive">
                                                     <Trash2 className="mr-2 h-4 w-4" /> Supprimer
