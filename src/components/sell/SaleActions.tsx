@@ -24,7 +24,12 @@ import { useAppStore, useAppActions } from '@/stores/appStore';
 import { customerService } from '@/services/customer.service';
 
 export const SaleActions = React.forwardRef<
-    { payment: () => void }, 
+    { 
+        payment: () => void;
+        focusDiscount: () => void;
+        toggleDiscountType: () => void;
+        clearCart: () => void;
+    }, 
     {}
 >(({}, ref) => {
     const { carts, activeCartId } = useAppStore();
@@ -51,6 +56,8 @@ export const SaleActions = React.forwardRef<
     const discountType = activeCart?.discount.type || 'fixed';
     
     const paymentButtonRef = React.useRef<HTMLButtonElement>(null);
+    const discountInputRef = React.useRef<HTMLInputElement>(null);
+    const clearCartTriggerRef = React.useRef<HTMLButtonElement>(null);
 
     React.useImperativeHandle(ref, () => ({
         payment: () => {
@@ -59,6 +66,17 @@ export const SaleActions = React.forwardRef<
             } else {
                  setIsPaymentOpen(true);
             }
+        },
+        focusDiscount: () => {
+            discountInputRef.current?.focus();
+            discountInputRef.current?.select();
+        },
+        toggleDiscountType: () => {
+            const newType = discountType === 'fixed' ? 'percentage' : 'fixed';
+            setCartDiscount({ type: newType, value: discountValue });
+        },
+        clearCart: () => {
+            clearCartTriggerRef.current?.click();
         },
     }));
 
@@ -79,9 +97,11 @@ export const SaleActions = React.forwardRef<
                 </div>
                 
                 <div className="space-y-2">
-                    <Label>Remise</Label>
+                    <Label htmlFor="discount-input">Remise (F6)</Label>
                     <div className="flex items-center gap-2">
                         <Input
+                            id="discount-input"
+                            ref={discountInputRef}
                             type="number"
                             placeholder="0"
                             value={discountValue || ''}
@@ -91,10 +111,14 @@ export const SaleActions = React.forwardRef<
                         <Button 
                             variant={discountType === 'fixed' ? 'secondary' : 'ghost'}
                             onClick={() => setCartDiscount({ type: 'fixed', value: discountValue })}
+                            title="Changer le type de remise (F7)"
+                            type="button"
                         >DA</Button>
                         <Button 
                             variant={discountType === 'percentage' ? 'secondary' : 'ghost'}
                             onClick={() => setCartDiscount({ type: 'percentage', value: discountValue })}
+                            title="Changer le type de remise (F7)"
+                            type="button"
                         >%</Button>
                     </div>
                 </div>
@@ -118,8 +142,8 @@ export const SaleActions = React.forwardRef<
                  <div className="grid grid-cols-2 gap-4 pt-2">
                     <AlertDialog>
                         <AlertDialogTrigger asChild>
-                            <Button variant="destructive" size="lg" disabled={activeCart.items.length === 0}>
-                                <Trash2 className="mr-2 h-5 w-5" /> Vider
+                            <Button ref={clearCartTriggerRef} variant="destructive" size="lg" disabled={activeCart.items.length === 0}>
+                                <Trash2 className="mr-2 h-5 w-5" /> Vider (F8)
                             </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>

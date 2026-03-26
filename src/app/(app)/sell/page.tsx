@@ -19,6 +19,7 @@ import { useAppStore, useAppActions } from '@/stores/appStore';
 import { customerService } from '@/services/customer.service';
 import { PrintReceiptDialog } from '@/components/sales/PrintReceiptDialog';
 import { CustomerDialog } from '@/components/customers/customer-dialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 export default function SellPage() {
     const { activeCartId, carts, sessionLoading } = useAppStore(state => ({
@@ -30,7 +31,7 @@ export default function SellPage() {
     
     const [isProductSheetOpen, setIsProductSheetOpen] = useState(false);
     const [isDebtPaymentDialogOpen, setIsDebtPaymentDialogOpen] = useState(false);
-    const [cartCustomer, setLocalCartCustomer] = useState<Customer | null>(null);
+    const [localCartCustomer, setLocalCartCustomer] = useState<Customer | null>(null);
 
     // State for the "Add Customer" dialog
     const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
@@ -38,7 +39,12 @@ export default function SellPage() {
 
     const productSearchRef = useRef<{ focus: () => void }>(null);
     const customerComboboxRef = useRef<HTMLButtonElement>(null);
-    const saleActionsRef = useRef<{ payment: () => void; }>(null);
+    const saleActionsRef = useRef<{ 
+        payment: () => void;
+        focusDiscount: () => void;
+        toggleDiscountType: () => void;
+        clearCart: () => void;
+    }>(null);
     const draftsDropdownRef = useRef<HTMLButtonElement>(null);
 
     const activeCart = useMemo(() => carts.find(c => c.id === activeCartId), [carts, activeCartId]);
@@ -61,17 +67,17 @@ export default function SellPage() {
     }, [activeCart?.items.length]);
 
     const handleSuccessfulPayment = useCallback(async () => {
-        if (!cartCustomer?.uuid) return;
+        if (!localCartCustomer?.uuid) return;
         try {
             // Re-fetch customer to update their status in the store
-            const updatedCustomer = await customerService.getCustomerByUuid(cartCustomer.uuid);
+            const updatedCustomer = await customerService.getCustomerByUuid(localCartCustomer.uuid);
             if (updatedCustomer) {
                 setLocalCartCustomer(updatedCustomer);
             }
         } catch (error: any) {
             toast.error("Erreur lors de la mise à jour du client.", { description: error.message });
         }
-    }, [cartCustomer]);
+    }, [localCartCustomer]);
     
     const handlePayDebtClick = () => {
         setIsDebtPaymentDialogOpen(true);
@@ -103,6 +109,22 @@ export default function SellPage() {
             case 'F4':
                 e.preventDefault();
                 draftsDropdownRef.current?.click();
+                break;
+            case 'F6':
+                e.preventDefault();
+                saleActionsRef.current?.focusDiscount();
+                break;
+            case 'F7':
+                e.preventDefault();
+                saleActionsRef.current?.toggleDiscountType();
+                break;
+            case 'F8':
+                e.preventDefault();
+                if (cartItemsCountRef.current > 0) {
+                    saleActionsRef.current?.clearCart();
+                } else {
+                    toast.info("Le panier est déjà vide.");
+                }
                 break;
             case 'F9':
                 e.preventDefault();
@@ -166,16 +188,25 @@ export default function SellPage() {
     return (
         <>
             <div className="h-full flex flex-col">
-                <CartTotalBar cart={activeCart} customer={cartCustomer} onPayDebtClick={handlePayDebtClick} />
+                <CartTotalBar cart={activeCart} customer={localCartCustomer} onPayDebtClick={handlePayDebtClick} />
 
                 <div className="grid md:grid-cols-3 gap-4 flex-grow min-h-0 p-4">
                     {/* Main column */}
                     <div className="md:col-span-2 flex flex-col gap-4">
                         <div className="flex flex-wrap items-center gap-4">
                            <div className="flex items-center gap-2 flex-grow sm:flex-grow-0 w-full sm:w-auto">
-                                <div className="flex-grow sm:min-w-[300px]">
-                                    <CustomerCombobox ref={customerComboboxRef} listVersion={customerListVersion} />
-                                </div>
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <div className="flex-grow sm:min-w-[300px]">
+                                                <CustomerCombobox ref={customerComboboxRef} listVersion={customerListVersion} />
+                                            </div>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                            <p>Sélectionner un client (F2)</p>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
                                 <Button variant="outline" size="icon" onClick={() => setIsCustomerDialogOpen(true)}>
                                     <UserPlus className="h-4 w-4" />
                                     <span className="sr-only">Ajouter un client</span>
@@ -217,11 +248,11 @@ export default function SellPage() {
                     </div>
                 </div>
             </div>
-            {cartCustomer && (
+            {localCartCustomer && (
                  <AddPaymentDialog 
                     isOpen={isDebtPaymentDialogOpen}
                     onOpenChange={setIsDebtPaymentDialogOpen}
-                    customer={cartCustomer}
+                    customer={localCartCustomer}
                     onPaymentSuccess={handleSuccessfulPayment}
                 />
             )}
