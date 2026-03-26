@@ -1,16 +1,7 @@
 <svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="goldGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#FFD700;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#B8860B;stop-opacity:1" />
-    </linearGradient>
-  </defs>
-  <rect width="512" height="512" rx="120" fill="#1A120C"/>
-  <g filter="drop-shadow(0px 4px 10px rgba(0,0,0,0.5))">
-    <path d="M140 160H372V200H140V160Z" fill="url(#goldGradient)"/>
-    <path d="M140 240H372V280H140V240Z" fill="url(#goldGradient)"/>
-    <path d="M140 320H280V360H140V320Z" fill="url(#goldGradient)"/>
-    <circle cx="380" cy="340" r="45" fill="url(#goldGradient)"/>
-    <path d="M365 340L375 355L395 325" stroke="#1A120C" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
-  </g>
+  <rect width="512" height="512" rx="128" fill="#1A120C"/>
+  <circle cx="256" cy="256" r="180" stroke="#D4AF37" stroke-width="20" opacity="0.2"/>
+  <path d="M256 140V180M256 220V372" stroke="#D4AF37" stroke-width="40" stroke-linecap="round"/>
+  <circle cx="256" cy="140" r="20" fill="#D4AF37"/>
+  <path d="M180 256C180 214.026 214.026 180 256 180C297.974 180 332 214.026 332 256C332 297.974 297.974 332 256 332" stroke="#D4AF37" stroke-width="24" stroke-linecap="round" opacity="0.5"/>
 </svg>
