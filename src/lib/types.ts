@@ -7,7 +7,7 @@ export interface Product {
     name: string;
     category?: string;
     price: number;
-    purchasePrice: number;
+    purchasePrice: number; // Prix d'achat de base (hors transport ou dernier coût de revient)
     quantity: number; 
     minStockLevel: number;
     barcodes?: string[];
@@ -143,7 +143,7 @@ export interface StockIntakeItem {
     category?: string;
     quantity: number;
     quantityDamaged: number;
-    purchasePrice: number;
+    purchasePrice: number; // Prix d'achat unitaire fournisseur
     price: number;
     isNew: boolean;
     unite?: 'Pièce' | 'Kg' | 'Litre' | 'Boîte' | 'Carton' | 'Sachet' | 'Bouteille';
@@ -160,9 +160,11 @@ export interface StockIntake {
         productName: string;
         quantityReceived: number;
         quantityDamaged: number;
-        purchasePrice: number;
+        purchasePrice: number; // Prix unitaire fournisseur
+        costPrice?: number; // Coût de revient unitaire (achat + prorata transport)
     }[];
-    totalValue: number;
+    totalValue: number; // Valeur totale marchandise
+    transportFees: number; // Frais de transport
     createdAt?: Date;
     updatedAt?: Date;
 }

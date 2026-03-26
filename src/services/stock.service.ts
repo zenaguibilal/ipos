@@ -1,3 +1,4 @@
+
 'use client';
 import { v4 as uuidv4 } from 'uuid';
 import type { StockIntake } from '@/lib/types';
@@ -28,8 +29,7 @@ class StockService {
             }
 
             return await stockRepository.filter({
-                invoiceNumberQuery: filters.query,
-                supplierUuids,
+                query: filters.query,
                 from: filters.from,
                 to: filters.to
             });

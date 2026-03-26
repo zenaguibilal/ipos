@@ -1,10 +1,11 @@
+
 'use client';
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Trash2, Save, AlertTriangle, ChevronsUpDown, Plus } from 'lucide-react';
+import { ArrowLeft, Trash2, Save, AlertTriangle, ChevronsUpDown, Plus, Truck } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
@@ -42,6 +43,7 @@ export default function NewStockIntakePage() {
     
     const [invoiceNumber, setInvoiceNumber] = useState('');
     const [invoiceDate, setInvoiceDate] = useState<Date | undefined>(new Date());
+    const [transportFees, setTransportFees] = useState(0);
     const [items, setItems] = useState<StockIntakeItem[]>([]);
     const [isSaving, setIsSaving] = useState(false);
     
@@ -135,7 +137,11 @@ export default function NewStockIntakePage() {
         setItems(prev => prev.filter(item => item.id !== id));
     };
 
-    const totalValue = items.reduce((acc, item) => acc + (item.quantity * item.purchasePrice), 0);
+    const subtotalValue = items.reduce((acc, item) => acc + (item.quantity * item.purchasePrice), 0);
+    const totalIntakeValue = subtotalValue + transportFees;
+    
+    // Calcul prorata transport par unité pour affichage UI
+    const transportRatio = subtotalValue > 0 ? transportFees / subtotalValue : 0;
 
     const handleSave = async () => {
         if (!supplierName) {
@@ -147,18 +153,13 @@ export default function NewStockIntakePage() {
             return;
         }
 
-        // --- Validation ---
         for (const item of items) {
             if (!item.name || item.quantity <= 0 || item.purchasePrice < 0) {
-                toast.error(`Veuillez remplir les informations pour l'article "${item.name || 'Nouvel article'}". La quantité doit être > 0 et le prix d'achat >= 0.`);
+                toast.error(`Veuillez remplir les informations pour l'article "${item.name || 'Nouvel article'}".`);
                 return;
             }
              if (item.quantityDamaged > item.quantity) {
                 toast.error(`La quantité endommagée ne peut pas dépasser la quantité reçue pour "${item.name}".`);
-                return;
-            }
-            if (item.isNew && item.price <= 0) {
-                toast.error(`Veuillez définir un prix de vente pour le nouvel article "${item.name}".`);
                 return;
             }
         }
@@ -170,7 +171,8 @@ export default function NewStockIntakePage() {
             invoiceNumber,
             invoiceDate: invoiceDate || new Date(),
             items,
-            totalValue
+            totalValue: subtotalValue,
+            transportFees: transportFees
         });
 
         if (success) {
@@ -195,87 +197,118 @@ export default function NewStockIntakePage() {
     };
     
     if (!isManagerOrAdmin) {
-        return null; // or a loading/unauthorized component
+        return null;
     }
 
     return (
         <div className="p-4 sm:p-6 space-y-6">
             <PageHeader
-                title="Nouvelle Réception de Stock"
-                description="Enregistrez les marchandises reçues de vos fournisseurs."
+                title="Nouvelle Réception & Coût de Revient"
+                description="Répartissez vos frais de transport sur vos produits pour calculer vos coûts réels."
             >
                 <div className="flex items-center gap-4">
                      <Button variant="outline" size="icon" asChild>
                         <Link href="/stock"><ArrowLeft className="h-4 w-4" /></Link>
                      </Button>
-                    <Button onClick={handleSave} disabled={isSaving}>
+                    <Button onClick={handleSave} disabled={isSaving} className="bg-primary text-primary-foreground">
                         {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                         {isSaving ? 'Enregistrement...' : 'Enregistrer la réception'}
                     </Button>
                 </div>
             </PageHeader>
 
-            <Card>
-                <CardContent className="p-6 grid md:grid-cols-3 gap-6">
-                    <div className="space-y-2">
-                        <Label htmlFor="supplier">Fournisseur</Label>
-                         <Popover open={supplierPopoverOpen} onOpenChange={setSupplierPopoverOpen}>
-                            <PopoverTrigger asChild>
-                                <Button
-                                    variant="outline"
-                                    role="combobox"
-                                    className="w-full justify-between"
-                                >
-                                    {supplierName || "Sélectionner ou créer un fournisseur..."}
-                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
-                                <Command>
-                                    <CommandInput 
-                                        placeholder="Rechercher ou créer..." 
-                                        onValueChange={setSupplierSearch}
-                                    />
-                                    <CommandList>
-                                        <CommandEmpty>
-                                            <Button 
-                                                variant="link" 
-                                                className="w-full"
-                                                onClick={handleSupplierCreate}>
-                                                <Plus className="mr-2 h-4 w-4" />
-                                                Créer le fournisseur "{supplierSearch}"
-                                            </Button>
-                                        </CommandEmpty>
-                                        <CommandGroup>
-                                            {supplierOptions?.map((supplier) => (
-                                                <CommandItem
-                                                    key={supplier.uuid}
-                                                    value={supplier.uuid}
-                                                    onSelect={() => handleSupplierSelect(supplier.uuid)}
-                                                >
-                                                    {supplier.name}
-                                                </CommandItem>
-                                            ))}
-                                        </CommandGroup>
-                                    </CommandList>
-                                </Command>
-                            </PopoverContent>
-                        </Popover>
-                    </div>
-                     <div className="space-y-2">
-                        <Label htmlFor="invoiceNumber">N° de Facture/Bon (Optionnel)</Label>
-                        <Input id="invoiceNumber" value={invoiceNumber} onChange={e => setInvoiceNumber(e.target.value)} placeholder="INV-12345" />
-                    </div>
-                    <div className="space-y-2">
-                        <Label>Date de la facture</Label>
-                        <DatePicker date={invoiceDate} setDate={setInvoiceDate} />
-                    </div>
-                </CardContent>
-            </Card>
+            <div className="grid md:grid-cols-3 gap-6">
+                <Card className="md:col-span-2">
+                    <CardContent className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                            <Label htmlFor="supplier">Fournisseur</Label>
+                            <Popover open={supplierPopoverOpen} onOpenChange={setSupplierPopoverOpen}>
+                                <PopoverTrigger asChild>
+                                    <Button
+                                        variant="outline"
+                                        role="combobox"
+                                        className="w-full justify-between"
+                                    >
+                                        {supplierName || "Sélectionner ou créer un fournisseur..."}
+                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
+                                    <Command>
+                                        <CommandInput placeholder="Rechercher..." onValueChange={setSupplierSearch} />
+                                        <CommandList>
+                                            <CommandEmpty>
+                                                <Button variant="link" className="w-full" onClick={handleSupplierCreate}>
+                                                    <Plus className="mr-2 h-4 w-4" /> Créer "{supplierSearch}"
+                                                </Button>
+                                            </CommandEmpty>
+                                            <CommandGroup>
+                                                {supplierOptions?.map((supplier) => (
+                                                    <CommandItem key={supplier.uuid} onSelect={() => handleSupplierSelect(supplier.uuid)}>
+                                                        {supplier.name}
+                                                    </CommandItem>
+                                                ))}
+                                            </CommandGroup>
+                                        </CommandList>
+                                    </Command>
+                                </PopoverContent>
+                            </Popover>
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="invoiceNumber">N° de Facture / Bon</Label>
+                            <Input id="invoiceNumber" value={invoiceNumber} onChange={e => setInvoiceNumber(e.target.value)} placeholder="Ex: INV-998" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Date de réception</Label>
+                            <DatePicker date={invoiceDate} setDate={setInvoiceDate} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="transport" className="flex items-center gap-2">
+                                <Truck className="h-4 w-4 text-primary" /> Frais de Transport (DA)
+                            </Label>
+                            <Input 
+                                id="transport" 
+                                type="number" 
+                                value={transportFees} 
+                                onChange={e => setTransportFees(parseFloat(e.target.value) || 0)} 
+                                className="border-primary/30 focus:border-primary font-bold text-lg"
+                            />
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card className="bg-primary/5 border-primary/20">
+                    <CardContent className="p-6 space-y-4">
+                        <h3 className="font-bold text-lg border-b pb-2">Récapitulatif Financier</h3>
+                        <div className="space-y-2">
+                            <div className="flex justify-between text-sm">
+                                <span>Marchandise :</span>
+                                <span className="font-semibold">{formatCurrency(subtotalValue)}</span>
+                            </div>
+                            <div className="flex justify-between text-sm text-primary">
+                                <span>Transport :</span>
+                                <span className="font-bold">+ {formatCurrency(transportFees)}</span>
+                            </div>
+                            <div className="pt-4 flex justify-between items-center border-t border-primary/20">
+                                <span className="text-lg font-black">TOTAL :</span>
+                                <span className="text-2xl font-black text-primary">{formatCurrency(totalIntakeValue)}</span>
+                            </div>
+                            <p className="text-[10px] text-muted-foreground italic text-center mt-4">
+                                * Les frais de transport seront répartis au prorata de la valeur de chaque article.
+                            </p>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
 
              <Card>
                 <CardContent className="p-6 space-y-4">
-                    <h3 className="font-semibold text-lg">Articles Reçus</h3>
+                    <div className="flex justify-between items-center">
+                        <h3 className="font-semibold text-lg">Articles & Coût de Revient</h3>
+                        <Badge variant="outline" className="text-xs bg-muted">
+                            Impact transport : +{Math.round(transportRatio * 100)}% par article
+                        </Badge>
+                    </div>
                     
                     <ProductIntakeCombobox 
                         onProductSelected={handleAddProduct}
@@ -285,74 +318,64 @@ export default function NewStockIntakePage() {
                      <div className="overflow-x-auto">
                         <table className="w-full text-sm">
                             <thead>
-                                <tr className="border-b">
-                                    <th className="p-2 text-left min-w-48">Produit</th>
-                                    <th className="p-2 text-left w-40">Catégorie</th>
-                                    <th className="p-2 text-left w-32">Unité</th>
-                                    <th className="p-2 text-left w-32">Qté Reçue</th>
-                                    <th className="p-2 text-left w-32">Qté Endommagée</th>
-                                    <th className="p-2 text-left w-40">Prix Achat U.</th>
-                                    <th className="p-2 text-left w-40">Prix Vente U.</th>
-                                    <th className="p-2 text-right w-20">Actions</th>
+                                <tr className="border-b bg-muted/20">
+                                    <th className="p-3 text-left min-w-[200px]">Produit</th>
+                                    <th className="p-3 text-center w-24">Qté</th>
+                                    <th className="p-3 text-right w-32">Prix Achat U.</th>
+                                    <th className="p-3 text-right w-32 bg-primary/5 text-primary">Revient U.</th>
+                                    <th className="p-3 text-right w-32">Prix Vente U.</th>
+                                    <th className="p-3 text-right w-32">Marge Finale</th>
+                                    <th className="p-3 text-right w-12"></th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {items.map(item => {
-                                    const isLoss = item.isNew && item.price > 0 && item.purchasePrice > 0 && item.price < item.purchasePrice;
+                                    const unitRevient = item.purchasePrice * (1 + transportRatio);
+                                    const unitMargin = item.price - unitRevient;
+                                    const isLoss = item.price > 0 && unitRevient > 0 && item.price < unitRevient;
+                                    
                                     return (
-                                        <tr key={item.id} className="border-b">
-                                            <td className="p-2">
+                                        <tr key={item.id} className="border-b hover:bg-muted/10 transition-colors">
+                                            <td className="p-3">
                                                 {item.isNew ? (
-                                                    <Input placeholder="Nom du nouveau produit" value={item.name} onChange={e => handleItemChange(item.id, 'name', e.target.value)} />
-                                                ) : item.name}
+                                                    <Input className="h-8" placeholder="Nom..." value={item.name} onChange={e => handleItemChange(item.id, 'name', e.target.value)} />
+                                                ) : <span className="font-medium">{item.name}</span>}
                                             </td>
-                                            <td className="p-2">
-                                                {item.isNew ? (
-                                                    <Input placeholder="Catégorie" value={item.category || ''} onChange={e => handleItemChange(item.id, 'category', e.target.value)} />
-                                                ) : item.category || 'N/A'}
+                                            <td className="p-3 text-center">
+                                                <Input type="number" className="h-8 w-20 mx-auto text-center" value={item.quantity} onChange={e => handleItemChange(item.id, 'quantity', parseInt(e.target.value) || 0)} />
                                             </td>
-                                            <td className="p-2">
-                                                {item.isNew ? (
-                                                    <Select value={item.unite} onValueChange={(value) => handleItemChange(item.id, 'unite', value)}>
-                                                        <SelectTrigger><SelectValue /></SelectTrigger>
-                                                        <SelectContent>
-                                                            {units.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
-                                                        </SelectContent>
-                                                    </Select>
-                                                ) : item.unite || 'N/A'}
+                                            <td className="p-3">
+                                                <Input type="number" step="0.1" className="h-8 w-28 ml-auto text-right" value={item.purchasePrice} onChange={e => handleItemChange(item.id, 'purchasePrice', parseFloat(e.target.value) || 0)} />
                                             </td>
-                                            <td className="p-2"><Input type="number" min="1" value={item.quantity} onChange={e => handleItemChange(item.id, 'quantity', parseInt(e.target.value) || 0)} /></td>
-                                            <td className="p-2"><Input type="number" min="0" value={item.quantityDamaged} onChange={e => handleItemChange(item.id, 'quantityDamaged', parseInt(e.target.value) || 0)} /></td>
-                                            <td className="p-2"><Input type="number" min="0" step="0.1" value={item.purchasePrice} onChange={e => handleItemChange(item.id, 'purchasePrice', parseFloat(e.target.value) || 0)} /></td>
-                                            <td className="p-2">
-                                                <div className="relative">
-                                                     <Input type="number" min="0" step="0.1" value={item.price} onChange={e => handleItemChange(item.id, 'price', parseFloat(e.target.value) || 0)} disabled={!item.isNew} />
-                                                     {isLoss && (
-                                                        <div className="absolute -bottom-5 left-0 text-xs text-destructive flex items-center gap-1">
-                                                          <AlertTriangle className="h-3 w-3" /> Vente à perte
-                                                        </div>
-                                                     )}
-                                                </div>
+                                            <td className="p-3 text-right font-black text-primary bg-primary/5">
+                                                {unitRevient.toFixed(1)}
                                             </td>
-                                            <td className="p-2 text-right">
-                                                <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleRemoveItem(item.id)}><Trash2 className="h-4 w-4" /></Button>
+                                            <td className="p-3">
+                                                <Input type="number" step="0.1" className="h-8 w-28 ml-auto text-right" value={item.price} onChange={e => handleItemChange(item.id, 'price', parseFloat(e.target.value) || 0)} disabled={!item.isNew} />
+                                            </td>
+                                            <td className="p-3 text-right">
+                                                <Badge variant="outline" className={cn(
+                                                    "font-bold",
+                                                    isLoss ? "text-destructive border-destructive" : "text-green-500 border-green-500"
+                                                )}>
+                                                    {unitMargin.toFixed(1)} DA
+                                                </Badge>
+                                            </td>
+                                            <td className="p-3 text-right">
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleRemoveItem(item.id)}><Trash2 className="h-4 w-4" /></Button>
                                             </td>
                                         </tr>
                                     )
                                 })}
                                 {items.length === 0 && (
                                     <tr>
-                                        <td colSpan={8} className="p-8 text-center text-muted-foreground">Aucun article ajouté.</td>
+                                        <td colSpan={7} className="p-12 text-center text-muted-foreground italic">
+                                            Scannez ou recherchez un produit pour commencer le calcul du coût de revient.
+                                        </td>
                                     </tr>
                                 )}
                             </tbody>
                         </table>
-                    </div>
-                     <div className="flex justify-end pt-4 border-t">
-                        <div className="text-right">
-                            <p className="text-muted-foreground">Valeur totale de la réception</p>
-                            <p className="text-2xl font-bold">{formatCurrency(totalValue)}</p>
-                        </div>
                     </div>
                 </CardContent>
              </Card>

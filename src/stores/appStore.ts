@@ -82,7 +82,8 @@ interface AppActions {
         invoiceNumber: string,
         invoiceDate: Date,
         items: StockIntakeItem[],
-        totalValue: number
+        totalValue: number,
+        transportFees: number
     }) => Promise<boolean>;
     setProductViewMode: (mode: 'grid' | 'list') => void;
     setStockViewMode: (mode: 'grid' | 'list') => void;
@@ -338,17 +339,24 @@ export const useAppStore = create<AppState>()(
                 processStockIntake: async (intakeData) => {
                     try {
                         const supplier = await supplierService.findOrCreateSupplier(intakeData.supplierName, intakeData.supplierUuid);
+                        
+                        // Ratio de frais de transport (Frais / Valeur Totale Marchandise)
+                        const transportRatio = intakeData.totalValue > 0 ? intakeData.transportFees / intakeData.totalValue : 0;
         
                         const finalItems = [];
                         for (const item of intakeData.items) {
+                            // Calcul du coût de revient (Loaded Cost)
+                            // Coût revient = Prix achat + (Ratio transport * Prix achat)
+                            const costPrice = item.purchasePrice * (1 + transportRatio);
+
                             let productUuid = item.productUuid;
                             if (item.isNew) {
                                 const newProduct = await productService.addProduct({
                                     name: item.name,
                                     category: item.category,
                                     price: item.price,
-                                    purchasePrice: item.purchasePrice,
-                                    quantity: 0, // Initial quantity is 0, will be adjusted by inventory service
+                                    purchasePrice: costPrice, // On stocke le coût de revient comme prix d'achat de référence
+                                    quantity: 0,
                                     minStockLevel: 10,
                                     supplierUuid: supplier.uuid,
                                     unite: item.unite,
@@ -356,11 +364,8 @@ export const useAppStore = create<AppState>()(
                                 });
                                 productUuid = newProduct.uuid;
                             } else {
-                                // Update product purchase price if it has changed
-                                const p = await inventoryService.getProductInfo(productUuid!);
-                                if (p && p.purchasePrice !== item.purchasePrice) {
-                                    await productService.updateProduct(p.uuid, { purchasePrice: item.purchasePrice, dateMajPrix: new Date() });
-                                }
+                                // Mettre à jour le prix d'achat du produit existant pour inclure le transport
+                                await productService.updateProduct(productUuid!, { purchasePrice: costPrice, dateMajPrix: new Date() });
                             }
         
                             if (productUuid) {
@@ -373,7 +378,8 @@ export const useAppStore = create<AppState>()(
                                     productName: item.name,
                                     quantityReceived: item.quantity,
                                     quantityDamaged: item.quantityDamaged,
-                                    purchasePrice: item.purchasePrice,
+                                    purchasePrice: item.purchasePrice, // Prix fournisseur de base
+                                    costPrice: costPrice, // Coût réel final
                                 });
                             }
                         }
@@ -384,11 +390,12 @@ export const useAppStore = create<AppState>()(
                             invoiceDate: intakeData.invoiceDate,
                             items: finalItems,
                             totalValue: intakeData.totalValue,
+                            transportFees: intakeData.transportFees,
                         });
                         
-                        await supplierService.updateSupplierBalance(supplier.uuid, intakeData.totalValue);
+                        await supplierService.updateSupplierBalance(supplier.uuid, intakeData.totalValue + intakeData.transportFees);
 
-                        toast.success("Réception de stock enregistrée et solde fournisseur mis à jour.");
+                        toast.success("Réception de stock enregistrée avec calcul du coût de revient.");
                         return true;
                     } catch (error: any) {
                         toast.error("Échec du traitement de la réception de stock.", { description: error.message });

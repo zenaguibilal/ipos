@@ -1,3 +1,4 @@
+
 'use client';
 
 import { createClient } from "@/utils/supabase/client";
@@ -10,6 +11,7 @@ const fromSupabase = (intake: any): StockIntake => ({
     invoiceNumber: intake.invoice_number,
     invoiceDate: intake.invoice_date,
     totalValue: intake.total_value,
+    transportFees: intake.transport_fees || 0,
     createdAt: intake.created_at,
     updatedAt: intake.updated_at,
     items: intake.stock_intake_items?.map((item: any) => ({
@@ -18,6 +20,7 @@ const fromSupabase = (intake: any): StockIntake => ({
         quantityReceived: item.quantity_received,
         quantityDamaged: item.quantity_damaged,
         purchasePrice: item.purchase_price,
+        costPrice: item.cost_price,
     })) || []
 });
 
@@ -33,7 +36,8 @@ class StockRepository {
                 product_name,
                 quantity_received,
                 quantity_damaged,
-                purchase_price
+                purchase_price,
+                cost_price
             )
         `);
     }
@@ -50,22 +54,12 @@ class StockRepository {
         return data ? fromSupabase(data) : undefined;
     }
 
-    async filter(filters: { invoiceNumberQuery?: string; supplierUuids?: string[]; from?: Date; to?: Date }): Promise<StockIntake[]> {
+    async filter(filters: { query?: string; from?: Date; to?: Date }): Promise<StockIntake[]> {
         let query = this.baseQuery.order('created_at', { ascending: false });
 
-        if (filters.invoiceNumberQuery || (filters.supplierUuids && filters.supplierUuids.length > 0)) {
-            const orConditions = [];
-            if (filters.invoiceNumberQuery) {
-                orConditions.push(`invoice_number.ilike.%${filters.invoiceNumberQuery}%`);
-            }
-            if (filters.supplierUuids && filters.supplierUuids.length > 0) {
-                orConditions.push(`supplier_uuid.in.("${filters.supplierUuids.join('","')}")`);
-            }
-            if (orConditions.length > 0) {
-                query = query.or(orConditions.join(','));
-            }
+        if (filters.query) {
+             query = query.ilike('invoice_number', `%${filters.query}%`);
         }
-        
         if (filters.from) {
             query = query.gte('created_at', filters.from.toISOString());
         }
@@ -88,6 +82,7 @@ class StockRepository {
             invoice_number: intakeData.invoiceNumber,
             invoice_date: intakeData.invoiceDate,
             total_value: intakeData.totalValue,
+            transport_fees: intakeData.transportFees,
             created_at: intakeData.createdAt,
             updated_at: intakeData.updatedAt,
         }).select().single();
@@ -101,6 +96,7 @@ class StockRepository {
             quantity_received: item.quantityReceived,
             quantity_damaged: item.quantityDamaged,
             purchase_price: item.purchasePrice,
+            cost_price: item.costPrice,
         }));
 
         const { error: itemsError } = await this.supabase.from('stock_intake_items').insert(intakeItems);
@@ -110,11 +106,6 @@ class StockRepository {
         }
 
         return fromSupabase({ ...newIntake, stock_intake_items: items });
-    }
-
-    async delete(uuid: string): Promise<void> {
-        const { error } = await this.supabase.from('stock_intakes').delete().eq('uuid', uuid);
-        if (error) throw error;
     }
 
     async deleteAllForUser(userId: string): Promise<void> {
@@ -130,6 +121,7 @@ class StockRepository {
             invoice_number: intakeData.invoiceNumber,
             invoice_date: intakeData.invoiceDate,
             total_value: intakeData.totalValue,
+            transport_fees: intakeData.transportFees || 0,
             created_at: intakeData.createdAt,
             updated_at: intakeData.updatedAt,
         }));
@@ -145,6 +137,7 @@ class StockRepository {
                 quantity_received: item.quantityReceived,
                 quantity_damaged: item.quantityDamaged,
                 purchase_price: item.purchasePrice,
+                cost_price: item.costPrice,
             }))
         );
         
