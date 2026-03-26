@@ -27,6 +27,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { DeleteMultipleCustomersDialog } from '@/components/customers/DeleteMultipleCustomersDialog';
 import { AddPaymentDialog } from '@/components/payments/AddPaymentDialog';
 import { PrintStatementDialog } from '@/components/customers/PrintStatementDialog';
+import { PrintCustomerListDialog } from '@/components/customers/PrintCustomerListDialog';
 import { cn } from '@/lib/utils';
 
 type FilterStatus = 'all' | 'has_debt' | 'overdue' | 'over_limit' | 'is_bread_client';
@@ -315,6 +316,10 @@ export default function CustomersPage() {
                 description="Recherchez, ajoutez et suivez le solde de vos clients."
             >
                 <div className="flex gap-2 w-full sm:w-auto">
+                    <PrintCustomerListDialog 
+                        customers={customers} 
+                        title={`Liste des clients (${filterStatus === 'all' ? 'Tous' : sortOptions[sortBy]})`} 
+                    />
                     <Button variant="outline" onClick={handleExportCSV} disabled={isLoading && customers.length === 0}>
                         <FileUp className="mr-2 h-4 w-4" /> Exporter
                     </Button>

@@ -6,7 +6,7 @@ import type { Sale, Payment, ProductReturn } from '@/lib/types';
 import { Timeline, TimelineItem, TimelineConnector, TimelineHeader, TimelineIcon, TimelineTitle, TimelineBody } from '@/components/ui/timeline';
 import { safeToDate, formatCurrency, cn } from '@/lib/utils';
 import { format } from 'date-fns';
-import { ar } from 'date-fns/locale';
+import { fr } from 'date-fns/locale';
 import { HandCoins, ShoppingBag, Undo2 } from 'lucide-react';
 
 interface CustomerActivityProps {
@@ -20,8 +20,8 @@ export function CustomerActivity({ activity, onSaleClick, onReturnClick }: Custo
     return (
       <div className="flex flex-col items-center justify-center h-60 text-center rounded-lg border-2 border-dashed bg-muted/20">
         <ShoppingBag className="h-12 w-12 text-muted-foreground/50" />
-        <h3 className="mt-4 text-lg font-semibold">لا يوجد نشاط مسجل</h3>
-        <p className="text-muted-foreground">لا توجد عمليات مبيعات أو مدفوعات لهذا العميل بعد.</p>
+        <h3 className="mt-4 text-lg font-semibold">Aucune activité</h3>
+        <p className="text-muted-foreground">Aucune transaction ou paiement enregistré pour le moment.</p>
       </div>
     );
   }
@@ -31,7 +31,7 @@ export function CustomerActivity({ activity, onSaleClick, onReturnClick }: Custo
       {activity.map((item, index) => {
         const isLast = index === activity.length - 1;
         const activityDate = safeToDate(item.date);
-        const formattedDate = format(activityDate, 'd MMM yyyy, HH:mm', { locale: ar });
+        const formattedDate = format(activityDate, 'd MMM yyyy, HH:mm', { locale: fr });
         
         if (item.type === 'sale') {
            const sale = item as Sale;
@@ -42,8 +42,8 @@ export function CustomerActivity({ activity, onSaleClick, onReturnClick }: Custo
                 <TimelineIcon>
                   <ShoppingBag className="h-5 w-5 text-primary" />
                 </TimelineIcon>
-                <TimelineTitle>فاتورة بيع #{sale.invoiceNumber}</TimelineTitle>
-                 <span className="text-xs text-muted-foreground mr-auto">{formattedDate}</span>
+                <TimelineTitle>Vente #{sale.invoiceNumber}</TimelineTitle>
+                 <span className="text-xs text-muted-foreground ml-auto">{formattedDate}</span>
               </TimelineHeader>
               <TimelineBody>
                 <div 
@@ -57,11 +57,11 @@ export function CustomerActivity({ activity, onSaleClick, onReturnClick }: Custo
                             'bg-orange-500/10 text-orange-500': sale.paymentStatus === 'partial',
                             'bg-destructive/10 text-destructive': sale.paymentStatus === 'unpaid',
                          })}>
-                            {sale.paymentStatus === 'paid' ? 'مدفوعة' : sale.paymentStatus === 'partial' ? 'جزئية' : 'غير مدفوعة'}
+                            {sale.paymentStatus === 'paid' ? 'Payé' : sale.paymentStatus === 'partial' ? 'Partiel' : 'Non payé'}
                         </span>
                     </div>
                      <p className="text-xs text-muted-foreground">
-                        {sale.items?.length || 0} صنف. {sale.paymentStatus !== 'paid' && `المتبقي: ${formatCurrency(sale.remainingBalance)}`}
+                        {sale.items?.length || 0} article(s). {sale.paymentStatus !== 'paid' && `Reste: ${formatCurrency(sale.remainingBalance)}`}
                     </p>
                 </div>
               </TimelineBody>
@@ -76,8 +76,8 @@ export function CustomerActivity({ activity, onSaleClick, onReturnClick }: Custo
                 <TimelineIcon>
                   <Undo2 className="h-5 w-5 text-destructive" />
                 </TimelineIcon>
-                <TimelineTitle>مرتجع فاتورة #{pr.originalInvoiceNumber}</TimelineTitle>
-                 <span className="text-xs text-muted-foreground mr-auto">{formattedDate}</span>
+                <TimelineTitle>Retour sur facture #{pr.originalInvoiceNumber}</TimelineTitle>
+                 <span className="text-xs text-muted-foreground ml-auto">{formattedDate}</span>
               </TimelineHeader>
                <TimelineBody>
                 <div 
@@ -85,7 +85,7 @@ export function CustomerActivity({ activity, onSaleClick, onReturnClick }: Custo
                   onClick={() => onReturnClick(pr)}
                 >
                      <p className="font-bold text-lg text-destructive">- {formatCurrency(pr.totalReturnValue)}</p>
-                     <p className="text-xs text-muted-foreground">تم إرجاع {pr.items?.length || 0} صنف. المبلغ المعاد: {formatCurrency(pr.amountRefunded)}</p>
+                     <p className="text-xs text-muted-foreground">{pr.items?.length || 0} articles retournés. Remboursé: {formatCurrency(pr.amountRefunded)}</p>
                 </div>
               </TimelineBody>
             </TimelineItem>
@@ -99,13 +99,13 @@ export function CustomerActivity({ activity, onSaleClick, onReturnClick }: Custo
                 <TimelineIcon>
                   <HandCoins className="h-5 w-5 text-green-500" />
                 </TimelineIcon>
-                <TimelineTitle>قبض دفعة نقدية</TimelineTitle>
-                 <span className="text-xs text-muted-foreground mr-auto">{formattedDate}</span>
+                <TimelineTitle>Paiement reçu</TimelineTitle>
+                 <span className="text-xs text-muted-foreground ml-auto">{formattedDate}</span>
               </TimelineHeader>
                <TimelineBody>
                 <div className="p-4 bg-green-500/5 rounded-lg border border-green-500/10">
                      <p className="font-bold text-lg text-green-500">+{formatCurrency(payment.amount)}</p>
-                     <p className="text-xs text-muted-foreground">{payment.notes || 'تم استلام الدفعة وتسويتها مع الرصيد.'}</p>
+                     <p className="text-xs text-muted-foreground">{payment.notes || 'Paiement versé sur le solde du compte.'}</p>
                 </div>
               </TimelineBody>
             </TimelineItem>
