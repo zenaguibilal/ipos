@@ -5,10 +5,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { PageHeader } from '@/components/layout/PageHeader';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { useDateRange } from '@/hooks/useDateRange';
-import type { DashboardData, RecentSale, RecentReturn, SalesByDay, TopProduct, LowStockProduct } from '@/lib/types';
+import type { DashboardData, RecentSale, RecentReturn, SalesByDay, TopProduct, LowStockProduct, TopCustomer } from '@/lib/types';
 import { dashboardService } from '@/services/dashboard.service';
 import { toast } from 'sonner';
-import { Loader2, TrendingUp, TrendingDown, DollarSign, Receipt, Undo2 } from 'lucide-react';
+import { Loader2, TrendingUp, TrendingDown, DollarSign, Receipt, Undo2, Users } from 'lucide-react';
 import { formatCurrency, safeToDate, getPlaceholder } from '@/lib/utils';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -136,10 +136,10 @@ const RecentActivity = ({ sales, returns, isLoading }: { sales: RecentSale[], re
 );
 
 const TopProductsCard = ({ products, isLoading }: { products: TopProduct[], isLoading: boolean }) => (
-    <Card className="lg:col-span-2">
+    <Card>
         <CardHeader>
-            <CardTitle>Top Produits Vendus</CardTitle>
-            <CardDescription>Produits les plus vendus sur la période sélectionnée.</CardDescription>
+            <CardTitle>Top Produits</CardTitle>
+            <CardDescription>Produits les plus rentables sur la période.</CardDescription>
         </CardHeader>
         <CardContent>
             {isLoading ? (
@@ -162,15 +162,60 @@ const TopProductsCard = ({ products, isLoading }: { products: TopProduct[], isLo
                             />
                             <div className="flex-grow">
                                 <p className="font-semibold">{p.name}</p>
+                                <p className="text-sm text-muted-foreground">{p.quantitySold} vendus</p>
                             </div>
-                            <div className="font-bold text-lg">{p.quantitySold} <span className="text-sm text-muted-foreground">vendus</span></div>
+                            <div className="font-bold text-lg text-primary">{formatCurrency(p.revenueGenerated)}</div>
                         </div>
                     ))}
                 </div>
             )}
         </CardContent>
+         <CardFooter>
+            <Button asChild variant="outline" className="w-full">
+                <Link href="/products">Voir tous les produits</Link>
+            </Button>
+        </CardFooter>
     </Card>
 );
+
+const TopCustomersCard = ({ customers, isLoading }: { customers: TopCustomer[], isLoading: boolean }) => (
+    <Card className="flex flex-col">
+        <CardHeader>
+            <CardTitle>Top Clients</CardTitle>
+            <CardDescription>Clients les plus dépensiers sur la période.</CardDescription>
+        </CardHeader>
+        <CardContent className="flex-grow">
+             {isLoading ? (
+                <div className="space-y-4">
+                    {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
+                </div>
+            ) : customers.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">Aucune donnée de client.</p>
+            ) : (
+                <div className="space-y-4">
+                    {customers.map((c, index) => (
+                        <div key={c.customerUuid} className="flex items-center gap-4">
+                            <span className="font-bold text-lg text-muted-foreground w-6 text-center">{index + 1}</span>
+                             <div className="flex items-center justify-center h-10 w-10 rounded-full bg-muted text-muted-foreground font-bold">
+                                {c.name.substring(0, 1)}
+                            </div>
+                            <div className="flex-grow">
+                                <Link href={`/customers/${c.customerUuid}`} className="font-semibold hover:underline">{c.name}</Link>
+                            </div>
+                            <div className="font-bold text-lg text-primary">{formatCurrency(c.totalSpent)}</div>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </CardContent>
+         <CardFooter>
+            <Button asChild variant="outline" className="w-full">
+                <Link href="/customers">Voir tous les clients</Link>
+            </Button>
+        </CardFooter>
+    </Card>
+);
+
 
 const LowStockProductsCard = ({ products, isLoading }: { products: LowStockProduct[], isLoading: boolean }) => (
     <Card className="flex flex-col">
@@ -255,6 +300,7 @@ export default function DashboardPage() {
                 </div>
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <TopProductsCard products={data?.topProducts ?? []} isLoading={isLoading} />
+                    <TopCustomersCard customers={data?.topCustomers ?? []} isLoading={isLoading} />
                     <LowStockProductsCard products={data?.lowStockProducts ?? []} isLoading={isLoading} />
                 </div>
             </div>

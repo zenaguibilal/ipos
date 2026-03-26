@@ -276,8 +276,15 @@ export interface TopProduct {
     productUuid: string;
     name: string;
     quantitySold: number;
+    revenueGenerated: number;
     imageUrl?: string;
     category?: string;
+}
+
+export interface TopCustomer {
+  customerUuid: string;
+  name: string;
+  totalSpent: number;
 }
 
 export interface LowStockProduct extends Pick<Product, 'uuid' | 'name' | 'quantity' | 'minStockLevel' | 'imageUrl' | 'category' | 'unite'> {}
@@ -293,5 +300,6 @@ export interface DashboardData {
     recentSales: RecentSale[];
     recentReturns: RecentReturn[];
     topProducts: TopProduct[];
+    topCustomers: TopCustomer[];
     lowStockProducts: LowStockProduct[];
 }

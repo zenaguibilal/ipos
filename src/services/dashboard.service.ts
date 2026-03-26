@@ -5,7 +5,7 @@ import { expenseRepository } from '@/repositories/expense.repository';
 import { returnRepository } from '@/repositories/return.repository';
 import { customerRepository } from '@/repositories/customer.repository';
 import { productRepository } from '@/repositories/product.repository';
-import type { DashboardData } from '@/lib/types';
+import type { DashboardData, TopCustomer } from '@/lib/types';
 import { eachDayOfInterval, format } from 'date-fns';
 
 class DashboardService {
@@ -55,29 +55,56 @@ class DashboardService {
 
 
             // Get Top Selling Products
-            const productSales = new Map<string, number>();
+            const productSales = new Map<string, { quantitySold: number, revenueGenerated: number }>();
             sales.forEach(sale => {
                 sale.items.forEach(item => {
                     if (!item.productUuid) return;
-                    const currentQty = productSales.get(item.productUuid) || 0;
-                    productSales.set(item.productUuid, currentQty + item.quantity);
+                    const current = productSales.get(item.productUuid) || { quantitySold: 0, revenueGenerated: 0 };
+                    
+                    current.quantitySold += item.quantity;
+                    
+                    const itemSubtotal = item.price * item.quantity;
+                    const itemRevenue = sale.subtotal > 0 ? (itemSubtotal / sale.subtotal) * sale.total : itemSubtotal;
+                    current.revenueGenerated += itemRevenue;
+
+                    productSales.set(item.productUuid, current);
                 });
             });
 
             const topProductsData = Array.from(productSales.entries())
-                .sort((a, b) => b[1] - a[1])
+                .sort((a, b) => b[1].revenueGenerated - a[1].revenueGenerated) // Sort by revenue
                 .slice(0, 5);
 
-            const topProducts = topProductsData.map(([uuid, quantitySold]) => {
+            const topProducts = topProductsData.map(([uuid, stats]) => {
                 const product = allProducts.find(p => p.uuid === uuid);
                 return {
                     productUuid: uuid,
                     name: product?.name || 'Produit Inconnu',
-                    quantitySold,
+                    quantitySold: stats.quantitySold,
+                    revenueGenerated: stats.revenueGenerated,
                     imageUrl: product?.imageUrl,
                     category: product?.category,
                 };
             });
+            
+            // Get Top Customers
+            const customerSpending = new Map<string, number>();
+            sales.forEach(sale => {
+                if (!sale.customerUuid) return;
+                const currentSpending = customerSpending.get(sale.customerUuid) || 0;
+                customerSpending.set(sale.customerUuid, currentSpending + sale.total);
+            });
+
+            const topCustomersData = Array.from(customerSpending.entries())
+                .sort((a, b) => b[1] - a[1]) // sort by spending
+                .slice(0, 5);
+            
+            const topCustomers: TopCustomer[] = topCustomersData.map(([uuid, totalSpent]) => ({
+                customerUuid: uuid,
+                name: customerMap.get(uuid) || 'Client Inconnu',
+                totalSpent,
+            }));
+
 
             // Get Low Stock Products
             const lowStockProducts = allProducts
@@ -118,6 +145,7 @@ class DashboardService {
                 recentSales,
                 recentReturns,
                 topProducts,
+                topCustomers,
                 lowStockProducts,
             };
         } catch (error) {
