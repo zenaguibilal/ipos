@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { expenseService } from '@/services/expense.service';
 import type { Expense } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Plus, Filter, Search, FileUp, TrendingDown, Tag, X, RefreshCw, Loader2, PieChart } from 'lucide-react';
+import { Plus, Filter, Search, FileUp, TrendingDown, Tag, X, RefreshCw, Loader2, PieChart, BarChart as BarChartIcon, ArrowUpRight, ArrowDownRight, Calendar } from 'lucide-react';
 import { ExpenseCard } from '@/components/expenses/ExpenseCard';
 import ExpenseDialog from '@/components/expenses/ExpenseDialog';
 import DeleteExpenseDialog from '@/components/expenses/DeleteExpenseDialog';
@@ -27,6 +27,8 @@ import { toast } from 'sonner';
 import { useIsManagerOrAdmin } from '@/stores/appStore';
 import { Input } from '@/components/ui/input';
 import { useDebounce } from '@/hooks/useDebounce';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from 'recharts';
+import { startOfDay, endOfDay, subDays, startOfMonth } from 'date-fns';
 
 export default function ExpensesPage() {
     const isManagerOrAdmin = useIsManagerOrAdmin();
@@ -37,25 +39,42 @@ export default function ExpensesPage() {
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
     const { dateRange, setDate, isMounted } = useDateRange(29);
+    
     const [expenses, setExpenses] = useState<Expense[] | undefined>(undefined);
+    const [prevExpenses, setPrevExpenses] = useState<Expense[]>([]);
     const [categories, setCategories] = useState<string[] | undefined>(undefined);
     const [isRefreshing, setIsRefreshing] = useState(false);
 
     const isLoading = expenses === undefined || categories === undefined;
     
     const fetchExpenses = useCallback(async (manual = false) => {
-         if (!isMounted || !dateRange?.from || !dateRange?.to) return;
+        if (!isMounted || !dateRange?.from || !dateRange?.to) return;
         if (manual) setIsRefreshing(true);
-        setExpenses(undefined);
+        
         try {
-            const data = await expenseService.filter({
+            // Fetch current period
+            const currentData = await expenseService.filter({
                 category: selectedCategory,
                 from: dateRange.from,
                 to: dateRange.to
             });
-            setExpenses(data);
+            setExpenses(currentData);
+
+            // Fetch previous period for trend analysis
+            const duration = dateRange.to.getTime() - dateRange.from.getTime();
+            const prevTo = new Date(dateRange.from.getTime() - 1);
+            const prevFrom = new Date(prevTo.getTime() - duration);
+            
+            const previousData = await expenseService.filter({
+                category: selectedCategory,
+                from: prevFrom,
+                to: prevTo
+            });
+            setPrevExpenses(previousData);
+
         } catch (error: any) {
             toast.error("Impossible de charger les dépenses.", { description: error.message });
+            setExpenses([]);
         } finally {
             if (manual) setIsRefreshing(false);
         }
@@ -70,13 +89,13 @@ export default function ExpensesPage() {
             const cats = await expenseService.getCategories();
             setCategories(cats);
         } catch (error: any) {
-            toast.error("Impossible de charger les catégories de dépenses.", { description: error.message });
+            toast.error("Impossible de charger les catégories.");
         }
     }, []);
 
     useEffect(() => {
         fetchCategories();
-    }, [fetchCategories])
+    }, [fetchCategories]);
 
     const filteredExpenses = useMemo(() => {
         if (!expenses) return [];
@@ -85,20 +104,25 @@ export default function ExpensesPage() {
         return expenses.filter(e => e.description.toLowerCase().includes(q));
     }, [expenses, debouncedSearch]);
 
-    const statsByCategory = useMemo(() => {
+    const totalAmount = useMemo(() => filteredExpenses.reduce((acc, e) => acc + e.amount, 0), [filteredExpenses]);
+    const prevTotalAmount = useMemo(() => prevExpenses.reduce((acc, e) => acc + e.amount, 0), [prevExpenses]);
+    
+    const trendPercentage = useMemo(() => {
+        if (prevTotalAmount === 0) return totalAmount > 0 ? 100 : 0;
+        return ((totalAmount - prevTotalAmount) / prevTotalAmount) * 100;
+    }, [totalAmount, prevTotalAmount]);
+
+    const chartData = useMemo(() => {
         if (!expenses) return [];
         const map = new Map<string, number>();
         expenses.forEach(e => {
             map.set(e.category, (map.get(e.category) || 0) + e.amount);
         });
         return Array.from(map.entries())
-            .map(([name, total]) => ({ name, total }))
-            .sort((a, b) => b.total - a.total);
+            .map(([name, value]) => ({ name, value }))
+            .sort((a, b) => b.value - a.value)
+            .slice(0, 8);
     }, [expenses]);
-
-    const totalAmount = useMemo(() => {
-        return filteredExpenses.reduce((acc, e) => acc + e.amount, 0);
-    }, [filteredExpenses]);
 
     const handleEditExpense = (expense: Expense) => {
         setSelectedExpense(expense);
@@ -118,17 +142,34 @@ export default function ExpensesPage() {
         } catch (e) {
             toast.error("Échec de l'exportation.");
         }
-    }
+    };
 
-    const renderSkeletons = () => (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-40 w-full rounded-2xl" />)}
-        </div>
-    );
+    const setDateShortcut = (type: 'today' | 'yesterday' | 'week' | 'month') => {
+        const now = new Date();
+        switch (type) {
+            case 'today':
+                setDate({ from: startOfDay(now), to: endOfDay(now) });
+                break;
+            case 'yesterday':
+                const yesterday = subDays(now, 1);
+                setDate({ from: startOfDay(yesterday), to: endOfDay(yesterday) });
+                break;
+            case 'week':
+                setDate({ from: startOfDay(subDays(now, 6)), to: endOfDay(now) });
+                break;
+            case 'month':
+                setDate({ from: startOfMonth(now), to: endOfDay(now) });
+                break;
+        }
+    };
 
     const renderContent = () => {
         if (isLoading) {
-            return renderSkeletons();
+            return (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-40 w-full rounded-2xl" />)}
+                </div>
+            );
         }
 
         if (filteredExpenses.length === 0) {
@@ -136,7 +177,7 @@ export default function ExpensesPage() {
                 <EmptyState
                     icon={TrendingDown}
                     title="Aucune dépense trouvée"
-                    description={searchQuery ? "Aucun résultat pour cette recherche." : "Commencez par ajouter une nouvelle dépense pour votre commerce."}
+                    description={searchQuery ? "Aucun résultat pour cette recherche." : "Commencez par ajouter une nouvelle dépense."}
                 >
                      {!searchQuery && (
                         <Button 
@@ -172,13 +213,13 @@ export default function ExpensesPage() {
                 description="Suivez et analysez toutes les charges de votre entreprise."
             >
                 <div className="flex gap-2 w-full sm:w-auto">
-                    <Button variant="outline" onClick={handleExport} disabled={!filteredExpenses.length} className="border-primary/20 luxury-glass">
+                    <Button variant="outline" onClick={handleExport} disabled={!filteredExpenses.length} className="border-primary/20 luxury-glass h-11">
                         <FileUp className="mr-2 h-4 w-4" /> Exporter
                     </Button>
                     <Button 
                         onClick={() => { setSelectedExpense(null); setIsExpenseDialogOpen(true); }}
                         disabled={!isManagerOrAdmin}
-                        className="bg-destructive hover:bg-destructive/90 shadow-lg shadow-destructive/20"
+                        className="bg-destructive hover:bg-destructive/90 shadow-lg shadow-destructive/20 h-11 px-6 rounded-xl"
                     >
                         <Plus className="mr-2 h-4 w-4" /> Ajouter
                     </Button>
@@ -187,46 +228,69 @@ export default function ExpensesPage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Main Stats Card */}
-                <Card className="luxury-glass bg-destructive/5 border-destructive/20 overflow-hidden relative group">
+                <Card className="luxury-glass bg-destructive/5 border-destructive/20 overflow-hidden relative group h-full">
                     <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                         <TrendingDown className="h-16 w-16 text-destructive" />
                     </div>
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-xs font-black uppercase tracking-widest text-muted-foreground">Dépenses Totales (Période)</CardTitle>
+                        <CardTitle className="text-xs font-black uppercase tracking-widest text-muted-foreground">Dépenses Totales</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <p className="text-4xl font-black text-destructive">{formatCurrency(totalAmount)}</p>
-                        <p className="text-xs text-muted-foreground mt-2">{filteredExpenses.length} opérations enregistrées</p>
+                        {isLoading ? <Skeleton className="h-10 w-32" /> : (
+                            <>
+                                <p className="text-4xl font-black text-destructive">{formatCurrency(totalAmount)}</p>
+                                <div className="mt-4 flex items-center gap-2">
+                                    <div className={cn(
+                                        "flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-black uppercase",
+                                        trendPercentage > 0 ? "bg-destructive/10 text-destructive" : "bg-green-500/10 text-green-500"
+                                    )}>
+                                        {trendPercentage > 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+                                        {Math.abs(trendPercentage).toFixed(1)}%
+                                    </div>
+                                    <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">vs. période précédente</span>
+                                </div>
+                            </>
+                        )}
                     </CardContent>
                 </Card>
 
-                {/* Category Breakdown */}
-                <Card className="lg:col-span-2 luxury-glass border-primary/10">
-                    <CardHeader className="pb-3">
+                {/* Category Breakdown Chart */}
+                <Card className="lg:col-span-2 luxury-glass border-primary/10 h-full overflow-hidden">
+                    <CardHeader className="pb-2 flex flex-row items-center justify-between">
                         <div className="flex items-center gap-2">
-                            <PieChart className="h-4 w-4 text-primary" />
-                            <CardTitle className="text-sm font-bold uppercase">Répartition par Catégorie</CardTitle>
+                            <BarChartIcon className="h-4 w-4 text-primary" />
+                            <CardTitle className="text-sm font-bold uppercase">Répartition Analytique</CardTitle>
                         </div>
+                        <span className="text-[10px] text-muted-foreground font-black uppercase tracking-widest">{chartData.length} Catégories</span>
                     </CardHeader>
-                    <CardContent>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                            {statsByCategory.slice(0, 6).map((cat, i) => (
-                                <div key={i} className="space-y-1">
-                                    <div className="flex justify-between text-[10px] font-bold uppercase opacity-70">
-                                        <span className="truncate">{cat.name}</span>
-                                        <span>{Math.round((cat.total / totalAmount) * 100)}%</span>
-                                    </div>
-                                    <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-                                        <div 
-                                            className="h-full bg-primary" 
-                                            style={{ width: `${(cat.total / totalAmount) * 100}%` }}
-                                        />
-                                    </div>
-                                    <p className="text-xs font-black text-primary">{formatCurrency(cat.total)}</p>
-                                </div>
-                            ))}
-                            {statsByCategory.length === 0 && <p className="col-span-full text-center text-xs text-muted-foreground py-4">Aucune donnée disponible</p>}
-                        </div>
+                    <CardContent className="h-40">
+                        {isLoading ? <Skeleton className="h-full w-full" /> : chartData.length > 0 ? (
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={chartData} layout="vertical" margin={{ left: -20 }}>
+                                    <XAxis type="number" hide />
+                                    <YAxis 
+                                        dataKey="name" 
+                                        type="category" 
+                                        axisLine={false} 
+                                        tickLine={false} 
+                                        width={80} 
+                                        tick={{ fontSize: 9, fontWeight: 800, fill: 'hsl(var(--muted-foreground))' }}
+                                    />
+                                    <Tooltip 
+                                        cursor={{ fill: 'rgba(255,255,255,0.05)' }}
+                                        contentStyle={{ backgroundColor: 'hsl(var(--card))', borderRadius: '12px', border: '1px solid hsl(var(--border) / 0.2)' }}
+                                        formatter={(val: number) => [formatCurrency(val), 'Montant']}
+                                    />
+                                    <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={12}>
+                                        {chartData.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={index === 0 ? 'hsl(var(--destructive))' : 'hsl(var(--primary))'} />
+                                        ))}
+                                    </Bar>
+                                </BarChart>
+                            </ResponsiveContainer>
+                        ) : (
+                            <div className="h-full flex items-center justify-center text-xs text-muted-foreground italic">Aucune donnée graphique</div>
+                        )}
                     </CardContent>
                 </Card>
             </div>
@@ -248,6 +312,13 @@ export default function ExpensesPage() {
                 </div>
                 
                 <div className="flex flex-wrap gap-2">
+                    <div className="flex items-center gap-1 rounded-xl bg-muted/50 p-1 border border-primary/10 h-11 luxury-glass">
+                        <Button variant="ghost" size="sm" className="h-8 text-[10px] px-2 font-black uppercase" onClick={() => setDateShortcut('today')}>Aujourd'hui</Button>
+                        <Button variant="ghost" size="sm" className="h-8 text-[10px] px-2 font-black uppercase" onClick={() => setDateShortcut('yesterday')}>Hier</Button>
+                        <Button variant="ghost" size="sm" className="h-8 text-[10px] px-2 font-black uppercase" onClick={() => setDateShortcut('week')}>7 j</Button>
+                        <Button variant="ghost" size="sm" className="h-8 text-[10px] px-2 font-black uppercase" onClick={() => setDateShortcut('month')}>Mois</Button>
+                    </div>
+
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="outline" className="h-11 min-w-[160px] border-primary/10 luxury-glass rounded-xl justify-between">
