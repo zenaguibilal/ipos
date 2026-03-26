@@ -49,6 +49,9 @@ export function ProductDialog({ isOpen, onOpenChange, product, categories, suppl
     const [isLoading, setIsLoading] = useState(false);
     const [showPriceConfirm, setShowPriceConfirm] = useState(false);
 
+    const [categorySearch, setCategorySearch] = useState('');
+    const [categoryPopoverOpen, setCategoryPopoverOpen] = useState(false);
+
     const [supplierSearch, setSupplierSearch] = useState('');
     const [supplierPopoverOpen, setSupplierPopoverOpen] = useState(false);
 
@@ -64,6 +67,7 @@ export function ProductDialog({ isOpen, onOpenChange, product, categories, suppl
             setFormState(initialFormState);
         }
         setSupplierSearch('');
+        setCategorySearch('');
     }, [product, isOpen, suppliers]);
     
     const priceNum = Number(formState.price);
@@ -86,11 +90,27 @@ export function ProductDialog({ isOpen, onOpenChange, product, categories, suppl
         setFormState(prev => ({...prev, barcodes: prev.barcodes?.filter(b => b !== barcodeToRemove)}));
     };
 
+    const categoryOptions = useMemo(() => {
+        if (!categories) return [];
+        if (!categorySearch) return categories;
+        return categories.filter(c => c.toLowerCase().includes(categorySearch.toLowerCase()));
+    }, [categories, categorySearch]);
+
     const supplierOptions = useMemo(() => {
         if (!suppliers) return [];
         if (!supplierSearch) return suppliers;
         return suppliers.filter(s => s.name.toLowerCase().includes(supplierSearch.toLowerCase()));
     }, [suppliers, supplierSearch]);
+
+    const handleCategorySelect = (category: string) => {
+        setFormState(prev => ({ ...prev, category }));
+        setCategoryPopoverOpen(false);
+    };
+
+    const handleCategoryCreate = () => {
+        setFormState(prev => ({ ...prev, category: categorySearch }));
+        setCategoryPopoverOpen(false);
+    };
 
     const handleSupplierSelect = (uuid: string) => {
         const selected = suppliers.find(s => s.uuid === uuid);
@@ -175,13 +195,50 @@ export function ProductDialog({ isOpen, onOpenChange, product, categories, suppl
                                 <Input id="name" value={formState.name} onChange={handleInputChange} required />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="category">Catégorie</Label>
-                                <Select value={formState.category} onValueChange={(value) => setFormState(s => ({ ...s, category: value }))}>
-                                    <SelectTrigger id="category"><SelectValue placeholder="Sélectionner..." /></SelectTrigger>
-                                    <SelectContent>
-                                        {categories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
-                                    </SelectContent>
-                                </Select>
+                                <Label>Catégorie</Label>
+                                <Popover open={categoryPopoverOpen} onOpenChange={setCategoryPopoverOpen}>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            variant="outline"
+                                            role="combobox"
+                                            className="w-full justify-between font-normal"
+                                        >
+                                            {formState.category || "Sélectionner ou créer..."}
+                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
+                                        <Command>
+                                            <CommandInput 
+                                                placeholder="Rechercher ou créer..." 
+                                                onValueChange={setCategorySearch}
+                                            />
+                                            <CommandList>
+                                                <CommandEmpty>
+                                                    <Button 
+                                                        variant="link" 
+                                                        className="w-full"
+                                                        type="button"
+                                                        onClick={handleCategoryCreate}>
+                                                        <Plus className="mr-2 h-4 w-4" />
+                                                        Créer "{categorySearch}"
+                                                    </Button>
+                                                </CommandEmpty>
+                                                <CommandGroup>
+                                                    {categoryOptions?.map((cat) => (
+                                                        <CommandItem
+                                                            key={cat}
+                                                            value={cat}
+                                                            onSelect={() => handleCategorySelect(cat)}
+                                                        >
+                                                            {cat}
+                                                        </CommandItem>
+                                                    ))}
+                                                </CommandGroup>
+                                            </CommandList>
+                                        </Command>
+                                    </PopoverContent>
+                                </Popover>
                             </div>
                         </div>
                         <div className="grid md:grid-cols-2 gap-4">
@@ -232,7 +289,7 @@ export function ProductDialog({ isOpen, onOpenChange, product, categories, suppl
                                     <Button
                                         variant="outline"
                                         role="combobox"
-                                        className="w-full justify-between"
+                                        className="w-full justify-between font-normal"
                                     >
                                         {formState.supplierName || "Sélectionner ou créer un fournisseur..."}
                                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -249,6 +306,7 @@ export function ProductDialog({ isOpen, onOpenChange, product, categories, suppl
                                                 <Button 
                                                     variant="link" 
                                                     className="w-full"
+                                                    type="button"
                                                     onClick={handleSupplierCreate}>
                                                     <Plus className="mr-2 h-4 w-4" />
                                                     Créer "{supplierSearch}"

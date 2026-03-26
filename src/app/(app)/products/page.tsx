@@ -1,13 +1,12 @@
-
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useDebounce } from '@/hooks/useDebounce';
 import type { Product, Supplier, ProductImportAnalysis } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, LayoutGrid, List, Printer, Trash2, PackageCheck, PackageX, AlertTriangle, Archive, SortAsc, FileDown, Building, Package, Loader2, CalendarClock, CalendarX, FileUp } from 'lucide-react';
+import { Plus, Search, LayoutGrid, List, Printer, Trash2, PackageCheck, PackageX, AlertTriangle, Archive, SortAsc, FileDown, Building, Package, Loader2, CalendarClock, CalendarX, FileUp, Scan } from 'lucide-react';
 import { ProductCard } from '@/components/products/product-card';
 import { ProductTable } from '@/components/products/product-table';
 import { ProductTableSkeleton } from '@/components/products/product-table-skeleton';
@@ -17,6 +16,7 @@ import { DeleteMultipleProductsDialog } from '@/components/products/DeleteMultip
 import { PrintLabelsDialog } from '@/components/products/PrintLabelsDialog';
 import { InventoryStats } from '@/components/products/InventoryStats';
 import { ProductImportPreviewDialog } from '@/components/products/ProductImportPreviewDialog';
+import { ProductHistoryDialog } from '@/components/products/ProductHistoryDialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -64,6 +64,7 @@ const sortOptions: { [key: string]: string } = {
 export default function ProductsPage() {
     const isManagerOrAdmin = useIsManagerOrAdmin();
     const searchParams = useSearchParams();
+    const searchInputRef = useRef<HTMLInputElement>(null);
     const { viewMode, setViewMode } = useAppStore(state => ({
         viewMode: state.productViewMode,
         setViewMode: state.actions.setProductViewMode,
@@ -79,6 +80,7 @@ export default function ProductsPage() {
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
     const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false);
+    const [isHistoryDialogOpen, setIsHistoryDialogOpen] = useState(false);
 
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
     const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
@@ -104,6 +106,11 @@ export default function ProductsPage() {
         const queryFromUrl = searchParams.get('query');
         if (queryFromUrl) {
             setSearchQuery(queryFromUrl);
+        }
+        
+        // Auto focus search bar
+        if (searchInputRef.current) {
+            searchInputRef.current.focus();
         }
     }, [searchParams]);
 
@@ -164,8 +171,13 @@ export default function ProductsPage() {
     const handleDuplicateProduct = useCallback((product: Product) => {
         // Create a copy without unique identifiers
         const { uuid, barcodes, ...rest } = product;
-        setSelectedProduct(rest as Product);
+        setSelectedProduct({ ...rest, barcodes: [] } as Product);
         setIsProductDialogOpen(true);
+    }, []);
+
+    const handleViewHistory = useCallback((product: Product) => {
+        setSelectedProduct(product);
+        setIsHistoryDialogOpen(true);
     }, []);
 
     const handleDeleteProduct = useCallback(async (product: Product) => {
@@ -284,6 +296,7 @@ export default function ProductsPage() {
                             product={p} 
                             onEdit={handleEditProduct} 
                             onDuplicate={handleDuplicateProduct}
+                            onViewHistory={handleViewHistory}
                             onDelete={() => {
                                 setSelectedProduct(p);
                                 setIsDeleteDialogOpen(true);
@@ -301,6 +314,7 @@ export default function ProductsPage() {
                 products={products}
                 onEdit={handleEditProduct}
                 onDuplicate={handleDuplicateProduct}
+                onViewHistory={handleViewHistory}
                 onDelete={(p) => {
                     setSelectedProduct(p);
                     setIsDeleteDialogOpen(true);
@@ -345,14 +359,20 @@ export default function ProductsPage() {
             <InventoryStats products={products} isLoading={isLoading} />
 
             <div className="flex flex-col sm:flex-row gap-2">
-                <div className="relative flex-grow">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input 
-                        placeholder="Rechercher par nom ou code-barres..."
-                        className="pl-10"
-                        value={searchQuery}
-                        onChange={e => setSearchQuery(e.target.value)}
-                    />
+                <div className="relative flex-grow flex gap-2">
+                    <div className="relative flex-grow">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input 
+                            ref={searchInputRef}
+                            placeholder="Nom ou code-barres..."
+                            className="pl-10"
+                            value={searchQuery}
+                            onChange={e => setSearchQuery(e.target.value)}
+                        />
+                    </div>
+                    <Button variant="outline" size="icon" className="shrink-0" onClick={() => toast.info("Scanner bientôt disponible via caméra.")}>
+                        <Scan className="h-4 w-4" />
+                    </Button>
                 </div>
                 
                  <DropdownMenu>
@@ -518,6 +538,11 @@ export default function ProductsPage() {
                         analysis={importAnalysis}
                         onConfirm={handleConfirmImport}
                         isImporting={isImporting}
+                    />
+                    <ProductHistoryDialog
+                        isOpen={isHistoryDialogOpen}
+                        onOpenChange={setIsHistoryDialogOpen}
+                        product={selectedProduct}
                     />
                 </>
             )}

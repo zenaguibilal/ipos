@@ -1,4 +1,3 @@
-
 'use client';
 import { v4 as uuidv4 } from 'uuid';
 import type { InventoryLog, InventoryLogReason, Product } from '@/lib/types';
@@ -57,6 +56,14 @@ class InventoryService {
             };
 
             await inventoryRepository.add(logEntry);
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    async getHistoryForProduct(productUuid: string): Promise<InventoryLog[]> {
+        try {
+            return await inventoryRepository.getByProductUuid(productUuid);
         } catch (error) {
             throw error;
         }

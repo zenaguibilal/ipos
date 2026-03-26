@@ -35,6 +35,16 @@ class InventoryRepository {
         return fromSupabase(data);
     }
 
+    async getByProductUuid(productUuid: string): Promise<InventoryLog[]> {
+        const { data, error } = await this.supabase
+            .from('inventory_logs')
+            .select('*')
+            .eq('product_uuid', productUuid)
+            .order('created_at', { ascending: false });
+        if (error) throw error;
+        return data.map(fromSupabase);
+    }
+
     async hasLogs(productUuid: string): Promise<boolean> {
         const { count, error } = await this.supabase
             .from('inventory_logs')
