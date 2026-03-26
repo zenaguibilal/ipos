@@ -14,11 +14,14 @@ import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useIsManagerOrAdmin } from '@/stores/appStore';
+import { Checkbox } from '../ui/checkbox';
 
 interface CustomerCardProps {
     customer: Customer;
     onEdit: (customer: Customer) => void;
     onDelete: (customer: Customer) => void;
+    isSelected?: boolean;
+    onToggleSelection?: () => void;
 }
 
 const DebtStatusIcon = ({ status }: { status: Customer['debtStatus']}) => {
@@ -55,33 +58,47 @@ const DebtStatusIcon = ({ status }: { status: Customer['debtStatus']}) => {
 };
 
 
-const CustomerCardComponent = ({ customer, onEdit, onDelete }: CustomerCardProps) => {
+const CustomerCardComponent = ({ customer, onEdit, onDelete, isSelected, onToggleSelection }: CustomerCardProps) => {
     const isManagerOrAdmin = useIsManagerOrAdmin();
     const creditUsage = customer.creditLimit && customer.creditLimit > 0 ? (customer.outstandingBalance / customer.creditLimit) * 100 : 0;
 
     return (
-        <Card className="flex flex-col transition-all duration-300 hover:shadow-xl hover:-translate-y-1 relative">
+        <Card className={cn(
+            "flex flex-col transition-all duration-300 hover:shadow-xl hover:-translate-y-1 relative",
+            isSelected && "ring-2 ring-primary"
+        )}>
             <CardHeader>
                 <div className="flex justify-between items-start">
-                    <div className="space-y-1">
-                        <CardTitle className="text-xl">
-                            <Link href={`/customers/${customer.uuid}`} className="hover:underline">
-                                {customer.firstName} {customer.lastName}
-                            </Link>
-                        </CardTitle>
-                        <div className="flex items-center text-sm text-muted-foreground gap-4">
-                             {customer.phone && (
-                                <div className="flex items-center gap-2">
-                                    <Phone className="h-3 w-3" />
-                                    <span>{customer.phone}</span>
-                                </div>
-                            )}
-                             {customer.address && (
-                                <div className="flex items-center gap-2">
-                                    <Home className="h-3 w-3" />
-                                    <span className="truncate">{customer.address}</span>
-                                </div>
-                            )}
+                    <div className="flex items-start gap-3">
+                        {isManagerOrAdmin && onToggleSelection && (
+                            <div onClick={(e) => e.stopPropagation()} className="pt-1">
+                                <Checkbox
+                                    checked={isSelected}
+                                    onCheckedChange={onToggleSelection}
+                                    className="h-5 w-5"
+                                />
+                            </div>
+                        )}
+                        <div className="space-y-1">
+                            <CardTitle className="text-xl">
+                                <Link href={`/customers/${customer.uuid}`} className="hover:underline">
+                                    {customer.firstName} {customer.lastName}
+                                </Link>
+                            </CardTitle>
+                            <div className="flex items-center text-sm text-muted-foreground gap-4">
+                                {customer.phone && (
+                                    <div className="flex items-center gap-2">
+                                        <Phone className="h-3 w-3" />
+                                        <span>{customer.phone}</span>
+                                    </div>
+                                )}
+                                {customer.address && (
+                                    <div className="flex items-center gap-2">
+                                        <Home className="h-3 w-3" />
+                                        <span className="truncate max-w-[150px]">{customer.address}</span>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
                      <DropdownMenu>

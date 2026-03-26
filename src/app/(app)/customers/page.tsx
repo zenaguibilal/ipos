@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
@@ -7,7 +6,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import type { Customer, ImportAnalysis } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, Users, FileDown, Loader2 } from 'lucide-react';
+import { Plus, Search, Users, FileDown, Loader2, FileUp, Trash2 } from 'lucide-react';
 import { CustomerCard } from '@/components/customers/customer-card';
 import { CustomerDialog } from '@/components/customers/customer-dialog';
 import { DeleteCustomerDialog } from '@/components/customers/delete-customer-dialog';
@@ -21,8 +20,10 @@ import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/card'
 import { customerService } from '@/services/customer.service';
 import { useIsManagerOrAdmin } from '@/stores/appStore';
 import { ImportPreviewDialog } from '@/components/customers/import-preview-dialog';
+import { Checkbox } from '@/components/ui/checkbox';
+import { DeleteMultipleCustomersDialog } from '@/components/customers/DeleteMultipleCustomersDialog';
 
-type FilterStatus = 'all' | 'has_debt' | 'overdue' | 'over_limit';
+type FilterStatus = 'all' | 'has_debt' | 'overdue' | 'over_limit' | 'is_bread_client';
 
 export default function CustomersPage() {
     const isManagerOrAdmin = useIsManagerOrAdmin();
@@ -32,7 +33,9 @@ export default function CustomersPage() {
     const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
     const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
     const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+    const [selectedCustomers, setSelectedCustomers] = useState<Set<string>>(new Set());
     
     const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
@@ -47,25 +50,29 @@ export default function CustomersPage() {
 
     useEffect(() => {
         const statusFromQuery = searchParams.get('status') as FilterStatus;
-        if (statusFromQuery && ['all', 'has_debt', 'overdue', 'over_limit'].includes(statusFromQuery)) {
+        if (statusFromQuery && ['all', 'has_debt', 'overdue', 'over_limit', 'is_bread_client'].includes(statusFromQuery)) {
             setFilterStatus(statusFromQuery);
         }
     }, [searchParams]);
 
     const fetchCustomers = useCallback(async () => {
-        setCustomers(undefined); // Set to loading state
+        setCustomers(undefined); 
         try {
             const data = await customerService.filterCustomers({ query: debouncedSearchQuery, status: filterStatus });
             setCustomers(data);
         } catch (error: any) {
             toast.error("Impossible de charger les clients.", { description: error.message });
-            setCustomers([]); // Set to empty array on error
+            setCustomers([]);
         }
     }, [debouncedSearchQuery, filterStatus]);
     
     useEffect(() => {
         fetchCustomers();
     }, [fetchCustomers]);
+
+    useEffect(() => {
+        setSelectedCustomers(new Set());
+    }, [customers]);
 
     const handleEditCustomer = useCallback((customer: Customer) => {
         setSelectedCustomer(customer);
@@ -76,6 +83,27 @@ export default function CustomersPage() {
         setSelectedCustomer(customer);
         setIsDeleteDialogOpen(true);
     }, []);
+
+    const handleToggleSelection = useCallback((customerUuid: string) => {
+        setSelectedCustomers(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(customerUuid)) {
+                newSet.delete(customerUuid);
+            } else {
+                newSet.add(customerUuid);
+            }
+            return newSet;
+        });
+    }, []);
+    
+    const handleToggleSelectAll = useCallback(() => {
+        if (!customers) return;
+        if (selectedCustomers.size === customers.length) {
+            setSelectedCustomers(new Set());
+        } else {
+            setSelectedCustomers(new Set(customers.map(c => c.uuid)));
+        }
+    }, [customers, selectedCustomers.size]);
 
     const handleFileSelected = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
@@ -90,7 +118,6 @@ export default function CustomersPage() {
             toast.error("Erreur lors de l'analyse du fichier.", { description: error.message });
         } finally {
             setIsAnalyzing(false);
-            // Reset file input to allow re-uploading the same file
             event.target.value = '';
         }
     };
@@ -107,6 +134,19 @@ export default function CustomersPage() {
             toast.error("Erreur lors de l'importation des données.", { description: error.message });
         } finally {
             setIsImporting(false);
+        }
+    };
+
+    const handleExportCSV = async () => {
+        if (!customers || customers.length === 0) {
+            toast.info("Aucun client à exporter.");
+            return;
+        }
+        try {
+            await customerService.exportToCSV(customers);
+            toast.success("Liste des clients exportée avec succès.");
+        } catch (error: any) {
+            toast.error("Erreur lors de l'exportation.", { description: error.message });
         }
     };
     
@@ -143,6 +183,8 @@ export default function CustomersPage() {
                         customer={c} 
                         onEdit={handleEditCustomer} 
                         onDelete={handleDeleteCustomer}
+                        isSelected={selectedCustomers.has(c.uuid)}
+                        onToggleSelection={() => handleToggleSelection(c.uuid)}
                     />
                 ))}
             </div>
@@ -155,16 +197,25 @@ export default function CustomersPage() {
                 title="Gestion des Clients"
                 description="Recherchez, ajoutez et gérez vos clients."
             >
-                <Button asChild variant="outline" disabled={!isManagerOrAdmin || isAnalyzing}>
-                    <label htmlFor="csv-importer">
-                        {isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
-                        {isAnalyzing ? 'Analyse...' : 'Importer'}
-                        <input type="file" id="csv-importer" accept=".csv" className="sr-only" onChange={handleFileSelected} />
-                    </label>
-                </Button>
-                <Button onClick={() => { setSelectedCustomer(null); setIsCustomerDialogOpen(true); }}>
-                    <Plus className="mr-2 h-4 w-4" /> Ajouter
-                </Button>
+                <div className="flex gap-2 w-full sm:w-auto">
+                    <Button variant="outline" onClick={handleExportCSV} disabled={isLoading || !customers || customers.length === 0}>
+                        <FileUp className="mr-2 h-4 w-4" /> Exporter
+                    </Button>
+                    {isManagerOrAdmin && (
+                        <>
+                            <Button asChild variant="outline" disabled={isAnalyzing}>
+                                <label htmlFor="csv-customer-importer">
+                                    {isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
+                                    {isAnalyzing ? 'Analyse...' : 'Importer'}
+                                    <input type="file" id="csv-customer-importer" accept=".csv" className="sr-only" onChange={handleFileSelected} />
+                                </label>
+                            </Button>
+                            <Button onClick={() => { setSelectedCustomer(null); setIsCustomerDialogOpen(true); }}>
+                                <Plus className="mr-2 h-4 w-4" /> Ajouter
+                            </Button>
+                        </>
+                    )}
+                </div>
             </PageHeader>
 
             <CustomerStats onRefresh={fetchCustomers} />
@@ -192,9 +243,33 @@ export default function CustomersPage() {
                         <DropdownMenuCheckboxItem checked={filterStatus === 'has_debt'} onCheckedChange={() => setFilterStatus('has_debt')}>Avec une dette</DropdownMenuCheckboxItem>
                         <DropdownMenuCheckboxItem checked={filterStatus === 'overdue'} onCheckedChange={() => setFilterStatus('overdue')}>En retard de paiement</DropdownMenuCheckboxItem>
                         <DropdownMenuCheckboxItem checked={filterStatus === 'over_limit'} onCheckedChange={() => setFilterStatus('over_limit')}>Plafond dépassé</DropdownMenuCheckboxItem>
+                        <DropdownMenuCheckboxItem checked={filterStatus === 'is_bread_client'} onCheckedChange={() => setFilterStatus('is_bread_client')}>Clients de pain</DropdownMenuCheckboxItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>
+
+            {isManagerOrAdmin && (
+                <div className="flex flex-col sm:flex-row gap-2 justify-between items-center bg-card border rounded-lg p-3">
+                    <div className="flex items-center gap-3">
+                        <Checkbox
+                            id="select-all-customers"
+                            checked={!isLoading && customers && customers.length > 0 && selectedCustomers.size === customers.length}
+                            onCheckedChange={handleToggleSelectAll}
+                            disabled={isLoading || !customers || customers.length === 0}
+                        />
+                        <label htmlFor="select-all-customers" className="text-sm font-medium">
+                            {selectedCustomers.size > 0 ? `${selectedCustomers.size} sélectionné(s)` : "Tout sélectionner"}
+                        </label>
+                    </div>
+                    {selectedCustomers.size > 0 && (
+                        <div className="flex gap-2">
+                            <Button variant="destructive" onClick={() => setIsBulkDeleteDialogOpen(true)}>
+                                <Trash2 className="mr-2 h-4 w-4" /> Supprimer
+                            </Button>
+                        </div>
+                    )}
+                </div>
+            )}
             
             <div>
                {renderContent()}
@@ -214,6 +289,15 @@ export default function CustomersPage() {
                         onOpenChange={setIsDeleteDialogOpen}
                         customer={selectedCustomer}
                         onSuccess={fetchCustomers}
+                    />
+                    <DeleteMultipleCustomersDialog
+                        isOpen={isBulkDeleteDialogOpen}
+                        onOpenChange={setIsBulkDeleteDialogOpen}
+                        customerUuids={Array.from(selectedCustomers)}
+                        onSuccess={() => {
+                            setSelectedCustomers(new Set());
+                            fetchCustomers();
+                        }}
                     />
                     <ImportPreviewDialog
                         isOpen={isImportPreviewOpen}

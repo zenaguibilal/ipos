@@ -42,7 +42,7 @@ const toSupabase = (customer: Partial<Customer>) => ({
     outstanding_balance: customer.outstandingBalance,
     last_activity_date: customer.lastActivityDate,
     created_at: customer.createdAt,
-    updated_at: customer.updatedAt,
+    updated_at: customer.updated_at,
     debt_status: customer.debtStatus,
     is_over_limit: customer.isOverLimit,
     is_bread_client: customer.isBreadClient,
@@ -106,6 +106,11 @@ class CustomerRepository {
 
     async delete(uuid: string): Promise<void> {
         const { error } = await this.supabase.from('customers').delete().eq('uuid', uuid);
+        if (error) throw error;
+    }
+
+    async bulkDelete(uuids: string[]): Promise<void> {
+        const { error } = await this.supabase.from('customers').delete().in('uuid', uuids);
         if (error) throw error;
     }
     

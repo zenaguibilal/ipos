@@ -110,6 +110,21 @@ class CustomerService {
             throw error;
         }
     }
+
+    async bulkDelete(uuids: string[]): Promise<void> {
+        try {
+            for (const uuid of uuids) {
+                const sales = await saleRepository.findByCustomerUuid(uuid);
+                if (sales.length > 0) {
+                    const customer = await customerRepository.findByUuid(uuid);
+                    throw new Error(`Suppression impossible: Le client "${customer?.firstName} ${customer?.lastName}" a un historique de transactions.`);
+                }
+            }
+            await customerRepository.bulkDelete(uuids);
+        } catch (error) {
+            throw error;
+        }
+    }
     
     async getStats(): Promise<{ total: number; overdue: number; overLimit: number; }> {
         try {
@@ -304,6 +319,32 @@ class CustomerService {
         } catch (error) {
             throw error;
         }
+    }
+
+    async exportToCSV(customers: Customer[]) {
+        const data = customers.map(c => ({
+            'Prénom': c.firstName,
+            'Nom': c.lastName,
+            'Téléphone': c.phone || '',
+            'Adresse': c.address || '',
+            'Délai Paiement (jours)': c.settlementDay || '',
+            'Limite de Crédit': c.creditLimit || 0,
+            'Total Dépensé': c.totalSpent,
+            'Solde Impayé': c.outstandingBalance,
+            'Client de Pain': c.isBreadClient ? 'Oui' : 'Non',
+        }));
+
+        const csv = Papa.unparse(data);
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        
+        link.setAttribute('href', url);
+        link.setAttribute('download', `clients-${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     }
 }
 
