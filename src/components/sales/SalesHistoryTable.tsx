@@ -2,7 +2,7 @@
 'use client';
 
 import React from 'react';
-import type { Sale } from '@/lib/types';
+import type { Sale, Customer } from '@/lib/types';
 import {
   Table,
   TableBody,
@@ -27,7 +27,7 @@ import { useIsManagerOrAdmin } from '@/stores/appStore';
 
 interface SalesHistoryTableProps {
   sales: Sale[];
-  customerMap: Map<string, any>;
+  customerMap: Map<string, Customer>;
   onViewDetails: (sale: Sale) => void;
   onCancelSale: (sale: Sale) => void;
   onPrint: (sale: Sale) => void;
@@ -79,10 +79,10 @@ export function SalesHistoryTable({
                   {customerName}
                 </TableCell>
                 <TableCell className="text-center">
-                  <Badge variant="ghost" className="font-mono">{sale.items.length}</Badge>
+                  <Badge variant="secondary" className="font-mono h-6">{sale.items.length}</Badge>
                 </TableCell>
                 <TableCell className="text-right">
-                  <Badge variant="outline" className={cn('text-[10px] uppercase font-bold', status.color, status.bg, status.color.replace('text-', 'border-'))}>
+                  <Badge variant="outline" className={cn('text-[10px] uppercase font-bold py-0 h-5', status.color, status.bg, status.color.replace('text-', 'border-'))}>
                     <status.icon className="mr-1 h-3 w-3" />
                     {status.text}
                   </Badge>
@@ -90,9 +90,9 @@ export function SalesHistoryTable({
                 <TableCell className="text-right">
                     <div className="flex flex-col items-end">
                         <span className="font-black">{formatCurrency(sale.total)}</span>
-                        <div className="flex items-center gap-1 text-[9px] text-muted-foreground">
+                        <div className="flex items-center gap-1 text-[9px] text-muted-foreground uppercase font-semibold">
                             {hasCard ? <CreditCard className="h-2.5 w-2.5" /> : <Banknote className="h-2.5 w-2.5" />}
-                            {hasCard ? 'CARTE' : 'ESPÈCES'}
+                            {hasCard ? 'Carte' : 'Espèces'}
                         </div>
                     </div>
                 </TableCell>

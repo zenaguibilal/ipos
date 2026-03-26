@@ -228,6 +228,7 @@ export default function SalesHistoryPage() {
                 {visibleSalesCount < filteredAndSortedSales.length && (
                     <div className="flex justify-center pt-4">
                         <Button variant="outline" size="lg" onClick={handleLoadMore} className="min-w-[200px]">
+                            {isRefreshing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                             Charger plus ({visibleSales.length} / {filteredAndSortedSales.length})
                         </Button>
                     </div>
@@ -314,10 +315,12 @@ export default function SalesHistoryPage() {
                         <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Filtrer par paiement</DropdownMenuLabel>
                             <DropdownMenuSeparator />
-                            <DropdownMenuCheckboxItem checked={paymentFilter === 'all'} onCheckedChange={() => setPaymentFilter('all')}>Tout afficher</DropdownMenuCheckboxItem>
-                            <DropdownMenuCheckboxItem checked={paymentFilter === 'paid'} onCheckedChange={() => setPaymentFilter('paid')}>Payées uniquement</DropdownMenuCheckboxItem>
-                            <DropdownMenuCheckboxItem checked={paymentFilter === 'partial'} onCheckedChange={() => setPaymentFilter('partial')}>Partielles uniquement</DropdownMenuCheckboxItem>
-                            <DropdownMenuCheckboxItem checked={paymentFilter === 'unpaid'} onCheckedChange={() => setPaymentFilter('unpaid')}>Impayées uniquement</DropdownMenuCheckboxItem>
+                            <DropdownMenuRadioGroup value={paymentFilter} onValueChange={(val) => setPaymentFilter(val as PaymentFilter)}>
+                                <DropdownMenuRadioItem value="all">Tout afficher</DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value="paid">Payées uniquement</DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value="partial">Partielles uniquement</DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value="unpaid">Impayées uniquement</DropdownMenuRadioItem>
+                            </DropdownMenuRadioGroup>
                         </DropdownMenuContent>
                     </DropdownMenu>
 
