@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useDebounce } from '@/hooks/useDebounce';
 import { productService } from '@/services/product.service';
+import { useAppStore } from '@/stores/appStore';
 
 interface ProductSearchProps {
     onProductSelect: (product: Product, quantity: number) => void;
@@ -72,6 +73,8 @@ export const ProductSearch = forwardRef<{focus: () => void}, ProductSearchProps>
     const [selectedCategory, setSelectedCategory] = useState('all');
     const inputRef = useRef<HTMLInputElement>(null);
     
+    const cart = useAppStore((state) => state.cart);
+    
     const [categories, setCategories] = useState<string[]>([]);
     const [products, setProducts] = useState<Product[]>([]);
     
@@ -97,6 +100,14 @@ export const ProductSearch = forwardRef<{focus: () => void}, ProductSearchProps>
         fetchProducts();
     }, [fetchProducts]);
 
+    const cartQuantities = useMemo(() => {
+        const map = new Map<string, number>();
+        cart.items.forEach(item => {
+            map.set(item.uuid, item.cartQuantity);
+        });
+        return map;
+    }, [cart.items]);
+
 
     useImperativeHandle(ref, () => ({
         focus: () => {
@@ -110,9 +121,15 @@ export const ProductSearch = forwardRef<{focus: () => void}, ProductSearchProps>
         try {
             const product = await productService.getProductByBarcode(scannedBarcode.trim());
             if (product) {
-                onProductSelect(product, 1);
-                setQuery(''); // Clear query after successful scan
-                inputRef.current?.focus();
+                const inCartQuantity = cartQuantities.get(product.uuid) || 0;
+                const availableQuantity = product.quantity - inCartQuantity;
+                if (availableQuantity > 0) {
+                    onProductSelect(product, 1);
+                    setQuery('');
+                    inputRef.current?.focus();
+                } else {
+                    toast.warning(`Stock insuffisant pour ${product.name}`);
+                }
             } else {
                 toast.error("Produit non trouvé pour ce code-barres.");
             }
@@ -149,8 +166,15 @@ export const ProductSearch = forwardRef<{focus: () => void}, ProductSearchProps>
                         if (e.key === 'Enter') {
                             e.preventDefault();
                             if (products?.length === 1) {
-                                onProductSelect(products[0], 1);
-                                setQuery('');
+                                const product = products[0];
+                                const inCartQuantity = cartQuantities.get(product.uuid) || 0;
+                                const availableQuantity = product.quantity - inCartQuantity;
+                                if (availableQuantity > 0) {
+                                    onProductSelect(product, 1);
+                                    setQuery('');
+                                } else {
+                                    toast.warning(`Stock insuffisant pour ${product.name}`);
+                                }
                                 inputRef.current?.focus();
                             } else {
                                 handleBarcodeScanned(e.currentTarget.value);
@@ -188,18 +212,27 @@ export const ProductSearch = forwardRef<{focus: () => void}, ProductSearchProps>
 
             <ScrollArea className="flex-grow -mx-4 mt-2">
                 <div className="space-y-1 px-4">
-                    {products?.map((product, index) => (
-                        <ListItem
-                            key={product.uuid}
-                            product={product}
-                            onClick={() => {
-                                onProductSelect(product, 1);
-                                setQuery(''); // Clear search after selection
-                                inputRef.current?.focus();
-                            }}
-                            isLast={index === products.length - 1}
-                        />
-                    ))}
+                    {products?.map((product, index) => {
+                        const inCartQuantity = cartQuantities.get(product.uuid) || 0;
+                        const availableQuantity = product.quantity - inCartQuantity;
+                        return (
+                            <ListItem
+                                key={product.uuid}
+                                product={product}
+                                availableQuantity={availableQuantity}
+                                onClick={() => {
+                                    if (availableQuantity > 0) {
+                                        onProductSelect(product, 1);
+                                        setQuery(''); // Clear search after selection
+                                        inputRef.current?.focus();
+                                    } else {
+                                        toast.warning(`Stock insuffisant pour ${product.name}`);
+                                    }
+                                }}
+                                isLast={index === products.length - 1}
+                            />
+                        )
+                    })}
                      {products?.length === 0 && (
                         <div className="text-center text-muted-foreground py-8">
                             {query.trim() ? (
@@ -221,12 +254,13 @@ ProductSearch.displayName = 'ProductSearch';
 
 interface ListItemProps {
     product: Product;
+    availableQuantity: number;
     onClick: () => void;
     isLast: boolean;
 }
 
-const ListItem = React.memo(({ product, onClick, isLast }: ListItemProps) => {
-    const isAvailable = product.quantity > 0;
+const ListItem = React.memo(({ product, availableQuantity, onClick, isLast }: ListItemProps) => {
+    const isAvailable = availableQuantity > 0;
     const placeholder = getPlaceholder(product.category);
 
     return (
@@ -251,7 +285,7 @@ const ListItem = React.memo(({ product, onClick, isLast }: ListItemProps) => {
                 <p className="text-sm text-muted-foreground">{formatCurrency(product.price)}</p>
             </div>
             <div className="text-sm text-muted-foreground flex-shrink-0">
-                Stock: {product.quantity}
+                Stock: {availableQuantity}
             </div>
         </button>
     );
