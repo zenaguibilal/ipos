@@ -39,6 +39,7 @@ interface AppActions {
     updateProfile: (profileData: Partial<CompanyProfile>) => Promise<void>;
     addProductToCart: (product: Product, quantity: number) => void;
     updateCartItemQuantity: (productUuid: string, newQuantity: number) => void;
+    updateCartItemPrice: (productUuid: string, newPrice: number) => void;
     removeCartItem: (productUuid: string) => void;
     clearCartFlashes: () => void;
     setCartCustomer: (customer: Customer | null) => void;
@@ -152,6 +153,19 @@ export const useAppStore = create<AppState>()((set, get) => ({
                      throw new Error(`Quantité en stock insuffisante pour ${item.name}. Disponible: ${item.quantity}`);
                 } else {
                     item.cartQuantity = newQuantity;
+                }
+            }
+        })),
+        updateCartItemPrice: (productUuid, newPrice) => set(produce((state: AppState) => {
+            const item = state.cart.items.find(i => i.uuid === productUuid);
+            if (item) {
+                if (newPrice < 0) {
+                    toast.error("Le prix ne peut pas être négatif.");
+                    return;
+                }
+                item.price = newPrice;
+                if (item.purchasePrice > 0 && newPrice < item.purchasePrice) {
+                    toast.warning(`Vente à perte : Le prix de "${item.name}" est inférieur au prix d'achat.`);
                 }
             }
         })),

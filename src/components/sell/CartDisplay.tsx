@@ -8,13 +8,44 @@ import { Trash2, ShoppingCart } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { formatCurrency, getPlaceholder } from '@/lib/utils';
-import { useAppStore, useAppActions } from '@/stores/appStore';
+import { useAppStore, useAppActions, useIsManagerOrAdmin } from '@/stores/appStore';
 import { toast } from 'sonner';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { useDebounce } from '@/hooks/useDebounce';
+import type { CartItem } from '@/lib/types';
+
+// New component to manage local state for price editing
+const PriceEditor = ({ item, onPriceChange }: { item: CartItem, onPriceChange: (uuid: string, price: number) => void }) => {
+    const [priceStr, setPriceStr] = useState(String(item.price));
+    const debouncedPrice = useDebounce(parseFloat(priceStr), 500);
+
+    // Update local state if the global state changes (e.g. cart cleared)
+    useEffect(() => {
+        setPriceStr(String(item.price));
+    }, [item.price]);
+
+    // Update global state when debounced local value changes
+    useEffect(() => {
+        if (!isNaN(debouncedPrice) && debouncedPrice >= 0 && debouncedPrice !== item.price) {
+            onPriceChange(item.uuid, debouncedPrice);
+        }
+    }, [debouncedPrice, item.price, item.uuid, onPriceChange]);
+
+    return (
+        <Input
+            type="number"
+            value={priceStr}
+            onChange={(e) => setPriceStr(e.target.value)}
+            className="h-8 w-24 mt-1"
+            aria-label="Edit price"
+        />
+    )
+}
 
 export function CartDisplay() {
     const cart = useAppStore((state) => state.cart);
-    const { updateCartItemQuantity, removeCartItem, clearCartFlashes } = useAppActions();
+    const { updateCartItemQuantity, removeCartItem, clearCartFlashes, updateCartItemPrice } = useAppActions();
+    const isManagerOrAdmin = useIsManagerOrAdmin();
     
     const handleQuantityUpdate = (itemUuid: string, newQuantity: string) => {
         const quantity = parseInt(newQuantity, 10);
@@ -62,7 +93,11 @@ export function CartDisplay() {
                                 />
                                 <div className="flex-grow">
                                     <p className="font-semibold">{item.name}</p>
-                                    <p className="text-sm text-muted-foreground">{formatCurrency(item.price)}</p>
+                                    {isManagerOrAdmin ? (
+                                        <PriceEditor item={item} onPriceChange={updateCartItemPrice} />
+                                    ) : (
+                                        <p className="text-sm text-muted-foreground">{formatCurrency(item.price)}</p>
+                                    )}
                                 </div>
                                 <div className="flex items-center gap-2">
                                      <Input
