@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { expenseService } from '@/services/expense.service';
 import type { Expense } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Plus, Filter, Search, FileUp, TrendingDown, Tag, X, RefreshCw, Loader2, PieChart, BarChart as BarChartIcon, ArrowUpRight, ArrowDownRight, Calendar } from 'lucide-react';
+import { Plus, Filter, Search, FileUp, TrendingDown, Tag, X, RefreshCw, Loader2, BarChart as BarChartIcon, ArrowUpRight, ArrowDownRight, Calendar } from 'lucide-react';
 import { ExpenseCard } from '@/components/expenses/ExpenseCard';
 import ExpenseDialog from '@/components/expenses/ExpenseDialog';
 import DeleteExpenseDialog from '@/components/expenses/DeleteExpenseDialog';

@@ -5,7 +5,7 @@ import type { Expense } from '@/lib/types';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Edit, Trash2, Banknote, Calendar, Tag, History } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, Calendar, Tag } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { formatCurrency } from '@/lib/utils';

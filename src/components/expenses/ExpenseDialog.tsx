@@ -106,27 +106,27 @@ export default function ExpenseDialog({ isOpen, onOpenChange, expense, onSuccess
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="sm:max-w-md luxury-glass">
                 <form onSubmit={handleSubmit}>
                     <DialogHeader>
-                        <DialogTitle>{expense ? 'Modifier la dépense' : 'Ajouter une dépense'}</DialogTitle>
+                        <DialogTitle className="font-bold">{expense ? 'Modifier la dépense' : 'Ajouter une dépense'}</DialogTitle>
                         <DialogDescription>
-                           Remplissez les détails de la charge.
+                           Remplissez les détails de la charge pour votre comptabilité.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
-                        {error && <p className="text-sm text-red-500 text-center">{error}</p>}
+                        {error && <p className="text-sm text-red-500 text-center font-bold">{error}</p>}
                         <div className="space-y-2">
-                            <Label htmlFor="description">Description</Label>
-                            <Input id="description" value={formState.description} onChange={handleInputChange} required autoFocus />
+                            <Label htmlFor="description" className="font-bold uppercase text-[10px] tracking-widest opacity-70">Description</Label>
+                            <Input id="description" value={formState.description} onChange={handleInputChange} required autoFocus className="h-11 rounded-xl" />
                         </div>
                          <div className="space-y-2">
-                            <Label htmlFor="amount">Montant (DA)</Label>
-                            <Input id="amount" type="number" step="0.1" value={formState.amount} onChange={handleInputChange} required />
+                            <Label htmlFor="amount" className="font-bold uppercase text-[10px] tracking-widest opacity-70">Montant (DA)</Label>
+                            <Input id="amount" type="number" step="0.1" value={formState.amount} onChange={handleInputChange} required className="h-11 text-lg font-black text-destructive rounded-xl" />
                         </div>
                          <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label htmlFor="category">Catégorie</Label>
+                                <Label htmlFor="category" className="font-bold uppercase text-[10px] tracking-widest opacity-70">Catégorie</Label>
                                 <Combobox 
                                     options={categoryOptions}
                                     value={formState.category}
@@ -137,14 +137,14 @@ export default function ExpenseDialog({ isOpen, onOpenChange, expense, onSuccess
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label>Date</Label>
+                                <Label className="font-bold uppercase text-[10px] tracking-widest opacity-70">Date</Label>
                                 <DatePicker date={formState.expenseDate} setDate={handleDateChange} />
                             </div>
                         </div>
                     </div>
-                    <DialogFooter>
-                        <Button type="button" variant="secondary" onClick={() => onOpenChange(false)} disabled={isLoading}>Annuler</Button>
-                        <Button type="submit" disabled={isLoading}>
+                    <DialogFooter className="pt-4 border-t border-border/50">
+                        <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={isLoading}>Annuler</Button>
+                        <Button type="submit" disabled={isLoading} className="bg-destructive hover:bg-destructive/90 rounded-xl px-8 h-11">
                              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             {isLoading ? 'Enregistrement...' : 'Enregistrer'}
                         </Button>
