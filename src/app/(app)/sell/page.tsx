@@ -7,7 +7,7 @@ import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { CustomerCombobox } from '@/components/sell/CustomerCombobox';
-import { PackageSearch, HandCoins } from 'lucide-react';
+import { PackageSearch } from 'lucide-react';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
@@ -27,7 +27,7 @@ export default function SellPage() {
     const { addProductToCart, setCartCustomer } = useAppActions();
     
     const [isProductSheetOpen, setIsProductSheetOpen] = useState(false);
-    const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+    const [isDebtPaymentDialogOpen, setIsDebtPaymentDialogOpen] = useState(false);
 
     const productSearchRef = useRef<{ focus: () => void }>(null);
     const customerComboboxRef = useRef<HTMLButtonElement>(null);
@@ -50,6 +50,10 @@ export default function SellPage() {
             toast.error("Erreur lors de la mise à jour du client.", { description: error.message });
         }
     }, [cartCustomer, setCartCustomer]);
+    
+    const handlePayDebtClick = () => {
+        setIsDebtPaymentDialogOpen(true);
+    };
 
 
     const handleKeyDown = useCallback((e: KeyboardEvent) => {
@@ -101,6 +105,7 @@ export default function SellPage() {
         try {
             addProductToCart(product, quantity);
             setIsProductSheetOpen(false);
+            productSearchRef.current?.focus();
         } catch(error: any) {
             toast.error(error.message);
         }
@@ -109,41 +114,31 @@ export default function SellPage() {
     return (
         <>
             <div className="h-full flex flex-col">
-                <CartTotalBar />
+                <CartTotalBar onPayDebtClick={handlePayDebtClick} />
 
                 <div className="grid md:grid-cols-3 gap-4 flex-grow min-h-0 p-4">
                     {/* Main column */}
                     <div className="md:col-span-2 flex flex-col gap-4">
-                        <div className="flex flex-col sm:flex-row gap-4">
-                            <div className="flex-grow w-full sm:w-64">
+                         <div className="flex flex-col sm:flex-row gap-4">
+                            <div className="w-full sm:max-w-xs">
                                 <CustomerCombobox ref={customerComboboxRef} />
                             </div>
-                            <div className="flex gap-2">
-                                {cartCustomer && cartCustomer.outstandingBalance > 0 && (
-                                    <Button 
-                                        variant="outline" 
-                                        className="h-auto" 
-                                        onClick={() => setIsPaymentDialogOpen(true)}
-                                    >
-                                        <HandCoins className="mr-2 h-4 w-4 text-primary" />
-                                        Payer Dette
-                                    </Button>
-                                )}
-                                <div className="md:hidden">
-                                    <Sheet open={isProductSheetOpen} onOpenChange={setIsProductSheetOpen}>
-                                        <SheetTrigger asChild>
-                                            <Button variant="outline" className="w-full sm:w-auto h-full">
-                                                <PackageSearch className="mr-2 h-4 w-4" />
-                                                Produits
-                                            </Button>
-                                        </SheetTrigger>
-                                        <SheetContent side="right" className="p-0 w-full max-w-full sm:max-w-md">
-                                            <ProductSearch ref={productSearchRef} onProductSelect={handleProductSelected} />
-                                        </SheetContent>
-                                    </Sheet>
-                                </div>
+                            <div className="flex-grow"></div> {/* Spacer */}
+                            <div className="md:hidden">
+                                <Sheet open={isProductSheetOpen} onOpenChange={setIsProductSheetOpen}>
+                                    <SheetTrigger asChild>
+                                        <Button variant="outline" className="w-full sm:w-auto h-full">
+                                            <PackageSearch className="mr-2 h-4 w-4" />
+                                            Produits
+                                        </Button>
+                                    </SheetTrigger>
+                                    <SheetContent side="right" className="p-0 w-full max-w-full sm:max-w-md">
+                                        <ProductSearch ref={productSearchRef} onProductSelect={handleProductSelected} />
+                                    </SheetContent>
+                                </Sheet>
                             </div>
                         </div>
+
 
                         <Card className="flex-grow flex flex-col min-h-0">
                             <CardContent className="p-4 sm:p-6 flex-grow flex flex-col min-h-0">
@@ -165,8 +160,8 @@ export default function SellPage() {
             </div>
             {cartCustomer && (
                  <AddPaymentDialog 
-                    isOpen={isPaymentDialogOpen}
-                    onOpenChange={setIsPaymentDialogOpen}
+                    isOpen={isDebtPaymentDialogOpen}
+                    onOpenChange={setIsDebtPaymentDialogOpen}
                     customer={cartCustomer}
                     onPaymentSuccess={handleSuccessfulPayment}
                 />

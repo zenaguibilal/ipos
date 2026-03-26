@@ -2,11 +2,15 @@
 'use client';
 
 import { calculateCartTotals, formatCurrency, cn } from '@/lib/utils';
-import { ShoppingCart, User, Tag, Minus } from 'lucide-react';
+import { ShoppingCart, User, Tag, Minus, HandCoins } from 'lucide-react';
 import { useAppStore } from '@/stores/appStore';
 import { Separator } from '@/components/ui/separator';
 
-export function CartTotalBar() {
+interface CartTotalBarProps {
+  onPayDebtClick?: () => void;
+}
+
+export function CartTotalBar({ onPayDebtClick }: CartTotalBarProps) {
     const { cart, cartCustomer: customer } = useAppStore();
 
     if (!cart) {
@@ -35,12 +39,20 @@ export function CartTotalBar() {
                             <User className="h-5 w-5 text-primary" />
                             <span className="font-semibold">{customer.firstName} {customer.lastName}</span>
                             <Separator orientation="vertical" className="h-4 mx-1" />
-                            <span className={cn(
-                                "font-semibold",
-                                customer.outstandingBalance > 0 ? "text-destructive" : "text-muted-foreground"
-                            )}>
-                                Solde: {formatCurrency(customer.outstandingBalance)}
-                            </span>
+                            
+                             {customer.outstandingBalance > 0 ? (
+                                <button onClick={onPayDebtClick} className="flex items-center gap-1.5 p-1 -m-1 rounded-md hover:bg-destructive/10 transition-colors">
+                                    <span className="font-semibold text-destructive">
+                                        Solde: {formatCurrency(customer.outstandingBalance)}
+                                    </span>
+                                    <HandCoins className="h-4 w-4 text-destructive/80" />
+                                </button>
+                            ) : (
+                                <span className="font-semibold text-muted-foreground">
+                                    Solde: {formatCurrency(customer.outstandingBalance)}
+                                </span>
+                            )}
+
                             {typeof customer.creditLimit === 'number' && (
                                 <span className="font-semibold text-chart-quaternary">
                                     (Plafond: {formatCurrency(customer.creditLimit)})
