@@ -54,7 +54,10 @@ class BreadService {
     async generateOrdersFromRecurrence(date: string): Promise<number> {
         try {
             const userId = this.getUserId();
-            const customers = await customerRepository.filter({ status: 'is_bread_client' });
+            // Utiliser repository directement pour contourner le typage partiel si nécessaire
+            const customersResult = await customerRepository.filter({ status: 'is_bread_client' });
+            const customers = customersResult.data;
+            
             const existingOrders = await this.getOrdersForDate(date);
             const existingCustomerUuids = new Set(existingOrders.map(o => o.customerUuid).filter(Boolean));
 

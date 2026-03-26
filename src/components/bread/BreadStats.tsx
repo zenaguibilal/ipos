@@ -4,7 +4,7 @@
 import { useMemo } from 'react';
 import type { BreadOrder } from '@/lib/types';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Package, Truck, Clock, HandCoins, ShoppingBag } from 'lucide-react';
+import { Package, Truck, HandCoins, ShoppingBag } from 'lucide-react';
 import { Skeleton } from '../ui/skeleton';
 import { useAppStore } from '@/stores/appStore';
 import { formatCurrency } from '@/lib/utils';
@@ -33,7 +33,7 @@ export function BreadStats({ orders, isLoading }: BreadStatsProps) {
 
     if(isLoading && !orders) {
         return (
-            <div className="grid gap-4 md:grid-cols-4">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-24 w-full rounded-2xl" />)}
             </div>
         )
@@ -41,30 +41,30 @@ export function BreadStats({ orders, isLoading }: BreadStatsProps) {
 
     return (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Card className="luxury-glass border-primary/10 bg-primary/5">
+            <Card className="luxury-glass border-primary/10 bg-primary/5 hover:bg-primary/10 transition-colors">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-[10px] font-black uppercase tracking-widest text-primary/70">Total Commandé</CardTitle>
                     <Package className="h-4 w-4 text-primary" />
                 </CardHeader>
                 <CardContent>
-                    <div className="text-3xl font-black">{stats.ordered} <span className="text-xs font-medium text-muted-foreground uppercase">unités</span></div>
+                    <div className="text-3xl font-black">{stats.ordered} <span className="text-xs font-medium text-muted-foreground uppercase">pains</span></div>
                 </CardContent>
             </Card>
 
-            <Card className="luxury-glass border-chart-quaternary/10 bg-chart-quaternary/5">
+            <Card className="luxury-glass border-chart-quaternary/10 bg-chart-quaternary/5 hover:bg-chart-quaternary/10 transition-colors">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-[10px] font-black uppercase tracking-widest text-chart-quaternary/70">Livré & OK</CardTitle>
+                    <CardTitle className="text-[10px] font-black uppercase tracking-widest text-chart-quaternary/70">Livre & Émargé</CardTitle>
                     <Truck className="h-4 w-4 text-chart-quaternary" />
                 </CardHeader>
                 <CardContent>
                     <div className="text-3xl font-black text-chart-quaternary">{stats.delivered}</div>
-                    <p className="text-[10px] text-muted-foreground mt-1">Reste: {stats.ordered - stats.delivered} pains</p>
+                    <p className="text-[10px] text-muted-foreground mt-1">Reste: {stats.ordered - stats.delivered} à livrer</p>
                 </CardContent>
             </Card>
 
-            <Card className="luxury-glass border-blue-500/10 bg-blue-500/5">
+            <Card className="luxury-glass border-blue-500/10 bg-blue-500/5 hover:bg-blue-500/10 transition-colors">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-[10px] font-black uppercase tracking-widest text-blue-400/70">Déjà Facturé</CardTitle>
+                    <CardTitle className="text-[10px] font-black uppercase tracking-widest text-blue-400/70">Volume M.A.C</CardTitle>
                     <ShoppingBag className="h-4 w-4 text-blue-400" />
                 </CardHeader>
                 <CardContent>
@@ -73,14 +73,14 @@ export function BreadStats({ orders, isLoading }: BreadStatsProps) {
                 </CardContent>
             </Card>
 
-            <Card className="luxury-glass border-chart-secondary/10 bg-chart-secondary/5">
+            <Card className="luxury-glass border-chart-secondary/10 bg-chart-secondary/5 hover:bg-chart-secondary/10 transition-colors">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-[10px] font-black uppercase tracking-widest text-chart-secondary/70">Chiffre Prévu</CardTitle>
+                    <CardTitle className="text-[10px] font-black uppercase tracking-widest text-chart-secondary/70">C.A du Jour</CardTitle>
                     <HandCoins className="h-4 w-4 text-chart-secondary" />
                 </CardHeader>
                 <CardContent>
                     <div className="text-3xl font-black text-chart-secondary">{formatCurrency(stats.potentialRevenue)}</div>
-                    <p className="text-[10px] text-muted-foreground mt-1">À {breadPrice} DA l'unité</p>
+                    <p className="text-[10px] text-muted-foreground mt-1">Sur base de {breadPrice} DA /unité</p>
                 </CardContent>
             </Card>
         </div>

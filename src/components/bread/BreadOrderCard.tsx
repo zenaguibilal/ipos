@@ -12,8 +12,8 @@ import { breadService } from '@/services/bread.service';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useDebounce } from '@/hooks/useDebounce';
 import { User, Package, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
-import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface BreadOrderCardProps {
     order: BreadOrder;
@@ -53,7 +53,7 @@ export function BreadOrderCard({ order, isSelected, onToggleSelection, onUpdate 
             await breadService.updateOrder(order.uuid, { est_livre: delivered });
             onUpdate();
         } catch (error) {
-            toast.error("Erreur de mise à jour.");
+            toast.error("Erreur de mise à jour du statut.");
         }
     }, [order.uuid, onUpdate]);
     
@@ -67,7 +67,7 @@ export function BreadOrderCard({ order, isSelected, onToggleSelection, onUpdate 
             <CardHeader className="flex-row items-center justify-between p-4 pb-3">
                 <div className="flex items-center gap-3 overflow-hidden">
                     <div className={cn(
-                        "p-2 rounded-xl shrink-0",
+                        "p-2 rounded-xl shrink-0 transition-colors",
                         isPaid ? "bg-chart-quaternary/20 text-chart-quaternary" : "bg-primary/10 text-primary"
                     )}>
                         <User className="h-4 w-4" />
@@ -77,7 +77,7 @@ export function BreadOrderCard({ order, isSelected, onToggleSelection, onUpdate 
                             {order.orderName}
                         </CardTitle>
                         {order.customerUuid && (
-                            <Badge variant="outline" className="text-[8px] h-4 py-0 font-bold bg-background/50">Client Fidèle</Badge>
+                            <Badge variant="outline" className="text-[8px] h-4 py-0 font-bold bg-background/50 border-primary/20 text-primary/70">Client Fidèle</Badge>
                         )}
                     </div>
                 </div>
@@ -86,7 +86,7 @@ export function BreadOrderCard({ order, isSelected, onToggleSelection, onUpdate 
                         checked={isSelected} 
                         onCheckedChange={() => onToggleSelection(order.uuid)} 
                         disabled={isPaid} 
-                        className="h-5 w-5 rounded-md"
+                        className="h-5 w-5 rounded-md border-primary/30"
                     />
                 </div>
             </CardHeader>
@@ -101,7 +101,7 @@ export function BreadOrderCard({ order, isSelected, onToggleSelection, onUpdate 
                             type="number"
                             value={quantity}
                             onChange={(e) => setQuantity(parseInt(e.target.value) || 0)}
-                            className="w-16 h-8 text-center text-sm font-black bg-muted border-white/10"
+                            className="w-16 h-8 text-center text-sm font-black bg-muted border-white/10 focus:border-primary/50"
                             disabled={isPaid}
                         />
                         {order.quantite_origine !== undefined && order.quantite !== order.quantite_origine && (
@@ -110,37 +110,35 @@ export function BreadOrderCard({ order, isSelected, onToggleSelection, onUpdate 
                                     <TooltipTrigger asChild>
                                         <AlertCircle className="h-3.5 w-3.5 text-orange-500 animate-pulse cursor-help" />
                                     </TooltipTrigger>
-                                    <TooltipContent><p>Modifié (Prévu: {order.quantite_origine})</p></TooltipContent>
+                                    <TooltipContent><p>Modifié (Initial: {order.quantite_origine})</p></TooltipContent>
                                 </Tooltip>
                             </TooltipProvider>
                         )}
                     </div>
                 </div>
             </CardContent>
-            <CardFooter className="p-0 border-t border-white/5">
+            <CardFooter className="p-0 border-t border-white/5 bg-black/5">
                 <div className="grid grid-cols-2 w-full divide-x divide-white/5">
                     <button 
                         onClick={() => !isPaid && handleDeliveryToggle(!isDelivered)}
                         disabled={isPaid}
                         className={cn(
-                            "flex flex-col items-center gap-1.5 py-3 transition-colors",
-                            isDelivered ? "bg-primary/10 text-primary" : "hover:bg-white/5 text-muted-foreground"
+                            "flex flex-col items-center gap-1.5 py-3 transition-all",
+                            isDelivered ? "bg-primary/10 text-primary" : "hover:bg-white/5 text-muted-foreground opacity-60"
                         )}
                     >
                         {isDelivered ? <CheckCircle2 className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
                         <span className="text-[9px] font-black uppercase tracking-tighter">{isDelivered ? 'LIVRÉ' : 'À LIVRER'}</span>
                     </button>
                     <div className={cn(
-                        "flex flex-col items-center gap-1.5 py-3",
-                        isPaid ? "bg-chart-quaternary/10 text-chart-quaternary" : "text-muted-foreground opacity-50"
+                        "flex flex-col items-center gap-1.5 py-3 transition-all",
+                        isPaid ? "bg-chart-quaternary/10 text-chart-quaternary" : "text-muted-foreground opacity-40"
                     )}>
                         {isPaid ? <CheckCircle2 className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
-                        <span className="text-[9px] font-black uppercase tracking-tighter">{isPaid ? 'FACTURÉ' : 'NON FACTURÉ'}</span>
+                        <span className="text-[9px] font-black uppercase tracking-tighter">{isPaid ? 'FACTURÉ' : 'À FACTURER'}</span>
                     </div>
                 </div>
             </CardFooter>
         </Card>
     );
 }
-
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';

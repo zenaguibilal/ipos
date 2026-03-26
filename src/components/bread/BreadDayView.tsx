@@ -44,7 +44,7 @@ export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayVi
 
     const handleSelectAll = () => {
         const unbilledOrders = orders.filter(o => !o.venteUuid);
-        if (selectedOrders.size === unbilledOrders.length) {
+        if (selectedOrders.size === unbilledOrders.length && unbilledOrders.length > 0) {
             setSelectedOrders(new Set());
         } else {
             setSelectedOrders(new Set(unbilledOrders.map(o => o.uuid)));
@@ -62,7 +62,7 @@ export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayVi
                 toast.info("Aucune nouvelle commande à générer pour ce jour.");
             }
         } catch (error: any) {
-            toast.error("Échec de la génération.");
+            toast.error("Échec de la génération.", { description: error.message });
         } finally {
             setIsGenerating(false);
         }
@@ -81,11 +81,11 @@ export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayVi
         setIsConverting(true);
         try {
             await breadService.convertBreadOrdersToSales(Array.from(selectedOrders), breadPrice);
-            toast.success(`${selectedOrders.size} commande(s) facturées.`);
+            toast.success(`${selectedOrders.size} commande(s) facturées et ajoutées aux comptes clients.`);
             setSelectedOrders(new Set());
             onOrdersChange();
         } catch (error: any) {
-            toast.error("Erreur de conversion.");
+            toast.error("Erreur de conversion en ventes.", { description: error.message });
         } finally {
             setIsConverting(false);
         }
@@ -101,7 +101,7 @@ export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayVi
             setSelectedOrders(new Set());
             onOrdersChange();
         } catch (error) {
-            toast.error("Échec de la mise à jour.");
+            toast.error("Échec de la mise à jour des statuts de livraison.");
         }
     };
 
@@ -124,13 +124,13 @@ export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayVi
     const isAllSelected = unbilledOrdersCount > 0 && selectedOrders.size === unbilledOrdersCount;
 
     return (
-        <Card className="flex flex-col h-full min-h-[500px] luxury-glass border-white/5">
-            <CardHeader className="flex-shrink-0 border-b border-white/5 bg-white/5">
+        <Card className="flex flex-col h-full min-h-[500px] luxury-glass border-white/5 overflow-hidden">
+            <CardHeader className="flex-shrink-0 border-b border-white/5 bg-white/5 p-4 sm:p-6">
                 <div className="flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center">
                     <div className="flex items-center space-x-3">
                         <Checkbox id="select-all-bread" checked={isAllSelected} onCheckedChange={handleSelectAll} className="h-5 w-5" />
-                        <label htmlFor="select-all-bread" className="text-sm font-black uppercase tracking-widest text-muted-foreground">
-                            {selectedOrders.size > 0 ? `${selectedOrders.size} sélectionné(s)` : 'Sélectionner'}
+                        <label htmlFor="select-all-bread" className="text-sm font-black uppercase tracking-widest text-muted-foreground cursor-pointer">
+                            {selectedOrders.size > 0 ? `${selectedOrders.size} sélectionné(s)` : 'Tout sélectionner'}
                         </label>
                     </div>
                     <div className="flex gap-2 flex-wrap w-full lg:w-auto">
@@ -142,7 +142,7 @@ export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayVi
                                 </Button>
                                 <Button variant="outline" size="sm" onClick={handleMarkDelivered} className="rounded-xl border-primary/20 bg-primary/5 text-primary">
                                     <PackageCheck className="h-4 w-4 mr-2" />
-                                    Tout Livrer
+                                    Marquer Livré
                                 </Button>
                                 <Button size="sm" onClick={handleConvertToSales} disabled={isConverting} className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl shadow-lg shadow-primary/20 px-6">
                                     {isConverting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ShoppingCart className="h-4 w-4 mr-2" />}
@@ -162,18 +162,18 @@ export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayVi
                     </div>
                 </div>
             </CardHeader>
-            <CardContent className="flex-grow min-h-0 p-6">
+            <CardContent className="flex-grow min-h-0 p-4 sm:p-6">
                 <ScrollArea className="h-full">
                     {orders.length === 0 ? (
                         <EmptyState
                             icon={Wheat}
                             title="Aucune commande enregistrée"
-                            description="Générez les commandes récurrentes ou ajoutez-en une manuellement."
+                            description="Générez les commandes récurrentes ou ajoutez-en une manuellement pour ce jour."
                             className="py-24"
                         >
                             <div className="flex gap-2 justify-center">
-                                <Button onClick={handleGenerate} disabled={isGenerating} className="rounded-xl">
-                                    {isGenerating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                <Button onClick={handleGenerate} disabled={isGenerating} className="rounded-xl px-8 h-12 text-lg">
+                                    {isGenerating && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
                                     Lancer la génération
                                 </Button>
                             </div>
