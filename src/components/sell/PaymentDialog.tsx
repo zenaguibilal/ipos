@@ -112,6 +112,10 @@ export function PaymentDialog({ isOpen, onOpenChange }: PaymentDialogProps) {
                 if (isNaN(cashVal) || cashVal < 0) {
                     toast.error("Veuillez entrer un montant payé valide."); return;
                 }
+                if (!cartCustomer && cashVal < total) {
+                    toast.error("Paiement insuffisant.", { description: "Le paiement doit couvrir le total pour un client de passage." });
+                    return;
+                }
                 amountPaid = cashVal;
                 if(amountPaid > 0) payments.push({ method: paymentMode, amount: amountPaid });
                 break;
@@ -151,7 +155,7 @@ export function PaymentDialog({ isOpen, onOpenChange }: PaymentDialogProps) {
         setIsLoading(true);
         try {
             await finalizeSale({
-                amountPaid: (paymentMode === 'cash' || paymentMode === 'card' || paymentMode === 'other') ? total : amountPaid,
+                amountPaid: amountPaid,
                 payments,
                 dueDate: debtAmount > 0 ? dueDate : undefined,
             });
