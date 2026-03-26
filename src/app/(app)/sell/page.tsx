@@ -45,7 +45,7 @@ export default function SellPage() {
         toggleDiscountType: () => void;
         clearCart: () => void;
     }>(null);
-    const draftsDropdownRef = useRef<HTMLButtonElement>(null);
+    const draftsDropdownRef = useRef<{ open: () => void }>(null);
 
     const activeCart = useMemo(() => carts.find(c => c.id === activeCartId), [carts, activeCartId]);
 
@@ -108,7 +108,7 @@ export default function SellPage() {
                 break;
             case 'F4':
                 e.preventDefault();
-                draftsDropdownRef.current?.click();
+                draftsDropdownRef.current?.open();
                 break;
             case 'F6':
                 e.preventDefault();

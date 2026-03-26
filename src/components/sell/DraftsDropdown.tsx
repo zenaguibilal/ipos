@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useImperativeHandle } from 'react';
 import { useAppStore, useAppActions } from '@/stores/appStore';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -16,11 +16,16 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-export const DraftsDropdown = React.forwardRef<HTMLButtonElement, {}>(({}, ref) => {
+export const DraftsDropdown = React.forwardRef<{ open: () => void }, {}>(({}, ref) => {
     const { carts, activeCartId } = useAppStore();
     const { createNewCart, switchToCart, saveActiveCartAsDraft, deleteCart } = useAppActions();
     const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
     const [draftName, setDraftName] = useState('');
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
+    useImperativeHandle(ref, () => ({
+        open: () => setIsDropdownOpen(true),
+    }));
     
     const activeCart = carts.find(c => c.id === activeCartId);
 
@@ -66,12 +71,12 @@ export const DraftsDropdown = React.forwardRef<HTMLButtonElement, {}>(({}, ref) 
                 </DialogContent>
             </Dialog>
 
-            <DropdownMenu>
+            <DropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
                 <TooltipProvider>
                     <Tooltip>
                         <TooltipTrigger asChild>
                             <DropdownMenuTrigger asChild>
-                                <Button ref={ref} variant="outline" className="w-full sm:w-auto">
+                                <Button variant="outline" className="w-full sm:w-auto">
                                     <Archive className="mr-2 h-4 w-4" />
                                     <span>{activeCart?.name || 'Panier Actif'}</span>
                                 </Button>
