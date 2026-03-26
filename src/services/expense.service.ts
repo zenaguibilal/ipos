@@ -4,6 +4,7 @@ import type { Expense } from '@/lib/types';
 import { expenseRepository } from '@/repositories/expense.repository';
 import { v4 as uuidv4 } from 'uuid';
 import { useAppStore } from '@/stores/appStore';
+import Papa from 'papaparse';
 
 class ExpenseService {
 
@@ -64,6 +65,27 @@ class ExpenseService {
         } catch (error) {
             throw error;
         }
+    }
+
+    async exportToCSV(expenses: Expense[]) {
+        const data = expenses.map(e => ({
+            'Date': new Date(e.expenseDate).toLocaleDateString('fr-FR'),
+            'Description': e.description,
+            'Catégorie': e.category,
+            'Montant (DA)': e.amount,
+        }));
+
+        const csv = Papa.unparse(data);
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        
+        link.setAttribute('href', url);
+        link.setAttribute('download', `depenses-${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     }
 }
 
