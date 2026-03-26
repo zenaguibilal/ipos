@@ -6,7 +6,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import type { Product, Supplier, ProductImportAnalysis } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, LayoutGrid, List, Printer, Trash2, PackageCheck, PackageX, AlertTriangle, Archive, SortAsc, FileDown, Building, Package, Loader2, CalendarClock, CalendarX, FileUp, Scan } from 'lucide-react';
+import { Plus, Search, LayoutGrid, List, Printer, Trash2, PackageCheck, PackageX, AlertTriangle, Archive, SortAsc, FileDown, Building, Package, Loader2, CalendarClock, CalendarX, FileUp, Scan, Sparkles } from 'lucide-react';
 import { ProductCard } from '@/components/products/product-card';
 import { ProductTable } from '@/components/products/product-table';
 import { ProductTableSkeleton } from '@/components/products/product-table-skeleton';
@@ -17,6 +17,8 @@ import { PrintLabelsDialog } from '@/components/products/PrintLabelsDialog';
 import { InventoryStats } from '@/components/products/InventoryStats';
 import { ProductImportPreviewDialog } from '@/components/products/ProductImportPreviewDialog';
 import { ProductHistoryDialog } from '@/components/products/ProductHistoryDialog';
+import { BarcodeScannerDialog } from '@/components/products/BarcodeScannerDialog';
+import { AIStockAnalysisDialog } from '@/components/products/AIStockAnalysisDialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -81,6 +83,8 @@ export default function ProductsPage() {
     const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
     const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false);
     const [isHistoryDialogOpen, setIsHistoryDialogOpen] = useState(false);
+    const [isScannerOpen, setIsScannerOpen] = useState(false);
+    const [isAIAnalysisOpen, setIsAIAnalysisOpen] = useState(false);
 
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
     const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
@@ -255,6 +259,11 @@ export default function ProductsPage() {
             toast.error("Erreur lors de l'exportation.", { description: error.message });
         }
     };
+
+    const handleScanSuccess = (barcode: string) => {
+        setSearchQuery(barcode);
+        toast.success(`Code scanné : ${barcode}`);
+    };
     
     const renderSkeletons = () => (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
@@ -336,6 +345,10 @@ export default function ProductsPage() {
                 description="Recherchez, filtrez et gérez votre inventaire."
             >
                 <div className="flex gap-2 w-full sm:w-auto">
+                    <Button variant="outline" className="hidden sm:flex gap-2" onClick={() => setIsAIAnalysisOpen(true)} disabled={isLoading || !products}>
+                        <Sparkles className="h-4 w-4 text-primary" />
+                        Assistant IA
+                    </Button>
                     <Button variant="outline" onClick={handleExportCSV} disabled={isLoading || !products || products.length === 0}>
                         <FileUp className="mr-2 h-4 w-4" /> Exporter
                     </Button>
@@ -370,8 +383,11 @@ export default function ProductsPage() {
                             onChange={e => setSearchQuery(e.target.value)}
                         />
                     </div>
-                    <Button variant="outline" size="icon" className="shrink-0" onClick={() => toast.info("Scanner bientôt disponible via caméra.")}>
+                    <Button variant="outline" size="icon" className="shrink-0" onClick={() => setIsScannerOpen(true)}>
                         <Scan className="h-4 w-4" />
+                    </Button>
+                    <Button variant="outline" size="icon" className="shrink-0 sm:hidden" onClick={() => setIsAIAnalysisOpen(true)}>
+                        <Sparkles className="h-4 w-4 text-primary" />
                     </Button>
                 </div>
                 
@@ -543,6 +559,16 @@ export default function ProductsPage() {
                         isOpen={isHistoryDialogOpen}
                         onOpenChange={setIsHistoryDialogOpen}
                         product={selectedProduct}
+                    />
+                    <BarcodeScannerDialog
+                        isOpen={isScannerOpen}
+                        onOpenChange={setIsScannerOpen}
+                        onScanSuccess={handleScanSuccess}
+                    />
+                    <AIStockAnalysisDialog
+                        isOpen={isAIAnalysisOpen}
+                        onOpenChange={setIsAIAnalysisOpen}
+                        products={products || []}
                     />
                 </>
             )}
