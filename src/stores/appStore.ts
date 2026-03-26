@@ -30,6 +30,7 @@ interface AppState {
     activeCartId: string;
 
     productViewMode: 'grid' | 'list';
+    stockViewMode: 'grid' | 'list';
     lastCompletedSale: { sale: Sale; customer: Customer | null } | null;
     actions: AppActions;
 }
@@ -80,6 +81,7 @@ interface AppActions {
         totalValue: number
     }) => Promise<boolean>;
     setProductViewMode: (mode: 'grid' | 'list') => void;
+    setStockViewMode: (mode: 'grid' | 'list') => void;
 }
 
 // Initial State
@@ -101,6 +103,7 @@ const initialState: Omit<AppState, 'actions'> = {
     carts: [initialCart],
     activeCartId: defaultCartId,
     productViewMode: 'grid',
+    stockViewMode: 'grid',
     lastCompletedSale: null,
 };
 
@@ -381,6 +384,7 @@ export const useAppStore = create<AppState>()(
                     }
                 },
                 setProductViewMode: (mode) => set({ productViewMode: mode }),
+                setStockViewMode: (mode) => set({ stockViewMode: mode }),
             }
         }),
         {
@@ -389,7 +393,8 @@ export const useAppStore = create<AppState>()(
           partialize: (state) => ({ 
               carts: state.carts, 
               activeCartId: state.activeCartId,
-              productViewMode: state.productViewMode
+              productViewMode: state.productViewMode,
+              stockViewMode: state.stockViewMode,
           }),
           onRehydrateStorage: () => (state) => {
               if (state) {

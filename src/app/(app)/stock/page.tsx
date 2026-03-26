@@ -5,10 +5,12 @@ import { useDebounce } from '@/hooks/useDebounce';
 import type { StockIntake, Supplier } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, Plus, Archive } from 'lucide-react';
+import { Search, Plus, Archive, LayoutGrid, List } from 'lucide-react';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { useDateRange } from '@/hooks/useDateRange';
 import { StockIntakeCard } from '@/components/stock/stock-intake-card';
+import { StockIntakeTable } from '@/components/stock/stock-intake-table';
+import { StockIntakeTableSkeleton } from '@/components/stock/stock-intake-table-skeleton';
 import { StockIntakeDetailsDialog } from '@/components/stock/stock-intake-details-dialog';
 import Link from 'next/link';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -17,11 +19,16 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { stockService } from '@/services/stock.service';
 import { supplierService } from '@/services/supplier.service';
-import { useIsManagerOrAdmin } from '@/stores/appStore';
+import { useAppStore, useIsManagerOrAdmin } from '@/stores/appStore';
 import { CancelIntakeDialog } from '@/components/stock/CancelIntakeDialog';
 
 export default function StockPage() {
     const isManagerOrAdmin = useIsManagerOrAdmin();
+    const { viewMode, setViewMode } = useAppStore(state => ({
+        viewMode: state.stockViewMode,
+        setViewMode: state.actions.setStockViewMode,
+    }));
+
     const [searchQuery, setSearchQuery] = useState('');
     const debouncedSearchQuery = useDebounce(searchQuery, 300);
     const { dateRange, setDate, isMounted } = useDateRange(29);
@@ -70,11 +77,16 @@ export default function StockPage() {
         setIsCancelOpen(true);
     }, []);
 
-    const renderSkeletons = () => (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-44 w-full" />)}
-        </div>
-    );
+    const renderSkeletons = () => {
+        if (viewMode === 'list') {
+            return <StockIntakeTableSkeleton />;
+        }
+        return (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-44 w-full" />)}
+            </div>
+        );
+    }
 
     const renderContent = () => {
         if (isLoading) {
@@ -95,6 +107,17 @@ export default function StockPage() {
             );
         }
         
+        if (viewMode === 'list') {
+            return (
+                <StockIntakeTable
+                    intakes={stockIntakes}
+                    supplierMap={supplierMap}
+                    onViewDetails={handleViewDetails}
+                    onCancelIntake={handleCancelIntake}
+                />
+            );
+        }
+
         return (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {stockIntakes.map(s => {
@@ -137,6 +160,14 @@ export default function StockPage() {
                     />
                 </div>
                 <DateRangePicker date={dateRange} setDate={setDate} />
+                <div className="flex items-center gap-1 rounded-md bg-muted p-1">
+                    <Button variant={viewMode === 'grid' ? 'secondary': 'ghost'} size="icon" onClick={() => setViewMode('grid')}>
+                        <LayoutGrid className="h-5 w-5"/>
+                    </Button>
+                    <Button variant={viewMode === 'list' ? 'secondary': 'ghost'} size="icon" onClick={() => setViewMode('list')}>
+                        <List className="h-5 w-5"/>
+                    </Button>
+                </div>
             </div>
             
             <div>{renderContent()}</div>
