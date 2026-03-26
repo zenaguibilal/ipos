@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
@@ -25,8 +24,11 @@ import { useAppStore, useIsManagerOrAdmin } from '@/stores/appStore';
 import { ImportPreviewDialog } from '@/components/customers/import-preview-dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DeleteMultipleCustomersDialog } from '@/components/customers/DeleteMultipleCustomersDialog';
+import { AddPaymentDialog } from '@/components/payments/AddPaymentDialog';
 
 type FilterStatus = 'all' | 'has_debt' | 'overdue' | 'over_limit' | 'is_bread_client';
+
+const ITEMS_PER_PAGE = 12;
 
 export default function CustomersPage() {
     const isManagerOrAdmin = useIsManagerOrAdmin();
@@ -38,16 +40,24 @@ export default function CustomersPage() {
 
     const [searchQuery, setSearchQuery] = useState('');
     const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
+    
+    // Dialog states
     const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
+    const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+    
     const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
     const [selectedCustomers, setSelectedCustomers] = useState<Set<string>>(new Set());
     
     const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
-    const [customers, setCustomers] = useState<Customer[] | undefined>(undefined);
-    const isLoading = customers === undefined;
+    // Data states
+    const [customers, setCustomers] = useState<Customer[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [page, setPage] = useState(1);
+    const [hasMore, setHasMore] = useState(true);
+    const [totalCount, setTotalCount] = useState(0);
 
     // States for CSV Import
     const [isImportPreviewOpen, setIsImportPreviewOpen] = useState(false);
@@ -62,20 +72,41 @@ export default function CustomersPage() {
         }
     }, [searchParams]);
 
-    const fetchCustomers = useCallback(async () => {
-        setCustomers(undefined); 
+    const fetchCustomers = useCallback(async (isInitial = true) => {
+        if (isInitial) {
+            setIsLoading(true);
+            setPage(1);
+        }
+        
         try {
-            const data = await customerService.filterCustomers({ query: debouncedSearchQuery, status: filterStatus });
-            setCustomers(data);
+            const currentPage = isInitial ? 1 : page + 1;
+            const result = await customerService.filterCustomers({ 
+                query: debouncedSearchQuery, 
+                status: filterStatus,
+                page: currentPage,
+                pageSize: ITEMS_PER_PAGE
+            });
+            
+            if (isInitial) {
+                setCustomers(result.data);
+            } else {
+                setCustomers(prev => [...prev, ...result.data]);
+                setPage(currentPage);
+            }
+            
+            setTotalCount(result.total);
+            setHasMore(customers.length + result.data.length < result.total);
         } catch (error: any) {
             toast.error("Impossible de charger les clients.", { description: error.message });
-            setCustomers([]);
+            if (isInitial) setCustomers([]);
+        } finally {
+            setIsLoading(false);
         }
-    }, [debouncedSearchQuery, filterStatus]);
+    }, [debouncedSearchQuery, filterStatus, page, customers.length]);
     
     useEffect(() => {
-        fetchCustomers();
-    }, [fetchCustomers]);
+        fetchCustomers(true);
+    }, [debouncedSearchQuery, filterStatus]);
 
     useEffect(() => {
         setSelectedCustomers(new Set());
@@ -91,6 +122,11 @@ export default function CustomersPage() {
         setIsDeleteDialogOpen(true);
     }, []);
 
+    const handlePaymentClick = useCallback((customer: Customer) => {
+        setSelectedCustomer(customer);
+        setIsPaymentDialogOpen(true);
+    }, []);
+
     const handleToggleSelection = useCallback((customerUuid: string) => {
         setSelectedCustomers(prev => {
             const newSet = new Set(prev);
@@ -104,7 +140,6 @@ export default function CustomersPage() {
     }, []);
     
     const handleToggleSelectAll = useCallback(() => {
-        if (!customers) return;
         if (selectedCustomers.size === customers.length) {
             setSelectedCustomers(new Set());
         } else {
@@ -136,7 +171,7 @@ export default function CustomersPage() {
             toast.success("Importation terminée avec succès !");
             setIsImportPreviewOpen(false);
             setImportAnalysis(null);
-            fetchCustomers();
+            fetchCustomers(true);
         } catch (error: any) {
             toast.error("Erreur lors de l'importation des données.", { description: error.message });
         } finally {
@@ -145,12 +180,14 @@ export default function CustomersPage() {
     };
 
     const handleExportCSV = async () => {
-        if (!customers || customers.length === 0) {
+        if (customers.length === 0) {
             toast.info("Aucun client à exporter.");
             return;
         }
         try {
-            await customerService.exportToCSV(customers);
+            // Export all customers matches by filter, not just the currently loaded page
+            const result = await customerService.filterCustomers({ query: debouncedSearchQuery, status: filterStatus });
+            await customerService.exportToCSV(result.data);
             toast.success("Liste des clients exportée avec succès.");
         } catch (error: any) {
             toast.error("Erreur lors de l'exportation.", { description: error.message });
@@ -164,11 +201,11 @@ export default function CustomersPage() {
     );
 
     const renderContent = () => {
-        if (isLoading) {
+        if (isLoading && customers.length === 0) {
             return viewMode === 'grid' ? renderSkeletons() : <CustomerTableSkeleton />;
         }
 
-        if (!customers || customers.length === 0) {
+        if (customers.length === 0) {
             return (
                 <EmptyState
                     icon={Users}
@@ -182,35 +219,46 @@ export default function CustomersPage() {
             );
         }
         
-        if (viewMode === 'grid') {
-            return (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {customers.map(c => (
-                        <CustomerCard 
-                            key={c.uuid} 
-                            customer={c} 
-                            onEdit={handleEditCustomer} 
-                            onDelete={handleDeleteCustomer}
-                            isSelected={selectedCustomers.has(c.uuid)}
-                            onToggleSelection={() => handleToggleSelection(c.uuid)}
-                        />
-                    ))}
-                </div>
-            );
-        }
-
         return (
-            <CustomerTable 
-                customers={customers}
-                onEdit={handleEditCustomer}
-                onDelete={(c) => {
-                    setSelectedCustomer(c);
-                    setIsDeleteDialogOpen(true);
-                }}
-                selectedCustomers={selectedCustomers}
-                onToggleCustomerSelection={handleToggleSelection}
-                onToggleSelectAll={handleToggleSelectAll}
-            />
+            <div className="space-y-6">
+                {viewMode === 'grid' ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {customers.map(c => (
+                            <CustomerCard 
+                                key={c.uuid} 
+                                customer={c} 
+                                onEdit={handleEditCustomer} 
+                                onDelete={handleDeleteCustomer}
+                                onPayment={handlePaymentClick}
+                                isSelected={selectedCustomers.has(c.uuid)}
+                                onToggleSelection={() => handleToggleSelection(c.uuid)}
+                            />
+                        ))}
+                    </div>
+                ) : (
+                    <CustomerTable 
+                        customers={customers}
+                        onEdit={handleEditCustomer}
+                        onDelete={(c) => {
+                            setSelectedCustomer(c);
+                            setIsDeleteDialogOpen(true);
+                        }}
+                        onPayment={handlePaymentClick}
+                        selectedCustomers={selectedCustomers}
+                        onToggleCustomerSelection={handleToggleSelection}
+                        onToggleSelectAll={handleToggleSelectAll}
+                    />
+                )}
+
+                {hasMore && (
+                    <div className="flex justify-center pt-4">
+                        <Button variant="outline" size="lg" onClick={() => fetchCustomers(false)} disabled={isLoading}>
+                            {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                            Charger plus de clients ({customers.length} / {totalCount})
+                        </Button>
+                    </div>
+                )}
+            </div>
         );
     }
 
@@ -221,7 +269,7 @@ export default function CustomersPage() {
                 description="Recherchez, ajoutez et gérez vos clients."
             >
                 <div className="flex gap-2 w-full sm:w-auto">
-                    <Button variant="outline" onClick={handleExportCSV} disabled={isLoading || !customers || customers.length === 0}>
+                    <Button variant="outline" onClick={handleExportCSV} disabled={isLoading && customers.length === 0}>
                         <FileUp className="mr-2 h-4 w-4" /> Exporter
                     </Button>
                     {isManagerOrAdmin && (
@@ -241,7 +289,7 @@ export default function CustomersPage() {
                 </div>
             </PageHeader>
 
-            <CustomerStats onRefresh={fetchCustomers} />
+            <CustomerStats onRefresh={() => fetchCustomers(true)} />
 
             <div className="flex flex-col sm:flex-row gap-2">
                 <div className="relative flex-grow">
@@ -285,9 +333,9 @@ export default function CustomersPage() {
                     <div className="flex items-center gap-3">
                         <Checkbox
                             id="select-all-customers"
-                            checked={!isLoading && customers && customers.length > 0 && selectedCustomers.size === customers.length}
+                            checked={customers.length > 0 && selectedCustomers.size === customers.length}
                             onCheckedChange={handleToggleSelectAll}
-                            disabled={isLoading || !customers || customers.length === 0}
+                            disabled={isLoading && customers.length === 0}
                         />
                         <label htmlFor="select-all-customers" className="text-sm font-medium">
                             {selectedCustomers.size > 0 ? `${selectedCustomers.size} sélectionné(s)` : "Tout sélectionner"}
@@ -311,7 +359,7 @@ export default function CustomersPage() {
                 isOpen={isCustomerDialogOpen}
                 onOpenChange={setIsCustomerDialogOpen}
                 customer={selectedCustomer}
-                onSuccess={fetchCustomers}
+                onSuccess={() => fetchCustomers(true)}
             />
             
             {isManagerOrAdmin && (
@@ -320,7 +368,7 @@ export default function CustomersPage() {
                         isOpen={isDeleteDialogOpen}
                         onOpenChange={setIsDeleteDialogOpen}
                         customer={selectedCustomer}
-                        onSuccess={fetchCustomers}
+                        onSuccess={() => fetchCustomers(true)}
                     />
                     <DeleteMultipleCustomersDialog
                         isOpen={isBulkDeleteDialogOpen}
@@ -328,7 +376,7 @@ export default function CustomersPage() {
                         customerUuids={Array.from(selectedCustomers)}
                         onSuccess={() => {
                             setSelectedCustomers(new Set());
-                            fetchCustomers();
+                            fetchCustomers(true);
                         }}
                     />
                     <ImportPreviewDialog
@@ -339,6 +387,15 @@ export default function CustomersPage() {
                         isImporting={isImporting}
                     />
                 </>
+            )}
+
+            {selectedCustomer && (
+                <AddPaymentDialog 
+                    isOpen={isPaymentDialogOpen}
+                    onOpenChange={setIsPaymentDialogOpen}
+                    customer={selectedCustomer}
+                    onPaymentSuccess={() => fetchCustomers(true)}
+                />
             )}
         </div>
     );

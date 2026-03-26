@@ -73,8 +73,8 @@ class CustomerRepository {
         return data ? fromSupabase(data) : undefined;
     }
 
-    async filter(filters: { query?: string; status?: string }): Promise<Customer[]> {
-        let query = this.supabase.from('customers').select('*').order('created_at', { ascending: false });
+    async filter(filters: { query?: string; status?: string; page?: number; pageSize?: number }): Promise<{ data: Customer[], count: number }> {
+        let query = this.supabase.from('customers').select('*', { count: 'exact' });
 
         if (filters.query) {
             query = query.ilike('search_name', `%${filters.query}%`);
@@ -84,12 +84,19 @@ class CustomerRepository {
             if(filters.status === 'overdue') query = query.eq('debt_status', 'overdue');
             if(filters.status === 'over_limit') query = query.eq('is_over_limit', true);
             if(filters.status === 'is_bread_client') query = query.eq('is_bread_client', true);
-            if(filters.status === 'is_manual_bread_client') query = query.eq('bread_type_recurrence', 'aucun');
+        }
+
+        if (filters.page && filters.pageSize) {
+            const from = (filters.page - 1) * filters.pageSize;
+            const to = from + filters.pageSize - 1;
+            query = query.range(from, to);
         }
         
-        const { data, error } = await query;
+        query = query.order('created_at', { ascending: false });
+        
+        const { data, error, count } = await query;
         if (error) throw error;
-        return data.map(fromSupabase);
+        return { data: data.map(fromSupabase), count: count || 0 };
     }
 
     async add(customer: Customer): Promise<Customer> {

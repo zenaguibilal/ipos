@@ -34,9 +34,10 @@ class CustomerService {
         }
     }
 
-    async filterCustomers(filters: { query?: string; status?: string }): Promise<Customer[]> {
+    async filterCustomers(filters: { query?: string; status?: string; page?: number; pageSize?: number }): Promise<{ data: Customer[], total: number }> {
         try {
-            return await customerRepository.filter(filters);
+            const result = await customerRepository.filter(filters);
+            return { data: result.data, total: result.count };
         } catch (error) {
             throw error;
         }
@@ -126,13 +127,14 @@ class CustomerService {
         }
     }
     
-    async getStats(): Promise<{ total: number; overdue: number; overLimit: number; }> {
+    async getStats(): Promise<{ total: number; overdue: number; overLimit: number; totalDebt: number }> {
         try {
             const allCustomers = await customerRepository.getAll();
             return {
                 total: allCustomers.length,
                 overdue: allCustomers.filter(c => c.debtStatus === 'overdue').length,
                 overLimit: allCustomers.filter(c => c.isOverLimit === true).length,
+                totalDebt: allCustomers.reduce((sum, c) => sum + c.outstandingBalance, 0),
             };
         } catch (error) {
             throw error;

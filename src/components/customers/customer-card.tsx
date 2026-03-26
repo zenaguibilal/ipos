@@ -5,7 +5,7 @@ import type { Customer } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Edit, Trash2, FileText, Phone, DollarSign, BellRing, ShieldCheck, Home, Calendar, Hourglass } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, FileText, Phone, DollarSign, BellRing, ShieldCheck, Home, Calendar, Hourglass, HandCoins } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import Link from 'next/link';
 import { formatCurrency } from '@/lib/utils';
@@ -20,6 +20,7 @@ interface CustomerCardProps {
     customer: Customer;
     onEdit: (customer: Customer) => void;
     onDelete: (customer: Customer) => void;
+    onPayment?: (customer: Customer) => void;
     isSelected?: boolean;
     onToggleSelection?: () => void;
 }
@@ -58,7 +59,7 @@ const DebtStatusIcon = ({ status }: { status: Customer['debtStatus']}) => {
 };
 
 
-const CustomerCardComponent = ({ customer, onEdit, onDelete, isSelected, onToggleSelection }: CustomerCardProps) => {
+const CustomerCardComponent = ({ customer, onEdit, onDelete, onPayment, isSelected, onToggleSelection }: CustomerCardProps) => {
     const isManagerOrAdmin = useIsManagerOrAdmin();
     const creditUsage = customer.creditLimit && customer.creditLimit > 0 ? (customer.outstandingBalance / customer.creditLimit) * 100 : 0;
 
@@ -114,6 +115,13 @@ const CustomerCardComponent = ({ customer, onEdit, onDelete, isSelected, onToggl
                                     Voir les détails
                                 </Link>
                             </DropdownMenuItem>
+                            <DropdownMenuItem 
+                                onClick={() => onPayment?.(customer)}
+                                disabled={customer.outstandingBalance <= 0}
+                            >
+                                <HandCoins className="mr-2 h-4 w-4" />
+                                Enregistrer un paiement
+                            </DropdownMenuItem>
                             {isManagerOrAdmin && (
                                 <>
                                     <DropdownMenuItem onClick={() => onEdit(customer)}>
@@ -158,11 +166,18 @@ const CustomerCardComponent = ({ customer, onEdit, onDelete, isSelected, onToggl
                      <span className="font-semibold ml-auto">{customer.lastActivityDate ? formatDistanceToNow(new Date(customer.lastActivityDate), { addSuffix: true, locale: fr }) : 'N/A'}</span>
                 </div>
             </CardContent>
-            <CardFooter className="pt-0">
-                <Button variant="outline" asChild className="w-full">
+            <CardFooter className="pt-0 gap-2">
+                <Button variant="outline" asChild className="flex-1">
                     <Link href={`/customers/${customer.uuid}`}>
-                        Voir l'historique
+                        Détails
                     </Link>
+                </Button>
+                <Button 
+                    className="flex-1"
+                    onClick={() => onPayment?.(customer)}
+                    disabled={customer.outstandingBalance <= 0}
+                >
+                    <HandCoins className="mr-2 h-4 w-4" /> Paiement
                 </Button>
             </CardFooter>
         </Card>

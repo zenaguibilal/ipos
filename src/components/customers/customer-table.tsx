@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -18,7 +17,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Edit, Trash2, FileText, Phone, DollarSign, ShieldCheck } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, FileText, Phone, DollarSign, ShieldCheck, HandCoins } from 'lucide-react';
 import Link from 'next/link';
 import { formatCurrency, cn } from '@/lib/utils';
 import { Checkbox } from '../ui/checkbox';
@@ -28,6 +27,7 @@ interface CustomerTableProps {
   customers: Customer[];
   onEdit: (customer: Customer) => void;
   onDelete: (customer: Customer) => void;
+  onPayment?: (customer: Customer) => void;
   selectedCustomers: Set<string>;
   onToggleCustomerSelection: (customerUuid: string) => void;
   onToggleSelectAll: () => void;
@@ -37,6 +37,7 @@ export function CustomerTable({
   customers,
   onEdit,
   onDelete,
+  onPayment,
   selectedCustomers,
   onToggleCustomerSelection,
   onToggleSelectAll,
@@ -61,7 +62,7 @@ export function CustomerTable({
             <TableHead className="text-right">Limite Crédit</TableHead>
             <TableHead className="text-right">Total Dépensé</TableHead>
             <TableHead className="text-right">Solde Impayé</TableHead>
-            <TableHead className="w-[50px] text-right">Actions</TableHead>
+            <TableHead className="w-[100px] text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -104,33 +105,45 @@ export function CustomerTable({
                   {formatCurrency(customer.outstandingBalance)}
                 </TableCell>
                 <TableCell className="text-right">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem asChild>
-                        <Link href={`/customers/${customer.uuid}`}>
-                          <FileText className="mr-2 h-4 w-4" />
-                          Détails
-                        </Link>
-                      </DropdownMenuItem>
-                      {isManagerOrAdmin && (
-                        <>
-                          <DropdownMenuItem onClick={() => onEdit(customer)}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            Modifier
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => onDelete(customer)} className="text-destructive focus:text-destructive">
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Supprimer
-                          </DropdownMenuItem>
-                        </>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <div className="flex items-center justify-end gap-1">
+                    <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8 text-primary" 
+                        onClick={() => onPayment?.(customer)}
+                        disabled={customer.outstandingBalance <= 0}
+                        title="Enregistrer un paiement"
+                    >
+                        <HandCoins className="h-4 w-4" />
+                    </Button>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                        <DropdownMenuItem asChild>
+                            <Link href={`/customers/${customer.uuid}`}>
+                            <FileText className="mr-2 h-4 w-4" />
+                            Détails
+                            </Link>
+                        </DropdownMenuItem>
+                        {isManagerOrAdmin && (
+                            <>
+                            <DropdownMenuItem onClick={() => onEdit(customer)}>
+                                <Edit className="mr-2 h-4 w-4" />
+                                Modifier
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => onDelete(customer)} className="text-destructive focus:text-destructive">
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Supprimer
+                            </DropdownMenuItem>
+                            </>
+                        )}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 </TableCell>
               </TableRow>
             );
