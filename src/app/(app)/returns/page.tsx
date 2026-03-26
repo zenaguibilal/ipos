@@ -1,25 +1,35 @@
+
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { returnService } from '@/services/return.service';
 import { customerService } from '@/services/customer.service';
 import { useDebounce } from '@/hooks/useDebounce';
 import type { ProductReturn, Customer } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, Plus, Undo2 } from 'lucide-react';
+import { Search, Plus, Undo2, LayoutGrid, List, FileUp, RefreshCw, Loader2, Banknote, Package, HandCoins, X } from 'lucide-react';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { useDateRange } from '@/hooks/useDateRange';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ReturnHistoryCard } from '@/components/returns/ReturnHistoryCard';
+import { ReturnTable } from '@/components/returns/ReturnTable';
 import { ReturnDetailsDialog } from '@/components/returns/ReturnDetailsDialog';
 import { CancelReturnDialog } from '@/components/returns/CancelReturnDialog';
 import Link from 'next/link';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { toast } from 'sonner';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { formatCurrency, cn } from '@/lib/utils';
+import { useAppStore } from '@/stores/appStore';
 
 export default function ReturnsPage() {
+    const { viewMode, setViewMode } = useAppStore(state => ({
+        viewMode: state.returnViewMode,
+        setViewMode: state.actions.setReturnViewMode,
+    }));
+
     const [searchQuery, setSearchQuery] = useState('');
     const debouncedSearchQuery = useDebounce(searchQuery, 300);
     const { dateRange, setDate, isMounted } = useDateRange(29);
@@ -30,10 +40,12 @@ export default function ReturnsPage() {
 
     const [returns, setReturns] = useState<ProductReturn[] | undefined>(undefined);
     const [customerMap, setCustomerMap] = useState<Map<string, Customer>>(new Map());
-    const isLoading = returns === undefined;
-    
-    const fetchReturnsAndCustomers = useCallback(async () => {
+    const [isRefreshing, setIsRefreshing] = useState(false);
+    const [isExporting, setIsExporting] = useState(false);
+
+    const fetchReturnsAndCustomers = useCallback(async (manual = false) => {
         if (!isMounted || !dateRange) return;
+        if (manual) setIsRefreshing(true);
         setReturns(undefined);
         try {
             const [returnsData, customersData] = await Promise.all([
@@ -47,8 +59,10 @@ export default function ReturnsPage() {
             setReturns(returnsData);
             setCustomerMap(new Map(customersData.map(c => [c.uuid, c])));
         } catch (error: any) {
-            toast.error("Impossible de charger l'historique des retours ou les clients.", { description: error.message });
+            toast.error("Impossible de charger l'historique des retours.", { description: error.message });
             setReturns([]);
+        } finally {
+            if (manual) setIsRefreshing(false);
         }
     }, [isMounted, debouncedSearchQuery, dateRange]);
 
@@ -56,6 +70,17 @@ export default function ReturnsPage() {
         fetchReturnsAndCustomers();
     }, [fetchReturnsAndCustomers]);
 
+    const stats = useMemo(() => {
+        if (!returns) return { totalValue: 0, totalRefunded: 0, itemCount: 0, impactDebt: 0 };
+        
+        return returns.reduce((acc, r) => {
+            acc.totalValue += r.totalReturnValue;
+            acc.totalRefunded += r.amountRefunded;
+            acc.itemCount += r.items.length;
+            acc.impactDebt += (r.totalReturnValue - r.amountRefunded);
+            return acc;
+        }, { totalValue: 0, totalRefunded: 0, itemCount: 0, impactDebt: 0 });
+    }, [returns]);
 
     const handleViewDetails = (pr: ProductReturn) => {
         setSelectedReturn(pr);
@@ -66,24 +91,40 @@ export default function ReturnsPage() {
         setSelectedReturn(pr);
         setIsCancelOpen(true);
     };
+
+    const handleExport = async () => {
+        if (!returns || returns.length === 0) {
+            toast.info("Aucun retour à exporter.");
+            return;
+        }
+        setIsExporting(true);
+        try {
+            await returnService.exportToCSV(returns, customerMap);
+            toast.success("Historique des retours exporté avec succès.");
+        } catch (error) {
+            toast.error("Erreur lors de l'exportation.");
+        } finally {
+            setIsExporting(false);
+        }
+    };
     
     const renderSkeletons = () => (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-56 w-full rounded-lg" />)}
+            {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-56 w-full rounded-2xl" />)}
         </div>
     );
 
     const renderContent = () => {
-        if (isLoading) {
+        if (returns === undefined) {
             return renderSkeletons();
         }
 
-        if (!returns || returns.length === 0) {
+        if (returns.length === 0) {
             return (
                 <EmptyState
                     icon={Undo2}
                     title="Aucun retour de produit trouvé"
-                    description="Commencez par créer un nouveau retour."
+                    description="Ajustez vos filtres ou créez un nouveau retour."
                 >
                      <Button asChild>
                         <Link href="/returns/new"><Plus className="mr-2 h-4 w-4" /> Nouveau Retour</Link>
@@ -93,20 +134,31 @@ export default function ReturnsPage() {
         }
         
         return (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {returns.map(r => {
-                    const customer = r.customerUuid ? customerMap.get(r.customerUuid) : undefined;
-                    const customerName = customer ? `${customer.firstName} ${customer.lastName}` : undefined;
-                    return (
-                        <ReturnHistoryCard 
-                            key={r.uuid} 
-                            productReturn={r}
-                            customerName={customerName}
-                            onViewDetails={handleViewDetails}
-                            onCancelReturn={handleCancelReturn}
-                        />
-                    )
-                })}
+            <div className="space-y-6">
+                {viewMode === 'grid' ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {returns.map(r => {
+                            const customer = r.customerUuid ? customerMap.get(r.customerUuid) : undefined;
+                            const customerName = customer ? `${customer.firstName} ${customer.lastName}` : 'Client de passage';
+                            return (
+                                <ReturnHistoryCard 
+                                    key={r.uuid} 
+                                    productReturn={r}
+                                    customerName={customerName}
+                                    onViewDetails={handleViewDetails}
+                                    onCancelReturn={handleCancelReturn}
+                                />
+                            )
+                        })}
+                    </div>
+                ) : (
+                    <ReturnTable 
+                        returns={returns}
+                        customerMap={customerMap}
+                        onViewDetails={handleViewDetails}
+                        onCancelReturn={handleCancelReturn}
+                    />
+                )}
             </div>
         );
     }
@@ -115,27 +167,107 @@ export default function ReturnsPage() {
         <div className="p-4 sm:p-6 space-y-6">
             <PageHeader
                 title="Historique des Retours"
-                description="Recherchez et consultez tous les retours de produits."
+                description="Consultez et gérez les retours de marchandises et les remboursements."
             >
-                 <Button asChild>
-                    <Link href="/returns/new"><Plus className="mr-2 h-4 w-4" /> Nouveau Retour</Link>
-                </Button>
+                <div className="flex gap-2 w-full sm:w-auto">
+                    <Button variant="outline" onClick={handleExport} disabled={!returns?.length || isExporting} className="border-primary/20">
+                        <FileUp className={cn("mr-2 h-4 w-4", isExporting && "animate-pulse")} />
+                        Exporter CSV
+                    </Button>
+                    <Button asChild className="bg-primary hover:bg-primary/90">
+                        <Link href="/returns/new"><Plus className="mr-2 h-4 w-4" /> Nouveau Retour</Link>
+                    </Button>
+                </div>
             </PageHeader>
 
-            <div className="flex flex-col sm:flex-row gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <Card className="bg-destructive/5 border-destructive/20 luxury-glass overflow-hidden relative group">
+                    <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <Undo2 className="h-12 w-12 text-destructive" />
+                    </div>
+                    <CardHeader className="py-3">
+                        <CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Valeur Retours</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-2xl font-black text-destructive">{formatCurrency(stats.totalValue)}</p>
+                        <p className="text-[10px] text-muted-foreground mt-1">{stats.itemCount} articles retournés</p>
+                    </CardContent>
+                </Card>
+
+                <Card className="bg-chart-quaternary/5 border-chart-quaternary/20 luxury-glass overflow-hidden relative group">
+                    <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <Banknote className="h-12 w-12 text-chart-quaternary" />
+                    </div>
+                    <CardHeader className="py-3">
+                        <CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Remboursements</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-2xl font-black text-chart-quaternary">{formatCurrency(stats.totalRefunded)}</p>
+                        <p className="text-[10px] text-muted-foreground mt-1">Montant déduit de la caisse</p>
+                    </CardContent>
+                </Card>
+
+                <Card className="bg-primary/5 border-primary/20 luxury-glass overflow-hidden relative group">
+                    <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <HandCoins className="h-12 w-12 text-primary" />
+                    </div>
+                    <CardHeader className="py-3">
+                        <CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Réduction Dette</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-2xl font-black text-primary">{formatCurrency(stats.impactDebt)}</p>
+                        <p className="text-[10px] text-muted-foreground mt-1">Impact sur soldes clients</p>
+                    </CardContent>
+                </Card>
+
+                <Card className="bg-secondary/5 border-border/20 luxury-glass overflow-hidden relative group">
+                    <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <Package className="h-12 w-12 text-muted-foreground" />
+                    </div>
+                    <CardHeader className="py-3">
+                        <CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Volume</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-2xl font-black">{returns?.length || 0}</p>
+                        <p className="text-[10px] text-muted-foreground mt-1">Opérations de retour</p>
+                    </CardContent>
+                </Card>
+            </div>
+
+            <div className="flex flex-col lg:flex-row gap-3">
                 <div className="relative flex-grow">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input 
                         placeholder="Rechercher par N° Facture ou Nom Client..."
-                        className="pl-10"
+                        className="pl-10 h-11 border-primary/10 bg-background/50 focus:border-primary/30"
                         value={searchQuery}
                         onChange={e => setSearchQuery(e.target.value)}
                     />
+                    {searchQuery && (
+                        <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                            <X className="h-4 w-4" />
+                        </button>
+                    )}
                 </div>
-                <DateRangePicker date={dateRange} setDate={setDate} />
+                <div className="flex flex-wrap gap-2">
+                    <DateRangePicker date={dateRange} setDate={setDate} />
+                    <div className="flex items-center gap-1 rounded-md bg-muted/50 p-1 border border-primary/10 h-11">
+                        <Button variant={viewMode === 'grid' ? 'secondary': 'ghost'} size="icon" className="h-9 w-9" onClick={() => setViewMode('grid')}>
+                            <LayoutGrid className="h-5 w-5"/>
+                        </Button>
+                        <Button variant={viewMode === 'list' ? 'secondary': 'ghost'} size="icon" className="h-9 w-9" onClick={() => setViewMode('list')}>
+                            <List className="h-5 w-5"/>
+                        </Button>
+                    </div>
+                    <Button variant="ghost" size="icon" className="h-11 w-11 hover:bg-primary/10" onClick={() => fetchReturnsAndCustomers(true)} disabled={isRefreshing}>
+                        <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
+                    </Button>
+                </div>
             </div>
             
-            <div>{renderContent()}</div>
+            <div className="min-h-[400px]">
+                {renderContent()}
+            </div>
 
             <ReturnDetailsDialog 
                 isOpen={isDetailsOpen}
@@ -146,7 +278,7 @@ export default function ReturnsPage() {
                 isOpen={isCancelOpen}
                 onOpenChange={setIsCancelOpen}
                 productReturn={selectedReturn}
-                onSuccess={fetchReturnsAndCustomers}
+                onSuccess={() => fetchReturnsAndCustomers(true)}
             />
         </div>
     );

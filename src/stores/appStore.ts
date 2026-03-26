@@ -33,6 +33,7 @@ interface AppState {
     stockViewMode: 'grid' | 'list';
     customerViewMode: 'grid' | 'list';
     salesHistoryViewMode: 'grid' | 'list';
+    returnViewMode: 'grid' | 'list';
     lastCompletedSale: { sale: Sale; customer: Customer | null } | null;
     actions: AppActions;
 }
@@ -86,6 +87,7 @@ interface AppActions {
     setStockViewMode: (mode: 'grid' | 'list') => void;
     setCustomerViewMode: (mode: 'grid' | 'list') => void;
     setSalesHistoryViewMode: (mode: 'grid' | 'list') => void;
+    setReturnViewMode: (mode: 'grid' | 'list') => void;
 }
 
 // Initial State
@@ -110,6 +112,7 @@ const initialState: Omit<AppState, 'actions'> = {
     stockViewMode: 'grid',
     customerViewMode: 'grid',
     salesHistoryViewMode: 'grid',
+    returnViewMode: 'grid',
     lastCompletedSale: null,
 };
 
@@ -393,6 +396,7 @@ export const useAppStore = create<AppState>()(
                 setStockViewMode: (mode) => set({ stockViewMode: mode }),
                 setCustomerViewMode: (mode) => set({ customerViewMode: mode }),
                 setSalesHistoryViewMode: (mode) => set({ salesHistoryViewMode: mode }),
+                setReturnViewMode: (mode) => set({ returnViewMode: mode }),
             }
         }),
         {
@@ -405,6 +409,7 @@ export const useAppStore = create<AppState>()(
               stockViewMode: state.stockViewMode,
               customerViewMode: state.customerViewMode,
               salesHistoryViewMode: state.salesHistoryViewMode,
+              returnViewMode: state.returnViewMode,
           }),
           onRehydrateStorage: () => (state) => {
               if (state) {

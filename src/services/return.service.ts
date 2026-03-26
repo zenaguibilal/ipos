@@ -1,11 +1,13 @@
+
 'use client';
 import { v4 as uuidv4 } from 'uuid';
-import type { ProductReturn, ReturnItem } from '@/lib/types';
+import type { ProductReturn, ReturnItem, Customer } from '@/lib/types';
 import { returnRepository } from '@/repositories/return.repository';
 import { saleRepository } from '@/repositories/sale.repository';
 import { inventoryService } from './inventory.service';
 import { customerService } from './customer.service';
 import { useAppStore } from '@/stores/appStore';
+import Papa from 'papaparse';
 
 class ReturnService {
 
@@ -89,6 +91,38 @@ class ReturnService {
         } catch (error) {
             throw error;
         }
+    }
+
+    async exportToCSV(returns: ProductReturn[], customerMap: Map<string, Customer>) {
+        const rows = returns.flatMap(pr => {
+            const customer = pr.customerUuid ? customerMap.get(pr.customerUuid) : null;
+            const customerName = customer ? `${customer.firstName} ${customer.lastName}` : 'N/A';
+            
+            return pr.items.map(item => ({
+                'Date Retour': pr.createdAt ? new Date(pr.createdAt).toLocaleString('fr-FR') : '',
+                'Facture Originale': pr.originalInvoiceNumber,
+                'Client': customerName,
+                'Article': item.productName,
+                'Qté Retournée': item.quantity,
+                'Prix Vente': item.price,
+                'Valeur Retour': item.price * item.quantity,
+                'Montant Remboursé': pr.amountRefunded,
+                'Réintégré Stock': item.wasRestocked ? 'Oui' : 'Non',
+                'Notes': pr.notes || ''
+            }));
+        });
+
+        const csv = Papa.unparse(rows);
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        
+        link.setAttribute('href', url);
+        link.setAttribute('download', `historique-retours-${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     }
 }
 
