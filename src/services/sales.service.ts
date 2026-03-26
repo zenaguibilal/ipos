@@ -1,3 +1,4 @@
+
 'use client';
 import { v4 as uuidv4 } from 'uuid';
 import type { Sale, CartItem, SaleItem } from '@/lib/types';
@@ -77,7 +78,7 @@ class SalesService {
             const paymentStatus = remainingBalance <= 0.01 ? 'paid' : (saleData.amountPaid > 0 ? 'partial' : 'unpaid');
             
             const saleItems: SaleItem[] = saleData.items.map(item => ({
-                productUuid: item.uuid,
+                productUuid: item.uuid.startsWith('custom-') ? null : item.uuid,
                 name: item.name,
                 price: item.price,
                 purchasePrice: item.purchasePrice,

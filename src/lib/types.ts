@@ -1,3 +1,4 @@
+
 export type AppRole = 'admin' | 'manager' | 'cashier';
 
 export interface Product {
@@ -47,7 +48,7 @@ export interface Customer {
 }
 
 export interface SaleItem {
-    productUuid: string;
+    productUuid: string | null;
     name: string;
     price: number;
     purchasePrice: number;

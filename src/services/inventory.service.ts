@@ -1,3 +1,4 @@
+
 'use client';
 import { v4 as uuidv4 } from 'uuid';
 import type { InventoryLog, InventoryLogReason, Product } from '@/lib/types';
@@ -16,10 +17,10 @@ class InventoryService {
         return session.user.id;
     }
 
-    async adjustStock(productUuid: string, quantityChange: number, reason: InventoryLogReason, relatedUuid?: string): Promise<void> {
+    async adjustStock(productUuid: string | null | undefined, quantityChange: number, reason: InventoryLogReason, relatedUuid?: string): Promise<void> {
         try {
-            if (productUuid === 'BREAD_PRODUCT') {
-                return; // Do not track stock for special bread product
+            if (!productUuid || productUuid === 'BREAD_PRODUCT') {
+                return; // Do not track stock for special/custom products
             }
 
             const product = await productRepository.findByUuid(productUuid);
