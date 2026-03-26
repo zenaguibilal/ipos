@@ -8,7 +8,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import type { Sale, Customer } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, History, FileUp, Filter, TrendingUp, Receipt as ReceiptIcon, ShoppingBag, LayoutGrid, List, SortAsc, RefreshCw, Printer } from 'lucide-react';
+import { Search, History, FileUp, Filter, TrendingUp, Receipt as ReceiptIcon, ShoppingBag, LayoutGrid, List, SortAsc, RefreshCw, Loader2 } from 'lucide-react';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { useDateRange } from '@/hooks/useDateRange';
 import { SalesHistoryCard } from '@/components/sales/SalesHistoryCard';
@@ -44,6 +44,8 @@ const sortOptions: { [key: string]: string } = {
     'total_asc': 'Montant (Bas)',
 };
 
+const ITEMS_PER_PAGE = 15;
+
 export default function SalesHistoryPage() {
     const { viewMode, setViewMode } = useAppStore(state => ({
         viewMode: state.salesHistoryViewMode,
@@ -62,7 +64,8 @@ export default function SalesHistoryPage() {
     const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>('all');
     const [sortBy, setSortBy] = useState('createdAt_desc');
 
-    const [sales, setSales] = useState<Sale[] | undefined>(undefined);
+    const [allSales, setAllSales] = useState<Sale[] | undefined>(undefined);
+    const [visibleSalesCount, setVisibleSalesCount] = useState(ITEMS_PER_PAGE);
     const [customerMap, setCustomerMap] = useState<Map<string, Customer>>(new Map());
     const [isExporting, setIsExporting] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
@@ -70,7 +73,7 @@ export default function SalesHistoryPage() {
     const fetchSalesAndCustomers = useCallback(async (manual = false) => {
         if (!isMounted || !dateRange) return;
         if (manual) setIsRefreshing(true);
-        setSales(undefined);
+        setAllSales(undefined);
         try {
             const [salesData, customersData] = await Promise.all([
                 salesService.filterSales({
@@ -80,11 +83,12 @@ export default function SalesHistoryPage() {
                 }),
                 customerService.getCustomers()
             ]);
-            setSales(salesData);
+            setAllSales(salesData);
             setCustomerMap(new Map(customersData.map(c => [c.uuid, c])));
+            setVisibleSalesCount(ITEMS_PER_PAGE);
         } catch (error: any) {
             toast.error("Impossible de charger l'historique des ventes.", { description: error.message });
-            setSales([]);
+            setAllSales([]);
         } finally {
             if (manual) setIsRefreshing(false);
         }
@@ -95,9 +99,9 @@ export default function SalesHistoryPage() {
     }, [fetchSalesAndCustomers]);
 
     const filteredAndSortedSales = useMemo(() => {
-        if (!sales) return [];
+        if (!allSales) return [];
         
-        let result = [...sales];
+        let result = [...allSales];
         
         // Payment Filter
         if (paymentFilter !== 'all') {
@@ -121,7 +125,11 @@ export default function SalesHistoryPage() {
         });
 
         return result;
-    }, [sales, paymentFilter, sortBy]);
+    }, [allSales, paymentFilter, sortBy]);
+
+    const visibleSales = useMemo(() => {
+        return filteredAndSortedSales.slice(0, visibleSalesCount);
+    }, [filteredAndSortedSales, visibleSalesCount]);
 
     const stats = useMemo(() => {
         const totalRevenue = filteredAndSortedSales.reduce((sum, s) => sum + s.total, 0);
@@ -143,6 +151,10 @@ export default function SalesHistoryPage() {
     const handlePrintSale = (sale: Sale) => {
         setSelectedSale(sale);
         setIsPrintOpen(true);
+    };
+
+    const handleLoadMore = () => {
+        setVisibleSalesCount(prev => prev + ITEMS_PER_PAGE);
     };
 
     const handleExport = async () => {
@@ -170,7 +182,7 @@ export default function SalesHistoryPage() {
     );
 
     const renderContent = () => {
-        if (sales === undefined) {
+        if (allSales === undefined) {
             return renderSkeletons();
         }
 
@@ -184,35 +196,43 @@ export default function SalesHistoryPage() {
             );
         }
         
-        if (viewMode === 'grid') {
-            return (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {filteredAndSortedSales.map(s => {
-                        const customer = s.customerUuid ? customerMap.get(s.customerUuid) : undefined;
-                        const customerName = customer ? `${customer.firstName} ${customer.lastName}` : 'Client de passage';
-                        return (
-                            <SalesHistoryCard 
-                                key={s.uuid} 
-                                sale={s}
-                                customerName={customerName}
-                                onViewDetails={handleViewDetails}
-                                onCancelSale={handleCancelSale}
-                                onPrint={handlePrintSale}
-                            />
-                        )
-                    })}
-                </div>
-            );
-        }
-
         return (
-            <SalesHistoryTable 
-                sales={filteredAndSortedSales}
-                customerMap={customerMap}
-                onViewDetails={handleViewDetails}
-                onCancelSale={handleCancelSale}
-                onPrint={handlePrintSale}
-            />
+            <div className="space-y-6">
+                {viewMode === 'grid' ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {visibleSales.map(s => {
+                            const customer = s.customerUuid ? customerMap.get(s.customerUuid) : undefined;
+                            const customerName = customer ? `${customer.firstName} ${customer.lastName}` : 'Client de passage';
+                            return (
+                                <SalesHistoryCard 
+                                    key={s.uuid} 
+                                    sale={s}
+                                    customerName={customerName}
+                                    onViewDetails={handleViewDetails}
+                                    onCancelSale={handleCancelSale}
+                                    onPrint={handlePrintSale}
+                                />
+                            )
+                        })}
+                    </div>
+                ) : (
+                    <SalesHistoryTable 
+                        sales={visibleSales}
+                        customerMap={customerMap}
+                        onViewDetails={handleViewDetails}
+                        onCancelSale={handleCancelSale}
+                        onPrint={handlePrintSale}
+                    />
+                )}
+
+                {visibleSalesCount < filteredAndSortedSales.length && (
+                    <div className="flex justify-center pt-4">
+                        <Button variant="outline" size="lg" onClick={handleLoadMore} className="min-w-[200px]">
+                            Charger plus ({visibleSales.length} / {filteredAndSortedSales.length})
+                        </Button>
+                    </div>
+                )}
+            </div>
         );
     }
 
@@ -223,7 +243,7 @@ export default function SalesHistoryPage() {
                 description="Consultez et gérez vos transactions passées."
             >
                 <div className="flex gap-2 w-full sm:w-auto">
-                    <Button variant="outline" onClick={handleExport} disabled={sales === undefined || isExporting}>
+                    <Button variant="outline" onClick={handleExport} disabled={allSales === undefined || isExporting}>
                         <FileUp className={cn("mr-2 h-4 w-4", isExporting && "animate-pulse")} />
                         Exporter CSV
                     </Button>
@@ -243,7 +263,7 @@ export default function SalesHistoryPage() {
                     </CardHeader>
                     <CardContent>
                         <p className="text-2xl font-black text-primary">{formatCurrency(stats.totalRevenue)}</p>
-                        <p className="text-[10px] text-muted-foreground mt-1">Sur la période sélectionnée</p>
+                        <p className="text-[10px] text-muted-foreground mt-1">Sur la période filtrée</p>
                     </CardContent>
                 </Card>
                 <Card className="bg-chart-quaternary/5 border-chart-quaternary/20">
