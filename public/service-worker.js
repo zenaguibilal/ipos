@@ -1,107 +1,62 @@
-const CACHE_NAME = 'ipos-cache-v1';
-const urlsToCache = [
+
+const CACHE_NAME = 'ipos-v1';
+const STATIC_ASSETS = [
   '/',
-  '/sell',
-  '/products',
-  '/customers',
-  '/sales-history',
-  '/stock',
-  '/returns',
-  '/profile',
-  '/expenses',
-  '/bread',
+  '/manifest.json',
+  '/icon.svg',
   '/login'
 ];
 
-self.addEventListener('install', event => {
+// Installation du Service Worker et mise en cache des fichiers de base
+self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => {
-        return cache.addAll(urlsToCache);
-      })
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.addAll(STATIC_ASSETS);
+    })
   );
   self.skipWaiting();
 });
 
-self.addEventListener('activate', event => {
-  const cacheWhitelist = [CACHE_NAME];
+// Nettoyage des anciens caches
+self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then(cacheNames => {
+    caches.keys().then((cacheNames) => {
       return Promise.all(
-        cacheNames.map(cacheName => {
-          if (cacheWhitelist.indexOf(cacheName) === -1) {
-            return caches.delete(cacheName);
+        cacheNames.map((cache) => {
+          if (cache !== CACHE_NAME) {
+            return caches.delete(cache);
           }
         })
       );
     })
   );
-  return self.clients.claim();
+  self.clients.claim();
 });
 
-self.addEventListener('fetch', event => {
-  const { request } = event;
-  const url = new URL(request.url);
-
-  // Ignore Supabase and other external requests
-  if (url.origin !== self.location.origin || url.pathname.startsWith('/_next/static/development')) {
+// Stratégie Stale-While-Revalidate pour les requêtes fetch
+self.addEventListener('fetch', (event) => {
+  // Ne pas intercepter les requêtes API (Supabase) pour garantir les données fraîches
+  if (event.request.url.includes('supabase.co')) {
     return;
-  }
-  
-  if (request.method !== 'GET') {
-    return;
-  }
-  
-  // Cache First for static assets
-  if (url.pathname.startsWith('/_next/static/')) {
-    event.respondWith(
-      caches.open(CACHE_NAME).then(cache => {
-        return cache.match(request).then(cachedResponse => {
-          if (cachedResponse) {
-            return cachedResponse;
-          }
-          return fetch(request).then(networkResponse => {
-            cache.put(request, networkResponse.clone());
-            return networkResponse;
-          });
-        });
-      })
-    );
-    return;
-  }
-  
-  // Stale-While-Revalidate for images
-  if (/\.(png|jpg|jpeg|svg|gif|webp)$/.test(url.pathname)) {
-      event.respondWith(
-        caches.open(CACHE_NAME).then(cache => {
-            return cache.match(request).then(cachedResponse => {
-                const fetchPromise = fetch(request).then(networkResponse => {
-                    cache.put(request, networkResponse.clone());
-                    return networkResponse;
-                });
-                return cachedResponse || fetchPromise;
-            });
-        })
-      );
-      return;
   }
 
-  // Network First for pages and API calls
   event.respondWith(
-    fetch(request)
-      .then(networkResponse => {
-        return caches.open(CACHE_NAME).then(cache => {
-          // Do not cache Supabase auth or API calls
-          if (!url.pathname.includes('/rest/v1') && !url.pathname.includes('/auth/v1')) {
-             cache.put(request, networkResponse.clone());
-          }
-          return networkResponse;
-        });
-      })
-      .catch(() => {
-        return caches.match(request).then(cachedResponse => {
-          return cachedResponse || caches.match('/');
-        });
-      })
+    caches.match(event.request).then((cachedResponse) => {
+      const fetchPromise = fetch(event.request).then((networkResponse) => {
+        // Mettre à jour le cache avec la nouvelle réponse
+        if (networkResponse && networkResponse.status === 200 && event.request.method === 'GET') {
+          const responseToCache = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseToCache);
+          });
+        }
+        return networkResponse;
+      }).catch(() => {
+        // En cas d'erreur réseau (Offline)
+        return cachedResponse;
+      });
+
+      return cachedResponse || fetchPromise;
+    })
   );
 });

@@ -1,21 +1,48 @@
+
 {
-    "name": "iPOS - Point de Vente",
-    "short_name": "iPOS",
-    "description": "Application de point de vente intelligente pour le commerce de détail",
-    "start_url": "/",
-    "display": "standalone",
-    "theme_color": "#1a120c",
-    "background_color": "#1a120c",
-    "icons": [
-        {
-            "src": "/icon.svg",
-            "sizes": "192x192",
-            "type": "image/svg+xml"
-        },
-        {
-            "src": "/icon.svg",
-            "sizes": "512x512",
-            "type": "image/svg+xml"
-        }
-    ]
+  "name": "iPOS - Point de Vente Intelligent",
+  "short_name": "iPOS",
+  "description": "Application SaaS de point de vente complète pour le commerce de détail.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1a120c",
+  "theme_color": "#d4af37",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "categories": ["business", "finance", "productivity"],
+  "shortcuts": [
+    {
+      "name": "Vendre",
+      "short_name": "Vendre",
+      "description": "Ouvrir la caisse de vente",
+      "url": "/sell",
+      "icons": [{ "src": "/icon.svg", "sizes": "192x192" }]
+    },
+    {
+      "name": "Dashboard",
+      "short_name": "Stats",
+      "description": "Voir les rapports",
+      "url": "/dashboard",
+      "icons": [{ "src": "/icon.svg", "sizes": "192x192" }]
+    }
+  ]
 }

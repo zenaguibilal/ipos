@@ -5,9 +5,9 @@ import { Inter } from 'next/font/google';
 import { ClientProviders } from '@/components/layout/ClientProviders';
 
 const APP_NAME = "iPOS";
-const APP_DEFAULT_TITLE = "iPOS - Point de Vente";
+const APP_DEFAULT_TITLE = "iPOS - Point de Vente Intelligent";
 const APP_TITLE_TEMPLATE = "%s - iPOS";
-const APP_DESCRIPTION = "Application de point de vente intelligente pour le commerce de détail";
+const APP_DESCRIPTION = "Application de point de vente SaaS complète pour le commerce de détail avec support PWA et offline.";
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -21,7 +21,7 @@ export const metadata: Metadata = {
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
-    statusBarStyle: "default",
+    statusBarStyle: "black-translucent",
     title: APP_DEFAULT_TITLE,
   },
   formatDetection: {
@@ -46,14 +46,16 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: '/icon.svg',
+    apple: '/icon.svg',
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: [{ media: "(prefers-color-scheme: dark)", color: "#1a120c" }],
+  themeColor: "#1a120c",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
+  userScalable: false,
 };
 
 
@@ -67,6 +69,9 @@ export default function RootLayout({
     <html lang="fr" suppressHydrationWarning>
       <head>
          <link rel="manifest" href="/manifest.json" />
+         <meta name="mobile-web-app-capable" content="yes" />
+         <meta name="apple-mobile-web-app-capable" content="yes" />
+         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
       </head>
       <body className={inter.className}>
         <ClientProviders>
