@@ -5,46 +5,50 @@
 
 @layer base {
   :root {
-    --background: 28 20% 6%; /* #1a120c */
-    --foreground: 30 25% 90%; /* Light beige */
+    /* Light Mode - Warm Ivory & Gold */
+    --background: 30 30% 98%; 
+    --foreground: 28 30% 12%;
 
-    --card: 28 20% 8%;
-    --card-foreground: 30 25% 90%;
+    --card: 0 0% 100%;
+    --card-foreground: 28 30% 12%;
  
-    --popover: 28 20% 6%;
-    --popover-foreground: 30 25% 90%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 28 30% 12%;
  
-    --primary: 34 100% 65%; /* #ffb74d - Bright Amber */
-    --primary-foreground: 28 30% 10%;
+    --primary: 34 100% 50%; /* Rich Gold/Amber */
+    --primary-foreground: 30 30% 98%;
 
-    --secondary: 30 15% 20%;
-    --secondary-foreground: 30 25% 90%;
+    --secondary: 30 15% 92%;
+    --secondary-foreground: 28 30% 15%;
  
-    --muted: 30 15% 20%;
-    --muted-foreground: 30 20% 65%;
+    --muted: 30 15% 94%;
+    --muted-foreground: 28 10% 45%;
  
-    --accent: 30 15% 25%;
-    --accent-foreground: 30 25% 95%;
+    --accent: 34 100% 96%;
+    --accent-foreground: 34 100% 40%;
  
-    --destructive: 0 60% 50%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 34 100% 65%;
-    --input: 30 15% 20%;
-    --ring: 34 100% 75%;
+    --border: 34 40% 88%;
+    --input: 30 15% 94%;
+    --ring: 34 100% 50%;
  
     --radius: 1.5rem;
     
-    --chart-primary: 34 100% 65%;
-    --chart-secondary: 28 80% 70%;
-    --chart-tertiary: 10 70% 65%;
-    --chart-quaternary: 150 60% 55%;
-    --chart-quinary: 280 92% 62%;
+    --chart-primary: 34 100% 50%;
+    --chart-secondary: 28 80% 60%;
+    --chart-tertiary: 10 70% 55%;
+    --chart-quaternary: 150 60% 45%;
+    --chart-quinary: 280 92% 55%;
+
+    --bg-gradient-from: 30 40% 96%;
+    --bg-gradient-to: 34 30% 94%;
   }
  
   .dark {
-     /* Same as root for forced dark mode */
-    --background: 28 20% 6%;
+    /* Dark Mode - Warm Chocolate & Amber */
+    --background: 28 20% 6%; /* #1a120c */
     --foreground: 30 25% 90%;
 
     --card: 28 20% 8%;
@@ -53,15 +57,9 @@
     --popover: 28 20% 6%;
     --popover-foreground: 30 25% 90%;
  
-    --primary: 34 100% 65%;
+    --primary: 34 100% 65%; /* Bright Amber */
     --primary-foreground: 28 30% 10%;
     
-    --chart-primary: 34 100% 65%;
-    --chart-secondary: 28 80% 70%;
-    --chart-tertiary: 10 70% 65%;
-    --chart-quaternary: 150 60% 55%;
-    --chart-quinary: 280 92% 62%;
-
     --secondary: 30 15% 20%;
     --secondary-foreground: 30 25% 90%;
  
@@ -74,22 +72,26 @@
     --destructive: 0 70% 55%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 34 100% 65%;
+    --border: 34 100% 65% / 0.2;
     --input: 30 15% 20%;
     --ring: 34 100% 75%;
+
+    --bg-gradient-from: 20 36% 8%;
+    --bg-gradient-to: 30 43% 5%;
   }
 }
  
 @layer base {
   * {
-    @apply border-border/20;
+    @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
-    background: linear-gradient(160deg, hsl(20, 36%, 8%) 0%, hsl(30, 43%, 5%) 100%);
+    @apply bg-background text-foreground transition-colors duration-500;
+    background: linear-gradient(160deg, hsl(var(--bg-gradient-from)) 0%, hsl(var(--bg-gradient-to)) 100%);
     background-size: 200% 200%;
     animation: warm-gradient 15s ease infinite;
     position: relative;
+    min-height: 100vh;
   }
 
   body::after {
@@ -104,6 +106,7 @@
     background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMCIgaGVpZ2h0PSIzMCI+PHJlY3Qgd2lkdGg9IjMwIiBoZWlnaHQ9IjMwIiBmaWxsPSJub25lIi8+PHJlY3QgeD0iMTQiIHk9IjE0IiB3aWR0aD0iMSIgaGVpZ2h0PSIxIiBmaWxsPSJoc2woMzAgMjAlIDY1JCAvIDAuMDUpIi8+PC9zdmc+');
     z-index: -1;
     pointer-events: none;
+    opacity: 0.4;
   }
 }
 
@@ -111,9 +114,17 @@
   .luxury-glass {
     @apply rounded-3xl border shadow-xl transition-all duration-300;
     background-color: hsl(var(--card) / 0.7);
-    border-color: hsl(var(--border) / 0.15);
+    border-color: hsl(var(--border));
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
+    box-shadow:
+      inset 0 1px 1px hsl(var(--primary) / 0.05),
+      0px 0px 0px 1px hsl(var(--primary) / 0.05),
+      0px 8px 16px -4px hsl(0 0% 0% / 0.1),
+      0px 24px 48px -12px hsl(0 0% 0% / 0.15);
+  }
+
+  .dark .luxury-glass {
     box-shadow:
       inset 0 1px 1px hsl(var(--primary) / 0.05),
       0px 0px 0px 1px hsl(var(--primary) / 0.1),

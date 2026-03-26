@@ -28,6 +28,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Clock } from '@/components/layout/clock';
+import { ThemeToggle } from '@/components/layout/theme-toggle';
 import {
   Tooltip,
   TooltipContent,
@@ -71,7 +72,7 @@ export function AppHeader() {
   const navLinks = allNavLinks.filter(link => !link.managerOnly || isManagerOrAdmin);
 
   return (
-    <header className="flex h-16 items-center gap-4 bg-background/80 px-4 sm:px-6 print-hide sticky top-0 z-30 border-b backdrop-blur-xl">
+    <header className="flex h-16 items-center gap-4 bg-background/80 px-4 sm:px-6 print-hide sticky top-0 z-30 border-b backdrop-blur-xl transition-colors duration-500">
       <div className="flex-1 flex justify-start">
          <div className="flex items-baseline gap-2">
               <Link
@@ -86,7 +87,7 @@ export function AppHeader() {
 
         <div className="flex-1 flex justify-center">
             <TooltipProvider>
-                <nav className="hidden xl:flex items-center gap-1 rounded-full border bg-black/20 p-1">
+                <nav className="hidden xl:flex items-center gap-1 rounded-full border bg-black/5 dark:bg-black/20 p-1">
                     {mainActionLinks.map(link => (
                          <Tooltip key={link.href} delayDuration={0}>
                             <TooltipTrigger asChild>
@@ -135,6 +136,7 @@ export function AppHeader() {
         <div className="flex-1 flex justify-end">
             <div className="flex items-center gap-2 sm:gap-4">
                 <Clock />
+                <ThemeToggle />
                 <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                     <Button variant="secondary" size="icon" className="rounded-full">

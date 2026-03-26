@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect } from 'react';
@@ -23,8 +24,8 @@ export function ClientProviders({ children }: { children: React.ReactNode }) {
     return (
         <ThemeProvider
             attribute="class"
-            defaultTheme="dark"
-            enableSystem={false}
+            defaultTheme="system"
+            enableSystem={true}
             disableTransitionOnChange
         >
             {children}
