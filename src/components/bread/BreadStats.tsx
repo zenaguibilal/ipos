@@ -1,13 +1,14 @@
+
 'use client';
 
 import { useMemo } from 'react';
-import type { BreadOrderWithCustomer } from '@/lib/types';
+import type { BreadOrder } from '@/lib/types';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Package, Truck, CheckCircle } from 'lucide-react';
+import { Package, Truck, Clock } from 'lucide-react';
 import { Skeleton } from '../ui/skeleton';
 
 interface BreadStatsProps {
-    orders?: BreadOrderWithCustomer[];
+    orders?: BreadOrder[];
     isLoading: boolean;
 }
 
@@ -23,7 +24,7 @@ export function BreadStats({ orders, isLoading }: BreadStatsProps) {
         };
     }, [orders]);
 
-    if(isLoading) {
+    if(isLoading && !orders) {
         return (
             <div className="grid gap-4 md:grid-cols-3">
                 <Skeleton className="h-24 w-full" />
@@ -35,31 +36,31 @@ export function BreadStats({ orders, isLoading }: BreadStatsProps) {
 
     return (
         <div className="grid gap-4 md:grid-cols-3">
-            <Card>
+            <Card className="border-l-4 border-l-primary">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Total Commandé</CardTitle>
-                    <Package className="h-4 w-4 text-muted-foreground" />
+                    <CardTitle className="text-sm font-medium uppercase tracking-wider text-muted-foreground">Total Commandé</CardTitle>
+                    <Package className="h-4 w-4 text-primary" />
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold">{stats.ordered}</div>
+                    <div className="text-3xl font-bold">{stats.ordered} <span className="text-sm font-normal text-muted-foreground">pains</span></div>
                 </CardContent>
             </Card>
-            <Card>
+            <Card className="border-l-4 border-l-chart-quaternary">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Total Livré</CardTitle>
-                    <Truck className="h-4 w-4 text-muted-foreground" />
+                    <CardTitle className="text-sm font-medium uppercase tracking-wider text-muted-foreground">Déjà Livré</CardTitle>
+                    <Truck className="h-4 w-4 text-chart-quaternary" />
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold text-chart-quaternary">{stats.delivered}</div>
+                    <div className="text-3xl font-bold text-chart-quaternary">{stats.delivered}</div>
                 </CardContent>
             </Card>
-            <Card>
+            <Card className="border-l-4 border-l-chart-secondary">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Reste à Livrer</CardTitle>
-                    <CheckCircle className="h-4 w-4 text-muted-foreground" />
+                    <CardTitle className="text-sm font-medium uppercase tracking-wider text-muted-foreground">Reste à Livrer</CardTitle>
+                    <Clock className="h-4 w-4 text-chart-secondary" />
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold text-chart-secondary">{stats.remaining}</div>
+                    <div className="text-3xl font-bold text-chart-secondary">{stats.remaining}</div>
                 </CardContent>
             </Card>
         </div>

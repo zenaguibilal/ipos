@@ -38,13 +38,6 @@ export interface Customer {
     updatedAt?: Date;
     debtStatus?: 'none' | 'due_soon' | 'overdue';
     isOverLimit?: boolean;
-    // Bread feature fields
-    isBreadClient?: boolean;
-    bread_type_recurrence?: 'quotidien' | 'jours_specifiques' | 'aucun';
-    bread_quantite_defaut?: number;
-    bread_jours_semaine?: {
-        [key: string]: { actif: boolean, quantite: number };
-    };
 }
 
 export interface SaleItem {
@@ -226,7 +219,7 @@ export interface Supplier {
 export interface BreadOrder {
     uuid: string;
     user_id: string;
-    customerUuid: string;
+    orderName: string; // Nom de la commande (ex: Resto X)
     date: string; // YYYY-MM-DD
     quantite: number;
     quantite_origine?: number;
@@ -235,10 +228,6 @@ export interface BreadOrder {
     venteUuid: string | null;
     createdAt?: Date;
     updatedAt?: Date;
-}
-
-export interface BreadOrderWithCustomer extends BreadOrder {
-    customer: Pick<Customer, 'uuid' | 'firstName' | 'lastName'>;
 }
 
 export interface ImportAnalysis {
