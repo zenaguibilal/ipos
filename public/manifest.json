@@ -1,13 +1,12 @@
 {
   "name": "iPOS - Point de Vente Intelligent",
   "short_name": "iPOS",
-  "description": "Application de point de vente SaaS complète pour le commerce de détail avec support PWA et offline.",
+  "description": "Application de point de vente SaaS complète pour le commerce de détail.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#1a120c",
   "theme_color": "#1a120c",
   "orientation": "portrait",
-  "scope": "/",
   "icons": [
     {
       "src": "/icon.svg",
@@ -15,5 +14,6 @@
       "type": "image/svg+xml",
       "purpose": "any maskable"
     }
-  ]
+  ],
+  "categories": ["business", "finance", "productivity"]
 }

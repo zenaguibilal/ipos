@@ -1,28 +1,19 @@
-/* eslint-disable no-restricted-globals */
-
-// Cache name
 const CACHE_NAME = 'ipos-cache-v1';
-
-// Assets to cache immediately
-const PRECACHE_ASSETS = [
+const ASSETS_TO_CACHE = [
   '/',
-  '/login',
-  '/dashboard',
   '/manifest.json',
-  '/icon.svg'
+  '/icon.svg',
 ];
 
-// Install event: caching the shell
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(PRECACHE_ASSETS);
+      return cache.addAll(ASSETS_TO_CACHE);
     })
   );
   self.skipWaiting();
 });
 
-// Activate event: cleaning up old caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
@@ -31,7 +22,6 @@ self.addEventListener('activate', (event) => {
           if (cacheName !== CACHE_NAME) {
             return caches.delete(cacheName);
           }
-          return null;
         })
       );
     })
@@ -39,26 +29,16 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Fetch event: Network-first falling back to cache
 self.addEventListener('fetch', (event) => {
-  // We only handle GET requests
-  if (event.request.method !== 'GET') return;
-
+  // Strategy: Cache First, then Network
   event.respondWith(
-    fetch(event.request)
-      .then((response) => {
-        // If successful, clone and store in cache
-        if (response && response.status === 200 && response.type === 'basic') {
-          const responseToCache = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
-          });
+    caches.match(event.request).then((response) => {
+      return response || fetch(event.request).catch(() => {
+        // Fallback for navigation requests
+        if (event.request.mode === 'navigate') {
+          return caches.match('/');
         }
-        return response;
-      })
-      .catch(() => {
-        // If network fails, try to get from cache
-        return caches.match(event.request);
-      })
+      });
+    })
   );
 });
