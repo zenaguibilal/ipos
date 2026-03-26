@@ -293,6 +293,12 @@ export interface ZakatCalculation {
     isNisabReached: boolean;
 }
 
+export interface SavedZakatCalculation extends ZakatCalculation {
+    uuid: string;
+    user_id: string;
+    createdAt: Date;
+}
+
 // =================== Dashboard Types ===================
 
 export interface RecentSale extends Pick<Sale, 'uuid' | 'invoiceNumber' | 'total' | 'createdAt'> {

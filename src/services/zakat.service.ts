@@ -1,13 +1,22 @@
 
 'use client';
 
+import { createClient } from "@/utils/supabase/client";
 import { productRepository } from '@/repositories/product.repository';
 import { customerRepository } from '@/repositories/customer.repository';
 import { supplierRepository } from '@/repositories/supplier.repository';
 import { companyRepository } from '@/repositories/company.repository';
-import type { ZakatCalculation } from '@/lib/types';
+import type { ZakatCalculation, SavedZakatCalculation } from '@/lib/types';
+import { v4 as uuidv4 } from 'uuid';
+import { useAppStore } from "@/stores/appStore";
 
 class ZakatService {
+    private supabase = createClient();
+
+    private getUserId(): string | undefined {
+        return useAppStore.getState().session?.user?.id;
+    }
+
     async getAutomaticData(): Promise<{ inventoryValue: number; customerDebts: number; supplierDebts: number; goldPrice: number }> {
         try {
             const [products, customers, suppliers, profile] = await Promise.all([
@@ -61,6 +70,71 @@ class ZakatService {
             zakatAmount,
             isNisabReached
         };
+    }
+
+    async saveCalculation(calculation: ZakatCalculation): Promise<void> {
+        const userId = this.getUserId();
+        if (!userId) throw new Error("Utilisateur non authentifié");
+
+        const { error } = await this.supabase
+            .from('zakat_history')
+            .insert({
+                uuid: uuidv4(),
+                user_id: userId,
+                inventory_value: calculation.inventoryValue,
+                customer_debts: calculation.customerDebts,
+                bad_debts: calculation.badDebts,
+                cash_on_hand: calculation.cashOnHand,
+                supplier_debts: calculation.supplierDebts,
+                other_debts: calculation.otherDebts,
+                gold_price: calculation.goldPrice,
+                nisab: calculation.nisab,
+                zakat_base: calculation.zakatBase,
+                zakat_amount: calculation.zakatAmount,
+                is_nisab_reached: calculation.isNisabReached,
+                created_at: new Date().toISOString()
+            });
+
+        if (error) throw error;
+    }
+
+    async getHistory(): Promise<SavedZakatCalculation[]> {
+        const userId = this.getUserId();
+        if (!userId) return [];
+
+        const { data, error } = await this.supabase
+            .from('zakat_history')
+            .select('*')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        return data.map((record: any) => ({
+            uuid: record.uuid,
+            user_id: record.user_id,
+            inventoryValue: record.inventory_value,
+            customerDebts: record.customer_debts,
+            badDebts: record.bad_debts,
+            cashOnHand: record.cash_on_hand,
+            supplierDebts: record.supplier_debts,
+            otherDebts: record.other_debts,
+            goldPrice: record.gold_price,
+            nisab: record.nisab,
+            zakatBase: record.zakat_base,
+            zakatAmount: record.zakat_amount,
+            isNisabReached: record.is_nisab_reached,
+            createdAt: new Date(record.created_at)
+        }));
+    }
+
+    async deleteRecord(uuid: string): Promise<void> {
+        const { error } = await this.supabase
+            .from('zakat_history')
+            .delete()
+            .eq('uuid', uuid);
+        
+        if (error) throw error;
     }
 }
 
