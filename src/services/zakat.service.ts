@@ -37,16 +37,21 @@ class ZakatService {
     calculate(data: {
         inventoryValue: number;
         customerDebts: number;
+        badDebts: number;
         cashOnHand: number;
         supplierDebts: number;
         otherDebts: number;
         goldPrice: number;
     }): ZakatCalculation {
         const nisab = data.goldPrice * 85;
-        const totalAssets = data.inventoryValue + data.customerDebts + data.cashOnHand;
+        // Zakat logic: Assets - Liabilities
+        // Assets = Inventory + Recoverable Customer Debts + Cash
+        const totalAssets = data.inventoryValue + (data.customerDebts - data.badDebts) + data.cashOnHand;
+        // Liabilities = Supplier Debts + Other business debts
         const totalLiabilities = data.supplierDebts + data.otherDebts;
+        
         const zakatBase = Math.max(0, totalAssets - totalLiabilities);
-        const isNisabReached = zakatBase >= nisab;
+        const isNisabReached = data.goldPrice > 0 && zakatBase >= nisab;
         const zakatAmount = isNisabReached ? zakatBase * 0.025 : 0;
 
         return {

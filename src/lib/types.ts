@@ -282,6 +282,7 @@ export interface ProductImportAnalysis {
 export interface ZakatCalculation {
     inventoryValue: number;
     customerDebts: number;
+    badDebts: number;
     cashOnHand: number;
     supplierDebts: number;
     otherDebts: number;
