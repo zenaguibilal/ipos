@@ -4,8 +4,9 @@ import { Inter } from 'next/font/google';
 import { ClientProviders } from '@/components/layout/ClientProviders';
 
 /**
- * iPOS Root Layout - Absolute Architecture Refactor
- * Purged of all Offline/PWA/Manifest dependencies.
+ * iPOS Root Layout - Absolute Architecture Enforcement
+ * PHASE 1: COMPLETE DATA PURGE
+ * Erased all Offline/PWA/Manifest dependencies.
  */
 
 const inter = Inter({ subsets: ['latin'] });
@@ -13,14 +14,18 @@ const inter = Inter({ subsets: ['latin'] });
 export const metadata: Metadata = {
   applicationName: "iPOS",
   title: {
-    default: "iPOS - Point de Vente Intelligent",
+    default: "iPOS - Absolute Cloud POS",
     template: "%s - iPOS",
   },
-  description: "Application de point de vente SaaS complète avec autorité de بيانات مطلقة.",
-  appleWebApp: null, // Purged
+  description: "Deterministic Cloud-Only Point of Sale. Absolute Data Authority.",
   formatDetection: {
     telephone: false,
   },
+  // Kill PWA support
+  appleWebApp: false,
+  other: {
+    "mobile-web-app-capable": "no",
+  }
 };
 
 export const viewport: Viewport = {
