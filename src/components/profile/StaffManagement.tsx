@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -54,7 +55,7 @@ export function StaffManagement() {
 
     const handleOpenDialog = (member: any = null) => {
         if (!isAdmin) {
-            toast.error("Privilèges insuffisants", { description: "Seul l'administrateur système peut modifier le personnel." });
+            toast.error("Privيلèges insuffisants", { description: "Seul l'administrateur système peut modifier le personnel." });
             return;
         }
         setSelectedMember(member);
@@ -304,7 +305,7 @@ export function StaffManagement() {
                                     </SelectTrigger>
                                     <SelectContent className="luxury-glass border-white/10 rounded-2xl overflow-hidden shadow-2xl">
                                         <SelectItem value="admin" className="font-bold py-4 hover:bg-primary/5 transition-colors">Administrateur Système</SelectItem>
-                                        <SelectItem value="manager" className="font-bold py-4 hover:bg-primary/5 transition-colors">Gérant d'Étabلisement</SelectItem>
+                                        <SelectItem value="manager" className="font-bold py-4 hover:bg-primary/5 transition-colors">Gérant d'Établissement</SelectItem>
                                         <SelectItem value="cashier" className="font-bold py-4 hover:bg-primary/5 transition-colors">Opérateur de Caisse</SelectItem>
                                     </SelectContent>
                                 </Select>
