@@ -1,4 +1,6 @@
 
+'use client';
+
 import { create } from 'zustand';
 import { produce } from 'immer';
 import type { Session, User } from '@supabase/supabase-js';
@@ -131,10 +133,15 @@ export const useAppStore = create<AppState>()(
                     const existing = cart.items.find(i => i.uuid === product.uuid);
                     const currentInCart = existing ? existing.cartQuantity : 0;
                     
-                    // STRICT STOCK VALIDATION
+                    // ENTERPRISE STOCK VALIDATION (accounts for all carts)
+                    const totalInAllCaniers = state.carts.reduce((acc, c) => {
+                        const item = c.items.find(i => i.uuid === product.uuid);
+                        return acc + (item ? item.cartQuantity : 0);
+                    }, 0);
+
                     if (!product.uuid.startsWith('custom-') && product.uuid !== 'BREAD_PRODUCT') {
-                        if ((currentInCart + quantity) > product.quantity) {
-                            toast.error(`Stock insuffisant pour ${product.name}`);
+                        if ((totalInAllCaniers + quantity) > product.quantity) {
+                            toast.error(`Stock insuffisant pour ${product.name}. Disponible: ${product.quantity - totalInAllCaniers}`);
                             return;
                         }
                     }
@@ -153,8 +160,15 @@ export const useAppStore = create<AppState>()(
                     if (item) {
                         if (qty <= 0) {
                             cart.items = cart.items.filter(i => i.uuid !== uuid);
-                        } else if (!item.uuid.startsWith('custom-') && item.uuid !== 'BREAD_PRODUCT' && qty > item.quantity) {
-                            toast.error(`Stock insuffisant. Maximum: ${item.quantity}`);
+                        } else if (!item.uuid.startsWith('custom-') && item.uuid !== 'BREAD_PRODUCT') {
+                            const otherCartsQty = state.carts.filter(c => c.id !== state.activeCartId)
+                                .reduce((acc, c) => acc + (c.items.find(i => i.uuid === uuid)?.cartQuantity || 0), 0);
+                            
+                            if ((qty + otherCartsQty) > item.quantity) {
+                                toast.error(`Stock insuffisant. Maximum: ${item.quantity - otherCartsQty}`);
+                            } else {
+                                item.cartQuantity = qty;
+                            }
                         } else {
                             item.cartQuantity = qty;
                         }
@@ -235,7 +249,7 @@ export const useAppStore = create<AppState>()(
                         }
                         
                         state.actions.clearCart();
-                        toast.success("Vente enregistrée avec succès !");
+                        toast.success("Vente finalisée avec succès !");
                         return true;
                     } catch (e: any) {
                         toast.error(e.message || "Erreur lors de la finalisation.");
@@ -254,7 +268,7 @@ export const useAppStore = create<AppState>()(
                         if (ret.customerUuid) {
                             await customerService.recalculateCustomerStatus(ret.customerUuid);
                         }
-                        toast.success("Retour enregistré.");
+                        toast.success("Retour enregistré avec succès.");
                         return true;
                     } catch (e: any) { 
                         toast.error(e.message); 
@@ -301,7 +315,7 @@ export const useAppStore = create<AppState>()(
                         });
                         
                         await supplierService.updateSupplierBalance(sup.uuid, data.totalValue + data.transportFees);
-                        toast.success("Stock mis à jour.");
+                        toast.success("Réception de stock enregistrée.");
                         return true;
                     } catch (e: any) { 
                         toast.error(e.message); 

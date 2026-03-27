@@ -118,7 +118,7 @@ export default function ZakatPage() {
         setIsSaving(true);
         try {
             await zakatService.saveCalculation(result);
-            toast.success("Calcul sauvegardé.");
+            toast.success("Calcul sauvegardé avec succès.");
             await fetchData(true);
         } catch (error) {
             toast.error("Échec de la sauvegarde.");
@@ -431,7 +431,7 @@ export default function ZakatPage() {
                             </Card>
                         ))}
                         {history.length === 0 && (
-                            <div className="col-span-full py-20 text-center border-2 border-dashed rounded-3xl border-white/10 bg-white/5">
+                            <div className="col-span-full py-20 text-center border-2 border-dashed rounded-3xl border-white/10 m-6 bg-white/5">
                                 <HistoryIcon className="h-12 w-12 mx-auto mb-4 opacity-20" />
                                 <p className="text-muted-foreground font-medium">Aucun historique de calcul enregistré.</p>
                             </div>

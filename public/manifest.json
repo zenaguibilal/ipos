@@ -1,13 +1,13 @@
 
 {
-  "name": "iPOS - Intelligent Point of Sale",
+  "name": "iPOS - Point de Vente Intelligent",
   "short_name": "iPOS",
-  "description": "Système de point de vente intelligent et gestion de stock avec support offline.",
-  "start_url": "/dashboard",
+  "description": "Application de point de vente SaaS complète avec support PWA et offline.",
+  "start_url": "/",
   "display": "standalone",
   "background_color": "#1a120c",
   "theme_color": "#1a120c",
-  "orientation": "portrait",
+  "orientation": "any",
   "icons": [
     {
       "src": "/icon.svg",
@@ -20,19 +20,6 @@
       "sizes": "512x512",
       "type": "image/svg+xml",
       "purpose": "any maskable"
-    }
-  ],
-  "categories": ["business", "finance"],
-  "shortcuts": [
-    {
-      "name": "Point de Vente",
-      "url": "/sell",
-      "icons": [{ "src": "/icon.svg", "sizes": "192x192" }]
-    },
-    {
-      "name": "Historique Ventes",
-      "url": "/sales-history",
-      "icons": [{ "src": "/icon.svg", "sizes": "192x192" }]
     }
   ]
 }
