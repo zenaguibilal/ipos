@@ -12,6 +12,27 @@ export class StockRepository {
     private productRepo = new ProductRepository();
     private supplierRepo = new SupplierRepository();
 
+    async getAll(filters?: { from?: string; to?: string; query?: string }): Promise<StockIntake[]> {
+        let query = this.supabase.from('stock_intakes').select('*, stock_intake_items(*)');
+
+        if (filters?.from) query = query.gte('invoice_date', filters.from);
+        if (filters?.to) query = query.lte('invoice_date', filters.to);
+
+        const { data, error } = await query.order('invoice_date', { ascending: false });
+        if (error) throw new Error(`STOCK_FETCH_ERROR: ${error.message}`);
+        
+        let result = data.map(this.mapFromDb);
+
+        if (filters?.query) {
+            const q = filters.query.toLowerCase();
+            result = result.filter(i => 
+                i.invoiceNumber.toLowerCase().includes(q)
+            );
+        }
+
+        return result;
+    }
+
     async create(intakeData: any): Promise<StockIntake> {
         const { data: { user } } = await this.supabase.auth.getUser();
         if (!user) throw new Error("UNAUTHENTICATED");
@@ -62,6 +83,34 @@ export class StockRepository {
         }
 
         return this.mapFromDb({ ...intake, stock_intake_items: intakeItems });
+    }
+
+    async delete(uuid: string): Promise<void> {
+        // 1. Get intake and its items
+        const { data: intake, error: iErr } = await this.supabase
+            .from('stock_intakes')
+            .select('*, stock_intake_items(*)')
+            .eq('uuid', uuid)
+            .single();
+        
+        if (iErr || !intake) throw new Error("INTAKE_NOT_FOUND");
+
+        // 2. Restore product stock (subtract net received)
+        for (const item of intake.stock_intake_items) {
+            if (item.product_uuid) {
+                const netReceived = item.quantity_received - item.quantity_damaged;
+                await this.productRepo.updateStock(item.product_uuid, -netReceived);
+            }
+        }
+
+        // 3. Delete intake (cascading items)
+        const { error: dErr } = await this.supabase.from('stock_intakes').delete().eq('uuid', uuid);
+        if (dErr) throw new Error(`STOCK_INTAKE_DELETE_FAILED: ${dErr.message}`);
+
+        // 4. Recalculate supplier balance
+        if (intake.supplier_uuid) {
+            await this.supplierRepo.recalculateBalance(intake.supplier_uuid);
+        }
     }
 
     private mapFromDb(s: any): StockIntake {

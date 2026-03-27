@@ -6,6 +6,21 @@ import { StockIntakeSchema } from '@/lib/schemas';
  * @fileOverview API WALL: Stock Intake Gateway (Validated)
  */
 
+export async function GET(req: Request) {
+    try {
+        const { searchParams } = new URL(req.url);
+        const from = searchParams.get('from') || undefined;
+        const to = searchParams.get('to') || undefined;
+        const query = searchParams.get('query') || undefined;
+
+        const repo = new StockRepository();
+        const data = await repo.getAll({ from, to, query });
+        return NextResponse.json({ data });
+    } catch (e: any) {
+        return NextResponse.json({ error: e.message }, { status: 500 });
+    }
+}
+
 export async function POST(req: Request) {
     try {
         const body = await req.json();

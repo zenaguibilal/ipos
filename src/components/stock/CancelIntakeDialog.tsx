@@ -1,4 +1,3 @@
-
 'use client';
 
 import { toast } from 'sonner';
@@ -17,18 +16,23 @@ export function CancelIntakeDialog({ isOpen, onOpenChange, intake, onSuccess }: 
     const handleCancel = async () => {
         if (!intake) return;
         
-        // Updated to use direct API Wall
-        await api.delete(`stock/${intake.uuid}`);
-        toast.success(`Réception annulée.`);
-        onSuccess();
+        try {
+            await api.delete(`stock/${intake.uuid}`);
+            toast.success("Réception annulée avec succès.", {
+                description: "Le stock des produits a été restauré et le solde fournisseur mis à jour."
+            });
+            onSuccess();
+        } catch (error: any) {
+            toast.error("Échec de l'annulation de la réception.");
+        }
     };
 
     return (
         <ConfirmAlertDialog
             isOpen={isOpen}
             onOpenChange={onOpenChange}
-            title={`Annuler la réception de stock ${intake?.invoiceNumber || ''} ?`}
-            description="Cette action est irréversible. Le stock des produits et le solde du fournisseur seront restaurés à leur état précédent."
+            title={`Annuler la réception ${intake?.invoiceNumber || 'SANS_REF'} ?`}
+            description="Cette action est irréversible. Les quantités reçues seront déduites du stock actuel et le solde du fournisseur sera restauré à son état précédent."
             onConfirm={handleCancel}
             confirmText="Confirmer l'annulation"
             cancelText="Retour"

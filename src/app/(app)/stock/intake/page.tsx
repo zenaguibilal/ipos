@@ -160,7 +160,7 @@ export default function NewStockIntakePage() {
                 return;
             }
              if (item.quantityDamaged > item.quantityReceived) {
-                toast.error(`La quantité endومmagée ne peut pas dépasser la quantité reçue pour "${item.name}".`);
+                toast.error(`La quantité endommagée ne peut pas dépasser la quantité reçue pour "${item.name}".`);
                 return;
             }
         }
@@ -249,7 +249,7 @@ export default function NewStockIntakePage() {
                                         <CommandList>
                                             <CommandEmpty>
                                                 <Button variant="link" className="w-full" onClick={handleSupplierCreate}>
-                                                    <Plus className="mr-2 h-4 w-4" /> Créر "{supplierSearch}"
+                                                    <Plus className="mr-2 h-4 w-4" /> Créer "{supplierSearch}"
                                                 </Button>
                                             </CommandEmpty>
                                             <CommandGroup>
@@ -380,7 +380,7 @@ export default function NewStockIntakePage() {
                                 {items.length === 0 && (
                                     <tr>
                                         <td colSpan={7} className="p-12 text-center text-muted-foreground italic">
-                                            Scannez ou recherchez un produit pour commencer le calcul du coût de revient.
+                                            Scanneز ou recherchez un produit pour commencer le calcul du coût de revient.
                                         </td>
                                     </tr>
                                 )}
