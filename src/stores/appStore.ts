@@ -2,7 +2,7 @@
 import { create } from 'zustand';
 import { produce } from 'immer';
 import type { Session, User } from '@supabase/supabase-js';
-import type { Cart, Customer, CompanyProfile, Product, CartItem, ReturnItem, StockIntakeItem, Sale, Expense, Supplier } from '@/lib/types';
+import type { Cart, Customer, CompanyProfile, Product, CartItem, ReturnItem, StockIntakeItem, Sale } from '@/lib/types';
 import { toast } from 'sonner';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
@@ -17,18 +17,14 @@ import { supplierService } from '@/services/supplier.service';
 import { stockService } from '@/services/stock.service';
 import { productService } from '@/services/product.service';
 
-// Main State Interface
 interface AppState {
     session: Session | null;
     sessionLoading: boolean;
     user: User | null;
     profile: CompanyProfile | null;
     isSettingsLoading: boolean;
-    
-    // Carts and Drafts
     carts: Cart[];
     activeCartId: string;
-
     productViewMode: 'grid' | 'list';
     stockViewMode: 'grid' | 'list';
     customerViewMode: 'grid' | 'list';
@@ -40,7 +36,6 @@ interface AppState {
     actions: AppActions;
 }
 
-// Actions Interface
 interface AppActions {
     setSession: (session: Session | null) => void;
     signIn: (email: string, password?: string) => Promise<void>;
@@ -56,36 +51,14 @@ interface AppActions {
     setCartCustomer: (customer: Customer | null) => void;
     setCartDiscount: (discount: { type: 'fixed' | 'percentage'; value: number }) => void;
     clearCart: () => void;
-    
-    // Draft management
     createNewCart: () => void;
     switchToCart: (cartId: string) => void;
     saveActiveCartAsDraft: (name: string) => void;
     deleteCart: (cartId: string) => void;
-
-    finalizeSale: (paymentData: {
-        amountPaid: number;
-        payments: { method: 'cash' | 'card' | 'other'; amount: number }[];
-        dueDate?: Date;
-    }) => Promise<boolean>;
+    finalizeSale: (paymentData: any) => Promise<boolean>;
     clearLastCompletedSale: () => void;
-    processReturn: (returnData: {
-        originalSaleUuid: string,
-        items: ReturnItem[],
-        totalReturnValue: number,
-        amountRefunded: number,
-        customerUuid?: string,
-        notes?: string
-    }) => Promise<boolean>;
-    processStockIntake: (intakeData: {
-        supplierName: string,
-        supplierUuid?: string,
-        invoiceNumber: string,
-        invoiceDate: Date,
-        items: StockIntakeItem[],
-        totalValue: number,
-        transportFees: number
-    }) => Promise<boolean>;
+    processReturn: (returnData: any) => Promise<boolean>;
+    processStockIntake: (intakeData: any) => Promise<boolean>;
     setProductViewMode: (mode: 'grid' | 'list') => void;
     setStockViewMode: (mode: 'grid' | 'list') => void;
     setCustomerViewMode: (mode: 'grid' | 'list') => void;
@@ -95,7 +68,6 @@ interface AppActions {
     setExpenseViewMode: (mode: 'grid' | 'list') => void;
 }
 
-// Initial State
 const defaultCartId = uuidv4();
 const initialCart: Cart = {
     id: defaultCartId,
@@ -105,342 +77,194 @@ const initialCart: Cart = {
     discount: { type: 'fixed', value: 0 },
 };
 
-const initialState: Omit<AppState, 'actions'> = {
-    session: null,
-    sessionLoading: true,
-    user: null,
-    profile: null,
-    isSettingsLoading: true,
-    carts: [initialCart],
-    activeCartId: defaultCartId,
-    productViewMode: 'grid',
-    stockViewMode: 'grid',
-    customerViewMode: 'grid',
-    supplierViewMode: 'grid',
-    salesHistoryViewMode: 'grid',
-    returnViewMode: 'grid',
-    expenseViewMode: 'grid',
-    lastCompletedSale: null,
-};
-
-// Store Implementation
 export const useAppStore = create<AppState>()(
     persist(
         (set, get) => ({
-            ...initialState,
+            session: null,
+            sessionLoading: true,
+            user: null,
+            profile: null,
+            isSettingsLoading: true,
+            carts: [initialCart],
+            activeCartId: defaultCartId,
+            productViewMode: 'grid',
+            stockViewMode: 'grid',
+            customerViewMode: 'grid',
+            supplierViewMode: 'grid',
+            salesHistoryViewMode: 'grid',
+            returnViewMode: 'grid',
+            expenseViewMode: 'grid',
+            lastCompletedSale: null,
             actions: {
                 setSession: (session) => set({ session, user: session?.user ?? null, sessionLoading: false }),
                 signIn: async (email, password) => {
                     const session = await authService.signIn(email, password);
-                    set({ session, user: session?.user ?? null, sessionLoading: false });
+                    set({ session, user: session?.user ?? null });
                 },
                 signUp: async (email, password) => {
                     const session = await authService.signUp(email, password);
-                    set({ session, user: session?.user ?? null, sessionLoading: false });
+                    set({ session, user: session?.user ?? null });
                 },
                 signOut: async () => {
                     await authService.signOut();
-                    set({ ...initialState, session: null, user: null, profile: null, sessionLoading: false });
+                    set({ session: null, user: null, profile: null });
                 },
                 fetchProfile: async () => {
-                    if (get().profile) return; // Fetch only once
                     try {
                         set({ isSettingsLoading: true });
                         const profile = await profileService.getProfile();
                         set({ profile });
                     } catch (error: any) {
-                        toast.error("Impossible de charger le profil de l'entreprise.", { description: error.message });
+                        toast.error("Profil non trouvé.");
                     } finally {
                         set({ isSettingsLoading: false });
                     }
                 },
                 updateProfile: async (profileData) => {
-                    const updatedProfile = await profileService.updateProfile(profileData);
-                    set({ profile: updatedProfile });
+                    const updated = await profileService.updateProfile(profileData);
+                    set({ profile: updated });
                 },
                 addProductToCart: (product, quantity) => set(produce((state: AppState) => {
-                    const activeCart = state.carts.find(c => c.id === state.activeCartId);
-                    if (!activeCart) return;
-
-                    const existingItem = activeCart.items.find(item => item.uuid === product.uuid);
-                    if (product.uuid.startsWith('custom-')) {
-                         activeCart.items.unshift({ ...product, cartQuantity: quantity, flash: true });
-                         return;
+                    const cart = state.carts.find(c => c.id === state.activeCartId);
+                    if (!cart) return;
+                    const existing = cart.items.find(i => i.uuid === product.uuid);
+                    const totalInCart = existing ? existing.cartQuantity : 0;
+                    if (!product.uuid.startsWith('custom-') && (totalInCart + quantity) > product.quantity) {
+                        throw new Error("Stock insuffisant.");
                     }
-                    
-                    if (existingItem) {
-                        const newQuantity = existingItem.cartQuantity + quantity;
-                        if (newQuantity > existingItem.quantity) {
-                            throw new Error(`Quantité en stock insuffisante pour ${product.name}. Disponible: ${existingItem.quantity}`);
-                        }
-                        existingItem.cartQuantity = newQuantity;
-                        existingItem.flash = true;
+                    if (existing) {
+                        existing.cartQuantity += quantity;
+                        existing.flash = true;
                     } else {
-                        if (quantity > product.quantity) {
-                           throw new Error(`Quantité en stock insuffisante pour ${product.name}. Disponible: ${product.quantity}`);
-                        }
-                        activeCart.items.unshift({ ...product, cartQuantity: quantity, flash: true });
+                        cart.items.unshift({ ...product, cartQuantity: quantity, flash: true });
                     }
                 })),
-                updateCartItemQuantity: (productUuid, newQuantity) => set(produce((state: AppState) => {
-                    const activeCart = state.carts.find(c => c.id === state.activeCartId);
-                    if (!activeCart) return;
-
-                    const item = activeCart.items.find(i => i.uuid === productUuid);
+                updateCartItemQuantity: (uuid, qty) => set(produce((state: AppState) => {
+                    const cart = state.carts.find(c => c.id === state.activeCartId);
+                    if (!cart) return;
+                    const item = cart.items.find(i => i.uuid === uuid);
                     if (item) {
-                        if (newQuantity <= 0) {
-                            activeCart.items = activeCart.items.filter(i => i.uuid !== productUuid);
-                        } else if (!item.uuid.startsWith('custom-') && newQuantity > item.quantity) {
-                             throw new Error(`Quantité en stock insuffisante pour ${item.name}. Disponible: ${item.quantity}`);
-                        } else {
-                            item.cartQuantity = newQuantity;
-                        }
+                        if (qty <= 0) cart.items = cart.items.filter(i => i.uuid !== uuid);
+                        else if (!item.uuid.startsWith('custom-') && qty > item.quantity) throw new Error("Stock insuffisant.");
+                        else item.cartQuantity = qty;
                     }
                 })),
-                updateCartItemPrice: (productUuid, newPrice) => set(produce((state: AppState) => {
-                    const activeCart = state.carts.find(c => c.id === state.activeCartId);
-                    if (!activeCart) return;
-
-                    const item = activeCart.items.find(i => i.uuid === productUuid);
-                    if (item) {
-                        if (newPrice < 0) {
-                            toast.error("Le prix ne peut pas être négatif.");
-                            return;
-                        }
-                        item.price = newPrice;
-                        if (item.purchasePrice > 0 && newPrice < item.purchasePrice) {
-                            toast.warning(`Vente à perte : Le prix de "${item.name}" est inférieur au prix d'achat.`);
-                        }
-                    }
+                updateCartItemPrice: (uuid, price) => set(produce((state: AppState) => {
+                    const cart = state.carts.find(c => c.id === state.activeCartId);
+                    const item = cart?.items.find(i => i.uuid === uuid);
+                    if (item) item.price = price;
                 })),
-                removeCartItem: (productUuid) => set(produce((state: AppState) => {
-                    const activeCart = state.carts.find(c => c.id === state.activeCartId);
-                    if (activeCart) {
-                        activeCart.items = activeCart.items.filter(item => item.uuid !== productUuid);
-                    }
+                removeCartItem: (uuid) => set(produce((state: AppState) => {
+                    const cart = state.carts.find(c => c.id === state.activeCartId);
+                    if (cart) cart.items = cart.items.filter(i => i.uuid !== uuid);
                 })),
                 clearCartFlashes: () => set(produce((state: AppState) => {
-                    const activeCart = state.carts.find(c => c.id === state.activeCartId);
-                    if (activeCart) {
-                        activeCart.items.forEach(item => {
-                            if (item.flash) {
-                                delete item.flash;
-                            }
-                        });
-                    }
+                    state.carts.forEach(c => c.items.forEach(i => delete i.flash));
                 })),
                 setCartCustomer: (customer) => set(produce((state: AppState) => {
-                    const activeCart = state.carts.find(c => c.id === state.activeCartId);
-                    if (activeCart) {
-                        activeCart.customerUuid = customer?.uuid || null;
-                    }
+                    const cart = state.carts.find(c => c.id === state.activeCartId);
+                    if (cart) cart.customerUuid = customer?.uuid || null;
                 })),
-                setCartDiscount: (discount) => set(produce((state: AppState) => {
-                    const activeCart = state.carts.find(c => c.id === state.activeCartId);
-                    if (activeCart) {
-                        activeCart.discount = discount;
-                    }
+                setCartDiscount: (disc) => set(produce((state: AppState) => {
+                    const cart = state.carts.find(c => c.id === state.activeCartId);
+                    if (cart) cart.discount = disc;
                 })),
                 clearCart: () => set(produce((state: AppState) => {
-                    const activeCart = state.carts.find(c => c.id === state.activeCartId);
-                    if (activeCart) {
-                        activeCart.items = [];
-                        activeCart.discount = { type: 'fixed', value: 0 };
-                    }
+                    const cart = state.carts.find(c => c.id === state.activeCartId);
+                    if (cart) { cart.items = []; cart.discount = { type: 'fixed', value: 0 }; }
                 })),
                 createNewCart: () => set(produce((state: AppState) => {
-                    const newCartName = `Panier ${state.carts.length + 1}`;
-                    const newCartId = uuidv4();
-                    const newCart: Cart = {
-                        id: newCartId,
-                        name: newCartName,
-                        items: [],
-                        customerUuid: null,
-                        discount: { type: 'fixed', value: 0 },
-                    };
-                    state.carts.push(newCart);
-                    state.activeCartId = newCartId;
+                    const id = uuidv4();
+                    state.carts.push({ id, name: `Panier ${state.carts.length + 1}`, items: [], customerUuid: null, discount: { type: 'fixed', value: 0 } });
+                    state.activeCartId = id;
                 })),
-                switchToCart: (cartId: string) => set({ activeCartId: cartId }),
-                saveActiveCartAsDraft: (name: string) => set(produce((state: AppState) => {
-                    const activeCart = state.carts.find(c => c.id === state.activeCartId);
-                    if (activeCart) {
-                        activeCart.name = name;
-                    }
+                switchToCart: (id) => set({ activeCartId: id }),
+                saveActiveCartAsDraft: (name) => set(produce((state: AppState) => {
+                    const cart = state.carts.find(c => c.id === state.activeCartId);
+                    if (cart) cart.name = name;
                 })),
-                deleteCart: (cartId: string) => set(produce((state: AppState) => {
-                    const isDeletingActive = state.activeCartId === cartId;
-                    state.carts = state.carts.filter(c => c.id !== cartId);
-                    
+                deleteCart: (id) => set(produce((state: AppState) => {
+                    state.carts = state.carts.filter(c => c.id !== id);
                     if (state.carts.length === 0) {
-                        const newCartId = uuidv4();
-                        state.carts.push({ id: newCartId, name: 'Panier 1', items: [], customerUuid: null, discount: { type: 'fixed', value: 0 } });
-                        state.activeCartId = newCartId;
-                    } else if (isDeletingActive) {
+                        const newId = uuidv4();
+                        state.carts.push({ id: newId, name: 'Panier 1', items: [], customerUuid: null, discount: { type: 'fixed', value: 0 } });
+                        state.activeCartId = newId;
+                    } else if (state.activeCartId === id) {
                         state.activeCartId = state.carts[0].id;
                     }
                 })),
                 finalizeSale: async (paymentData) => {
-                    const { carts, activeCartId, actions } = get();
-                    const activeCart = carts.find(c => c.id === activeCartId);
-
-                    if (!activeCart || activeCart.items.length === 0) {
-                        toast.error("Le panier est vide.");
-                        return false;
-                    }
-        
-                    const cartCustomer = activeCart.customerUuid 
-                        ? await customerService.getCustomerByUuid(activeCart.customerUuid)
-                        : null;
-
+                    const state = get();
+                    const cart = state.carts.find(c => c.id === state.activeCartId);
+                    if (!cart || cart.items.length === 0) return false;
                     try {
-                        const sale = await salesService.createSale({
-                            items: activeCart.items,
-                            discountType: activeCart.discount.type,
-                            discountValue: activeCart.discount.value,
-                            ...paymentData,
-                            customerUuid: activeCart.customerUuid,
-                        });
-                        
-                        set({ lastCompletedSale: { sale, customer: cartCustomer } });
-        
-                        for (const item of sale.items) {
-                            await inventoryService.adjustStock(item.productUuid, -item.quantity, 'sale', sale.uuid);
-                        }
-        
-                        if (sale.customerUuid) {
-                            await customerService.recalculateCustomerStatus(sale.customerUuid);
-                        }
-        
-                        actions.deleteCart(activeCartId);
-                        toast.success("Vente finalisée avec succès !");
+                        const sale = await salesService.createSale({ ...paymentData, items: cart.items, discountType: cart.discount.type, discountValue: cart.discount.value, customerUuid: cart.customerUuid });
+                        const customer = cart.customerUuid ? await customerService.getCustomerByUuid(cart.customerUuid) : null;
+                        set({ lastCompletedSale: { sale, customer: customer || null } });
+                        for (const item of sale.items) await inventoryService.adjustStock(item.productUuid, -item.quantity, 'sale', sale.uuid);
+                        if (sale.customerUuid) await customerService.recalculateCustomerStatus(sale.customerUuid);
+                        state.actions.deleteCart(state.activeCartId);
+                        toast.success("Vente réussie !");
                         return true;
-                    } catch (error: any) {
-                        toast.error("Échec de la finalisation de la vente", { description: error.message });
+                    } catch (e: any) {
+                        toast.error(e.message);
                         return false;
                     }
                 },
                 clearLastCompletedSale: () => set({ lastCompletedSale: null }),
-                processReturn: async (returnData) => {
-                     try {
-                        const newReturn = await returnService.addReturn(returnData);
-                        for (const item of newReturn.items) {
-                            if (item.wasRestocked && item.productUuid) {
-                                await inventoryService.adjustStock(item.productUuid, item.quantity, 'return', newReturn.uuid);
-                            }
-                        }
-                        if (newReturn.customerUuid) {
-                            await customerService.recalculateCustomerStatus(newReturn.customerUuid);
-                        }
-                        toast.success("Retour de produit enregistré avec succès.");
-                        return true;
-                    } catch (error: any) {
-                        toast.error("Échec du traitement du retour.", { description: error.message });
-                        return false;
-                    }
-                },
-                processStockIntake: async (intakeData) => {
+                processReturn: async (data) => {
                     try {
-                        const supplier = await supplierService.findOrCreateSupplier(intakeData.supplierName, intakeData.supplierUuid);
-                        
-                        // Ratio de frais de transport (Frais / Valeur Totale Marchandise)
-                        const transportRatio = intakeData.totalValue > 0 ? intakeData.transportFees / intakeData.totalValue : 0;
-        
+                        const ret = await returnService.addReturn(data);
+                        for (const i of ret.items) if (i.wasRestocked && i.productUuid) await inventoryService.adjustStock(i.productUuid, i.quantity, 'return', ret.uuid);
+                        if (ret.customerUuid) await customerService.recalculateCustomerStatus(ret.customerUuid);
+                        return true;
+                    } catch (e: any) { toast.error(e.message); return false; }
+                },
+                processStockIntake: async (data) => {
+                    try {
+                        const sup = await supplierService.findOrCreateSupplier(data.supplierName, data.supplierUuid);
+                        const ratio = data.totalValue > 0 ? data.transportFees / data.totalValue : 0;
                         const finalItems = [];
-                        for (const item of intakeData.items) {
-                            // Calcul du coût de revient (Loaded Cost)
-                            // Coût revient = Prix achat + (Ratio transport * Prix achat)
-                            const costPrice = item.purchasePrice * (1 + transportRatio);
-
-                            let productUuid = item.productUuid;
-                            if (item.isNew) {
-                                const newProduct = await productService.addProduct({
-                                    name: item.name,
-                                    category: item.category,
-                                    price: item.price,
-                                    purchasePrice: costPrice, // On stocke le coût de revient comme prix d'achat de référence
-                                    quantity: 0,
-                                    minStockLevel: 10,
-                                    supplierUuid: supplier.uuid,
-                                    unite: item.unite,
-                                    barcodes: item.barcodes,
-                                });
-                                productUuid = newProduct.uuid;
+                        for (const i of data.items) {
+                            const cost = i.purchasePrice * (1 + ratio);
+                            let uuid = i.productUuid;
+                            if (i.isNew) {
+                                const p = await productService.addProduct({ ...i, purchasePrice: cost, supplierUuid: sup.uuid, quantity: 0 });
+                                uuid = p.uuid;
                             } else {
-                                // Mettre à jour le prix d'achat du produit existant pour inclure le transport
-                                await productService.updateProduct(productUuid!, { purchasePrice: costPrice, dateMajPrix: new Date() });
+                                await productService.updateProduct(uuid!, { purchasePrice: cost, dateMajPrix: new Date() });
                             }
-        
-                            if (productUuid) {
-                                const quantityReceived = item.quantity - item.quantityDamaged;
-                                if (quantityReceived > 0) {
-                                    await inventoryService.adjustStock(productUuid, quantityReceived, 'stock_intake');
-                                }
-                                finalItems.push({
-                                    productUuid: productUuid,
-                                    productName: item.name,
-                                    quantityReceived: item.quantity,
-                                    quantityDamaged: item.quantityDamaged,
-                                    purchasePrice: item.purchasePrice, // Prix fournisseur de base
-                                    costPrice: costPrice, // Coût réel final
-                                });
+                            if (uuid) {
+                                const qty = i.quantity - i.quantityDamaged;
+                                if (qty > 0) await inventoryService.adjustStock(uuid, qty, 'stock_intake');
+                                finalItems.push({ productUuid: uuid, productName: i.name, quantityReceived: i.quantity, quantityDamaged: i.quantityDamaged, purchasePrice: i.purchasePrice, costPrice: cost });
                             }
                         }
-        
-                        await stockService.addStockIntake({
-                            supplierUuid: supplier.uuid,
-                            invoiceNumber: intakeData.invoiceNumber,
-                            invoiceDate: intakeData.invoiceDate,
-                            items: finalItems,
-                            totalValue: intakeData.totalValue,
-                            transportFees: intakeData.transportFees,
-                        });
-                        
-                        await supplierService.updateSupplierBalance(supplier.uuid, intakeData.totalValue + intakeData.transportFees);
-
-                        toast.success("Réception de stock enregistrée avec calcul du coût de revient.");
+                        await stockService.addStockIntake({ supplierUuid: sup.uuid, invoiceNumber: data.invoiceNumber, invoiceDate: data.invoiceDate, items: finalItems, totalValue: data.totalValue, transportFees: data.transportFees });
+                        await supplierService.updateSupplierBalance(sup.uuid, data.totalValue + data.transportFees);
                         return true;
-                    } catch (error: any) {
-                        toast.error("Échec du traitement de la réception de stock.", { description: error.message });
-                        return false;
-                    }
+                    } catch (e: any) { toast.error(e.message); return false; }
                 },
-                setProductViewMode: (mode) => set({ productViewMode: mode }),
-                setStockViewMode: (mode) => set({ stockViewMode: mode }),
-                setCustomerViewMode: (mode) => set({ customerViewMode: mode }),
-                setSupplierViewMode: (mode) => set({ supplierViewMode: mode }),
-                setSalesHistoryViewMode: (mode) => set({ salesHistoryViewMode: mode }),
-                setReturnViewMode: (mode) => set({ returnViewMode: mode }),
-                setExpenseViewMode: (mode) => set({ expenseViewMode: mode }),
+                setProductViewMode: (m) => set({ productViewMode: m }),
+                setStockViewMode: (m) => set({ stockViewMode: m }),
+                setCustomerViewMode: (m) => set({ customerViewMode: m }),
+                setSupplierViewMode: (m) => set({ supplierViewMode: m }),
+                setSalesHistoryViewMode: (m) => set({ salesHistoryViewMode: m }),
+                setReturnViewMode: (m) => set({ returnViewMode: m }),
+                setExpenseViewMode: (m) => set({ expenseViewMode: m }),
             }
         }),
         {
-          name: 'ipos-sell-store',
-          storage: createJSONStorage(() => localStorage),
-          partialize: (state) => ({ 
-              carts: state.carts, 
-              activeCartId: state.activeCartId,
-              productViewMode: state.productViewMode,
-              stockViewMode: state.stockViewMode,
-              customerViewMode: state.customerViewMode,
-              supplierViewMode: state.supplierViewMode,
-              salesHistoryViewMode: state.salesHistoryViewMode,
-              returnViewMode: state.returnViewMode,
-              expenseViewMode: state.expenseViewMode,
-          }),
-          onRehydrateStorage: () => (state) => {
-              if (state) {
-                  state.sessionLoading = false;
-              }
-          },
+            name: 'ipos-store-v2',
+            storage: createJSONStorage(() => localStorage),
+            partialize: (s) => ({ carts: s.carts, activeCartId: s.activeCartId, productViewMode: s.productViewMode, stockViewMode: s.stockViewMode, customerViewMode: s.customerViewMode, supplierViewMode: s.supplierViewMode, salesHistoryViewMode: s.salesHistoryViewMode, returnViewMode: s.returnViewMode, expenseViewMode: s.expenseViewMode }),
+            onRehydrateStorage: () => (s) => { if (s) s.sessionLoading = false; }
         }
     )
 );
 
-// Convenience hooks
-export const useAppActions = () => useAppStore((state) => state.actions);
-
+export const useAppActions = () => useAppStore((s) => s.actions);
 export const useIsManagerOrAdmin = () => {
-    const role = useAppStore(state => state.profile?.role);
+    const role = useAppStore(s => s.profile?.role);
     return role === 'admin' || role === 'manager';
 };

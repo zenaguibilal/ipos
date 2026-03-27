@@ -7,7 +7,7 @@ export interface Product {
     name: string;
     category?: string;
     price: number;
-    purchasePrice: number; // Prix d'achat de base (hors transport ou dernier coût de revient)
+    purchasePrice: number;
     quantity: number; 
     minStockLevel: number;
     barcodes?: string[];
@@ -30,7 +30,7 @@ export interface Customer {
     phone?: string;
     address?: string;
     notes?: string;
-    category?: string; // e.g., 'Wholesale', 'Regular', 'VIP'
+    category?: string;
     settlementDay?: number;
     creditLimit?: number;
     totalSpent: number;
@@ -44,7 +44,7 @@ export interface Customer {
     bread_type_recurrence?: 'quotidien' | 'jours_specifiques' | 'aucun';
     bread_quantite_defaut?: number;
     bread_jours_semaine?: {
-        [key: string]: { actif: boolean; font-weight: number };
+        [key: string]: { actif: boolean; quantite: number };
     };
 }
 
@@ -63,13 +63,11 @@ export interface SaleItem {
     quantity: number;
 }
 
-// Represents an item in the live shopping cart
 export interface CartItem extends Product {
     cartQuantity: number;
-    flash?: boolean; // For UI animation
+    flash?: boolean;
 }
 
-// Represents a single shopping cart session
 export interface Cart {
     id: string;
     name: string;
@@ -127,9 +125,9 @@ export interface CompanyProfile {
     phone?: string;
     email?: string;
     website?: string;
-    vatNumber?: string; // NIF
-    rcNumber?: string; // RC
-    artImposition?: string; // AI
+    vatNumber?: string;
+    rcNumber?: string;
+    artImposition?: string;
     goldPricePerGram?: number;
     prix_pain?: number;
     updatedAt?: Date;
@@ -137,14 +135,14 @@ export interface CompanyProfile {
 }
 
 export interface StockIntakeItem {
-    id: string; // Unique ID for the item row in UI, not persisted
-    productUuid?: string; // UUID of the product if it exists
+    id: string;
+    productUuid?: string;
     barcodes: string[];
     name: string;
     category?: string;
     quantity: number;
     quantityDamaged: number;
-    purchasePrice: number; // Prix d'achat unitaire fournisseur
+    purchasePrice: number;
     price: number;
     isNew: boolean;
     unite?: 'Pièce' | 'Kg' | 'Litre' | 'Boîte' | 'Carton' | 'Sachet' | 'Bouteille';
@@ -161,11 +159,11 @@ export interface StockIntake {
         productName: string;
         quantityReceived: number;
         quantityDamaged: number;
-        purchasePrice: number; // Prix unitaire fournisseur
-        costPrice?: number; // Coût de revient unitaire (achat + prorata transport)
+        purchasePrice: number;
+        costPrice?: number;
     }[];
-    totalValue: number; // Valeur totale marchandise
-    transportFees: number; // Frais de transport
+    totalValue: number;
+    transportFees: number;
     createdAt?: Date;
     updatedAt?: Date;
 }
@@ -174,7 +172,7 @@ export interface ReturnItem {
     productUuid: string | null;
     productName: string;
     quantity: number;
-    price: number; // The price at which it was sold
+    price: number;
     purchasePrice: number;
     wasRestocked: boolean;
 }
@@ -212,10 +210,10 @@ export interface InventoryLog {
     uuid: string;
     user_id: string;
     productUuid: string;
-    change: number; // e.g., -2 for sale, +50 for stock intake
+    change: number;
     newQuantity: number;
     reason: InventoryLogReason;
-    relatedUuid?: string; // UUID of the sale, return, intake, etc.
+    relatedUuid?: string;
     createdAt: Date;
 }
 
@@ -227,7 +225,7 @@ export interface Supplier {
     phone?: string;
     email?: string;
     address?: string;
-    balance: number; // Solde de la dette envers le fournisseur
+    balance: number;
     createdAt?: Date;
     updatedAt?: Date;
 }
@@ -244,14 +242,12 @@ export interface SupplierPayment {
     updatedAt?: Date;
 }
 
-// =================== Bread Types ===================
-
 export interface BreadOrder {
     uuid: string;
     user_id: string;
     customerUuid: string | null;
-    orderName: string; // Nom de la commande (ex: Resto X)
-    date: string; // YYYY-MM-DD
+    orderName: string;
+    date: string;
     quantite: number;
     quantite_origine?: number;
     est_paye: boolean;
@@ -260,24 +256,6 @@ export interface BreadOrder {
     createdAt?: Date;
     updatedAt?: Date;
 }
-
-export interface ImportAnalysis {
-    customersToAdd: any[];
-    customersToUpdate: any[];
-    skippedRows: any[];
-    errorRows: any[];
-    totalRows: number;
-}
-
-export interface ProductImportAnalysis {
-    productsToAdd: any[];
-    productsToUpdate: any[];
-    skippedRows: any[];
-    errorRows: any[];
-    totalRows: number;
-}
-
-// =================== Zakat Types ===================
 
 export interface ZakatCalculation {
     inventoryValue: number;
@@ -299,39 +277,6 @@ export interface SavedZakatCalculation extends ZakatCalculation {
     createdAt: Date;
 }
 
-// =================== Dashboard Types ===================
-
-export interface RecentSale extends Pick<Sale, 'uuid' | 'invoiceNumber' | 'total' | 'createdAt'> {
-    customerName: string;
-}
-
-export interface RecentReturn extends Pick<ProductReturn, 'uuid' | 'originalInvoiceNumber' | 'totalReturnValue' | 'createdAt'> {
-    customerName: string;
-}
-
-export interface SalesByDay {
-    date: string;
-    total: number;
-    profit: number;
-}
-
-export interface TopProduct {
-    productUuid: string;
-    name: string;
-    quantitySold: number;
-    revenueGenerated: number;
-    imageUrl?: string;
-    category?: string;
-}
-
-export interface TopCustomer {
-  customerUuid: string;
-  name: string;
-  totalSpent: number;
-}
-
-export interface LowStockProduct extends Pick<Product, 'uuid' | 'name' | 'quantity' | 'minStockLevel' | 'imageUrl' | 'category' | 'unite'> {}
-
 export interface DashboardData {
     stats: {
         totalRevenue: number;
@@ -345,10 +290,10 @@ export interface DashboardData {
         totalExpensesChange?: number;
         saleCountChange?: number;
     };
-    salesByDay: SalesByDay[];
-    recentSales: RecentSale[];
-    recentReturns: RecentReturn[];
-    topProducts: TopProduct[];
-    topCustomers: TopCustomer[];
-    lowStockProducts: LowStockProduct[];
+    salesByDay: { date: string; total: number; profit: number }[];
+    recentSales: any[];
+    recentReturns: any[];
+    topProducts: any[];
+    topCustomers: any[];
+    lowStockProducts: any[];
 }

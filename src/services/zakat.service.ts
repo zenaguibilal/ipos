@@ -38,7 +38,6 @@ class ZakatService {
                 goldPrice
             };
         } catch (error) {
-            console.error("Error fetching zakat data:", error);
             throw error;
         }
     }
@@ -52,15 +51,16 @@ class ZakatService {
         otherDebts: number;
         goldPrice: number;
     }): ZakatCalculation {
-        const nisab = data.goldPrice * 85;
-        // Zakat logic: Assets - Liabilities
-        // Assets = Inventory + Recoverable Customer Debts + Cash
-        const totalAssets = data.inventoryValue + (data.customerDebts - data.badDebts) + data.cashOnHand;
-        // Liabilities = Supplier Debts + Other business debts
+        const nisab = (data.goldPrice || 0) * 85;
+        // Total Assets = Inventory (Market Value assumed same as Purchase for MVP) + Liquid Cash + Recoverable Debts
+        const recoverableDebts = Math.max(0, data.customerDebts - data.badDebts);
+        const totalAssets = data.inventoryValue + recoverableDebts + data.cashOnHand;
+        
+        // Total Liabilities = Supplier Debts + Other urgent business charges
         const totalLiabilities = data.supplierDebts + data.otherDebts;
         
         const zakatBase = Math.max(0, totalAssets - totalLiabilities);
-        const isNisabReached = data.goldPrice > 0 && zakatBase >= nisab;
+        const isNisabReached = nisab > 0 && zakatBase >= nisab;
         const zakatAmount = isNisabReached ? zakatBase * 0.025 : 0;
 
         return {
@@ -74,7 +74,7 @@ class ZakatService {
 
     async saveCalculation(calculation: ZakatCalculation): Promise<void> {
         const userId = this.getUserId();
-        if (!userId) throw new Error("Utilisateur non authentifié");
+        if (!userId) throw new Error("Non authentifié");
 
         const { error } = await this.supabase
             .from('zakat_history')
@@ -110,30 +110,26 @@ class ZakatService {
 
         if (error) throw error;
 
-        return data.map((record: any) => ({
-            uuid: record.uuid,
-            user_id: record.user_id,
-            inventoryValue: record.inventory_value,
-            customerDebts: record.customer_debts,
-            badDebts: record.bad_debts,
-            cashOnHand: record.cash_on_hand,
-            supplierDebts: record.supplier_debts,
-            otherDebts: record.other_debts,
-            goldPrice: record.gold_price,
-            nisab: record.nisab,
-            zakatBase: record.zakat_base,
-            zakatAmount: record.zakat_amount,
-            isNisabReached: record.is_nisab_reached,
-            createdAt: new Date(record.created_at)
+        return data.map((r: any) => ({
+            uuid: r.uuid,
+            user_id: r.user_id,
+            inventoryValue: r.inventory_value,
+            customerDebts: r.customer_debts,
+            badDebts: r.bad_debts,
+            cashOnHand: r.cash_on_hand,
+            supplierDebts: r.supplier_debts,
+            otherDebts: r.other_debts,
+            goldPrice: r.gold_price,
+            nisab: r.nisab,
+            zakatBase: r.zakat_base,
+            zakatAmount: r.zakat_amount,
+            isNisabReached: r.is_nisab_reached,
+            createdAt: new Date(r.created_at)
         }));
     }
 
     async deleteRecord(uuid: string): Promise<void> {
-        const { error } = await this.supabase
-            .from('zakat_history')
-            .delete()
-            .eq('uuid', uuid);
-        
+        const { error } = await this.supabase.from('zakat_history').delete().eq('uuid', uuid);
         if (error) throw error;
     }
 }
