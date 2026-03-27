@@ -1,12 +1,14 @@
-
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
+/**
+ * @fileOverview Auth Middleware
+ * Synchronizes Supabase auth session between server and client.
+ * Explicitly handles cookie passing to ensure Next.js Server Components see the session.
+ */
 export async function middleware(request: NextRequest) {
-  let response = NextResponse.next({
-    request: {
-      headers: request.headers,
-    },
+  let supabaseResponse = NextResponse.next({
+    request,
   })
 
   const supabase = createServerClient(
@@ -23,12 +25,10 @@ export async function middleware(request: NextRequest) {
             value,
             ...options,
           })
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
+          supabaseResponse = NextResponse.next({
+            request,
           })
-          response.cookies.set({
+          supabaseResponse.cookies.set({
             name,
             value,
             ...options,
@@ -40,12 +40,10 @@ export async function middleware(request: NextRequest) {
             value: '',
             ...options,
           })
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
+          supabaseResponse = NextResponse.next({
+            request,
           })
-          response.cookies.set({
+          supabaseResponse.cookies.set({
             name,
             value: '',
             ...options,
@@ -55,33 +53,33 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // Refreshes the session if needed and checks auth
+  // IMPORTANT: getUser() is required for security in middleware
   const { data: { user } } = await supabase.auth.getUser()
 
-  const isAuthRoute = request.nextUrl.pathname.startsWith('/login');
+  const isAuthRoute = request.nextUrl.pathname.startsWith('/login')
   
   // Exclude static files and PWA assets to prevent unnecessary redirection loops
   const isStaticFile = /\.(.*)$/.test(request.nextUrl.pathname) || 
                        request.nextUrl.pathname.startsWith('/_next') ||
                        request.nextUrl.pathname.includes('manifest.json') ||
                        request.nextUrl.pathname.includes('sw.js') ||
-                       request.nextUrl.pathname.includes('icon.svg');
+                       request.nextUrl.pathname.includes('icon.svg')
 
   // If user is not signed in and trying to access a protected route
   if (!user && !isAuthRoute && !isStaticFile) {
-    const url = request.nextUrl.clone();
-    url.pathname = '/login';
-    return NextResponse.redirect(url);
+    const url = request.nextUrl.clone()
+    url.pathname = '/login'
+    return NextResponse.redirect(url)
   }
 
   // If user is signed in and trying to access the login page
   if (user && isAuthRoute) {
-    const url = request.nextUrl.clone();
-    url.pathname = '/dashboard';
-    return NextResponse.redirect(url);
+    const url = request.nextUrl.clone()
+    url.pathname = '/dashboard'
+    return NextResponse.redirect(url)
   }
 
-  return response
+  return supabaseResponse
 }
 
 export const config = {

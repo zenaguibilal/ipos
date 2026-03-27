@@ -21,8 +21,10 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { authService } from '@/services/auth.service';
+import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
+    const router = useRouter();
     const { signIn, signUp } = useAppActions();
     const session = useAppStore(state => state.session);
 
@@ -43,14 +45,14 @@ export default function LoginPage() {
     const [isForgotPassLoading, setIsForgotPassLoading] = useState(false);
     const [forgotPassMessage, setForgotPassMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
 
-    // Hard redirect on session detection to ensure middleware picks up cookies
+    // Hard redirect protocol to bypass Next.js Middleware/Cookie sync delays
     useEffect(() => {
         if (session) {
             setLoginSuccess(true);
             const timer = setTimeout(() => {
-                // Hard redirect to bypass Middleware sync delay
+                // Using window.location.href ensures a fresh browser request with updated cookies
                 window.location.href = '/dashboard';
-            }, 500);
+            }, 800);
             return () => clearTimeout(timer);
         }
     }, [session]);
@@ -68,7 +70,7 @@ export default function LoginPage() {
         setIsLoading(true);
         try {
             await signIn(signInEmail, signInPassword);
-            toast.success("Connexion réussie !");
+            toast.success("Connexion réussie ! Redirection en cours...");
         } catch (error: any) {
             setError(error.message || "La connexion a échoué.");
             setIsLoading(false);

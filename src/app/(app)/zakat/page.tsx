@@ -3,6 +3,7 @@
 /**
  * @fileOverview Professional Zakat Financial Assessment Tool
  * Optimized for performance and strictly typed calculation logic.
+ * Fixed build-breaking JSX syntax errors.
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
