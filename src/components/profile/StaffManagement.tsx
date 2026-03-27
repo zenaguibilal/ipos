@@ -16,7 +16,7 @@ import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue 
 } from "@/components/ui/select";
 import { 
-    Loader2, UserPlus, ShieldCheck, Mail, Trash2, Edit, CheckCircle2, XCircle, Lock, Users, ShieldAlert, BadgeCheck, Info, HelpCircle
+    Loader2, UserPlus, ShieldCheck, Mail, Trash2, Edit, CheckCircle2, XCircle, Lock, Users, ShieldAlert, BadgeCheck, Info, HelpCircle, Activity
 } from "lucide-react";
 import { useAppStore, useAppActions, useIsAdmin, useIsManagerOrAdmin } from "@/stores/appStore";
 import { toast } from "sonner";
@@ -116,7 +116,7 @@ export function StaffManagement() {
                 <ShieldAlert className="h-20 w-20 text-destructive mx-auto mb-8 opacity-40 animate-pulse" />
                 <h3 className="text-2xl font-black uppercase tracking-widest text-destructive italic">Accès Souverain Requis</h3>
                 <p className="text-sm text-muted-foreground mt-4 max-w-sm mx-auto leading-relaxed">
-                    Le registre du personnel est une archive confidentielle. Seul un gestionnaire authentifié peut consulter la liste des autorités du terminal.
+                    Le registre du personnel est une archive confidentielle. Seول un gestionnaire authentifié peut consulter la liste des autorités du terminal.
                 </p>
             </Card>
         );
