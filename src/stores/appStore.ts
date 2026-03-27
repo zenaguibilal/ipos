@@ -2,7 +2,7 @@
 import { create } from 'zustand';
 import { produce } from 'immer';
 import type { Session, User } from '@supabase/supabase-js';
-import type { Cart, Customer, CompanyProfile, Product, CartItem, ReturnItem, StockIntakeItem, Sale } from '@/lib/types';
+import type { Cart, Customer, CompanyProfile, Product, CartItem, Sale } from '@/lib/types';
 import { toast } from 'sonner';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
@@ -129,9 +129,12 @@ export const useAppStore = create<AppState>()(
                     if (!cart) return;
                     const existing = cart.items.find(i => i.uuid === product.uuid);
                     const totalInCart = existing ? existing.cartQuantity : 0;
+                    
+                    // Critical Stock Validation Logic
                     if (!product.uuid.startsWith('custom-') && (totalInCart + quantity) > product.quantity) {
-                        throw new Error(`Stock insuffisant pour ${product.name}. Disponible: ${product.quantity}`);
+                        throw new Error(`Stock insuffisant pour ${product.name}. Disponible: ${product.quantity}. Déjà en panier: ${totalInCart}`);
                     }
+                    
                     if (existing) {
                         existing.cartQuantity += quantity;
                         existing.flash = true;
@@ -147,7 +150,7 @@ export const useAppStore = create<AppState>()(
                         if (qty <= 0) {
                             cart.items = cart.items.filter(i => i.uuid !== uuid);
                         } else if (!item.uuid.startsWith('custom-') && qty > item.quantity) {
-                            throw new Error(`Stock insuffisant. Maximum: ${item.quantity}`);
+                            throw new Error(`Stock insuffisant. Maximum disponible: ${item.quantity}`);
                         } else {
                             item.cartQuantity = qty;
                         }
@@ -217,7 +220,7 @@ export const useAppStore = create<AppState>()(
                         const customer = cart.customerUuid ? await customerService.getCustomerByUuid(cart.customerUuid) : null;
                         set({ lastCompletedSale: { sale, customer: customer || null } });
                         
-                        // Atomically adjust stock
+                        // Atomically adjust stock after successful sale record
                         for (const item of sale.items) {
                             if (item.productUuid) {
                                 await inventoryService.adjustStock(item.productUuid, -item.quantity, 'sale', sale.uuid);
@@ -248,7 +251,7 @@ export const useAppStore = create<AppState>()(
                         if (ret.customerUuid) {
                             await customerService.recalculateCustomerStatus(ret.customerUuid);
                         }
-                        toast.success("Retour enregistré.");
+                        toast.success("Retour enregistré avec succès.");
                         return true;
                     } catch (e: any) { 
                         toast.error(e.message); 
@@ -295,7 +298,7 @@ export const useAppStore = create<AppState>()(
                         });
                         
                         await supplierService.updateSupplierBalance(sup.uuid, data.totalValue + data.transportFees);
-                        toast.success("Stock mis à jour.");
+                        toast.success("Stock mis à jour avec succès.");
                         return true;
                     } catch (e: any) { 
                         toast.error(e.message); 
@@ -312,7 +315,7 @@ export const useAppStore = create<AppState>()(
             }
         }),
         {
-            name: 'ipos-store-v3',
+            name: 'ipos-v4-strict-storage',
             storage: createJSONStorage(() => localStorage),
             partialize: (s) => ({ 
                 carts: s.carts, 

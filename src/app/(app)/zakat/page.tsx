@@ -11,7 +11,6 @@ import { zakatService } from '@/services/zakat.service';
 import { formatCurrency, cn } from '@/lib/utils';
 import { 
     Coins, 
-    Package, 
     Users, 
     Banknote, 
     ArrowRight, 
