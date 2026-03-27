@@ -6,13 +6,13 @@ import { useEffect } from 'react';
 
 /**
  * @fileOverview THE SYSTEM PURIFIER (ABSOLUTE EDITION)
- * يمنع أي تسرب للبيانات إلى التخزين الدائم ويفرض حتمية الذاكرة.
- * تم تحديثه ليشمل إبادة Cache API.
+ * Enforces total memory-only state and absolute data purge.
+ * Eradicates: Service Workers, IndexedDB, LocalStorage, SessionStorage, Cache API, and Cookies.
  */
 
 export function ClientProviders({ children }: { children: React.ReactNode }) {
     useEffect(() => {
-        // 1. تدمير فوري لكافة الـ Service Workers لقتل أي ميكانيكية Offline
+        // 1. Immediate termination of any potential PWA mechanisms
         if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then((registrations) => {
                 for (const registration of registrations) {
@@ -21,30 +21,41 @@ export function ClientProviders({ children }: { children: React.ReactNode }) {
             });
         }
         
-        // 2. التطهير المستمر والشامل (Continuous Storage & Cache Purge)
-        const executePurge = () => {
-            // مسح التخزين المحلي والجلسات
+        // 2. Comprehensive Continuous Purification Protocol
+        const executeTotalPurge = () => {
+            // Storage Wipe
             if (typeof localStorage !== 'undefined') localStorage.clear();
             if (typeof sessionStorage !== 'undefined') sessionStorage.clear();
             
-            // مسح قواعد البيانات المحلية (IndexedDB)
+            // Database Wipe (IndexedDB)
             if (typeof indexedDB !== 'undefined' && indexedDB.databases) {
                 indexedDB.databases().then(dbs => {
                     dbs.forEach(db => { if(db.name) indexedDB.deleteDatabase(db.name); });
                 });
             }
 
-            // إبادة Cache API (منع تخزين استجابات الشبكة)
+            // Cache API Wipe (Kill Network Persistence)
             if (typeof caches !== 'undefined') {
                 caches.keys().then((names) => {
                     for (const name of names) caches.delete(name);
                 });
             }
+
+            // Cookie Wipe (Eradicate Session Persistence)
+            if (typeof document !== 'undefined') {
+                const cookies = document.cookie.split(";");
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i];
+                    const eqPos = cookie.indexOf("=");
+                    const name = eqPos > -1 ? cookie.substring(0, eqPos) : cookie;
+                    document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
+                }
+            }
         };
 
-        executePurge();
-        // تقليل الفاصل الزمني لفرض الرقابة الصارمة
-        const purgeInterval = setInterval(executePurge, 5000);
+        // Execute immediately and monitor every 3 seconds for violations
+        executeTotalPurge();
+        const purgeInterval = setInterval(executeTotalPurge, 3000);
 
         return () => clearInterval(purgeInterval);
     }, []);

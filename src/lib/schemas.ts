@@ -84,3 +84,34 @@ export const StockIntakeSchema = z.object({
         costPrice: z.number().nonnegative(),
     })).min(1),
 });
+
+export const PaymentSchema = z.object({
+    customerUuid: z.string().uuid(),
+    amount: z.number().positive(),
+    paymentDate: z.string().datetime().optional(),
+    notes: z.string().optional(),
+});
+
+export const ReturnSchema = z.object({
+    originalSaleUuid: z.string().uuid(),
+    originalInvoiceNumber: z.string(),
+    items: z.array(z.object({
+        productUuid: z.string().uuid().nullable(),
+        productName: z.string(),
+        quantity: z.number().positive(),
+        price: z.number().nonnegative(),
+        purchasePrice: z.number().nonnegative(),
+        wasRestocked: z.boolean(),
+    })).min(1),
+    totalReturnValue: z.number().nonnegative(),
+    amountRefunded: z.number().nonnegative(),
+    customerUuid: z.string().uuid().nullable().optional(),
+    notes: z.string().optional(),
+});
+
+export const BreadOrderSchema = z.object({
+    orderName: z.string().min(1),
+    quantite: z.number().positive(),
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    customerUuid: z.string().uuid().nullable().optional(),
+});
