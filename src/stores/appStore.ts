@@ -34,10 +34,6 @@ interface AppState {
     selectedCustomer: { data: Customer | null; stats: any; activity: any[] };
     selectedSupplier: { data: Supplier | null; stats: any; activity: any[]; products: Product[] };
 
-    carts: Cart[];
-    activeCartId: string;
-    lastCompletedSale: { sale: Sale; customer?: Customer } | null;
-    
     // Zakat Absolute State & Computed Result
     zakat: {
         autoData: { inventoryValue: number; customerDebts: number; supplierDebts: number; goldPrice: number };
@@ -58,6 +54,10 @@ interface AppState {
     returnViewMode: 'grid' | 'list';
     supplierViewMode: 'grid' | 'list';
     stockViewMode: 'grid' | 'list';
+
+    carts: Cart[];
+    activeCartId: string;
+    lastCompletedSale: { sale: Sale; customer?: Customer } | null;
 
     modals: {
         sell: {
