@@ -10,26 +10,31 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { DatePicker } from '@/components/ui/date-picker';
-import type { StockIntakeItem, Supplier, Product } from '@/lib/types';
+import type { Supplier, Product } from '@/lib/types';
 import { v4 as uuidv4 } from 'uuid';
 import { toast } from 'sonner';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, cn } from '@/lib/utils';
 import { Loader2 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { ProductIntakeCombobox } from '@/components/stock/ProductIntakeCombobox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
 import { supplierService } from '@/services/supplier.service';
 import { useAppActions, useIsManagerOrAdmin } from '@/stores/appStore';
 
-const units: NonNullable<Product['unite']>[] = ['Pièce', 'Kg', 'Litre', 'Boîte', 'Carton', 'Sachet', 'Bouteille'];
+interface LocalIntakeItem {
+    id: string;
+    productUuid?: string;
+    name: string;
+    quantityReceived: number;
+    quantityDamaged: number;
+    purchasePrice: number;
+    price: number;
+    isNew: boolean;
+    unite: Product['unite'];
+    category?: string;
+}
 
 export default function NewStockIntakePage() {
     const router = useRouter();
@@ -44,7 +49,7 @@ export default function NewStockIntakePage() {
     const [invoiceNumber, setInvoiceNumber] = useState('');
     const [invoiceDate, setInvoiceDate] = useState<Date | undefined>(new Date());
     const [transportFees, setTransportFees] = useState(0);
-    const [items, setItems] = useState<StockIntakeItem[]>([]);
+    const [items, setItems] = useState<LocalIntakeItem[]>([]);
     const [isSaving, setIsSaving] = useState(false);
     
     const [suppliers, setSuppliers] = useState<Supplier[] | undefined>(undefined);
@@ -79,7 +84,7 @@ export default function NewStockIntakePage() {
         const existingItemIndex = items.findIndex(item => item.productUuid === product.uuid);
         if (existingItemIndex > -1) {
             const newItems = [...items];
-            newItems[existingItemIndex].quantity += 1;
+            newItems[existingItemIndex].quantityReceived += 1;
             setItems(newItems);
             toast.info(`Quantité de "${product.name}" augmentée.`);
         } else {
@@ -89,40 +94,38 @@ export default function NewStockIntakePage() {
                     id: uuidv4(),
                     productUuid: product.uuid,
                     name: product.name,
-                    barcodes: product.barcodes || [],
-                    category: product.category,
-                    quantity: 1,
+                    quantityReceived: 1,
                     quantityDamaged: 0,
                     purchasePrice: product.purchasePrice,
                     price: product.price,
                     isNew: false,
                     unite: product.unite || 'Pièce',
+                    category: product.category,
                 }
             ]);
         }
     }, [items]);
     
     const handleAddNewItem = useCallback((name: string) => {
-        const newItem: StockIntakeItem = {
+        const newItem: LocalIntakeItem = {
             id: uuidv4(),
             name: name,
-            barcodes: [],
-            category: '',
-            quantity: 1,
+            quantityReceived: 1,
             quantityDamaged: 0,
             purchasePrice: 0,
             price: 0,
             isNew: true,
             unite: 'Pièce',
+            category: 'Non classé',
         };
         setItems(prev => [...prev, newItem]);
     }, []);
 
-    const handleItemChange = (id: string, field: keyof StockIntakeItem, value: any) => {
+    const handleItemChange = (id: string, field: keyof LocalIntakeItem, value: any) => {
         setItems(prev => prev.map(item => {
             if (item.id === id) {
                 const updatedItem = { ...item, [field]: value };
-                if (field === 'purchasePrice' || field === 'quantity') {
+                if (field === 'purchasePrice' || field === 'quantityReceived') {
                     if (updatedItem.isNew && updatedItem.price === 0) {
                         updatedItem.price = parseFloat(String(updatedItem.purchasePrice)) * 1.2;
                     }
@@ -137,10 +140,9 @@ export default function NewStockIntakePage() {
         setItems(prev => prev.filter(item => item.id !== id));
     };
 
-    const subtotalValue = items.reduce((acc, item) => acc + (item.quantity * item.purchasePrice), 0);
+    const subtotalValue = items.reduce((acc, item) => acc + (item.quantityReceived * item.purchasePrice), 0);
     const totalIntakeValue = subtotalValue + transportFees;
     
-    // Calcul prorata transport par unité pour affichage UI
     const transportRatio = subtotalValue > 0 ? transportFees / subtotalValue : 0;
 
     const handleSave = async () => {
@@ -154,11 +156,11 @@ export default function NewStockIntakePage() {
         }
 
         for (const item of items) {
-            if (!item.name || item.quantity <= 0 || item.purchasePrice < 0) {
+            if (!item.name || item.quantityReceived <= 0 || item.purchasePrice < 0) {
                 toast.error(`Veuillez remplir les informations pour l'article "${item.name || 'Nouvel article'}".`);
                 return;
             }
-             if (item.quantityDamaged > item.quantity) {
+             if (item.quantityDamaged > item.quantityReceived) {
                 toast.error(`La quantité endommagée ne peut pas dépasser la quantité reçue pour "${item.name}".`);
                 return;
             }
@@ -342,7 +344,7 @@ export default function NewStockIntakePage() {
                                                 ) : <span className="font-medium">{item.name}</span>}
                                             </td>
                                             <td className="p-3 text-center">
-                                                <Input type="number" className="h-8 w-20 mx-auto text-center" value={item.quantity} onChange={e => handleItemChange(item.id, 'quantity', parseInt(e.target.value) || 0)} />
+                                                <Input type="number" className="h-8 w-20 mx-auto text-center" value={item.quantityReceived} onChange={e => handleItemChange(item.id, 'quantityReceived', parseInt(e.target.value) || 0)} />
                                             </td>
                                             <td className="p-3">
                                                 <Input type="number" step="0.1" className="h-8 w-28 ml-auto text-right" value={item.purchasePrice} onChange={e => handleItemChange(item.id, 'purchasePrice', parseFloat(e.target.value) || 0)} />

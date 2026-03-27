@@ -22,6 +22,7 @@ import { profileService } from '@/services/profile.service';
 import { returnService } from '@/services/return.service';
 import { supplierService } from '@/services/supplier.service';
 import { stockService } from '@/services/stock.service';
+import { productService } from '@/services/product.service';
 
 interface AppState {
     session: Session | null;
@@ -343,7 +344,7 @@ export const useAppStore = create<AppState>()(
                                     name: i.name,
                                     price: i.price,
                                     purchasePrice: cost,
-                                    quantity: i.quantity,
+                                    quantity: i.quantityReceived,
                                     minStockLevel: 10,
                                     unite: i.unite,
                                     category: i.category,
@@ -355,12 +356,12 @@ export const useAppStore = create<AppState>()(
                             }
                             
                             if (uuid) {
-                                const qty = i.quantity - i.quantityDamaged;
+                                const qty = i.quantityReceived - i.quantityDamaged;
                                 if (qty > 0) await inventoryService.adjustStock(uuid, qty, 'stock_intake');
                                 finalItems.push({ 
                                     productUuid: uuid, 
                                     productName: i.name, 
-                                    quantityReceived: i.quantity, 
+                                    quantityReceived: i.quantityReceived, 
                                     quantityDamaged: i.quantityDamaged, 
                                     purchasePrice: i.purchasePrice, 
                                     costPrice: cost 
