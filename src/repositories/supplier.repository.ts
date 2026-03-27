@@ -44,9 +44,24 @@ export class SupplierRepository {
         return this.mapFromDb(data);
     }
 
-    /**
-     * إعادة حساب مديونية المورد بشكل حتمي بناءً على المشتريات والمدفوعات.
-     */
+    async update(uuid: string, supplier: Partial<Supplier>): Promise<Supplier> {
+        const { data, error } = await this.supabase
+            .from('suppliers')
+            .update({
+                name: supplier.name,
+                contact_person: supplier.contactPerson,
+                phone: supplier.phone,
+                email: supplier.email,
+                address: supplier.address,
+                updated_at: new Date().toISOString()
+            })
+            .eq('uuid', uuid)
+            .select()
+            .single();
+        if (error) throw new Error(`SUPPLIER_UPDATE_FAILURE: ${error.message}`);
+        return this.mapFromDb(data);
+    }
+
     async recalculateBalance(uuid: string): Promise<void> {
         const { data: intakes, error: iErr } = await this.supabase.from('stock_intakes').select('total_value').eq('supplier_uuid', uuid);
         const { data: payments, error: pErr } = await this.supabase.from('supplier_payments').select('amount').eq('supplier_uuid', uuid);

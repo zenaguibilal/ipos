@@ -1,6 +1,8 @@
 import { createClient } from "@/utils/supabase/server";
 import type { Sale } from "@/lib/types";
 import { v4 as uuidv4 } from 'uuid';
+import { ProductRepository } from "./product.repository";
+import { CustomerRepository } from "./customer.repository";
 
 /**
  * @fileOverview Sale Repository (Absolute Data Authority)
@@ -8,6 +10,8 @@ import { v4 as uuidv4 } from 'uuid';
  */
 export class SaleRepository {
     private supabase = createClient();
+    private productRepo = new ProductRepository();
+    private customerRepo = new CustomerRepository();
 
     async getAll(): Promise<Sale[]> {
         const { data, error } = await this.supabase
@@ -73,6 +77,33 @@ export class SaleRepository {
             .order('created_at', { ascending: false });
         if (error) throw new Error(`SALE_FETCH_CUSTOMER_ERROR: ${error.message}`);
         return data.map(this.mapFromDb);
+    }
+
+    async delete(uuid: string): Promise<void> {
+        // 1. Fetch sale data before deletion
+        const { data: sale, error: sErr } = await this.supabase
+            .from('sales')
+            .select('*, sale_items(*)')
+            .eq('uuid', uuid)
+            .single();
+        
+        if (sErr || !sale) throw new Error("SALE_NOT_FOUND_FOR_DELETION");
+
+        // 2. Restore stock for each item
+        for (const item of sale.sale_items) {
+            if (item.product_uuid) {
+                await this.productRepo.updateStock(item.product_uuid, item.quantity);
+            }
+        }
+
+        // 3. Delete sale (cascades to items in DB)
+        const { error: dErr } = await this.supabase.from('sales').delete().eq('uuid', uuid);
+        if (dErr) throw new Error(`SALE_DELETE_FAILED: ${dErr.message}`);
+
+        // 4. Recalculate customer balance
+        if (sale.customer_uuid) {
+            await this.customerRepo.recalculateBalance(sale.customer_uuid);
+        }
     }
 
     private mapFromDb(s: any): Sale {

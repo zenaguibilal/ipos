@@ -127,6 +127,11 @@ export class ProductRepository {
         return this.mapFromDb(data);
     }
 
+    async delete(uuid: string): Promise<void> {
+        const { error } = await this.supabase.from('products').delete().eq('uuid', uuid);
+        if (error) throw new Error(`PRODUCT_DELETE_FAILURE: ${error.message}`);
+    }
+
     private mapFromDb(p: any): Product {
         return {
             uuid: p.uuid,

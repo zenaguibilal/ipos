@@ -106,6 +106,11 @@ export class CustomerRepository {
         return this.mapFromDb(data);
     }
 
+    async delete(uuid: string): Promise<void> {
+        const { error } = await this.supabase.from('customers').delete().eq('uuid', uuid);
+        if (error) throw new Error(`CUSTOMER_DELETE_FAILURE: ${error.message}`);
+    }
+
     private mapFromDb(c: any): Customer {
         return {
             uuid: c.uuid,

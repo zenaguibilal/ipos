@@ -29,10 +29,8 @@ export async function PUT(req: Request, { params }: { params: { uuid: string } }
 
 export async function DELETE(req: Request, { params }: { params: { uuid: string } }) {
     try {
-        const { createClient } = await import('@/utils/supabase/server');
-        const supabase = createClient();
-        const { error } = await supabase.from('products').delete().eq('uuid', params.uuid);
-        if (error) throw error;
+        const repo = new ProductRepository();
+        await repo.delete(params.uuid);
         return NextResponse.json({ data: { success: true } });
     } catch (e: any) {
         return NextResponse.json({ error: e.message }, { status: 500 });
