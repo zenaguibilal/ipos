@@ -27,6 +27,11 @@ export class SupplierRepository {
         return this.mapFromDb(data);
     }
 
+    async bulkDelete(uuids: string[]): Promise<void> {
+        const { error } = await this.supabase.from('suppliers').delete().in('uuid', uuids);
+        if (error) throw new Error(`SUPPLIER_BULK_DELETE_FAILURE: ${error.message}`);
+    }
+
     async create(supplier: Partial<Supplier>): Promise<Supplier> {
         const { data, error } = await this.supabase
             .from('suppliers')

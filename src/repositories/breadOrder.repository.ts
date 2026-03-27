@@ -41,6 +41,11 @@ export class BreadOrderRepository {
         return this.mapFromDb(data);
     }
 
+    async bulkDelete(uuids: string[]): Promise<void> {
+        const { error } = await this.supabase.from('bread_orders').delete().in('uuid', uuids);
+        if (error) throw new Error(`BREAD_BULK_DELETE_FAILURE: ${error.message}`);
+    }
+
     async update(uuid: string, data: Partial<BreadOrder>): Promise<void> {
         const { error } = await this.supabase
             .from('bread_orders')
@@ -56,7 +61,6 @@ export class BreadOrderRepository {
     }
 
     async generateForDate(date: string): Promise<number> {
-        // 1. Fetch scheduled customers
         const { data: customers } = await this.supabase
             .from('customers')
             .select('*')
@@ -64,7 +68,6 @@ export class BreadOrderRepository {
 
         if (!customers) return 0;
 
-        // 2. Avoid duplicates
         const existingOrders = await this.getForDate(date);
         const existingCustomerUuids = new Set(existingOrders.map(o => o.customerUuid));
 

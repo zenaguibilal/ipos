@@ -1,10 +1,8 @@
-
 import { NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
+import { CustomerRepository } from '@/repositories/customer.repository';
 
 /**
- * @fileOverview API WALL: Customer Bulk Deletion
- * يضمن حذف مجموعة من العملاء دفعة واحدة من جهة الخادم.
+ * @fileOverview API WALL: Customer Bulk Deletion (Thin Proxy)
  */
 
 export async function POST(req: Request) {
@@ -12,13 +10,8 @@ export async function POST(req: Request) {
         const { uuids } = await req.json();
         if (!uuids || !Array.isArray(uuids)) throw new Error("UUIDS_REQUIRED");
 
-        const supabase = createClient();
-        const { error } = await supabase
-            .from('customers')
-            .delete()
-            .in('uuid', uuids);
-
-        if (error) throw error;
+        const repo = new CustomerRepository();
+        await repo.bulkDelete(uuids);
 
         return NextResponse.json({ data: { success: true } });
     } catch (e: any) {

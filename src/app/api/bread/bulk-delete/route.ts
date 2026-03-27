@@ -1,9 +1,8 @@
-
 import { NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
+import { BreadOrderRepository } from '@/repositories/breadOrder.repository';
 
 /**
- * @fileOverview API WALL: Bread Orders Bulk Deletion
+ * @fileOverview API WALL: Bread Orders Bulk Deletion (Thin Proxy)
  */
 
 export async function POST(req: Request) {
@@ -11,13 +10,8 @@ export async function POST(req: Request) {
         const { uuids } = await req.json();
         if (!uuids || !Array.isArray(uuids)) throw new Error("UUIDS_REQUIRED");
 
-        const supabase = createClient();
-        const { error } = await supabase
-            .from('bread_orders')
-            .delete()
-            .in('uuid', uuids);
-
-        if (error) throw error;
+        const repo = new BreadOrderRepository();
+        await repo.bulkDelete(uuids);
 
         return NextResponse.json({ data: { success: true } });
     } catch (e: any) {

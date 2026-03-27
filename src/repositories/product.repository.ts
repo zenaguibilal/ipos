@@ -89,6 +89,11 @@ export class ProductRepository {
         if (uErr) throw new Error("STOCK_SYNC_FAILURE");
     }
 
+    async bulkDelete(uuids: string[]): Promise<void> {
+        const { error } = await this.supabase.from('products').delete().in('uuid', uuids);
+        if (error) throw new Error(`PRODUCT_BULK_DELETE_FAILURE: ${error.message}`);
+    }
+
     async create(product: Partial<Product>): Promise<Product> {
         const quantity = product.quantity || 0;
         const minLevel = product.minStockLevel || 10;
