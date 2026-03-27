@@ -99,12 +99,12 @@ export interface StockIntake {
     user_id: string;
     supplierUuid?: string;
     invoiceNumber: string;
-    invoiceDate: Date;
+    invoiceDate: string;
     totalValue: number;
     transportFees: number;
     items: StockIntakeItem[];
-    createdAt?: Date;
-    updatedAt?: Date;
+    createdAt: string;
+    updatedAt: string;
 }
 
 export interface StockIntakeItem {
@@ -124,7 +124,7 @@ export interface InventoryLog {
     newQuantity: number;
     reason: 'sale' | 'return' | 'stock_intake' | 'cancellation' | 'manual_adjustment';
     relatedUuid?: string;
-    createdAt: Date;
+    createdAt: string;
 }
 
 export interface ProductReturn {
@@ -137,8 +137,8 @@ export interface ProductReturn {
     customerUuid?: string;
     items: ReturnItem[];
     notes?: string;
-    createdAt?: Date;
-    updatedAt?: Date;
+    createdAt: string;
+    updatedAt: string;
 }
 
 export interface ReturnItem {
@@ -161,8 +161,8 @@ export interface BreadOrder {
     est_paye: boolean;
     est_livre: boolean;
     venteUuid: string | null;
-    createdAt: Date;
-    updatedAt: Date;
+    createdAt: string;
+    updatedAt: string;
 }
 
 export interface CompanyProfile {
@@ -185,59 +185,36 @@ export interface CompanyProfile {
     updatedAt: string;
 }
 
-export interface ZakatCalculation {
-    inventoryValue: number;
-    customerDebts: number;
-    badDebts: number;
-    cashOnHand: number;
-    supplierDebts: number;
-    otherDebts: number;
-    goldPrice: number;
-    nisab: number;
-    zakatBase: number;
-    zakatAmount: number;
-    isNisabReached: boolean;
-}
-
-export interface SavedZakatCalculation extends ZakatCalculation {
+export interface Expense {
     uuid: string;
     user_id: string;
-    createdAt: Date;
-}
-
-export interface CartItem extends Product {
-    cartQuantity: number;
-    flash?: boolean;
-}
-
-export interface Cart {
-    id: string;
-    name: string;
-    items: CartItem[];
-    customerUuid: string | null;
-    discount: { type: 'fixed' | 'percentage'; value: number };
-}
-
-export interface CustomerTopProduct {
-    productUuid: string;
-    name: string;
-    quantity: number;
-    totalAmount: number;
+    description: string;
     category: string;
+    amount: number;
+    expenseDate: string;
+    createdAt: string;
+    updatedAt: string;
 }
 
-export interface ImportAnalysis {
-    customersToAdd: any[];
-    customersToUpdate: any[];
-    skippedRows: any[];
-    errorRows: any[];
-    totalRows: number;
+export interface Payment {
+    uuid: string;
+    user_id: string;
+    customerUuid: string;
+    amount: number;
+    paymentDate: string;
+    notes?: string;
+    createdAt: string;
+    updatedAt: string;
 }
 
-export interface ProductImportAnalysis {
-    productsToAdd: any[];
-    productsToUpdate: any[];
-    skippedRows: any[];
-    errorRows: any[];
-    totalRows: number;
+export interface SupplierPayment {
+    uuid: string;
+    user_id: string;
+    supplierUuid: string;
+    amount: number;
+    paymentDate: string;
+    method: 'cash' | 'card' | 'bank_transfer';
+    notes?: string;
+    createdAt: string;
+    updatedAt: string;
 }
