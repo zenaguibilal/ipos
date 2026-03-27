@@ -6,48 +6,47 @@ import { Toaster } from '@/components/ui/sonner';
 import { useEffect } from 'react';
 
 /**
- * @fileOverview THE SYSTEM PURIFIER
+ * @fileOverview THE SYSTEM PURIFIER (ABSOLUTE EDITION)
  * PHASE 5: STATE SINGULARITY ENFORCEMENT.
- * يضمن تطهير كافة أشكال التخزين المحلي لفرض سيادة الذاكرة العشوائية (RAM) والسحاب فقط.
+ * يفرض سيادة الذاكرة العشوائية (RAM) والسحاب ويمنع أي تسرب للبيانات إلى القرص الصلب.
  */
 
 export function ClientProviders({ children }: { children: React.ReactNode }) {
     useEffect(() => {
-        // 1. تدمير فوري لكافة الـ Service Workers المسجلين لقتل أي ميكانيكية Offline
+        // 1. تدمير فوري لكافة الـ Service Workers لقتل أي ميكانيكية Offline
         if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then((registrations) => {
                 for (const registration of registrations) {
                     registration.unregister();
-                    console.warn('PURIFICATION: Service Worker Destroyed');
+                    console.warn('PURIFICATION: Service Worker Obliterated');
                 }
             });
         }
         
-        // 2. تطهير شامل للتخزين المحلي (Persistent Storage Purge)
-        // نقتل أي محاولة للتخزين الدائم خارج نطاق الجلسة الحية لضمان حتمية الذاكرة.
+        // 2. التطهير المستمر (Continuous Storage Purge)
+        // نقتل أي محاولة للتخزين الدائم خارج نطاق الجلسة الحية.
         const criticalPurgeKeys = [
             'dexie', 'offline', 'persist:', 'workbox', 
             'supabase.auth.token', 'zustand', 'ipos-state', 'sb-'
         ];
         
-        const purgeStorage = () => {
+        const executePurge = () => {
             if (typeof localStorage !== 'undefined') {
-                const keysToRemove = [];
                 for (let i = 0; i < localStorage.length; i++) {
                     const key = localStorage.key(i);
                     if (key && criticalPurgeKeys.some(p => key.includes(p))) {
-                        keysToRemove.push(key);
+                        localStorage.removeItem(key);
                     }
                 }
-                keysToRemove.forEach(k => localStorage.removeItem(k));
             }
             if (typeof sessionStorage !== 'undefined') {
                 sessionStorage.clear();
             }
         };
 
-        purgeStorage();
-        console.warn('PURIFICATION: Memory-only mode enforced.');
+        // تنفيذ التطهير عند الإقلاع وبشكل دوري لمنع المكتبات من التسلل للقرص
+        executePurge();
+        const purgeInterval = setInterval(executePurge, 5000);
 
         // 3. مسح الـ Caches بالكامل
         if (typeof caches !== 'undefined') {
@@ -58,12 +57,18 @@ export function ClientProviders({ children }: { children: React.ReactNode }) {
             });
         }
 
-        // 4. تعطيل الـ Context Menu لمنع التلاعب بالبيانات الحية في الإنتاج
+        // 4. حماية واجهة النظام في الإنتاج
         const handleContext = (e: MouseEvent) => {
             if (process.env.NODE_ENV === 'production') e.preventDefault();
         };
         document.addEventListener('contextmenu', handleContext);
-        return () => document.removeEventListener('contextmenu', handleContext);
+
+        console.warn('PURIFICATION: State Singularity Active. Memory-only mode enforced.');
+
+        return () => {
+            clearInterval(purgeInterval);
+            document.removeEventListener('contextmenu', handleContext);
+        };
     }, []);
 
     return (
@@ -74,7 +79,7 @@ export function ClientProviders({ children }: { children: React.ReactNode }) {
             disableTransitionOnChange
         >
             {children}
-            <Toaster richColors />
+            <Toaster richColors position="top-right" />
             {/* حاوية الطباعة المركزية */}
             <div id="receipt-for-print" className="hidden"></div>
         </ThemeProvider>
