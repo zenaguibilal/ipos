@@ -49,6 +49,17 @@ export interface Customer {
     bread_jours_semaine?: Record<string, { actif: boolean; quantite: number }>;
 }
 
+export interface StaffMember {
+    uuid: string;
+    user_id: string;
+    email: string;
+    displayName: string;
+    role: AppRole;
+    isActive: boolean;
+    createdAt: string;
+    updatedAt: string;
+}
+
 export interface Sale {
     uuid: string;
     user_id: string;

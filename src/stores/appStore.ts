@@ -5,7 +5,7 @@ import { create } from 'zustand';
 import { produce } from 'immer';
 import type { 
     Cart, CompanyProfile, Product, Sale, Customer, Supplier, 
-    Expense, BreadOrder, Recipe, SavedZakatCalculation, AppRole 
+    Expense, BreadOrder, Recipe, SavedZakatCalculation, AppRole, StaffMember 
 } from '@/lib/types';
 import { v4 as uuidv4 } from 'uuid';
 import { api } from '@/lib/api-client';
@@ -24,6 +24,7 @@ interface AppState {
     expenses: Expense[];
     breadOrders: BreadOrder[];
     recipes: Recipe[];
+    staff: StaffMember[];
     zakatHistory: SavedZakatCalculation[];
     
     selectedCustomer: { data: Customer | null; stats: any; activity: any[] };
@@ -71,6 +72,7 @@ interface AppState {
         refreshExpenses: (params?: any) => Promise<void>;
         refreshBreadOrders: (date: string) => Promise<void>;
         refreshRecipes: () => Promise<void>;
+        refreshStaff: () => Promise<void>;
         
         refreshZakatData: () => Promise<void>;
         setZakatInputs: (inputs: { cashOnHand?: number; otherDebts?: number }) => void;
@@ -136,6 +138,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     expenses: [],
     breadOrders: [],
     recipes: [],
+    staff: [],
     zakatHistory: [],
     
     selectedCustomer: { data: null, stats: null, activity: [] },
@@ -255,6 +258,16 @@ export const useAppStore = create<AppState>((set, get) => ({
                 set({ recipes });
             } finally {
                 set(p => ({ isLoading: { ...p.isLoading, recipes: false } }));
+            }
+        },
+
+        refreshStaff: async () => {
+            set(p => ({ isLoading: { ...p.isLoading, staff: true } }));
+            try {
+                const staff = await api.get<StaffMember[]>('staff');
+                set({ staff });
+            } finally {
+                set(p => ({ isLoading: { ...p.isLoading, staff: false } }));
             }
         },
 
@@ -438,7 +451,7 @@ export const useAppStore = create<AppState>((set, get) => ({
             expenses: [],
             breadOrders: [],
             recipes: [],
-            zakatHistory: [],
+            staff: [],
             carts: [createInitialCart()],
             activeCartId: '',
             lastCompletedSale: null,

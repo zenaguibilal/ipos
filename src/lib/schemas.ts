@@ -30,6 +30,13 @@ export const CustomerSchema = z.object({
     settlementDay: z.number().int().min(0).max(31).optional(),
 });
 
+export const StaffMemberSchema = z.object({
+    email: z.string().email(),
+    displayName: z.string().min(1),
+    role: z.enum(['admin', 'manager', 'cashier']),
+    isActive: z.boolean().default(true),
+});
+
 export const SupplierSchema = z.object({
     name: z.string().min(1),
     contactPerson: z.string().optional(),

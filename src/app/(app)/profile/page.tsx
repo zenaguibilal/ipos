@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { CompanyProfileForm } from "@/components/profile/company-profile-form";
 import { DataManagementCard } from "@/components/profile/DataManagementCard";
+import { StaffManagement } from "@/components/profile/StaffManagement";
 import { useAppStore, useIsAdmin } from "@/stores/appStore";
 import { 
     User, Building2, Database, Settings2, ShieldCheck, 
@@ -192,31 +193,8 @@ export default function ProfilePage() {
                                 Gestion du Personnel & Rôles
                             </CardTitle>
                         </CardHeader>
-                        <CardContent className="p-12 text-center space-y-6">
-                            <div className="h-20 w-20 bg-muted/20 rounded-full flex items-center justify-center mx-auto border-2 border-dashed border-white/10">
-                                <ShieldCheck className="h-10 w-10 text-muted-foreground opacity-30" />
-                            </div>
-                            <div className="space-y-2">
-                                <h4 className="text-xl font-bold">Module Hiérarchique</h4>
-                                <p className="text-sm text-muted-foreground max-w-md mx-auto leading-relaxed">
-                                    La gestion des comptes multiples est soumise à votre type de licence Cloud. 
-                                    Actuellement, vous opérez en mode <strong>Souverain Unique</strong>.
-                                </p>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-2xl mx-auto pt-6">
-                                <div className="p-4 rounded-2xl bg-primary/10 border border-primary/20">
-                                    <p className="text-[10px] font-black uppercase text-primary mb-1">Administrateur</p>
-                                    <p className="text-xs font-medium">Contrôle total & Données</p>
-                                </div>
-                                <div className="p-4 rounded-2xl bg-blue-500/10 border border-blue-500/20">
-                                    <p className="text-[10px] font-black uppercase text-blue-400 mb-1">Gérant</p>
-                                    <p className="text-xs font-medium">Stocks & Finance</p>
-                                </div>
-                                <div className="p-4 rounded-2xl bg-orange-500/10 border border-orange-500/20">
-                                    <p className="text-[10px] font-black uppercase text-orange-400 mb-1">Caisse</p>
-                                    <p className="text-xs font-medium">Ventes & Retours</p>
-                                </div>
-                            </div>
+                        <CardContent className="p-6">
+                            <StaffManagement />
                         </CardContent>
                     </Card>
                 </TabsContent>
