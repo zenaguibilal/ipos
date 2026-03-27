@@ -2,13 +2,13 @@
 
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { CompanyProfileForm } from "@/components/profile/company-profile-form";
 import { DataManagementCard } from "@/components/profile/DataManagementCard";
 import { useAppStore, useIsManagerOrAdmin } from "@/stores/appStore";
 import { 
-    User, Building2, Database, Settings2, ShieldCheck, Mail, 
-    BadgeCheck, LayoutDashboard, Activity, Cloud, ShieldAlert, Wifi, 
+    User, Building2, Database, Settings2, ShieldCheck, 
+    BadgeCheck, LayoutDashboard, Cloud, Wifi, 
     Monitor, Cpu, Fingerprint, Globe 
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -17,7 +17,6 @@ import { useEffect, useState } from "react";
 
 /**
  * @fileOverview Profile Page (Domination Mode)
- * تم حذف خيارات تسجيل الخروج لفرض وضع الوصول الدائم.
  */
 
 export default function ProfilePage() {

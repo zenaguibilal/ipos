@@ -2,7 +2,6 @@ import { createClient } from "@/utils/supabase/server";
 
 /**
  * @fileOverview Backup Repository (Absolute Data Authority)
- * يدير عمليات حفظ واستعادة الحالة الكاملة للنظام في السحاب.
  */
 export class BackupRepository {
     private supabase = createClient();
@@ -48,7 +47,6 @@ export class BackupRepository {
 
         const backup = JSON.parse(await fileData.text());
 
-        // تنفيذ الاستعادة المدمرة (Purge then Insert)
         if (backup.products) {
             await this.supabase.from('products').delete().neq('uuid', '00000000-0000-0000-0000-000000000000');
             await this.supabase.from('products').insert(backup.products.map((p: any) => {
@@ -56,17 +54,10 @@ export class BackupRepository {
                 return rest;
             }));
         }
-        // يمكن تكرار المنطق لبقية الجداول لضمان استعادة كاملة
     }
 
     async delete(name: string): Promise<void> {
         const { error } = await this.supabase.storage.from('backups').remove([name]);
         if (error) throw new Error(`BACKUP_DELETE_FAILED: ${error.message}`);
-    }
-
-    async getDetails(name: string): Promise<any> {
-        const { data, error } = await this.supabase.storage.from('backups').download(name);
-        if (error) throw error;
-        return JSON.parse(await data.text());
     }
 }

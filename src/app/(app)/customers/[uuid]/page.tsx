@@ -1,11 +1,10 @@
-
 'use client';
 
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, HandCoins, Printer, Loader2, Filter, History, ShoppingBag, TrendingUp, Info, MessageSquare, Tag } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CustomerMetrics } from '@/components/customers/CustomerMetrics';
 import { CustomerActivity } from '@/components/customers/CustomerActivity';
@@ -16,7 +15,6 @@ import { ReturnDetailsDialog } from '@/components/returns/ReturnDetailsDialog';
 import type { Sale, ProductReturn } from '@/lib/types';
 import { PrintStatementDialog } from '@/components/customers/PrintStatementDialog';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { api } from '@/lib/api-client';
 import { toast } from 'sonner';
 import { formatCurrency, getPlaceholder } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -26,19 +24,15 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuCheckboxItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
 /**
  * @fileOverview Customer Detail Page (State Singularity Enforcement)
- * تم استئصال كافة الـ States المحلية لفرض معمارية الهيمنة المطلقة.
  */
 
 export default function CustomerDetailPage() {
     const params = useParams();
-    const router = useRouter();
     const customerUuid = params.uuid as string;
     
     const { selectedCustomer, isLoading, companyProfile } = useAppStore(state => ({
