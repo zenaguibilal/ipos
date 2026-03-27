@@ -1,17 +1,19 @@
 import { NextResponse, type NextRequest } from 'next/server'
 
 /**
- * @fileOverview THE SYSTEM SENTRY (FIXED)
- * تم إصلاح خطأ الاستيراد لفرض سيادة التوجيه الحتمي ومنع PWA.
+ * @fileOverview THE SYSTEM SENTRY
+ * تم تحديث القواعد للسماح بالوصول لصفحة تسجيل الدخول ومنع ملفات الـ PWA.
  */
 
 export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
 
+  // السماح بالوصول لصفحة تسجيل الدخول (تمت إزالة التوجيه القسري للوحة التحكم)
   if (path === '/login') {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
+    return NextResponse.next();
   }
 
+  // منع ملفات الـ PWA لفرض السيادة السحابية
   if (
     path.includes('manifest.json') || 
     path.includes('sw.js') || 
