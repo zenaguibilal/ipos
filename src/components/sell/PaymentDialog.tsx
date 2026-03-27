@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -14,7 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import type { Cart, CartItem, Customer, SalePayment } from '@/lib/types';
-import { Loader2, CreditCard, Banknote, AlertTriangle, ShieldCheck, Wallet, HandCoins, ArrowRight } from 'lucide-react';
+import { Loader2, Banknote, AlertTriangle, ShieldCheck, Wallet, HandCoins, ArrowRight } from 'lucide-react';
 import { formatCurrency, calculateCartTotals, cn } from '@/lib/utils';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Separator } from '@/components/ui/separator';
@@ -27,7 +26,7 @@ interface PaymentDialogProps {
     cartCustomer: Customer | null;
 }
 
-type PaymentMode = 'cash' | 'card' | 'other' | 'credit' | 'mixed';
+type PaymentMode = 'cash' | 'credit';
 
 export function PaymentDialog({ isOpen, onOpenChange, cart, cartCustomer }: PaymentDialogProps) {
     const { finalizeSale } = useAppActions();
@@ -45,15 +44,14 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, cartCustomer }: Paym
     const { total } = cart ? calculateCartTotals(cart) : { total: 0 };
 
     const cashAmountNum = parseFloat(cashAmountStr) || 0;
-    const creditAmountNum = parseFloat(creditAmountStr) || 0;
     
     let change = 0;
-    if (['cash', 'card', 'other'].includes(paymentMode)) {
+    if (paymentMode === 'cash') {
         change = cashAmountNum - total;
     }
-    const debtFromThisSale = paymentMode === 'credit' ? total : (paymentMode === 'mixed' ? creditAmountNum : 0);
+
+    const debtFromThisSale = paymentMode === 'credit' ? total : 0;
     const newTotalOutstanding = (cartCustomer?.outstandingBalance ?? 0) + debtFromThisSale;
-    const creditUsage = cartCustomer?.creditLimit && cartCustomer.creditLimit > 0 ? (newTotalOutstanding / cartCustomer.creditLimit) * 100 : 0;
     const isOverLimit = cartCustomer?.creditLimit && cartCustomer.creditLimit > 0 && newTotalOutstanding > cartCustomer.creditLimit;
 
     const initializePayment = useCallback(() => {
@@ -78,23 +76,18 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, cartCustomer }: Paym
     
     const handlePaymentModeChange = (mode: PaymentMode) => {
         setPaymentMode(mode);
-        if (['cash', 'card', 'other'].includes(mode)) {
+        if (mode === 'cash') {
             setCashAmountStr(String(total));
             setCreditAmountStr('0');
         } else if (mode === 'credit') {
             setCashAmountStr('0');
             setCreditAmountStr(String(total));
-        } else {
-            setCashAmountStr('');
-            setCreditAmountStr('');
         }
     }
 
     const handleLossAlertConfirm = () => {
         setShowLossAlert(false);
-        setPaymentMode('cash');
-        setCashAmountStr(String(total));
-        setCreditAmountStr('0');
+        initializePayment();
     };
 
     const handleFinalize = async (e?: React.FormEvent) => {
@@ -102,43 +95,26 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, cartCustomer }: Paym
         if (!cart) return;
 
         const cashVal = parseFloat(cashAmountStr) || 0;
-        const creditVal = parseFloat(creditAmountStr) || 0;
 
         let amountPaid = 0;
         const payments: SalePayment[] = [];
         let debtAmount = 0;
         
-        switch (paymentMode) {
-            case 'cash':
-            case 'card':
-            case 'other':
-                if (cashVal < total && !cartCustomer) {
-                    toast.error("Paiement insuffisant pour un client de passage."); return;
-                }
-                amountPaid = cashVal;
-                payments.push({ method: paymentMode, amount: total });
-                break;
-            case 'credit':
-                debtAmount = total;
-                break;
-            case 'mixed':
-                if (Math.abs(cashVal + creditVal - total) > 0.1) {
-                    toast.error("La répartition doit égaler le total."); return;
-                }
-                amountPaid = cashVal;
-                debtAmount = creditVal;
-                if (amountPaid > 0) payments.push({ method: 'cash', amount: amountPaid });
-                break;
-        }
-
-        if (debtAmount > 0) {
+        if (paymentMode === 'cash') {
+            if (cashVal < total && !cartCustomer) {
+                toast.error("Paiement insuffisant pour un client de passage."); return;
+            }
+            amountPaid = cashVal;
+            payments.push({ method: 'cash', amount: total });
+        } else {
             if (!cartCustomer) {
                 toast.error("Vente à crédit impossible sans client."); return;
             }
             if (isOverLimit) {
-                toast.error("Plafond de crédit dépassé.", { description: "Veuillez réduire le montant à crédit ou encaisser une partie de la dette." });
+                toast.error("Plafond de crédit dépassé.");
                 return;
             }
+            debtAmount = total;
         }
         
         setIsLoading(true);
@@ -147,7 +123,7 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, cartCustomer }: Paym
                 amountPaid: amountPaid,
                 payments,
                 remainingBalance: debtAmount,
-                paymentStatus: debtAmount > 0 ? (amountPaid > 0 ? 'partial' : 'unpaid') : 'paid',
+                paymentStatus: debtAmount > 0 ? 'unpaid' : 'paid',
                 dueDate: debtAmount > 0 ? dueDate?.toISOString() : undefined,
             });
             if (success) {
@@ -207,7 +183,6 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, cartCustomer }: Paym
                         </DialogHeader>
 
                         <div className="p-8 space-y-8">
-                            {/* Role-Based Credit Context */}
                             {cartCustomer && (
                                 <div className={cn(
                                     "p-4 rounded-2xl border-2 transition-all duration-500 flex items-center justify-between",
@@ -233,103 +208,89 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, cartCustomer }: Paym
 
                             <div className="space-y-4">
                                 <Label className="text-[11px] font-black uppercase tracking-widest opacity-70">Architecture du Paiement</Label>
-                                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                                    {[
-                                        { id: 'cash', icon: Banknote, label: 'Espèces' },
-                                        { id: 'card', icon: CreditCard, label: 'Carte' },
-                                        { id: 'other', icon: ShieldCheck, label: 'Autre' },
-                                        { id: 'credit', icon: HandCoins, label: 'Crédit', disabled: !cartCustomer },
-                                        { id: 'mixed', icon: Wallet, label: 'Mixte', disabled: !cartCustomer },
-                                    ].map(mode => (
-                                        <Button 
-                                            key={mode.id}
-                                            type="button" 
-                                            variant={paymentMode === mode.id ? 'secondary' : 'outline'} 
-                                            onClick={() => handlePaymentModeChange(mode.id as PaymentMode)}
-                                            disabled={mode.disabled}
-                                            className={cn(
-                                                "h-auto py-3 flex-col gap-2 rounded-xl border-white/5",
-                                                paymentMode === mode.id && "bg-primary/10 text-primary border-primary/30 shadow-lg shadow-primary/10"
-                                            )}
-                                        >
-                                            <mode.icon className="h-5 w-5" />
-                                            <span className="text-[9px] font-black uppercase tracking-widest">{mode.label}</span>
-                                        </Button>
-                                    ))}
+                                <div className="grid grid-cols-2 gap-4">
+                                    <Button 
+                                        type="button" 
+                                        variant={paymentMode === 'cash' ? 'secondary' : 'outline'} 
+                                        onClick={() => handlePaymentModeChange('cash')}
+                                        className={cn(
+                                            "h-20 flex-col gap-2 rounded-2xl border-white/5 text-lg font-black",
+                                            paymentMode === 'cash' && "bg-primary/10 text-primary border-primary/30 shadow-xl"
+                                        )}
+                                    >
+                                        <Banknote className="h-6 w-6" />
+                                        <span className="uppercase tracking-[0.1em]">Espèces</span>
+                                    </Button>
+                                    <Button 
+                                        type="button" 
+                                        variant={paymentMode === 'credit' ? 'secondary' : 'outline'} 
+                                        onClick={() => handlePaymentModeChange('credit')}
+                                        disabled={!cartCustomer}
+                                        className={cn(
+                                            "h-20 flex-col gap-2 rounded-2xl border-white/5 text-lg font-black",
+                                            paymentMode === 'credit' && "bg-destructive/10 text-destructive border-destructive/30 shadow-xl"
+                                        )}
+                                    >
+                                        <HandCoins className="h-6 w-6" />
+                                        <span className="uppercase tracking-[0.1em]">Crédit</span>
+                                    </Button>
                                 </div>
                             </div>
 
                             <Separator className="bg-white/5" />
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                <div className="space-y-4">
-                                    <Label className="text-[11px] font-black uppercase tracking-widest opacity-70">Montant Encaissé (DA)</Label>
-                                    <div className="relative group">
-                                        <Banknote className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary/30 group-focus-within:text-primary transition-colors" />
-                                        <Input 
-                                            type="number" 
-                                            value={cashAmountStr} 
-                                            onChange={(e) => setCashAmountStr(e.target.value)} 
-                                            className="pl-12 h-16 rounded-2xl bg-background/40 border-white/5 focus:border-primary/40 focus:ring-0 font-black text-2xl" 
-                                            placeholder="0.00"
-                                            autoFocus
-                                            disabled={paymentMode === 'credit'}
-                                        />
-                                    </div>
-                                </div>
-
-                                {paymentMode === 'mixed' || paymentMode === 'credit' ? (
-                                    <div className="space-y-4">
-                                        <Label className="text-[11px] font-black uppercase tracking-widest opacity-70">Impact sur le Solde (Crédيت)</Label>
-                                        <div className="relative group">
-                                            <HandCoins className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-destructive/30 group-focus-within:text-destructive transition-colors" />
-                                            <Input 
-                                                type="number" 
-                                                value={creditAmountStr} 
-                                                onChange={(e) => setCreditAmountStr(e.target.value)} 
-                                                className="pl-12 h-16 rounded-2xl bg-background/40 border-white/5 focus:border-destructive/40 focus:ring-0 font-black text-2xl text-destructive"
-                                                placeholder="0.00"
-                                                disabled={paymentMode === 'credit'}
-                                            />
+                            <div className="grid grid-cols-1 gap-8">
+                                {paymentMode === 'cash' ? (
+                                    <div className="flex flex-col sm:flex-row gap-8 items-center">
+                                        <div className="space-y-4 flex-1 w-full">
+                                            <Label className="text-[11px] font-black uppercase tracking-widest opacity-70">Montant Encaissé (DA)</Label>
+                                            <div className="relative group">
+                                                <Banknote className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary/30 group-focus-within:text-primary transition-colors" />
+                                                <Input 
+                                                    type="number" 
+                                                    value={cashAmountStr} 
+                                                    onChange={(e) => setCashAmountStr(e.target.value)} 
+                                                    className="pl-12 h-16 rounded-2xl bg-background/40 border-white/5 focus:border-primary/40 focus:ring-0 font-black text-2xl" 
+                                                    placeholder="0.00"
+                                                    autoFocus
+                                                />
+                                            </div>
                                         </div>
-                                    </div>
-                                ) : (
-                                    <div className="flex flex-col justify-center text-center p-4 rounded-2xl bg-chart-quaternary/5 border border-chart-quaternary/10">
-                                        <p className="text-[10px] font-black uppercase text-chart-quaternary mb-1">Monnaie à rendre</p>
-                                        <p className="text-3xl font-black text-chart-quaternary">
-                                            {formatCurrency(Math.max(0, change))}
-                                        </p>
-                                    </div>
-                                )}
-                            </div>
-
-                            {['credit', 'mixed'].includes(paymentMode) && (
-                                <div className="p-6 rounded-2xl bg-white/5 border border-white/5 animate-in slide-in-from-bottom-2">
-                                    <div className="flex items-center gap-3 mb-4">
-                                        <ShieldCheck className="h-4 w-4 text-primary" />
-                                        <h4 className="text-[10px] font-black uppercase tracking-widest">Garanties & Échéances</h4>
-                                    </div>
-                                    <div className="space-y-4">
-                                        <div className="space-y-2">
-                                            <Label className="text-[9px] font-bold opacity-50 uppercase ml-1">Date d'échéance du paiement</Label>
-                                            <DatePicker date={dueDate} setDate={setDueDate} />
-                                        </div>
-                                        <div className="flex justify-between items-center p-3 rounded-xl bg-background/40 border border-white/5">
-                                            <p className="text-[10px] font-bold text-muted-foreground uppercase">Nouveau Solde Total</p>
-                                            <p className={cn("font-black", isOverLimit ? "text-destructive" : "text-primary")}>
-                                                {formatCurrency(newTotalOutstanding)}
+                                        <div className="flex flex-col justify-center text-center p-6 rounded-2xl bg-chart-quaternary/5 border border-chart-quaternary/10 flex-1 w-full">
+                                            <p className="text-[10px] font-black uppercase text-chart-quaternary mb-1">Monnaie à rendre</p>
+                                            <p className="text-4xl font-black text-chart-quaternary">
+                                                {formatCurrency(Math.max(0, change))}
                                             </p>
                                         </div>
                                     </div>
-                                </div>
-                            )}
+                                ) : (
+                                    <div className="p-6 rounded-2xl bg-destructive/5 border border-destructive/20 animate-in slide-in-from-bottom-2">
+                                        <div className="flex items-center gap-3 mb-4">
+                                            <ShieldCheck className="h-4 w-4 text-destructive" />
+                                            <h4 className="text-[10px] font-black uppercase tracking-widest text-destructive">Garanties & Échéances</h4>
+                                        </div>
+                                        <div className="space-y-4">
+                                            <div className="space-y-2">
+                                                <Label className="text-[9px] font-bold opacity-50 uppercase ml-1">Date d'échéance du paiement</Label>
+                                                <DatePicker date={dueDate} setDate={setDueDate} />
+                                            </div>
+                                            <div className="flex justify-between items-center p-3 rounded-xl bg-background/40 border border-white/5">
+                                                <p className="text-[10px] font-bold text-muted-foreground uppercase">Nouveau Solde Total</p>
+                                                <p className={cn("font-black", isOverLimit ? "text-destructive" : "text-primary")}>
+                                                    {formatCurrency(newTotalOutstanding)}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                         </div>
 
                         <DialogFooter className="p-8 bg-white/5 border-t border-white/5 gap-4">
                             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className="rounded-2xl font-black uppercase text-[11px] tracking-widest h-14 flex-1">Annuler</Button>
                             <Button 
                                 type="submit" 
-                                disabled={isLoading || isOverLimit} 
+                                disabled={isLoading || (paymentMode === 'credit' && isOverLimit)} 
                                 className="bg-primary hover:bg-primary/90 px-12 rounded-2xl shadow-2xl shadow-primary/30 font-black uppercase text-[11px] tracking-[0.2em] h-14 flex-[2] gap-3 group overflow-hidden relative"
                             >
                                 <span className="relative z-10 flex items-center gap-3">
