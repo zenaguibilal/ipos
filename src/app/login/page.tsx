@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -46,9 +47,10 @@ export default function LoginPage() {
     const [isForgotPassLoading, setIsForgotPassLoading] = useState(false);
     const [forgotPassMessage, setForgotPassMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
 
-    // Redirect if already logged in or after successful login
+    // Redirect Logic: Watch session state for automated redirection
     useEffect(() => {
         if (session) {
+            router.refresh(); // Ensure server-side state is synced
             router.push('/dashboard');
         }
     }, [session, router]);
@@ -65,12 +67,10 @@ export default function LoginPage() {
         setIsLoading(true);
         try {
             await signIn(signInEmail, signInPassword);
-            // Refresh to sync cookies with middleware before navigation
-            router.refresh();
-            router.push('/dashboard');
+            // After internal store updates, useEffect will handle the redirect
+            toast.success("Connexion réussie !");
         } catch (error: any) {
             setError(error.message || "La connexion a échoué.");
-        } finally {
             setIsLoading(false);
         }
     };
@@ -85,12 +85,9 @@ export default function LoginPage() {
         setIsLoading(true);
         try {
             await signUp(signUpEmail, signUpPassword);
-            router.refresh();
-            router.push('/dashboard');
             toast.success("Compte créé avec succès ! Bienvenue.");
         } catch (error: any) {
             setError(error.message || "L'inscription a échoué.");
-        } finally {
             setIsLoading(false);
         }
     };
@@ -160,7 +157,7 @@ export default function LoginPage() {
                                                         <DialogHeader>
                                                             <DialogTitle>Réinitialiser le mot de passe</DialogTitle>
                                                             <DialogDescription>
-                                                                Entrez votre adresse e-mail ci-dessous et nous vous enverرسons des instructions pour réinitialiser votre mot de passe.
+                                                                Entrez votre adresse e-mail ci-dessous et nous vous enverrons des instructions pour réinitialiser votre mot de passe.
                                                             </DialogDescription>
                                                         </DialogHeader>
                                                         <div className="py-4 space-y-4">
