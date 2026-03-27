@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Plus, Calculator, Trash2, Edit, TrendingUp, Target } from 'lucide-react';
@@ -15,6 +14,11 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { ConfirmAlertDialog } from '@/components/ui/ConfirmAlertDialog';
+import { useAppStore, useAppActions } from '@/stores/appStore';
+
+/**
+ * @fileOverview Cost Engineering Page (State Singularity Enforcement)
+ */
 
 const StatCard = ({ title, value, icon: Icon, colorClass }: { title: string, value: string, icon: any, colorClass: string }) => (
     <Card className="luxury-glass bg-muted/20 border-white/5">
@@ -31,25 +35,20 @@ const StatCard = ({ title, value, icon: Icon, colorClass }: { title: string, val
 );
 
 export default function CostingPage() {
-    const [recipes, setRecipes] = useState<Recipe[] | undefined>(undefined);
+    const { recipes, isLoading } = useAppStore(state => ({
+        recipes: state.recipes,
+        isLoading: state.isLoading.recipes
+    }));
+    const { refreshRecipes } = useAppActions();
+
     const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
     const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
     const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
     const [recipeToDelete, setRecipeToDelete] = useState<Recipe | null>(null);
 
-    const fetchRecipes = useCallback(async () => {
-        try {
-            const data = await api.get<Recipe[]>('recipes');
-            setRecipes(data);
-        } catch (error) {
-            toast.error("Échec du chargement des recettes.");
-            setRecipes([]);
-        }
-    }, []);
-
     useEffect(() => {
-        fetchRecipes();
-    }, [fetchRecipes]);
+        refreshRecipes();
+    }, [refreshRecipes]);
 
     const stats = useMemo(() => {
         if (!recipes || recipes.length === 0) return null;
@@ -76,13 +75,13 @@ export default function CostingPage() {
         try {
             await api.delete(`recipes/${recipeToDelete.uuid}`);
             toast.success("Recette supprimée.");
-            fetchRecipes();
+            refreshRecipes();
         } catch (error) {
             toast.error("Erreur de suppression.");
         }
     };
 
-    const isLoading = recipes === undefined;
+    const isInitialLoading = isLoading && recipes.length === 0;
 
     return (
         <div className="p-4 sm:p-6 space-y-6">
@@ -95,7 +94,7 @@ export default function CostingPage() {
                 </Button>
             </PageHeader>
 
-            {!isLoading && recipes.length > 0 && stats && (
+            {!isInitialLoading && recipes.length > 0 && stats && (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <StatCard 
                         title="Coût Moyen Unitaire" 
@@ -118,7 +117,7 @@ export default function CostingPage() {
                 </div>
             )}
 
-            {isLoading ? (
+            {isInitialLoading ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-64 w-full rounded-2xl" />)}
                 </div>
@@ -191,7 +190,7 @@ export default function CostingPage() {
                 isOpen={isFormDialogOpen} 
                 onOpenChange={setIsFormDialogOpen} 
                 recipe={selectedRecipe}
-                onSuccess={fetchRecipes}
+                onSuccess={refreshRecipes}
             />
 
             <ConfirmAlertDialog 

@@ -3,46 +3,77 @@
 import { create } from 'zustand';
 import { produce } from 'immer';
 import type { Session, User } from '@supabase/supabase-js';
-import type { Cart, CompanyProfile, Product, Sale, Customer, Supplier, Expense, StockIntake } from '@/lib/types';
+import type { 
+    Cart, CompanyProfile, Product, Sale, Customer, Supplier, 
+    Expense, StockIntake, BreadOrder, Recipe, SavedZakatCalculation 
+} from '@/lib/types';
 import { v4 as uuidv4 } from 'uuid';
 import { api } from '@/lib/api-client';
 
 /**
- * @fileOverview THE STATE SINGULARITY (DOMINATION EDITION)
- * تم تكييف المتجر للعمل في وضع "الوصول المباشر" بدون قيود جلسة.
+ * @fileOverview THE STATE SINGULARITY (ABSOLUTE EDITION)
+ * المركز السيادي والوحيد لكافة حالات النظام أثناء التشغيل.
+ * يمنع منعاً باتاً وجود shadow states داخل المكونات.
  */
 
 interface AppState {
-    session: Session | null;
-    user: User | null;
     profile: CompanyProfile | null;
-    sessionLoading: boolean;
     isSettingsLoading: boolean;
     
+    // Core Data Entities
     products: Product[];
     customers: Customer[];
     suppliers: Supplier[];
     expenses: Expense[];
     salesHistory: Sale[];
+    returns: any[];
+    stockIntakes: StockIntake[];
+    breadOrders: BreadOrder[];
+    recipes: Recipe[];
+    zakatHistory: SavedZakatCalculation[];
     
+    // Categories Cache
+    productCategories: string[];
+    expenseCategories: string[];
+
+    // View & Session
     carts: Cart[];
     activeCartId: string;
     lastCompletedSale: { sale: Sale; customer?: Customer } | null;
     isLoading: Record<string, boolean>;
+    
+    // App Config / UI State
+    expenseViewMode: 'grid' | 'list';
+    salesHistoryViewMode: 'grid' | 'list';
+    returnViewMode: 'grid' | 'list';
+    supplierViewMode: 'grid' | 'list';
+    stockViewMode: 'grid' | 'list';
 
     actions: {
-        setSession: (session: Session | null) => void;
         fetchProfile: () => Promise<void>;
         updateProfile: (data: Partial<CompanyProfile>) => Promise<void>;
-        signOut: () => Promise<void>;
-        resetStore: () => void;
         
-        refreshProducts: (query?: string) => Promise<void>;
-        refreshCustomers: (status?: string) => Promise<void>;
+        // Universal Refreshers
+        refreshProducts: (params?: any) => Promise<void>;
+        refreshCustomers: (params?: any) => Promise<void>;
         refreshSuppliers: () => Promise<void>;
-        refreshExpenses: (from: string, to: string) => Promise<void>;
-        refreshSalesHistory: (from: string, to: string) => Promise<void>;
+        refreshExpenses: (params: any) => Promise<void>;
+        refreshSalesHistory: (params: any) => Promise<void>;
+        refreshReturns: (params: any) => Promise<void>;
+        refreshStockIntakes: (params: any) => Promise<void>;
+        refreshBreadOrders: (date: string) => Promise<void>;
+        refreshRecipes: () => Promise<void>;
+        refreshZakatHistory: () => Promise<void>;
+        refreshCategories: () => Promise<void>;
 
+        // UI State Actions
+        setExpenseViewMode: (mode: 'grid' | 'list') => void;
+        setSalesHistoryViewMode: (mode: 'grid' | 'list') => void;
+        setReturnViewMode: (mode: 'grid' | 'list') => void;
+        setSupplierViewMode: (mode: 'grid' | 'list') => void;
+        setStockViewMode: (mode: 'grid' | 'list') => void;
+
+        // POS Actions
         createNewCart: () => void;
         switchToCart: (id: string) => void;
         deleteCart: (id: string) => void;
@@ -53,11 +84,15 @@ interface AppState {
         setCartCustomer: (customer: Customer | null) => void;
         setCartDiscount: (discount: { type: 'fixed' | 'percentage', value: number }) => void;
         clearCart: () => void;
+        clearCartFlashes: () => void;
         
+        // Transaction Processors
         finalizeSale: (paymentData: any) => Promise<boolean>;
         processReturn: (returnData: any) => Promise<boolean>;
         processStockIntake: (intakeData: any) => Promise<boolean>;
         clearLastCompletedSale: () => void;
+        
+        resetStore: () => void;
     };
 }
 
@@ -70,10 +105,7 @@ const createInitialCart = (): Cart => ({
 });
 
 export const useAppStore = create<AppState>((set, get) => ({
-    session: null,
-    user: null,
     profile: null,
-    sessionLoading: false, // تم الإلغاء لفرض التشغيل الفوري
     isSettingsLoading: false,
     
     products: [],
@@ -81,46 +113,58 @@ export const useAppStore = create<AppState>((set, get) => ({
     suppliers: [],
     expenses: [],
     salesHistory: [],
+    returns: [],
+    stockIntakes: [],
+    breadOrders: [],
+    recipes: [],
+    zakatHistory: [],
     
+    productCategories: [],
+    expenseCategories: [],
+
     carts: [createInitialCart()],
     activeCartId: '',
     lastCompletedSale: null,
     isLoading: {},
 
+    expenseViewMode: 'grid',
+    salesHistoryViewMode: 'grid',
+    returnViewMode: 'grid',
+    supplierViewMode: 'grid',
+    stockViewMode: 'grid',
+
     actions: {
-        setSession: (session) => set({ 
-            session, 
-            user: session?.user ?? null, 
-            sessionLoading: false 
-        }),
-        
         fetchProfile: async () => {
             set({ isSettingsLoading: true });
             try {
                 const profile = await api.get<CompanyProfile>('profile');
                 set({ profile });
-            } catch (e) {
-                // في وضع الهيمنة، الفشل في جلب البروفايل لا يوقف النظام
-                console.warn("Profile fetch failed, using default settings.");
             } finally {
                 set({ isSettingsLoading: false });
             }
         },
 
-        refreshProducts: async (query) => {
+        updateProfile: async (data) => {
+            const updated = await api.put<CompanyProfile>('profile', data);
+            set({ profile: updated });
+        },
+
+        refreshProducts: async (params) => {
             set(p => ({ isLoading: { ...p.isLoading, products: true } }));
             try {
-                const products = await api.get<Product[]>(`products${query ? `?query=${query}` : ''}`);
+                const query = new URLSearchParams(params).toString();
+                const products = await api.get<Product[]>(`products?${query}`);
                 set({ products });
             } finally {
                 set(p => ({ isLoading: { ...p.isLoading, products: false } }));
             }
         },
 
-        refreshCustomers: async (status) => {
+        refreshCustomers: async (params) => {
             set(p => ({ isLoading: { ...p.isLoading, customers: true } }));
             try {
-                const customers = await api.get<Customer[]>(`customers${status ? `?status=${status}` : ''}`);
+                const query = new URLSearchParams(params).toString();
+                const customers = await api.get<Customer[]>(`customers?${query}`);
                 set({ customers });
             } finally {
                 set(p => ({ isLoading: { ...p.isLoading, customers: false } }));
@@ -137,50 +181,93 @@ export const useAppStore = create<AppState>((set, get) => ({
             }
         },
 
-        refreshExpenses: async (from, to) => {
+        refreshExpenses: async (params) => {
             set(p => ({ isLoading: { ...p.isLoading, expenses: true } }));
             try {
-                const expenses = await api.get<Expense[]>(`expenses?from=${from}&to=${to}`);
+                const query = new URLSearchParams(params).toString();
+                const expenses = await api.get<Expense[]>(`expenses?${query}`);
                 set({ expenses });
             } finally {
                 set(p => ({ isLoading: { ...p.isLoading, expenses: false } }));
             }
         },
 
-        refreshSalesHistory: async (from, to) => {
+        refreshSalesHistory: async (params) => {
             set(p => ({ isLoading: { ...p.isLoading, sales: true } }));
             try {
-                const salesHistory = await api.get<Sale[]>(`sales?from=${from}&to=${to}`);
+                const query = new URLSearchParams(params).toString();
+                const salesHistory = await api.get<Sale[]>(`sales?${query}`);
                 set({ salesHistory });
             } finally {
                 set(p => ({ isLoading: { ...p.isLoading, sales: false } }));
             }
         },
 
-        updateProfile: async (data) => {
-            const updated = await api.put<CompanyProfile>('profile', data);
-            set({ profile: updated });
+        refreshReturns: async (params) => {
+            set(p => ({ isLoading: { ...p.isLoading, returns: true } }));
+            try {
+                const query = new URLSearchParams(params).toString();
+                const returns = await api.get<any[]>(`returns?${query}`);
+                set({ returns });
+            } finally {
+                set(p => ({ isLoading: { ...p.isLoading, returns: false } }));
+            }
         },
 
-        signOut: async () => {
-            // تسجيل الخروج يقوم فقط بمسح الذاكرة في هذا الوضع
-            get().actions.resetStore();
-            window.location.href = '/';
+        refreshStockIntakes: async (params) => {
+            set(p => ({ isLoading: { ...p.isLoading, stock: true } }));
+            try {
+                const query = new URLSearchParams(params).toString();
+                const stockIntakes = await api.get<StockIntake[]>(`stock?${query}`);
+                set({ stockIntakes });
+            } finally {
+                set(p => ({ isLoading: { ...p.isLoading, stock: false } }));
+            }
         },
 
-        resetStore: () => set({
-            session: null,
-            user: null,
-            profile: null,
-            products: [],
-            customers: [],
-            suppliers: [],
-            expenses: [],
-            salesHistory: [],
-            carts: [createInitialCart()],
-            activeCartId: '',
-            lastCompletedSale: null,
-        }),
+        refreshBreadOrders: async (date) => {
+            set(p => ({ isLoading: { ...p.isLoading, bread: true } }));
+            try {
+                const breadOrders = await api.get<BreadOrder[]>(`bread?date=${date}`);
+                set({ breadOrders });
+            } finally {
+                set(p => ({ isLoading: { ...p.isLoading, bread: false } }));
+            }
+        },
+
+        refreshRecipes: async () => {
+            set(p => ({ isLoading: { ...p.isLoading, recipes: true } }));
+            try {
+                const recipes = await api.get<Recipe[]>('recipes');
+                set({ recipes });
+            } finally {
+                set(p => ({ isLoading: { ...p.isLoading, recipes: false } }));
+            }
+        },
+
+        refreshZakatHistory: async () => {
+            set(p => ({ isLoading: { ...p.isLoading, zakat: true } }));
+            try {
+                const zakatHistory = await api.get<SavedZakatCalculation[]>('zakat?type=history');
+                set({ zakatHistory });
+            } finally {
+                set(p => ({ isLoading: { ...p.isLoading, zakat: false } }));
+            }
+        },
+
+        refreshCategories: async () => {
+            const [prodCats, expCats] = await Promise.all([
+                api.get<string[]>('products/categories'),
+                api.get<string[]>('expenses/categories')
+            ]);
+            set({ productCategories: prodCats, expenseCategories: expCats });
+        },
+
+        setExpenseViewMode: (mode) => set({ expenseViewMode: mode }),
+        setSalesHistoryViewMode: (mode) => set({ salesHistoryViewMode: mode }),
+        setReturnViewMode: (mode) => set({ returnViewMode: mode }),
+        setSupplierViewMode: (mode) => set({ supplierViewMode: mode }),
+        setStockViewMode: (mode) => set({ stockViewMode: mode }),
 
         createNewCart: () => set(produce((state: AppState) => {
             const newCart = createInitialCart();
@@ -196,7 +283,8 @@ export const useAppStore = create<AppState>((set, get) => ({
         })),
 
         addProductToCart: (product, quantity) => set(produce((state: AppState) => {
-            const cart = state.carts.find(c => c.id === state.activeCartId) || state.carts[0];
+            const cartId = state.activeCartId || state.carts[0].id;
+            const cart = state.carts.find(c => c.id === cartId)!;
             const existing = cart.items.find(i => i.uuid === product.uuid);
             if (existing) {
                 existing.cartQuantity += quantity;
@@ -204,6 +292,7 @@ export const useAppStore = create<AppState>((set, get) => ({
             } else {
                 cart.items.push({ ...product, cartQuantity: quantity, flash: true });
             }
+            state.activeCartId = cartId;
         })),
 
         removeCartItem: (uuid) => set(produce((state: AppState) => {
@@ -238,6 +327,11 @@ export const useAppStore = create<AppState>((set, get) => ({
             if (index !== -1) state.carts[index] = createInitialCart();
         })),
 
+        clearCartFlashes: () => set(produce((state: AppState) => {
+            const cart = state.carts.find(c => c.id === state.activeCartId);
+            if (cart) cart.items.forEach(i => i.flash = false);
+        })),
+
         finalizeSale: async (paymentData) => {
             const cart = get().carts.find(c => c.id === get().activeCartId);
             if (!cart || cart.items.length === 0) return false;
@@ -262,8 +356,25 @@ export const useAppStore = create<AppState>((set, get) => ({
         },
 
         clearLastCompletedSale: () => set({ lastCompletedSale: null }),
+
+        resetStore: () => set({
+            profile: null,
+            products: [],
+            customers: [],
+            suppliers: [],
+            expenses: [],
+            salesHistory: [],
+            returns: [],
+            stockIntakes: [],
+            breadOrders: [],
+            recipes: [],
+            zakatHistory: [],
+            carts: [createInitialCart()],
+            activeCartId: '',
+            lastCompletedSale: null,
+        }),
     }
 }));
 
 export const useAppActions = () => useAppStore(state => state.actions);
-export const useIsManagerOrAdmin = () => true; // في وضع الهيمنة بدون دخول، نعتبر الوصول دائماً بصلاحيات كاملة
+export const useIsManagerOrAdmin = () => true;

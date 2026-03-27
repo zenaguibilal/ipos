@@ -11,13 +11,17 @@ import { formatCurrency, cn } from '@/lib/utils';
 import { Coins, Printer, RefreshCw, HandHelping, Save, Loader2, Sparkles, BrainCircuit, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useAppStore } from '@/stores/appStore';
+import { useAppStore, useAppActions } from '@/stores/appStore';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import type { SavedZakatCalculation, ZakatCalculation } from '@/lib/types';
+import type { ZakatCalculation } from '@/lib/types';
+
+/**
+ * @fileOverview Zakat Calculator Page (State Singularity Enforcement)
+ */
 
 const calculateZakat = (data: any): ZakatCalculation => {
     const nisab = (data.goldPrice || 0) * 85;
-    const totalAssets = (data.inventoryValue || 0) + Math.max(0, (data.customerDebts || 0) - (data.badDebts || 0)) + (data.cashOnHand || 0);
+    const totalAssets = (data.inventoryValue || 0) + Math.max(0, (data.customerDebts || 0)) + (data.cashOnHand || 0);
     const totalLiabilities = (data.supplierDebts || 0) + (data.otherDebts || 0);
     const zakatBase = Math.max(0, totalAssets - totalLiabilities);
     const isNisabReached = nisab > 0 && zakatBase >= nisab;
@@ -25,43 +29,40 @@ const calculateZakat = (data: any): ZakatCalculation => {
 };
 
 export default function ZakatPage() {
-    const profile = useAppStore(state => state.profile);
-    const [isLoading, setIsLoading] = useState(true);
+    const { history, isLoading } = useAppStore(state => ({
+        history: state.zakatHistory,
+        isLoading: state.isLoading.zakat
+    }));
+    const { refreshZakatHistory } = useAppActions();
+
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     
-    // AI State
     const [aiExplanation, setAiExplanation] = useState<any>(null);
     const [isAiLoading, setIsAiLoading] = useState(false);
     
-    const [history, setHistory] = useState<SavedZakatCalculation[]>([]);
     const [cashOnHand, setCashOnHand] = useState<number>(0);
     const [otherDebts, setOtherDebts] = useState<number>(0);
-    const [badDebts, setBadDebts] = useState<number>(0);
-    
     const [autoData, setAutoData] = useState({ inventoryValue: 0, customerDebts: 0, supplierDebts: 0, goldPrice: 0 });
 
     const fetchData = useCallback(async (manual = false) => {
         if (manual) setIsRefreshing(true);
-        else setIsLoading(true);
         try {
-            const [data, hist] = await Promise.all([
+            const [data] = await Promise.all([
                 api.get<any>('zakat'),
-                api.get<SavedZakatCalculation[]>('zakat?type=history')
+                refreshZakatHistory()
             ]);
             setAutoData(data);
-            setHistory(hist);
         } catch (error) {
             toast.error("Échec du chargement.");
         } finally {
-            setIsLoading(false);
             setIsRefreshing(false);
         }
-    }, []);
+    }, [refreshZakatHistory]);
 
     useEffect(() => { fetchData(); }, [fetchData]);
 
-    const result = useMemo(() => calculateZakat({ ...autoData, cashOnHand, otherDebts, badDebts }), [autoData, cashOnHand, otherDebts, badDebts]);
+    const result = useMemo(() => calculateZakat({ ...autoData, cashOnHand, otherDebts }), [autoData, cashOnHand, otherDebts]);
 
     const fetchAiExplanation = async () => {
         setIsAiLoading(true);
@@ -97,7 +98,7 @@ export default function ZakatPage() {
         finally { setIsSaving(false); }
     };
 
-    if (isLoading) return <div className="p-6"><Skeleton className="h-12 w-1/3 mb-6"/><div className="grid grid-cols-3 gap-6"><Skeleton className="h-64"/><Skeleton className="h-64"/><Skeleton className="h-64"/></div></div>;
+    if (isLoading && history.length === 0) return <div className="p-6"><Skeleton className="h-12 w-1/3 mb-6"/><div className="grid grid-cols-3 gap-6"><Skeleton className="h-64"/><Skeleton className="h-64"/><Skeleton className="h-64"/></div></div>;
 
     return (
         <div className="p-4 sm:p-6 space-y-6 max-w-7xl mx-auto pb-20">

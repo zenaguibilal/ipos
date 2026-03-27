@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -12,33 +11,25 @@ import { BreadStats } from '@/components/bread/BreadStats';
 import { BreadClientList } from '@/components/bread/BreadClientList';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2, ChevronLeft, ChevronRight, Calendar, Users, Wheat } from 'lucide-react';
-import type { BreadOrder } from '@/lib/types';
-import { api } from '@/lib/api-client';
-import { toast } from 'sonner';
+import { useAppStore, useAppActions } from '@/stores/appStore';
+
+/**
+ * @fileOverview Bread Management Page (State Singularity Enforcement)
+ */
 
 export default function BreadPage() {
     const [currentDate, setCurrentDate] = useState(new Date());
     const formattedDate = formatDateToYYYYMMDD(currentDate);
 
-    const [orders, setOrders] = useState<BreadOrder[] | undefined>(undefined);
-    const [isLoading, setIsLoading] = useState(false);
-
-    const fetchOrders = useCallback(async (date: string) => {
-        setIsLoading(true);
-        try {
-            const data = await api.get<BreadOrder[]>(`bread?date=${date}`);
-            setOrders(data);
-        } catch (error: any) {
-            toast.error("Erreur lors du chargement des commandes.");
-        } finally {
-            setIsLoading(false);
-        }
-    }, []);
+    const { breadOrders, isLoading } = useAppStore(state => ({
+        breadOrders: state.breadOrders,
+        isLoading: state.isLoading.bread
+    }));
+    const { refreshBreadOrders } = useAppActions();
 
     useEffect(() => {
-        fetchOrders(formattedDate);
-    }, [formattedDate, fetchOrders]);
-
+        refreshBreadOrders(formattedDate);
+    }, [formattedDate, refreshBreadOrders]);
 
     const handleDateChange = useCallback((days: number) => {
         setCurrentDate(prev => addDays(prev, days));
@@ -91,18 +82,18 @@ export default function BreadPage() {
                     </div>
 
                     <div className="grid gap-6">
-                        <BreadStats orders={orders} isLoading={isLoading}/>
+                        <BreadStats orders={breadOrders} isLoading={isLoading}/>
 
                         <div className="flex flex-col">
-                            {isLoading && !orders ? (
+                            {isLoading && breadOrders.length === 0 ? (
                                 <div className="flex justify-center items-center h-64 luxury-glass">
                                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
                                 </div>
                             ) : (
                                 <BreadDayView 
-                                    orders={orders || []} 
+                                    orders={breadOrders} 
                                     currentDate={formattedDate}
-                                    onOrdersChange={() => fetchOrders(formattedDate)}
+                                    onOrdersChange={() => refreshBreadOrders(formattedDate)}
                                 />
                             )}
                         </div>
@@ -110,7 +101,7 @@ export default function BreadPage() {
                 </TabsContent>
 
                 <TabsContent value="clients" className="h-[calc(100vh-250px)] outline-none">
-                    <BreadClientList onListChange={() => fetchOrders(formattedDate)} />
+                    <BreadClientList onListChange={() => refreshBreadOrders(formattedDate)} />
                 </TabsContent>
             </Tabs>
         </div>
