@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -34,10 +35,10 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { productService } from '@/services/product.service';
-import { supplierService } from '@/services/supplier.service';
+import { api } from '@/lib/api-client';
 import { useAppStore, useIsManagerOrAdmin } from '@/stores/appStore';
 import { cn } from '@/lib/utils';
+import { CsvImporter } from '@/lib/csv-utils';
 
 type StockStatus = 'all' | 'in_stock' | 'low_stock' | 'out_of_stock' | 'expiring_soon' | 'expired';
 
@@ -66,7 +67,6 @@ const sortOptions: { [key: string]: string } = {
 export default function ProductsPage() {
     const isManagerOrAdmin = useIsManagerOrAdmin();
     const searchParams = useSearchParams();
-    const searchInputRef = useRef<HTMLInputElement>(null);
     const { viewMode, setViewMode } = useAppStore(state => ({
         viewMode: state.productViewMode,
         setViewMode: state.actions.setProductViewMode,
@@ -85,7 +85,6 @@ export default function ProductsPage() {
     const [isHistoryDialogOpen, setIsHistoryDialogOpen] = useState(false);
     const [isScannerOpen, setIsScannerOpen] = useState(false);
 
-    // FIX: State refactored to Partial<Product> to support duplication templates
     const [selectedProduct, setSelectedProduct] = useState<Partial<Product> | null>(null);
     const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
 
@@ -97,40 +96,25 @@ export default function ProductsPage() {
     const [isRefreshing, setIsRefreshing] = useState(false);
     const isLoading = products === undefined || categories === undefined || suppliers === undefined;
     
-    // States for CSV Import
     const [isImportPreviewOpen, setIsImportPreviewOpen] = useState(false);
     const [importAnalysis, setImportAnalysis] = useState<ProductImportAnalysis | null>(null);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [isImporting, setIsImporting] = useState(false);
 
-    useEffect(() => {
-        const stockStatusFromQuery = searchParams.get('stockStatus') as StockStatus;
-        if (stockStatusFromQuery && ['all', 'in_stock', 'low_stock', 'out_of_stock', 'expiring_soon', 'expired'].includes(stockStatusFromQuery)) {
-            setStockStatus(stockStatusFromQuery);
-        }
-        const queryFromUrl = searchParams.get('query');
-        if (queryFromUrl) {
-            setSearchQuery(queryFromUrl);
-        }
-        
-        if (searchInputRef.current) {
-            searchInputRef.current.focus();
-        }
-    }, [searchParams]);
-
     const fetchProducts = useCallback(async (manual = false) => {
         if (manual) setIsRefreshing(true);
         try {
-            const data = await productService.filterProducts({ 
+            const query = new URLSearchParams({ 
                 query: debouncedSearchQuery, 
                 category: selectedCategory, 
                 supplierUuid: selectedSupplier,
                 stockStatus, 
                 sortBy 
-            });
+            }).toString();
+            const data = await api.get<Product[]>(`products?${query}`);
             setProducts(data);
         } catch(error: any) {
-            toast.error("Impossible de charger les produits.", { description: error.message });
+            toast.error("Impossible de charger les produits.");
             setProducts([]);
         } finally {
             if (manual) setIsRefreshing(false);
@@ -144,13 +128,12 @@ export default function ProductsPage() {
     const fetchMeta = useCallback(async () => {
         try {
             const [cats, sups] = await Promise.all([
-                productService.getCategories(),
-                supplierService.getSuppliers()
+                api.get<string[]>('products/categories'),
+                api.get<Supplier[]>('suppliers')
             ]);
             setCategories(cats);
             setSuppliers(sups);
         } catch(error: any) {
-            toast.error("Impossible de charger les métadonnées.", { description: error.message });
             setCategories([]);
             setSuppliers([]);
         }
@@ -159,75 +142,17 @@ export default function ProductsPage() {
     useEffect(() => {
         fetchMeta();
     }, [fetchMeta]);
-    
-    useEffect(() => {
-        setSelectedProducts(new Set());
-    }, [products]);
-
-    const onDialogSuccess = () => {
-        fetchProducts();
-        fetchMeta();
-    }
-
-    const handleEditProduct = useCallback((product: Product) => {
-        setSelectedProduct(product);
-        setIsProductDialogOpen(true);
-    }, []);
-
-    const handleDuplicateProduct = useCallback((product: Product) => {
-        // FIX: Create a template without unique identifiers. TS-Safe Partial<Product>.
-        const { uuid, barcodes, ...rest } = product;
-        setSelectedProduct({ ...rest, barcodes: [] });
-        setIsProductDialogOpen(true);
-    }, []);
-
-    const handleViewHistory = useCallback((product: Product) => {
-        setSelectedProduct(product);
-        setIsHistoryDialogOpen(true);
-    }, []);
-
-    const handleDeleteProduct = useCallback(async (product: Product) => {
-        try {
-            await productService.deleteProduct(product.uuid);
-            toast.success(`Produit "${product.name}" supprimé.`);
-            fetchProducts();
-        } catch (error: any) {
-            toast.error("Échec de la suppression.", { description: error.message });
-        }
-    }, [fetchProducts]);
-
-    const handleToggleSelection = useCallback((productUuid: string) => {
-        setSelectedProducts(prev => {
-            const newSet = new Set(prev);
-            if (newSet.has(productUuid)) {
-                newSet.delete(productUuid);
-            } else {
-                newSet.add(productUuid);
-            }
-            return newSet;
-        });
-    }, []);
-    
-    const handleToggleSelectAll = useCallback(() => {
-        if (!products) return;
-        if (selectedProducts.size === products.length) {
-            setSelectedProducts(new Set());
-        } else {
-            setSelectedProducts(new Set(products.map(p => p.uuid)));
-        }
-    }, [products, selectedProducts.size]);
 
     const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
-
         setIsAnalyzing(true);
         try {
-            const analysis = await productService.analyzeImport(file);
+            const analysis = await CsvImporter.analyzeProducts(file);
             setImportAnalysis(analysis);
             setIsImportPreviewOpen(true);
         } catch (error: any) {
-            toast.error("Erreur lors de l'analyse du fichier.", { description: error.message });
+            toast.error("Erreur lors de l'analyse.");
         } finally {
             setIsAnalyzing(false);
             e.target.value = '';
@@ -237,126 +162,42 @@ export default function ProductsPage() {
     const handleConfirmImport = async (confirmedData: { toAdd: any[], toUpdate: any[] }) => {
         setIsImporting(true);
         try {
-            await productService.executeImport(confirmedData);
-            toast.success("Importation des produits terminée !");
+            await api.post('products/bulk-import', confirmedData);
+            toast.success("Importation terminée !");
             setIsImportPreviewOpen(false);
-            setImportAnalysis(null);
-            onDialogSuccess();
+            fetchProducts(true);
         } catch (error: any) {
-            toast.error("Erreur lors de l'importation des produits.", { description: error.message });
+            toast.error("Erreur d'importation.");
         } finally {
             setIsImporting(false);
         }
     };
 
-    const handleExportCSV = async () => {
-        if (!products || products.length === 0) {
-            toast.info("Aucun produit à exporter.");
-            return;
-        }
-        try {
-            await productService.exportToCSV(products);
-            toast.success("Inventaire exporté avec succès.");
-        } catch (error: any) {
-            toast.error("Erreur lors de l'exportation.", { description: error.message });
-        }
+    const handleExportCSV = () => {
+        if (!products || products.length === 0) return;
+        CsvImporter.exportProducts(products);
     };
 
     const handleScanSuccess = (barcode: string) => {
         setSearchQuery(barcode);
-        toast.success(`Code scanné : ${barcode}`);
+        toast.success(`Scanné: ${barcode}`);
     };
-    
-    const renderSkeletons = () => (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {[...Array(8)].map((_, i) => (
-                <Card key={i}>
-                    <CardHeader className="p-0"><Skeleton className="rounded-t-lg aspect-[4/3]" /></CardHeader>
-                    <CardContent className="p-4 space-y-2"><Skeleton className="h-5 w-3/4" /><Skeleton className="h-4 w-1/2" /></CardContent>
-                    <CardFooter className="p-4 pt-0"><Skeleton className="h-10 w-full" /></CardFooter>
-                </Card>
-            ))}
-        </div>
-    );
-
-    const renderContent = () => {
-        if (isLoading) {
-            return viewMode === 'grid' ? renderSkeletons() : <ProductTableSkeleton />;
-        }
-
-        if (!products || products.length === 0) {
-            return (
-                <EmptyState
-                    icon={Package}
-                    title="Aucun produit trouvé"
-                    description="Essayez d'ajuster votre recherche ou vos filtres, ou ajoutez un nouveau produit."
-                >
-                     <Button onClick={() => { setSelectedProduct(null); setIsProductDialogOpen(true); }} disabled={!isManagerOrAdmin}>
-                        <Plus className="mr-2 h-4 w-4" /> Ajouter un produit
-                    </Button>
-                </EmptyState>
-            );
-        }
-        
-        if (viewMode === 'grid') {
-            return (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                    {products.map(p => (
-                        <ProductCard 
-                            key={p.uuid} 
-                            product={p} 
-                            onEdit={handleEditProduct} 
-                            onDuplicate={handleDuplicateProduct}
-                            onViewHistory={handleViewHistory}
-                            onDelete={() => {
-                                setSelectedProduct(p);
-                                setIsDeleteDialogOpen(true);
-                            }}
-                            isSelected={selectedProducts.has(p.uuid)}
-                            onToggleSelection={() => handleToggleSelection(p.uuid)}
-                        />
-                    ))}
-                </div>
-            );
-        }
-
-        return (
-            <ProductTable 
-                products={products}
-                onEdit={handleEditProduct}
-                onDuplicate={handleDuplicateProduct}
-                onViewHistory={handleViewHistory}
-                onDelete={(p) => {
-                    setSelectedProduct(p);
-                    setIsDeleteDialogOpen(true);
-                }}
-                selectedProducts={selectedProducts}
-                onToggleProductSelection={handleToggleSelection}
-                onToggleSelectAll={handleToggleSelectAll}
-                suppliers={suppliers || []}
-            />
-        );
-    }
 
     const currentStockStatusOption = stockStatusOptions.find(o => o.value === stockStatus)!;
 
     return (
         <div className="p-4 sm:p-6 space-y-6">
-            <PageHeader
-                title="Gestion des Produits"
-                description="Recherchez, filtrez et gérez votre inventaire."
-            >
-                <div className="flex gap-2 w-full sm:w-auto">
-                    <Button variant="outline" onClick={handleExportCSV} disabled={isLoading || !products || products.length === 0}>
+            <PageHeader title="Inventaire Cloud" description="Gestion souveraine du stock et des actifs.">
+                <div className="flex gap-2">
+                    <Button variant="outline" onClick={handleExportCSV} disabled={isLoading} className="luxury-glass border-white/10">
                         <FileUp className="mr-2 h-4 w-4" /> Exporter
                     </Button>
                     {isManagerOrAdmin && (
                         <>
-                            <Button asChild variant="outline" disabled={isAnalyzing}>
-                                <label htmlFor="csv-product-importer">
-                                    {isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
-                                    {isAnalyzing ? 'Analyse...' : 'Importer'}
-                                    <input type="file" id="csv-product-importer" accept=".csv" className="sr-only" onChange={handleFileSelected} />
+                            <Button asChild variant="outline" className="luxury-glass border-white/10">
+                                <label className="cursor-pointer">
+                                    <FileDown className="mr-2 h-4 w-4" /> Importer
+                                    <input type="file" accept=".csv" className="hidden" onChange={handleFileSelected} />
                                 </label>
                             </Button>
                             <Button onClick={() => { setSelectedProduct(null); setIsProductDialogOpen(true); }}>
@@ -374,198 +215,68 @@ export default function ProductsPage() {
                     <div className="relative flex-grow">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input 
-                            ref={searchInputRef}
                             placeholder="Nom ou code-barres..."
-                            className="pl-10"
+                            className="pl-10 h-11 luxury-glass rounded-xl"
                             value={searchQuery}
                             onChange={e => setSearchQuery(e.target.value)}
                         />
                     </div>
-                    <Button variant="outline" size="icon" className="shrink-0" onClick={() => setIsScannerOpen(true)}>
+                    <Button variant="outline" size="icon" className="shrink-0 h-11 w-11 luxury-glass" onClick={() => setIsScannerOpen(true)}>
                         <Scan className="h-4 w-4" />
                     </Button>
                 </div>
                 
-                 <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="outline" className="w-full sm:w-auto">Filtrer par catégorie</Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                        <DropdownMenuLabel>Catégories</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuCheckboxItem
-                            checked={selectedCategory === 'all'}
-                            onCheckedChange={() => setSelectedCategory('all')}
-                        >Toutes</DropdownMenuCheckboxItem>
-                         {categories && categories.map(cat => (
-                             <DropdownMenuCheckboxItem
-                                key={cat}
-                                checked={selectedCategory === cat}
-                                onCheckedChange={() => setSelectedCategory(cat)}
-                            >{cat}</DropdownMenuCheckboxItem>
-                         ))}
-                    </DropdownMenuContent>
-                </DropdownMenu>
-
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button variant="outline" className="w-full sm:w-auto">
-                            <Building className="mr-2 h-4 w-4" />
-                            Filtrer par Fournisseur
-                        </Button>
+                        <Button variant="outline" className="h-11 luxury-glass rounded-xl">Catégories</Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                        <DropdownMenuLabel>Fournisseurs</DropdownMenuLabel>
+                    <DropdownMenuContent className="luxury-glass">
+                        <DropdownMenuCheckboxItem checked={selectedCategory === 'all'} onCheckedChange={() => setSelectedCategory('all')}>Toutes</DropdownMenuCheckboxItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuCheckboxItem
-                            checked={selectedSupplier === 'all'}
-                            onCheckedChange={() => setSelectedSupplier('all')}
-                        >Tous</DropdownMenuCheckboxItem>
-                        {suppliers?.map(sup => (
-                            <DropdownMenuCheckboxItem
-                                key={sup.uuid}
-                                checked={selectedSupplier === sup.uuid}
-                                onCheckedChange={() => setSelectedSupplier(sup.uuid)}
-                            >{sup.name}</DropdownMenuCheckboxItem>
+                        {categories?.map(cat => (
+                            <DropdownMenuCheckboxItem key={cat} checked={selectedCategory === cat} onCheckedChange={() => setSelectedCategory(cat)}>{cat}</DropdownMenuCheckboxItem>
                         ))}
                     </DropdownMenuContent>
                 </DropdownMenu>
 
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button variant="outline" className="w-full sm:w-auto">
-                            <currentStockStatusOption.icon className="mr-2 h-4 w-4" />
-                            {currentStockStatusOption.label}
-                        </Button>
+                        <Button variant="outline" className="h-11 luxury-glass rounded-xl">Trier: {sortOptions[sortBy]}</Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                        <DropdownMenuLabel>Statut du Stock</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        {stockStatusOptions.map(option => (
-                             <DropdownMenuCheckboxItem
-                                key={option.value}
-                                checked={stockStatus === option.value}
-                                onCheckedChange={() => setStockStatus(option.value)}
-                            >
-                                <option.icon className="mr-2 h-4 w-4" />
-                                {option.label}
-                            </DropdownMenuCheckboxItem>
-                         ))}
-                    </DropdownMenuContent>
-                </DropdownMenu>
-                
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="outline" className="w-full sm:w-auto">
-                            <SortAsc className="mr-2 h-4 w-4" />
-                            Trier par: {sortOptions[sortBy]}
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                        <DropdownMenuLabel>Trier les produits par</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
+                    <DropdownMenuContent className="luxury-glass">
                         <DropdownMenuRadioGroup value={sortBy} onValueChange={setSortBy}>
-                            {Object.entries(sortOptions).map(([key, value]) => (
-                                <DropdownMenuRadioItem key={key} value={key}>{value}</DropdownMenuRadioItem>
-                            ))}
+                            {Object.entries(sortOptions).map(([k, v]) => <DropdownMenuRadioItem key={k} value={k}>{v}</DropdownMenuRadioItem>)}
                         </DropdownMenuRadioGroup>
                     </DropdownMenuContent>
                 </DropdownMenu>
 
-
-                <div className="flex items-center gap-1 rounded-md bg-muted p-1">
-                    <Button variant={viewMode === 'grid' ? 'secondary': 'ghost'} size="icon" onClick={() => setViewMode('grid')}>
-                        <LayoutGrid className="h-5 w-5"/>
-                    </Button>
-                    <Button variant={viewMode === 'list' ? 'secondary': 'ghost'} size="icon" onClick={() => setViewMode('list')}>
-                        <List className="h-5 w-5"/>
-                    </Button>
+                <div className="flex items-center gap-1 rounded-xl bg-muted/50 p-1 border border-primary/10 h-11 luxury-glass">
+                    <Button variant={viewMode === 'grid' ? 'secondary': 'ghost'} size="icon" onClick={() => setViewMode('grid')}><LayoutGrid className="h-5 w-5"/></Button>
+                    <Button variant={viewMode === 'list' ? 'secondary': 'ghost'} size="icon" onClick={() => setViewMode('list')}><List className="h-5 w-5"/></Button>
                 </div>
 
-                <Button variant="ghost" size="icon" onClick={() => fetchProducts(true)} disabled={isRefreshing}>
+                <Button variant="ghost" size="icon" className="h-11 w-11 luxury-glass" onClick={() => fetchProducts(true)} disabled={isRefreshing}>
                     <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
                 </Button>
             </div>
 
-            {isManagerOrAdmin && (
-                <div className="flex flex-col sm:flex-row gap-2 justify-between items-center bg-card border rounded-lg p-3">
-                    <div className="flex items-center gap-3">
-                        <Checkbox
-                            id="select-all"
-                            checked={!isLoading && products && products.length > 0 && selectedProducts.size === products.length}
-                            onCheckedChange={handleToggleSelectAll}
-                            disabled={isLoading || !products || products.length === 0}
-                        />
-                        <label htmlFor="select-all" className="text-sm font-medium">
-                            {selectedProducts.size > 0 ? `${selectedProducts.size} sélectionné(s)` : "Tout sélectionner"}
-                        </label>
-                    </div>
-                    {selectedProducts.size > 0 && (
-                        <div className="flex gap-2">
-                            <Button variant="outline" onClick={() => setIsPrintDialogOpen(true)}>
-                                <Printer className="mr-2 h-4 w-4" /> Imprimer
-                            </Button>
-                            <Button variant="destructive" onClick={() => setIsBulkDeleteDialogOpen(true)}>
-                                <Trash2 className="mr-2 h-4 w-4" /> Supprimer
-                            </Button>
-                        </div>
-                    )}
-                </div>
-            )}
-            
-            <div>
-               {renderContent()}
+            <div className="min-h-[400px]">
+               {isLoading ? (viewMode === 'grid' ? <div className="grid grid-cols-4 gap-6">{[...Array(8)].map((_, i) => <Skeleton key={i} className="h-64 rounded-2xl" />)}</div> : <ProductTableSkeleton />) : (
+                   viewMode === 'grid' ? (
+                       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                           {products.map(p => <ProductCard key={p.uuid} product={p} onEdit={(p) => { setSelectedProduct(p); setIsProductDialogOpen(true); }} onDelete={(p) => { setSelectedProduct(p); setIsDeleteDialogOpen(true); }} onDuplicate={(p) => { const { uuid, ...rest } = p; setSelectedProduct(rest); setIsProductDialogOpen(true); }} onViewHistory={(p) => { setSelectedProduct(p); setIsHistoryDialogOpen(true); }} isSelected={selectedProducts.has(p.uuid)} onToggleSelection={() => { const s = new Set(selectedProducts); s.has(p.uuid) ? s.delete(p.uuid) : s.add(p.uuid); setSelectedProducts(s); }} />)}
+                       </div>
+                   ) : (
+                       <ProductTable products={products} onEdit={(p) => { setSelectedProduct(p); setIsProductDialogOpen(true); }} onDelete={(p) => { setSelectedProduct(p); setIsDeleteDialogOpen(true); }} onDuplicate={(p) => { const { uuid, ...rest } = p; setSelectedProduct(rest); setIsProductDialogOpen(true); }} onViewHistory={(p) => { setSelectedProduct(p); setIsHistoryDialogOpen(true); }} selectedProducts={selectedProducts} onToggleProductSelection={(id) => { const s = new Set(selectedProducts); s.has(id) ? s.delete(id) : s.add(id); setSelectedProducts(s); }} onToggleSelectAll={() => setSelectedProducts(selectedProducts.size === products.length ? new Set() : new Set(products.map(p => p.uuid)))} suppliers={suppliers || []} />
+                   )
+               )}
             </div>
 
-            {isManagerOrAdmin && (
-                <>
-                    <ProductDialog 
-                        isOpen={isProductDialogOpen}
-                        onOpenChange={setIsProductDialogOpen}
-                        product={selectedProduct}
-                        categories={categories || []}
-                        suppliers={suppliers || []}
-                        onSuccess={onDialogSuccess}
-                    />
-                    <DeleteProductDialog 
-                        isOpen={isDeleteDialogOpen}
-                        onOpenChange={setIsDeleteDialogOpen}
-                        product={selectedProduct as Product}
-                        onConfirmDelete={handleDeleteProduct}
-                    />
-                    <PrintLabelsDialog
-                        isOpen={isPrintDialogOpen}
-                        onOpenChange={setIsPrintDialogOpen}
-                        productUuids={Array.from(selectedProducts)}
-                    />
-                     <DeleteMultipleProductsDialog
-                        isOpen={isBulkDeleteDialogOpen}
-                        onOpenChange={setIsBulkDeleteDialogOpen}
-                        productUuids={Array.from(selectedProducts)}
-                        onSuccess={() => {
-                            setSelectedProducts(new Set());
-                            fetchProducts();
-                        }}
-                    />
-                     <ProductImportPreviewDialog
-                        isOpen={isImportPreviewOpen}
-                        onOpenChange={setIsImportPreviewOpen}
-                        analysis={importAnalysis}
-                        onConfirm={handleConfirmImport}
-                        isImporting={isImporting}
-                    />
-                    <ProductHistoryDialog
-                        isOpen={isHistoryDialogOpen}
-                        onOpenChange={setIsHistoryDialogOpen}
-                        product={selectedProduct as Product}
-                    />
-                    <BarcodeScannerDialog
-                        isOpen={isScannerOpen}
-                        onOpenChange={setIsScannerOpen}
-                        onScanSuccess={handleScanSuccess}
-                    />
-                </>
-            )}
+            {/* DIALOGS */}
+            <ProductDialog isOpen={isProductDialogOpen} onOpenChange={setIsProductDialogOpen} product={selectedProduct} categories={categories || []} suppliers={suppliers || []} onSuccess={() => fetchProducts(true)} />
+            <ProductHistoryDialog isOpen={isHistoryDialogOpen} onOpenChange={setIsHistoryDialogOpen} product={selectedProduct as Product} />
+            <BarcodeScannerDialog isOpen={isScannerOpen} onOpenChange={setIsScannerOpen} onScanSuccess={handleScanSuccess} />
+            <ProductImportPreviewDialog isOpen={isImportPreviewOpen} onOpenChange={setIsImportPreviewOpen} analysis={importAnalysis} onConfirm={handleConfirmImport} isImporting={isImporting} />
         </div>
     );
 }
