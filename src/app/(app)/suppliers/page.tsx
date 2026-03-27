@@ -33,6 +33,7 @@ import { CsvImporter } from '@/lib/csv-utils';
 
 /**
  * @fileOverview Suppliers Page (Purified)
+ * Purged: unused icon imports (X).
  */
 
 const sortOptions: { [key: string]: string } = {
