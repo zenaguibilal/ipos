@@ -49,7 +49,7 @@ const CommandList = React.forwardRef<
     {...props}
   />
 ))
-CommandList.displayName = CommandList.displayName
+CommandList.displayName = CommandPrimitive.List.displayName
 
 const CommandEmpty = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive.Empty>,
