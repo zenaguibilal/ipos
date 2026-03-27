@@ -67,7 +67,7 @@ export const CustomerStatement = React.forwardRef<HTMLDivElement, CustomerStatem
                         </thead>
                         <tbody>
                             {unpaidSales.map(sale => (
-                                <tr key={sale.id} className="border-b border-gray-200">
+                                <tr key={sale.uuid} className="border-b border-gray-200">
                                     <td className="p-2">{format(safeToDate(sale.createdAt!), 'd/MM/yy')}</td>
                                     <td className="p-2">{sale.invoiceNumber}</td>
                                     <td className="text-right p-2">{formatCurrency(sale.total)}</td>
