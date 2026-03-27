@@ -170,13 +170,17 @@ export class CsvImporter {
         })), 'sales-history-export');
     }
 
-    static exportReturns(returns: ProductReturn[]) {
-        this.download(returns.map(r => ({
-            'Référence': r.uuid.substring(0,8),
-            'Facture Origine': r.originalInvoiceNumber,
-            'Date': new Date(r.createdAt).toLocaleString(),
-            'Valeur Retour': r.totalReturnValue,
-            'Remboursé': r.amountRefunded
-        })), 'returns-export');
+    static exportReturns(returns: ProductReturn[], customerMap: Map<string, Customer>) {
+        this.download(returns.map(r => {
+            const customer = r.customerUuid ? customerMap.get(r.customerUuid) : null;
+            return {
+                'Référence': r.uuid.substring(0,8),
+                'Facture Origine': r.originalInvoiceNumber,
+                'Date': new Date(r.createdAt).toLocaleString(),
+                'Client': customer ? `${customer.firstName} ${customer.lastName}` : 'Passage',
+                'Valeur Retour': r.totalReturnValue,
+                'Remboursé': r.amountRefunded
+            };
+        }), 'returns-export');
     }
 }
