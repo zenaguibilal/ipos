@@ -1,8 +1,8 @@
+
 'use client';
 
 import { create } from 'zustand';
 import { produce } from 'immer';
-import type { Session, User } from '@supabase/supabase-js';
 import type { 
     Cart, CompanyProfile, Product, Sale, Customer, Supplier, 
     Expense, StockIntake, BreadOrder, Recipe, SavedZakatCalculation 
@@ -32,6 +32,10 @@ interface AppState {
     recipes: Recipe[];
     zakatHistory: SavedZakatCalculation[];
     
+    // Selection States (Singularity for detail pages)
+    selectedCustomer: { data: Customer | null; stats: any; activity: any[] };
+    selectedSupplier: { data: Supplier | null; stats: any; activity: any[]; products: Product[] };
+
     // Categories Cache
     productCategories: string[];
     expenseCategories: string[];
@@ -42,7 +46,7 @@ interface AppState {
     lastCompletedSale: { sale: Sale; customer?: Customer } | null;
     isLoading: Record<string, boolean>;
     
-    // App Config / UI State
+    // UI View Modes
     expenseViewMode: 'grid' | 'list';
     salesHistoryViewMode: 'grid' | 'list';
     returnViewMode: 'grid' | 'list';
@@ -53,18 +57,22 @@ interface AppState {
         fetchProfile: () => Promise<void>;
         updateProfile: (data: Partial<CompanyProfile>) => Promise<void>;
         
-        // Universal Refreshers
-        refreshProducts: (params?: any) => Promise<void>;
-        refreshCustomers: (params?: any) => Promise<void>;
+        // Refreshers
+        refreshProducts: (search?: string) => Promise<void>;
+        refreshCustomers: () => Promise<void>;
         refreshSuppliers: () => Promise<void>;
-        refreshExpenses: (params: any) => Promise<void>;
-        refreshSalesHistory: (params: any) => Promise<void>;
-        refreshReturns: (params: any) => Promise<void>;
-        refreshStockIntakes: (params: any) => Promise<void>;
+        refreshExpenses: (params?: any) => Promise<void>;
+        refreshSalesHistory: (params?: any) => Promise<void>;
+        refreshReturns: (params?: any) => Promise<void>;
+        refreshStockIntakes: (params?: any) => Promise<void>;
         refreshBreadOrders: (date: string) => Promise<void>;
         refreshRecipes: () => Promise<void>;
         refreshZakatHistory: () => Promise<void>;
         refreshCategories: () => Promise<void>;
+
+        // Detail Fetchers (Phase 5 Enforcer)
+        fetchCustomerDetails: (uuid: string) => Promise<void>;
+        fetchSupplierDetails: (uuid: string) => Promise<void>;
 
         // UI State Actions
         setExpenseViewMode: (mode: 'grid' | 'list') => void;
@@ -119,6 +127,9 @@ export const useAppStore = create<AppState>((set, get) => ({
     recipes: [],
     zakatHistory: [],
     
+    selectedCustomer: { data: null, stats: null, activity: [] },
+    selectedSupplier: { data: null, stats: null, activity: [], products: [] },
+
     productCategories: [],
     expenseCategories: [],
 
@@ -149,22 +160,21 @@ export const useAppStore = create<AppState>((set, get) => ({
             set({ profile: updated });
         },
 
-        refreshProducts: async (params) => {
+        refreshProducts: async (search) => {
             set(p => ({ isLoading: { ...p.isLoading, products: true } }));
             try {
-                const query = new URLSearchParams(params).toString();
-                const products = await api.get<Product[]>(`products?${query}`);
+                const query = search ? `?query=${encodeURIComponent(search)}` : '';
+                const products = await api.get<Product[]>(`products${query}`);
                 set({ products });
             } finally {
                 set(p => ({ isLoading: { ...p.isLoading, products: false } }));
             }
         },
 
-        refreshCustomers: async (params) => {
+        refreshCustomers: async () => {
             set(p => ({ isLoading: { ...p.isLoading, customers: true } }));
             try {
-                const query = new URLSearchParams(params).toString();
-                const customers = await api.get<Customer[]>(`customers?${query}`);
+                const customers = await api.get<Customer[]>('customers');
                 set({ customers });
             } finally {
                 set(p => ({ isLoading: { ...p.isLoading, customers: false } }));
@@ -184,8 +194,8 @@ export const useAppStore = create<AppState>((set, get) => ({
         refreshExpenses: async (params) => {
             set(p => ({ isLoading: { ...p.isLoading, expenses: true } }));
             try {
-                const query = new URLSearchParams(params).toString();
-                const expenses = await api.get<Expense[]>(`expenses?${query}`);
+                const query = params ? `?${new URLSearchParams(params).toString()}` : '';
+                const expenses = await api.get<Expense[]>(`expenses${query}`);
                 set({ expenses });
             } finally {
                 set(p => ({ isLoading: { ...p.isLoading, expenses: false } }));
@@ -195,8 +205,8 @@ export const useAppStore = create<AppState>((set, get) => ({
         refreshSalesHistory: async (params) => {
             set(p => ({ isLoading: { ...p.isLoading, sales: true } }));
             try {
-                const query = new URLSearchParams(params).toString();
-                const salesHistory = await api.get<Sale[]>(`sales?${query}`);
+                const query = params ? `?${new URLSearchParams(params).toString()}` : '';
+                const salesHistory = await api.get<Sale[]>(`sales${query}`);
                 set({ salesHistory });
             } finally {
                 set(p => ({ isLoading: { ...p.isLoading, sales: false } }));
@@ -206,8 +216,8 @@ export const useAppStore = create<AppState>((set, get) => ({
         refreshReturns: async (params) => {
             set(p => ({ isLoading: { ...p.isLoading, returns: true } }));
             try {
-                const query = new URLSearchParams(params).toString();
-                const returns = await api.get<any[]>(`returns?${query}`);
+                const query = params ? `?${new URLSearchParams(params).toString()}` : '';
+                const returns = await api.get<any[]>(`returns${query}`);
                 set({ returns });
             } finally {
                 set(p => ({ isLoading: { ...p.isLoading, returns: false } }));
@@ -217,8 +227,8 @@ export const useAppStore = create<AppState>((set, get) => ({
         refreshStockIntakes: async (params) => {
             set(p => ({ isLoading: { ...p.isLoading, stock: true } }));
             try {
-                const query = new URLSearchParams(params).toString();
-                const stockIntakes = await api.get<StockIntake[]>(`stock?${query}`);
+                const query = params ? `?${new URLSearchParams(params).toString()}` : '';
+                const stockIntakes = await api.get<StockIntake[]>(`stock${query}`);
                 set({ stockIntakes });
             } finally {
                 set(p => ({ isLoading: { ...p.isLoading, stock: false } }));
@@ -256,11 +266,51 @@ export const useAppStore = create<AppState>((set, get) => ({
         },
 
         refreshCategories: async () => {
-            const [prodCats, expCats] = await Promise.all([
-                api.get<string[]>('products/categories'),
-                api.get<string[]>('expenses/categories')
-            ]);
-            set({ productCategories: prodCats, expenseCategories: expCats });
+            try {
+                const [prodCats, expCats] = await Promise.all([
+                    api.get<string[]>('products/categories'),
+                    api.get<string[]>('expenses/categories')
+                ]);
+                set({ productCategories: prodCats, expenseCategories: expCats });
+            } catch (e) {}
+        },
+
+        fetchCustomerDetails: async (uuid) => {
+            set(p => ({ isLoading: { ...p.isLoading, customerDetail: true } }));
+            try {
+                const [data, stats, activity] = await Promise.all([
+                    api.get<Customer>(`customers/${uuid}`),
+                    api.get<any>(`customers/${uuid}/stats`),
+                    api.get<any[]>(`customers/${uuid}/activity`)
+                ]);
+                set({ selectedCustomer: { data, stats, activity } });
+            } finally {
+                set(p => ({ isLoading: { ...p.isLoading, customerDetail: false } }));
+            }
+        },
+
+        fetchSupplierDetails: async (uuid) => {
+            set(p => ({ isLoading: { ...p.isLoading, supplierDetail: true } }));
+            try {
+                const [data, activity, products] = await Promise.all([
+                    api.get<Supplier>(`suppliers/${uuid}`),
+                    api.get<any[]>(`suppliers/${uuid}/activity`),
+                    api.get<Product[]>(`products?supplierUuid=${uuid}`)
+                ]);
+                
+                // Calculate stats from activity on client for speed
+                const intakes = activity.filter(a => a.type === 'intake');
+                const totalBought = intakes.reduce((sum, i) => sum + i.totalValue, 0);
+                const stats = { 
+                    totalBought, 
+                    intakeCount: intakes.length,
+                    avgIntake: intakes.length > 0 ? totalBought / intakes.length : 0
+                };
+
+                set({ selectedSupplier: { data, stats, activity, products } });
+            } finally {
+                set(p => ({ isLoading: { ...p.isLoading, supplierDetail: false } }));
+            }
         },
 
         setExpenseViewMode: (mode) => set({ expenseViewMode: mode }),
@@ -372,6 +422,8 @@ export const useAppStore = create<AppState>((set, get) => ({
             carts: [createInitialCart()],
             activeCartId: '',
             lastCompletedSale: null,
+            selectedCustomer: { data: null, stats: null, activity: [] },
+            selectedSupplier: { data: null, stats: null, activity: [], products: [] },
         }),
     }
 }));

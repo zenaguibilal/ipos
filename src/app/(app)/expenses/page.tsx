@@ -4,19 +4,11 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { Expense } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Plus, Filter, Search, FileUp, TrendingDown, Tag, X, RefreshCw, LayoutGrid, List } from 'lucide-react';
+import { Plus, Search, FileUp, TrendingDown, RefreshCw } from 'lucide-react';
 import { ExpenseCard } from '@/components/expenses/ExpenseCard';
 import { ExpenseTable } from '@/components/expenses/ExpenseTable';
 import ExpenseDialog from '@/components/expenses/ExpenseDialog';
 import DeleteExpenseDialog from '@/components/expenses/DeleteExpenseDialog';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuCheckboxItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { useDateRange } from '@/hooks/useDateRange';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,63 +17,47 @@ import { formatCurrency, cn } from '@/lib/utils';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { toast } from 'sonner';
-import { useAppStore, useIsManagerOrAdmin } from '@/stores/appStore';
+import { useAppStore, useIsManagerOrAdmin, useAppActions } from '@/stores/appStore';
 import { Input } from '@/components/ui/input';
 import { useDebounce } from '@/hooks/useDebounce';
-import { api } from '@/lib/api-client';
 import { CsvImporter } from '@/lib/csv-utils';
+
+/**
+ * @fileOverview Expense Page (State Singularity Enforcement)
+ * تم توحيد إدارة الحالة لتكون عبر Zustand Store حصرياً.
+ */
 
 export default function ExpensesPage() {
     const isManagerOrAdmin = useIsManagerOrAdmin();
-    const { viewMode, setViewMode } = useAppStore(state => ({
+    const { expenses, isLoading, viewMode, categories } = useAppStore(state => ({
+        expenses: state.expenses,
+        isLoading: state.isLoading.expenses,
         viewMode: state.expenseViewMode,
-        setViewMode: state.actions.setExpenseViewMode,
+        categories: state.expenseCategories
     }));
+    const { refreshExpenses, refreshCategories, setExpenseViewMode } = useAppActions();
 
     const [searchQuery, setSearchQuery] = useState('');
     const debouncedSearch = useDebounce(searchQuery, 300);
-    const [selectedCategory, setSelectedCategory] = useState<string>('all');
     const [isExpenseDialogOpen, setIsExpenseDialogOpen] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
     const { dateRange, setDate, isMounted } = useDateRange(29);
     
-    const [expenses, setExpenses] = useState<Expense[] | undefined>(undefined);
-    const [categories, setCategories] = useState<string[] | undefined>(undefined);
-    const [isRefreshing, setIsRefreshing] = useState(false);
-
-    const isLoading = expenses === undefined || categories === undefined;
-    
-    const fetchExpenses = useCallback(async (manual = false) => {
+    const fetchExpenses = useCallback(() => {
         if (!isMounted || !dateRange?.from || !dateRange?.to) return;
-        if (manual) setIsRefreshing(true);
-        
-        try {
-            const query = new URLSearchParams({
-                category: selectedCategory,
-                from: dateRange.from.toISOString(),
-                to: dateRange.to.toISOString()
-            }).toString();
-            const data = await api.get<Expense[]>(`expenses?${query}`);
-            setExpenses(data);
-        } catch (error: any) {
-            toast.error("Échec de récupération des dépenses.");
-            setExpenses([]);
-        } finally {
-            if (manual) setIsRefreshing(false);
-        }
-    }, [isMounted, selectedCategory, dateRange]);
+        refreshExpenses({
+            from: dateRange.from.toISOString(),
+            to: dateRange.to.toISOString()
+        });
+    }, [isMounted, dateRange, refreshExpenses]);
     
     useEffect(() => {
         fetchExpenses();
-    }, [fetchExpenses]);
-
-    useEffect(() => {
-        api.get<string[]>('expenses/categories').then(setCategories).catch(() => setCategories([]));
-    }, []);
+        refreshCategories();
+    }, [fetchExpenses, refreshCategories]);
 
     const filteredExpenses = useMemo(() => {
-        if (!expenses) return [];
         return expenses.filter(e => e.description.toLowerCase().includes(debouncedSearch.toLowerCase()));
     }, [expenses, debouncedSearch]);
 
@@ -99,11 +75,7 @@ export default function ExpensesPage() {
                     <Button variant="outline" onClick={handleExport} disabled={!filteredExpenses.length} className="luxury-glass border-white/10">
                         <FileUp className="mr-2 h-4 w-4" /> Exporter CSV
                     </Button>
-                    <Button 
-                        onClick={() => { setSelectedExpense(null); setIsExpenseDialogOpen(true); }}
-                        disabled={!isManagerOrAdmin}
-                        className="bg-destructive hover:bg-destructive/90 shadow-lg shadow-destructive/20 rounded-xl"
-                    >
+                    <Button onClick={() => { setSelectedExpense(null); setIsExpenseDialogOpen(true); }} disabled={!isManagerOrAdmin} className="bg-destructive hover:bg-destructive/90 shadow-lg shadow-destructive/20 rounded-xl">
                         <Plus className="mr-2 h-4 w-4" /> Nouvelle Dépense
                     </Button>
                 </div>
@@ -111,34 +83,24 @@ export default function ExpensesPage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <Card className="luxury-glass bg-destructive/5 border-destructive/20 relative group overflow-hidden">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Volume Sorties</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-4xl font-black text-destructive">{formatCurrency(totalAmount)}</p>
-                        <p className="text-[10px] text-muted-foreground font-bold mt-2 uppercase opacity-60">Total calculé sur la période</p>
-                    </CardContent>
+                    <CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Volume Sorties</CardTitle></CardHeader>
+                    <CardContent><p className="text-4xl font-black text-destructive">{formatCurrency(totalAmount)}</p><p className="text-[10px] text-muted-foreground font-bold mt-2 uppercase opacity-60">Total période sélectionnée</p></CardContent>
                 </Card>
                 
                 <div className="lg:col-span-2 flex items-end gap-3">
                     <div className="relative flex-grow">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input 
-                            placeholder="Rechercher par description..."
-                            className="pl-10 h-11 luxury-glass border-white/10 rounded-xl"
-                            value={searchQuery}
-                            onChange={e => setSearchQuery(e.target.value)}
-                        />
+                        <Input placeholder="Rechercher par description..." className="pl-10 h-11 luxury-glass border-white/10 rounded-xl" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
                     </div>
                     <DateRangePicker date={dateRange} setDate={setDate} />
-                    <Button variant="ghost" size="icon" className="h-11 w-11 luxury-glass" onClick={() => fetchExpenses(true)} disabled={isRefreshing}>
-                        <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
+                    <Button variant="ghost" size="icon" className="h-11 w-11 luxury-glass" onClick={fetchExpenses} disabled={isLoading}>
+                        <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
                     </Button>
                 </div>
             </div>
 
             <div className="min-h-[400px]">
-               {isLoading ? (
+               {isLoading && expenses.length === 0 ? (
                    <div className="grid grid-cols-3 gap-6">{[...Array(6)].map((_, i) => <Skeleton key={i} className="h-40 rounded-2xl" />)}</div>
                ) : filteredExpenses.length === 0 ? (
                    <EmptyState icon={TrendingDown} title="Aucune dépense" description="Enregistrez vos frais pour un suivi comptable précis." />
@@ -155,8 +117,8 @@ export default function ExpensesPage() {
 
             {isManagerOrAdmin && (
                 <>
-                    <ExpenseDialog isOpen={isExpenseDialogOpen} onOpenChange={setIsExpenseDialogOpen} expense={selectedExpense} onSuccess={() => fetchExpenses(true)} existingCategories={categories || []} />
-                    <DeleteExpenseDialog isOpen={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen} expense={selectedExpense} onSuccess={() => fetchExpenses(true)} />
+                    <ExpenseDialog isOpen={isExpenseDialogOpen} onOpenChange={setIsExpenseDialogOpen} expense={selectedExpense} onSuccess={fetchExpenses} existingCategories={categories} />
+                    <DeleteExpenseDialog isOpen={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen} expense={selectedExpense} onSuccess={fetchExpenses} />
                 </>
             )}
         </div>
