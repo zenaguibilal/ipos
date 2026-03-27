@@ -53,7 +53,6 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, cartCustomer }: Paym
     }
     const debtFromThisSale = paymentMode === 'credit' ? total : (paymentMode === 'mixed' ? creditAmountNum : 0);
     const newTotalOutstanding = (cartCustomer?.outstandingBalance ?? 0) + debtFromThisSale;
-    const creditAvailable = (cartCustomer?.creditLimit ?? 0) - (cartCustomer?.outstandingBalance ?? 0);
     const creditUsage = cartCustomer?.creditLimit && cartCustomer.creditLimit > 0 ? (newTotalOutstanding / cartCustomer.creditLimit) * 100 : 0;
     const isOverLimit = cartCustomer?.creditLimit && cartCustomer.creditLimit > 0 && newTotalOutstanding > cartCustomer.creditLimit;
 
@@ -93,7 +92,9 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, cartCustomer }: Paym
 
     const handleLossAlertConfirm = () => {
         setShowLossAlert(false);
-        initializePayment();
+        setPaymentMode('cash');
+        setCashAmountStr(String(total));
+        setCreditAmountStr('0');
     };
 
     const handleFinalize = async (e?: React.FormEvent) => {
@@ -224,7 +225,7 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, cartCustomer }: Paym
                                     <div className="text-right">
                                         <p className="text-[10px] font-black uppercase tracking-widest opacity-60">Disponibilité</p>
                                         <p className={cn("text-xl font-black", isOverLimit ? "text-destructive" : "text-chart-quaternary")}>
-                                            {formatCurrency(creditAvailable)}
+                                            {formatCurrency((cartCustomer.creditLimit || 0) - cartCustomer.outstandingBalance)}
                                         </p>
                                     </div>
                                 </div>
@@ -279,7 +280,7 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, cartCustomer }: Paym
 
                                 {paymentMode === 'mixed' || paymentMode === 'credit' ? (
                                     <div className="space-y-4">
-                                        <Label className="text-[11px] font-black uppercase tracking-widest opacity-70">Impact sur le Solde (Crédit)</Label>
+                                        <Label className="text-[11px] font-black uppercase tracking-widest opacity-70">Impact sur le Solde (Crédيت)</Label>
                                         <div className="relative group">
                                             <HandCoins className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-destructive/30 group-focus-within:text-destructive transition-colors" />
                                             <Input 

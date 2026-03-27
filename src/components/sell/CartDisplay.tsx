@@ -1,9 +1,10 @@
+
 'use client';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Trash2, ShoppingCart, CalendarClock } from 'lucide-react';
+import { Trash2, ShoppingCart, CalendarClock, Plus, Minus } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { formatCurrency, getPlaceholder } from '@/lib/utils';
@@ -33,13 +34,16 @@ const PriceEditor = ({ item, onPriceChange }: { item: CartItem, onPriceChange: (
     }, [debouncedPrice, item.price, item.uuid, onPriceChange]);
 
     return (
-        <Input
-            type="number"
-            value={priceStr}
-            onChange={(e) => setPriceStr(e.target.value)}
-            className="h-8 w-24 mt-1"
-            aria-label="Edit price"
-        />
+        <div className="flex flex-col gap-1 mt-1">
+            <span className="text-[9px] font-black uppercase text-primary/60 tracking-widest">Prix Manuel</span>
+            <Input
+                type="number"
+                value={priceStr}
+                onChange={(e) => setPriceStr(e.target.value)}
+                className="h-8 w-24 bg-background/50 border-primary/20 focus:border-primary font-bold"
+                aria-label="Edit price"
+            />
+        </div>
     )
 }
 
@@ -57,41 +61,67 @@ const CartListItem = ({ item, isManagerOrAdmin, onQuantityUpdate, onPriceChange,
 
     return (
         <div className={cn(
-            "flex items-center gap-4 border p-2 rounded-xl transition-all duration-300",
-            item.flash && "animate-flash",
-            expirationStatus?.isExpired ? "bg-destructive/10 border-destructive/30" : "bg-background/50"
+            "flex items-center gap-4 border p-3 rounded-2xl transition-all duration-300 group",
+            item.flash ? "animate-flash bg-primary/5 border-primary/30" : "bg-background/40 border-white/5",
+            expirationStatus?.isExpired ? "bg-destructive/10 border-destructive/30" : "hover:border-primary/20"
         )}>
-            <Image
-                src={item.imageUrl || getPlaceholder(item.category).url}
-                alt={item.name}
-                width={64}
-                height={64}
-                className="h-16 w-16 object-cover rounded-md"
-            />
-            <div className="flex-grow">
-                <p className="font-semibold">{item.name}</p>
+            <div className="h-16 w-16 relative rounded-xl overflow-hidden bg-muted flex-shrink-0">
+                <Image
+                    src={item.imageUrl || getPlaceholder(item.category).url}
+                    alt={item.name}
+                    fill
+                    className="object-cover"
+                />
+            </div>
+            <div className="flex-grow min-w-0">
+                <p className="font-bold text-sm uppercase truncate">{item.name}</p>
                 {isManagerOrAdmin ? (
                     <PriceEditor item={item} onPriceChange={onPriceChange} />
                 ) : (
-                    <p className="text-sm text-muted-foreground">{formatCurrency(item.price)}</p>
+                    <p className="text-xs font-black text-primary/80 mt-1">{formatCurrency(item.price)}</p>
                 )}
                 {expirationStatus && (
-                    <Badge className={cn("mt-1.5", expirationStatus.color)}>
+                    <Badge className={cn("mt-2 h-5 text-[9px] px-2", expirationStatus.color)}>
                         <CalendarClock className="h-3 w-3 mr-1" />
                         {expirationStatus.text}
                     </Badge>
                 )}
             </div>
-            <div className="flex items-center gap-2">
-                 <Input
-                    type="number"
-                    value={item.cartQuantity}
-                    onChange={(e) => onQuantityUpdate(item.uuid, e.target.value)}
-                    className="w-16 h-9 text-center"
-                    min="1"
-                    max={item.quantity}
-                />
-                <Button variant="ghost" size="icon" className="text-destructive/70 hover:text-destructive hover:bg-destructive/10" onClick={() => onRemove(item.uuid)}>
+            
+            <div className="flex flex-col items-end gap-2">
+                <div className="flex items-center gap-1.5 p-1 bg-white/5 rounded-xl border border-white/5">
+                    <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8 rounded-lg hover:bg-primary/10 hover:text-primary"
+                        onClick={() => onQuantityUpdate(item.uuid, String(item.cartQuantity - 1))}
+                        disabled={item.cartQuantity <= 1}
+                    >
+                        <Minus className="h-3.5 w-3.5" />
+                    </Button>
+                    <Input
+                        type="number"
+                        value={item.cartQuantity}
+                        onChange={(e) => onQuantityUpdate(item.uuid, e.target.value)}
+                        className="w-12 h-8 text-center bg-transparent border-0 focus-visible:ring-0 font-black p-0"
+                        min="1"
+                    />
+                    <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8 rounded-lg hover:bg-primary/10 hover:text-primary"
+                        onClick={() => onQuantityUpdate(item.uuid, String(item.cartQuantity + 1))}
+                        disabled={item.cartQuantity >= item.quantity}
+                    >
+                        <Plus className="h-3.5 w-3.5" />
+                    </Button>
+                </div>
+                <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-8 w-8 text-destructive/40 hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors" 
+                    onClick={() => onRemove(item.uuid)}
+                >
                     <Trash2 className="h-4 w-4" />
                 </Button>
             </div>
@@ -125,16 +155,20 @@ export function CartDisplay({ cart }: { cart: Cart | undefined }) {
     }, [cart?.items, clearCartFlashes]);
 
     return (
-        <>
+        <div className="flex flex-col h-full">
             {!cart || cart.items.length === 0 ? (
-                <div className="flex-grow flex flex-col items-center justify-center text-center text-muted-foreground luxury-glass p-8 rounded-2xl">
-                    <ShoppingCart className="h-16 w-16 mb-4 text-primary/70" />
-                    <h3 className="text-lg font-semibold">Le panier est vide</h3>
-                    <p className="text-sm">Recherchez un produit pour commencer.</p>
+                <div className="flex-grow flex flex-col items-center justify-center text-center space-y-6 opacity-30 grayscale p-8">
+                    <div className="h-32 w-32 rounded-full border-4 border-dashed border-primary/20 flex items-center justify-center">
+                        <ShoppingCart className="h-16 w-16 text-primary" />
+                    </div>
+                    <div className="space-y-2">
+                        <h3 className="text-xl font-black uppercase tracking-widest">Panier Vide</h3>
+                        <p className="text-xs font-medium uppercase tracking-tighter italic">En attente de scanning d'articles...</p>
+                    </div>
                 </div>
             ) : (
                 <ScrollArea className="flex-grow -mr-4 pr-4">
-                    <div className="space-y-3">
+                    <div className="space-y-3 pb-10">
                         {cart.items.map(item => (
                              <CartListItem
                                 key={item.uuid}
@@ -148,6 +182,6 @@ export function CartDisplay({ cart }: { cart: Cart | undefined }) {
                     </div>
                 </ScrollArea>
             )}
-        </>
+        </div>
     );
 }
