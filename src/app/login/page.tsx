@@ -1,17 +1,9 @@
-'use client';
-
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { redirect } from 'next/navigation';
 
 /**
  * @fileOverview LOGIN PAGE (OBLITERATED)
- * هذه الصفحة ميتة برمجياً. يتم التحويل فوراً.
+ * هذه الصفحة ميتة برمجياً. يتم التحويل فوراً عبر Server-side redirect.
  */
 export default function LoginPage() {
-    const router = useRouter();
-    useEffect(() => {
-        router.replace('/dashboard');
-    }, [router]);
-
-    return null;
+    redirect('/dashboard');
 }
