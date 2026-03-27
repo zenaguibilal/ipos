@@ -72,7 +72,7 @@ export default function ZakatPage() {
             setAutoData(data);
             setHistory(hist);
         } catch (error) {
-            toast.error("Impossible de charger les données financières.");
+            toast.error("Impossible de charger les بيانات.");
         } finally {
             setIsLoading(false);
             setIsRefreshing(false);
@@ -170,11 +170,11 @@ export default function ZakatPage() {
             </PageHeader>
 
             <Tabs defaultValue="calculator" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 max-w-md mx-auto mb-8 luxury-glass p-1.5 bg-muted/20">
-                    <TabsTrigger value="calculator" className="gap-2 rounded-xl py-2.5 font-bold">
+                <TabsList className="grid w-full grid-cols-2 max-w-md mx-auto mb-8 luxury-glass p-1.5 bg-muted/20 border-white/5">
+                    <TabsTrigger value="calculator" className="gap-2 rounded-xl py-2.5 font-bold data-[state=active]:bg-background">
                         <TrendingUp className="h-4 w-4" /> Calculateur
                     </TabsTrigger>
-                    <TabsTrigger value="history" className="gap-2 rounded-xl py-2.5 font-bold">
+                    <TabsTrigger value="history" className="gap-2 rounded-xl py-2.5 font-bold data-[state=active]:bg-background">
                         <HistoryIcon className="h-4 w-4" /> Historique
                     </TabsTrigger>
                 </TabsList>
@@ -185,7 +185,7 @@ export default function ZakatPage() {
                             <AlertTriangle className="h-5 w-5 shrink-0" />
                             <p className="text-sm font-bold">
                                 Attention : Le سعر الذهب (Prix de l'or) n'est pas configuré. 
-                                Mettez-le à jour dans votre <a href="/profile" className="underline font-black">Profil</a>.
+                                Metteز-le à jour dans votre <a href="/profile" className="underline font-black">Profil</a>.
                             </p>
                         </div>
                     )}
@@ -431,7 +431,7 @@ export default function ZakatPage() {
                             </Card>
                         ))}
                         {history.length === 0 && (
-                            <div className="col-span-full py-20 text-center border-2 border-dashed rounded-3xl border-white/5 bg-white/5">
+                            <div className="col-span-full py-20 text-center border-2 border-dashed rounded-3xl border-white/10 bg-white/5">
                                 <HistoryIcon className="h-12 w-12 mx-auto mb-4 opacity-20" />
                                 <p className="text-muted-foreground font-medium">Aucun historique de calcul enregistré.</p>
                             </div>

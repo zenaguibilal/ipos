@@ -2,24 +2,17 @@
 {
   "name": "iPOS - Point de Vente Intelligent",
   "short_name": "iPOS",
-  "description": "Système de gestion de point de vente et stock pour le commerce de détail.",
-  "start_url": "/dashboard",
+  "description": "Système de point de vente SaaS avec support hors-ligne.",
+  "start_url": "/",
   "display": "standalone",
   "background_color": "#1a120c",
   "theme_color": "#1a120c",
-  "orientation": "portrait",
   "icons": [
     {
       "src": "/icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "maskable"
-    },
-    {
-      "src": "/icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any"
+      "purpose": "any maskable"
     }
   ]
 }

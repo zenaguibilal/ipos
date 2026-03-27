@@ -127,12 +127,13 @@ export const useAppStore = create<AppState>()(
                 addProductToCart: (product, quantity) => set(produce((state: AppState) => {
                     const cart = state.carts.find(c => c.id === state.activeCartId);
                     if (!cart) return;
-                    const existing = cart.items.find(i => i.uuid === product.uuid);
-                    const totalInCart = existing ? existing.cartQuantity : 0;
                     
-                    // Critical Stock Validation Logic
-                    if (!product.uuid.startsWith('custom-') && (totalInCart + quantity) > product.quantity) {
-                        throw new Error(`Stock insuffisant pour ${product.name}. Disponible: ${product.quantity}. Déjà en panier: ${totalInCart}`);
+                    const existing = cart.items.find(i => i.uuid === product.uuid);
+                    const currentInCart = existing ? existing.cartQuantity : 0;
+                    
+                    // Strict Stock Validation: Must account for items already in cart
+                    if (!product.uuid.startsWith('custom-') && (currentInCart + quantity) > product.quantity) {
+                        throw new Error(`Stock insuffisant pour ${product.name}. Disponible: ${product.quantity}. Déjà en panier: ${currentInCart}`);
                     }
                     
                     if (existing) {
@@ -220,13 +221,14 @@ export const useAppStore = create<AppState>()(
                         const customer = cart.customerUuid ? await customerService.getCustomerByUuid(cart.customerUuid) : null;
                         set({ lastCompletedSale: { sale, customer: customer || null } });
                         
-                        // Atomically adjust stock after successful sale record
+                        // Deduct stock
                         for (const item of sale.items) {
                             if (item.productUuid) {
                                 await inventoryService.adjustStock(item.productUuid, -item.quantity, 'sale', sale.uuid);
                             }
                         }
                         
+                        // Update customer totals
                         if (sale.customerUuid) {
                             await customerService.recalculateCustomerStatus(sale.customerUuid);
                         }
@@ -271,7 +273,7 @@ export const useAppStore = create<AppState>()(
                                 const p = await productService.addProduct({ ...i, purchasePrice: cost, supplierUuid: sup.uuid, quantity: 0 });
                                 uuid = p.uuid;
                             } else {
-                                await productService.updateProduct(uuid!, { purchasePrice: cost, dateMajPrix: new Date() });
+                                await productService.updateProduct(uuid!, { purchase_price: cost, date_maj_prix: new Date() } as any);
                             }
                             
                             if (uuid) {
