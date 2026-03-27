@@ -8,7 +8,7 @@ import { useDateRange } from '@/hooks/useDateRange';
 import type { DashboardData } from '@/lib/types';
 import { api } from '@/lib/api-client';
 import { toast } from 'sonner';
-import { TrendingUp, TrendingDown, DollarSign, Receipt, CreditCard, Archive, RefreshCw } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Receipt, CreditCard, Archive, RefreshCw, ShieldAlert, Lock } from 'lucide-react';
 import { formatCurrency, cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -16,34 +16,46 @@ import Link from 'next/link';
 import { ResponsiveContainer, AreaChart, XAxis, YAxis, Tooltip, Area, CartesianGrid } from 'recharts';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
+import { useIsManagerOrAdmin } from '@/stores/appStore';
 
-const StatCard = ({ title, value, icon: Icon, change, isLoading, href, positiveIsGood = true }: { title: string, value: string, icon: React.ElementType, change?: number, isLoading: boolean, href?: string, positiveIsGood?: boolean }) => {
+const StatCard = ({ title, value, icon: Icon, change, isLoading, href, positiveIsGood = true, restricted = false }: { title: string, value: string, icon: React.ElementType, change?: number, isLoading: boolean, href?: string, positiveIsGood?: boolean, restricted?: boolean }) => {
     const cardContent = (
-        <Card className="h-full luxury-glass border-white/5 bg-muted/10 hover:border-primary/20 transition-all">
+        <Card className={cn(
+            "h-full luxury-glass border-white/5 bg-muted/10 hover:border-primary/20 transition-all",
+            restricted && "opacity-50 grayscale cursor-not-allowed"
+        )}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{title}</CardTitle>
-                <Icon className="h-4 w-4 text-primary opacity-50" />
+                {restricted ? <Lock className="h-3 w-3 text-muted-foreground" /> : <Icon className="h-4 w-4 text-primary opacity-50" />}
             </CardHeader>
             <CardContent>
-                {isLoading ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-black">{value}</div>}
-                {isLoading ? <Skeleton className="h-4 w-40 mt-1" /> : (
-                    (change !== undefined && isFinite(change)) ? (
-                        <p className="text-[10px] font-bold flex items-center gap-1 mt-1">
-                            <span className={cn(
-                                'px-1.5 py-0.5 rounded-md',
-                                (positiveIsGood && change >= 0) || (!positiveIsGood && change < 0) ? 'bg-green-500/10 text-green-500' : 'bg-destructive/10 text-destructive'
-                            )}>
-                                {change >= 0 ? '▲' : '▼'} {Math.abs(change).toFixed(1)}%
-                            </span>
-                            <span className="text-muted-foreground uppercase opacity-60">vs. période précédente</span>
-                        </p>
-                    ) : <div className="h-[18px]"></div>
+                {restricted ? (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                        <span className="text-xs font-bold uppercase tracking-widest italic">Accès Restreint</span>
+                    </div>
+                ) : (
+                    <>
+                        {isLoading ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-black">{value}</div>}
+                        {isLoading ? <Skeleton className="h-4 w-40 mt-1" /> : (
+                            (change !== undefined && isFinite(change)) ? (
+                                <p className="text-[10px] font-bold flex items-center gap-1 mt-1">
+                                    <span className={cn(
+                                        'px-1.5 py-0.5 rounded-md',
+                                        (positiveIsGood && change >= 0) || (!positiveIsGood && change < 0) ? 'bg-green-500/10 text-green-500' : 'bg-destructive/10 text-destructive'
+                                    )}>
+                                        {change >= 0 ? '▲' : '▼'} {Math.abs(change).toFixed(1)}%
+                                    </span>
+                                    <span className="text-muted-foreground uppercase opacity-60">vs. période précédente</span>
+                                </p>
+                            ) : <div className="h-[18px]"></div>
+                        )}
+                    </>
                 )}
             </CardContent>
         </Card>
     );
 
-    if (href) {
+    if (href && !restricted) {
         return <Link href={href} className="transition-all hover:-translate-y-1 block">{cardContent}</Link>;
     }
 
@@ -51,6 +63,7 @@ const StatCard = ({ title, value, icon: Icon, change, isLoading, href, positiveI
 };
 
 export default function DashboardPage() {
+    const isManagerOrAdmin = useIsManagerOrAdmin();
     const { dateRange, setDate, isMounted } = useDateRange(29);
     const [data, setData] = useState<DashboardData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -62,7 +75,7 @@ export default function DashboardPage() {
             const dashboardData = await api.get<DashboardData>(`dashboard?${query}`);
             setData(dashboardData);
         } catch (error: any) {
-            toast.error("Échec de synchronisation analytique.");
+            toast.error("Échec de l'agrégation des données.");
         } finally {
             setIsLoading(false);
         }
@@ -94,21 +107,27 @@ export default function DashboardPage() {
             
             <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                 <StatCard title="Volume Ventes" value={formatCurrency(data?.stats.totalRevenue ?? 0)} icon={TrendingUp} isLoading={isLoading} href="/sales-history" change={data?.stats.totalRevenueChange} />
-                <StatCard title="Bénéfice Net" value={formatCurrency(data?.stats.netProfit ?? 0)} icon={DollarSign} isLoading={isLoading} change={data?.stats.netProfitChange} />
-                <StatCard title="Charges & Dépenses" value={formatCurrency(data?.stats.totalExpenses ?? 0)} icon={TrendingDown} isLoading={isLoading} href="/expenses" change={data?.stats.totalExpensesChange} positiveIsGood={false} />
-                <StatCard title="Dette Active Client" value={formatCurrency(data?.stats.totalOutstandingDebt ?? 0)} icon={CreditCard} isLoading={isLoading} href="/customers?status=has_debt" />
-                <StatCard title="Valeur Assets Stock" value={formatCurrency(data?.stats.totalInventoryValue ?? 0)} icon={Archive} isLoading={isLoading} href="/products" />
-                <StatCard title="Nombre de Transactions" value={String(data?.stats.saleCount ?? 0)} icon={Receipt} isLoading={isLoading} href="/sales-history" change={data?.stats.saleCountChange} />
+                <StatCard title="Bénéfice Net" value={formatCurrency(data?.stats.netProfit ?? 0)} icon={DollarSign} isLoading={isLoading} change={data?.stats.netProfitChange} restricted={!isManagerOrAdmin} />
+                <StatCard title="Charges & Dépenses" value={formatCurrency(data?.stats.totalExpenses ?? 0)} icon={TrendingDown} isLoading={isLoading} href="/expenses" change={data?.stats.totalExpensesChange} positiveIsGood={false} restricted={!isManagerOrAdmin} />
+                <StatCard title="Dette Client" value={formatCurrency(data?.stats.totalOutstandingDebt ?? 0)} icon={CreditCard} isLoading={isLoading} href="/customers" restricted={!isManagerOrAdmin} />
+                <StatCard title="Valeur Assets Stock" value={formatCurrency(data?.stats.totalInventoryValue ?? 0)} icon={Archive} isLoading={isLoading} href="/products" restricted={!isManagerOrAdmin} />
+                <StatCard title="Transactions" value={String(data?.stats.saleCount ?? 0)} icon={Receipt} isLoading={isLoading} href="/sales-history" change={data?.stats.saleCountChange} />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2 space-y-6">
                     <Card className="luxury-glass border-white/5 bg-muted/5">
-                        <CardHeader>
-                            <CardTitle className="text-sm font-black uppercase tracking-widest text-primary">Performance Temporelle</CardTitle>
+                        <CardHeader className="flex flex-row items-center justify-between">
+                            <CardTitle className="text-sm font-black uppercase tracking-widest text-primary">Courbe de Performance</CardTitle>
+                            {!isManagerOrAdmin && <Lock className="h-3 w-3 text-muted-foreground" />}
                         </CardHeader>
                         <CardContent className="h-80 w-full p-2">
-                            {isLoading ? <Skeleton className="h-full w-full rounded-2xl" /> : (
+                            {!isManagerOrAdmin ? (
+                                <div className="h-full flex flex-col items-center justify-center text-center space-y-2 opacity-40">
+                                    <ShieldAlert className="h-12 w-12 text-muted-foreground" />
+                                    <p className="text-xs font-bold uppercase tracking-widest">Détails de marge réservés à la gestion</p>
+                                </div>
+                            ) : isLoading ? <Skeleton className="h-full w-full rounded-2xl" /> : (
                                 <ResponsiveContainer>
                                     <AreaChart data={data?.salesByDay ?? []}>
                                         <defs>
@@ -137,7 +156,7 @@ export default function DashboardPage() {
                         <CardContent className="space-y-4">
                             {isLoading ? [...Array(5)].map((_, i) => <Skeleton key={i} className="h-12 w-full rounded-xl" />) : (
                                 data?.recentSales.map(s => (
-                                    <div key={s.uuid} className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/5">
+                                    <div key={s.uuid} className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/5 hover:border-primary/20 transition-all">
                                         <div>
                                             <p className="text-xs font-bold uppercase truncate max-w-[120px]">{s.customerUuid ? 'Client Fidèle' : 'Passage'}</p>
                                             <p className="text-[10px] text-muted-foreground font-mono">#{s.invoiceNumber}</p>
@@ -146,6 +165,7 @@ export default function DashboardPage() {
                                     </div>
                                 ))
                             )}
+                            {data?.recentSales.length === 0 && <p className="text-center py-10 text-xs text-muted-foreground italic">Aucune vente enregistrée.</p>}
                         </CardContent>
                     </Card>
                 </div>

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -11,7 +10,7 @@ import { BreadDayView } from '@/components/bread/BreadDayView';
 import { BreadStats } from '@/components/bread/BreadStats';
 import { BreadClientList } from '@/components/bread/BreadClientList';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, ChevronLeft, ChevronRight, Calendar, Users, Wheat, ShieldAlert } from 'lucide-react';
+import { Loader2, ChevronLeft, ChevronRight, Calendar, Users, Wheat, ShieldAlert, Lock } from 'lucide-react';
 import { useAppStore, useAppActions, useIsManagerOrAdmin } from '@/stores/appStore';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -33,10 +32,13 @@ export default function BreadPage() {
     }));
     const { refreshBreadOrders } = useAppActions();
 
-    // Role Guard
+    // Absolute Role Guard
     useEffect(() => {
         if (profile && !isManagerOrAdmin) {
-            toast.error("Accès restreint", { description: "La gestion de la boulangerie est réservée aux gérants." });
+            toast.error("Accès Souverain Requis", { 
+                description: "La gestion de la boulangerie est réservée aux profils gestionnaires.",
+                icon: <Lock className="h-4 w-4 text-destructive" />
+            });
             router.replace('/sell');
         }
     }, [profile, isManagerOrAdmin, router]);
@@ -53,64 +55,77 @@ export default function BreadPage() {
 
     if (!profile || !isManagerOrAdmin) {
         return (
-            <div className="h-screen flex flex-col items-center justify-center p-6 text-center space-y-4">
-                <ShieldAlert className="h-12 w-12 text-primary animate-pulse" />
-                <h2 className="text-xl font-black uppercase tracking-widest">Vérification des Décrets...</h2>
+            <div className="h-screen flex flex-col items-center justify-center p-6 text-center space-y-4 bg-background">
+                <div className="p-6 bg-primary/5 rounded-[3rem] border border-primary/10 shadow-2xl relative overflow-hidden group">
+                    <ShieldAlert className="h-16 w-16 text-primary animate-pulse relative z-10" />
+                    <div className="absolute inset-0 bg-primary/5 translate-y-full group-hover:translate-y-0 transition-transform duration-700" />
+                </div>
+                <div className="space-y-2">
+                    <h2 className="text-2xl font-black uppercase tracking-tighter">Vérification des Décrets...</h2>
+                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground opacity-50">Protocole de Sécurité Solaire Actif</p>
+                </div>
             </div>
         );
     }
 
     return (
-        <div className="p-4 sm:p-6 space-y-6 flex flex-col h-full animate-in fade-in duration-500">
+        <div className="p-4 sm:p-6 space-y-6 flex flex-col h-full animate-in fade-in duration-1000">
             <PageHeader 
-                title="Gestion de la Boulangerie"
-                description="Automatisation des commandes récurrentes et suivi des distributions."
+                title="Souveraineté Boulangère"
+                description="Automatisation des commandes récurrentes et suivi des flux de distribution."
             />
 
             <Tabs defaultValue="distribution" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 max-w-md mx-auto mb-6 luxury-glass p-1 h-12 bg-muted/20">
-                    <TabsTrigger value="distribution" className="gap-2 rounded-xl font-bold">
+                <TabsList className="grid w-full grid-cols-2 max-w-md mx-auto mb-10 luxury-glass p-1.5 h-14 bg-muted/20 border-white/5 shadow-inner">
+                    <TabsTrigger value="distribution" className="gap-3 rounded-2xl font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-background data-[state=active]:text-primary transition-all">
                         <Wheat className="h-4 w-4" />
-                        Distribution
+                        Distribution Active
                     </TabsTrigger>
-                    <TabsTrigger value="clients" className="gap-2 rounded-xl font-bold">
+                    <TabsTrigger value="clients" className="gap-3 rounded-2xl font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-background data-[state=active]:text-primary transition-all">
                         <Users className="h-4 w-4" />
-                        Base Clients
+                        Abonnés Pain
                     </TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="distribution" className="space-y-6 outline-none">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-muted/30 p-4 rounded-2xl border border-white/5">
-                        <div className="flex items-center gap-2">
-                            <Button variant="outline" size="icon" onClick={() => handleDateChange(-1)} className="rounded-xl"><ChevronLeft className="h-4 w-4"/></Button>
-                            <div className="px-4 text-center">
-                                <h2 className="text-lg font-bold capitalize">
+                <TabsContent value="distribution" className="space-y-8 outline-none animate-in slide-in-from-bottom-4 duration-700">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 bg-muted/30 p-6 rounded-[2.5rem] border border-white/5 shadow-inner">
+                        <div className="flex items-center gap-4">
+                            <Button variant="outline" size="icon" onClick={() => handleDateChange(-1)} className="rounded-2xl h-12 w-12 border-white/10 hover:bg-primary/10 hover:text-primary transition-all shadow-sm">
+                                <ChevronLeft className="h-5 w-5"/>
+                            </Button>
+                            <div className="px-8 py-2 text-center luxury-glass bg-background/40 min-w-[240px]">
+                                <h2 className="text-xl font-black uppercase tracking-tight">
                                     {format(currentDate, 'EEEE d MMMM', { locale: fr })}
                                 </h2>
-                                <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest">{format(currentDate, 'yyyy')}</p>
+                                <p className="text-[10px] text-muted-foreground uppercase font-black tracking-[0.4em] mt-0.5 opacity-60">
+                                    {format(currentDate, 'yyyy')}
+                                </p>
                             </div>
-                            <Button variant="outline" size="icon" onClick={() => handleDateChange(1)} className="rounded-xl"><ChevronRight className="h-4 w-4"/></Button>
+                            <Button variant="outline" size="icon" onClick={() => handleDateChange(1)} className="rounded-2xl h-12 w-12 border-white/10 hover:bg-primary/10 hover:text-primary transition-all shadow-sm">
+                                <ChevronRight className="h-5 w-5"/>
+                            </Button>
                         </div>
-                        <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <div className="flex items-center gap-3 w-full sm:w-auto">
                             <Button 
                                 variant={isToday ? "secondary" : "outline"} 
                                 onClick={() => setCurrentDate(new Date())} 
                                 disabled={isToday}
-                                className="flex-1 sm:flex-none rounded-xl"
+                                className="flex-1 sm:flex-none rounded-2xl h-12 px-8 font-black uppercase text-[10px] tracking-widest shadow-md"
                             >
-                                <Calendar className="mr-2 h-4 w-4" />
-                                Aujourd'hui
+                                <Calendar className="mr-2 h-4 w-4 opacity-50" />
+                                Temps Réel
                             </Button>
                         </div>
                     </div>
 
-                    <div className="grid gap-6">
+                    <div className="grid gap-8">
                         <BreadStats orders={breadOrders} isLoading={isLoading}/>
 
                         <div className="flex flex-col">
                             {isLoading && breadOrders.length === 0 ? (
-                                <div className="flex justify-center items-center h-64 luxury-glass">
-                                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                                <div className="flex flex-col justify-center items-center h-80 luxury-glass border-white/5 space-y-4">
+                                    <Loader2 className="h-10 w-10 animate-spin text-primary opacity-50" />
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground animate-pulse">Synchronisation du Planning...</p>
                                 </div>
                             ) : (
                                 <BreadDayView 
@@ -123,7 +138,7 @@ export default function BreadPage() {
                     </div>
                 </TabsContent>
 
-                <TabsContent value="clients" className="h-[calc(100vh-250px)] outline-none">
+                <TabsContent value="clients" className="h-[calc(100vh-280px)] outline-none animate-in slide-in-from-bottom-4 duration-700">
                     <BreadClientList onListChange={() => refreshBreadOrders(formattedDate)} />
                 </TabsContent>
             </Tabs>
