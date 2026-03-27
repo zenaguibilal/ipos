@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -6,19 +5,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { PageHeader } from '@/components/layout/PageHeader';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { useDateRange } from '@/hooks/useDateRange';
-import type { DashboardData, RecentSale, RecentReturn, SalesByDay, TopProduct, TopCustomer, LowStockProduct } from '@/lib/types';
+import type { DashboardData } from '@/lib/types';
 import { api } from '@/lib/api-client';
 import { toast } from 'sonner';
-import { TrendingUp, TrendingDown, DollarSign, Receipt, Undo2, Users, CreditCard, Archive, RefreshCw } from 'lucide-react';
-import { formatCurrency, safeToDate, getPlaceholder, cn } from '@/lib/utils';
+import { TrendingUp, TrendingDown, DollarSign, Receipt, Users, CreditCard, Archive, RefreshCw, Sparkles, BrainCircuit, AlertTriangle } from 'lucide-react';
+import { formatCurrency, cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import Link from 'next/link';
 import { ResponsiveContainer, AreaChart, XAxis, YAxis, Tooltip, Area, CartesianGrid } from 'recharts';
-import Image from 'next/image';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 
 const StatCard = ({ title, value, icon: Icon, change, isLoading, href, positiveIsGood = true }: { title: string, value: string, icon: React.ElementType, change?: number, isLoading: boolean, href?: string, positiveIsGood?: boolean }) => {
     const cardContent = (
@@ -58,6 +56,10 @@ export default function DashboardPage() {
     const [data, setData] = useState<DashboardData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     
+    // AI State
+    const [aiPrediction, setAiPrediction] = useState<any>(null);
+    const [isAiLoading, setIsAiLoading] = useState(false);
+    
     const fetchData = useCallback(async (from: Date, to: Date) => {
         setIsLoading(true);
         try {
@@ -70,6 +72,19 @@ export default function DashboardPage() {
             setIsLoading(false);
         }
     }, []);
+
+    const fetchAiPrediction = async () => {
+        setIsAiLoading(true);
+        try {
+            const result = await api.post<any>('ai/predict-stock', {});
+            setAiPrediction(result);
+            toast.success("Analyse IA terminée.");
+        } catch (e) {
+            toast.error("Impossible de générer l'analyse IA.");
+        } finally {
+            setIsAiLoading(false);
+        }
+    };
 
     useEffect(() => {
         if (isMounted && dateRange?.from && dateRange?.to) {
@@ -105,49 +120,101 @@ export default function DashboardPage() {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <Card className="lg:col-span-2 luxury-glass border-white/5 bg-muted/5">
-                    <CardHeader>
-                        <CardTitle className="text-sm font-black uppercase tracking-widest text-primary">Performance Temporelle</CardTitle>
-                    </CardHeader>
-                    <CardContent className="h-80 w-full p-2">
-                        {isLoading ? <Skeleton className="h-full w-full rounded-2xl" /> : (
-                            <ResponsiveContainer>
-                                <AreaChart data={data?.salesByDay ?? []}>
-                                    <defs>
-                                        <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
-                                            <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
-                                        </linearGradient>
-                                    </defs>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
-                                    <XAxis dataKey="date" tickFormatter={(s) => format(new Date(s), 'd MMM', { locale: fr })} tick={{fontSize: 10, fill: 'gray'}} axisLine={false} />
-                                    <YAxis hide />
-                                    <Tooltip contentStyle={{ backgroundColor: '#1a120c', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }} />
-                                    <Area type="monotone" dataKey="total" stroke="hsl(var(--primary))" fill="url(#colorRev)" />
-                                </AreaChart>
-                            </ResponsiveContainer>
-                        )}
-                    </CardContent>
-                </Card>
+                <div className="lg:col-span-2 space-y-6">
+                    <Card className="luxury-glass border-white/5 bg-muted/5">
+                        <CardHeader>
+                            <CardTitle className="text-sm font-black uppercase tracking-widest text-primary">Performance Temporelle</CardTitle>
+                        </CardHeader>
+                        <CardContent className="h-80 w-full p-2">
+                            {isLoading ? <Skeleton className="h-full w-full rounded-2xl" /> : (
+                                <ResponsiveContainer>
+                                    <AreaChart data={data?.salesByDay ?? []}>
+                                        <defs>
+                                            <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
+                                                <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
+                                        <XAxis dataKey="date" tickFormatter={(s) => format(new Date(s), 'd MMM', { locale: fr })} tick={{fontSize: 10, fill: 'gray'}} axisLine={false} />
+                                        <YAxis hide />
+                                        <Tooltip contentStyle={{ backgroundColor: '#1a120c', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }} />
+                                        <Area type="monotone" dataKey="total" stroke="hsl(var(--primary))" fill="url(#colorRev)" />
+                                    </AreaChart>
+                                </ResponsiveContainer>
+                            )}
+                        </CardContent>
+                    </Card>
 
-                <Card className="luxury-glass border-white/5 bg-muted/5">
-                    <CardHeader>
-                        <CardTitle className="text-sm font-black uppercase tracking-widest text-primary">Dernières Opérations</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        {isLoading ? [...Array(5)].map((_, i) => <Skeleton key={i} className="h-12 w-full rounded-xl" />) : (
-                            data?.recentSales.map(s => (
-                                <div key={s.uuid} className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/5">
-                                    <div>
-                                        <p className="text-xs font-bold uppercase truncate max-w-[120px]">{s.customerUuid ? 'Client Fidèle' : 'Passage'}</p>
-                                        <p className="text-[10px] text-muted-foreground font-mono">#{s.invoiceNumber}</p>
-                                    </div>
-                                    <p className="text-sm font-black text-primary">{formatCurrency(s.total)}</p>
+                    <Card className="luxury-glass border-primary/20 bg-primary/5 relative overflow-hidden">
+                        <div className="absolute top-0 right-0 p-6 opacity-10">
+                            <BrainCircuit className="h-24 w-24 text-primary" />
+                        </div>
+                        <CardHeader>
+                            <div className="flex justify-between items-center">
+                                <CardTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-2">
+                                    <Sparkles className="h-5 w-5 text-primary" />
+                                    Souveraineté Prédictive (IA)
+                                </CardTitle>
+                                <Button onClick={fetchAiPrediction} disabled={isAiLoading} size="sm" className="bg-primary/20 text-primary border border-primary/30 hover:bg-primary/30">
+                                    {isAiLoading ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : <BrainCircuit className="h-4 w-4 mr-2" />}
+                                    Générer Analyse
+                                </Button>
+                            </div>
+                            <CardDescription>Anticipation des ruptures de stock basée على l'historique des ventes.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            {!aiPrediction ? (
+                                <div className="text-center py-12 text-muted-foreground italic border-2 border-dashed rounded-2xl border-white/5">
+                                    Cliquez sur "Générer Analyse" pour activer l'intelligence prédictive.
                                 </div>
-                            ))
-                        )}
-                    </CardContent>
-                </Card>
+                            ) : (
+                                <div className="space-y-6 animate-in fade-in duration-700">
+                                    <p className="text-sm font-medium leading-relaxed bg-background/40 p-4 rounded-xl border border-white/5">
+                                        {aiPrediction.summary}
+                                    </p>
+                                    <div className="grid sm:grid-cols-2 gap-4">
+                                        {aiPrediction.alerts.map((alert: any, i: number) => (
+                                            <div key={i} className="p-4 rounded-xl bg-white/5 border border-white/10 flex items-start gap-3">
+                                                <AlertTriangle className={cn("h-5 w-5 mt-0.5", alert.riskLevel === 'CRITICAL' ? 'text-destructive' : 'text-orange-400')} />
+                                                <div>
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <p className="font-bold text-sm">{alert.productName}</p>
+                                                        <Badge variant="outline" className="text-[8px] h-4 uppercase">
+                                                            {alert.predictedDepletionDays} j restants
+                                                        </Badge>
+                                                    </div>
+                                                    <p className="text-[11px] text-muted-foreground leading-snug">{alert.advice}</p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                </div>
+
+                <div className="space-y-6">
+                    <Card className="luxury-glass border-white/5 bg-muted/5">
+                        <CardHeader>
+                            <CardTitle className="text-sm font-black uppercase tracking-widest text-primary">Dernières Opérations</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            {isLoading ? [...Array(5)].map((_, i) => <Skeleton key={i} className="h-12 w-full rounded-xl" />) : (
+                                data?.recentSales.map(s => (
+                                    <div key={s.uuid} className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/5">
+                                        <div>
+                                            <p className="text-xs font-bold uppercase truncate max-w-[120px]">{s.customerUuid ? 'Client Fidèle' : 'Passage'}</p>
+                                            <p className="text-[10px] text-muted-foreground font-mono">#{s.invoiceNumber}</p>
+                                        </div>
+                                        <p className="text-sm font-black text-primary">{formatCurrency(s.total)}</p>
+                                    </div>
+                                ))
+                            )}
+                        </CardContent>
+                    </Card>
+                </div>
             </div>
         </div>
     );

@@ -13,6 +13,7 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
+    "@genkit-ai/google-genai": "0.5.15",
     "@radix-ui/react-alert-dialog": "^1.1.1",
     "@radix-ui/react-checkbox": "^1.1.1",
     "@radix-ui/react-dialog": "^1.1.1",
@@ -33,6 +34,7 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.0.0",
     "date-fns": "^3.6.0",
+    "genkit": "0.5.15",
     "html5-qrcode": "^2.3.8",
     "immer": "^10.1.1",
     "jsbarcode": "^3.11.6",
@@ -49,6 +51,7 @@
     "tailwind-merge": "^2.4.0",
     "tailwindcss-animate": "^1.0.0",
     "uuid": "^10.0.0",
+    "zod": "^3.23.8",
     "zustand": "^4.5.4"
   },
   "devDependencies": {

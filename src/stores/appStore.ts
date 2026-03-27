@@ -1,18 +1,16 @@
-
 'use client';
 
 import { create } from 'zustand';
 import { produce } from 'immer';
 import type { Session, User } from '@supabase/supabase-js';
-import type { Cart, CompanyProfile, Product, Sale, Customer } from '@/lib/types';
+import type { Cart, CompanyProfile, Product, Sale, Customer, Supplier, Expense, StockIntake } from '@/lib/types';
 import { v4 as uuidv4 } from 'uuid';
 import { api } from '@/lib/api-client';
 
 /**
- * @fileOverview THE STATE SINGULARITY
- * Single source of truth for runtime application state.
- * PHASE 5: ENFORCED MEMORY-ONLY SINGULARITY.
- * لا يوجد تخزين مستمر. الحالة تعيش في الذاكرة وتموت مع الجلسة.
+ * @fileOverview THE STATE SINGULARITY (PHASE 5 ENFORCED)
+ * المركز السيادي الوحيد لكافة بيانات النظام أثناء التشغيل.
+ * ممنوع منعاً باتاً تخزين البيانات محلياً في المكونات.
  */
 
 interface AppState {
@@ -21,22 +19,35 @@ interface AppState {
     profile: CompanyProfile | null;
     sessionLoading: boolean;
     isSettingsLoading: boolean;
+    
+    // Core Data Collections
+    products: Product[];
+    customers: Customer[];
+    suppliers: Supplier[];
+    expenses: Expense[];
+    salesHistory: Sale[];
+    
+    // UI & Operation State
     carts: Cart[];
     activeCartId: string;
     lastCompletedSale: { sale: Sale; customer?: Customer } | null;
-    customerViewMode: 'grid' | 'list';
-    productViewMode: 'grid' | 'list';
-    stockViewMode: 'grid' | 'list';
-    salesHistoryViewMode: 'grid' | 'list';
-    returnViewMode: 'grid' | 'list';
-    supplierViewMode: 'grid' | 'list';
-    expenseViewMode: 'grid' | 'list';
+    isLoading: Record<string, boolean>;
+
     actions: {
         setSession: (session: Session | null) => void;
         fetchProfile: () => Promise<void>;
         updateProfile: (data: Partial<CompanyProfile>) => Promise<void>;
         signOut: () => Promise<void>;
         resetStore: () => void;
+        
+        // Data Fetching Actions (The Only Way to get data)
+        refreshProducts: (query?: string) => Promise<void>;
+        refreshCustomers: (status?: string) => Promise<void>;
+        refreshSuppliers: () => Promise<void>;
+        refreshExpenses: (from: string, to: string) => Promise<void>;
+        refreshSalesHistory: (from: string, to: string) => Promise<void>;
+
+        // Operation Actions
         createNewCart: () => void;
         switchToCart: (id: string) => void;
         deleteCart: (id: string) => void;
@@ -47,18 +58,11 @@ interface AppState {
         setCartCustomer: (customer: Customer | null) => void;
         setCartDiscount: (discount: { type: 'fixed' | 'percentage', value: number }) => void;
         clearCart: () => void;
-        clearCartFlashes: () => void;
+        
         finalizeSale: (paymentData: any) => Promise<boolean>;
         processReturn: (returnData: any) => Promise<boolean>;
         processStockIntake: (intakeData: any) => Promise<boolean>;
         clearLastCompletedSale: () => void;
-        setCustomerViewMode: (mode: 'grid' | 'list') => void;
-        setProductViewMode: (mode: 'grid' | 'list') => void;
-        setStockViewMode: (mode: 'grid' | 'list') => void;
-        setSalesHistoryViewMode: (mode: 'grid' | 'list') => void;
-        setReturnViewMode: (mode: 'grid' | 'list') => void;
-        setSupplierViewMode: (mode: 'grid' | 'list') => void;
-        setExpenseViewMode: (mode: 'grid' | 'list') => void;
     };
 }
 
@@ -76,46 +80,97 @@ export const useAppStore = create<AppState>((set, get) => ({
     profile: null,
     sessionLoading: true,
     isSettingsLoading: false,
+    
+    products: [],
+    customers: [],
+    suppliers: [],
+    expenses: [],
+    salesHistory: [],
+    
     carts: [createInitialCart()],
     activeCartId: '',
     lastCompletedSale: null,
-    customerViewMode: 'grid',
-    productViewMode: 'grid',
-    stockViewMode: 'grid',
-    salesHistoryViewMode: 'list',
-    returnViewMode: 'list',
-    supplierViewMode: 'grid',
-    expenseViewMode: 'grid',
+    isLoading: {},
+
     actions: {
         setSession: (session) => set({ 
             session, 
             user: session?.user ?? null, 
             sessionLoading: false 
         }),
+        
         fetchProfile: async () => {
             set({ isSettingsLoading: true });
             try {
                 const profile = await api.get<CompanyProfile>('profile');
                 set({ profile });
             } catch (e) {
-                // If profile fails, it might be an auth issue, trigger reset
-                if ((e as Error).message.includes('401')) {
-                    get().actions.resetStore();
-                }
+                if ((e as Error).message.includes('401')) get().actions.resetStore();
             } finally {
                 set({ isSettingsLoading: false });
             }
         },
+
+        refreshProducts: async (query) => {
+            set(p => ({ isLoading: { ...p.isLoading, products: true } }));
+            try {
+                const products = await api.get<Product[]>(`products${query ? `?query=${query}` : ''}`);
+                set({ products });
+            } finally {
+                set(p => ({ isLoading: { ...p.isLoading, products: false } }));
+            }
+        },
+
+        refreshCustomers: async (status) => {
+            set(p => ({ isLoading: { ...p.isLoading, customers: true } }));
+            try {
+                const customers = await api.get<Customer[]>(`customers${status ? `?status=${status}` : ''}`);
+                set({ customers });
+            } finally {
+                set(p => ({ isLoading: { ...p.isLoading, customers: false } }));
+            }
+        },
+
+        refreshSuppliers: async () => {
+            set(p => ({ isLoading: { ...p.isLoading, suppliers: true } }));
+            try {
+                const suppliers = await api.get<Supplier[]>('suppliers');
+                set({ suppliers });
+            } finally {
+                set(p => ({ isLoading: { ...p.isLoading, suppliers: false } }));
+            }
+        },
+
+        refreshExpenses: async (from, to) => {
+            set(p => ({ isLoading: { ...p.isLoading, expenses: true } }));
+            try {
+                const expenses = await api.get<Expense[]>(`expenses?from=${from}&to=${to}`);
+                set({ expenses });
+            } finally {
+                set(p => ({ isLoading: { ...p.isLoading, expenses: false } }));
+            }
+        },
+
+        refreshSalesHistory: async (from, to) => {
+            set(p => ({ isLoading: { ...p.isLoading, sales: true } }));
+            try {
+                const salesHistory = await api.get<Sale[]>(`sales?from=${from}&to=${to}`);
+                set({ salesHistory });
+            } finally {
+                set(p => ({ isLoading: { ...p.isLoading, sales: false } }));
+            }
+        },
+
         updateProfile: async (data) => {
             const updated = await api.put<CompanyProfile>('profile', data);
             set({ profile: updated });
         },
+
         signOut: async () => {
             try {
                 await api.post('auth/signout', {});
             } finally {
                 get().actions.resetStore();
-                // Kill any remaining traces
                 if (typeof window !== 'undefined') {
                     window.localStorage.clear();
                     window.sessionStorage.clear();
@@ -123,24 +178,34 @@ export const useAppStore = create<AppState>((set, get) => ({
                 }
             }
         },
+
         resetStore: () => set({
             session: null,
             user: null,
             profile: null,
+            products: [],
+            customers: [],
+            suppliers: [],
+            expenses: [],
+            salesHistory: [],
             carts: [createInitialCart()],
             activeCartId: '',
             lastCompletedSale: null,
         }),
+
         createNewCart: () => set(produce((state: AppState) => {
             const newCart = createInitialCart();
             state.carts.push(newCart);
             state.activeCartId = newCart.id;
         })),
+
         switchToCart: (id) => set({ activeCartId: id }),
+
         deleteCart: (id) => set(produce((state: AppState) => {
             state.carts = state.carts.filter(c => c.id !== id);
             if (state.activeCartId === id) state.activeCartId = state.carts[0]?.id || '';
         })),
+
         addProductToCart: (product, quantity) => set(produce((state: AppState) => {
             const cart = state.carts.find(c => c.id === state.activeCartId) || state.carts[0];
             const existing = cart.items.find(i => i.uuid === product.uuid);
@@ -151,36 +216,39 @@ export const useAppStore = create<AppState>((set, get) => ({
                 cart.items.push({ ...product, cartQuantity: quantity, flash: true });
             }
         })),
+
         removeCartItem: (uuid) => set(produce((state: AppState) => {
             const cart = state.carts.find(c => c.id === state.activeCartId) || state.carts[0];
             cart.items = cart.items.filter(i => i.uuid !== uuid);
         })),
+
         updateCartItemQuantity: (uuid, qty) => set(produce((state: AppState) => {
             const cart = state.carts.find(c => c.id === state.activeCartId) || state.carts[0];
             const item = cart.items.find(i => i.uuid === uuid);
             if (item) item.cartQuantity = Math.max(1, qty);
         })),
+
         updateCartItemPrice: (uuid, price) => set(produce((state: AppState) => {
             const cart = state.carts.find(c => c.id === state.activeCartId) || state.carts[0];
             const item = cart.items.find(i => i.uuid === uuid);
             if (item) item.price = price;
         })),
+
         setCartCustomer: (customer) => set(produce((state: AppState) => {
             const cart = state.carts.find(c => c.id === state.activeCartId) || state.carts[0];
             cart.customerUuid = customer?.uuid || null;
         })),
+
         setCartDiscount: (discount) => set(produce((state: AppState) => {
             const cart = state.carts.find(c => c.id === state.activeCartId) || state.carts[0];
             cart.discount = discount;
         })),
+
         clearCart: () => set(produce((state: AppState) => {
             const index = state.carts.findIndex(c => c.id === state.activeCartId);
             if (index !== -1) state.carts[index] = createInitialCart();
         })),
-        clearCartFlashes: () => set(produce((state: AppState) => {
-            const cart = state.carts.find(c => c.id === state.activeCartId);
-            if (cart) cart.items.forEach(i => i.flash = false);
-        })),
+
         finalizeSale: async (paymentData) => {
             const cart = get().carts.find(c => c.id === get().activeCartId);
             if (!cart || cart.items.length === 0) return false;
@@ -193,22 +261,18 @@ export const useAppStore = create<AppState>((set, get) => ({
                 return false;
             }
         },
+
         processReturn: async (data) => {
             await api.post('returns', data);
             return true;
         },
+
         processStockIntake: async (data) => {
             await api.post('stock', data);
             return true;
         },
+
         clearLastCompletedSale: () => set({ lastCompletedSale: null }),
-        setCustomerViewMode: (mode) => set({ customerViewMode: mode }),
-        setProductViewMode: (mode) => set({ productViewMode: mode }),
-        setStockViewMode: (mode) => set({ stockViewMode: mode }),
-        setSalesHistoryViewMode: (mode) => set({ salesHistoryViewMode: mode }),
-        setReturnViewMode: (mode) => set({ returnViewMode: mode }),
-        setSupplierViewMode: (mode) => set({ supplierViewMode: mode }),
-        setExpenseViewMode: (mode) => set({ expenseViewMode: mode }),
     }
 }));
 
