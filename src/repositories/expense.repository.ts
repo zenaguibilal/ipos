@@ -8,13 +8,30 @@ import type { Expense } from "@/lib/types";
 export class ExpenseRepository {
     private supabase = createClient();
 
-    async getAll(): Promise<Expense[]> {
-        const { data, error } = await this.supabase
-            .from('expenses')
-            .select('*')
-            .order('expense_date', { ascending: false });
+    async getAll(filters?: { from?: string; to?: string }): Promise<Expense[]> {
+        let query = this.supabase.from('expenses').select('*');
+
+        if (filters?.from) {
+            query = query.gte('expense_date', filters.from);
+        }
+        if (filters?.to) {
+            query = query.lte('expense_date', filters.to);
+        }
+
+        const { data, error } = await query.order('expense_date', { ascending: false });
         if (error) throw new Error(`EXPENSE_FETCH_ERROR: ${error.message}`);
         return data.map(this.mapFromDb);
+    }
+
+    async getCategories(): Promise<string[]> {
+        const { data, error } = await this.supabase
+            .from('expenses')
+            .select('category')
+            .not('category', 'is', null);
+        
+        if (error) throw new Error(`EXPENSE_CATEGORIES_FETCH_ERROR: ${error.message}`);
+        const cats = Array.from(new Set(data.map(i => i.category)));
+        return cats.sort();
     }
 
     async create(expense: Partial<Expense>): Promise<Expense> {

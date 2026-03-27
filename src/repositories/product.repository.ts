@@ -14,13 +14,33 @@ export class ProductRepository {
         return 'in_stock';
     }
 
-    async getAll(): Promise<Product[]> {
-        const { data, error } = await this.supabase
-            .from('products')
-            .select('*')
-            .order('name', { ascending: true });
+    async getAll(filters?: { query?: string; category?: string; supplierUuid?: string }): Promise<Product[]> {
+        let query = this.supabase.from('products').select('*');
+
+        if (filters?.supplierUuid) {
+            query = query.eq('supplier_uuid', filters.supplierUuid);
+        }
+        if (filters?.category && filters.category !== 'all') {
+            query = query.eq('category', filters.category);
+        }
+        if (filters?.query) {
+            query = query.ilike('name', `%${filters.query}%`);
+        }
+
+        const { data, error } = await query.order('name', { ascending: true });
         if (error) throw new Error(`PRODUCT_FETCH_ERROR: ${error.message}`);
         return data.map(this.mapFromDb);
+    }
+
+    async getCategories(): Promise<string[]> {
+        const { data, error } = await this.supabase
+            .from('products')
+            .select('category')
+            .not('category', 'is', null);
+        
+        if (error) throw new Error(`CATEGORIES_FETCH_ERROR: ${error.message}`);
+        const cats = Array.from(new Set(data.map(i => i.category)));
+        return cats.sort();
     }
 
     async findByUuid(uuid: string): Promise<Product | null> {
@@ -31,6 +51,18 @@ export class ProductRepository {
             .single();
         if (error) return null;
         return this.mapFromDb(data);
+    }
+
+    async findByBarcode(barcode: string): Promise<Product | null> {
+        const { data, error } = await this.supabase
+            .from('products')
+            .select('*')
+            .contains('barcodes', [barcode])
+            .limit(1)
+            .maybeSingle();
+        
+        if (error) throw new Error(`BARCODE_SEARCH_ERROR: ${error.message}`);
+        return data ? this.mapFromDb(data) : null;
     }
 
     async updateStock(uuid: string, quantityChange: number): Promise<void> {
@@ -123,7 +155,7 @@ export class ProductRepository {
             price: p.price,
             purchase_price: p.purchasePrice,
             quantity: p.quantity,
-            min_stock_level: p.minStockLevel,
+            min_stock_level: p.min_stock_level,
             barcodes: p.barcodes,
             image_url: p.imageUrl,
             unite: p.unite,
