@@ -1,3 +1,4 @@
+
 'use client';
 
 /**
@@ -16,7 +17,7 @@ import { formatCurrency, cn } from '@/lib/utils';
 import { 
     Coins, ArrowRight, Printer, RefreshCw, 
     HandHelping, History as HistoryIcon, Save, Loader2, 
-    BadgeCheck, PieChart
+    BadgeCheck
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -230,7 +231,7 @@ export default function ZakatPage() {
                                         />
                                     </div>
                                 </CardContent>
-                            </Card>
+                            </div>
 
                             <Card className="luxury-glass border-blue-500/10 bg-blue-500/5">
                                 <CardHeader className="pb-2">

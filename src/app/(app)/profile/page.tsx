@@ -1,3 +1,4 @@
+
 'use client';
 
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -8,7 +9,11 @@ import { DataManagementCard } from "@/components/profile/DataManagementCard";
 import { useAppStore, useIsManagerOrAdmin } from "@/stores/appStore";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { User, Building2, Database, Settings2, LogOut, ShieldCheck, Mail, BadgeCheck, LayoutDashboard, Activity, Cloud, ShieldAlert, Wifi, Monitor, Cpu, Fingerprint, Globe } from "lucide-react";
+import { 
+    User, Building2, Database, Settings2, LogOut, ShieldCheck, Mail, 
+    BadgeCheck, LayoutDashboard, Activity, Cloud, ShieldAlert, Wifi, 
+    Monitor, Cpu, Fingerprint, Globe 
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";

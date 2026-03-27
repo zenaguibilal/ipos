@@ -1,3 +1,4 @@
+
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
@@ -80,7 +81,8 @@ export const config = {
      * - favicon.ico (favicon file)
      * - manifest.json (PWA manifest)
      * - *.svg, *.png, *.jpg, *.jpeg, *.gif, *.webp (images)
+     * - sw.js (service worker)
      */
-    '/((?!_next/static|_next/image|favicon.ico|manifest\\.json|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|manifest\\.json|sw\\.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }

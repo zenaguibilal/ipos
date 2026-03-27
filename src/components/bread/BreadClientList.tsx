@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -113,7 +114,7 @@ export function BreadClientList({ onListChange }: BreadClientListProps) {
                                     <Tag className="h-12 w-12 mx-auto mb-4 opacity-20" />
                                     <p className="font-semibold text-lg">Aucun abonné configuré</p>
                                     <p className="text-sm max-w-xs mx-auto mt-2 opacity-70">
-                                        Allez dans la gestion des clients et activeز l'option "Client Pain" pour commencer.
+                                        Allez dans la gestion des clients et activez l'option "Client Pain" pour commencer.
                                     </p>
                                 </div>
                             )}

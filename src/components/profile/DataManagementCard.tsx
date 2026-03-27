@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -239,7 +240,7 @@ export function DataManagementCard() {
                 isOpen={isDeleteConfirmOpen}
                 onOpenChange={setIsDeleteConfirmOpen}
                 title="Supprimer la sauvegarde ?"
-                description="Ce fichier sera supprimé définitivement du Cloud iPOS. Cette action n'affectه pas vos données en cours d'utilisation."
+                description="Ce fichier sera supprimé définitivement du Cloud iPOS. Cette action n'affectera pas vos données en cours d'utilisation."
                 onConfirm={handleConfirmDelete}
                 confirmText="Supprimer définitivement"
             />
