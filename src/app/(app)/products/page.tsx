@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useDebounce } from '@/hooks/useDebounce';
 import type { Product, Supplier, ProductImportAnalysis } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -15,14 +16,6 @@ import { InventoryStats } from '@/components/products/InventoryStats';
 import { ProductImportPreviewDialog } from '@/components/products/ProductImportPreviewDialog';
 import { ProductHistoryDialog } from '@/components/products/ProductHistoryDialog';
 import { BarcodeScannerDialog } from '@/components/products/BarcodeScannerDialog';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-} from "@/components/ui/dropdown-menu";
 import { toast } from 'sonner';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { api } from '@/lib/api-client';
@@ -32,16 +25,14 @@ import { CsvImporter } from '@/lib/csv-utils';
 
 export default function ProductsPage() {
     const isManagerOrAdmin = useIsManagerOrAdmin();
-    const { products, isLoading } = useAppStore(state => ({
+    const { products, isLoading, viewMode } = useAppStore(state => ({
         products: state.products,
-        isLoading: state.isLoading.products
+        isLoading: state.isLoading.products,
+        viewMode: state.productViewMode
     }));
-    const { refreshProducts } = useAppActions();
+    const { refreshProducts, setProductViewMode } = useAppActions();
 
     const [searchQuery, setSearchQuery] = useState('');
-    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-    const [sortBy, setSortBy] = useState('createdAt_desc');
-
     const [isProductDialogOpen, setIsProductDialogOpen] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [isHistoryDialogOpen, setIsHistoryDialogOpen] = useState(false);
@@ -141,8 +132,8 @@ export default function ProductsPage() {
                 </div>
                 
                 <div className="flex items-center gap-1 rounded-xl bg-muted/50 p-1 border border-primary/10 h-11 luxury-glass">
-                    <Button variant={viewMode === 'grid' ? 'secondary': 'ghost'} size="icon" onClick={() => setViewMode('grid')}><LayoutGrid className="h-5 w-5"/></Button>
-                    <Button variant={viewMode === 'list' ? 'secondary': 'ghost'} size="icon" onClick={() => setViewMode('list')}><List className="h-5 w-5"/></Button>
+                    <Button variant={viewMode === 'grid' ? 'secondary': 'ghost'} size="icon" onClick={() => setProductViewMode('grid')}><LayoutGrid className="h-5 w-5"/></Button>
+                    <Button variant={viewMode === 'list' ? 'secondary': 'ghost'} size="icon" onClick={() => setProductViewMode('list')}><List className="h-5 w-5"/></Button>
                 </div>
 
                 <Button variant="ghost" size="icon" className="h-11 w-11 luxury-glass" onClick={() => refreshProducts()} disabled={isLoading}>

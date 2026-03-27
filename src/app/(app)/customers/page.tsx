@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -24,14 +25,14 @@ import { cn } from '@/lib/utils';
 
 export default function CustomersPage() {
     const isManagerOrAdmin = useIsManagerOrAdmin();
-    const { customers, isLoading } = useAppStore(state => ({
+    const { customers, isLoading, viewMode } = useAppStore(state => ({
         customers: state.customers,
-        isLoading: state.isLoading.customers
+        isLoading: state.isLoading.customers,
+        viewMode: state.customerViewMode
     }));
-    const { refreshCustomers } = useAppActions();
+    const { refreshCustomers, setCustomerViewMode } = useAppActions();
 
     const [searchQuery, setSearchQuery] = useState('');
-    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
     const debouncedSearch = useDebounce(searchQuery, 300);
 
     const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
@@ -114,8 +115,8 @@ export default function CustomersPage() {
                     />
                 </div>
                 <div className="flex items-center gap-1 rounded-md bg-muted p-1">
-                    <Button variant={viewMode === 'grid' ? 'secondary': 'ghost'} size="icon" onClick={() => setViewMode('grid')}><LayoutGrid className="h-5 w-5"/></Button>
-                    <Button variant={viewMode === 'list' ? 'secondary': 'ghost'} size="icon" onClick={() => setViewMode('list')}><List className="h-5 w-5"/></Button>
+                    <Button variant={viewMode === 'grid' ? 'secondary': 'ghost'} size="icon" onClick={() => setCustomerViewMode('grid')}><LayoutGrid className="h-5 w-5"/></Button>
+                    <Button variant={viewMode === 'list' ? 'secondary': 'ghost'} size="icon" onClick={() => setCustomerViewMode('list')}><List className="h-5 w-5"/></Button>
                 </div>
                 <Button variant="ghost" size="icon" onClick={() => refreshCustomers()} disabled={isLoading}>
                     <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />

@@ -12,7 +12,7 @@ import { api } from '@/lib/api-client';
 
 /**
  * @fileOverview THE STATE SINGULARITY (DOMINATION MODE)
- * المصدر الوحيد والحتمي لكافة حالات النظام والعمليات التشغيلية.
+ * المصدر الوحيد والحتمي لكافة حالات النظام والعمليات التشغيلية والوضع البصري.
  */
 
 interface AppState {
@@ -41,6 +41,8 @@ interface AppState {
     lastCompletedSale: { sale: Sale; customer?: Customer } | null;
     isLoading: Record<string, boolean>;
     
+    productViewMode: 'grid' | 'list';
+    customerViewMode: 'grid' | 'list';
     expenseViewMode: 'grid' | 'list';
     salesHistoryViewMode: 'grid' | 'list';
     returnViewMode: 'grid' | 'list';
@@ -66,7 +68,9 @@ interface AppState {
         fetchCustomerDetails: (uuid: string) => Promise<void>;
         fetchSupplierDetails: (uuid: string) => Promise<void>;
 
-        // UI State Actions
+        // UI State Actions (The Singularity)
+        setProductViewMode: (mode: 'grid' | 'list') => void;
+        setCustomerViewMode: (mode: 'grid' | 'list') => void;
         setExpenseViewMode: (mode: 'grid' | 'list') => void;
         setSalesHistoryViewMode: (mode: 'grid' | 'list') => void;
         setReturnViewMode: (mode: 'grid' | 'list') => void;
@@ -86,7 +90,7 @@ interface AppState {
         clearCart: () => void;
         clearCartFlashes: () => void;
         
-        // Deletion Actions (Phase 5 Singularity)
+        // Deletion Actions
         deleteCustomersBulk: (uuids: string[]) => Promise<void>;
         deleteSuppliersBulk: (uuids: string[]) => Promise<void>;
         deleteProductsBulk: (uuids: string[]) => Promise<void>;
@@ -136,6 +140,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     lastCompletedSale: null,
     isLoading: {},
 
+    productViewMode: 'grid',
+    customerViewMode: 'grid',
     expenseViewMode: 'grid',
     salesHistoryViewMode: 'grid',
     returnViewMode: 'grid',
@@ -310,6 +316,8 @@ export const useAppStore = create<AppState>((set, get) => ({
             }
         },
 
+        setProductViewMode: (mode) => set({ productViewMode: mode }),
+        setCustomerViewMode: (mode) => set({ customerViewMode: mode }),
         setExpenseViewMode: (mode) => set({ expenseViewMode: mode }),
         setSalesHistoryViewMode: (mode) => set({ salesHistoryViewMode: mode }),
         setReturnViewMode: (mode) => set({ returnViewMode: mode }),
@@ -400,7 +408,6 @@ export const useAppStore = create<AppState>((set, get) => ({
 
         deleteBreadOrdersBulk: async (uuids) => {
             await api.post('bread/bulk-delete', { uuids });
-            // Should be followed by refresh in component
         },
 
         finalizeSale: async (paymentData) => {
