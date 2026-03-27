@@ -4,7 +4,7 @@ import { ProfileSchema } from '@/lib/schemas';
 
 /**
  * @fileOverview API WALL: Company Profile Gateway
- * تم تحصين المسار بالتحقق الصارم من البيانات لفرض سيادة المعمارية.
+ * Enforced strict validation and server-side authority.
  */
 
 export async function GET() {
@@ -22,14 +22,12 @@ export async function GET() {
 export async function PUT(req: Request) {
     try {
         const body = await req.json();
-        // Authority: Strict Zod validation
         const validatedData = ProfileSchema.parse(body);
         const repo = new CompanyRepository();
         const data = await repo.update(validatedData);
 
         return NextResponse.json({ data });
     } catch (e: any) {
-        console.error('[API_WALL_STRIKE] Profile Update Failed:', e.message);
         return NextResponse.json({ error: e.message || 'VALIDATION_FAILED' }, { status: 400 });
     }
 }

@@ -1,8 +1,8 @@
 import { z } from 'zod';
 
 /**
- * @fileOverview DETERMINISTIC SCHEMA DEFINITIONS (FIXED)
- * تم إصلاح أخطاء بناء الجملة لضمان حتمية التحقق من البيانات.
+ * @fileOverview DETERMINISTIC SCHEMA DEFINITIONS
+ * Absolute authority for data validation across the API Wall.
  */
 
 export const ProductSchema = z.object({
