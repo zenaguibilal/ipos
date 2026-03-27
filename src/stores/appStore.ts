@@ -11,16 +11,14 @@ import { v4 as uuidv4 } from 'uuid';
 import { api } from '@/lib/api-client';
 
 /**
- * @fileOverview THE STATE SINGULARITY (ABSOLUTE EDITION)
- * المركز السيادي والوحيد لكافة حالات النظام أثناء التشغيل.
- * يمنع منعاً باتاً وجود shadow states داخل المكونات.
+ * @fileOverview THE STATE SINGULARITY (DOMINATION MODE)
+ * المصدر الوحيد والحتمي لكافة حالات النظام والعمليات التشغيلية.
  */
 
 interface AppState {
     profile: CompanyProfile | null;
     isSettingsLoading: boolean;
     
-    // Core Data Entities
     products: Product[];
     customers: Customer[];
     suppliers: Supplier[];
@@ -32,21 +30,17 @@ interface AppState {
     recipes: Recipe[];
     zakatHistory: SavedZakatCalculation[];
     
-    // Selection States (Singularity for detail pages)
     selectedCustomer: { data: Customer | null; stats: any; activity: any[] };
     selectedSupplier: { data: Supplier | null; stats: any; activity: any[]; products: Product[] };
 
-    // Categories Cache
     productCategories: string[];
     expenseCategories: string[];
 
-    // View & Session
     carts: Cart[];
     activeCartId: string;
     lastCompletedSale: { sale: Sale; customer?: Customer } | null;
     isLoading: Record<string, boolean>;
     
-    // UI View Modes
     expenseViewMode: 'grid' | 'list';
     salesHistoryViewMode: 'grid' | 'list';
     returnViewMode: 'grid' | 'list';
@@ -57,7 +51,6 @@ interface AppState {
         fetchProfile: () => Promise<void>;
         updateProfile: (data: Partial<CompanyProfile>) => Promise<void>;
         
-        // Refreshers
         refreshProducts: (search?: string) => Promise<void>;
         refreshCustomers: () => Promise<void>;
         refreshSuppliers: () => Promise<void>;
@@ -70,7 +63,6 @@ interface AppState {
         refreshZakatHistory: () => Promise<void>;
         refreshCategories: () => Promise<void>;
 
-        // Detail Fetchers (Phase 5 Enforcer)
         fetchCustomerDetails: (uuid: string) => Promise<void>;
         fetchSupplierDetails: (uuid: string) => Promise<void>;
 
@@ -94,6 +86,12 @@ interface AppState {
         clearCart: () => void;
         clearCartFlashes: () => void;
         
+        // Deletion Actions (Phase 5 Singularity)
+        deleteCustomersBulk: (uuids: string[]) => Promise<void>;
+        deleteSuppliersBulk: (uuids: string[]) => Promise<void>;
+        deleteProductsBulk: (uuids: string[]) => Promise<void>;
+        deleteBreadOrdersBulk: (uuids: string[]) => Promise<void>;
+
         // Transaction Processors
         finalizeSale: (paymentData: any) => Promise<boolean>;
         processReturn: (returnData: any) => Promise<boolean>;
@@ -298,7 +296,6 @@ export const useAppStore = create<AppState>((set, get) => ({
                     api.get<Product[]>(`products?supplierUuid=${uuid}`)
                 ]);
                 
-                // Calculate stats from activity on client for speed
                 const intakes = activity.filter(a => a.type === 'intake');
                 const totalBought = intakes.reduce((sum, i) => sum + i.totalValue, 0);
                 const stats = { 
@@ -333,8 +330,13 @@ export const useAppStore = create<AppState>((set, get) => ({
         })),
 
         addProductToCart: (product, quantity) => set(produce((state: AppState) => {
-            const cartId = state.activeCartId || state.carts[0].id;
-            const cart = state.carts.find(c => c.id === cartId)!;
+            const cartId = state.activeCartId || (state.carts[0] ? state.carts[0].id : createInitialCart().id);
+            if (!state.activeCartId && state.carts.length === 0) {
+                const init = createInitialCart();
+                state.carts.push(init);
+                state.activeCartId = init.id;
+            }
+            const cart = state.carts.find(c => c.id === state.activeCartId)!;
             const existing = cart.items.find(i => i.uuid === product.uuid);
             if (existing) {
                 existing.cartQuantity += quantity;
@@ -342,45 +344,64 @@ export const useAppStore = create<AppState>((set, get) => ({
             } else {
                 cart.items.push({ ...product, cartQuantity: quantity, flash: true });
             }
-            state.activeCartId = cartId;
         })),
 
         removeCartItem: (uuid) => set(produce((state: AppState) => {
-            const cart = state.carts.find(c => c.id === state.activeCartId) || state.carts[0];
-            cart.items = cart.items.filter(i => i.uuid !== uuid);
+            const cart = state.carts.find(c => c.id === state.activeCartId);
+            if (cart) cart.items = cart.items.filter(i => i.uuid !== uuid);
         })),
 
         updateCartItemQuantity: (uuid, qty) => set(produce((state: AppState) => {
-            const cart = state.carts.find(c => c.id === state.activeCartId) || state.carts[0];
-            const item = cart.items.find(i => i.uuid === uuid);
+            const cart = state.carts.find(c => c.id === state.activeCartId);
+            const item = cart?.items.find(i => i.uuid === uuid);
             if (item) item.cartQuantity = Math.max(1, qty);
         })),
 
         updateCartItemPrice: (uuid, price) => set(produce((state: AppState) => {
-            const cart = state.carts.find(c => c.id === state.activeCartId) || state.carts[0];
-            const item = cart.items.find(i => i.uuid === uuid);
+            const cart = state.carts.find(c => c.id === state.activeCartId);
+            const item = cart?.items.find(i => i.uuid === uuid);
             if (item) item.price = price;
         })),
 
         setCartCustomer: (customer) => set(produce((state: AppState) => {
-            const cart = state.carts.find(c => c.id === state.activeCartId) || state.carts[0];
-            cart.customerUuid = customer?.uuid || null;
+            const cart = state.carts.find(c => c.id === state.activeCartId);
+            if (cart) cart.customerUuid = customer?.uuid || null;
         })),
 
         setCartDiscount: (discount) => set(produce((state: AppState) => {
-            const cart = state.carts.find(c => c.id === state.activeCartId) || state.carts[0];
-            cart.discount = discount;
+            const cart = state.carts.find(c => c.id === state.activeCartId);
+            if (cart) cart.discount = discount;
         })),
 
         clearCart: () => set(produce((state: AppState) => {
             const index = state.carts.findIndex(c => c.id === state.activeCartId);
-            if (index !== -1) state.carts[index] = createInitialCart();
+            if (index !== -1) state.carts[index] = { ...createInitialCart(), id: state.activeCartId };
         })),
 
         clearCartFlashes: () => set(produce((state: AppState) => {
             const cart = state.carts.find(c => c.id === state.activeCartId);
             if (cart) cart.items.forEach(i => i.flash = false);
         })),
+
+        deleteCustomersBulk: async (uuids) => {
+            await api.post('customers/bulk-delete', { uuids });
+            await get().actions.refreshCustomers();
+        },
+
+        deleteSuppliersBulk: async (uuids) => {
+            await api.post('suppliers/bulk-delete', { uuids });
+            await get().actions.refreshSuppliers();
+        },
+
+        deleteProductsBulk: async (uuids) => {
+            await api.post('products/bulk-delete', { uuids });
+            await get().actions.refreshProducts();
+        },
+
+        deleteBreadOrdersBulk: async (uuids) => {
+            await api.post('bread/bulk-delete', { uuids });
+            // Should be followed by refresh in component
+        },
 
         finalizeSale: async (paymentData) => {
             const cart = get().carts.find(c => c.id === get().activeCartId);

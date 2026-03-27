@@ -15,7 +15,7 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from "@/command"; // Fixed path
+} from "@/components/ui/command";
 import { Button } from '@/components/ui/button';
 import { ChevronsUpDown, Plus } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
@@ -24,8 +24,8 @@ import { api } from '@/lib/api-client';
 import { toast } from 'sonner';
 
 /**
- * @fileOverview Product Intake Combobox (API Wall Purified)
- * تم تطهير المكون من أي خدمات قديمة. يتم جلب البيانات عبر API Wall مباشرة.
+ * @fileOverview Product Intake Combobox (Purified)
+ * تم تصحيح مسارات الاستيراد للامتثال لبروتوكول التطهير.
  */
 
 interface ProductIntakeComboboxProps {
@@ -43,7 +43,6 @@ export function ProductIntakeCombobox({ onProductSelected, onNewProductCreated }
     useEffect(() => {
         const fetchProducts = async () => {
             try {
-                // Updated: Direct API Call
                 const data = await api.get<Product[]>('products');
                 setProducts(data);
             } catch (error: any) {
