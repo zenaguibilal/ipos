@@ -41,6 +41,12 @@ export interface Customer {
     lastActivityDate?: string;
     createdAt: string;
     updatedAt: string;
+    debtStatus: 'none' | 'due_soon' | 'overdue';
+    isOverLimit: boolean;
+    isBreadClient?: boolean;
+    bread_type_recurrence?: 'quotidien' | 'jours_specifiques' | 'aucun';
+    bread_quantite_defaut?: number;
+    bread_jours_semaine?: Record<string, { actif: boolean; quantite: number }>;
 }
 
 export interface Sale {
@@ -88,15 +94,75 @@ export interface Supplier {
     updatedAt: string;
 }
 
-export interface Expense {
+export interface StockIntake {
     uuid: string;
     user_id: string;
-    description: string;
-    category: string;
-    amount: number;
-    expenseDate: string;
-    createdAt: string;
-    updatedAt: string;
+    supplierUuid?: string;
+    invoiceNumber: string;
+    invoiceDate: Date;
+    totalValue: number;
+    transportFees: number;
+    items: StockIntakeItem[];
+    createdAt?: Date;
+    updatedAt?: Date;
+}
+
+export interface StockIntakeItem {
+    productUuid?: string;
+    productName: string;
+    quantityReceived: number;
+    quantityDamaged: number;
+    purchasePrice: number;
+    costPrice?: number;
+}
+
+export interface InventoryLog {
+    uuid: string;
+    user_id: string;
+    productUuid: string;
+    change: number;
+    newQuantity: number;
+    reason: 'sale' | 'return' | 'stock_intake' | 'cancellation' | 'manual_adjustment';
+    relatedUuid?: string;
+    createdAt: Date;
+}
+
+export interface ProductReturn {
+    uuid: string;
+    user_id: string;
+    originalSaleUuid: string;
+    originalInvoiceNumber: string;
+    totalReturnValue: number;
+    amountRefunded: number;
+    customerUuid?: string;
+    items: ReturnItem[];
+    notes?: string;
+    createdAt?: Date;
+    updatedAt?: Date;
+}
+
+export interface ReturnItem {
+    productUuid: string | null;
+    productName: string;
+    quantity: number;
+    price: number;
+    purchasePrice: number;
+    wasRestocked: boolean;
+}
+
+export interface BreadOrder {
+    uuid: string;
+    user_id: string;
+    customerUuid: string | null;
+    orderName: string;
+    date: string;
+    quantite: number;
+    quantite_origine?: number;
+    est_paye: boolean;
+    est_livre: boolean;
+    venteUuid: string | null;
+    createdAt: Date;
+    updatedAt: Date;
 }
 
 export interface CompanyProfile {
@@ -105,9 +171,38 @@ export interface CompanyProfile {
     companyName: string;
     address?: string;
     city?: string;
+    zipCode?: string;
+    country?: string;
     phone?: string;
+    email?: string;
+    website?: string;
+    vatNumber?: string;
+    rcNumber?: string;
+    artImposition?: string;
+    goldPricePerGram?: number;
+    prix_pain?: number;
     role: AppRole;
     updatedAt: string;
+}
+
+export interface ZakatCalculation {
+    inventoryValue: number;
+    customerDebts: number;
+    badDebts: number;
+    cashOnHand: number;
+    supplierDebts: number;
+    otherDebts: number;
+    goldPrice: number;
+    nisab: number;
+    zakatBase: number;
+    zakatAmount: number;
+    isNisabReached: boolean;
+}
+
+export interface SavedZakatCalculation extends ZakatCalculation {
+    uuid: string;
+    user_id: string;
+    createdAt: Date;
 }
 
 export interface CartItem extends Product {
@@ -121,4 +216,28 @@ export interface Cart {
     items: CartItem[];
     customerUuid: string | null;
     discount: { type: 'fixed' | 'percentage'; value: number };
+}
+
+export interface CustomerTopProduct {
+    productUuid: string;
+    name: string;
+    quantity: number;
+    totalAmount: number;
+    category: string;
+}
+
+export interface ImportAnalysis {
+    customersToAdd: any[];
+    customersToUpdate: any[];
+    skippedRows: any[];
+    errorRows: any[];
+    totalRows: number;
+}
+
+export interface ProductImportAnalysis {
+    productsToAdd: any[];
+    productsToUpdate: any[];
+    skippedRows: any[];
+    errorRows: any[];
+    totalRows: number;
 }
