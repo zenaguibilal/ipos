@@ -1,6 +1,7 @@
 /**
  * @fileOverview THE TYPE SINGULARITY
  * Absolute authority for all system interfaces.
+ * Strictly enforced for deterministic builds.
  */
 
 export type AppRole = 'admin' | 'manager' | 'cashier';
@@ -85,6 +86,15 @@ export interface Sale {
     dueDate?: Date | string;
 }
 
+export interface ReturnItem {
+    productUuid: string | null;
+    productName: string;
+    quantity: number;
+    price: number;
+    purchasePrice: number;
+    wasRestocked: boolean;
+}
+
 export interface ProductReturn {
     uuid: string;
     user_id: string;
@@ -98,15 +108,6 @@ export interface ProductReturn {
     createdAt?: Date | string;
 }
 
-export interface ReturnItem {
-    productUuid: string | null;
-    productName: string;
-    quantity: number;
-    price: number;
-    purchasePrice: number;
-    wasRestocked: boolean;
-}
-
 export interface Supplier {
     uuid: string;
     user_id: string;
@@ -117,16 +118,6 @@ export interface Supplier {
     address?: string;
     balance: number;
     createdAt?: Date | string;
-}
-
-export interface SupplierPayment {
-    uuid: string;
-    user_id: string;
-    supplierUuid: string;
-    amount: number;
-    paymentDate: Date | string;
-    method: 'cash' | 'card' | 'bank_transfer';
-    notes?: string;
 }
 
 export interface Expense {
@@ -211,80 +202,18 @@ export interface LowStockProduct {
     unite: string;
 }
 
-export interface Recipe {
-    uuid: string;
-    user_id: string;
-    name: string;
-    description?: string;
-    ingredients: Ingredient[];
-    yieldQuantity: number;
-    unitCost: number;
-    suggestedPrice: number;
-    targetMargin: number;
-    updatedAt?: Date | string;
+export interface CartItem extends Product {
+    cartQuantity: number;
+    flash?: boolean;
 }
 
-export interface Ingredient {
+export interface Cart {
     id: string;
     name: string;
-    quantity: number;
-    unit: string;
-    unitCost: number;
-}
-
-export interface BreadOrder {
-    uuid: string;
-    user_id: string;
+    items: CartItem[];
     customerUuid: string | null;
-    orderName: string;
-    date: string;
-    quantite: number;
-    quantite_origine?: number;
-    est_paye: boolean;
-    est_livre: boolean;
-    venteUuid: string | null;
-    createdAt?: Date | string;
+    discount: { type: 'fixed' | 'percentage'; value: number };
 }
-
-export interface StockIntake {
-    uuid: string;
-    user_id: string;
-    supplierUuid?: string;
-    invoiceNumber: string;
-    invoiceDate: Date | string;
-    totalValue: number;
-    transportFees: number;
-    items: StockIntakeItem[];
-    createdAt?: Date | string;
-}
-
-export interface StockIntakeItem {
-    productUuid?: string;
-    productName: string;
-    quantityReceived: number;
-    quantityDamaged: number;
-    purchasePrice: number;
-    costPrice?: number;
-}
-
-export interface InventoryLog {
-    uuid: string;
-    user_id: string;
-    productUuid: string;
-    change: number;
-    newQuantity: number;
-    reason: 'sale' | 'return' | 'stock_intake' | 'cancellation' | 'manual_adjustment';
-    relatedUuid?: string;
-    createdAt: Date | string;
-}
-
-export type CustomerTopProduct = {
-    productUuid: string;
-    name: string;
-    quantity: number;
-    totalAmount: number;
-    category: string;
-};
 
 export interface ImportAnalysis {
     customersToAdd: any[];
@@ -300,24 +229,4 @@ export interface ProductImportAnalysis {
     skippedRows: any[];
     errorRows: any[];
     totalRows: number;
-}
-
-export interface ZakatCalculation {
-    inventoryValue: number;
-    customerDebts: number;
-    badDebts: number;
-    cashOnHand: number;
-    supplierDebts: number;
-    otherDebts: number;
-    goldPrice: number;
-    nisab: number;
-    zakatBase: number;
-    zakatAmount: number;
-    isNisabReached: boolean;
-}
-
-export interface SavedZakatCalculation extends ZakatCalculation {
-    uuid: string;
-    user_id: string;
-    createdAt: Date | string;
 }
