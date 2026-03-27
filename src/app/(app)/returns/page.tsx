@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
@@ -9,7 +8,6 @@ import { Search, Plus, Undo2, FileUp, RefreshCw } from 'lucide-react';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { useDateRange } from '@/hooks/useDateRange';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ReturnHistoryCard } from '@/components/returns/ReturnHistoryCard';
 import { ReturnTable } from '@/components/returns/ReturnTable';
 import { ReturnDetailsDialog } from '@/components/returns/ReturnDetailsDialog';
 import { CancelReturnDialog } from '@/components/returns/CancelReturnDialog';
@@ -27,9 +25,6 @@ import { CsvImporter } from '@/lib/csv-utils';
 const ITEMS_PER_PAGE = 15;
 
 export default function ReturnsPage() {
-    const { viewMode } = useAppStore(state => ({
-        viewMode: state.returnViewMode
-    }));
     const profile = useAppStore(state => state.profile);
 
     const [searchQuery, setSearchQuery] = useState('');
@@ -156,7 +151,7 @@ export default function ReturnsPage() {
             <div className="min-h-[400px]">
                 {allReturns === undefined ? <div className="grid grid-cols-3 gap-6">{[...Array(6)].map((_, i) => <Skeleton key={i} className="h-56 w-full rounded-3xl" />)}</div> : allReturns.length === 0 ? <EmptyState icon={Undo2} title="Aucun retour" description="Créez un nouveau retour pour régulariser un stock." /> : (
                     <div className="space-y-6">
-                        {viewMode === 'grid' ? <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">{visibleReturns.map(r => <ReturnHistoryCard key={r.uuid} productReturn={r} customerName={r.customerUuid ? `${customerMap.get(r.customerUuid)?.firstName} ${customerMap.get(r.customerUuid)?.lastName}` : 'Passage'} onViewDetails={handleViewDetails} onCancelReturn={handleCancelReturn} onPrint={(f) => handlePrint(r, f)} />)}</div> : <ReturnTable returns={visibleReturns} customerMap={customerMap} onViewDetails={handleViewDetails} onCancelReturn={handleCancelReturn} onPrint={(r, f) => handlePrint(r, f)} />}
+                        <ReturnTable returns={visibleReturns} customerMap={customerMap} onViewDetails={handleViewDetails} onCancelReturn={handleCancelReturn} onPrint={(r, f) => handlePrint(r, f)} />
                         {allReturns.length > visibleCount && <div className="flex justify-center pt-4"><Button variant="outline" onClick={() => setVisibleCount(v => v + ITEMS_PER_PAGE)}>Charger plus</Button></div>}
                     </div>
                 )}

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { create } from 'zustand';
@@ -47,7 +46,6 @@ interface AppState {
     customerViewMode: 'grid' | 'list';
     expenseViewMode: 'grid' | 'list';
     salesHistoryViewMode: 'grid' | 'list';
-    returnViewMode: 'grid' | 'list';
     supplierViewMode: 'grid' | 'list';
     stockViewMode: 'grid' | 'list';
 
@@ -88,7 +86,6 @@ interface AppState {
         setCustomerViewMode: (mode: 'grid' | 'list') => void;
         setExpenseViewMode: (mode: 'grid' | 'list') => void;
         setSalesHistoryViewMode: (mode: 'grid' | 'list') => void;
-        setReturnViewMode: (mode: 'grid' | 'list') => void;
         setSupplierViewMode: (mode: 'grid' | 'list') => void;
         setStockViewMode: (mode: 'grid' | 'list') => void;
 
@@ -162,7 +159,6 @@ export const useAppStore = create<AppState>((set, get) => ({
     customerViewMode: 'grid',
     expenseViewMode: 'list',
     salesHistoryViewMode: 'list',
-    returnViewMode: 'list',
     supplierViewMode: 'grid',
     stockViewMode: 'list',
 
@@ -336,7 +332,6 @@ export const useAppStore = create<AppState>((set, get) => ({
         setCustomerViewMode: (mode) => set({ customerViewMode: mode }),
         setExpenseViewMode: (mode) => set({ expenseViewMode: mode }),
         setSalesHistoryViewMode: (mode) => set({ salesHistoryViewMode: mode }),
-        setReturnViewMode: (mode) => set({ returnViewMode: mode }),
         setSupplierViewMode: (mode) => set({ supplierViewMode: mode }),
         setStockViewMode: (mode) => set({ stockViewMode: mode }),
 
