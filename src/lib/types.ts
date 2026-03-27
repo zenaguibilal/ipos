@@ -187,19 +187,21 @@ export interface StockIntake {
     updatedAt?: Date;
 }
 
+export interface ReturnItem {
+    productUuid: string | null;
+    productName: string;
+    quantity: number;
+    price: number;
+    purchasePrice: number;
+    wasRestocked: boolean;
+}
+
 export interface ProductReturn {
     uuid: string;
     user_id: string;
     originalSaleUuid?: string;
     originalInvoiceNumber: string;
-    items: {
-        productUuid: string | null;
-        productName: string;
-        quantity: number;
-        price: number;
-        purchasePrice: number;
-        wasRestocked: boolean;
-    }[];
+    items: ReturnItem[];
     totalReturnValue: number;
     amountRefunded: number;
     customerUuid?: string;
