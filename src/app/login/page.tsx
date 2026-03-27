@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -45,17 +46,23 @@ export default function LoginPage() {
     const [isForgotPassLoading, setIsForgotPassLoading] = useState(false);
     const [forgotPassMessage, setForgotPassMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
 
-    // Hard redirect protocol to bypass Next.js Middleware/Cookie sync delays
+    /**
+     * CRITICAL: Hard Redirect Protocol
+     * Standard router.push fails if Next.js middleware doesn't see auth cookies yet.
+     * We force a page refresh to sync cookies before redirecting.
+     */
     useEffect(() => {
         if (session) {
             setLoginSuccess(true);
             const timer = setTimeout(() => {
-                // Using window.location.href ensures a fresh browser request with updated cookies
+                // router.refresh forces Next.js to re-evaluate server status
+                router.refresh();
+                // window.location.href ensures a clean browser request with fresh cookies
                 window.location.href = '/dashboard';
             }, 800);
             return () => clearTimeout(timer);
         }
-    }, [session]);
+    }, [session, router]);
 
     const handleSignIn = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -70,7 +77,7 @@ export default function LoginPage() {
         setIsLoading(true);
         try {
             await signIn(signInEmail, signInPassword);
-            toast.success("Connexion réussie ! Redirection en cours...");
+            toast.success("Authentification réussie. Redirection...");
         } catch (error: any) {
             setError(error.message || "La connexion a échoué.");
             setIsLoading(false);

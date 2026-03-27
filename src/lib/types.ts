@@ -51,6 +51,29 @@ export interface Customer {
     bread_jours_semaine?: Record<string, { actif: boolean; quantite: number }>;
 }
 
+export interface RecipeIngredient {
+    productUuid: string;
+    name: string;
+    quantity: number;
+    unit: string;
+    cost: number;
+}
+
+export interface Recipe {
+    uuid: string;
+    user_id: string;
+    name: string;
+    description?: string;
+    ingredients: RecipeIngredient[];
+    yieldQuantity: number;
+    totalCost: number;
+    unitCost: number;
+    targetMargin: number;
+    suggestedPrice: number;
+    createdAt?: Date;
+    updatedAt?: Date;
+}
+
 export interface SaleItem {
     productUuid: string | null;
     name: string;
