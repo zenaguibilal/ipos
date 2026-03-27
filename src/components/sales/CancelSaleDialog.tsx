@@ -1,8 +1,9 @@
+
 'use client';
 
 import { toast } from 'sonner';
 import type { Sale } from '@/lib/types';
-import { salesService } from '@/services/sales.service';
+import { api } from '@/lib/api-client';
 import { ConfirmAlertDialog } from '@/components/ui/ConfirmAlertDialog';
 
 interface CancelSaleDialogProps {
@@ -17,12 +18,12 @@ export function CancelSaleDialog({ isOpen, onOpenChange, sale, onSuccess }: Canc
         if (!sale) return;
 
         try {
-             // The service layer now orchestrates the entire cancellation process.
-            await salesService.processSaleCancellation(sale.uuid);
+            // Updated to use direct API Wall
+            await api.delete(`sales/${sale.uuid}`);
             toast.success(`Vente #${sale.invoiceNumber} annulée.`);
             onSuccess();
         } catch (error: any) {
-            toast.error("Échec de l'annulation.", { description: error.message });
+            toast.error("Échec de l'annulation.");
         }
     };
 

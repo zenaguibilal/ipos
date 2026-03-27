@@ -1,7 +1,8 @@
+
 'use client';
 
 import { toast } from 'sonner';
-import { productService } from '@/services/product.service';
+import { api } from '@/lib/api-client';
 import { ConfirmAlertDialog } from '@/components/ui/ConfirmAlertDialog';
 
 interface DeleteMultipleProductsDialogProps {
@@ -16,9 +17,8 @@ export function DeleteMultipleProductsDialog({ isOpen, onOpenChange, productUuid
     const handleDelete = async () => {
         if (productUuids.length === 0) return;
 
-        // The business logic is now in the service layer.
-        // The ConfirmAlertDialog will catch and display any errors thrown by the service.
-        await productService.bulkDelete(productUuids);
+        // Updated to use direct API Wall
+        await api.post('products/bulk-delete', { uuids: productUuids });
         toast.success(`${productUuids.length} produit(s) supprimé(s) avec succès.`);
         onSuccess();
     };

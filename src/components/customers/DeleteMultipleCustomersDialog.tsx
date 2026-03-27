@@ -1,7 +1,8 @@
+
 'use client';
 
 import { toast } from 'sonner';
-import { customerService } from '@/services/customer.service';
+import { api } from '@/lib/api-client';
 import { ConfirmAlertDialog } from '@/components/ui/ConfirmAlertDialog';
 
 interface DeleteMultipleCustomersDialogProps {
@@ -16,7 +17,8 @@ export function DeleteMultipleCustomersDialog({ isOpen, onOpenChange, customerUu
     const handleDelete = async () => {
         if (customerUuids.length === 0) return;
 
-        await customerService.bulkDelete(customerUuids);
+        // Updated to use direct API Wall
+        await api.post('customers/bulk-delete', { uuids: customerUuids });
         toast.success(`${customerUuids.length} client(s) supprimé(s) avec succès.`);
         onSuccess();
     };

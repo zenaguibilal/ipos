@@ -1,8 +1,9 @@
+
 'use client';
 
 import { toast } from 'sonner';
 import type { StockIntake } from '@/lib/types';
-import { stockService } from '@/services/stock.service';
+import { api } from '@/lib/api-client';
 import { ConfirmAlertDialog } from '@/components/ui/ConfirmAlertDialog';
 
 interface CancelIntakeDialogProps {
@@ -16,8 +17,9 @@ export function CancelIntakeDialog({ isOpen, onOpenChange, intake, onSuccess }: 
     const handleCancel = async () => {
         if (!intake) return;
         
-        await stockService.processStockIntakeCancellation(intake.uuid);
-        toast.success(`Réception de ${intake.invoiceNumber || 'stock'} annulée.`);
+        // Updated to use direct API Wall
+        await api.delete(`stock/${intake.uuid}`);
+        toast.success(`Réception annulée.`);
         onSuccess();
     };
 

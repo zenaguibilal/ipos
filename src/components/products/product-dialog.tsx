@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -12,15 +13,13 @@ import { Badge } from '../ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { DatePicker } from '../ui/date-picker';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
-import { productService } from '@/services/product.service';
+import { api } from '@/lib/api-client';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { calculateStockStatus } from '@/lib/utils';
 
 interface ProductDialogProps {
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
-    // FIX: Interface updated to Partial<Product> to support duplication templates
     product: Partial<Product> | null;
     categories: string[];
     suppliers: Supplier[];
@@ -137,10 +136,9 @@ export function ProductDialog({ isOpen, onOpenChange, product, categories, suppl
         setError(null);
         setIsLoading(true);
 
-        // FIX: Replaced unsafe 'any' cast with proper destructuring
         const { supplierName, ...productDataWithoutMeta } = formState;
 
-        const productData = {
+        const dataToSave = {
             name: productDataWithoutMeta.name || '',
             category: productDataWithoutMeta.category || 'Non classé',
             price: Number(productDataWithoutMeta.price) || 0,
@@ -150,24 +148,22 @@ export function ProductDialog({ isOpen, onOpenChange, product, categories, suppl
             barcodes: productDataWithoutMeta.barcodes || [],
             imageUrl: productDataWithoutMeta.imageUrl || undefined,
             unite: productDataWithoutMeta.unite || 'Pièce',
-            dateExpiration: productDataWithoutMeta.dateExpiration || undefined,
+            dateExpiration: productDataWithoutMeta.dateExpiration?.toISOString() || undefined,
             supplierUuid: productDataWithoutMeta.supplierUuid || undefined,
-            supplierName: supplierName || undefined,
         };
 
         try {
-            // FIX: Check for the actual ID existence to distinguish update vs creation
+            // Updated to use direct API Wall
             if (product?.uuid) {
-                await productService.updateProduct(product.uuid, productData);
-                toast.success(`Produit ${productData.name} mis à jour.`);
+                await api.put(`products/${product.uuid}`, dataToSave);
+                toast.success(`Produit mis à jour.`);
             } else {
-                await productService.addProduct(productData as any);
-                toast.success(`Produit ${productData.name} ajouté.`);
+                await api.post('products', dataToSave);
+                toast.success(`Produit ajouté.`);
             }
             onSuccess();
             onOpenChange(false);
         } catch (err: any) {
-            setError(err.message || "Une erreur est survenue.");
             toast.error("Échec de l'opération.");
         } finally {
             setIsLoading(false);

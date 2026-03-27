@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import type { BreadOrder } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { breadService } from '@/services/bread.service';
+import { api } from '@/lib/api-client';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useDebounce } from '@/hooks/useDebounce';
 import { User, Package, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
@@ -31,7 +31,8 @@ export function BreadOrderCard({ order, isSelected, onToggleSelection, onUpdate 
 
     const handleQuantityChange = useCallback(async (newQuantity: number) => {
         try {
-            await breadService.updateOrder(order.uuid, { quantite: newQuantity });
+            // Updated to use direct API Wall
+            await api.put(`bread/${order.uuid}`, { quantite: newQuantity });
             onUpdate();
         } catch (error) {
             toast.error("Erreur de mise à jour.");
@@ -50,7 +51,8 @@ export function BreadOrderCard({ order, isSelected, onToggleSelection, onUpdate 
 
     const handleDeliveryToggle = useCallback(async (delivered: boolean) => {
         try {
-            await breadService.updateOrder(order.uuid, { est_livre: delivered });
+            // Updated to use direct API Wall
+            await api.put(`bread/${order.uuid}`, { est_livre: delivered });
             onUpdate();
         } catch (error) {
             toast.error("Erreur de mise à jour du statut.");

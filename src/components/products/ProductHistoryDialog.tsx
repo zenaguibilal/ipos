@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -20,7 +21,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Loader2, ArrowUpRight, ArrowDownRight, History } from 'lucide-react';
 import type { Product, InventoryLog } from '@/lib/types';
-import { inventoryService } from '@/services/inventory.service';
+import { api } from '@/lib/api-client';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -47,7 +48,8 @@ export function ProductHistoryDialog({ isOpen, onOpenChange, product }: ProductH
     useEffect(() => {
         if (isOpen && product) {
             setIsLoading(true);
-            inventoryService.getHistoryForProduct(product.uuid)
+            // Updated to use direct API Wall
+            api.get<InventoryLog[]>(`inventory?productUuid=${product.uuid}`)
                 .then(setLogs)
                 .catch(() => setLogs([]))
                 .finally(() => setIsLoading(false));

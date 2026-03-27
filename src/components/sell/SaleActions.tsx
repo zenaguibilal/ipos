@@ -15,13 +15,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+} from "@/components/ui/dialog";
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { formatCurrency, calculateCartTotals } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import { useAppStore, useAppActions } from '@/stores/appStore';
-import { customerService } from '@/services/customer.service';
+import { api } from '@/lib/api-client';
+import type { Customer } from '@/lib/types';
 
 export const SaleActions = React.forwardRef<
     { 
@@ -36,13 +37,14 @@ export const SaleActions = React.forwardRef<
     const { clearCart, setCartDiscount } = useAppActions();
     const [isPaymentOpen, setIsPaymentOpen] = useState(false);
     
-    const [cartCustomer, setCartCustomer] = React.useState(null);
+    const [cartCustomer, setCartCustomer] = React.useState<Customer | null>(null);
 
     const activeCart = useMemo(() => carts.find(c => c.id === activeCartId), [carts, activeCartId]);
 
     React.useEffect(() => {
         if (activeCart?.customerUuid) {
-            customerService.getCustomerByUuid(activeCart.customerUuid).then(setCartCustomer);
+            // Updated to use direct API Wall
+            api.get<Customer>(`customers/${activeCart.customerUuid}`).then(setCartCustomer).catch(() => setCartCustomer(null));
         } else {
             setCartCustomer(null);
         }

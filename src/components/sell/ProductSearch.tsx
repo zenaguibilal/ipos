@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, forwardRef, useImperativeHandle, useRef, useEffect, useCallback } from 'react';
@@ -13,9 +14,13 @@ import { formatCurrency, getPlaceholder } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useDebounce } from '@/hooks/useDebounce';
-import { productService } from '@/services/product.service';
+import { api } from '@/lib/api-client';
 import { useAppStore } from '@/stores/appStore';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+
+interface ProductSearchProps {
+    onProductSelect: (product: Product, quantity: number) => void;
+}
 
 const CustomProductDialog = ({ isOpen, onOpenChange, onAdd }: { isOpen: boolean, onOpenChange: (open: boolean) => void, onAdd: (name: string, price: number) => void }) => {
     const [name, setName] = useState('');
@@ -83,20 +88,25 @@ export const ProductSearch = forwardRef<{focus: () => void, openCustomProductDia
 
     const fetchCategories = useCallback(async () => {
         try {
-            const cats = await productService.getCategories();
+            // Updated to use direct API Wall
+            const cats = await api.get<string[]>('products/categories');
             setCategories(cats);
-        } catch (e) { toast.error("Impossible de charger les catégories de produits.")}
+        } catch (e) { toast.error("Impossible de charger les catégories.")}
     }, []);
 
     const fetchProducts = useCallback(async () => {
-        // If no search query and no specific category is selected, show nothing.
         if (!debouncedQuery.trim() && selectedCategory === 'all') {
             setProducts([]);
             return;
         }
 
         try {
-            const prods = await productService.filterProducts({ query: debouncedQuery, category: selectedCategory, stockStatus: 'in_stock' });
+            const queryParams = new URLSearchParams({
+                query: debouncedQuery,
+                category: selectedCategory,
+                stockStatus: 'in_stock'
+            }).toString();
+            const prods = await api.get<Product[]>(`products?${queryParams}`);
             setProducts(prods);
         } catch (e) { toast.error("Impossible de charger les produits.")}
     }, [debouncedQuery, selectedCategory]);
@@ -142,10 +152,10 @@ export const ProductSearch = forwardRef<{focus: () => void, openCustomProductDia
         const availableQuantity = product.quantity - inCartQuantity;
         if (availableQuantity > 0) {
             onProductSelect(product, 1);
-            setQuery(''); // Clear search after selection
+            setQuery('');
             inputRef.current?.focus();
         } else {
-            toast.warning(`Stock insuffisant pour ${product.name}`);
+            toast.warning(`Stock insuffisant.`);
         }
     }, [cartQuantities, onProductSelect]);
 
@@ -153,14 +163,14 @@ export const ProductSearch = forwardRef<{focus: () => void, openCustomProductDia
     const handleBarcodeScanned = async (scannedBarcode: string) => {
         if (!scannedBarcode.trim()) return;
         try {
-            const product = await productService.getProductByBarcode(scannedBarcode.trim());
+            const product = await api.get<Product | null>(`products/barcode?q=${scannedBarcode.trim()}`);
             if (product) {
                 handleSelectProduct(product);
             } else {
-                toast.error("Produit non trouvé pour ce code-barres.");
+                toast.error("Produit non trouvé.");
             }
         } catch (error) {
-            toast.error("Erreur lors de la recherche du produit.");
+            toast.error("Erreur de recherche.");
         }
     };
     
@@ -169,11 +179,15 @@ export const ProductSearch = forwardRef<{focus: () => void, openCustomProductDia
             uuid: `custom-${Date.now()}`,
             name: `(Perso) ${name}`,
             price,
-            purchasePrice: price, // Assume purchase price is same as selling for custom items
-            quantity: Infinity, // Represents one-time item
+            purchasePrice: price,
+            quantity: Infinity,
             minStockLevel: 0,
             category: 'Personnalisé',
             user_id: 'custom',
+            barcodes: [],
+            stockStatus: 'in_stock',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
         };
         onProductSelect(customProduct, 1);
         setIsCustomProductDialogOpen(false);
@@ -267,9 +281,9 @@ export const ProductSearch = forwardRef<{focus: () => void, openCustomProductDia
                      {products?.length === 0 && (
                         <div className="text-center text-muted-foreground py-8">
                             {query.trim() || selectedCategory !== 'all' ? (
-                                <p>Aucun produit trouvé pour votre recherche.</p>
+                                <p>Aucun produit trouvé.</p>
                             ) : (
-                                <p>Commencez à taper pour rechercher des produits.</p>
+                                <p>Commencez à taper pour rechercher.</p>
                             )}
                         </div>
                      )}
@@ -335,7 +349,7 @@ const ListItem = React.memo(React.forwardRef<HTMLButtonElement, ListItemProps>((
                 <p className="text-sm text-muted-foreground">{formatCurrency(product.price)}</p>
             </div>
             <div className="text-sm text-muted-foreground flex-shrink-0">
-                Stock: {availableQuantity}
+                Stock: {availableQuantity === Infinity ? '∞' : availableQuantity}
             </div>
         </button>
     );

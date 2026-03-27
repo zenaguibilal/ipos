@@ -9,8 +9,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import type { Supplier } from '@/lib/types';
-import { Loader2, Building, User, Phone, Mail, MapPin } from 'lucide-react';
-import { supplierService } from '@/services/supplier.service';
+import { Loader2, Building } from 'lucide-react';
+import { api } from '@/lib/api-client';
 
 interface SupplierDialogProps {
     isOpen: boolean;
@@ -56,14 +56,13 @@ export function SupplierDialog({ isOpen, onOpenChange, supplier, onSuccess }: Su
 
         setIsLoading(true);
         try {
+            // Updated to use direct API Wall
             if (supplier && supplier.uuid) {
-                await supplierService.updateSupplier(supplier.uuid, formState);
-                toast.success(`Fournisseur "${formState.name}" mis à jour.`);
+                await api.put(`suppliers/${supplier.uuid}`, formState);
+                toast.success(`Fournisseur mis à jour.`);
             } else {
-                await supplierService.findOrCreateSupplier(formState.name!, undefined);
-                // The basic findOrCreate doesn't take all fields, let's update it if needed or use a more complete method
-                // For simplicity here, we assume the name is enough or we'd need a proper 'addSupplier' in service
-                toast.success(`Fournisseur "${formState.name}" ajouté.`);
+                await api.post('suppliers', formState);
+                toast.success(`Fournisseur ajouté.`);
             }
             onSuccess();
             onOpenChange(false);

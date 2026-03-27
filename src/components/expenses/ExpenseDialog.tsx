@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import type { Expense, ExpenseCategory } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
-import { expenseService } from '@/services/expense.service';
+import { api } from '@/lib/api-client';
 import { DatePicker } from '../ui/date-picker';
 import { Combobox } from '../ui/combobox';
 
@@ -27,7 +27,7 @@ const initialFormState: Omit<Expense, 'uuid' | 'user_id' | 'createdAt' | 'update
     description: '',
     category: 'Autre',
     amount: 0,
-    expenseDate: new Date(),
+    expenseDate: new Date().toISOString(),
 };
 
 export default function ExpenseDialog({ isOpen, onOpenChange, expense, onSuccess, existingCategories }: ExpenseDialogProps) {
@@ -41,10 +41,10 @@ export default function ExpenseDialog({ isOpen, onOpenChange, expense, onSuccess
                 description: expense.description,
                 category: expense.category,
                 amount: expense.amount,
-                expenseDate: new Date(expense.expenseDate),
+                expenseDate: expense.expenseDate,
             });
         } else if (!expense && isOpen) {
-            setFormState({ ...initialFormState, expenseDate: new Date() });
+            setFormState({ ...initialFormState, expenseDate: new Date().toISOString() });
         }
     }, [expense, isOpen]);
 
@@ -59,7 +59,7 @@ export default function ExpenseDialog({ isOpen, onOpenChange, expense, onSuccess
 
     const handleDateChange = (date?: Date) => {
         if (date) {
-            setFormState(prev => ({ ...prev, expenseDate: date }));
+            setFormState(prev => ({ ...prev, expenseDate: date.toISOString() }));
         }
     };
 
@@ -68,7 +68,7 @@ export default function ExpenseDialog({ isOpen, onOpenChange, expense, onSuccess
         setError(null);
         setIsLoading(true);
 
-        const { description, amount, category, expenseDate } = formState;
+        const { description, amount } = formState;
 
         if (!description || !amount) {
             setError("La description et le montant sont requis.");
@@ -86,18 +86,18 @@ export default function ExpenseDialog({ isOpen, onOpenChange, expense, onSuccess
         const expenseData = { ...formState, amount: amountNum };
 
         try {
-            if (expense && expense.uuid) { // Editing
-                await expenseService.updateExpense(expense.uuid, expenseData);
+            // Updated to use direct API Wall
+            if (expense && expense.uuid) {
+                await api.put(`expenses/${expense.uuid}`, expenseData);
                 toast.success(`Dépense modifiée.`);
-            } else { // Adding
-                await expenseService.addExpense(expenseData);
+            } else {
+                await api.post('expenses', expenseData);
                 toast.success(`Dépense ajoutée.`);
             }
             onSuccess();
             onOpenChange(false);
         } catch (err: any) {
-            setError(err.message || "Une erreur est survenue.");
-            toast.error("Échec de l'opération.", { description: err.message });
+            toast.error("Échec de l'opération.");
         } finally {
             setIsLoading(false);
         }
@@ -139,7 +139,7 @@ export default function ExpenseDialog({ isOpen, onOpenChange, expense, onSuccess
                             </div>
                             <div className="space-y-2">
                                 <Label className="font-bold uppercase text-[10px] tracking-widest opacity-70">Date</Label>
-                                <DatePicker date={formState.expenseDate} setDate={handleDateChange} />
+                                <DatePicker date={new Date(formState.expenseDate)} setDate={handleDateChange} />
                             </div>
                         </div>
                     </div>

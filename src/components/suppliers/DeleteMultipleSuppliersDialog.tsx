@@ -2,7 +2,7 @@
 'use client';
 
 import { toast } from 'sonner';
-import { supplierService } from '@/services/supplier.service';
+import { api } from '@/lib/api-client';
 import { ConfirmAlertDialog } from '@/components/ui/ConfirmAlertDialog';
 
 interface DeleteMultipleSuppliersDialogProps {
@@ -16,7 +16,8 @@ export function DeleteMultipleSuppliersDialog({ isOpen, onOpenChange, supplierUu
 
     const handleDelete = async () => {
         if (supplierUuids.length === 0) return;
-        await supplierService.bulkDelete(supplierUuids);
+        // Updated to use direct API Wall
+        await api.post('suppliers/bulk-delete', { uuids: supplierUuids });
         toast.success(`${supplierUuids.length} مورد(ين) تم حذفهم بنجاح.`);
         onSuccess();
     };

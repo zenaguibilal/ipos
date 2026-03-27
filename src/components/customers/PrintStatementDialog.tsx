@@ -1,14 +1,15 @@
+
 'use client';
 
 import { useRef, useState, useEffect } from 'react';
-import type { Customer, Sale, CompanyProfile } from '@/lib/types';
+import type { Customer, Sale } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Printer } from 'lucide-react';
+import { Printer, Loader2 } from 'lucide-react';
 import { CustomerStatement } from './CustomerStatement';
 import { Skeleton } from '../ui/skeleton';
 import { useAppStore } from '@/stores/appStore';
-import { customerService } from '@/services/customer.service';
+import { api } from '@/lib/api-client';
 import { toast } from 'sonner';
 
 interface PrintStatementDialogProps {
@@ -32,7 +33,8 @@ export function PrintStatementDialog({ isOpen, onOpenChange, customer }: PrintSt
 
         const fetchStatement = async () => {
             try {
-                const data = await customerService.getCustomerStatementData(customer.uuid);
+                // Updated to use direct API Wall
+                const data = await api.get<{ customer: Customer, unpaidSales: Sale[] }>(`customers/${customer.uuid}/statement`);
                 setStatementData(data);
             } catch (error) {
                 toast.error("Impossible de charger les données du relevé.");

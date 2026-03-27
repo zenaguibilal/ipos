@@ -6,9 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { breadService } from '@/services/bread.service';
+import { api } from '@/lib/api-client';
 import { toast } from 'sonner';
 import { Plus, User, Package } from 'lucide-react';
+import type { BreadOrder } from '@/lib/types';
 
 interface ManualAddDialogProps {
     currentDate: string;
@@ -34,7 +35,8 @@ export function ManualAddDialog({ currentDate, onSuccess }: ManualAddDialogProps
 
         setIsLoading(true);
         try {
-            await breadService.addOrder({
+            // Updated to use direct API Wall
+            await api.post<BreadOrder>('bread', {
                 orderName: orderName.trim(),
                 quantite: quantity,
                 date: currentDate,
@@ -45,7 +47,7 @@ export function ManualAddDialog({ currentDate, onSuccess }: ManualAddDialogProps
             setOrderName('');
             setQuantity(10);
         } catch(error: any) {
-            toast.error("Erreur lors de l'ajout.", { description: error.message });
+            toast.error("Erreur lors de l'ajout.");
         } finally {
             setIsLoading(false);
         }

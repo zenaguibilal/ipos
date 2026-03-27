@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -11,7 +12,7 @@ import type { Customer } from '@/lib/types';
 import { formatCurrency } from '@/lib/utils';
 import { Textarea } from '../ui/textarea';
 import { DatePicker } from '../ui/date-picker';
-import { paymentService } from '@/services/payment.service';
+import { api } from '@/lib/api-client';
 
 interface AddPaymentDialogProps {
   isOpen: boolean;
@@ -51,18 +52,19 @@ export function AddPaymentDialog({ isOpen, onOpenChange, customer, onPaymentSucc
     
     setIsLoading(true);
     try {
-      await paymentService.addPayment({
+      // Updated to use direct API Wall
+      await api.post('payments', {
         customerUuid: customer.uuid,
         amount: paymentAmount,
-        paymentDate: paymentDate,
+        paymentDate: paymentDate.toISOString(),
         notes: notes || undefined,
       });
 
-      toast.success(`Paiement de ${formatCurrency(paymentAmount)} enregistré pour ${customer.firstName} ${customer.lastName}.`);
+      toast.success(`Paiement de ${formatCurrency(paymentAmount)} enregistré.`);
       onPaymentSuccess();
       onOpenChange(false);
     } catch (error: any) {
-      toast.error("Erreur lors de l'enregistrement du paiement.", { description: error.message });
+      toast.error("Erreur lors de l'enregistrement du paiement.");
     } finally {
       setIsLoading(false);
     }

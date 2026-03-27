@@ -20,8 +20,8 @@ import { ProductIntakeCombobox } from '@/components/stock/ProductIntakeCombobox'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Badge } from '@/components/ui/badge';
-import { supplierService } from '@/services/supplier.service';
 import { useAppActions, useIsManagerOrAdmin } from '@/stores/appStore';
+import { api } from '@/lib/api-client';
 
 interface LocalIntakeItem {
     id: string;
@@ -64,10 +64,11 @@ export default function NewStockIntakePage() {
     useEffect(() => {
         const fetchSuppliers = async () => {
             try {
-                const data = await supplierService.getSuppliers();
+                // Updated to use direct API Wall
+                const data = await api.get<Supplier[]>('suppliers');
                 setSuppliers(data);
             } catch (error: any) {
-                toast.error("Impossible de charger les fournisseurs.", { description: error.message });
+                toast.error("Impossible de charger les fournisseurs.");
             }
         };
         fetchSuppliers();
@@ -167,18 +168,28 @@ export default function NewStockIntakePage() {
         }
 
         setIsSaving(true);
+        // Map items to include costPrice based on transportRatio
+        const processedItems = items.map(item => ({
+            ...item,
+            costPrice: item.purchasePrice * (1 + transportRatio),
+            productName: item.name
+        }));
+
         const success = await processStockIntake({
             supplierName,
             supplierUuid: supplierUuid || undefined,
             invoiceNumber,
-            invoiceDate: invoiceDate || new Date(),
-            items,
+            invoiceDate: invoiceDate?.toISOString() || new Date().toISOString(),
+            items: processedItems,
             totalValue: subtotalValue,
             transportFees: transportFees
         });
 
         if (success) {
+            toast.success("Réception enregistrée.");
             router.push('/stock');
+        } else {
+            toast.error("Échec de l'enregistrement.");
         }
         setIsSaving(false);
     };

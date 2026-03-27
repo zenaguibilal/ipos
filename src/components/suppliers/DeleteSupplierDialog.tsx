@@ -3,7 +3,7 @@
 
 import { toast } from 'sonner';
 import type { Supplier } from '@/lib/types';
-import { supplierService } from '@/services/supplier.service';
+import { api } from '@/lib/api-client';
 import { ConfirmAlertDialog } from '@/components/ui/ConfirmAlertDialog';
 
 interface DeleteSupplierDialogProps {
@@ -18,13 +18,12 @@ export function DeleteSupplierDialog({ isOpen, onOpenChange, supplier, onSuccess
         if (!supplier?.uuid) return;
         
         try {
-            // Business rule: check if supplier has history or products before deleting
-            // For now we use a generic delete through a service that should handle this
-            await supplierService.deleteSupplier(supplier.uuid);
+            // Updated to use direct API Wall
+            await api.delete(`suppliers/${supplier.uuid}`);
             toast.success(`Fournisseur "${supplier.name}" supprimé.`);
             onSuccess();
         } catch (error: any) {
-            toast.error("Échec de la suppression.", { description: error.message });
+            toast.error("Échec de la suppression.");
         }
     };
 

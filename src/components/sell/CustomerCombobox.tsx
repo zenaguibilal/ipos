@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useState, useMemo } from 'react';
@@ -5,7 +6,7 @@ import { Combobox, ComboboxOption } from '@/components/ui/combobox';
 import type { Customer } from '@/lib/types';
 import { formatCurrency } from '@/lib/utils';
 import { useAppStore, useAppActions } from '@/stores/appStore';
-import { customerService } from '@/services/customer.service';
+import { api } from '@/lib/api-client';
 import { toast } from 'sonner';
 
 const WalkInCustomerOption: ComboboxOption = {
@@ -29,7 +30,8 @@ export const CustomerCombobox = React.forwardRef<HTMLButtonElement, CustomerComb
     useEffect(() => {
         const fetch = async () => {
             try {
-                const data = await customerService.getCustomers();
+                // Updated to use direct API Wall
+                const data = await api.get<Customer[]>('customers');
                 setCustomers(data);
             } catch (e) {
                 toast.error("Impossible de charger la liste des clients.");

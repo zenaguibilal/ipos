@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -8,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import type { Customer } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
-import { customerService } from '@/services/customer.service';
+import { api } from '@/lib/api-client';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { BREAD_WEEK_DAY_LABELS_FULL } from '@/lib/constants';
@@ -69,12 +70,13 @@ export function BreadClientForm({ isOpen, onOpenChange, customer, onSuccess }: B
                 dataToSave.bread_jours_semaine = formState.bread_jours_semaine;
             }
 
-            await customerService.updateCustomer(customer.uuid, dataToSave);
+            // Updated to use direct API Wall
+            await api.put(`customers/${customer.uuid}`, dataToSave);
             toast.success(`Paramètres de pain pour "${customer.firstName} ${customer.lastName}" mis à jour.`);
             onSuccess();
             onOpenChange(false);
         } catch (error: any) {
-            toast.error("Une erreur est survenue.", { description: error.message });
+            toast.error("Une erreur est survenue.");
         } finally {
             setIsLoading(false);
         }

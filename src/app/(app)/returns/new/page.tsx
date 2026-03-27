@@ -4,7 +4,7 @@
 import { useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { salesService } from '@/services/sales.service';
+import { api } from '@/lib/api-client';
 import type { Sale, ReturnItem } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -42,7 +42,10 @@ export default function NewReturnPage() {
         
         setIsSearching(true);
         try {
-            const sale = await salesService.getSaleByInvoiceNumber(targetInv);
+            // Updated to use direct API Wall
+            const sales = await api.get<Sale[]>(`sales`);
+            const sale = sales.find(s => s.invoiceNumber === targetInv);
+            
             if (sale) {
                 setFoundSale(sale);
                 const items: ReturnItemState[] = sale.items.map(item => ({
@@ -64,7 +67,7 @@ export default function NewReturnPage() {
                 setReturnItems([]);
             }
         } catch (error: any) {
-            toast.error("Erreur lors de la recherche de la facture.", { description: error.message });
+            toast.error("Erreur lors de la recherche de la facture.");
         } finally {
             setIsSearching(false);
         }
@@ -99,6 +102,7 @@ export default function NewReturnPage() {
         try {
             const success = await processReturn({
                 originalSaleUuid: foundSale.uuid,
+                originalInvoiceNumber: foundSale.invoiceNumber,
                 items: returnItems.filter(item => item.returnQuantity > 0),
                 totalReturnValue,
                 amountRefunded,
@@ -107,10 +111,11 @@ export default function NewReturnPage() {
             });
 
             if (success) {
+                toast.success("Retour enregistré avec succès.");
                 router.push('/returns');
             }
         } catch (error) {
-            // Error is handled in store
+            toast.error("Échec de l'enregistrement.");
         } finally {
             setIsSaving(false);
         }

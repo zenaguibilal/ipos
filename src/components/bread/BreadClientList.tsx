@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -10,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BREAD_WEEK_DAYS } from '@/lib/constants';
-import { customerService } from '@/services/customer.service';
+import { api } from '@/lib/api-client';
 import { toast } from 'sonner';
 import Link from 'next/link';
 
@@ -25,8 +26,9 @@ export function BreadClientList({ onListChange }: BreadClientListProps) {
 
     const fetchClients = useCallback(async () => {
         try {
-            const data = await customerService.filterCustomers({ status: 'is_bread_client' });
-            setClients(data.data);
+            // Updated to use direct API Wall
+            const data = await api.get<Customer[]>('customers?status=is_bread_client');
+            setClients(data);
         } catch (error: any) {
             toast.error("Impossible de charger les clients.");
         }

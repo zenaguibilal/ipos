@@ -24,7 +24,7 @@ import {
 } from '@/components/ui/table';
 import { Plus, Trash2, Calculator, Loader2 } from 'lucide-react';
 import type { Recipe, Ingredient } from '@/lib/types';
-import { recipeService } from '@/services/recipe.service';
+import { api } from '@/lib/api-client';
 import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
 import { formatCurrency } from '@/lib/utils';
@@ -111,16 +111,17 @@ export function RecipeDialog({ isOpen, onOpenChange, recipe, onSuccess }: Recipe
             };
 
             if (recipe) {
-                await recipeService.updateRecipe(recipe.uuid, data);
+                // Updated to use direct API Wall
+                await api.put(`recipes/${recipe.uuid}`, data);
                 toast.success("Recette mise à jour.");
             } else {
-                await recipeService.addRecipe(data);
+                await api.post('recipes', data);
                 toast.success("Nouvelle recette créée.");
             }
             onSuccess();
             onOpenChange(false);
         } catch (error: any) {
-            toast.error("Erreur: " + error.message);
+            toast.error("Échec de l'enregistrement.");
         } finally {
             setIsSaving(false);
         }
@@ -166,7 +167,7 @@ export function RecipeDialog({ isOpen, onOpenChange, recipe, onSuccess }: Recipe
                     <div className="flex-grow flex flex-col min-h-0 border rounded-2xl bg-muted/10 overflow-hidden">
                         <div className="p-4 border-b bg-white/5 flex justify-between items-center">
                             <h3 className="text-[10px] font-black uppercase tracking-widest text-primary">Ingrédients & Matières Premières</h3>
-                            <Button type="button" variant="outline" size="sm" onClick={addIngredient} className="rounded-lg h-8 border-primary/30 text-primary">
+                            <Button type="button" variant="outline" className="rounded-lg h-8 border-primary/30 text-primary" size="sm" onClick={addIngredient}>
                                 <Plus className="h-3 w-3 mr-1" /> Ajouter
                             </Button>
                         </div>

@@ -11,7 +11,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { ManualAddDialog } from './ManualAddDialog';
 import { PrintBreadListDialog } from './PrintBreadListDialog';
 import { toast } from 'sonner';
-import { breadService } from '@/services/bread.service';
+import { api } from '@/lib/api-client';
 import { Loader2, Wheat, ShoppingCart, Trash2, Sparkles, PackageCheck, AlertCircle } from 'lucide-react';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { useAppStore } from '@/stores/appStore';
@@ -55,15 +55,16 @@ export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayVi
     const handleGenerate = async () => {
         setIsGenerating(true);
         try {
-            const count = await breadService.generateOrdersFromRecurrence(currentDate);
-            if (count > 0) {
-                toast.success(`${count} commande(s) générée(s) avec succès.`);
+            // Updated to use direct API Wall
+            const result = await api.post<{ count: number }>('bread/generate', { date: currentDate });
+            if (result.count > 0) {
+                toast.success(`${result.count} commande(s) générée(s) avec succès.`);
                 onOrdersChange();
             } else {
                 toast.info("Aucune commande à générer. Tous les clients programmés ont déjà une commande.");
             }
         } catch (error: any) {
-            toast.error("Échec de la génération automatique.", { description: error.message });
+            toast.error("Échec de la génération automatique.");
         } finally {
             setIsGenerating(false);
         }
@@ -81,12 +82,13 @@ export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayVi
         
         setIsConverting(true);
         try {
-            await breadService.convertBreadOrdersToSales(Array.from(selectedOrders), breadPrice);
+            // Updated to use direct API Wall
+            await api.post('bread/convert-to-sales', { orderUuids: Array.from(selectedOrders), breadPrice });
             toast.success(`${selectedOrders.size} commande(s) transformée(s) en factures.`);
             setSelectedOrders(new Set());
             onOrdersChange();
         } catch (error: any) {
-            toast.error("Erreur lors de la facturation.", { description: error.message });
+            toast.error("Erreur lors de la facturation.");
         } finally {
             setIsConverting(false);
         }
@@ -96,7 +98,7 @@ export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayVi
         if (selectedOrders.size === 0) return;
         try {
             for (const uuid of Array.from(selectedOrders)) {
-                await breadService.updateOrder(uuid, { est_livre: true });
+                await api.put(`bread/${uuid}`, { est_livre: true });
             }
             toast.success("Commandes marquées comme livrées.");
             setSelectedOrders(new Set());
@@ -110,7 +112,8 @@ export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayVi
         if (selectedOrders.size === 0) return;
         setIsDeleting(true);
         try {
-            await breadService.bulkDeleteOrders(Array.from(selectedOrders));
+            // Updated to use direct API Wall
+            await api.post('bread/bulk-delete', { uuids: Array.from(selectedOrders) });
             toast.success("Commandes supprimées.");
             setSelectedOrders(new Set());
             onOrdersChange();

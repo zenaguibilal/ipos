@@ -1,8 +1,9 @@
+
 'use client';
 
 import { toast } from 'sonner';
 import type { Expense } from '@/lib/types';
-import { expenseService } from '@/services/expense.service';
+import { api } from '@/lib/api-client';
 import { ConfirmAlertDialog } from '@/components/ui/ConfirmAlertDialog';
 
 interface DeleteExpenseDialogProps {
@@ -16,7 +17,8 @@ export default function DeleteExpenseDialog({ isOpen, onOpenChange, expense, onS
     const handleDelete = async () => {
         if (!expense?.uuid) return;
         
-        await expenseService.deleteExpense(expense.uuid);
+        // Updated to use direct API Wall
+        await api.delete(`expenses/${expense.uuid}`);
         toast.success(`Dépense "${expense.description}" supprimée.`);
         onSuccess();
     };

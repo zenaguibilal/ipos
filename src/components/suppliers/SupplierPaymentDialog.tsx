@@ -7,13 +7,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { Loader2, Banknote, CreditCard, Building2 } from 'lucide-react';
+import { Loader2, Banknote } from 'lucide-react';
 import type { Supplier, SupplierPayment } from '@/lib/types';
 import { formatCurrency } from '@/lib/utils';
 import { Textarea } from '../ui/textarea';
 import { DatePicker } from '../ui/date-picker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { supplierService } from '@/services/supplier.service';
+import { api } from '@/lib/api-client';
 
 interface SupplierPaymentDialogProps {
   isOpen: boolean;
@@ -51,19 +51,20 @@ export function SupplierPaymentDialog({ isOpen, onOpenChange, supplier, onSucces
     
     setIsLoading(true);
     try {
-      await supplierService.addPayment({
+      // Updated to use direct API Wall
+      await api.post('suppliers/payments', {
         supplierUuid: supplier.uuid,
         amount: paymentAmount,
-        paymentDate: paymentDate,
+        paymentDate: paymentDate.toISOString(),
         method,
         notes: notes || undefined,
       });
 
-      toast.success(`Paiement de ${formatCurrency(paymentAmount)} enregistré pour ${supplier.name}.`);
+      toast.success(`Paiement de ${formatCurrency(paymentAmount)} enregistré.`);
       onSuccess();
       onOpenChange(false);
     } catch (error: any) {
-      toast.error("Erreur lors de l'enregistrement du paiement.", { description: error.message });
+      toast.error("Erreur lors de l'enregistrement.");
     } finally {
       setIsLoading(false);
     }

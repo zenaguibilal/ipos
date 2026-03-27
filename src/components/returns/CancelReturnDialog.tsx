@@ -1,8 +1,9 @@
+
 'use client';
 
 import { toast } from 'sonner';
 import type { ProductReturn } from '@/lib/types';
-import { returnService } from '@/services/return.service';
+import { api } from '@/lib/api-client';
 import { ConfirmAlertDialog } from '@/components/ui/ConfirmAlertDialog';
 
 interface CancelReturnDialogProps {
@@ -18,11 +19,12 @@ export function CancelReturnDialog({ isOpen, onOpenChange, productReturn, onSucc
         if (!productReturn) return;
         
         try {
-            await returnService.processReturnCancellation(productReturn.uuid);
+            // Updated to use direct API Wall
+            await api.delete(`returns/${productReturn.uuid}`);
             toast.success(`Retour sur facture #${productReturn.originalInvoiceNumber} annulé.`);
             onSuccess();
         } catch (error: any) {
-            toast.error("Échec de l'annulation.", { description: error.message });
+            toast.error("Échec de l'annulation.");
         }
     };
 

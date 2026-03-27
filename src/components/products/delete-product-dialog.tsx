@@ -1,24 +1,24 @@
+
 'use client';
 
 import type { Product } from '@/lib/types';
 import { ConfirmAlertDialog } from '@/components/ui/ConfirmAlertDialog';
-import { productService } from '@/services/product.service';
+import { api } from '@/lib/api-client';
 
 interface DeleteProductDialogProps {
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
     product: Product | null;
-    onConfirmDelete: (product: Product) => Promise<void>;
+    onSuccess: () => void;
 }
 
-export function DeleteProductDialog({ isOpen, onOpenChange, product, onConfirmDelete }: DeleteProductDialogProps) {
+export function DeleteProductDialog({ isOpen, onOpenChange, product, onSuccess }: DeleteProductDialogProps) {
     
     const handleConfirm = async () => {
         if (!product) return;
-        // The business logic is now in the service layer.
-        // The onConfirmDelete function (handleDeleteProduct in the parent) will call the service.
-        // The ConfirmAlertDialog will catch and display any errors thrown by the service.
-        await onConfirmDelete(product);
+        // Updated to use direct API Wall
+        await api.delete(`products/${product.uuid}`);
+        onSuccess();
     };
 
     return (

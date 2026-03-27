@@ -10,8 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import type { Supplier, StockIntake, Product } from '@/lib/types';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { supplierService } from '@/services/supplier.service';
-import { productService } from '@/services/product.service';
+import { api } from '@/lib/api-client';
 import { toast } from 'sonner';
 import { formatCurrency, cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -47,10 +46,11 @@ export default function SupplierDetailPage() {
         if (!supplierUuid) return;
         setIsLoading(true);
         try {
+            // Updated to use direct API Wall
             const [sup, act, prods] = await Promise.all([
-                supplierService.getSupplierByUuid(supplierUuid),
-                supplierService.getSupplierActivity(supplierUuid),
-                productService.filterProducts({ supplierUuid })
+                api.get<Supplier>(`suppliers/${supplierUuid}`),
+                api.get<any[]>(`suppliers/${supplierUuid}/activity`),
+                api.get<Product[]>(`products?supplierUuid=${supplierUuid}`)
             ]);
             
             setSupplier(sup);
@@ -216,7 +216,7 @@ export default function SupplierDetailPage() {
                             <ResponsiveContainer width="100%" height="100%">
                                 <AreaChart data={chartData}>
                                     <defs>
-                                        <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
+                                        <linearGradient id="colorTotal" x1="0" x1="0" x2="0" y2="1">
                                             <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
                                             <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
                                         </linearGradient>
