@@ -4,7 +4,7 @@
 import { create } from 'zustand';
 import { produce } from 'immer';
 import type { Session, User } from '@supabase/supabase-js';
-import type { Cart, Customer, CompanyProfile, Product, CartItem, Sale, StockIntake, ProductReturn } from '@/lib/types';
+import type { Cart, Customer, CompanyProfile, Product, CartItem, Sale } from '@/lib/types';
 import { toast } from 'sonner';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
@@ -17,7 +17,6 @@ import { profileService } from '@/services/profile.service';
 import { returnService } from '@/services/return.service';
 import { supplierService } from '@/services/supplier.service';
 import { stockService } from '@/services/stock.service';
-import { productService } from '@/services/product.service';
 
 interface AppState {
     session: Session | null;
@@ -57,7 +56,7 @@ interface AppActions {
     switchToCart: (cartId: string) => void;
     saveActiveCartAsDraft: (name: string) => void;
     deleteCart: (cartId: string) => void;
-    finalizeSale: (paymentData: any) => Promise<boolean>;
+    finalizeSale: (paymentData: { amountPaid: number; payments: { method: 'cash' | 'card' | 'other'; amount: number }[]; dueDate?: Date }) => Promise<boolean>;
     clearLastCompletedSale: () => void;
     processReturn: (returnData: any) => Promise<boolean>;
     processStockIntake: (intakeData: any) => Promise<boolean>;
@@ -116,7 +115,7 @@ export const useAppStore = create<AppState>()(
                         set({ isSettingsLoading: true });
                         const profile = await profileService.getProfile();
                         set({ profile });
-                    } catch (error: any) {
+                    } catch (error) {
                         toast.error("Échec du chargement du profil.");
                     } finally {
                         set({ isSettingsLoading: false });
@@ -130,15 +129,14 @@ export const useAppStore = create<AppState>()(
                     const cart = state.carts.find(c => c.id === state.activeCartId);
                     if (!cart) return;
                     
-                    // Stock Validation across ALL open carts
-                    const totalInAllCarts = state.carts.reduce((acc, c) => {
+                    const totalAllocated = state.carts.reduce((sum, c) => {
                         const item = c.items.find(i => i.uuid === product.uuid);
-                        return acc + (item ? item.cartQuantity : 0);
+                        return sum + (item ? item.cartQuantity : 0);
                     }, 0);
 
                     if (!product.uuid.startsWith('custom-') && product.uuid !== 'BREAD_PRODUCT') {
-                        if ((totalInAllCarts + quantity) > product.quantity) {
-                            toast.error(`Stock insuffisant pour ${product.name}. Max: ${product.quantity - totalInAllCarts}`);
+                        if ((totalAllocated + quantity) > product.quantity) {
+                            toast.error(`Stock insuffisant pour ${product.name}. Max disponible: ${Math.max(0, product.quantity - totalAllocated)}`);
                             return;
                         }
                     }
@@ -155,19 +153,19 @@ export const useAppStore = create<AppState>()(
                     const cart = state.carts.find(c => c.id === state.activeCartId);
                     if (!cart) return;
                     const item = cart.items.find(i => i.uuid === uuid);
-                    if (item) {
-                        if (qty <= 0) {
-                            cart.items = cart.items.filter(i => i.uuid !== uuid);
+                    if (!item) return;
+
+                    if (qty <= 0) {
+                        cart.items = cart.items.filter(i => i.uuid !== uuid);
+                    } else {
+                        const othersAllocated = state.carts
+                            .filter(c => c.id !== state.activeCartId)
+                            .reduce((sum, c) => sum + (c.items.find(i => i.uuid === uuid)?.cartQuantity || 0), 0);
+                        
+                        if (!uuid.startsWith('custom-') && uuid !== 'BREAD_PRODUCT' && (qty + othersAllocated) > item.quantity) {
+                            toast.error(`Stock limite atteint.`);
                         } else {
-                            const otherCartsQty = state.carts
-                                .filter(c => c.id !== state.activeCartId)
-                                .reduce((acc, c) => acc + (c.items.find(i => i.uuid === uuid)?.cartQuantity || 0), 0);
-                            
-                            if (!item.uuid.startsWith('custom-') && item.uuid !== 'BREAD_PRODUCT' && (qty + otherCartsQty) > item.quantity) {
-                                toast.error(`Max stock atteint: ${item.quantity - otherCartsQty}`);
-                            } else {
-                                item.cartQuantity = qty;
-                            }
+                            item.cartQuantity = qty;
                         }
                     }
                 })),
@@ -235,7 +233,6 @@ export const useAppStore = create<AppState>()(
                         const customer = cart.customerUuid ? await customerService.getCustomerByUuid(cart.customerUuid) : null;
                         set({ lastCompletedSale: { sale, customer: customer || null } });
                         
-                        // Atomically adjust stock
                         for (const item of sale.items) {
                             if (item.productUuid) {
                                 await inventoryService.adjustStock(item.productUuid, -item.quantity, 'sale', sale.uuid);
@@ -278,10 +275,10 @@ export const useAppStore = create<AppState>()(
                             const cost = i.purchasePrice * (1 + ratio);
                             let uuid = i.productUuid;
                             if (i.isNew) {
-                                const p = await productService.addProduct({ ...i, purchasePrice: cost, supplierUuid: sup.uuid, quantity: 0 });
+                                const p = await stockService.addProductFromIntake({ ...i, purchasePrice: cost, supplierUuid: sup.uuid });
                                 uuid = p.uuid;
                             } else {
-                                await productService.updateProduct(uuid!, { purchasePrice: cost, dateMajPrix: new Date() });
+                                await stockService.updateProductFromIntake(uuid!, { purchasePrice: cost });
                             }
                             
                             if (uuid) {

@@ -1,6 +1,11 @@
 
 'use client';
 
+/**
+ * @fileOverview Zakat Module Page
+ * Performs calculation of Zakat based on live inventory, receivables, and gold course.
+ */
+
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -10,15 +15,14 @@ import { Button } from '@/components/ui/button';
 import { zakatService } from '@/services/zakat.service';
 import { formatCurrency, cn } from '@/lib/utils';
 import { 
-    Coins, Users, Banknote, ArrowRight, Printer, RefreshCw, Info, AlertTriangle, 
-    HandHelping, UserX, TrendingUp, Save, History as HistoryIcon, Trash2, Loader2, FileText, Scale 
+    Coins, Banknote, ArrowRight, Printer, RefreshCw, 
+    HandHelping, History as HistoryIcon, Save, Loader2, Scale 
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAppStore } from '@/stores/appStore';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ResponsiveContainer, PieChart as RePieChart, Pie, Cell, Tooltip as ReTooltip } from 'recharts';
@@ -131,7 +135,6 @@ export default function ZakatPage() {
 
                 <TabsContent value="calculator" className="space-y-8 animate-in fade-in duration-500">
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                        {/* Column 1: Assets */}
                         <div className="space-y-6">
                             <h3 className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2 px-2">
                                 <Coins className="h-4 w-4" /> الأصول (ACTIFS)
@@ -161,7 +164,6 @@ export default function ZakatPage() {
                             </Card>
                         </div>
 
-                        {/* Column 2: Liabilities */}
                         <div className="space-y-6">
                             <h3 className="text-[10px] font-black uppercase tracking-widest text-destructive flex items-center gap-2 px-2">
                                 <ArrowRight className="h-4 w-4" /> الخصوم (PASSIFS)
@@ -186,7 +188,6 @@ export default function ZakatPage() {
                             </Card>
                         </div>
 
-                        {/* Column 3: Result */}
                         <div className="space-y-6">
                             <h3 className="text-[10px] font-black uppercase tracking-widest text-chart-quaternary flex items-center gap-2 px-2">
                                 <HandHelping className="h-4 w-4" /> النتيجة (2.5%)
@@ -240,7 +241,6 @@ export default function ZakatPage() {
                 </TabsContent>
             </Tabs>
 
-            {/* Print Report */}
             <div id="zakat-report" className="hidden p-12 bg-white text-black font-sans">
                 <header className="border-b-2 border-black pb-8 mb-8 flex justify-between">
                     <div><h1 className="text-3xl font-black">{profile?.companyName}</h1><p className="text-sm">{profile?.address}</p></div>

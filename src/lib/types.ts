@@ -1,4 +1,9 @@
 
+/**
+ * @fileOverview Application Type Definitions
+ * Reconstructed for strict typing and architectural consistency.
+ */
+
 export type AppRole = 'admin' | 'manager' | 'cashier';
 
 export interface Product {
@@ -43,16 +48,7 @@ export interface Customer {
     isBreadClient?: boolean;
     bread_type_recurrence?: 'quotidien' | 'jours_specifiques' | 'aucun';
     bread_quantite_defaut?: number;
-    bread_jours_semaine?: {
-        [key: string]: { actif: boolean; quantite: number };
-    };
-}
-
-export interface CustomerTopProduct {
-    productUuid: string;
-    name: string;
-    quantity: number;
-    totalAmount: number;
+    bread_jours_semaine?: Record<string, { actif: boolean; quantite: number }>;
 }
 
 export interface SaleItem {
@@ -103,17 +99,6 @@ export interface Sale {
     dueDate?: Date;
 }
 
-export interface Payment {
-    uuid: string;
-    user_id: string;
-    customerUuid: string;
-    amount: number;
-    paymentDate: Date;
-    notes?: string;
-    createdAt?: Date;
-    updatedAt?: Date;
-}
-
 export interface CompanyProfile {
     uuid: string;
     user_id: string;
@@ -135,17 +120,12 @@ export interface CompanyProfile {
 }
 
 export interface StockIntakeItem {
-    id: string;
     productUuid?: string;
-    barcodes: string[];
-    name: string;
-    category?: string;
-    quantity: number;
+    productName: string;
+    quantityReceived: number;
     quantityDamaged: number;
     purchasePrice: number;
-    price: number;
-    isNew: boolean;
-    unite?: 'Pièce' | 'Kg' | 'Litre' | 'Boîte' | 'Carton' | 'Sachet' | 'Bouteille';
+    costPrice?: number;
 }
 
 export interface StockIntake {
@@ -154,27 +134,11 @@ export interface StockIntake {
     supplierUuid?: string;
     invoiceNumber: string;
     invoiceDate: Date;
-    items: {
-        productUuid?: string;
-        productName: string;
-        quantityReceived: number;
-        quantityDamaged: number;
-        purchasePrice: number;
-        costPrice?: number;
-    }[];
+    items: StockIntakeItem[];
     totalValue: number;
     transportFees: number;
     createdAt?: Date;
     updatedAt?: Date;
-}
-
-export interface ReturnItem {
-    productUuid: string | null;
-    productName: string;
-    quantity: number;
-    price: number;
-    purchasePrice: number;
-    wasRestocked: boolean;
 }
 
 export interface ProductReturn {
@@ -182,79 +146,20 @@ export interface ProductReturn {
     user_id: string;
     originalSaleUuid?: string;
     originalInvoiceNumber: string;
-    items: ReturnItem[];
+    items: {
+        productUuid: string | null;
+        productName: string;
+        quantity: number;
+        price: number;
+        purchasePrice: number;
+        wasRestocked: boolean;
+    }[];
     totalReturnValue: number;
     amountRefunded: number;
     customerUuid?: string;
     createdAt?: Date;
     updatedAt?: Date;
     notes?: string;
-}
-
-export type ExpenseCategory = 'Loyer' | 'Salaires' | 'Fournisseurs' | 'Services Publics' | 'Marketing' | 'Maintenance' | 'Autre' | string;
-
-export interface Expense {
-    uuid: string;
-    user_id: string;
-    description: string;
-    category: ExpenseCategory;
-    amount: number;
-    expenseDate: Date;
-    createdAt?: Date;
-    updatedAt?: Date;
-}
-
-export type InventoryLogReason = 'sale' | 'return' | 'stock_intake' | 'cancellation' | 'manual_adjustment';
-
-export interface InventoryLog {
-    uuid: string;
-    user_id: string;
-    productUuid: string;
-    change: number;
-    newQuantity: number;
-    reason: InventoryLogReason;
-    relatedUuid?: string;
-    createdAt: Date;
-}
-
-export interface Supplier {
-    uuid: string;
-    user_id: string;
-    name: string;
-    contactPerson?: string;
-    phone?: string;
-    email?: string;
-    address?: string;
-    balance: number;
-    createdAt?: Date;
-    updatedAt?: Date;
-}
-
-export interface SupplierPayment {
-    uuid: string;
-    user_id: string;
-    supplierUuid: string;
-    amount: number;
-    paymentDate: Date;
-    method: 'cash' | 'card' | 'bank_transfer';
-    notes?: string;
-    createdAt?: Date;
-    updatedAt?: Date;
-}
-
-export interface BreadOrder {
-    uuid: string;
-    user_id: string;
-    customerUuid: string | null;
-    orderName: string;
-    date: string;
-    quantite: number;
-    quantite_origine?: number;
-    est_paye: boolean;
-    est_livre: boolean;
-    venteUuid: string | null;
-    createdAt?: Date;
-    updatedAt?: Date;
 }
 
 export interface ZakatCalculation {
