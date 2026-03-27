@@ -8,14 +8,15 @@ import {
   LayoutDashboard,
   ShoppingCart,
   Archive,
+  History
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsManagerOrAdmin } from '@/stores/appStore';
 
 const allNavLinks = [
-  { href: '/products', label: 'Produits', icon: Package, manager: true },
+  { href: '/dashboard', label: 'Stats', icon: LayoutDashboard, manager: false },
   { href: '/customers', label: 'Clients', icon: Users2, manager: false },
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, manager: false },
+  { href: '/sales-history', label: 'Ventes', icon: History, manager: false },
   { href: '/stock', label: 'Stock', icon: Archive, manager: true },
 ];
 

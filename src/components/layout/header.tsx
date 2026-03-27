@@ -18,7 +18,8 @@ import {
   User,
   LogOut,
   Settings,
-  ShieldCheck
+  ShieldCheck,
+  Calculator
 } from 'lucide-react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
@@ -43,14 +44,15 @@ import { cn } from '@/lib/utils';
 
 const allNavLinks = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, managerOnly: false },
-  { href: '/stock', label: 'Stock', icon: Archive, managerOnly: true },
-  { href: '/products', label: 'Produits', icon: Package, managerOnly: true },
+  { href: '/stock', label: 'Réceptions', icon: Archive, managerOnly: true },
+  { href: '/products', label: 'Articles', icon: Package, managerOnly: true },
+  { href: '/costing', label: 'Coûts', icon: Calculator, managerOnly: true },
   { href: '/suppliers', label: 'Fournisseurs', icon: Building, managerOnly: true },
   { href: '/customers', label: 'Clients', icon: Users2, managerOnly: false },
-  { href: '/sales-history', label: 'Ventes', icon: History, managerOnly: false },
+  { href: '/sales-history', label: 'Historique', icon: History, managerOnly: false },
   { href: '/returns', label: 'Retours', icon: Undo2, managerOnly: false },
   { href: '/expenses', label: 'Dépenses', icon: Wallet, managerOnly: true },
-  { href: '/bread', label: 'Pain', icon: Wheat, managerOnly: true },
+  { href: '/bread', label: 'Boulangerie', icon: Wheat, managerOnly: true },
   { href: '/zakat', label: 'Zakat', icon: Coins, managerOnly: true },
 ];
 
@@ -60,7 +62,7 @@ export function AppHeader() {
   const { profile, actions } = useAppStore();
 
   const mainActionLinks = [
-    { href: '/sell', label: 'Point de Vente', icon: ShoppingCart },
+    { href: '/sell', label: 'Vente', icon: ShoppingCart },
   ];
   
   const navLinks = allNavLinks.filter(link => !link.managerOnly || isManagerOrAdmin);
@@ -79,9 +81,9 @@ export function AppHeader() {
           </div>
       </div>
 
-        <div className="flex-1 flex justify-center">
+        <div className="flex-grow flex justify-center">
             <TooltipProvider>
-                <nav className="hidden md:flex items-center gap-1 rounded-full border bg-black/5 dark:bg-black/20 p-1 luxury-glass border-white/5">
+                <nav className="hidden xl:flex items-center gap-1 rounded-full border bg-black/5 dark:bg-black/20 p-1 luxury-glass border-white/5">
                     {mainActionLinks.map(link => (
                          <Tooltip key={link.href} delayDuration={0}>
                             <TooltipTrigger asChild>
@@ -135,7 +137,7 @@ export function AppHeader() {
 
         <div className="flex-1 flex justify-end">
             <div className="flex items-center gap-2 sm:gap-4">
-                <Clock />
+                <div className="hidden lg:block"><Clock /></div>
                 <ThemeToggle />
                 
                 <DropdownMenu>
