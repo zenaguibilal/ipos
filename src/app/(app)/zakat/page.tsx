@@ -1,10 +1,8 @@
-
 'use client';
 
 /**
- * @fileOverview Professional Zakat Module (RECONSTRUCTED)
- * Handles Net Asset Value (NAV) assessment based on commercial rules.
- * Fixes built-blocking syntax errors and enforces strictly typed calculations.
+ * @fileOverview Professional Zakat Module (FINAL RECONSTRUCTION)
+ * Fixed Build-Blocking Syntax Errors & Hardened Calculation Logic.
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -17,7 +15,8 @@ import { zakatService } from '@/services/zakat.service';
 import { formatCurrency, cn } from '@/lib/utils';
 import { 
     Coins, Banknote, ArrowRight, Printer, RefreshCw, 
-    HandHelping, History as HistoryIcon, Save, Loader2, Scale 
+    HandHelping, History as HistoryIcon, Save, Loader2, Scale, 
+    BadgeCheck, Globe
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -28,6 +27,7 @@ import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ResponsiveContainer, PieChart as RePieChart, Pie, Cell, Tooltip as ReTooltip } from 'recharts';
 import type { SavedZakatCalculation } from '@/lib/types';
+import { v4 as uuidv4 } from 'uuid';
 
 export default function ZakatPage() {
     const profile = useAppStore(state => state.profile);
@@ -130,7 +130,7 @@ export default function ZakatPage() {
 
             <Tabs defaultValue="calculator" className="w-full">
                 <TabsList className="grid w-full grid-cols-2 max-w-md mx-auto mb-8 luxury-glass bg-muted/20">
-                    <TabsTrigger value="calculator" className="font-bold">Hassaba (Calculateur)</TabsTrigger>
+                    <TabsTrigger value="calculator" className="font-bold">Calculateur</TabsTrigger>
                     <TabsTrigger value="history" className="font-bold">Archives</TabsTrigger>
                 </TabsList>
 
@@ -253,7 +253,7 @@ export default function ZakatPage() {
                                 ) : (
                                     <CardFooter className="p-6 justify-center bg-muted/20">
                                         <p className="text-sm font-bold text-muted-foreground italic text-center leading-relaxed">
-                                            Niveau de patrimoine net inférieur au seuil du Nisab.<br/>Aucune Zakat n'est exigible pour cette période.
+                                            Patrimoine net inférieur au Nisab.<br/>Aucune Zakat n'est exigible.
                                         </p>
                                     </CardFooter>
                                 )}
@@ -349,5 +349,3 @@ export default function ZakatPage() {
         </div>
     );
 }
-
-import { BadgeCheck } from 'lucide-react';

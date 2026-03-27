@@ -1,10 +1,14 @@
-
 'use client';
+
+/**
+ * @fileOverview Application State Manager (RECONSTRUCTED)
+ * Mission: Zero-Mercy Logic, Strict Stock Allocation, & Multi-Cart Support.
+ */
 
 import { create } from 'zustand';
 import { produce } from 'immer';
 import type { Session, User } from '@supabase/supabase-js';
-import type { Cart, Customer, CompanyProfile, Product, CartItem, Sale } from '@/lib/types';
+import type { Cart, Customer, CompanyProfile, Product, CartItem, Sale, SalePayment } from '@/lib/types';
 import { toast } from 'sonner';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
@@ -37,6 +41,12 @@ interface AppState {
     actions: AppActions;
 }
 
+interface FinalizeSaleData {
+    amountPaid: number;
+    payments: SalePayment[];
+    dueDate?: Date;
+}
+
 interface AppActions {
     setSession: (session: Session | null) => void;
     signIn: (email: string, password?: string) => Promise<void>;
@@ -56,7 +66,7 @@ interface AppActions {
     switchToCart: (cartId: string) => void;
     saveActiveCartAsDraft: (name: string) => void;
     deleteCart: (cartId: string) => void;
-    finalizeSale: (paymentData: { amountPaid: number; payments: { method: 'cash' | 'card' | 'other'; amount: number }[]; dueDate?: Date }) => Promise<boolean>;
+    finalizeSale: (paymentData: FinalizeSaleData) => Promise<boolean>;
     clearLastCompletedSale: () => void;
     processReturn: (returnData: any) => Promise<boolean>;
     processStockIntake: (intakeData: any) => Promise<boolean>;
@@ -135,16 +145,18 @@ export const useAppStore = create<AppState>()(
                     const cart = state.carts.find(c => c.id === state.activeCartId);
                     if (!cart) return;
                     
-                    // SYSTEM RECONSTRUCTION: Cross-cart allocation check
-                    // Prevents overselling by calculating total quantity allocated across ALL draft carts.
-                    const totalAllocatedAcrossAllCarts = state.carts.reduce((sum, c) => {
-                        const itemInCart = c.items.find(i => i.uuid === product.uuid);
-                        return sum + (itemInCart ? itemInCart.cartQuantity : 0);
-                    }, 0);
+                    const isServiceItem = product.uuid === 'BREAD_PRODUCT' || product.uuid.startsWith('custom-');
+                    
+                    if (!isServiceItem) {
+                        // CROSS-CART STOCK TRACKING:
+                        // Total already allocated in ALL open draft carts
+                        const totalAllocated = state.carts.reduce((sum, c) => {
+                            const item = c.items.find(i => i.uuid === product.uuid);
+                            return sum + (item ? item.cartQuantity : 0);
+                        }, 0);
 
-                    if (!product.uuid.startsWith('custom-') && product.uuid !== 'BREAD_PRODUCT') {
-                        if ((totalAllocatedAcrossAllCarts + quantity) > product.quantity) {
-                            toast.error(`Stock insuffisant. Max total disponible : ${Math.max(0, product.quantity - totalAllocatedAcrossAllCarts)}`);
+                        if ((totalAllocated + quantity) > product.quantity) {
+                            toast.error(`Stock physique épuisé. Disponible : ${Math.max(0, product.quantity - totalAllocated)}`);
                             return;
                         }
                     }
@@ -167,16 +179,19 @@ export const useAppStore = create<AppState>()(
                     if (qty <= 0) {
                         cart.items = cart.items.filter(i => i.uuid !== uuid);
                     } else {
-                        // RECONSTRUCTION: Cross-cart validation
-                        const othersAllocated = state.carts
-                            .filter(c => c.id !== state.activeCartId)
-                            .reduce((sum, c) => sum + (c.items.find(i => i.uuid === uuid)?.cartQuantity || 0), 0);
-                        
-                        if (!uuid.startsWith('custom-') && uuid !== 'BREAD_PRODUCT' && (qty + othersAllocated) > item.quantity) {
-                            toast.error(`Action impossible : dépassement du stock physique.`);
-                        } else {
-                            item.cartQuantity = qty;
+                        // CROSS-CART STOCK TRACKING:
+                        const isServiceItem = uuid === 'BREAD_PRODUCT' || uuid.startsWith('custom-');
+                        if (!isServiceItem) {
+                            const othersAllocated = state.carts
+                                .filter(c => c.id !== state.activeCartId)
+                                .reduce((sum, c) => sum + (c.items.find(i => i.uuid === uuid)?.cartQuantity || 0), 0);
+                            
+                            if ((qty + othersAllocated) > item.quantity) {
+                                toast.error(`Action refusée : dépassement du stock physique.`);
+                                return;
+                            }
                         }
+                        item.cartQuantity = qty;
                     }
                 })),
                 
@@ -255,9 +270,9 @@ export const useAppStore = create<AppState>()(
                         const customer = cart.customerUuid ? await customerService.getCustomerByUuid(cart.customerUuid) : null;
                         set({ lastCompletedSale: { sale, customer: customer || null } });
                         
-                        // Atomicity logic handled in salesService, but we trigger recalculations
+                        // Atomicity: Update stock and debts
                         for (const item of sale.items) {
-                            if (item.productUuid) {
+                            if (item.productUuid && item.productUuid !== 'BREAD_PRODUCT') {
                                 await inventoryService.adjustStock(item.productUuid, -item.quantity, 'sale', sale.uuid);
                             }
                         }
@@ -267,10 +282,10 @@ export const useAppStore = create<AppState>()(
                         }
                         
                         state.actions.clearCart();
-                        toast.success("Vente finalisée et archivée.");
+                        toast.success("Vente finalisée.");
                         return true;
                     } catch (e: any) {
-                        toast.error(e.message || "Erreur critique lors de la finalisation.");
+                        toast.error(e.message || "Erreur de finalisation.");
                         return false;
                     }
                 },
@@ -286,7 +301,7 @@ export const useAppStore = create<AppState>()(
                             }
                         }
                         if (ret.customerUuid) await customerService.recalculateCustomerStatus(ret.customerUuid);
-                        toast.success("Opération de retour terminée.");
+                        toast.success("Retour enregistré.");
                         return true;
                     } catch (e: any) { toast.error(e.message); return false; }
                 },
@@ -333,7 +348,7 @@ export const useAppStore = create<AppState>()(
                         });
                         
                         await supplierService.updateSupplierBalance(sup.uuid, data.totalValue + data.transportFees);
-                        toast.success("Stock réapprovisionné avec succès.");
+                        toast.success("Stock réapprovisionné.");
                         return true;
                     } catch (e: any) { toast.error(e.message); return false; }
                 },
@@ -348,7 +363,7 @@ export const useAppStore = create<AppState>()(
             }
         }),
         {
-            name: 'ipos-enterprise-v2',
+            name: 'ipos-enterprise-final',
             storage: createJSONStorage(() => localStorage),
             partialize: (s) => ({ 
                 carts: s.carts, activeCartId: s.activeCartId, 

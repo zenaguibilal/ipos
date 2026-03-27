@@ -1,4 +1,3 @@
-
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
 import type { Product } from "./types";
@@ -10,6 +9,7 @@ export function cn(...inputs: ClassValue[]) {
 
 /**
  * Hydration-safe date parser.
+ * Prevents build-blocking mismatches between server and client.
  */
 export function safeToDate(date: Date | string | null | undefined): Date {
     if (!date) return new Date();
