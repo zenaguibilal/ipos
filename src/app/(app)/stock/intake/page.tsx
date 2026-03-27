@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
@@ -250,7 +249,7 @@ export default function NewStockIntakePage() {
                                         <CommandList>
                                             <CommandEmpty>
                                                 <Button variant="link" className="w-full" onClick={handleSupplierCreate}>
-                                                    <Plus className="mr-2 h-4 w-4" /> Créer "{supplierSearch}"
+                                                    <Plus className="mr-2 h-4 w-4" /> Créر "{supplierSearch}"
                                                 </Button>
                                             </CommandEmpty>
                                             <CommandGroup>

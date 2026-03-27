@@ -97,7 +97,7 @@ export function CustomerTable({
                       {customer.firstName} {customer.lastName}
                     </Link>
                     {isOverdue && <span className="text-[10px] text-destructive font-bold uppercase tracking-tighter">Paiement en retard</span>}
-                    {isOverLimit && <span className="text-[10px] text-destructive font-bold uppercase tracking-tighter">Plafond dépassé</span>}
+                    {isOverLimit && <span className="text-[10px] text-destructive font-bold uppercase tracking-tighter">Pلافوند dépassé</span>}
                   </div>
                 </TableCell>
                 <TableCell>
