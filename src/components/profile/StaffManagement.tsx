@@ -1,7 +1,8 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
-import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,19 +18,19 @@ import {
 import { 
     Loader2, UserPlus, ShieldCheck, Mail, Trash2, Edit, CheckCircle2, XCircle 
 } from "lucide-react";
-import { useAppStore, useAppActions, useIsManagerOrAdmin } from "@/stores/appStore";
+import { useAppStore, useAppActions, useIsAdmin } from "@/stores/appStore";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { api } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 
 /**
- * @fileOverview Staff Management Component
- * وحدة إدارة الموظفين وصلاحياتهم.
+ * @fileOverview Staff Management Component (RBAC Enforced)
+ * وحدة إدارة الموظفين وصلاحياتهم مع قيود صارمة حسب الرتبة.
  */
 
 export function StaffManagement() {
-    const isManagerOrAdmin = useIsManagerOrAdmin();
+    const isAdmin = useIsAdmin();
     const { staff, isLoading } = useAppStore(state => ({
         staff: state.staff,
         isLoading: state.isLoading.staff
@@ -50,6 +51,10 @@ export function StaffManagement() {
     }, [refreshStaff]);
 
     const handleOpenDialog = (member: any = null) => {
+        if (!isAdmin) {
+            toast.error("Accès refusé", { description: "Seul l'administrateur peut modifier le personnel." });
+            return;
+        }
         setSelectedMember(member);
         if (member) {
             setEmail(member.email);
@@ -65,6 +70,7 @@ export function StaffManagement() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!isAdmin) return;
         setIsMutating(true);
         try {
             const data = { email, displayName, role };
@@ -85,6 +91,7 @@ export function StaffManagement() {
     };
 
     const handleDelete = async (uuid: string) => {
+        if (!isAdmin) return;
         if (!confirm("Voulez-vous vraiment supprimer cet accès ?")) return;
         try {
             await api.delete(`staff/${uuid}`);
@@ -96,9 +103,9 @@ export function StaffManagement() {
     };
 
     const roleLabels: any = {
-        admin: { label: 'Administrateur', color: 'bg-primary text-primary-foreground' },
-        manager: { label: 'Gérant', color: 'bg-blue-500 text-white' },
-        cashier: { label: 'Caisse', color: 'bg-orange-500 text-white' }
+        admin: { label: 'Administrateur', color: 'bg-primary text-primary-foreground shadow-lg shadow-primary/20' },
+        manager: { label: 'Gérant', color: 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' },
+        cashier: { label: 'Caisse', color: 'bg-orange-500 text-white shadow-lg shadow-orange-500/20' }
     };
 
     return (
@@ -106,37 +113,38 @@ export function StaffManagement() {
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h3 className="text-xl font-black uppercase tracking-tight">Registre du Personnel</h3>
-                    <p className="text-sm text-muted-foreground">Gérez les accès et les rôles de votre équipe.</p>
+                    <p className="text-sm text-muted-foreground">Visualisez et gérez les accès au terminal iPOS.</p>
                 </div>
-                {isManagerOrAdmin && (
-                    <Button onClick={() => handleOpenDialog()} className="bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 rounded-xl">
+                {isAdmin && (
+                    <Button onClick={() => handleOpenDialog()} className="bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 rounded-xl px-6">
                         <UserPlus className="mr-2 h-4 w-4" /> Ajouter un employé
                     </Button>
                 )}
             </div>
 
-            <div className="luxury-glass border-white/5 overflow-hidden rounded-[2rem]">
+            <div className="luxury-glass border-white/5 overflow-hidden rounded-[2rem] bg-muted/10 shadow-inner">
                 <Table>
                     <TableHeader className="bg-white/5">
                         <TableRow className="border-white/5 hover:bg-transparent">
-                            <TableHead className="font-black uppercase text-[10px] tracking-widest text-muted-foreground">Employé</TableHead>
+                            <TableHead className="font-black uppercase text-[10px] tracking-widest text-muted-foreground px-6 py-4">Employé</TableHead>
                             <TableHead className="font-black uppercase text-[10px] tracking-widest text-muted-foreground">Email</TableHead>
                             <TableHead className="font-black uppercase text-[10px] tracking-widest text-muted-foreground">Rôle</TableHead>
                             <TableHead className="font-black uppercase text-[10px] tracking-widest text-muted-foreground">Statut</TableHead>
-                            <TableHead className="text-right font-black uppercase text-[10px] tracking-widest text-muted-foreground">Actions</TableHead>
+                            {isAdmin && <TableHead className="text-right font-black uppercase text-[10px] tracking-widest text-muted-foreground px-6">Actions</TableHead>}
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {isLoading ? (
-                            <TableRow><TableCell colSpan={5} className="h-32 text-center"><Loader2 className="animate-spin h-8 w-8 mx-auto text-primary/50"/></TableCell></TableRow>
+                            <TableRow><TableCell colSpan={isAdmin ? 5 : 4} className="h-32 text-center"><Loader2 className="animate-spin h-8 w-8 mx-auto text-primary/50"/></TableCell></TableRow>
                         ) : staff.length === 0 ? (
-                            <TableRow><TableCell colSpan={5} className="h-32 text-center text-muted-foreground italic">Aucun employé enregistré.</TableCell></TableRow>
+                            <TableRow><TableCell colSpan={isAdmin ? 5 : 4} className="h-32 text-center text-muted-foreground italic">Aucun employé enregistré.</TableCell></TableRow>
                         ) : staff.map((member) => (
                             <TableRow key={member.uuid} className="border-white/5 hover:bg-white/5 transition-colors group">
-                                <TableCell className="font-bold">{member.displayName}</TableCell>
-                                <TableCell className="font-mono text-xs opacity-70">{member.email}</TableCell>
+                                <TableCell className="font-bold px-6 py-4">{member.displayName}</TableCell>
+                                <TableCell className="font-mono text-[11px] opacity-70">{member.email}</TableCell>
                                 <TableCell>
-                                    <Badge className={cn("px-3 py-0.5 rounded-lg text-[10px] font-black tracking-widest uppercase", roleLabels[member.role]?.color)}>
+                                    <Badge className={cn("px-3 py-0.5 rounded-lg text-[9px] font-black tracking-widest uppercase", roleLabels[member.role]?.color)}>
+                                        <ShieldCheck className="h-2.5 w-2.5 mr-1.5" />
                                         {roleLabels[member.role]?.label}
                                     </Badge>
                                 </TableCell>
@@ -151,16 +159,18 @@ export function StaffManagement() {
                                         </span>
                                     )}
                                 </TableCell>
-                                <TableCell className="text-right">
-                                    <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-primary/10" onClick={() => handleOpenDialog(member)}>
-                                            <Edit className="h-4 w-4" />
-                                        </Button>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-destructive/10 text-destructive" onClick={() => handleDelete(member.uuid)}>
-                                            <Trash2 className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-                                </TableCell>
+                                {isAdmin && (
+                                    <TableCell className="text-right px-6">
+                                        <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-primary/10" onClick={() => handleOpenDialog(member)}>
+                                                <Edit className="h-4 w-4" />
+                                            </Button>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-destructive/10 text-destructive" onClick={() => handleDelete(member.uuid)}>
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    </TableCell>
+                                )}
                             </TableRow>
                         ))}
                     </TableBody>
@@ -205,8 +215,8 @@ export function StaffManagement() {
                         </div>
                         <DialogFooter className="border-t border-white/5 pt-4">
                             <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)}>Annuler</Button>
-                            <Button type="submit" disabled={isMutating} className="bg-primary hover:bg-primary/90 px-8 rounded-xl">
-                                {isMutating ? <Loader2 className="animate-spin h-4 w-4"/> : 'Confirmer'}
+                            <Button type="submit" disabled={isMutating} className="bg-primary hover:bg-primary/90 px-8 rounded-xl shadow-lg shadow-primary/20">
+                                {isMutating ? <Loader2 className="animate-spin h-4 w-4"/> : 'Confirmer les Pouvoirs'}
                             </Button>
                         </DialogFooter>
                     </form>

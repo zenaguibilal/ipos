@@ -1,26 +1,29 @@
+
 'use client';
 
 import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { formatCurrency, cn } from '@/lib/utils';
-import { Printer, RefreshCw, Save, Loader2 } from 'lucide-react';
+import { Printer, RefreshCw, Save, Loader2, ShieldAlert } from 'lucide-react';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useAppStore, useAppActions } from '@/stores/appStore';
+import { useAppStore, useAppActions, useIsManagerOrAdmin } from '@/stores/appStore';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 /**
- * @fileOverview Zakat Calculator Page (Deterministic Singularity)
- * Phase 7 & 11 Compliance: Components are for RENDERING ONLY.
- * Computation is derived from the Store.
+ * @fileOverview Zakat Calculator Page (Guarded)
  */
 
 export default function ZakatPage() {
-    const { history, isLoading, zakatData, zakatInputs, result, isSaving } = useAppStore(state => ({
+    const router = useRouter();
+    const isManagerOrAdmin = useIsManagerOrAdmin();
+    const { profile, history, isLoading, zakatData, zakatInputs, result, isSaving } = useAppStore(state => ({
+        profile: state.profile,
         history: state.zakatHistory,
         isLoading: state.isLoading.zakat,
         isSaving: state.isLoading.zakatSaving,
@@ -30,7 +33,17 @@ export default function ZakatPage() {
     }));
     const { refreshZakatData, setZakatInputs, saveZakatCalculation } = useAppActions();
 
-    useEffect(() => { refreshZakatData(); }, [refreshZakatData]);
+    // Role Guard
+    useEffect(() => {
+        if (profile && !isManagerOrAdmin) {
+            toast.error("Accès restreint", { description: "Le calculateur de Zakat est réservé aux gérants." });
+            router.replace('/sell');
+        }
+    }, [profile, isManagerOrAdmin, router]);
+
+    useEffect(() => { 
+        if (isManagerOrAdmin) refreshZakatData(); 
+    }, [refreshZakatData, isManagerOrAdmin]);
 
     const handleSave = async () => {
         if (!result) return;
@@ -42,10 +55,19 @@ export default function ZakatPage() {
         }
     };
 
+    if (!profile || !isManagerOrAdmin) {
+        return (
+            <div className="h-screen flex flex-col items-center justify-center p-6 text-center space-y-4">
+                <ShieldAlert className="h-12 w-12 text-primary animate-pulse" />
+                <h2 className="text-xl font-black uppercase tracking-widest">Vérification des Décrets...</h2>
+            </div>
+        );
+    }
+
     if (isLoading && history.length === 0) return <div className="p-6"><Skeleton className="h-12 w-1/3 mb-6"/><div className="grid grid-cols-3 gap-6"><Skeleton className="h-64"/><Skeleton className="h-64"/><Skeleton className="h-64"/></div></div>;
 
     return (
-        <div className="p-4 sm:p-6 space-y-6 max-w-7xl mx-auto pb-20">
+        <div className="p-4 sm:p-6 space-y-6 max-w-7xl mx-auto pb-20 animate-in fade-in duration-500">
             <PageHeader title="Calculateur de Zakat" description="Évaluation des actifs nets pour le commerce.">
                 <div className="flex gap-2">
                     <Button variant="outline" onClick={() => refreshZakatData()} disabled={isLoading} className="luxury-glass border-white/10"><RefreshCw className={cn("h-4 w-4 mr-2", isLoading && "animate-spin")} /> Actualiser</Button>

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -10,26 +11,39 @@ import { BreadDayView } from '@/components/bread/BreadDayView';
 import { BreadStats } from '@/components/bread/BreadStats';
 import { BreadClientList } from '@/components/bread/BreadClientList';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, ChevronLeft, ChevronRight, Calendar, Users, Wheat } from 'lucide-react';
-import { useAppStore, useAppActions } from '@/stores/appStore';
+import { Loader2, ChevronLeft, ChevronRight, Calendar, Users, Wheat, ShieldAlert } from 'lucide-react';
+import { useAppStore, useAppActions, useIsManagerOrAdmin } from '@/stores/appStore';
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 
 /**
- * @fileOverview Bread Management Page (State Singularity Enforcement)
+ * @fileOverview Bread Management Page (Guarded)
  */
 
 export default function BreadPage() {
+    const router = useRouter();
+    const isManagerOrAdmin = useIsManagerOrAdmin();
     const [currentDate, setCurrentDate] = useState(new Date());
     const formattedDate = formatDateToYYYYMMDD(currentDate);
 
-    const { breadOrders, isLoading } = useAppStore(state => ({
+    const { profile, breadOrders, isLoading } = useAppStore(state => ({
+        profile: state.profile,
         breadOrders: state.breadOrders,
         isLoading: state.isLoading.bread
     }));
     const { refreshBreadOrders } = useAppActions();
 
+    // Role Guard
     useEffect(() => {
-        refreshBreadOrders(formattedDate);
-    }, [formattedDate, refreshBreadOrders]);
+        if (profile && !isManagerOrAdmin) {
+            toast.error("Accès restreint", { description: "La gestion de la boulangerie est réservée aux gérants." });
+            router.replace('/sell');
+        }
+    }, [profile, isManagerOrAdmin, router]);
+
+    useEffect(() => {
+        if (isManagerOrAdmin) refreshBreadOrders(formattedDate);
+    }, [formattedDate, refreshBreadOrders, isManagerOrAdmin]);
 
     const handleDateChange = useCallback((days: number) => {
         setCurrentDate(prev => addDays(prev, days));
@@ -37,20 +51,29 @@ export default function BreadPage() {
 
     const isToday = formatDateToYYYYMMDD(new Date()) === formattedDate;
 
+    if (!profile || !isManagerOrAdmin) {
+        return (
+            <div className="h-screen flex flex-col items-center justify-center p-6 text-center space-y-4">
+                <ShieldAlert className="h-12 w-12 text-primary animate-pulse" />
+                <h2 className="text-xl font-black uppercase tracking-widest">Vérification des Décrets...</h2>
+            </div>
+        );
+    }
+
     return (
-        <div className="p-4 sm:p-6 space-y-6 flex flex-col h-full">
+        <div className="p-4 sm:p-6 space-y-6 flex flex-col h-full animate-in fade-in duration-500">
             <PageHeader 
                 title="Gestion de la Boulangerie"
                 description="Automatisation des commandes récurrentes et suivi des distributions."
             />
 
             <Tabs defaultValue="distribution" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 max-w-md mx-auto mb-6">
-                    <TabsTrigger value="distribution" className="gap-2">
+                <TabsList className="grid w-full grid-cols-2 max-w-md mx-auto mb-6 luxury-glass p-1 h-12 bg-muted/20">
+                    <TabsTrigger value="distribution" className="gap-2 rounded-xl font-bold">
                         <Wheat className="h-4 w-4" />
                         Distribution
                     </TabsTrigger>
-                    <TabsTrigger value="clients" className="gap-2">
+                    <TabsTrigger value="clients" className="gap-2 rounded-xl font-bold">
                         <Users className="h-4 w-4" />
                         Base Clients
                     </TabsTrigger>

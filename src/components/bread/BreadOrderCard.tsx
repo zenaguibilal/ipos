@@ -14,6 +14,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { User, Package, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useIsManagerOrAdmin } from '@/stores/appStore';
 
 interface BreadOrderCardProps {
     order: BreadOrder;
@@ -23,6 +24,7 @@ interface BreadOrderCardProps {
 }
 
 export function BreadOrderCard({ order, isSelected, onToggleSelection, onUpdate }: BreadOrderCardProps) {
+    const isManagerOrAdmin = useIsManagerOrAdmin();
     const [quantity, setQuantity] = useState(order.quantite);
     const debouncedQuantity = useDebounce(quantity, 500);
 
@@ -30,34 +32,34 @@ export function BreadOrderCard({ order, isSelected, onToggleSelection, onUpdate 
     const isDelivered = order.est_livre;
 
     const handleQuantityChange = useCallback(async (newQuantity: number) => {
+        if (!isManagerOrAdmin) return;
         try {
-            // Updated to use direct API Wall
             await api.put(`bread/${order.uuid}`, { quantite: newQuantity });
             onUpdate();
         } catch (error) {
             toast.error("Erreur de mise à jour.");
         }
-    }, [order.uuid, onUpdate]);
+    }, [order.uuid, onUpdate, isManagerOrAdmin]);
 
     useEffect(() => {
-        if (debouncedQuantity !== order.quantite && !isPaid) {
+        if (debouncedQuantity !== order.quantite && !isPaid && isManagerOrAdmin) {
             handleQuantityChange(debouncedQuantity);
         }
-    }, [debouncedQuantity, order.quantite, handleQuantityChange, isPaid]);
+    }, [debouncedQuantity, order.quantite, handleQuantityChange, isPaid, isManagerOrAdmin]);
     
     useEffect(() => {
         setQuantity(order.quantite);
     }, [order.quantite]);
 
     const handleDeliveryToggle = useCallback(async (delivered: boolean) => {
+        if (!isManagerOrAdmin) return;
         try {
-            // Updated to use direct API Wall
             await api.put(`bread/${order.uuid}`, { est_livre: delivered });
             onUpdate();
         } catch (error) {
             toast.error("Erreur de mise à jour du statut.");
         }
-    }, [order.uuid, onUpdate]);
+    }, [order.uuid, onUpdate, isManagerOrAdmin]);
     
     return (
         <Card className={cn(
@@ -87,7 +89,7 @@ export function BreadOrderCard({ order, isSelected, onToggleSelection, onUpdate 
                     <Checkbox 
                         checked={isSelected} 
                         onCheckedChange={() => onToggleSelection(order.uuid)} 
-                        disabled={isPaid} 
+                        disabled={isPaid || !isManagerOrAdmin} 
                         className="h-5 w-5 rounded-md border-primary/30 data-[state=checked]:bg-primary"
                     />
                 </div>
@@ -104,7 +106,7 @@ export function BreadOrderCard({ order, isSelected, onToggleSelection, onUpdate 
                             value={quantity}
                             onChange={(e) => setQuantity(parseInt(e.target.value) || 0)}
                             className="w-16 h-8 text-center text-sm font-black bg-muted border-white/10 focus:border-primary/50"
-                            disabled={isPaid}
+                            disabled={isPaid || !isManagerOrAdmin}
                         />
                         {order.quantite_origine !== undefined && order.quantite !== order.quantite_origine && (
                             <TooltipProvider>
@@ -122,11 +124,12 @@ export function BreadOrderCard({ order, isSelected, onToggleSelection, onUpdate 
             <CardFooter className="p-0 border-t border-white/5 bg-black/5">
                 <div className="grid grid-cols-2 w-full divide-x divide-white/5">
                     <button 
-                        onClick={() => !isPaid && handleDeliveryToggle(!isDelivered)}
-                        disabled={isPaid}
+                        onClick={() => !isPaid && isManagerOrAdmin && handleDeliveryToggle(!isDelivered)}
+                        disabled={isPaid || !isManagerOrAdmin}
                         className={cn(
                             "flex flex-col items-center gap-1.5 py-3 transition-all",
-                            isDelivered ? "bg-primary/10 text-primary" : "hover:bg-white/5 text-muted-foreground opacity-60"
+                            isDelivered ? "bg-primary/10 text-primary" : "hover:bg-white/5 text-muted-foreground opacity-60",
+                            !isManagerOrAdmin && "cursor-not-allowed"
                         )}
                     >
                         {isDelivered ? <CheckCircle2 className="h-4 w-4" /> : <Clock className="h-4 w-4" />}

@@ -2,7 +2,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import type { BreadOrder } from '@/lib/types';
 import { BreadOrderCard } from './BreadOrderCard';
@@ -14,7 +14,7 @@ import { toast } from 'sonner';
 import { api } from '@/lib/api-client';
 import { Loader2, Wheat, ShoppingCart, Trash2, Sparkles, PackageCheck, AlertCircle } from 'lucide-react';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { useAppStore } from '@/stores/appStore';
+import { useAppStore, useIsManagerOrAdmin } from '@/stores/appStore';
 import { cn } from '@/lib/utils';
 
 interface BreadDayViewProps {
@@ -24,6 +24,7 @@ interface BreadDayViewProps {
 }
 
 export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayViewProps) {
+    const isManagerOrAdmin = useIsManagerOrAdmin();
     const [selectedOrders, setSelectedOrders] = useState(new Set<string>());
     const [isConverting, setIsConverting] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
@@ -53,9 +54,9 @@ export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayVi
     };
     
     const handleGenerate = async () => {
+        if (!isManagerOrAdmin) return;
         setIsGenerating(true);
         try {
-            // Updated to use direct API Wall
             const result = await api.post<{ count: number }>('bread/generate', { date: currentDate });
             if (result.count > 0) {
                 toast.success(`${result.count} commande(s) générée(s) avec succès.`);
@@ -71,6 +72,7 @@ export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayVi
     };
 
     const handleConvertToSales = async () => {
+        if (!isManagerOrAdmin) return;
         if (selectedOrders.size === 0) {
             toast.info("Veuillez sélectionner au moins une commande à facturer.");
             return;
@@ -82,7 +84,6 @@ export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayVi
         
         setIsConverting(true);
         try {
-            // Updated to use direct API Wall
             await api.post('bread/convert-to-sales', { orderUuids: Array.from(selectedOrders), breadPrice });
             toast.success(`${selectedOrders.size} commande(s) transformée(s) en factures.`);
             setSelectedOrders(new Set());
@@ -95,7 +96,7 @@ export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayVi
     };
 
     const handleMarkDelivered = async () => {
-        if (selectedOrders.size === 0) return;
+        if (!isManagerOrAdmin || selectedOrders.size === 0) return;
         try {
             for (const uuid of Array.from(selectedOrders)) {
                 await api.put(`bread/${uuid}`, { est_livre: true });
@@ -109,10 +110,9 @@ export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayVi
     };
 
     const handleDeleteSelected = async () => {
-        if (selectedOrders.size === 0) return;
+        if (!isManagerOrAdmin || selectedOrders.size === 0) return;
         setIsDeleting(true);
         try {
-            // Updated to use direct API Wall
             await api.post('bread/bulk-delete', { uuids: Array.from(selectedOrders) });
             toast.success("Commandes supprimées.");
             setSelectedOrders(new Set());
@@ -136,6 +136,7 @@ export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayVi
                             id="select-all-bread" 
                             checked={isAllSelected} 
                             onCheckedChange={handleSelectAll} 
+                            disabled={!isManagerOrAdmin}
                             className="h-5 w-5 rounded-md border-primary/30" 
                         />
                         <div className="flex flex-col">
@@ -183,17 +184,21 @@ export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayVi
                             </div>
                         ) : (
                             <div className="flex items-center gap-2 w-full lg:w-auto">
-                                <Button 
-                                    variant="outline" 
-                                    size="sm" 
-                                    onClick={handleGenerate} 
-                                    disabled={isGenerating} 
-                                    className="rounded-xl border-primary/30 bg-primary/10 text-primary hover:bg-primary/20"
-                                >
-                                    {isGenerating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Sparkles className="h-4 w-4 mr-2" />}
-                                    Générer depuis Récurence
-                                </Button>
-                                <ManualAddDialog currentDate={currentDate} onSuccess={onOrdersChange} />
+                                {isManagerOrAdmin && (
+                                    <>
+                                        <Button 
+                                            variant="outline" 
+                                            size="sm" 
+                                            onClick={handleGenerate} 
+                                            disabled={isGenerating} 
+                                            className="rounded-xl border-primary/30 bg-primary/10 text-primary hover:bg-primary/20"
+                                        >
+                                            {isGenerating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Sparkles className="h-4 w-4 mr-2" />}
+                                            Générer depuis Récurence
+                                        </Button>
+                                        <ManualAddDialog currentDate={currentDate} onSuccess={onOrdersChange} />
+                                    </>
+                                )}
                                 <PrintBreadListDialog orders={orders} currentDate={currentDate}/>
                             </div>
                         )}
@@ -209,14 +214,16 @@ export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayVi
                             description="Générez les commandes automatiques ou ajoutez une commande ponctuelle."
                             className="py-24"
                         >
-                            <Button 
-                                onClick={handleGenerate} 
-                                disabled={isGenerating} 
-                                className="rounded-xl px-8 h-12 text-lg shadow-lg shadow-primary/20"
-                            >
-                                {isGenerating ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Sparkles className="mr-2 h-5 w-5" />}
-                                Lancer la génération
-                            </Button>
+                            {isManagerOrAdmin && (
+                                <Button 
+                                    onClick={handleGenerate} 
+                                    disabled={isGenerating} 
+                                    className="rounded-xl px-8 h-12 text-lg shadow-lg shadow-primary/20"
+                                >
+                                    {isGenerating ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Sparkles className="mr-2 h-5 w-5" />}
+                                    Lancer la génération
+                                </Button>
+                            )}
                         </EmptyState>
                     ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-8">
