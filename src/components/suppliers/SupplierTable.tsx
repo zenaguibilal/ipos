@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -18,7 +17,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Edit, Trash2, Phone, MapPin, Wallet, User, Eye } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, Eye } from 'lucide-react';
 import { formatCurrency, cn } from '@/lib/utils';
 import { useIsManagerOrAdmin } from '@/stores/appStore';
 import { Checkbox } from '@/components/ui/checkbox';

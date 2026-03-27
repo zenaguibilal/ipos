@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -18,7 +17,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Edit, Trash2, FileText, Phone, DollarSign, ShieldCheck, HandCoins, Printer, Calendar, MessageSquare } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, FileText, Phone, HandCoins, Printer, MessageSquare } from 'lucide-react';
 import Link from 'next/link';
 import { formatCurrency, cn } from '@/lib/utils';
 import { Checkbox } from '../ui/checkbox';
