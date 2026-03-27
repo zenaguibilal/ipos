@@ -68,7 +68,7 @@ export default function CustomerDetailPage() {
     const handleWhatsAppReminder = () => {
         const customer = selectedCustomer.data;
         if (!customer?.phone) {
-            toast.error("Numéro de téléphone manكانت.");
+            toast.error("Numéro de téléphone manquant.");
             return;
         }
         const storeName = companyProfile?.companyName || "iPOS";
