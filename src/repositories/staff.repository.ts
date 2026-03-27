@@ -1,21 +1,34 @@
+
 import { createClient } from "@/utils/supabase/server";
 import type { StaffMember } from "@/lib/types";
 
 /**
  * @fileOverview Staff Repository (Absolute Data Authority)
- * المسؤول عن إدارة ملفات الموظفين وصلاحياتهم.
+ * المسؤول عن إدارة ملفات الموظفين وصلاحياتهم مع معالجة الأخطاء السيادية.
  */
 export class StaffRepository {
     private supabase = createClient();
 
     async getAll(): Promise<StaffMember[]> {
-        const { data, error } = await this.supabase
-            .from('staff_profiles')
-            .select('*')
-            .order('created_at', { ascending: true });
-        
-        if (error) throw new Error(`STAFF_FETCH_FAILED: ${error.message}`);
-        return data.map(this.mapFromDb);
+        try {
+            const { data, error } = await this.supabase
+                .from('staff_profiles')
+                .select('*')
+                .order('created_at', { ascending: true });
+            
+            if (error) {
+                // Handle missing table error gracefully during initial setup
+                if (error.code === '42P01') {
+                    console.warn('[REPOSITORY_WARNING] Table staff_profiles not found. Please run migrations.');
+                    return [];
+                }
+                throw error;
+            }
+            return data.map(this.mapFromDb);
+        } catch (e: any) {
+            console.error(`[STAFF_FETCH_FAILED] ${e.message}`);
+            return []; // Return empty instead of crashing
+        }
     }
 
     async create(member: Partial<StaffMember>): Promise<StaffMember> {
