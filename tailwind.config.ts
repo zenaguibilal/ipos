@@ -56,7 +56,6 @@ const config: Config = {
           secondary: "hsl(var(--chart-secondary))",
           tertiary: "hsl(var(--chart-tertiary))",
           quaternary: "hsl(var(--chart-quaternary))",
-          quinary: "hsl(var(--chart-quinary))",
         },
       },
       borderRadius: {
@@ -73,10 +72,6 @@ const config: Config = {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
-        "warm-gradient": {
-          '0%, 100%': { backgroundPosition: '0% 50%' },
-          '50%': { backgroundPosition: '100% 50%' },
-        },
         "flash": {
           '0%, 100%': { background: 'transparent' },
           '50%': { background: 'hsl(var(--primary) / 0.2)' },
@@ -85,7 +80,6 @@ const config: Config = {
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
-        "warm-gradient": "warm-gradient 15s ease infinite",
         "flash": "flash 0.5s ease-out",
       },
     },

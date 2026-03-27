@@ -3,7 +3,7 @@ import { ProductRepository } from './product.repository';
 import { SaleRepository } from './sale.repository';
 import { CustomerRepository } from './customer.repository';
 import { ExpenseRepository } from './expense.repository';
-import { startOfDay, endOfDay, format, eachDayOfInterval } from 'date-fns';
+import { format, eachDayOfInterval } from 'date-fns';
 
 /**
  * @fileOverview Dashboard Repository (Absolute Data Authority)

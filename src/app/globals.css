@@ -88,7 +88,6 @@
     background: linear-gradient(165deg, hsl(var(--bg-gradient-from)) 0%, hsl(var(--bg-gradient-to)) 100%);
     background-attachment: fixed;
     min-height: 100vh;
-    transition: background-color 0.6s cubic-bezier(0.4, 0, 0.2, 1), color 0.6s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   /* Soft Grain Overlay for Luxury Texture */
