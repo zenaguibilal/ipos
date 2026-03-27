@@ -1,4 +1,3 @@
-
 'use client';
 
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -6,11 +5,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { CompanyProfileForm } from "@/components/profile/company-profile-form";
 import { DataManagementCard } from "@/components/profile/DataManagementCard";
-import { useAppStore } from "@/stores/appStore";
+import { useAppStore, useIsAdmin } from "@/stores/appStore";
 import { 
     User, Building2, Database, Settings2, ShieldCheck, 
     BadgeCheck, LayoutDashboard, Cloud, Wifi, 
-    Monitor, Cpu, Fingerprint, Globe, KeyRound, Server
+    Monitor, Cpu, Fingerprint, Globe, KeyRound, Server, Users
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -23,6 +22,7 @@ import { useEffect, useState } from "react";
 
 export default function ProfilePage() {
     const { profile } = useAppStore();
+    const isAdmin = useIsAdmin();
     const [systemInfo, setSystemInfo] = useState({ os: 'Chargement...', browser: 'Chargement...' });
 
     useEffect(() => {
@@ -68,7 +68,7 @@ export default function ProfilePage() {
             />
 
             <Tabs defaultValue="account" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 luxury-glass p-1.5 h-auto bg-muted/20 border-white/5 shadow-inner">
+                <TabsList className="grid w-full grid-cols-2 md:grid-cols-5 luxury-glass p-1.5 h-auto bg-muted/20 border-white/5 shadow-inner">
                     <TabsTrigger value="account" className="py-3 gap-2 rounded-xl font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-background data-[state=active]:text-primary transition-all">
                         <User className="h-3.5 w-3.5" /> Système
                     </TabsTrigger>
@@ -78,7 +78,10 @@ export default function ProfilePage() {
                     <TabsTrigger value="settings" className="py-3 gap-2 rounded-xl font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-background data-[state=active]:text-primary transition-all">
                         <Settings2 className="h-3.5 w-3.5" /> Réglages
                     </TabsTrigger>
-                    <TabsTrigger value="data" className="py-3 gap-2 rounded-xl font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-background data-[state=active]:text-primary transition-all">
+                    <TabsTrigger value="staff" className="py-3 gap-2 rounded-xl font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-background data-[state=active]:text-primary transition-all">
+                        <Users className="h-3.5 w-3.5" /> Personnel
+                    </TabsTrigger>
+                    <TabsTrigger value="data" className="py-3 gap-2 rounded-xl font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-background data-[state=active]:text-primary transition-all" disabled={!isAdmin}>
                         <Database className="h-3.5 w-3.5" /> Données
                     </TabsTrigger>
                 </TabsList>
@@ -181,8 +184,53 @@ export default function ProfilePage() {
                     </Card>
                 </TabsContent>
 
+                <TabsContent value="staff" className="mt-6 animate-in fade-in-50 slide-in-from-bottom-2 duration-500">
+                    <Card className="luxury-glass border-white/5 overflow-hidden">
+                        <CardHeader className="bg-primary/5 border-b border-white/5">
+                            <CardTitle className="flex items-center gap-2 font-black uppercase tracking-tight">
+                                <Users className="h-5 w-5 text-primary" />
+                                Gestion du Personnel & Rôles
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-12 text-center space-y-6">
+                            <div className="h-20 w-20 bg-muted/20 rounded-full flex items-center justify-center mx-auto border-2 border-dashed border-white/10">
+                                <ShieldCheck className="h-10 w-10 text-muted-foreground opacity-30" />
+                            </div>
+                            <div className="space-y-2">
+                                <h4 className="text-xl font-bold">Module Hiérarchique</h4>
+                                <p className="text-sm text-muted-foreground max-w-md mx-auto leading-relaxed">
+                                    La gestion des comptes multiples est soumise à votre type de licence Cloud. 
+                                    Actuellement, vous opérez en mode <strong>Souverain Unique</strong>.
+                                </p>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-2xl mx-auto pt-6">
+                                <div className="p-4 rounded-2xl bg-primary/10 border border-primary/20">
+                                    <p className="text-[10px] font-black uppercase text-primary mb-1">Administrateur</p>
+                                    <p className="text-xs font-medium">Contrôle total & Données</p>
+                                </div>
+                                <div className="p-4 rounded-2xl bg-blue-500/10 border border-blue-500/20">
+                                    <p className="text-[10px] font-black uppercase text-blue-400 mb-1">Gérant</p>
+                                    <p className="text-xs font-medium">Stocks & Finance</p>
+                                </div>
+                                <div className="p-4 rounded-2xl bg-orange-500/10 border border-orange-500/20">
+                                    <p className="text-[10px] font-black uppercase text-orange-400 mb-1">Caisse</p>
+                                    <p className="text-xs font-medium">Ventes & Retours</p>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
                 <TabsContent value="data" className="mt-6 animate-in fade-in-50 slide-in-from-bottom-2 duration-500">
-                    <DataManagementCard />
+                    {isAdmin ? <DataManagementCard /> : (
+                        <Card className="luxury-glass border-destructive/20 bg-destructive/5 p-12 text-center">
+                            <Monitor className="h-12 w-12 text-destructive mx-auto mb-4 opacity-50" />
+                            <h4 className="text-lg font-bold text-destructive uppercase">Accès Refusé</h4>
+                            <p className="text-sm text-muted-foreground mt-2">
+                                Seul un <strong>Administrateur Système</strong> peut manipuler les archives de données.
+                            </p>
+                        </Card>
+                    )}
                 </TabsContent>
             </Tabs>
         </div>

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -12,10 +11,12 @@ import { Skeleton } from '../ui/skeleton';
 import { 
     Loader2, Save, Globe, Phone, Mail, MapPin, Hash, 
     ShoppingBag, Coins, Scale, FileText, LogOut, 
-    Briefcase, Building, Map, Landmark
+    Briefcase, Building, Map, Landmark, ShieldCheck
 } from 'lucide-react';
-import { useAppStore } from '@/stores/appStore';
+import { useAppStore, useIsManagerOrAdmin } from '@/stores/appStore';
 import { Separator } from '../ui/separator';
+import { Badge } from '../ui/badge';
+import { cn } from '@/lib/utils';
 
 interface CompanyProfileFormProps {
     mode: 'company' | 'settings';
@@ -27,6 +28,8 @@ export function CompanyProfileForm({ mode }: CompanyProfileFormProps) {
         isSettingsLoading: state.isSettingsLoading,
     }));
     const { updateProfile, logout } = useAppStore(state => state.actions);
+    const isManagerOrAdmin = useIsManagerOrAdmin();
+    
     const [formState, setFormState] = useState<Partial<CompanyProfile>>({});
     const [isSaving, setIsSaving] = useState(false);
 
@@ -43,6 +46,10 @@ export function CompanyProfileForm({ mode }: CompanyProfileFormProps) {
 
     const handleUpdateProfile = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
+        if (!isManagerOrAdmin) {
+            toast.error("Votre rôle ne permet pas de modifier ces paramètres.");
+            return;
+        }
         
         setIsSaving(true);
         try {
@@ -88,22 +95,28 @@ export function CompanyProfileForm({ mode }: CompanyProfileFormProps) {
                 {mode === 'company' ? (
                     <>
                         <div className="space-y-8">
-                            <h4 className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2 ml-1">
-                                <Briefcase className="h-3.5 w-3.5" /> Identité & Enseigne
-                            </h4>
+                            <div className="flex items-center justify-between">
+                                <h4 className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2 ml-1">
+                                    <Briefcase className="h-3.5 w-3.5" /> Identité & Enseigne
+                                </h4>
+                                <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 h-6 px-2 gap-1.5 text-[9px] font-black uppercase">
+                                    <ShieldCheck className="h-3 w-3" />
+                                    Accès: {profile?.role}
+                                </Badge>
+                            </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                 <div className="space-y-3">
                                     <Label htmlFor="companyName" className="text-[10px] font-black uppercase tracking-widest opacity-70 ml-1">Nom commercial de l'établissement</Label>
                                     <div className="relative group">
                                         <ShoppingBag className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary/40 group-focus-within:text-primary transition-colors" />
-                                        <Input id="companyName" value={formState.companyName || ''} onChange={handleInputChange} disabled={isSaving} className="pl-12 h-14 rounded-2xl bg-background/40 border-white/5 focus:border-primary/40 focus:ring-0 transition-all font-bold" placeholder="Ex: Mon Établissement iPOS" />
+                                        <Input id="companyName" value={formState.companyName || ''} onChange={handleInputChange} disabled={isSaving || !isManagerOrAdmin} className="pl-12 h-14 rounded-2xl bg-background/40 border-white/5 focus:border-primary/40 focus:ring-0 transition-all font-bold" placeholder="Ex: Mon Établissement iPOS" />
                                     </div>
                                 </div>
                                 <div className="space-y-3">
                                     <Label htmlFor="address" className="text-[10px] font-black uppercase tracking-widest opacity-70 ml-1">Adresse du Siège Social</Label>
                                     <div className="relative group">
                                         <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary/40 group-focus-within:text-primary transition-colors" />
-                                        <Input id="address" value={formState.address || ''} onChange={handleInputChange} disabled={isSaving} className="pl-12 h-14 rounded-2xl bg-background/40 border-white/5 focus:border-primary/40 focus:ring-0 transition-all font-bold" placeholder="Ex: 12 Avenue des Martyrs" />
+                                        <Input id="address" value={formState.address || ''} onChange={handleInputChange} disabled={isSaving || !isManagerOrAdmin} className="pl-12 h-14 rounded-2xl bg-background/40 border-white/5 focus:border-primary/40 focus:ring-0 transition-all font-bold" placeholder="Ex: 12 Avenue des Martyrs" />
                                     </div>
                                 </div>
                             </div>
@@ -112,21 +125,21 @@ export function CompanyProfileForm({ mode }: CompanyProfileFormProps) {
                                     <Label htmlFor="city" className="text-[10px] font-black uppercase tracking-widest opacity-70 ml-1">Ville</Label>
                                     <div className="relative group">
                                         <Building className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-primary/30" />
-                                        <Input id="city" value={formState.city || ''} onChange={handleInputChange} disabled={isSaving} className="pl-10 h-14 rounded-2xl bg-background/40 border-white/5 focus:border-primary/40 focus:ring-0 transition-all font-bold" />
+                                        <Input id="city" value={formState.city || ''} onChange={handleInputChange} disabled={isSaving || !isManagerOrAdmin} className="pl-10 h-14 rounded-2xl bg-background/40 border-white/5 focus:border-primary/40 focus:ring-0 transition-all font-bold" />
                                     </div>
                                 </div>
                                 <div className="space-y-3">
                                     <Label htmlFor="zipCode" className="text-[10px] font-black uppercase tracking-widest opacity-70 ml-1">Code Postal</Label>
                                     <div className="relative group">
                                         <Map className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-primary/30" />
-                                        <Input id="zipCode" value={formState.zipCode || ''} onChange={handleInputChange} disabled={isSaving} className="pl-10 h-14 rounded-2xl bg-background/40 border-white/5 focus:border-primary/40 focus:ring-0 transition-all font-bold font-mono" />
+                                        <Input id="zipCode" value={formState.zipCode || ''} onChange={handleInputChange} disabled={isSaving || !isManagerOrAdmin} className="pl-10 h-14 rounded-2xl bg-background/40 border-white/5 focus:border-primary/40 focus:ring-0 transition-all font-bold font-mono" />
                                     </div>
                                 </div>
                                 <div className="space-y-3">
                                     <Label htmlFor="country" className="text-[10px] font-black uppercase tracking-widest opacity-70 ml-1">Pays</Label>
                                     <div className="relative group">
                                         <Globe className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-primary/30" />
-                                        <Input id="country" value={formState.country || ''} onChange={handleInputChange} disabled={isSaving} className="pl-10 h-14 rounded-2xl bg-background/40 border-white/5 focus:border-primary/40 focus:ring-0 transition-all font-bold" />
+                                        <Input id="country" value={formState.country || ''} onChange={handleInputChange} disabled={isSaving || !isManagerOrAdmin} className="pl-10 h-14 rounded-2xl bg-background/40 border-white/5 focus:border-primary/40 focus:ring-0 transition-all font-bold" />
                                     </div>
                                 </div>
                             </div>
@@ -143,14 +156,14 @@ export function CompanyProfileForm({ mode }: CompanyProfileFormProps) {
                                     <Label htmlFor="phone" className="text-[10px] font-black uppercase tracking-widest opacity-70 ml-1">Téléphone Professionnel</Label>
                                     <div className="relative group">
                                         <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary/40 group-focus-within:text-primary transition-colors" />
-                                        <Input id="phone" type="tel" value={formState.phone || ''} onChange={handleInputChange} disabled={isSaving} className="pl-12 h-14 rounded-2xl font-mono bg-background/40 border-white/5 focus:border-primary/40 focus:ring-0 transition-all font-bold" />
+                                        <Input id="phone" type="tel" value={formState.phone || ''} onChange={handleInputChange} disabled={isSaving || !isManagerOrAdmin} className="pl-12 h-14 rounded-2xl font-mono bg-background/40 border-white/5 focus:border-primary/40 focus:ring-0 transition-all font-bold" />
                                     </div>
                                 </div>
                                 <div className="space-y-3">
                                     <Label htmlFor="email" className="text-[10px] font-black uppercase tracking-widest opacity-70 ml-1">E-mail Administratif</Label>
                                     <div className="relative group">
                                         <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary/40 group-focus-within:text-primary transition-colors" />
-                                        <Input id="email" type="email" value={formState.email || ''} onChange={handleInputChange} disabled={isSaving} className="pl-12 h-14 rounded-2xl bg-background/40 border-white/5 focus:border-primary/40 focus:ring-0 transition-all font-bold" />
+                                        <Input id="email" type="email" value={formState.email || ''} onChange={handleInputChange} disabled={isSaving || !isManagerOrAdmin} className="pl-12 h-14 rounded-2xl bg-background/40 border-white/5 focus:border-primary/40 focus:ring-0 transition-all font-bold" />
                                     </div>
                                 </div>
                             </div>
@@ -158,7 +171,7 @@ export function CompanyProfileForm({ mode }: CompanyProfileFormProps) {
                                 <Label htmlFor="website" className="text-[10px] font-black uppercase tracking-widest opacity-70 ml-1">Site Web / Catalogue Digital</Label>
                                 <div className="relative group">
                                     <Globe className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary/40 group-focus-within:text-primary transition-colors" />
-                                    <Input id="website" value={formState.website || ''} onChange={handleInputChange} disabled={isSaving} placeholder="https://www.mon-commerce.com" className="pl-12 h-14 rounded-2xl bg-background/40 border-white/5 focus:border-primary/40 focus:ring-0 transition-all font-bold" />
+                                    <Input id="website" value={formState.website || ''} onChange={handleInputChange} disabled={isSaving || !isManagerOrAdmin} placeholder="https://www.mon-commerce.com" className="pl-12 h-14 rounded-2xl bg-background/40 border-white/5 focus:border-primary/40 focus:ring-0 transition-all font-bold" />
                                 </div>
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
@@ -166,21 +179,21 @@ export function CompanyProfileForm({ mode }: CompanyProfileFormProps) {
                                     <Label htmlFor="vatNumber" className="text-[10px] font-black uppercase tracking-widest opacity-70 ml-1">NIF (Identifiant Fiscal)</Label>
                                     <div className="relative group">
                                         <Landmark className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-primary/30" />
-                                        <Input id="vatNumber" value={formState.vatNumber || ''} onChange={handleInputChange} disabled={isSaving} className="pl-10 h-14 rounded-2xl bg-background/40 border-white/5 focus:border-primary/40 focus:ring-0 transition-all font-bold font-mono uppercase" />
+                                        <Input id="vatNumber" value={formState.vatNumber || ''} onChange={handleInputChange} disabled={isSaving || !isManagerOrAdmin} className="pl-10 h-14 rounded-2xl bg-background/40 border-white/5 focus:border-primary/40 focus:ring-0 transition-all font-bold font-mono uppercase" />
                                     </div>
                                 </div>
                                 <div className="space-y-3">
                                     <Label htmlFor="rcNumber" className="text-[10px] font-black uppercase tracking-widest opacity-70 ml-1">N° Registre Commerce</Label>
                                     <div className="relative group">
                                         <FileText className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-primary/30" />
-                                        <Input id="rcNumber" value={formState.rcNumber || ''} onChange={handleInputChange} disabled={isSaving} className="pl-10 h-14 rounded-2xl bg-background/40 border-white/5 focus:border-primary/40 focus:ring-0 transition-all font-bold font-mono uppercase" />
+                                        <Input id="rcNumber" value={formState.rcNumber || ''} onChange={handleInputChange} disabled={isSaving || !isManagerOrAdmin} className="pl-10 h-14 rounded-2xl bg-background/40 border-white/5 focus:border-primary/40 focus:ring-0 transition-all font-bold font-mono uppercase" />
                                     </div>
                                 </div>
                                 <div className="space-y-3">
                                     <Label htmlFor="artImposition" className="text-[10px] font-black uppercase tracking-widest opacity-70 ml-1">Article d'Imposition</Label>
                                     <div className="relative group">
                                         <Hash className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-primary/30" />
-                                        <Input id="artImposition" value={formState.artImposition || ''} onChange={handleInputChange} disabled={isSaving} className="pl-10 h-14 rounded-2xl bg-background/40 border-white/5 focus:border-primary/40 focus:ring-0 transition-all font-bold font-mono uppercase" />
+                                        <Input id="artImposition" value={formState.artImposition || ''} onChange={handleInputChange} disabled={isSaving || !isManagerOrAdmin} className="pl-10 h-14 rounded-2xl bg-background/40 border-white/5 focus:border-primary/40 focus:ring-0 transition-all font-bold font-mono uppercase" />
                                     </div>
                                 </div>
                             </div>
@@ -206,7 +219,7 @@ export function CompanyProfileForm({ mode }: CompanyProfileFormProps) {
                                 step="0.1" 
                                 value={formState.prix_pain || ''} 
                                 onChange={handleInputChange} 
-                                disabled={isSaving} 
+                                disabled={isSaving || !isManagerOrAdmin} 
                                 className="h-20 text-5xl font-black rounded-3xl text-primary bg-background/60 border-primary/20 focus:border-primary focus:ring-0 text-center shadow-inner tracking-tighter"
                             />
                             <p className="text-[10px] text-muted-foreground font-medium leading-relaxed bg-white/5 p-4 rounded-2xl border border-white/5 shadow-inner">
@@ -232,7 +245,7 @@ export function CompanyProfileForm({ mode }: CompanyProfileFormProps) {
                                 step="0.01" 
                                 value={formState.goldPricePerGram || ''} 
                                 onChange={handleInputChange} 
-                                disabled={isSaving} 
+                                disabled={isSaving || !isManagerOrAdmin} 
                                 className="h-20 text-5xl font-black rounded-3xl text-orange-400 bg-background/60 border-orange-500/20 focus:border-orange-500 focus:ring-0 text-center shadow-inner tracking-tighter"
                             />
                             <p className="text-[10px] text-muted-foreground font-medium leading-relaxed bg-white/5 p-4 rounded-2xl border border-white/5 shadow-inner">
@@ -251,13 +264,15 @@ export function CompanyProfileForm({ mode }: CompanyProfileFormProps) {
                 >
                     <LogOut className="h-5 w-5" /> Mettre Fin à la Session
                 </Button>
-                <Button type="submit" disabled={isSaving} className="rounded-2xl px-12 h-14 font-black uppercase text-[11px] tracking-[0.3em] gap-3 shadow-2xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all w-full sm:w-auto overflow-hidden relative group">
-                    <span className="relative z-10 flex items-center gap-2">
-                        {isSaving ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
-                        Sauvegarder les Décrets
-                    </span>
-                    <div className="absolute inset-0 bg-gradient-to-r from-primary to-primary/80 group-hover:from-primary group-hover:to-primary/90 transition-all duration-500" />
-                </Button>
+                {isManagerOrAdmin && (
+                    <Button type="submit" disabled={isSaving} className="rounded-2xl px-12 h-14 font-black uppercase text-[11px] tracking-[0.3em] gap-3 shadow-2xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all w-full sm:w-auto overflow-hidden relative group">
+                        <span className="relative z-10 flex items-center gap-2">
+                            {isSaving ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
+                            Sauvegarder les Décrets
+                        </span>
+                        <div className="absolute inset-0 bg-gradient-to-r from-primary to-primary/80 group-hover:from-primary group-hover:to-primary/90 transition-all duration-500" />
+                    </Button>
+                )}
             </CardFooter>
         </form>
     );

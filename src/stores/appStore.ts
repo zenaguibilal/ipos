@@ -4,7 +4,7 @@ import { create } from 'zustand';
 import { produce } from 'immer';
 import type { 
     Cart, CompanyProfile, Product, Sale, Customer, Supplier, 
-    Expense, BreadOrder, Recipe, SavedZakatCalculation 
+    Expense, BreadOrder, Recipe, SavedZakatCalculation, AppRole 
 } from '@/lib/types';
 import { v4 as uuidv4 } from 'uuid';
 import { api } from '@/lib/api-client';
@@ -12,7 +12,7 @@ import { calculateZakat } from '@/lib/utils';
 
 /**
  * @fileOverview THE STATE SINGULARITY (PURIFIED)
- * Minimized state management. Non-essential global states removed.
+ * Integrated Role-Based Access Control (RBAC)
  */
 
 interface AppState {
@@ -457,7 +457,21 @@ export const useAppStore = create<AppState>((set, get) => ({
 }));
 
 export const useAppActions = () => useAppStore(state => state.actions);
+
+// Granular Role Access Hooks
+export const useAppRole = () => useAppStore(state => state.profile?.role || 'cashier' as AppRole);
+
+export const useIsAdmin = () => {
+    const role = useAppRole();
+    return role === 'admin';
+};
+
 export const useIsManagerOrAdmin = () => {
-    const role = useAppStore(state => state.profile?.role);
+    const role = useAppRole();
     return role === 'admin' || role === 'manager';
+};
+
+export const useIsCashierOnly = () => {
+    const role = useAppRole();
+    return role === 'cashier';
 };

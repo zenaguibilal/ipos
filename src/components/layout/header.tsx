@@ -39,8 +39,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useIsManagerOrAdmin, useAppStore } from '@/stores/appStore';
+import { useIsManagerOrAdmin, useAppStore, useAppRole } from '@/stores/appStore';
 import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
 
 const allNavLinks = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, managerOnly: false },
@@ -59,6 +60,7 @@ const allNavLinks = [
 export function AppHeader() {
   const pathname = usePathname();
   const isManagerOrAdmin = useIsManagerOrAdmin();
+  const role = useAppRole();
   const { profile, actions } = useAppStore();
 
   const mainActionLinks = [
@@ -66,6 +68,12 @@ export function AppHeader() {
   ];
   
   const navLinks = allNavLinks.filter(link => !link.managerOnly || isManagerOrAdmin);
+
+  const roleLabels: Record<string, { label: string, color: string }> = {
+    admin: { label: 'Admin', color: 'bg-primary text-primary-foreground' },
+    manager: { label: 'Gérant', color: 'bg-blue-500 text-white' },
+    cashier: { label: 'Caisse', color: 'bg-orange-500 text-white' }
+  };
 
   return (
     <header className="flex h-16 items-center gap-4 bg-background/80 px-4 sm:px-6 print-hide sticky top-0 z-30 border-b backdrop-blur-xl transition-colors duration-500">
@@ -146,9 +154,14 @@ export function AppHeader() {
                             <div className="h-7 w-7 rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center text-[10px] font-black text-primary-foreground shadow-inner">
                                 {profile?.companyName?.substring(0, 1).toUpperCase() || 'U'}
                             </div>
-                            <span className="hidden lg:inline-block text-xs font-bold truncate max-w-[100px]">
-                                {profile?.companyName || 'Utilisateur'}
-                            </span>
+                            <div className="hidden lg:flex flex-col items-start leading-none gap-0.5">
+                                <span className="text-xs font-bold truncate max-w-[100px]">
+                                    {profile?.companyName || 'Utilisateur'}
+                                </span>
+                                <Badge className={cn("h-3.5 px-1.5 py-0 text-[8px] font-black uppercase", roleLabels[role]?.color)}>
+                                    {roleLabels[role]?.label}
+                                </Badge>
+                            </div>
                             <ChevronDown className="h-3 w-3 opacity-50" />
                         </Button>
                     </DropdownMenuTrigger>
