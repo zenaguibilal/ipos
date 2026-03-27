@@ -4,7 +4,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 /**
  * @fileOverview THE SYSTEM SENTRY
  * Final layer of defense. Pure server-side authority.
- * Optimized for zero-latency exclusion of PWA assets.
+ * Purged of PWA/Offline asset bypasses.
  */
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
@@ -53,5 +53,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|manifest.json|sw.js|icon.svg).*)'],
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|icon.svg).*)'],
 }

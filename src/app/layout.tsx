@@ -1,4 +1,3 @@
-
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { Inter } from 'next/font/google';
@@ -7,7 +6,7 @@ import { ClientProviders } from '@/components/layout/ClientProviders';
 const APP_NAME = "iPOS";
 const APP_DEFAULT_TITLE = "iPOS - Point de Vente Intelligent";
 const APP_TITLE_TEMPLATE = "%s - iPOS";
-const APP_DESCRIPTION = "Application de point de vente SaaS complète avec support PWA et offline.";
+const APP_DESCRIPTION = "Application de point de vente SaaS complète avec autorité de بيانات مطلقة.";
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -18,7 +17,6 @@ export const metadata: Metadata = {
     template: APP_TITLE_TEMPLATE,
   },
   description: APP_DESCRIPTION,
-  manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
@@ -26,23 +24,6 @@ export const metadata: Metadata = {
   },
   formatDetection: {
     telephone: false,
-  },
-  openGraph: {
-    type: "website",
-    siteName: APP_NAME,
-    title: {
-      default: APP_DEFAULT_TITLE,
-      template: APP_TITLE_TEMPLATE,
-    },
-    description: APP_DESCRIPTION,
-  },
-  twitter: {
-    card: "summary",
-    title: {
-      default: APP_DEFAULT_TITLE,
-      template: APP_TITLE_TEMPLATE,
-    },
-    description: APP_DESCRIPTION,
   },
   icons: {
     icon: '/icon.svg',
