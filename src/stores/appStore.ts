@@ -11,7 +11,8 @@ import { api } from '@/lib/api-client';
 /**
  * @fileOverview THE STATE SINGULARITY
  * Single source of truth for runtime application state.
- * Architecture Purified: Actions now call API Wall directly.
+ * PHASE 5: ENFORCED MEMORY-ONLY SINGULARITY.
+ * لا يوجد تخزين مستمر. الحالة تعيش في الذاكرة وتموت مع الجلسة.
  */
 
 interface AppState {
@@ -35,6 +36,7 @@ interface AppState {
         fetchProfile: () => Promise<void>;
         updateProfile: (data: Partial<CompanyProfile>) => Promise<void>;
         signOut: () => Promise<void>;
+        resetStore: () => void;
         createNewCart: () => void;
         switchToCart: (id: string) => void;
         deleteCart: (id: string) => void;
@@ -104,10 +106,21 @@ export const useAppStore = create<AppState>((set, get) => ({
             set({ profile: updated });
         },
         signOut: async () => {
-            await api.post('auth/signout', {});
-            set({ session: null, user: null, profile: null });
-            window.location.href = '/login';
+            try {
+                await api.post('auth/signout', {});
+            } finally {
+                get().actions.resetStore();
+                window.location.href = '/login';
+            }
         },
+        resetStore: () => set({
+            session: null,
+            user: null,
+            profile: null,
+            carts: [createInitialCart()],
+            activeCartId: '',
+            lastCompletedSale: null,
+        }),
         createNewCart: () => set(produce((state: AppState) => {
             const newCart = createInitialCart();
             state.carts.push(newCart);

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { ThemeProvider } from '@/components/layout/theme-provider';
@@ -6,8 +7,8 @@ import { useEffect } from 'react';
 
 /**
  * @fileOverview THE SYSTEM PURIFIER
- * يقوم بتطهير بيئة العميل من أي Service Workers أو مخلفات التخزين المحلي.
- * يضمن بقاء النظام Cloud-Only بنسبة 100%.
+ * PHASE 5: STATE SINGULARITY ENFORCEMENT.
+ * يضمن تطهير الذاكرة المحلية تماماً لفرض سيادة الذاكرة العشوائية (RAM) والسحاب فقط.
  */
 
 export function ClientProviders({ children }: { children: React.ReactNode }) {
@@ -22,20 +23,28 @@ export function ClientProviders({ children }: { children: React.ReactNode }) {
             });
         }
         
-        // 2. تطهير التخزين المحلي من أي مفاتيح متعلقة بالمزامنة أو قواعد البيانات المحلية
-        // لا نسمح ببقاء أي بيانات خارج نطاق الجلسة (Session) الحالية
-        const criticalPurgeKeys = ['dexie', 'offline', 'persist:', 'workbox', 'supabase.auth.token'];
+        // 2. تطهير شامل للتخزين المحلي (Persistent Storage Purge)
+        // نقتل أي محاولة للتخزين الدائم خارج نطاق الجلسة الحية.
+        const criticalPurgeKeys = [
+            'dexie', 'offline', 'persist:', 'workbox', 
+            'supabase.auth.token', 'zustand', 'ipos-state'
+        ];
+        
         if (typeof localStorage !== 'undefined') {
+            const keysToRemove = [];
             for (let i = 0; i < localStorage.length; i++) {
                 const key = localStorage.key(i);
                 if (key && criticalPurgeKeys.some(p => key.includes(p))) {
-                    localStorage.removeItem(key);
-                    console.warn(`PURIFICATION: Local Key [${key}] Erased`);
+                    keysToRemove.push(key);
                 }
             }
+            keysToRemove.forEach(k => {
+                localStorage.removeItem(k);
+                console.warn(`PURIFICATION: Persistent Key [${k}] Erased`);
+            });
         }
 
-        // 3. مسح الـ Caches بالكامل لمنع تحميل ملفات قديمة
+        // 3. مسح الـ Caches بالكامل
         if (typeof caches !== 'undefined') {
             caches.keys().then((names) => {
                 for (const name of names) {
@@ -44,6 +53,13 @@ export function ClientProviders({ children }: { children: React.ReactNode }) {
                 }
             });
         }
+
+        // 4. تعطيل الـ Context Menu لمنع التلاعب بالبيانات الحية (اختياري لتعزيز الهيمنة)
+        const handleContext = (e: MouseEvent) => {
+            if (process.env.NODE_ENV === 'production') e.preventDefault();
+        };
+        document.addEventListener('contextmenu', handleContext);
+        return () => document.removeEventListener('contextmenu', handleContext);
     }, []);
 
     return (
