@@ -33,7 +33,7 @@ export function Clock() {
 
   return (
     <div className="hidden sm:flex items-center text-base font-medium text-foreground h-6 w-[240px]">
-      <span>{format(time, 'd MMMM yyyy, HH:mm:ss', { locale: fr })}</span>
+      <span suppressHydrationWarning>{format(time, 'd MMMM yyyy, HH:mm:ss', { locale: fr })}</span>
     </div>
   );
 }

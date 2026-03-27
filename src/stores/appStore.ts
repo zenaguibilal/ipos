@@ -3,7 +3,7 @@
 
 /**
  * @fileOverview Application State Manager (RECONSTRUCTED)
- * Mission: Zero-Mercy Logic, Strict Stock Allocation, & Multi-Cart Support.
+ * Hardened for Stock Integrity, Cross-Cart Validation, and Type Safety.
  */
 
 import { create } from 'zustand';
@@ -150,7 +150,7 @@ export const useAppStore = create<AppState>()(
                     
                     if (!isServiceItem) {
                         // CROSS-CART STOCK TRACKING:
-                        // Total already allocated in ALL open draft carts
+                        // Validate total allocated quantity across ALL draft carts to prevent overselling.
                         const totalAllocated = state.carts.reduce((sum, c) => {
                             const item = c.items.find(i => i.uuid === product.uuid);
                             return sum + (item ? item.cartQuantity : 0);
@@ -180,7 +180,7 @@ export const useAppStore = create<AppState>()(
                     if (qty <= 0) {
                         cart.items = cart.items.filter(i => i.uuid !== uuid);
                     } else {
-                        // CROSS-CART STOCK TRACKING:
+                        // Validate against total stock subtracting allocation in OTHER carts
                         const isServiceItem = uuid === 'BREAD_PRODUCT' || uuid.startsWith('custom-');
                         if (!isServiceItem) {
                             const othersAllocated = state.carts

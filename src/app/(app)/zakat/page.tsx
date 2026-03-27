@@ -17,7 +17,7 @@ import { formatCurrency, cn } from '@/lib/utils';
 import { 
     Coins, Banknote, ArrowRight, Printer, RefreshCw, 
     HandHelping, History as HistoryIcon, Save, Loader2, Scale, 
-    BadgeCheck
+    BadgeCheck, Sparkles, Globe
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -139,7 +139,7 @@ export default function ZakatPage() {
 
                 <TabsContent value="calculator" className="space-y-8 outline-none">
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                        {/* Actifs */}
+                        {/* Assets */}
                         <div className="space-y-6">
                             <h3 className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
                                 <Coins className="h-4 w-4" /> Actifs (Possessions)
@@ -181,7 +181,7 @@ export default function ZakatPage() {
                             </Card>
                         </div>
 
-                        {/* Passifs */}
+                        {/* Liabilities */}
                         <div className="space-y-6">
                             <h3 className="text-[10px] font-black uppercase tracking-widest text-destructive flex items-center gap-2">
                                 <ArrowRight className="h-4 w-4" /> Passifs (Dettes)
@@ -223,7 +223,7 @@ export default function ZakatPage() {
                             </Card>
                         </div>
 
-                        {/* Résultat */}
+                        {/* Results */}
                         <div className="space-y-6">
                             <h3 className="text-[10px] font-black uppercase tracking-widest text-chart-quaternary flex items-center gap-2">
                                 <HandHelping className="h-4 w-4" /> Résultat (2.5%)
