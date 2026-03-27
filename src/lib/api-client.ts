@@ -15,9 +15,14 @@ class ApiClient {
         });
 
         const result = await response.json();
+        
         if (!response.ok) {
-            throw new Error(result.error || 'API_COMMUNICATION_ERROR');
+            // Normalization of server errors
+            const errorMessage = result.error || `API_ERROR_${response.status}`;
+            console.error(`[API_GATEWAY_FAILURE] ${path}:`, errorMessage);
+            throw new Error(errorMessage);
         }
+
         return result.data;
     }
 
