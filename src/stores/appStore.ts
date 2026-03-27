@@ -36,9 +36,16 @@ interface AppState {
     carts: Cart[];
     activeCartId: string;
     lastCompletedSale: { sale: Sale; customer?: Customer } | null;
+    
+    // Zakat Transient State
+    zakatInputs: { cashOnHand: number; otherDebts: number };
+    
+    // Sell Page Reactive Data
+    sellPage: { cartCustomer: Customer | null; customerListVersion: number };
+
     isLoading: Record<string, boolean>;
     
-    // View Modes (Centralized)
+    // View Modes
     productViewMode: 'grid' | 'list';
     customerViewMode: 'grid' | 'list';
     expenseViewMode: 'grid' | 'list';
@@ -80,6 +87,8 @@ interface AppState {
         fetchCustomerDetails: (uuid: string) => Promise<void>;
         fetchSupplierDetails: (uuid: string) => Promise<void>;
 
+        setZakatInputs: (inputs: { cashOnHand?: number; otherDebts?: number }) => void;
+        
         setProductViewMode: (mode: 'grid' | 'list') => void;
         setCustomerViewMode: (mode: 'grid' | 'list') => void;
         setExpenseViewMode: (mode: 'grid' | 'list') => void;
@@ -109,6 +118,9 @@ interface AppState {
         processStockIntake: (intakeData: any) => Promise<boolean>;
         clearLastCompletedSale: () => void;
         
+        refreshSellCustomer: () => Promise<void>;
+        incrementCustomerListVersion: () => void;
+
         resetStore: () => void;
     };
 }
@@ -138,6 +150,9 @@ export const useAppStore = create<AppState>((set, get) => ({
     
     selectedCustomer: { data: null, stats: null, activity: [] },
     selectedSupplier: { data: null, stats: null, activity: [], products: [] },
+
+    zakatInputs: { cashOnHand: 0, otherDebts: 0 },
+    sellPage: { cartCustomer: null, customerListVersion: 0 },
 
     carts: [createInitialCart()],
     activeCartId: '',
@@ -322,6 +337,11 @@ export const useAppStore = create<AppState>((set, get) => ({
             }
         },
 
+        setZakatInputs: (inputs) => set(produce((s: AppState) => {
+            if (inputs.cashOnHand !== undefined) s.zakatInputs.cashOnHand = inputs.cashOnHand;
+            if (inputs.otherDebts !== undefined) s.zakatInputs.otherDebts = inputs.otherDebts;
+        })),
+
         setProductViewMode: (mode) => set({ productViewMode: mode }),
         setCustomerViewMode: (mode) => set({ customerViewMode: mode }),
         setExpenseViewMode: (mode) => set({ expenseViewMode: mode }),
@@ -379,6 +399,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         setCartCustomer: (customer) => set(produce((state: AppState) => {
             const cart = state.carts.find(c => c.id === state.activeCartId);
             if (cart) cart.customerUuid = customer?.uuid || null;
+            state.sellPage.cartCustomer = customer;
         })),
 
         setCartDiscount: (discount) => set(produce((state: AppState) => {
@@ -389,6 +410,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         clearCart: () => set(produce((state: AppState) => {
             const index = state.carts.findIndex(c => c.id === state.activeCartId);
             if (index !== -1) state.carts[index] = { ...createInitialCart(), id: state.activeCartId };
+            state.sellPage.cartCustomer = null;
         })),
 
         clearCartFlashes: () => set(produce((state: AppState) => {
@@ -401,7 +423,7 @@ export const useAppStore = create<AppState>((set, get) => ({
             if (!cart || cart.items.length === 0) return false;
             try {
                 const sale = await api.post<Sale>('sales', { ...cart, ...paymentData });
-                set({ lastCompletedSale: { sale } });
+                set({ lastCompletedSale: { sale, customer: get().sellPage.cartCustomer || undefined } });
                 get().actions.clearCart();
                 return true;
             } catch (e: any) { return false; }
@@ -410,6 +432,16 @@ export const useAppStore = create<AppState>((set, get) => ({
         processReturn: async (data) => { await api.post('returns', data); return true; },
         processStockIntake: async (data) => { await api.post('stock', data); return true; },
         clearLastCompletedSale: () => set({ lastCompletedSale: null }),
+
+        refreshSellCustomer: async () => {
+            const cart = get().carts.find(c => c.id === get().activeCartId);
+            if (cart?.customerUuid) {
+                const updated = await api.get<Customer>(`customers/${cart.customerUuid}`);
+                set(produce((s: AppState) => { s.sellPage.cartCustomer = updated; }));
+            }
+        },
+
+        incrementCustomerListVersion: () => set(produce((s: AppState) => { s.sellPage.customerListVersion += 1; })),
 
         resetStore: () => set({
             profile: null,
@@ -428,6 +460,8 @@ export const useAppStore = create<AppState>((set, get) => ({
             lastCompletedSale: null,
             selectedCustomer: { data: null, stats: null, activity: [] },
             selectedSupplier: { data: null, stats: null, activity: [], products: [] },
+            zakatInputs: { cashOnHand: 0, otherDebts: 0 },
+            sellPage: { cartCustomer: null, customerListVersion: 0 }
         }),
     }
 }));

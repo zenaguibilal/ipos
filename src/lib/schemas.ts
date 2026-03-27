@@ -3,7 +3,6 @@ import { z } from 'zod';
 /**
  * @fileOverview DETERMINISTIC SCHEMA DEFINITIONS
  * Absolute authority for data validation across the API Wall.
- * Fixed Syntax: Removed stray characters and enforced strict typing.
  */
 
 export const ProductSchema = z.object({

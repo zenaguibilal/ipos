@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useEffect, useCallback, useMemo, useState } from 'react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -16,21 +16,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 /**
  * @fileOverview Zakat Calculator Page (Deterministic Purification)
- * Logic moved to utils for single authority enforcement.
+ * UI adheres to absolute state singularity via Zustand.
  */
 
 export default function ZakatPage() {
-    const { history, isLoading } = useAppStore(state => ({
+    const { history, isLoading, zakatInputs } = useAppStore(state => ({
         history: state.zakatHistory,
-        isLoading: state.isLoading.zakat
+        isLoading: state.isLoading.zakat,
+        zakatInputs: state.zakatInputs
     }));
-    const { refreshZakatHistory } = useAppActions();
+    const { refreshZakatHistory, setZakatInputs } = useAppActions();
 
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
-    
-    const [cashOnHand, setCashOnHand] = useState<number>(0);
-    const [otherDebts, setOtherDebts] = useState<number>(0);
     const [autoData, setAutoData] = useState({ inventoryValue: 0, customerDebts: 0, supplierDebts: 0, goldPrice: 0 });
 
     const fetchData = useCallback(async (manual = false) => {
@@ -50,8 +48,11 @@ export default function ZakatPage() {
 
     useEffect(() => { fetchData(); }, [fetchData]);
 
-    // Authority: Computation moved to pure utility function
-    const result = useMemo(() => calculateZakat({ ...autoData, cashOnHand, otherDebts }), [autoData, cashOnHand, otherDebts]);
+    const result = useMemo(() => calculateZakat({ 
+        ...autoData, 
+        cashOnHand: zakatInputs.cashOnHand, 
+        otherDebts: zakatInputs.otherDebts 
+    }), [autoData, zakatInputs]);
 
     const handleSave = async () => {
         setIsSaving(true);
@@ -91,7 +92,12 @@ export default function ZakatPage() {
                                 </div>
                                 <div className="p-4 rounded-2xl bg-white/5 border border-white/5">
                                     <Label className="text-[9px] font-black uppercase text-muted-foreground block mb-2">Liquidités en Caisse (DA)</Label>
-                                    <Input type="number" value={cashOnHand || ''} onChange={(e) => setCashOnHand(Number(e.target.value))} className="h-12 text-xl font-bold bg-background/50 rounded-xl border-white/10" />
+                                    <Input 
+                                        type="number" 
+                                        value={zakatInputs.cashOnHand || ''} 
+                                        onChange={(e) => setZakatInputs({ cashOnHand: Number(e.target.value) })} 
+                                        className="h-12 text-xl font-bold bg-background/50 rounded-xl border-white/10" 
+                                    />
                                 </div>
                             </CardContent>
                         </Card>
@@ -105,7 +111,12 @@ export default function ZakatPage() {
                                 </div>
                                 <div className="p-4 rounded-2xl bg-white/5 border border-white/5">
                                     <Label className="text-[9px] font-black uppercase text-muted-foreground block mb-2">Autres Dettes (Charges, etc.)</Label>
-                                    <Input type="number" value={otherDebts || ''} onChange={(e) => setOtherDebts(Number(e.target.value))} className="h-12 text-xl font-bold bg-background/50 rounded-xl border-white/10" />
+                                    <Input 
+                                        type="number" 
+                                        value={zakatInputs.otherDebts || ''} 
+                                        onChange={(e) => setZakatInputs({ otherDebts: Number(e.target.value) })} 
+                                        className="h-12 text-xl font-bold bg-background/50 rounded-xl border-white/10" 
+                                    />
                                 </div>
                             </CardContent>
                         </Card>
