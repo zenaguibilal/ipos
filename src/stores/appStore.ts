@@ -130,7 +130,7 @@ export const useAppStore = create<AppState>()(
                     const existing = cart.items.find(i => i.uuid === product.uuid);
                     const totalInCart = existing ? existing.cartQuantity : 0;
                     if (!product.uuid.startsWith('custom-') && (totalInCart + quantity) > product.quantity) {
-                        throw new Error("Stock insuffisant.");
+                        throw new Error(`Stock insuffisant pour ${product.name}. Disponible: ${product.quantity}`);
                     }
                     if (existing) {
                         existing.cartQuantity += quantity;
@@ -144,9 +144,13 @@ export const useAppStore = create<AppState>()(
                     if (!cart) return;
                     const item = cart.items.find(i => i.uuid === uuid);
                     if (item) {
-                        if (qty <= 0) cart.items = cart.items.filter(i => i.uuid !== uuid);
-                        else if (!item.uuid.startsWith('custom-') && qty > item.quantity) throw new Error("Stock insuffisant.");
-                        else item.cartQuantity = qty;
+                        if (qty <= 0) {
+                            cart.items = cart.items.filter(i => i.uuid !== uuid);
+                        } else if (!item.uuid.startsWith('custom-') && qty > item.quantity) {
+                            throw new Error(`Stock insuffisant. Maximum: ${item.quantity}`);
+                        } else {
+                            item.cartQuantity = qty;
+                        }
                     }
                 })),
                 updateCartItemPrice: (uuid, price) => set(produce((state: AppState) => {
@@ -159,7 +163,7 @@ export const useAppStore = create<AppState>()(
                     if (cart) cart.items = cart.items.filter(i => i.uuid !== uuid);
                 })),
                 clearCartFlashes: () => set(produce((state: AppState) => {
-                    state.carts.forEach(c => c.items.forEach(i => delete i.flash));
+                    state.carts.forEach(c => c.items.forEach(i => { delete i.flash; }));
                 })),
                 setCartCustomer: (customer) => set(produce((state: AppState) => {
                     const cart = state.carts.find(c => c.id === state.activeCartId);
@@ -171,7 +175,11 @@ export const useAppStore = create<AppState>()(
                 })),
                 clearCart: () => set(produce((state: AppState) => {
                     const cart = state.carts.find(c => c.id === state.activeCartId);
-                    if (cart) { cart.items = []; cart.discount = { type: 'fixed', value: 0 }; }
+                    if (cart) { 
+                        cart.items = []; 
+                        cart.discount = { type: 'fixed', value: 0 }; 
+                        cart.customerUuid = null;
+                    }
                 })),
                 createNewCart: () => set(produce((state: AppState) => {
                     const id = uuidv4();
@@ -198,16 +206,33 @@ export const useAppStore = create<AppState>()(
                     const cart = state.carts.find(c => c.id === state.activeCartId);
                     if (!cart || cart.items.length === 0) return false;
                     try {
-                        const sale = await salesService.createSale({ ...paymentData, items: cart.items, discountType: cart.discount.type, discountValue: cart.discount.value, customerUuid: cart.customerUuid });
+                        const sale = await salesService.createSale({ 
+                            ...paymentData, 
+                            items: cart.items, 
+                            discountType: cart.discount.type, 
+                            discountValue: cart.discount.value, 
+                            customerUuid: cart.customerUuid 
+                        });
+                        
                         const customer = cart.customerUuid ? await customerService.getCustomerByUuid(cart.customerUuid) : null;
                         set({ lastCompletedSale: { sale, customer: customer || null } });
-                        for (const item of sale.items) await inventoryService.adjustStock(item.productUuid, -item.quantity, 'sale', sale.uuid);
-                        if (sale.customerUuid) await customerService.recalculateCustomerStatus(sale.customerUuid);
-                        state.actions.deleteCart(state.activeCartId);
-                        toast.success("Vente réussie !");
+                        
+                        // Atomically adjust stock
+                        for (const item of sale.items) {
+                            if (item.productUuid) {
+                                await inventoryService.adjustStock(item.productUuid, -item.quantity, 'sale', sale.uuid);
+                            }
+                        }
+                        
+                        if (sale.customerUuid) {
+                            await customerService.recalculateCustomerStatus(sale.customerUuid);
+                        }
+                        
+                        state.actions.clearCart();
+                        toast.success("Vente enregistrée avec succès !");
                         return true;
                     } catch (e: any) {
-                        toast.error(e.message);
+                        toast.error(e.message || "Erreur lors de la finalisation.");
                         return false;
                     }
                 },
@@ -215,16 +240,27 @@ export const useAppStore = create<AppState>()(
                 processReturn: async (data) => {
                     try {
                         const ret = await returnService.addReturn(data);
-                        for (const i of ret.items) if (i.wasRestocked && i.productUuid) await inventoryService.adjustStock(i.productUuid, i.quantity, 'return', ret.uuid);
-                        if (ret.customerUuid) await customerService.recalculateCustomerStatus(ret.customerUuid);
+                        for (const i of ret.items) {
+                            if (i.wasRestocked && i.productUuid) {
+                                await inventoryService.adjustStock(i.productUuid, i.quantity, 'return', ret.uuid);
+                            }
+                        }
+                        if (ret.customerUuid) {
+                            await customerService.recalculateCustomerStatus(ret.customerUuid);
+                        }
+                        toast.success("Retour enregistré.");
                         return true;
-                    } catch (e: any) { toast.error(e.message); return false; }
+                    } catch (e: any) { 
+                        toast.error(e.message); 
+                        return false; 
+                    }
                 },
                 processStockIntake: async (data) => {
                     try {
                         const sup = await supplierService.findOrCreateSupplier(data.supplierName, data.supplierUuid);
                         const ratio = data.totalValue > 0 ? data.transportFees / data.totalValue : 0;
                         const finalItems = [];
+                        
                         for (const i of data.items) {
                             const cost = i.purchasePrice * (1 + ratio);
                             let uuid = i.productUuid;
@@ -234,16 +270,37 @@ export const useAppStore = create<AppState>()(
                             } else {
                                 await productService.updateProduct(uuid!, { purchasePrice: cost, dateMajPrix: new Date() });
                             }
+                            
                             if (uuid) {
                                 const qty = i.quantity - i.quantityDamaged;
                                 if (qty > 0) await inventoryService.adjustStock(uuid, qty, 'stock_intake');
-                                finalItems.push({ productUuid: uuid, productName: i.name, quantityReceived: i.quantity, quantityDamaged: i.quantityDamaged, purchasePrice: i.purchasePrice, costPrice: cost });
+                                finalItems.push({ 
+                                    productUuid: uuid, 
+                                    productName: i.name, 
+                                    quantityReceived: i.quantity, 
+                                    quantityDamaged: i.quantityDamaged, 
+                                    purchasePrice: i.purchasePrice, 
+                                    costPrice: cost 
+                                });
                             }
                         }
-                        await stockService.addStockIntake({ supplierUuid: sup.uuid, invoiceNumber: data.invoiceNumber, invoiceDate: data.invoiceDate, items: finalItems, totalValue: data.totalValue, transportFees: data.transportFees });
+                        
+                        await stockService.addStockIntake({ 
+                            supplierUuid: sup.uuid, 
+                            invoiceNumber: data.invoiceNumber, 
+                            invoiceDate: data.invoiceDate, 
+                            items: finalItems, 
+                            totalValue: data.totalValue, 
+                            transportFees: data.transportFees 
+                        });
+                        
                         await supplierService.updateSupplierBalance(sup.uuid, data.totalValue + data.transportFees);
+                        toast.success("Stock mis à jour.");
                         return true;
-                    } catch (e: any) { toast.error(e.message); return false; }
+                    } catch (e: any) { 
+                        toast.error(e.message); 
+                        return false; 
+                    }
                 },
                 setProductViewMode: (m) => set({ productViewMode: m }),
                 setStockViewMode: (m) => set({ stockViewMode: m }),
@@ -255,9 +312,19 @@ export const useAppStore = create<AppState>()(
             }
         }),
         {
-            name: 'ipos-store-v2',
+            name: 'ipos-store-v3',
             storage: createJSONStorage(() => localStorage),
-            partialize: (s) => ({ carts: s.carts, activeCartId: s.activeCartId, productViewMode: s.productViewMode, stockViewMode: s.stockViewMode, customerViewMode: s.customerViewMode, supplierViewMode: s.supplierViewMode, salesHistoryViewMode: s.salesHistoryViewMode, returnViewMode: s.returnViewMode, expenseViewMode: s.expenseViewMode }),
+            partialize: (s) => ({ 
+                carts: s.carts, 
+                activeCartId: s.activeCartId, 
+                productViewMode: s.productViewMode, 
+                stockViewMode: s.stockViewMode, 
+                customerViewMode: s.customerViewMode, 
+                supplierViewMode: s.supplierViewMode, 
+                salesHistoryViewMode: s.salesHistoryViewMode, 
+                returnViewMode: s.returnViewMode, 
+                expenseViewMode: s.expenseViewMode 
+            }),
             onRehydrateStorage: () => (s) => { if (s) s.sessionLoading = false; }
         }
     )
