@@ -1,7 +1,6 @@
-
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Trash2 } from 'lucide-react';
 import { PaymentDialog } from './PaymentDialog';
@@ -33,9 +32,8 @@ export const SaleActions = React.forwardRef<
     }, 
     {}
 >(({}, ref) => {
-    const { carts, activeCartId } = useAppStore();
-    const { clearCart, setCartDiscount } = useAppActions();
-    const [isPaymentOpen, setIsPaymentOpen] = useState(false);
+    const { carts, activeCartId, modals } = useAppStore();
+    const { clearCart, setCartDiscount, toggleSellPaymentDialog } = useAppActions();
     
     const [cartCustomer, setCartCustomer] = React.useState<Customer | null>(null);
 
@@ -43,7 +41,6 @@ export const SaleActions = React.forwardRef<
 
     React.useEffect(() => {
         if (activeCart?.customerUuid) {
-            // Updated to use direct API Wall
             api.get<Customer>(`customers/${activeCart.customerUuid}`).then(setCartCustomer).catch(() => setCartCustomer(null));
         } else {
             setCartCustomer(null);
@@ -63,11 +60,7 @@ export const SaleActions = React.forwardRef<
 
     React.useImperativeHandle(ref, () => ({
         payment: () => {
-            if (paymentButtonRef.current) {
-                paymentButtonRef.current.click();
-            } else {
-                 setIsPaymentOpen(true);
-            }
+            toggleSellPaymentDialog(true);
         },
         focusDiscount: () => {
             discountInputRef.current?.focus();
@@ -87,8 +80,8 @@ export const SaleActions = React.forwardRef<
     return (
         <>
             <PaymentDialog 
-                isOpen={isPaymentOpen}
-                onOpenChange={setIsPaymentOpen}
+                isOpen={modals.sell.isPaymentDialogOpen}
+                onOpenChange={toggleSellPaymentDialog}
                 cart={activeCart}
                 cartCustomer={cartCustomer}
             />
@@ -108,23 +101,25 @@ export const SaleActions = React.forwardRef<
                             placeholder="0"
                             value={discountValue || ''}
                             onChange={(e) => setCartDiscount({ type: discountType, value: parseFloat(e.target.value) || 0 })}
-                            className="h-10 flex-grow"
+                            className="h-10 flex-grow rounded-xl"
                         />
                         <Button 
                             variant={discountType === 'fixed' ? 'secondary' : 'ghost'}
                             onClick={() => setCartDiscount({ type: 'fixed', value: discountValue })}
                             type="button"
+                            className="rounded-xl"
                         >DA</Button>
                         <Button 
                             variant={discountType === 'percentage' ? 'secondary' : 'ghost'}
                             onClick={() => setCartDiscount({ type: 'percentage', value: discountValue })}
                             type="button"
+                            className="rounded-xl"
                         >%</Button>
                     </div>
                 </div>
 
                  {discountAmount > 0 && (
-                    <div className="flex justify-between items-center text-md text-destructive">
+                    <div className="flex justify-between items-center text-md text-destructive font-bold">
                         <span>Remise appliquée</span>
                         <span>- {formatCurrency(discountAmount)}</span>
                     </div>
@@ -132,8 +127,8 @@ export const SaleActions = React.forwardRef<
                  
                  <Separator className="my-4" />
 
-                 <div className="luxury-glass p-4">
-                    <div className="flex justify-between items-center text-2xl font-bold text-primary">
+                 <div className="luxury-glass p-4 bg-primary/5 border-primary/10">
+                    <div className="flex justify-between items-center text-2xl font-black text-primary">
                         <span>Total</span>
                         <span>{formatCurrency(total)}</span>
                     </div>
@@ -142,11 +137,11 @@ export const SaleActions = React.forwardRef<
                  <div className="grid grid-cols-2 gap-4 pt-2">
                     <AlertDialog>
                         <AlertDialogTrigger asChild>
-                            <Button ref={clearCartTriggerRef} variant="destructive" size="lg" disabled={activeCart.items.length === 0}>
+                            <Button ref={clearCartTriggerRef} variant="destructive" size="lg" disabled={activeCart.items.length === 0} className="rounded-xl font-bold">
                                 <Trash2 className="mr-2 h-5 w-5" /> Vider (F8)
                             </Button>
                         </AlertDialogTrigger>
-                        <AlertDialogContent>
+                        <AlertDialogContent className="luxury-glass">
                             <AlertDialogHeader>
                                 <AlertDialogTitle>Vider le panier ?</AlertDialogTitle>
                                 <AlertDialogDescription>
@@ -154,8 +149,8 @@ export const SaleActions = React.forwardRef<
                                 </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
-                                <AlertDialogCancel>Annuler</AlertDialogCancel>
-                                <AlertDialogAction onClick={clearCart} className="bg-destructive hover:bg-destructive/90">
+                                <AlertDialogCancel className="rounded-xl">Annuler</AlertDialogCancel>
+                                <AlertDialogAction onClick={clearCart} className="bg-destructive hover:bg-destructive/90 rounded-xl">
                                     Confirmer et vider
                                 </AlertDialogAction>
                             </AlertDialogFooter>
@@ -164,9 +159,9 @@ export const SaleActions = React.forwardRef<
                     <Button 
                         ref={paymentButtonRef}
                         size="lg" 
-                        className="w-full text-lg py-6"
+                        className="w-full text-lg py-6 rounded-xl font-black shadow-lg shadow-primary/20"
                         disabled={activeCart.items.length === 0}
-                        onClick={() => setIsPaymentOpen(true)}
+                        onClick={() => toggleSellPaymentDialog(true)}
                     >
                         Payer (F9)
                     </Button>

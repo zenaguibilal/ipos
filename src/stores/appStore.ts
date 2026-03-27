@@ -13,7 +13,7 @@ import { calculateZakat } from '@/lib/utils';
 /**
  * @fileOverview THE STATE SINGULARITY (DOMINATION MODE)
  * The only source of truth for the application state.
- * PHASE 5, 7 & 9 COMPLIANCE: 100%
+ * PHASE 5, 7, 8, 9 & 10 COMPLIANCE: 100%
  */
 
 interface AppState {
@@ -34,19 +34,16 @@ interface AppState {
     selectedCustomer: { data: Customer | null; stats: any; activity: any[] };
     selectedSupplier: { data: Supplier | null; stats: any; activity: any[]; products: Product[] };
 
-    // Zakat Absolute State & Computed Result
     zakat: {
         autoData: { inventoryValue: number; customerDebts: number; supplierDebts: number; goldPrice: number };
         inputs: { cashOnHand: number; otherDebts: number };
         result: any;
     };
     
-    // Sell Page Reactive Data
     sellPage: { cartCustomer: Customer | null; customerListVersion: number };
 
     isLoading: Record<string, boolean>;
     
-    // View Modes (Globalized)
     productViewMode: 'grid' | 'list';
     customerViewMode: 'grid' | 'list';
     expenseViewMode: 'grid' | 'list';
@@ -64,6 +61,7 @@ interface AppState {
             isProductSheetOpen: boolean;
             isDebtPaymentDialogOpen: boolean;
             isCustomerDialogOpen: boolean;
+            isPaymentDialogOpen: boolean;
         }
     };
 
@@ -81,7 +79,6 @@ interface AppState {
         refreshBreadOrders: (date: string) => Promise<void>;
         refreshRecipes: () => Promise<void>;
         
-        // Zakat Deterministic Actions
         refreshZakatData: () => Promise<void>;
         setZakatInputs: (inputs: { cashOnHand?: number; otherDebts?: number }) => void;
         saveZakatCalculation: (result: any) => Promise<void>;
@@ -100,6 +97,7 @@ interface AppState {
         toggleSellProductSheet: (open: boolean) => void;
         toggleSellDebtPayment: (open: boolean) => void;
         toggleSellCustomerDialog: (open: boolean) => void;
+        toggleSellPaymentDialog: (open: boolean) => void;
 
         createNewCart: () => void;
         switchToCart: (id: string) => void;
@@ -176,6 +174,7 @@ export const useAppStore = create<AppState>((set, get) => ({
             isProductSheetOpen: false,
             isDebtPaymentDialogOpen: false,
             isCustomerDialogOpen: false,
+            isPaymentDialogOpen: false,
         }
     },
 
@@ -315,8 +314,13 @@ export const useAppStore = create<AppState>((set, get) => ({
         })),
 
         saveZakatCalculation: async (result) => {
-            await api.post('zakat', result);
-            await get().actions.refreshZakatData();
+            set(p => ({ isLoading: { ...p.isLoading, zakatSaving: true } }));
+            try {
+                await api.post('zakat', result);
+                await get().actions.refreshZakatData();
+            } finally {
+                set(p => ({ isLoading: { ...p.isLoading, zakatSaving: false } }));
+            }
         },
 
         fetchCustomerDetails: async (uuid) => {
@@ -365,6 +369,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         toggleSellProductSheet: (open) => set(produce((s: AppState) => { s.modals.sell.isProductSheetOpen = open; })),
         toggleSellDebtPayment: (open) => set(produce((s: AppState) => { s.modals.sell.isDebtPaymentDialogOpen = open; })),
         toggleSellCustomerDialog: (open) => set(produce((s: AppState) => { s.modals.sell.isCustomerDialogOpen = open; })),
+        toggleSellPaymentDialog: (open) => set(produce((s: AppState) => { s.modals.sell.isPaymentDialogOpen = open; })),
 
         createNewCart: () => set(produce((state: AppState) => {
             const newCart = createInitialCart();
@@ -453,7 +458,7 @@ export const useAppStore = create<AppState>((set, get) => ({
             }
         },
 
-        incrementCustomerListVersion: () => set(produce((s: AppState) => { s.sellPage.customerListVersion += 1; })),
+        incrementCustomerListVersion: () => set(produce((s: AppStore) => { s.sellPage.customerListVersion += 1; })),
 
         resetStore: () => set({
             profile: null,

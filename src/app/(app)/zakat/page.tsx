@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -20,29 +20,25 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
  */
 
 export default function ZakatPage() {
-    const { history, isLoading, zakatData, zakatInputs, result } = useAppStore(state => ({
+    const { history, isLoading, zakatData, zakatInputs, result, isSaving } = useAppStore(state => ({
         history: state.zakatHistory,
         isLoading: state.isLoading.zakat,
+        isSaving: state.isLoading.zakatSaving,
         zakatData: state.zakat.autoData,
         zakatInputs: state.zakat.inputs,
         result: state.zakat.result
     }));
     const { refreshZakatData, setZakatInputs, saveZakatCalculation } = useAppActions();
 
-    const [isSaving, setIsSaving] = useState(false);
-
     useEffect(() => { refreshZakatData(); }, [refreshZakatData]);
 
     const handleSave = async () => {
         if (!result) return;
-        setIsSaving(true);
         try {
             await saveZakatCalculation(result);
             toast.success("Point de calcul archivé.");
         } catch (error) { 
             toast.error("Échec de l'archivage."); 
-        } finally { 
-            setIsSaving(false); 
         }
     };
 
