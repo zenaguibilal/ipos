@@ -5,22 +5,28 @@ import { ClientProviders } from '@/components/layout/ClientProviders';
 
 /**
  * iPOS Root Layout - Absolute Architecture Enforcement
- * PHASE 1: COMPLETE DATA PURGE
- * Eradicated all PWA, Manifest, and Offline references.
- * The system is now 100% Cloud-Only.
+ * PHASE 1: COMPLETE DATA PURGE (FINALIZED)
+ * 
+ * تم استئصال كافة مراجع PWA و Offline.
+ * النظام الآن يعمل بمعمارية Cloud-Only حتمية.
  */
 
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   title: "iPOS - Absolute Cloud Edition",
-  description: "Deterministic Cloud-Only Point of Sale. Absolute Data Authority enforced.",
+  description: "Intelligent Point of Sale - Pure Cloud Authority.",
   robots: "noindex, nofollow",
-  // Kill all PWA indicators
   appleWebApp: false,
   formatDetection: {
     telephone: false,
   },
+  // منع أي محاولة لربط manifest أو أيقونات PWA
+  other: {
+    "mobile-web-app-capable": "no",
+    "apple-mobile-web-app-capable": "no",
+    "application-name": "iPOS",
+  }
 };
 
 export const viewport: Viewport = {
@@ -39,7 +45,7 @@ export default function RootLayout({
   return (
     <html lang="fr" suppressHydrationWarning>
       <head>
-        {/* Explicitly prevent manifest loading if any browser cache remains */}
+        {/* منع المتصفح من البحث عن manifest.json نهائياً */}
         <link rel="icon" href="/icon.svg" />
       </head>
       <body className={inter.className}>

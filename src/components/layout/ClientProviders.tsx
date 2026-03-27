@@ -5,29 +5,38 @@ import { Toaster } from '@/components/ui/sonner';
 import { useEffect } from 'react';
 
 /**
- * @fileOverview THE PROVIDER ROOT
- * Purged of all legacy persistence and service worker registration.
- * Force-cleans any residual service worker cache on mount.
+ * @fileOverview THE SYSTEM PURIFIER
+ * يقوم بتطهير بيئة العميل من أي Service Workers أو مخلفات التخزين المحلي.
  */
 
 export function ClientProviders({ children }: { children: React.ReactNode }) {
     useEffect(() => {
-        // Absolute destruction of any residual service workers
-        if ('serviceWorker' in navigator) {
+        // تدمير فوري لكافة الـ Service Workers المسجلين
+        if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then((registrations) => {
                 for (const registration of registrations) {
                     registration.unregister();
+                    console.log('DOMINATION: Service Worker Unregistered');
                 }
             });
         }
         
-        // Clean any residual storage that might cause hydration mismatches
-        const purgeKeys = ['dexie', 'offline', 'persist:'];
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key && purgeKeys.some(p => key.includes(p))) {
-                localStorage.removeItem(key);
+        // تطهير التخزين المحلي من أي مفاتيح متعلقة بالمزامنة أو قواعد البيانات المحلية
+        const criticalPurgeKeys = ['dexie', 'offline', 'persist:', 'supabase.auth.token'];
+        if (typeof localStorage !== 'undefined') {
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && criticalPurgeKeys.some(p => key.includes(p))) {
+                    localStorage.removeItem(key);
+                }
             }
+        }
+
+        // مسح الـ Caches بالكامل
+        if (typeof caches !== 'undefined') {
+            caches.keys().then((names) => {
+                for (const name of names) caches.delete(name);
+            });
         }
     }, []);
 
@@ -40,6 +49,7 @@ export function ClientProviders({ children }: { children: React.ReactNode }) {
         >
             {children}
             <Toaster richColors />
+            {/* حاوية الطباعة المركزية */}
             <div id="receipt-for-print" className="hidden"></div>
         </ThemeProvider>
     );
