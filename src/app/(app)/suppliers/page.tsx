@@ -33,7 +33,6 @@ import { CsvImporter } from '@/lib/csv-utils';
 
 /**
  * @fileOverview Suppliers Page (Purified)
- * Phase 6: Removed unused Checkbox import.
  */
 
 const sortOptions: { [key: string]: string } = {
@@ -188,7 +187,7 @@ export default function SuppliersPage() {
                 <EmptyState
                     icon={Building}
                     title="Aucun fournisseur trouvé"
-                    description={searchQuery ? "Aucun résultat pour cette recherche." : "Commenceز par ajouter votre premier fournisseur partenaire."}
+                    description={searchQuery ? "Aucun résultat pour cette recherche." : "Commencez par ajouter votre premier fournisseur partenaire."}
                 >
                      {!searchQuery && (
                         <Button onClick={() => { setSelectedSupplier(null); setIsSupplierDialogOpen(true); }} className="rounded-xl luxury-glass bg-primary/10 border-primary/20 text-primary">

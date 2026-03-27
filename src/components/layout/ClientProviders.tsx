@@ -40,7 +40,7 @@ export function ClientProviders({ children }: { children: React.ReactNode }) {
         };
 
         executeTotalPurge();
-        const interval = setInterval(executeTotalPurge, 250);
+        const interval = setInterval(executeTotalPurge, 500);
         return () => clearInterval(interval);
     }, []);
 

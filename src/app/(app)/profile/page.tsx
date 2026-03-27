@@ -17,7 +17,6 @@ import { useEffect, useState } from "react";
 
 /**
  * @fileOverview Profile Page (Domination Mode)
- * Purged: unused variables and imports.
  */
 
 export default function ProfilePage() {
@@ -42,16 +41,14 @@ export default function ProfilePage() {
         setSystemInfo({ os, browser });
     }, []);
 
-    const roleLabels: Record<string, { label: string, color: string, description: string }> = {
+    const roleLabels: Record<string, { label: string, color: string }> = {
         admin: { 
             label: 'Administrateur', 
-            color: 'bg-primary text-primary-foreground shadow-lg shadow-primary/20',
-            description: 'Accès total à toutes les fonctions système.'
+            color: 'bg-primary text-primary-foreground shadow-lg shadow-primary/20'
         },
         manager: { 
             label: 'Gérant', 
-            color: 'bg-blue-500 text-white shadow-lg shadow-blue-500/20',
-            description: 'Gestion complète des stocks et finances.'
+            color: 'bg-blue-500 text-white shadow-lg shadow-blue-500/20'
         }
     };
 
@@ -70,7 +67,7 @@ export default function ProfilePage() {
                         <User className="h-3.5 w-3.5" /> Système
                     </TabsTrigger>
                     <TabsTrigger value="company" className="py-2.5 gap-2 rounded-xl font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-background data-[state=active]:text-primary transition-all">
-                        <Building2 className="h-3.5 w-3.5" /> Étabلissement
+                        <Building2 className="h-3.5 w-3.5" /> Établissement
                     </TabsTrigger>
                     <TabsTrigger value="settings" className="py-2.5 gap-2 rounded-xl font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-background data-[state=active]:text-primary transition-all">
                         <Settings2 className="h-3.5 w-3.5" /> Réglages

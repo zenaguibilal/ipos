@@ -3,7 +3,7 @@
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, HandCoins, Printer, Loader2, Filter, History, ShoppingBag, TrendingUp, Info, MessageSquare, Tag } from 'lucide-react';
+import { ArrowLeft, HandCoins, Printer, Loader2, History, ShoppingBag, TrendingUp, Info, MessageSquare, Tag } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CustomerMetrics } from '@/components/customers/CustomerMetrics';
