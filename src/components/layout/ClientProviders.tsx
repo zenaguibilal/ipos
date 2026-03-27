@@ -12,8 +12,10 @@ import { useEffect } from 'react';
 
 export function ClientProviders({ children }: { children: React.ReactNode }) {
     useEffect(() => {
+        if (typeof window === 'undefined') return;
+
         // 1. Immediate termination of any potential PWA mechanisms
-        if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+        if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then((registrations) => {
                 for (const registration of registrations) {
                     registration.unregister();
@@ -21,41 +23,39 @@ export function ClientProviders({ children }: { children: React.ReactNode }) {
             });
         }
         
-        // 2. Comprehensive Continuous Purification Protocol
+        // 2. Comprehensive Continuous Purification Protocol (MERCILESS)
         const executeTotalPurge = () => {
             // Storage Wipe
-            if (typeof localStorage !== 'undefined') localStorage.clear();
-            if (typeof sessionStorage !== 'undefined') sessionStorage.clear();
+            localStorage.clear();
+            sessionStorage.clear();
             
             // Database Wipe (IndexedDB)
-            if (typeof indexedDB !== 'undefined' && indexedDB.databases) {
-                indexedDB.databases().then(dbs => {
-                    dbs.forEach(db => { if(db.name) indexedDB.deleteDatabase(db.name); });
+            if (window.indexedDB && window.indexedDB.databases) {
+                window.indexedDB.databases().then(dbs => {
+                    dbs.forEach(db => { if(db.name) window.indexedDB.deleteDatabase(db.name); });
                 });
             }
 
-            // Cache API Wipe (Kill Network Persistence)
-            if (typeof caches !== 'undefined') {
+            // Cache API Wipe (Total Network Memory Erasure)
+            if ('caches' in window) {
                 caches.keys().then((names) => {
                     for (const name of names) caches.delete(name);
                 });
             }
 
             // Cookie Wipe (Eradicate Session Persistence)
-            if (typeof document !== 'undefined') {
-                const cookies = document.cookie.split(";");
-                for (let i = 0; i < cookies.length; i++) {
-                    const cookie = cookies[i];
-                    const eqPos = cookie.indexOf("=");
-                    const name = eqPos > -1 ? cookie.substring(0, eqPos) : cookie;
-                    document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
-                }
+            const cookies = document.cookie.split(";");
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i];
+                const eqPos = cookie.indexOf("=");
+                const name = eqPos > -1 ? cookie.substring(0, eqPos) : cookie;
+                document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
             }
         };
 
-        // Execute immediately and monitor every 3 seconds for violations
+        // Execute immediately and monitor every 2 seconds for any violation of the Cloud-Only principle
         executeTotalPurge();
-        const purgeInterval = setInterval(executeTotalPurge, 3000);
+        const purgeInterval = setInterval(executeTotalPurge, 2000);
 
         return () => clearInterval(purgeInterval);
     }, []);

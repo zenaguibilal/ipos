@@ -1,12 +1,17 @@
 import { createClient } from "@/utils/supabase/server";
 import type { BreadOrder } from "@/lib/types";
+import { SaleRepository } from "./sale.repository";
+import { CustomerRepository } from "./customer.repository";
+import { format } from 'date-fns';
 
 /**
  * @fileOverview BreadOrder Repository (Absolute Data Authority)
- * يدير طلبيات الخبز اليومية وتزامنها مع المبيعات.
+ * المركز السيادي لإدارة طلبيات الخبز وعمليات التحويل والإنتاج.
  */
 export class BreadOrderRepository {
     private supabase = createClient();
+    private saleRepo = new SaleRepository();
+    private customerRepo = new CustomerRepository();
 
     async getForDate(date: string): Promise<BreadOrder[]> {
         const { data, error } = await this.supabase
@@ -48,6 +53,90 @@ export class BreadOrderRepository {
             })
             .eq('uuid', uuid);
         if (error) throw new Error(`BREAD_UPDATE_FAILED: ${error.message}`);
+    }
+
+    async generateForDate(date: string): Promise<number> {
+        // 1. Fetch scheduled customers
+        const { data: customers } = await this.supabase
+            .from('customers')
+            .select('*')
+            .eq('is_bread_client', true);
+
+        if (!customers) return 0;
+
+        // 2. Avoid duplicates
+        const existingOrders = await this.getForDate(date);
+        const existingCustomerUuids = new Set(existingOrders.map(o => o.customerUuid));
+
+        let generatedCount = 0;
+        const targetDay = format(new Date(date.replace(/-/g, '/')), 'eeee').toLowerCase();
+
+        for (const customer of customers) {
+            if (existingCustomerUuids.has(customer.uuid)) continue;
+
+            let quantity = 0;
+            if (customer.bread_type_recurrence === 'quotidien') {
+                quantity = customer.bread_quantite_defaut || 0;
+            } else if (customer.bread_type_recurrence === 'jours_specifiques') {
+                const dayConfig = customer.bread_jours_semaine?.[targetDay];
+                if (dayConfig?.actif) {
+                    quantity = dayConfig.quantite || 0;
+                }
+            }
+
+            if (quantity > 0) {
+                await this.create({
+                    orderName: `${customer.first_name} ${customer.last_name}`,
+                    customerUuid: customer.uuid,
+                    date,
+                    quantite: quantity
+                });
+                generatedCount++;
+            }
+        }
+        return generatedCount;
+    }
+
+    async convertOrdersToSales(orderUuids: string[], breadPrice: number): Promise<void> {
+        const { data: orders } = await this.supabase
+            .from('bread_orders')
+            .select('*')
+            .in('uuid', orderUuids);
+
+        if (!orders) return;
+
+        for (const order of orders) {
+            if (order.vente_uuid) continue;
+
+            const total = order.quantite * breadPrice;
+            
+            const sale = await this.saleRepo.create({
+                subtotal: total,
+                discountType: 'fixed',
+                discountAmount: 0,
+                total: total,
+                amountPaid: 0,
+                remainingBalance: total,
+                paymentStatus: 'unpaid',
+                customerUuid: order.customer_uuid,
+                items: [{
+                    name: "Pain",
+                    price: breadPrice,
+                    purchasePrice: 0,
+                    quantity: order.quantite
+                }]
+            });
+
+            await this.update(order.uuid, {
+                venteUuid: sale.uuid,
+                est_paye: false,
+                est_livre: true
+            });
+
+            if (order.customer_uuid) {
+                await this.customerRepo.recalculateBalance(order.customer_uuid);
+            }
+        }
     }
 
     private mapFromDb(o: any): BreadOrder {

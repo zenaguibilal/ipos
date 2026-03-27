@@ -87,6 +87,15 @@ export class CustomerRepository {
         return this.mapFromDb(data);
     }
 
+    async bulkSync(toAdd: any[], toUpdate: any[]): Promise<void> {
+        for (const c of toAdd) {
+            await this.create(c);
+        }
+        for (const c of toUpdate) {
+            if (c.uuid) await this.update(c.uuid, c);
+        }
+    }
+
     async update(uuid: string, customer: Partial<Customer>): Promise<Customer> {
         const searchName = (customer.firstName || customer.lastName) 
             ? `${customer.firstName || ''} ${customer.lastName || ''}`.toLowerCase().trim()
