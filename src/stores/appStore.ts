@@ -135,15 +135,15 @@ export const useAppStore = create<AppState>()(
                     const cart = state.carts.find(c => c.id === state.activeCartId);
                     if (!cart) return;
                     
-                    // Global allocation check across all draft carts to prevent overselling
-                    const totalAllocated = state.carts.reduce((sum, c) => {
-                        const item = c.items.find(i => i.uuid === product.uuid);
-                        return sum + (item ? item.cartQuantity : 0);
+                    // Critical: Cross-cart allocation check to prevent overselling
+                    const totalAllocatedAcrossAllCarts = state.carts.reduce((sum, c) => {
+                        const itemInCart = c.items.find(i => i.uuid === product.uuid);
+                        return sum + (itemInCart ? itemInCart.cartQuantity : 0);
                     }, 0);
 
                     if (!product.uuid.startsWith('custom-') && product.uuid !== 'BREAD_PRODUCT') {
-                        if ((totalAllocated + quantity) > product.quantity) {
-                            toast.error(`Stock insuffisant pour ${product.name}. Max total disponible: ${Math.max(0, product.quantity - totalAllocated)}`);
+                        if ((totalAllocatedAcrossAllCarts + quantity) > product.quantity) {
+                            toast.error(`Stock insuffisant pour ${product.name}. Max total disponible: ${Math.max(0, product.quantity - totalAllocatedAcrossAllCarts)}`);
                             return;
                         }
                     }
@@ -166,12 +166,13 @@ export const useAppStore = create<AppState>()(
                     if (qty <= 0) {
                         cart.items = cart.items.filter(i => i.uuid !== uuid);
                     } else {
+                        // Validate against other carts too
                         const othersAllocated = state.carts
                             .filter(c => c.id !== state.activeCartId)
                             .reduce((sum, c) => sum + (c.items.find(i => i.uuid === uuid)?.cartQuantity || 0), 0);
                         
                         if (!uuid.startsWith('custom-') && uuid !== 'BREAD_PRODUCT' && (qty + othersAllocated) > item.quantity) {
-                            toast.error(`Limite de stock atteinte.`);
+                            toast.error(`Impossible : stock total dépassé.`);
                         } else {
                             item.cartQuantity = qty;
                         }
@@ -253,7 +254,7 @@ export const useAppStore = create<AppState>()(
                         const customer = cart.customerUuid ? await customerService.getCustomerByUuid(cart.customerUuid) : null;
                         set({ lastCompletedSale: { sale, customer: customer || null } });
                         
-                        // Atomicity handled in service, but we trigger recalculations
+                        // Atomicity: Adjust stock and customer debt status
                         for (const item of sale.items) {
                             if (item.productUuid) {
                                 await inventoryService.adjustStock(item.productUuid, -item.quantity, 'sale', sale.uuid);
@@ -265,10 +266,10 @@ export const useAppStore = create<AppState>()(
                         }
                         
                         state.actions.clearCart();
-                        toast.success("Vente finalisée avec succès !");
+                        toast.success("Vente enregistrée.");
                         return true;
                     } catch (e: any) {
-                        toast.error(e.message || "Erreur lors de la finalisation de la vente.");
+                        toast.error(e.message || "Erreur lors de la finalisation.");
                         return false;
                     }
                 },
@@ -284,7 +285,7 @@ export const useAppStore = create<AppState>()(
                             }
                         }
                         if (ret.customerUuid) await customerService.recalculateCustomerStatus(ret.customerUuid);
-                        toast.success("Retour enregistré et stock mis à jour.");
+                        toast.success("Retour validé.");
                         return true;
                     } catch (e: any) { toast.error(e.message); return false; }
                 },
@@ -331,7 +332,7 @@ export const useAppStore = create<AppState>()(
                         });
                         
                         await supplierService.updateSupplierBalance(sup.uuid, data.totalValue + data.transportFees);
-                        toast.success("Stock et solde fournisseur mis à jour.");
+                        toast.success("Stock réapprovisionné.");
                         return true;
                     } catch (e: any) { toast.error(e.message); return false; }
                 },
@@ -346,7 +347,7 @@ export const useAppStore = create<AppState>()(
             }
         }),
         {
-            name: 'ipos-v2-storage',
+            name: 'ipos-enterprise-storage',
             storage: createJSONStorage(() => localStorage),
             partialize: (s) => ({ 
                 carts: s.carts, activeCartId: s.activeCartId, 
