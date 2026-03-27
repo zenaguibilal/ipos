@@ -1,39 +1,11 @@
-'use client';
-
-import { createClient } from "@/utils/supabase/client";
+import { createClient } from "@/utils/supabase/server";
 import type { InventoryLog } from "@/lib/types";
 
-const fromSupabase = (log: any): InventoryLog => ({
-    uuid: log.uuid,
-    user_id: log.user_id,
-    productUuid: log.product_uuid,
-    change: log.change,
-    newQuantity: log.new_quantity,
-    reason: log.reason,
-    relatedUuid: log.related_uuid,
-    createdAt: log.created_at,
-});
-
-const toSupabase = (log: InventoryLog) => ({
-    uuid: log.uuid,
-    user_id: log.user_id,
-    product_uuid: log.productUuid,
-    change: log.change,
-    new_quantity: log.newQuantity,
-    reason: log.reason,
-    related_uuid: log.relatedUuid,
-    created_at: log.createdAt,
-});
-
-
-class InventoryRepository {
+/**
+ * @fileOverview Inventory Repository (Absolute Server Authority)
+ */
+export class InventoryRepository {
     private supabase = createClient();
-
-    async add(log: InventoryLog): Promise<InventoryLog> {
-        const { data, error } = await this.supabase.from('inventory_logs').insert(toSupabase(log)).select().single();
-        if (error) throw error;
-        return fromSupabase(data);
-    }
 
     async getByProductUuid(productUuid: string): Promise<InventoryLog[]> {
         const { data, error } = await this.supabase
@@ -41,23 +13,35 @@ class InventoryRepository {
             .select('*')
             .eq('product_uuid', productUuid)
             .order('created_at', { ascending: false });
-        if (error) throw error;
-        return data.map(fromSupabase);
+        
+        if (error) throw new Error(`INVENTORY_FETCH_FAILED: ${error.message}`);
+        return data.map(this.mapFromDb);
     }
 
-    async hasLogs(productUuid: string): Promise<boolean> {
-        const { count, error } = await this.supabase
+    async add(log: Partial<InventoryLog>): Promise<void> {
+        const { error } = await this.supabase
             .from('inventory_logs')
-            .select('*', { count: 'exact', head: true })
-            .eq('product_uuid', productUuid);
-        if (error) throw error;
-        return (count ?? 0) > 0;
+            .insert([{
+                product_uuid: log.productUuid,
+                change: log.change,
+                new_quantity: log.newQuantity,
+                reason: log.reason,
+                related_uuid: log.relatedUuid,
+            }]);
+        
+        if (error) throw new Error(`INVENTORY_LOG_FAILED: ${error.message}`);
     }
 
-    async deleteAllForUser(userId: string): Promise<void> {
-        const { error } = await this.supabase.from('inventory_logs').delete().eq('user_id', userId);
-        if (error) throw error;
+    private mapFromDb(l: any): InventoryLog {
+        return {
+            uuid: l.uuid,
+            user_id: l.user_id,
+            productUuid: l.product_uuid,
+            change: l.change,
+            newQuantity: l.new_quantity,
+            reason: l.reason,
+            relatedUuid: l.related_uuid,
+            createdAt: l.created_at,
+        };
     }
 }
-
-export const inventoryRepository = new InventoryRepository();

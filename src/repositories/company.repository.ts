@@ -1,102 +1,78 @@
-
-'use client';
-
-import { createClient } from "@/utils/supabase/client";
+import { createClient } from "@/utils/supabase/server";
 import type { CompanyProfile } from "@/lib/types";
-import { useAppStore } from "@/stores/appStore";
 
-const fromSupabase = (profile: any): CompanyProfile => profile ? ({
-    uuid: profile.uuid,
-    user_id: profile.user_id,
-    companyName: profile.company_name,
-    address: profile.address,
-    city: profile.city,
-    zipCode: profile.zip_code,
-    country: profile.country,
-    phone: profile.phone,
-    email: profile.email,
-    website: profile.website,
-    vatNumber: profile.vat_number,
-    rcNumber: profile.rc_number,
-    artImposition: profile.art_imposition,
-    goldPricePerGram: profile.gold_price_per_gram,
-    prix_pain: profile.prix_pain,
-    updatedAt: profile.updated_at,
-    role: profile.role,
-}) : ({} as CompanyProfile);
-
-const toSupabase = (profile: Partial<CompanyProfile>) => ({
-    uuid: profile.uuid,
-    user_id: profile.user_id,
-    company_name: profile.companyName,
-    address: profile.address,
-    city: profile.city,
-    zip_code: profile.zipCode,
-    country: profile.country,
-    phone: profile.phone,
-    email: profile.email,
-    website: profile.website,
-    vat_number: profile.vatNumber,
-    rc_number: profile.rcNumber,
-    art_imposition: profile.artImposition,
-    gold_price_per_gram: profile.goldPricePerGram,
-    prix_pain: profile.prix_pain,
-    updated_at: profile.updatedAt,
-    role: profile.role,
-});
-
-
-class CompanyRepository {
+/**
+ * @fileOverview Company Repository (Absolute Server Authority)
+ */
+export class CompanyRepository {
     private supabase = createClient();
-    
-    private getUserId(): string | undefined {
-        return useAppStore.getState().session?.user?.id;
-    }
 
     async get(): Promise<CompanyProfile | null> {
-        const userId = this.getUserId();
-        if (!userId) return null;
+        const { data: { user } } = await this.supabase.auth.getUser();
+        if (!user) return null;
 
         const { data, error } = await this.supabase
             .from('company_profile')
             .select('*')
-            .eq('user_id', userId)
+            .eq('user_id', user.id)
             .single();
 
-        if (error && error.code !== 'PGRST116') throw error;
-        return data ? fromSupabase(data) : null;
+        if (error && error.code !== 'PGRST116') throw new Error(`PROFILE_FETCH_FAILED: ${error.message}`);
+        return data ? this.mapFromDb(data) : null;
     }
-    
-    async add(profile: CompanyProfile): Promise<CompanyProfile> {
-        const { data, error } = await this.supabase.from('company_profile').insert(toSupabase(profile)).select().single();
-        if (error) throw error;
-        return fromSupabase(data);
-    }
-    
-    async update(data: Partial<CompanyProfile>): Promise<CompanyProfile> {
-        const userId = this.getUserId();
-        if (!userId) throw new Error("User not authenticated for profile update.");
 
-        const { data: updatedData, error } = await this.supabase
+    async update(data: Partial<CompanyProfile>): Promise<CompanyProfile> {
+        const { data: { user } } = await this.supabase.auth.getUser();
+        if (!user) throw new Error("UNAUTHENTICATED");
+
+        const { data: updated, error } = await this.supabase
             .from('company_profile')
-            .update(toSupabase(data))
-            .eq('user_id', userId)
+            .update(this.mapToDb(data))
+            .eq('user_id', user.id)
             .select()
             .single();
 
-        if (error) throw error;
-        return fromSupabase(updatedData);
+        if (error) throw new Error(`PROFILE_UPDATE_FAILED: ${error.message}`);
+        return this.mapFromDb(updated);
     }
 
-    async deleteAllForUser(userId: string): Promise<void> {
-        const { error } = await this.supabase.from('company_profile').delete().eq('user_id', userId);
-        if (error) throw error;
+    private mapFromDb(p: any): CompanyProfile {
+        return {
+            uuid: p.uuid,
+            user_id: p.user_id,
+            companyName: p.company_name,
+            address: p.address,
+            city: p.city,
+            zipCode: p.zip_code,
+            country: p.country,
+            phone: p.phone,
+            email: p.email,
+            website: p.website,
+            vatNumber: p.vat_number,
+            rcNumber: p.rc_number,
+            artImposition: p.art_imposition,
+            goldPricePerGram: p.gold_price_per_gram,
+            prix_pain: p.prix_pain,
+            role: p.role,
+            updatedAt: p.updated_at,
+        };
     }
 
-    async bulkUpsert(profiles: CompanyProfile[]): Promise<void> {
-        const { error } = await this.supabase.from('company_profile').upsert(profiles.map(toSupabase));
-        if (error) throw error;
+    private mapToDb(p: Partial<CompanyProfile>) {
+        return {
+            company_name: p.companyName,
+            address: p.address,
+            city: p.city,
+            zip_code: p.zipCode,
+            country: p.country,
+            phone: p.phone,
+            email: p.email,
+            website: p.website,
+            vat_number: p.vatNumber,
+            rc_number: p.rcNumber,
+            art_imposition: p.artImposition,
+            gold_price_per_gram: p.goldPricePerGram,
+            prix_pain: p.prix_pain,
+        };
     }
 }
-
-export const companyRepository = new CompanyRepository();
