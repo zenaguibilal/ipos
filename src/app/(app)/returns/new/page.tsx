@@ -8,16 +8,20 @@ import type { Sale, ReturnItem } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ArrowLeft, Search, Save, Loader2, X, Scan, Undo2, Banknote } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ArrowLeft, Search, Save, Loader2, Scan } from 'lucide-react';
 import { toast } from 'sonner';
-import { formatCurrency, cn } from '@/lib/utils';
+import { formatCurrency } from '@/lib/utils';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { useAppActions } from '@/stores/appStore';
-import { Badge } from '@/components/ui/badge';
 import { BarcodeScannerDialog } from '@/components/products/BarcodeScannerDialog';
+
+/**
+ * @fileOverview New Return Page
+ * Purged: unused icon imports (X, Undo2, Banknote).
+ */
 
 type ReturnItemState = ReturnItem & { originalQuantity: number };
 

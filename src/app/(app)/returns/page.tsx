@@ -1,11 +1,10 @@
-
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useDebounce } from '@/hooks/useDebounce';
 import type { ProductReturn, Customer } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Search, Plus, Undo2, LayoutGrid, List, FileUp, RefreshCw, Loader2, Banknote, Package, HandCoins, X, TrendingDown, Printer, Filter } from 'lucide-react';
+import { Search, Plus, Undo2, LayoutGrid, List, FileUp, RefreshCw, Loader2, Printer } from 'lucide-react';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { useDateRange } from '@/hooks/useDateRange';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -24,12 +23,16 @@ import { useAppStore } from '@/stores/appStore';
 import { api } from '@/lib/api-client';
 import { CsvImporter } from '@/lib/csv-utils';
 
+/**
+ * @fileOverview Returns Page
+ * Purged: unused icon imports (Banknote, Package, HandCoins, X, TrendingDown, Filter).
+ */
+
 const ITEMS_PER_PAGE = 15;
 
 export default function ReturnsPage() {
-    const { viewMode, setViewMode } = useAppStore(state => ({
-        viewMode: state.returnViewMode,
-        setViewMode: state.actions.setReturnViewMode,
+    const { viewMode } = useAppStore(state => ({
+        viewMode: state.returnViewMode
     }));
     const profile = useAppStore(state => state.profile);
 

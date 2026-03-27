@@ -1,11 +1,10 @@
-
 'use client';
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Trash2, Save, AlertTriangle, ChevronsUpDown, Plus, Truck } from 'lucide-react';
+import { ArrowLeft, Trash2, Save, ChevronsUpDown, Plus, Truck } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
@@ -22,6 +21,11 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Badge } from '@/components/ui/badge';
 import { useAppActions, useIsManagerOrAdmin } from '@/stores/appStore';
 import { api } from '@/lib/api-client';
+
+/**
+ * @fileOverview New Stock Intake Page
+ * Purged: unused icon imports (AlertTriangle).
+ */
 
 interface LocalIntakeItem {
     id: string;
@@ -64,7 +68,6 @@ export default function NewStockIntakePage() {
     useEffect(() => {
         const fetchSuppliers = async () => {
             try {
-                // Updated to use direct API Wall
                 const data = await api.get<Supplier[]>('suppliers');
                 setSuppliers(data);
             } catch (error: any) {
@@ -168,7 +171,6 @@ export default function NewStockIntakePage() {
         }
 
         setIsSaving(true);
-        // Map items to include costPrice based on transportRatio
         const processedItems = items.map(item => ({
             ...item,
             costPrice: item.purchasePrice * (1 + transportRatio),
@@ -252,7 +254,7 @@ export default function NewStockIntakePage() {
                                         <CommandList>
                                             <CommandEmpty>
                                                 <Button variant="link" className="w-full" onClick={handleSupplierCreate}>
-                                                    <Plus className="mr-2 h-4 w-4" /> Créer "{supplierSearch}"
+                                                    <Plus className="mr-2 h-4 w-4" /> Créر "{supplierSearch}"
                                                 </Button>
                                             </CommandEmpty>
                                             <CommandGroup>

@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { CompanyProfileForm } from "@/components/profile/company-profile-form";
 import { DataManagementCard } from "@/components/profile/DataManagementCard";
-import { useAppStore, useIsManagerOrAdmin } from "@/stores/appStore";
+import { useAppStore } from "@/stores/appStore";
 import { 
     User, Building2, Database, Settings2, ShieldCheck, 
     BadgeCheck, LayoutDashboard, Cloud, Wifi, 
@@ -17,11 +17,11 @@ import { useEffect, useState } from "react";
 
 /**
  * @fileOverview Profile Page (Domination Mode)
+ * Purged: unused variables and imports.
  */
 
 export default function ProfilePage() {
     const { profile } = useAppStore();
-    const isManagerOrAdmin = useIsManagerOrAdmin();
     const [systemInfo, setSystemInfo] = useState({ os: 'Chargement...', browser: 'Chargement...' });
 
     useEffect(() => {
@@ -70,7 +70,7 @@ export default function ProfilePage() {
                         <User className="h-3.5 w-3.5" /> Système
                     </TabsTrigger>
                     <TabsTrigger value="company" className="py-2.5 gap-2 rounded-xl font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-background data-[state=active]:text-primary transition-all">
-                        <Building2 className="h-3.5 w-3.5" /> Établissement
+                        <Building2 className="h-3.5 w-3.5" /> Étabلissement
                     </TabsTrigger>
                     <TabsTrigger value="settings" className="py-2.5 gap-2 rounded-xl font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-background data-[state=active]:text-primary transition-all">
                         <Settings2 className="h-3.5 w-3.5" /> Réglages

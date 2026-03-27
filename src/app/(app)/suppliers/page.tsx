@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useCallback, useEffect, useMemo } from 'react';
@@ -6,7 +5,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import type { Supplier } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, Building, LayoutGrid, List, RefreshCw, Loader2, Wallet, FileUp, X, SortAsc, Filter, FileDown, Trash2 } from 'lucide-react';
+import { Plus, Search, Building, LayoutGrid, List, RefreshCw, Wallet, FileUp, SortAsc, Filter, FileDown, Trash2, Loader2 } from 'lucide-react';
 import { SupplierCard } from '@/components/suppliers/SupplierCard';
 import { SupplierTable } from '@/components/suppliers/SupplierTable';
 import { SupplierDialog } from '@/components/suppliers/SupplierDialog';
@@ -24,8 +23,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuCheckboxItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
@@ -34,6 +31,11 @@ import {
 import { ImportSuppliersPreviewDialog } from '@/components/suppliers/ImportSuppliersPreviewDialog';
 import { DeleteMultipleSuppliersDialog } from '@/components/suppliers/DeleteMultipleSuppliersDialog';
 import { CsvImporter } from '@/lib/csv-utils';
+
+/**
+ * @fileOverview Suppliers Page
+ * Purged: unused icon imports (X).
+ */
 
 const sortOptions: { [key: string]: string } = {
     'name_asc': 'Nom (A-Z)',
@@ -187,7 +189,7 @@ export default function SuppliersPage() {
                 <EmptyState
                     icon={Building}
                     title="Aucun fournisseur trouvé"
-                    description={searchQuery ? "Aucun résultat pour cette recherche." : "Commenceز par ajouter votre premier fournisseur partenaire."}
+                    description={searchQuery ? "Aucun résultat pour cette recherche." : "Commencez par ajouter votre premier fournisseur partenaire."}
                 >
                      {!searchQuery && (
                         <Button onClick={() => { setSelectedSupplier(null); setIsSupplierDialogOpen(true); }} className="rounded-xl luxury-glass bg-primary/10 border-primary/20 text-primary">
