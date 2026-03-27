@@ -12,6 +12,7 @@ import { api } from '@/lib/api-client';
 /**
  * @fileOverview THE STATE SINGULARITY (DOMINATION MODE)
  * The only source of truth for the application state.
+ * Centralizes UI states, data flows, and deterministic computations.
  */
 
 interface AppState {
@@ -46,12 +47,18 @@ interface AppState {
     supplierViewMode: 'grid' | 'list';
     stockViewMode: 'grid' | 'list';
 
-    // Global Modal Control
+    // Global Modal & UI Controls
     modals: {
         sell: {
             isProductSheetOpen: boolean;
             isDebtPaymentDialogOpen: boolean;
             isCustomerDialogOpen: boolean;
+        },
+        customers: {
+            isFormOpen: boolean;
+            isDeleteOpen: boolean;
+            isPaymentOpen: boolean;
+            isStatementOpen: boolean;
         }
     };
 
@@ -150,6 +157,12 @@ export const useAppStore = create<AppState>((set, get) => ({
             isProductSheetOpen: false,
             isDebtPaymentDialogOpen: false,
             isCustomerDialogOpen: false,
+        },
+        customers: {
+            isFormOpen: false,
+            isDeleteOpen: false,
+            isPaymentOpen: false,
+            isStatementOpen: false,
         }
     },
 

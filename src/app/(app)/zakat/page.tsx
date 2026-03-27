@@ -7,26 +7,17 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api-client';
-import { formatCurrency, cn } from '@/lib/utils';
+import { formatCurrency, cn, calculateZakat } from '@/lib/utils';
 import { Printer, RefreshCw, Save, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAppStore, useAppActions } from '@/stores/appStore';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import type { ZakatCalculation } from '@/lib/types';
 
 /**
- * @fileOverview Zakat Calculator Page (Pure Deterministic - No AI)
+ * @fileOverview Zakat Calculator Page (Deterministic Purification)
+ * Logic moved to utils for single authority enforcement.
  */
-
-const calculateZakat = (data: any): ZakatCalculation => {
-    const nisab = (data.goldPrice || 0) * 85;
-    const totalAssets = (data.inventoryValue || 0) + Math.max(0, (data.customerDebts || 0)) + (data.cashOnHand || 0);
-    const totalLiabilities = (data.supplierDebts || 0) + (data.otherDebts || 0);
-    const zakatBase = Math.max(0, totalAssets - totalLiabilities);
-    const isNisabReached = nisab > 0 && zakatBase >= nisab;
-    return { ...data, nisab, zakatBase, zakatAmount: isNisabReached ? zakatBase * 0.025 : 0, isNisabReached };
-};
 
 export default function ZakatPage() {
     const { history, isLoading } = useAppStore(state => ({
@@ -59,6 +50,7 @@ export default function ZakatPage() {
 
     useEffect(() => { fetchData(); }, [fetchData]);
 
+    // Authority: Computation moved to pure utility function
     const result = useMemo(() => calculateZakat({ ...autoData, cashOnHand, otherDebts }), [autoData, cashOnHand, otherDebts]);
 
     const handleSave = async () => {
@@ -77,18 +69,18 @@ export default function ZakatPage() {
         <div className="p-4 sm:p-6 space-y-6 max-w-7xl mx-auto pb-20">
             <PageHeader title="Calculateur de Zakat" description="Évaluation des actifs nets pour le commerce.">
                 <div className="flex gap-2">
-                    <Button variant="outline" onClick={() => fetchData(true)} disabled={isRefreshing}><RefreshCw className={cn("h-4 w-4 mr-2", isRefreshing && "animate-spin")} /> Actualiser</Button>
-                    <Button className="bg-primary"><Printer className="h-4 w-4 mr-2" /> PDF</Button>
+                    <Button variant="outline" onClick={() => fetchData(true)} disabled={isRefreshing} className="luxury-glass border-white/10"><RefreshCw className={cn("h-4 w-4 mr-2", isRefreshing && "animate-spin")} /> Actualiser</Button>
+                    <Button className="bg-primary shadow-lg shadow-primary/20"><Printer className="h-4 w-4 mr-2" /> Rapport PDF</Button>
                 </div>
             </PageHeader>
 
             <Tabs defaultValue="calculator">
-                <TabsList className="mb-8 p-1 luxury-glass h-auto bg-muted/20">
-                    <TabsTrigger value="calculator" className="rounded-xl px-8 py-2 font-black uppercase text-[10px] tracking-widest">Évaluation</TabsTrigger>
-                    <TabsTrigger value="history" className="rounded-xl px-8 py-2 font-black uppercase text-[10px] tracking-widest">Archives</TabsTrigger>
+                <TabsList className="mb-8 p-1.5 luxury-glass h-auto bg-muted/20 border-white/5">
+                    <TabsTrigger value="calculator" className="rounded-xl px-8 py-2.5 font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-background data-[state=active]:text-primary transition-all">Évaluation</TabsTrigger>
+                    <TabsTrigger value="history" className="rounded-xl px-8 py-2.5 font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-background data-[state=active]:text-primary transition-all">Archives</TabsTrigger>
                 </TabsList>
                 
-                <TabsContent value="calculator" className="space-y-8">
+                <TabsContent value="calculator" className="space-y-8 animate-in fade-in duration-500">
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         <Card className="luxury-glass border-white/5 bg-muted/10">
                             <CardHeader><CardTitle className="text-[10px] font-black uppercase tracking-widest text-primary">Actifs (Éléments du calcul)</CardTitle></CardHeader>
@@ -99,7 +91,7 @@ export default function ZakatPage() {
                                 </div>
                                 <div className="p-4 rounded-2xl bg-white/5 border border-white/5">
                                     <Label className="text-[9px] font-black uppercase text-muted-foreground block mb-2">Liquidités en Caisse (DA)</Label>
-                                    <Input type="number" value={cashOnHand || ''} onChange={(e) => setCashOnHand(Number(e.target.value))} className="h-12 text-xl font-bold bg-background/50 rounded-xl" />
+                                    <Input type="number" value={cashOnHand || ''} onChange={(e) => setCashOnHand(Number(e.target.value))} className="h-12 text-xl font-bold bg-background/50 rounded-xl border-white/10" />
                                 </div>
                             </CardContent>
                         </Card>
@@ -113,12 +105,12 @@ export default function ZakatPage() {
                                 </div>
                                 <div className="p-4 rounded-2xl bg-white/5 border border-white/5">
                                     <Label className="text-[9px] font-black uppercase text-muted-foreground block mb-2">Autres Dettes (Charges, etc.)</Label>
-                                    <Input type="number" value={otherDebts || ''} onChange={(e) => setOtherDebts(Number(e.target.value))} className="h-12 text-xl font-bold bg-background/50 rounded-xl" />
+                                    <Input type="number" value={otherDebts || ''} onChange={(e) => setOtherDebts(Number(e.target.value))} className="h-12 text-xl font-bold bg-background/50 rounded-xl border-white/10" />
                                 </div>
                             </CardContent>
                         </Card>
 
-                        <Card className={cn("luxury-glass border-2 overflow-hidden", result.isNisabReached ? "border-chart-quaternary bg-chart-quaternary/5" : "border-white/5 bg-muted/10")}>
+                        <Card className={cn("luxury-glass border-2 overflow-hidden transition-all duration-700", result.isNisabReached ? "border-chart-quaternary bg-chart-quaternary/5" : "border-white/5 bg-muted/10")}>
                             <CardHeader className="text-center bg-white/5 pb-6">
                                 <CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-4">Résultat de l'Évaluation</CardTitle>
                                 <p className="text-4xl font-black tracking-tighter">{formatCurrency(result.zakatBase)}</p>
@@ -136,7 +128,7 @@ export default function ZakatPage() {
                                 </div>
                             </CardContent>
                             <CardFooter className="p-6 border-t border-white/5">
-                                <Button onClick={handleSave} disabled={isSaving || !result.isNisabReached} className="w-full h-12 rounded-xl font-bold uppercase text-[10px] tracking-widest gap-2">
+                                <Button onClick={handleSave} disabled={isSaving || !result.isNisabReached} className="w-full h-12 rounded-xl font-bold uppercase text-[10px] tracking-widest gap-2 bg-chart-quaternary hover:bg-chart-quaternary/90 shadow-lg shadow-chart-quaternary/20">
                                     {isSaving ? <Loader2 className="animate-spin h-4 w-4"/> : <Save className="h-4 w-4"/>} 
                                     Archiver le Point
                                 </Button>
@@ -145,17 +137,17 @@ export default function ZakatPage() {
                     </div>
                 </TabsContent>
 
-                <TabsContent value="history">
+                <TabsContent value="history" className="animate-in fade-in duration-500">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         {history.map(h => (
-                            <Card key={h.uuid} className="luxury-glass p-6 border-white/5 bg-muted/10 hover:border-primary/20 transition-all">
-                                <p className="text-[10px] font-black uppercase text-muted-foreground mb-2">{new Date(h.createdAt).toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                            <Card key={h.uuid} className="luxury-glass p-6 border-white/5 bg-muted/10 hover:border-primary/20 transition-all group">
+                                <p className="text-[10px] font-black uppercase text-muted-foreground mb-2 group-hover:text-primary transition-colors">{new Date(h.createdAt).toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
                                 <p className="text-2xl font-black text-primary">{formatCurrency(h.zakatAmount)}</p>
                                 <p className="text-[10px] font-bold text-muted-foreground uppercase mt-1">Sur une base de {formatCurrency(h.zakatBase)}</p>
                             </Card>
                         ))}
                         {history.length === 0 && (
-                            <div className="col-span-full py-20 text-center text-muted-foreground italic border-2 border-dashed rounded-[3rem] border-white/5">
+                            <div className="col-span-full py-24 text-center text-muted-foreground italic border-2 border-dashed rounded-[3rem] border-white/5 bg-white/5">
                                 Aucun historique de calcul archivé.
                             </div>
                         )}
