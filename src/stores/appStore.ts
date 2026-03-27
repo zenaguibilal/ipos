@@ -1,4 +1,3 @@
-
 'use client';
 
 import { create } from 'zustand';
@@ -13,7 +12,7 @@ import { calculateZakat } from '@/lib/utils';
 
 /**
  * @fileOverview THE STATE SINGULARITY (PHASE 11 - FINAL AUDIT)
- * Absolute authority for all system states including Auth and Profile.
+ * Absolute authority for all system states. Deterministic and predictable.
  */
 
 interface AppState {
@@ -185,15 +184,15 @@ export const useAppStore = create<AppState>((set, get) => ({
     },
 
     actions: {
-        setAuth: (user) => set({ user, isAuthenticated: !!user }),
+        setAuth: (user) => set({ user, isAuthenticated: !!user, activeCartId: get().carts[0].id }),
 
         fetchProfile: async () => {
             set({ isSettingsLoading: true });
             try {
                 const profile = await api.get<CompanyProfile>('profile');
-                set({ profile, activeCartId: get().carts[0].id });
+                set({ profile });
             } catch (e) {
-                console.error("Profile Fetch Failed:", e);
+                console.error("[PROFILE_FETCH_FAILED]", e);
             } finally {
                 set({ isSettingsLoading: false });
             }
@@ -205,9 +204,12 @@ export const useAppStore = create<AppState>((set, get) => ({
         },
 
         logout: async () => {
-            await api.post('auth/signout', {});
-            get().actions.resetStore();
-            window.location.href = '/login';
+            try {
+                await api.post('auth/signout', {});
+            } finally {
+                get().actions.resetStore();
+                window.location.href = '/login';
+            }
         },
 
         refreshProducts: async (search) => {
@@ -499,7 +501,8 @@ export const useAppStore = create<AppState>((set, get) => ({
                 inputs: { cashOnHand: 0, otherDebts: 0 },
                 result: null
             },
-            sellPage: { cartCustomer: null, customerListVersion: 0 }
+            sellPage: { cartCustomer: null, customerListVersion: 0 },
+            isLoading: {}
         }),
     }
 }));

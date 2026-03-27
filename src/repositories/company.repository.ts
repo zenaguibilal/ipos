@@ -3,6 +3,7 @@ import type { CompanyProfile } from "@/lib/types";
 
 /**
  * @fileOverview Company Repository (Absolute Server Authority)
+ * PHASE 2 & 11: Final deterministic profile authority.
  */
 export class CompanyRepository {
     private supabase = createClient();
@@ -15,10 +16,31 @@ export class CompanyRepository {
             .from('company_profile')
             .select('*')
             .eq('user_id', user.id)
-            .single();
+            .maybeSingle();
 
-        if (error && error.code !== 'PGRST116') throw new Error(`PROFILE_FETCH_FAILED: ${error.message}`);
-        return data ? this.mapFromDb(data) : null;
+        if (error) throw new Error(`PROFILE_FETCH_FAILED: ${error.message}`);
+        
+        // Auto-initialize if somehow missing but user exists
+        if (!data) {
+            return this.initializeDefault(user.id);
+        }
+
+        return this.mapFromDb(data);
+    }
+
+    private async initializeDefault(userId: string): Promise<CompanyProfile> {
+        const { data, error } = await this.supabase
+            .from('company_profile')
+            .insert([{
+                user_id: userId,
+                company_name: "Nouvel Établissement iPOS",
+                role: 'admin'
+            }])
+            .select()
+            .single();
+        
+        if (error) throw new Error("PROFILE_AUTO_INIT_FAILED");
+        return this.mapFromDb(data);
     }
 
     async update(data: Partial<CompanyProfile>): Promise<CompanyProfile> {
@@ -41,18 +63,18 @@ export class CompanyRepository {
             uuid: p.uuid,
             user_id: p.user_id,
             companyName: p.company_name,
-            address: p.address,
-            city: p.city,
-            zipCode: p.zip_code,
-            country: p.country,
-            phone: p.phone,
-            email: p.email,
-            website: p.website,
-            vatNumber: p.vat_number,
-            rcNumber: p.rc_number,
-            artImposition: p.art_imposition,
-            goldPricePerGram: p.gold_price_per_gram,
-            prix_pain: p.prix_pain,
+            address: p.address || '',
+            city: p.city || '',
+            zipCode: p.zip_code || '',
+            country: p.country || '',
+            phone: p.phone || '',
+            email: p.email || '',
+            website: p.website || '',
+            vatNumber: p.vat_number || '',
+            rcNumber: p.rc_number || '',
+            artImposition: p.art_imposition || '',
+            goldPricePerGram: p.gold_price_per_gram || 0,
+            prix_pain: p.prix_pain || 0,
             role: p.role,
             updatedAt: p.updated_at,
         };
