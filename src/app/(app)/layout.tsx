@@ -6,7 +6,7 @@ import { StoreInitializer } from '@/components/layout/StoreInitializer';
 
 /**
  * @fileOverview App Layout (Direct Access)
- * تم حذف بوابات التحقق من الجلسة لسرعة الاستجابة.
+ * تم توحيد الهيكل لضمان ظهور التنقل بشكل دائم وحتمي.
  */
 export default function AppLayout({
   children,
@@ -16,9 +16,11 @@ export default function AppLayout({
   return (
     <>
       <StoreInitializer />
-      <div className="flex h-screen flex-col bg-transparent">
+      <div className="flex h-screen flex-col bg-background">
         <AppHeader />
-        <main className="flex-1 overflow-y-auto pb-16 md:pb-0">{children}</main>
+        <main className="flex-1 overflow-y-auto pb-20 md:pb-4 transition-all duration-500">
+          {children}
+        </main>
         <BottomNavBar />
       </div>
     </>

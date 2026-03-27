@@ -60,24 +60,24 @@ export function AppHeader() {
                   className="flex items-center gap-2 font-semibold"
               >
                   <Image src="/icon.svg" alt="iPOS logo" width={32} height={32} priority />
-                  <span className="hidden sm:inline-block text-xl font-semibold">iPOS</span>
+                  <span className="hidden sm:inline-block text-xl font-black tracking-tighter">iPOS</span>
               </Link>
           </div>
       </div>
 
         <div className="flex-1 flex justify-center">
             <TooltipProvider>
-                <nav className="hidden xl:flex items-center gap-1 rounded-full border bg-black/5 dark:bg-black/20 p-1">
+                <nav className="hidden md:flex items-center gap-1 rounded-full border bg-black/5 dark:bg-black/20 p-1 luxury-glass border-white/5">
                     {mainActionLinks.map(link => (
                          <Tooltip key={link.href} delayDuration={0}>
                             <TooltipTrigger asChild>
                                 <Button 
                                     asChild
                                     variant={pathname.startsWith(link.href) ? "secondary" : "ghost"}
-                                    className="rounded-full relative h-10 px-6 text-base"
+                                    className="rounded-full relative h-9 px-5 text-sm font-bold"
                                 >
                                     <Link href={link.href}>
-                                        <link.icon className="h-5 w-5 mr-2" />
+                                        <link.icon className="h-4 w-4 mr-2" />
                                         {link.label}
                                     </Link>
                                 </Button>
@@ -87,7 +87,7 @@ export function AppHeader() {
                             </TooltipContent>
                         </Tooltip>
                     ))}
-                    <div className="h-6 w-px bg-border/50 mx-2" />
+                    <div className="h-5 w-px bg-border/50 mx-1" />
                     {navLinks.map(link => (
                         <Tooltip key={link.href} delayDuration={0}>
                             <TooltipTrigger asChild>
@@ -95,10 +95,10 @@ export function AppHeader() {
                                     asChild
                                     variant={pathname.startsWith(link.href) ? "secondary" : "ghost"}
                                     size="icon"
-                                    className="rounded-full relative"
+                                    className="rounded-full relative h-9 w-9"
                                 >
                                     <Link href={link.href}>
-                                        <link.icon className="h-5 w-5" />
+                                        <link.icon className="h-4 w-4" />
                                         <span className="sr-only">{link.label}</span>
                                     </Link>
                                 </Button>
@@ -117,7 +117,7 @@ export function AppHeader() {
             <div className="flex items-center gap-2 sm:gap-4">
                 <Clock />
                 <ThemeToggle />
-                <Button variant="ghost" size="icon" asChild className="rounded-full">
+                <Button variant="ghost" size="icon" asChild className="rounded-full hover:bg-primary/10 transition-colors">
                     <Link href="/profile">
                         <Settings className="h-5 w-5" />
                     </Link>
