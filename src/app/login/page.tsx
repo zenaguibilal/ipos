@@ -31,12 +31,21 @@ export default function AuthPage() {
     const [isLoading, setIsLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [activeTab, setActiveTab] = useState('login');
+    const [terminalId, setTerminalId] = useState('INIT');
     
     // Form States
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [companyName, setCompanyName] = useState('');
     const [rememberMe, setRememberMe] = useState(true);
+
+    // Set Terminal ID on mount to avoid hydration mismatch
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const id = btoa(window.navigator.userAgent).substring(0, 12).toUpperCase();
+            setTerminalId(id);
+        }
+    }, []);
 
     // Redirect if already authenticated
     useEffect(() => {
@@ -325,7 +334,7 @@ export default function AuthPage() {
                         </div>
                     </div>
                     <p className="text-center text-[9px] text-muted-foreground uppercase font-black tracking-[0.4em] opacity-30">
-                        Propulsé par iPOS Cloud Authority • Terminal ID: {typeof window !== 'undefined' ? btoa(window.navigator.userAgent).substring(0, 12).toUpperCase() : 'INIT'}
+                        Propulsé par iPOS Cloud Authority • Terminal ID: {terminalId}
                     </p>
                 </div>
             </div>
