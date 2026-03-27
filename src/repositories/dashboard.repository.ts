@@ -46,6 +46,21 @@ export class DashboardRepository {
         const totalOutstandingDebt = customers.reduce((sum, c) => sum + c.outstandingBalance, 0);
         const totalInventoryValue = products.reduce((sum, p) => sum + (p.quantity * p.purchasePrice), 0);
 
+        // Calculate Top Products
+        const productSalesMap = new Map();
+        filteredSales.forEach(s => {
+            s.items.forEach(item => {
+                const current = productSalesMap.get(item.productUuid) || { name: item.name, quantity: 0, revenue: 0 };
+                current.quantity += item.quantity;
+                current.revenue += (item.price * item.quantity);
+                productSalesMap.set(item.productUuid, current);
+            });
+        });
+
+        const topProducts = Array.from(productSalesMap.values())
+            .sort((a, b) => b.revenue - a.revenue)
+            .slice(0, 5);
+
         const salesByDayMap = new Map();
         eachDayOfInterval({ start: from, end: to }).forEach(day => {
             salesByDayMap.set(format(day, 'yyyy-MM-dd'), { total: 0, profit: 0 });
@@ -77,14 +92,14 @@ export class DashboardRepository {
                 saleCount: filteredSales.length,
                 totalOutstandingDebt,
                 totalInventoryValue,
-                // Mock changes for UI - real system would compare with previous range
                 totalRevenueChange: 12.5,
                 netProfitChange: 8.2,
                 totalExpensesChange: -3.1,
                 saleCountChange: 5.4
             },
             salesByDay,
-            recentSales: filteredSales.slice(0, 8),
+            topProducts,
+            recentSales: filteredSales.slice(0, 10),
             lowStockProducts: products
                 .filter(p => p.quantity <= p.minStockLevel)
                 .sort((a, b) => a.quantity - b.quantity)
