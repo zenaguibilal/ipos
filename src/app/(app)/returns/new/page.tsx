@@ -19,6 +19,7 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { useAppActions } from '@/stores/appStore';
 import { Badge } from '@/components/ui/badge';
 import { BarcodeScannerDialog } from '@/components/products/BarcodeScannerDialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 type ReturnItemState = ReturnItem & { originalQuantity: number, returnQuantity: number };
 
@@ -274,7 +275,16 @@ export default function NewReturnPage() {
                                 <div className="space-y-3">
                                     <Label htmlFor="amountRefunded" className="text-sm font-bold flex items-center gap-2">
                                         Montant Remboursé en Espèces (DA)
-                                        <Info className="h-3 w-3 text-muted-foreground" title="Montant sorti physiquement de la caisse" />
+                                        <TooltipProvider>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <Info className="h-3 w-3 text-muted-foreground cursor-help" />
+                                                </TooltipTrigger>
+                                                <TooltipContent className="luxury-glass">
+                                                    <p>Montant sorti physiquement de la caisse</p>
+                                                </TooltipContent>
+                                            </Tooltip>
+                                        </TooltipProvider>
                                     </Label>
                                     <div className="relative">
                                         <Banknote className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-chart-quaternary" />
@@ -361,7 +371,7 @@ export default function NewReturnPage() {
             <BarcodeScannerDialog 
                 isOpen={isScannerOpen}
                 onOpenChange={setIsScannerOpen}
-                onScanSuccess={handleScanSuccess}
+                onScanSuccess={handleSearchSale}
             />
         </div>
     );

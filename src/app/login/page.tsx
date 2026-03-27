@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -47,19 +47,24 @@ export default function LoginPage() {
     const [forgotPassMessage, setForgotPassMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
 
     /**
-     * @protocol HARD_REDIRECT
+     * @protocol HARD_REDIRECT_WITH_SYNC
      * Next.js Middleware can have race conditions with browser cookie persistence.
-     * We use window.location.href to force a clean server request with persisted cookies.
+     * We force a router.refresh() to stabilize cookies, then window.location.href 
+     * to ensure a clean request that the Middleware recognizes.
      */
+    const performRedirect = useCallback(() => {
+        setLoginSuccess(true);
+        router.refresh();
+        setTimeout(() => {
+            window.location.href = '/dashboard';
+        }, 500);
+    }, [router]);
+
     useEffect(() => {
         if (session) {
-            setLoginSuccess(true);
-            const timer = setTimeout(() => {
-                window.location.href = '/dashboard';
-            }, 800);
-            return () => clearTimeout(timer);
+            performRedirect();
         }
-    }, [session]);
+    }, [session, performRedirect]);
 
     const handleSignIn = async (e: React.FormEvent) => {
         e.preventDefault();
