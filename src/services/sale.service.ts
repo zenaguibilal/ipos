@@ -1,3 +1,2 @@
-
-// DELETED: Obsolete client-side service. Use API client directly.
+// DELETED: Logic migrated to SaleRepository.
 export {};

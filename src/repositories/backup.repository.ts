@@ -2,6 +2,7 @@ import { createClient } from "@/utils/supabase/server";
 
 /**
  * @fileOverview Backup Repository (Absolute Data Authority)
+ * Phase 4: Encapsulates all cloud storage operations.
  */
 export class BackupRepository {
     private supabase = createClient();
@@ -41,19 +42,25 @@ export class BackupRepository {
         return fileName;
     }
 
-    async restore(name: string): Promise<void> {
-        const { data: fileData, error: downloadError } = await this.supabase.storage.from('backups').download(name);
-        if (downloadError) throw downloadError;
+    async getDetails(name: string): Promise<any> {
+        const { data, error } = await this.supabase.storage.from('backups').download(name);
+        if (error) throw error;
+        const text = await data.text();
+        return JSON.parse(text);
+    }
 
-        const backup = JSON.parse(await fileData.text());
+    async restore(name: string): Promise<void> {
+        const backup = await this.getDetails(name);
 
         if (backup.products) {
+            // Destruction before reconstruction
             await this.supabase.from('products').delete().neq('uuid', '00000000-0000-0000-0000-000000000000');
             await this.supabase.from('products').insert(backup.products.map((p: any) => {
                 const { id, user_id, ...rest } = p;
                 return rest;
             }));
         }
+        // Further restoration logic for other entities would go here
     }
 
     async delete(name: string): Promise<void> {

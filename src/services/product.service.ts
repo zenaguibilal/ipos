@@ -1,3 +1,2 @@
-
-// DELETED: Obsolete client-side service. Use API client and CsvImporter directly.
+// DELETED: Logic migrated to ProductRepository.
 export {};

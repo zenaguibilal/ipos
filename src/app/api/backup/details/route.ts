@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
+import { BackupRepository } from '@/repositories/backup.repository';
 
 /**
  * @fileOverview API WALL: Backup Inspection Gateway
@@ -11,12 +11,10 @@ export async function GET(req: Request) {
         const name = searchParams.get('name');
         if (!name) throw new Error("NAME_REQUIRED");
 
-        const supabase = createClient();
-        const { data, error } = await supabase.storage.from('backups').download(name);
-        if (error) throw error;
-
-        const text = await data.text();
-        return NextResponse.json({ data: JSON.parse(text) });
+        const repo = new BackupRepository();
+        const data = await repo.getDetails(name);
+        
+        return NextResponse.json({ data });
     } catch (e: any) {
         return NextResponse.json({ error: e.message }, { status: 500 });
     }
