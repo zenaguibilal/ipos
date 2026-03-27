@@ -1,3 +1,4 @@
+
 'use client';
 
 /**
@@ -16,7 +17,7 @@ import { formatCurrency, cn } from '@/lib/utils';
 import { 
     Coins, Banknote, ArrowRight, Printer, RefreshCw, 
     HandHelping, History as HistoryIcon, Save, Loader2, Scale, 
-    BadgeCheck, Globe
+    BadgeCheck
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -82,9 +83,11 @@ export default function ZakatPage() {
         const printableContent = document.getElementById('receipt-for-print');
         const reportElement = document.getElementById('zakat-report');
         if (!printableContent || !reportElement) return;
+        
         const reportClone = reportElement.cloneNode(true) as HTMLDivElement;
         reportClone.classList.add('a4-receipt');
         reportClone.classList.remove('hidden');
+        
         printableContent.innerHTML = '';
         printableContent.appendChild(reportClone);
         setTimeout(() => window.print(), 100);
@@ -130,12 +133,13 @@ export default function ZakatPage() {
 
             <Tabs defaultValue="calculator" className="w-full">
                 <TabsList className="grid w-full grid-cols-2 max-w-md mx-auto mb-8 luxury-glass bg-muted/20">
-                    <TabsTrigger value="calculator" className="font-bold">Calculateur</TabsTrigger>
-                    <TabsTrigger value="history" className="font-bold">Archives</TabsTrigger>
+                    <TabsTrigger value="calculator" className="font-bold uppercase text-[10px] tracking-widest">Calculateur</TabsTrigger>
+                    <TabsTrigger value="history" className="font-bold uppercase text-[10px] tracking-widest">Archives</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="calculator" className="space-y-8 outline-none">
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        {/* Actifs */}
                         <div className="space-y-6">
                             <h3 className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
                                 <Coins className="h-4 w-4" /> Actifs (Possessions)
@@ -177,6 +181,7 @@ export default function ZakatPage() {
                             </Card>
                         </div>
 
+                        {/* Passifs */}
                         <div className="space-y-6">
                             <h3 className="text-[10px] font-black uppercase tracking-widest text-destructive flex items-center gap-2">
                                 <ArrowRight className="h-4 w-4" /> Passifs (Dettes)
@@ -218,6 +223,7 @@ export default function ZakatPage() {
                             </Card>
                         </div>
 
+                        {/* Résultat */}
                         <div className="space-y-6">
                             <h3 className="text-[10px] font-black uppercase tracking-widest text-chart-quaternary flex items-center gap-2">
                                 <HandHelping className="h-4 w-4" /> Résultat (2.5%)
