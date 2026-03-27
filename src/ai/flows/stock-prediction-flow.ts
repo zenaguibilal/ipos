@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Stock Prediction Flow - DEACTIVATED
- * محظور: تم استئصال منطق التنبؤ بالذكاء الاصطناعي.
+ * @fileOverview PURGED: Stock Prediction Flow
+ * هذا الملف تم تطهيره برمجياً واستئصال منطق AI منه نهائياً.
  */
 export const predictStock = async () => { 
-    throw new Error("AI_MODULE_PERMANENTLY_REMOVED"); 
+    return null; 
 };

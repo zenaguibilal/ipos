@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Zakat Explanation Flow - DEACTIVATED
- * محظور: تم استئصال منطق التفسير الفقهي عبر AI.
+ * @fileOverview PURGED: Zakat Explanation Flow
+ * هذا الملف تم تطهيره برمجياً واستئصال منطق AI منه نهائياً.
  */
 export const explainZakat = async () => { 
-    throw new Error("AI_MODULE_PERMANENTLY_REMOVED"); 
+    return null; 
 };

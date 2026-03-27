@@ -1,6 +1,6 @@
 
 /**
  * @fileOverview AI Dialog - OBLITERATED
- * تم تحييد المكون البصري الخاص بتحليلات الذكاء الاصطناعي.
+ * تم حذف المكون نهائياً لضمان نقاء الواجهة.
  */
 export const AIStockAnalysisDialog = () => null;
