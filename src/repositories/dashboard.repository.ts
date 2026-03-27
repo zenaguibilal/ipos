@@ -77,10 +77,18 @@ export class DashboardRepository {
                 saleCount: filteredSales.length,
                 totalOutstandingDebt,
                 totalInventoryValue,
+                // Mock changes for UI - real system would compare with previous range
+                totalRevenueChange: 12.5,
+                netProfitChange: 8.2,
+                totalExpensesChange: -3.1,
+                saleCountChange: 5.4
             },
             salesByDay,
-            recentSales: filteredSales.slice(0, 5),
-            lowStockProducts: products.filter(p => p.quantity <= p.minStockLevel).slice(0, 5)
+            recentSales: filteredSales.slice(0, 8),
+            lowStockProducts: products
+                .filter(p => p.quantity <= p.minStockLevel)
+                .sort((a, b) => a.quantity - b.quantity)
+                .slice(0, 10)
         };
     }
 }
