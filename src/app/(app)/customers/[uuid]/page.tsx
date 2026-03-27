@@ -3,7 +3,7 @@
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, HandCoins, Printer, Loader2, History, ShoppingBag, TrendingUp, Info, MessageSquare, Tag } from 'lucide-react';
+import { ArrowLeft, Printer, Loader2, History, ShoppingBag, TrendingUp, Info, MessageSquare, Tag } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CustomerMetrics } from '@/components/customers/CustomerMetrics';
@@ -68,7 +68,7 @@ export default function CustomerDetailPage() {
     const handleWhatsAppReminder = () => {
         const customer = selectedCustomer.data;
         if (!customer?.phone) {
-            toast.error("Numéro de téléphone manquant.");
+            toast.error("Numéro de téléphone manكانت.");
             return;
         }
         const storeName = companyProfile?.companyName || "iPOS";
@@ -146,7 +146,7 @@ export default function CustomerDetailPage() {
                     <CustomerMetrics customer={customer} />
                     <div className="grid grid-cols-2 gap-2">
                         <Button variant="outline" onClick={() => setIsStatementDialogOpen(true)} className="h-12 rounded-xl font-bold luxury-glass border-white/10"><Printer className="mr-2 h-5 w-5" /> Relevé</Button>
-                        <Button onClick={() => setIsPaymentDialogOpen(true)} disabled={customer.outstandingBalance <= 0} className="h-12 rounded-xl font-bold bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20"><HandCoins className="mr-2 h-5 w-5" /> Encaisser</Button>
+                        <Button onClick={() => setIsPaymentDialogOpen(true)} disabled={customer.outstandingBalance <= 0} className="h-12 rounded-xl font-bold bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20">Encaisser</Button>
                     </div>
                     {customer.outstandingBalance > 0 && <Button variant="secondary" className="w-full h-12 rounded-xl bg-green-600 hover:bg-green-700 text-white font-bold" onClick={handleWhatsAppReminder}><MessageSquare className="mr-2 h-5 w-5" /> Rappel WhatsApp</Button>}
                     <Card className="luxury-glass border-white/5">
