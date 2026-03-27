@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription
@@ -15,9 +16,10 @@ import { toast } from 'sonner';
 import type { Cart, CartItem, Customer, SalePayment } from '@/lib/types';
 import { Loader2, Banknote, AlertTriangle, ShieldCheck, Wallet, HandCoins, ArrowRight, Calendar } from 'lucide-react';
 import { formatCurrency, calculateCartTotals, cn } from '@/lib/utils';
-import { DatePicker } from '@/components/ui/date-picker';
 import { Separator } from '@/components/ui/separator';
 import { useAppActions } from '@/stores/appStore';
+import { addMonths, setDate as setDayOfMonth, isAfter, format } from 'date-fns';
+import { fr } from 'date-fns/locale';
 
 interface PaymentDialogProps {
     isOpen: boolean;
@@ -33,7 +35,7 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, cartCustomer }: Paym
 
     const [paymentMode, setPaymentMode] = useState<PaymentMode>('cash');
     const [cashAmountStr, setCashAmountStr] = useState('');
-    const [dueDate, setDueDate] = useState<Date | undefined>();
+    const [calculatedDueDate, setCalculatedDueDate] = useState<Date | undefined>();
     
     const [isLoading, setIsLoading] = useState(false);
 
@@ -49,10 +51,28 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, cartCustomer }: Paym
     const newTotalOutstanding = (cartCustomer?.outstandingBalance ?? 0) + debtFromThisSale;
     const isOverLimit = cartCustomer?.creditLimit && cartCustomer.creditLimit > 0 && newTotalOutstanding > cartCustomer.creditLimit;
 
+    // Auto-calculate Due Date based on customer's settlement day
+    useEffect(() => {
+        if (paymentMode === 'credit' && cartCustomer?.settlementDay) {
+            const now = new Date();
+            let dueDate = setDayOfMonth(now, cartCustomer.settlementDay);
+            
+            // If the settlement day for this month has passed or is today, move to next month
+            if (isAfter(now, dueDate) || now.getDate() === cartCustomer.settlementDay) {
+                dueDate = addMonths(dueDate, 1);
+            }
+            setCalculatedDueDate(dueDate);
+        } else if (paymentMode === 'credit') {
+            // Default to 30 days if no settlement day defined
+            setCalculatedDueDate(addMonths(new Date(), 1));
+        } else {
+            setCalculatedDueDate(undefined);
+        }
+    }, [paymentMode, cartCustomer]);
+
     const initializePayment = useCallback(() => {
         setPaymentMode('cash');
         setCashAmountStr(String(total));
-        setDueDate(undefined);
         setShowLossAlert(false);
     }, [total]);
 
@@ -118,7 +138,7 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, cartCustomer }: Paym
                 payments,
                 remainingBalance: debtAmount,
                 paymentStatus: debtAmount > 0 ? 'unpaid' : 'paid',
-                dueDate: debtAmount > 0 ? dueDate?.toISOString() : undefined,
+                dueDate: calculatedDueDate?.toISOString(),
             });
             if (success) {
                 onOpenChange(false);
@@ -261,12 +281,20 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, cartCustomer }: Paym
                                     <div className="p-6 rounded-2xl bg-destructive/5 border border-destructive/20 animate-in fade-in slide-in-from-right-4 duration-500">
                                         <div className="flex items-center gap-3 mb-4">
                                             <ShieldCheck className="h-4 w-4 text-destructive" />
-                                            <h4 className="text-[10px] font-black uppercase tracking-widest text-destructive">Garanties & Échéances</h4>
+                                            <h4 className="text-[10px] font-black uppercase tracking-widest text-destructive">Garanties & Échéances (Contrat)</h4>
                                         </div>
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                             <div className="space-y-2">
-                                                <Label className="text-[9px] font-bold opacity-50 uppercase ml-1">Échéance prévue</Label>
-                                                <DatePicker date={dueDate} setDate={setDueDate} />
+                                                <Label className="text-[9px] font-bold opacity-50 uppercase ml-1">Échéance Automatique</Label>
+                                                <div className="h-14 flex items-center px-4 rounded-xl bg-background/60 border border-white/10 gap-3">
+                                                    <Calendar className="h-4 w-4 text-primary opacity-50" />
+                                                    <span className="font-bold text-sm">
+                                                        {calculatedDueDate ? format(calculatedDueDate, 'dd MMMM yyyy', { locale: fr }) : 'Non défini'}
+                                                    </span>
+                                                </div>
+                                                <p className="text-[8px] text-muted-foreground italic px-1">
+                                                    * Basé على "يوم التسوية" المتفق عليه في ملف الزبون.
+                                                </p>
                                             </div>
                                             <div className="flex flex-col justify-center p-3 rounded-xl bg-background/40 border border-white/5 text-right">
                                                 <p className="text-[9px] font-bold text-muted-foreground uppercase">Nouveau Solde Prévisionnel</p>
