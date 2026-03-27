@@ -1,72 +1,48 @@
 
-'use client';
-
-import { createClient } from "@/utils/supabase/client";
+import { createClient } from "@/utils/supabase/server";
 import type { SupplierPayment } from "@/lib/types";
+import { SupplierRepository } from "./supplier.repository";
 
-const fromSupabase = (p: any): SupplierPayment => ({
-    uuid: p.uuid,
-    user_id: p.user_id,
-    supplierUuid: p.supplier_uuid,
-    amount: p.amount,
-    paymentDate: p.payment_date,
-    method: p.method,
-    notes: p.notes,
-    createdAt: p.created_at,
-    updatedAt: p.updated_at,
-});
-
-const toSupabase = (p: Partial<SupplierPayment>) => ({
-    uuid: p.uuid,
-    user_id: p.user_id,
-    supplier_uuid: p.supplierUuid,
-    amount: p.amount,
-    payment_date: p.paymentDate,
-    method: p.method,
-    notes: p.notes,
-    created_at: p.createdAt,
-    updated_at: p.updated_at,
-});
-
-class SupplierPaymentRepository {
+/**
+ * @fileOverview SupplierPayment Repository (Absolute Server Authority)
+ * المسؤول عن تسجيل مدفوعات الموردين وتصحيح موازينهم بشكل حتمي.
+ */
+export class SupplierPaymentRepository {
     private supabase = createClient();
+    private supplierRepo = new SupplierRepository();
 
-    async getAll(): Promise<SupplierPayment[]> {
-        const { data, error } = await this.supabase.from('supplier_payments').select('*').order('payment_date', { ascending: false });
-        if (error) throw error;
-        return data.map(fromSupabase);
-    }
-
-    async findBySupplierUuid(supplierUuid: string): Promise<SupplierPayment[]> {
+    async create(payment: any): Promise<SupplierPayment> {
         const { data, error } = await this.supabase
             .from('supplier_payments')
-            .select('*')
-            .eq('supplier_uuid', supplierUuid)
-            .order('payment_date', { ascending: false });
-        if (error) throw error;
-        return data.map(fromSupabase);
+            .insert([{
+                supplier_uuid: payment.supplierUuid,
+                amount: payment.amount,
+                payment_date: payment.paymentDate || new Date().toISOString(),
+                method: payment.method,
+                notes: payment.notes,
+            }])
+            .select()
+            .single();
+
+        if (error) throw new Error(`SUPPLIER_PAYMENT_FAILED: ${error.message}`);
+
+        // أتمتة السلطة: إعادة حساب ميزان المورد فوراً
+        await this.supplierRepo.recalculateBalance(payment.supplierUuid);
+
+        return this.mapFromDb(data);
     }
 
-    async add(payment: SupplierPayment): Promise<SupplierPayment> {
-        const { data, error } = await this.supabase.from('supplier_payments').insert(toSupabase(payment)).select().single();
-        if (error) throw error;
-        return fromSupabase(data);
-    }
-
-    async delete(uuid: string): Promise<void> {
-        const { error } = await this.supabase.from('supplier_payments').delete().eq('uuid', uuid);
-        if (error) throw error;
-    }
-
-    async deleteAllForUser(userId: string): Promise<void> {
-        const { error } = await this.supabase.from('supplier_payments').delete().eq('user_id', userId);
-        if (error) throw error;
-    }
-
-    async bulkUpsert(payments: SupplierPayment[]): Promise<void> {
-        const { error } = await this.supabase.from('supplier_payments').upsert(payments.map(toSupabase));
-        if (error) throw error;
+    private mapFromDb(p: any): SupplierPayment {
+        return {
+            uuid: p.uuid,
+            user_id: p.user_id,
+            supplierUuid: p.supplier_uuid,
+            amount: p.amount,
+            paymentDate: p.payment_date,
+            method: p.method,
+            notes: p.notes,
+            createdAt: p.created_at,
+            updatedAt: p.updated_at,
+        };
     }
 }
-
-export const supplierPaymentRepository = new SupplierPaymentRepository();

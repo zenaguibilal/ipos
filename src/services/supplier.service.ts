@@ -1,3 +1,4 @@
+
 'use client';
 /**
  * @fileOverview Supplier Service (API Wall Implementation)
@@ -13,10 +14,6 @@ class SupplierService {
 
     async getSupplierByUuid(uuid: string): Promise<Supplier | undefined> {
         return api.get<Supplier>(`suppliers/${uuid}`);
-    }
-
-    async findOrCreateSupplier(name: string, uuid?: string): Promise<Supplier> {
-        return api.post<Supplier>('suppliers/find-or-create', { name, uuid });
     }
 
     async updateSupplier(uuid: string, data: Partial<Supplier>): Promise<Supplier> {
@@ -45,7 +42,6 @@ class SupplierService {
                 header: true,
                 skipEmptyLines: true,
                 complete: async (results) => {
-                    // Client-side analysis logic
                     const suppliers = await this.getSuppliers();
                     const existingNames = new Map(suppliers.map(s => [s.name.toLowerCase().trim(), s]));
                     const toAdd = [], toUpdate = [], errors = [];
@@ -66,7 +62,8 @@ class SupplierService {
     }
 
     async exportToCSV(suppliers: Supplier[]) {
-        const csv = Papa.unparse(suppliers.map(s => ({ 'Nom': s.name, 'Solde': s.balance })));
+        const data = suppliers.map(s => ({ 'Nom': s.name, 'Solde': s.balance }));
+        const csv = Papa.unparse(data);
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);

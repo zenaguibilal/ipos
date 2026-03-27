@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -7,14 +8,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, Eye, EyeOff, AlertCircle, LogIn, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { authService } from '@/services/auth.service';
 import { useAppActions, useAppStore } from '@/stores/appStore';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import Image from 'next/image';
-import { createClient } from '@/utils/supabase/client';
 
 /**
- * @fileOverview THE AUTH GATEWAY
- * Implements Hard-Synchronization Redirect Protocol.
+ * @fileOverview THE AUTH GATEWAY (API Wall Compliant)
  */
 
 export default function LoginPage() {
@@ -29,16 +29,13 @@ export default function LoginPage() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
 
-    const performRedirect = () => {
-        setLoginSuccess(true);
-        // Protocol: Hard refresh ensures middleware correctly parses the newly written cookie.
-        setTimeout(() => {
-            window.location.href = '/dashboard';
-        }, 500);
-    };
-
     useEffect(() => {
-        if (session) performRedirect();
+        if (session) {
+            setLoginSuccess(true);
+            setTimeout(() => {
+                window.location.href = '/dashboard';
+            }, 500);
+        }
     }, [session]);
 
     const handleSignIn = async (e: React.FormEvent) => {
@@ -47,15 +44,13 @@ export default function LoginPage() {
         setError(null);
         setIsLoading(true);
 
-        const supabase = createClient();
-        const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password });
-
-        if (authError) {
-            setError(authError.message);
-            setIsLoading(false);
-        } else {
-            setSession(data.session);
+        try {
+            const newSession = await authService.signIn(email, password);
+            setSession(newSession);
             toast.success("Synchronisation...");
+        } catch (authError: any) {
+            setError(authError.message === 'Invalid login credentials' ? "Email ou mot de passe incorrect." : authError.message);
+            setIsLoading(false);
         }
     };
 
@@ -67,14 +62,14 @@ export default function LoginPage() {
                         <Image src="/icon.svg" alt="logo" width={56} height={56} priority />
                     </div>
                     <h1 className="text-4xl font-black text-primary tracking-tighter uppercase italic">iPOS</h1>
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground opacity-60">Absolute Architecture enforced</p>
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground opacity-60">Hard API Wall Enforced</p>
                 </div>
 
                 {loginSuccess ? (
                     <Card className="luxury-glass border-primary/20 text-center p-8 space-y-4 shadow-2xl">
                         <CheckCircle2 className="h-12 w-12 text-primary animate-bounce mx-auto" />
                         <h2 className="text-xl font-bold uppercase">Accès Accordé</h2>
-                        <p className="text-xs text-muted-foreground">Flushing System Cache...</p>
+                        <p className="text-xs text-muted-foreground">Initializing Secure Session...</p>
                         <Loader2 className="h-5 w-5 animate-spin mx-auto text-primary/50" />
                     </Card>
                 ) : (
