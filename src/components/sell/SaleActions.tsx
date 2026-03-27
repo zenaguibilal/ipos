@@ -14,7 +14,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/dialog";
+} from "@/components/ui/alert-dialog";
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { formatCurrency, calculateCartTotals } from '@/lib/utils';
@@ -143,7 +143,7 @@ export const SaleActions = React.forwardRef<
                         </AlertDialogTrigger>
                         <AlertDialogContent className="luxury-glass">
                             <AlertDialogHeader>
-                                <AlertDialogTitle>Vider le panier ?</AlertDialogTitle>
+                                <AlertDialogTitle>Vيدير le panier ?</AlertDialogTitle>
                                 <AlertDialogDescription>
                                     Cette action supprimera tous les articles du panier actuel.
                                 </AlertDialogDescription>

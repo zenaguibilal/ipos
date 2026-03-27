@@ -143,7 +143,7 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, cartCustomer }: Paym
         // --- Shared Credit Validation ---
         if (debtAmount > 0) {
              if (!cartCustomer) {
-                toast.error("Un client doit être sélectionné pour une vente à crédit."); return;
+                toast.error("Un client doit être seleccionado pour une vente à crédit."); return;
             }
             const newDebt = (cartCustomer.outstandingBalance ?? 0) + debtAmount;
             if (cartCustomer.creditLimit != null && newDebt > cartCustomer.creditLimit) {
