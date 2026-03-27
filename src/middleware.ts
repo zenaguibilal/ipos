@@ -4,6 +4,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 /**
  * @fileOverview THE SYSTEM SENTRY
  * Final layer of defense. Pure server-side authority.
+ * Optimized for zero-latency exclusion of PWA assets.
  */
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })

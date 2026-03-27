@@ -1,10 +1,11 @@
 /**
  * @fileOverview THE API GATEWAY
  * The only authorized pathway for UI -> Backend communication.
+ * Enforces standardized error normalization and deterministic responses.
  */
 
 class ApiClient {
-    async request<T>(path: string, options: RequestInit = {}): Promise<T> {
+    private async request<T>(path: string, options: RequestInit = {}): Promise<T> {
         const response = await fetch(`/api/${path}`, {
             ...options,
             headers: {
@@ -15,7 +16,7 @@ class ApiClient {
 
         const result = await response.json();
         if (!response.ok) {
-            throw new Error(result.error || 'API Communication Error');
+            throw new Error(result.error || 'API_COMMUNICATION_ERROR');
         }
         return result.data;
     }

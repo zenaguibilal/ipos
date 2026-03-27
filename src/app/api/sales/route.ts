@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { SaleRepository } from '@/repositories/sale.repository';
 
+/**
+ * @fileOverview API WALL: Sales
+ */
+
 export async function GET() {
     try {
         const repo = new SaleRepository();

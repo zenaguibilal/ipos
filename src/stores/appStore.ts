@@ -7,6 +7,12 @@ import type { Cart, CompanyProfile, Product, Sale, Customer } from '@/lib/types'
 import { v4 as uuidv4 } from 'uuid';
 import { api } from '@/lib/api-client';
 
+/**
+ * @fileOverview THE STATE SINGULARITY
+ * Single source of truth for runtime application state.
+ * Direct persistence bypassed; truth derived from API Wall.
+ */
+
 interface AppState {
     session: Session | null;
     user: User | null;
@@ -24,16 +30,19 @@ interface AppState {
         addProductToCart: (product: Product, quantity: number) => void;
         removeCartItem: (uuid: string) => void;
         updateCartItemQuantity: (uuid: string, qty: number) => void;
+        updateCartItemPrice: (uuid: string, price: number) => void;
         setCartCustomer: (customer: Customer | null) => void;
         setCartDiscount: (discount: { type: 'fixed' | 'percentage', value: number }) => void;
         clearCart: () => void;
         finalizeSale: (paymentData: any) => Promise<void>;
         clearLastCompletedSale: () => void;
+        clearCartFlashes: () => void;
     };
 }
 
 const createInitialCart = (id = uuidv4()): Cart => ({
     id,
+    name: 'Panier Actif',
     items: [],
     customerUuid: null,
     discount: { type: 'fixed', value: 0 },
@@ -65,6 +74,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         signOut: async () => {
             await fetch('/api/auth/signout', { method: 'POST' });
             set({ session: null, user: null, profile: null, carts: [createInitialCart()] });
+            window.location.href = '/login';
         },
 
         createNewCart: () => set(produce((state: AppState) => {
@@ -80,8 +90,9 @@ export const useAppStore = create<AppState>((set, get) => ({
             const existing = cart.items.find(i => i.uuid === product.uuid);
             if (existing) {
                 existing.cartQuantity += quantity;
+                existing.flash = true;
             } else {
-                cart.items.unshift({ ...product, cartQuantity: quantity } as any);
+                cart.items.unshift({ ...product, cartQuantity: quantity, flash: true } as any);
             }
         })),
 
@@ -95,6 +106,14 @@ export const useAppStore = create<AppState>((set, get) => ({
             const item = cart.items.find(i => i.uuid === uuid);
             if (item) {
                 item.cartQuantity = Math.max(1, qty);
+            }
+        })),
+
+        updateCartItemPrice: (uuid, price) => set(produce((state: AppState) => {
+            const cart = state.carts.find(c => c.id === state.activeCartId) || state.carts[0];
+            const item = cart.items.find(i => i.uuid === uuid);
+            if (item) {
+                item.price = Math.max(0, price);
             }
         })),
 
@@ -136,6 +155,11 @@ export const useAppStore = create<AppState>((set, get) => ({
         },
 
         clearLastCompletedSale: () => set({ lastCompletedSale: null }),
+
+        clearCartFlashes: () => set(produce((state: AppState) => {
+            const cart = state.carts.find(c => c.id === state.activeCartId) || state.carts[0];
+            cart.items.forEach(i => { (i as any).flash = false; });
+        })),
     }
 }));
 
