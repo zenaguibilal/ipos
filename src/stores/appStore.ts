@@ -2,7 +2,7 @@
 'use client';
 
 /**
- * @fileOverview Application State Manager (RECONSTRUCTED)
+ * @fileOverview Application State Manager (Enterprise Reconstruction)
  * Hardened for Stock Integrity, Cross-Cart Validation, and Type Safety.
  */
 
@@ -108,7 +108,11 @@ export const useAppStore = create<AppState>()(
             expenseViewMode: 'grid',
             lastCompletedSale: null,
             actions: {
-                setSession: (session) => set({ session, user: session?.user ?? null, sessionLoading: false }),
+                setSession: (session) => set({ 
+                    session, 
+                    user: session?.user ?? null, 
+                    sessionLoading: false 
+                }),
                 
                 signIn: async (email, password) => {
                     const session = await authService.signIn(email, password);
@@ -122,7 +126,13 @@ export const useAppStore = create<AppState>()(
                 
                 signOut: async () => {
                     await authService.signOut();
-                    set({ session: null, user: null, profile: null, carts: [initialCart], activeCartId: defaultCartId });
+                    set({ 
+                        session: null, 
+                        user: null, 
+                        profile: null, 
+                        carts: [initialCart], 
+                        activeCartId: defaultCartId 
+                    });
                 },
                 
                 fetchProfile: async () => {
@@ -149,15 +159,15 @@ export const useAppStore = create<AppState>()(
                     const isServiceItem = product.uuid === 'BREAD_PRODUCT' || product.uuid.startsWith('custom-');
                     
                     if (!isServiceItem) {
-                        // CROSS-CART STOCK TRACKING:
-                        // Validate total allocated quantity across ALL draft carts to prevent overselling.
+                        // CROSS-CART STOCK TRACKING
+                        // Ensures we don't allocate more items than physical stock across all sessions
                         const totalAllocated = state.carts.reduce((sum, c) => {
                             const item = c.items.find(i => i.uuid === product.uuid);
                             return sum + (item ? item.cartQuantity : 0);
                         }, 0);
 
                         if ((totalAllocated + quantity) > product.quantity) {
-                            toast.error(`Stock physique épuisé. Disponible : ${Math.max(0, product.quantity - totalAllocated)}`);
+                            toast.error(`Stock physique insuffisant. Disponible réel : ${Math.max(0, product.quantity - totalAllocated)}`);
                             return;
                         }
                     }
@@ -180,7 +190,6 @@ export const useAppStore = create<AppState>()(
                     if (qty <= 0) {
                         cart.items = cart.items.filter(i => i.uuid !== uuid);
                     } else {
-                        // Validate against total stock subtracting allocation in OTHER carts
                         const isServiceItem = uuid === 'BREAD_PRODUCT' || uuid.startsWith('custom-');
                         if (!isServiceItem) {
                             const othersAllocated = state.carts
@@ -188,7 +197,7 @@ export const useAppStore = create<AppState>()(
                                 .reduce((sum, c) => sum + (c.items.find(i => i.uuid === uuid)?.cartQuantity || 0), 0);
                             
                             if ((qty + othersAllocated) > item.quantity) {
-                                toast.error(`Action refusée : dépassement du stock physique.`);
+                                toast.error(`Action impossible : limite de stock atteinte.`);
                                 return;
                             }
                         }
@@ -232,7 +241,13 @@ export const useAppStore = create<AppState>()(
                 
                 createNewCart: () => set(produce((state: AppState) => {
                     const id = uuidv4();
-                    state.carts.push({ id, name: `Vente ${state.carts.length + 1}`, items: [], customerUuid: null, discount: { type: 'fixed', value: 0 } });
+                    state.carts.push({ 
+                        id, 
+                        name: `Vente ${state.carts.length + 1}`, 
+                        items: [], 
+                        customerUuid: null, 
+                        discount: { type: 'fixed', value: 0 } 
+                    });
                     state.activeCartId = id;
                 })),
                 
@@ -247,7 +262,13 @@ export const useAppStore = create<AppState>()(
                     state.carts = state.carts.filter(c => c.id !== id);
                     if (state.carts.length === 0) {
                         const newId = uuidv4();
-                        state.carts.push({ id: newId, name: 'Vente en cours', items: [], customerUuid: null, discount: { type: 'fixed', value: 0 } });
+                        state.carts.push({ 
+                            id: newId, 
+                            name: 'Vente en cours', 
+                            items: [], 
+                            customerUuid: null, 
+                            discount: { type: 'fixed', value: 0 } 
+                        });
                         state.activeCartId = newId;
                     } else if (state.activeCartId === id) {
                         state.activeCartId = state.carts[0].id;
@@ -271,7 +292,7 @@ export const useAppStore = create<AppState>()(
                         const customer = cart.customerUuid ? await customerService.getCustomerByUuid(cart.customerUuid) : null;
                         set({ lastCompletedSale: { sale, customer: customer || null } });
                         
-                        // Atomicity: Update stock and debts
+                        // Transactional Logic: Update stock and customer balances
                         for (const item of sale.items) {
                             if (item.productUuid && item.productUuid !== 'BREAD_PRODUCT') {
                                 await inventoryService.adjustStock(item.productUuid, -item.quantity, 'sale', sale.uuid);
@@ -283,10 +304,10 @@ export const useAppStore = create<AppState>()(
                         }
                         
                         state.actions.clearCart();
-                        toast.success("Vente finalisée.");
+                        toast.success("Vente finalisée et enregistrée.");
                         return true;
                     } catch (e: any) {
-                        toast.error(e.message || "Erreur de finalisation.");
+                        toast.error(e.message || "Échec de la finalisation.");
                         return false;
                     }
                 },
@@ -302,9 +323,12 @@ export const useAppStore = create<AppState>()(
                             }
                         }
                         if (ret.customerUuid) await customerService.recalculateCustomerStatus(ret.customerUuid);
-                        toast.success("Retour enregistré.");
+                        toast.success("Retour enregistré avec succès.");
                         return true;
-                    } catch (e: any) { toast.error(e.message); return false; }
+                    } catch (e: any) { 
+                        toast.error(e.message); 
+                        return false; 
+                    }
                 },
                 
                 processStockIntake: async (data) => {
@@ -337,21 +361,32 @@ export const useAppStore = create<AppState>()(
                                 const qty = i.quantity - i.quantityDamaged;
                                 if (qty > 0) await inventoryService.adjustStock(uuid, qty, 'stock_intake');
                                 finalItems.push({ 
-                                    productUuid: uuid, productName: i.name, quantityReceived: i.quantity, 
-                                    quantityDamaged: i.quantityDamaged, purchasePrice: i.purchasePrice, costPrice: cost 
+                                    productUuid: uuid, 
+                                    productName: i.name, 
+                                    quantityReceived: i.quantity, 
+                                    quantityDamaged: i.quantityDamaged, 
+                                    purchasePrice: i.purchasePrice, 
+                                    costPrice: cost 
                                 });
                             }
                         }
                         
                         await stockService.addStockIntake({ 
-                            supplierUuid: sup.uuid, invoiceNumber: data.invoiceNumber, invoiceDate: data.invoiceDate, 
-                            items: finalItems, totalValue: data.totalValue, transportFees: data.transportFees 
+                            supplierUuid: sup.uuid, 
+                            invoiceNumber: data.invoiceNumber, 
+                            invoiceDate: data.invoiceDate, 
+                            items: finalItems, 
+                            totalValue: data.totalValue, 
+                            transportFees: data.transportFees 
                         });
                         
                         await supplierService.updateSupplierBalance(sup.uuid, data.totalValue + data.transportFees);
-                        toast.success("Stock réapprovisionné.");
+                        toast.success("Réception de stock enregistrée.");
                         return true;
-                    } catch (e: any) { toast.error(e.message); return false; }
+                    } catch (e: any) { 
+                        toast.error(e.message); 
+                        return false; 
+                    }
                 },
                 
                 setProductViewMode: (m) => set({ productViewMode: m }),
@@ -364,13 +399,17 @@ export const useAppStore = create<AppState>()(
             }
         }),
         {
-            name: 'ipos-enterprise-final',
+            name: 'ipos-enterprise-storage-v2',
             storage: createJSONStorage(() => localStorage),
             partialize: (s) => ({ 
-                carts: s.carts, activeCartId: s.activeCartId, 
-                productViewMode: s.productViewMode, stockViewMode: s.stockViewMode, 
-                customerViewMode: s.customerViewMode, supplierViewMode: s.supplierViewMode, 
-                salesHistoryViewMode: s.salesHistoryViewMode, returnViewMode: s.returnViewMode, 
+                carts: s.carts, 
+                activeCartId: s.activeCartId, 
+                productViewMode: s.productViewMode, 
+                stockViewMode: s.stockViewMode, 
+                customerViewMode: s.customerViewMode, 
+                supplierViewMode: s.supplierViewMode, 
+                salesHistoryViewMode: s.salesHistoryViewMode, 
+                returnViewMode: s.returnViewMode, 
                 expenseViewMode: s.expenseViewMode 
             }),
             onRehydrateStorage: () => (s) => { if (s) s.sessionLoading = false; }

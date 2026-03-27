@@ -1,22 +1,15 @@
 
 -- iPOS Enterprise Schema Reconstruction
--- Fixes: RLS ownership verification for sub-tables, Function type conflicts, and Search performance.
-
--- Cleanup existing functions to prevent type mismatch errors
-DROP FUNCTION IF EXISTS search_sales(text, timestamptz, timestamptz);
-DROP FUNCTION IF EXISTS get_unique_product_categories();
-DROP FUNCTION IF EXISTS get_unique_customer_categories();
-DROP FUNCTION IF EXISTS get_unique_expense_categories();
+-- Fixes RLS policies for sub-tables and hardens data access
 
 -- 1. EXTENSIONS
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- 2. TABLES
--- Company Profile
-CREATE TABLE company_profile (
+CREATE TABLE IF NOT EXISTS public.company_profile (
     uuid UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-    company_name TEXT NOT NULL DEFAULT 'Mon Magasin',
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    company_name TEXT NOT NULL,
     address TEXT,
     city TEXT,
     zip_code TEXT,
@@ -30,31 +23,28 @@ CREATE TABLE company_profile (
     gold_price_per_gram NUMERIC DEFAULT 0,
     prix_pain NUMERIC DEFAULT 0,
     role TEXT DEFAULT 'admin',
-    updated_at TIMESTAMPTZ DEFAULT now(),
-    UNIQUE(user_id)
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Suppliers
-CREATE TABLE suppliers (
+CREATE TABLE IF NOT EXISTS public.suppliers (
     uuid UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     contact_person TEXT,
     phone TEXT,
     email TEXT,
     address TEXT,
     balance NUMERIC DEFAULT 0,
-    created_at TIMESTAMPTZ DEFAULT now(),
-    updated_at TIMESTAMPTZ DEFAULT now()
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Customers
-CREATE TABLE customers (
+CREATE TABLE IF NOT EXISTS public.customers (
     uuid UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     first_name TEXT NOT NULL,
     last_name TEXT NOT NULL,
-    search_name TEXT,
+    search_name TEXT NOT NULL,
     phone TEXT,
     address TEXT,
     notes TEXT,
@@ -64,42 +54,40 @@ CREATE TABLE customers (
     total_spent NUMERIC DEFAULT 0,
     outstanding_balance NUMERIC DEFAULT 0,
     last_activity_date TIMESTAMPTZ,
-    created_at TIMESTAMPTZ DEFAULT now(),
-    updated_at TIMESTAMPTZ DEFAULT now(),
     debt_status TEXT DEFAULT 'none',
-    is_over_limit BOOLEAN DEFAULT false,
-    is_bread_client BOOLEAN DEFAULT false,
+    is_over_limit BOOLEAN DEFAULT FALSE,
+    is_bread_client BOOLEAN DEFAULT FALSE,
     bread_type_recurrence TEXT DEFAULT 'aucun',
     bread_quantite_defaut INTEGER DEFAULT 0,
-    bread_jours_semaine JSONB DEFAULT '{}'::jsonb
+    bread_jours_semaine JSONB,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Products
-CREATE TABLE products (
+CREATE TABLE IF NOT EXISTS public.products (
     uuid UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     category TEXT DEFAULT 'Non classé',
-    price NUMERIC NOT NULL DEFAULT 0,
+    price NUMERIC NOT NULL,
     purchase_price NUMERIC DEFAULT 0,
-    quantity NUMERIC DEFAULT 0,
-    min_stock_level NUMERIC DEFAULT 10,
+    quantity INTEGER DEFAULT 0,
+    min_stock_level INTEGER DEFAULT 10,
     barcodes TEXT[] DEFAULT '{}',
     image_url TEXT,
     unite TEXT DEFAULT 'Pièce',
     date_expiration TIMESTAMPTZ,
-    supplier_uuid UUID REFERENCES suppliers(uuid) ON DELETE SET NULL,
-    date_maj_prix TIMESTAMPTZ DEFAULT now(),
+    supplier_uuid UUID REFERENCES public.suppliers(uuid) ON DELETE SET NULL,
+    date_maj_prix TIMESTAMPTZ DEFAULT NOW(),
     stock_status TEXT DEFAULT 'in_stock',
-    created_at TIMESTAMPTZ DEFAULT now(),
-    updated_at TIMESTAMPTZ DEFAULT now()
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Sales
-CREATE TABLE sales (
+CREATE TABLE IF NOT EXISTS public.sales (
     uuid UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-    invoice_number TEXT NOT NULL,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    invoice_number TEXT NOT NULL UNIQUE,
     subtotal NUMERIC NOT NULL,
     discount_type TEXT DEFAULT 'fixed',
     discount_amount NUMERIC DEFAULT 0,
@@ -107,228 +95,219 @@ CREATE TABLE sales (
     amount_paid NUMERIC DEFAULT 0,
     remaining_balance NUMERIC DEFAULT 0,
     payment_status TEXT DEFAULT 'paid',
-    payments JSONB DEFAULT '[]'::jsonb,
-    customer_uuid UUID REFERENCES customers(uuid) ON DELETE SET NULL,
+    payments JSONB DEFAULT '[]',
+    customer_uuid UUID REFERENCES public.customers(uuid) ON DELETE SET NULL,
     due_date TIMESTAMPTZ,
-    created_at TIMESTAMPTZ DEFAULT now(),
-    updated_at TIMESTAMPTZ DEFAULT now()
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Sale Items
-CREATE TABLE sale_items (
+CREATE TABLE IF NOT EXISTS public.sale_items (
     id BIGSERIAL PRIMARY KEY,
-    sale_uuid UUID REFERENCES sales(uuid) ON DELETE CASCADE NOT NULL,
-    product_uuid UUID REFERENCES products(uuid) ON DELETE SET NULL,
+    sale_uuid UUID NOT NULL REFERENCES public.sales(uuid) ON DELETE CASCADE,
+    product_uuid UUID REFERENCES public.products(uuid) ON DELETE SET NULL,
     name TEXT NOT NULL,
     price NUMERIC NOT NULL,
-    purchase_price NUMERIC NOT NULL,
-    quantity NUMERIC NOT NULL
+    purchase_price NUMERIC DEFAULT 0,
+    quantity INTEGER NOT NULL
 );
 
--- Expenses
-CREATE TABLE expenses (
+CREATE TABLE IF NOT EXISTS public.stock_intakes (
     uuid UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-    description TEXT NOT NULL,
-    category TEXT DEFAULT 'Autre',
-    amount NUMERIC NOT NULL,
-    expense_date TIMESTAMPTZ DEFAULT now(),
-    created_at TIMESTAMPTZ DEFAULT now(),
-    updated_at TIMESTAMPTZ DEFAULT now()
-);
-
--- Stock Intakes
-CREATE TABLE stock_intakes (
-    uuid UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-    supplier_uuid UUID REFERENCES suppliers(uuid) ON DELETE SET NULL,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    supplier_uuid UUID REFERENCES public.suppliers(uuid) ON DELETE SET NULL,
     invoice_number TEXT,
-    invoice_date TIMESTAMPTZ DEFAULT now(),
-    total_value NUMERIC DEFAULT 0,
+    invoice_date TIMESTAMPTZ DEFAULT NOW(),
+    total_value NUMERIC NOT NULL,
     transport_fees NUMERIC DEFAULT 0,
-    created_at TIMESTAMPTZ DEFAULT now(),
-    updated_at TIMESTAMPTZ DEFAULT now()
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Stock Intake Items
-CREATE TABLE stock_intake_items (
+CREATE TABLE IF NOT EXISTS public.stock_intake_items (
     id BIGSERIAL PRIMARY KEY,
-    intake_uuid UUID REFERENCES stock_intakes(uuid) ON DELETE CASCADE NOT NULL,
-    product_uuid UUID REFERENCES products(uuid) ON DELETE SET NULL,
+    intake_uuid UUID NOT NULL REFERENCES public.stock_intakes(uuid) ON DELETE CASCADE,
+    product_uuid UUID REFERENCES public.products(uuid) ON DELETE SET NULL,
     product_name TEXT NOT NULL,
-    quantity_received NUMERIC NOT NULL,
-    quantity_damaged NUMERIC DEFAULT 0,
+    quantity_received INTEGER NOT NULL,
+    quantity_damaged INTEGER DEFAULT 0,
     purchase_price NUMERIC NOT NULL,
     cost_price NUMERIC NOT NULL
 );
 
--- Inventory Logs
-CREATE TABLE inventory_logs (
+CREATE TABLE IF NOT EXISTS public.product_returns (
     uuid UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-    product_uuid UUID REFERENCES products(uuid) ON DELETE CASCADE NOT NULL,
-    change NUMERIC NOT NULL,
-    new_quantity NUMERIC NOT NULL,
-    reason TEXT NOT NULL,
-    related_uuid UUID,
-    created_at TIMESTAMPTZ DEFAULT now()
-);
-
--- Product Returns
-CREATE TABLE product_returns (
-    uuid UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-    original_sale_uuid UUID REFERENCES sales(uuid) ON DELETE SET NULL,
-    original_invoice_number TEXT NOT NULL,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    original_sale_uuid UUID REFERENCES public.sales(uuid) ON DELETE SET NULL,
+    original_invoice_number TEXT,
     total_return_value NUMERIC NOT NULL,
     amount_refunded NUMERIC DEFAULT 0,
-    customer_uuid UUID REFERENCES customers(uuid) ON DELETE SET NULL,
+    customer_uuid UUID REFERENCES public.customers(uuid) ON DELETE SET NULL,
     notes TEXT,
-    created_at TIMESTAMPTZ DEFAULT now(),
-    updated_at TIMESTAMPTZ DEFAULT now()
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Return Items
-CREATE TABLE return_items (
+CREATE TABLE IF NOT EXISTS public.return_items (
     id BIGSERIAL PRIMARY KEY,
-    return_uuid UUID REFERENCES product_returns(uuid) ON DELETE CASCADE NOT NULL,
-    product_uuid UUID REFERENCES products(uuid) ON DELETE SET NULL,
+    return_uuid UUID NOT NULL REFERENCES public.product_returns(uuid) ON DELETE CASCADE,
+    product_uuid UUID REFERENCES public.products(uuid) ON DELETE SET NULL,
     product_name TEXT NOT NULL,
-    quantity NUMERIC NOT NULL,
+    quantity INTEGER NOT NULL,
     price NUMERIC NOT NULL,
-    purchase_price NUMERIC NOT NULL,
-    was_restocked BOOLEAN DEFAULT true
+    purchase_price NUMERIC DEFAULT 0,
+    was_restocked BOOLEAN DEFAULT TRUE
 );
 
--- Payments (Customer to Merchant)
-CREATE TABLE payments (
+CREATE TABLE IF NOT EXISTS public.inventory_logs (
     uuid UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-    customer_uuid UUID REFERENCES customers(uuid) ON DELETE CASCADE NOT NULL,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    product_uuid UUID NOT NULL REFERENCES public.products(uuid) ON DELETE CASCADE,
+    change INTEGER NOT NULL,
+    new_quantity INTEGER NOT NULL,
+    reason TEXT NOT NULL,
+    related_uuid UUID,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.expenses (
+    uuid UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    description TEXT NOT NULL,
+    category TEXT NOT NULL,
     amount NUMERIC NOT NULL,
-    payment_date TIMESTAMPTZ DEFAULT now(),
-    notes TEXT,
-    created_at TIMESTAMPTZ DEFAULT now(),
-    updated_at TIMESTAMPTZ DEFAULT now()
+    expense_date TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Supplier Payments (Merchant to Supplier)
-CREATE TABLE supplier_payments (
+CREATE TABLE IF NOT EXISTS public.payments (
     uuid UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-    supplier_uuid UUID REFERENCES suppliers(uuid) ON DELETE CASCADE NOT NULL,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    customer_uuid UUID NOT NULL REFERENCES public.customers(uuid) ON DELETE CASCADE,
     amount NUMERIC NOT NULL,
-    payment_date TIMESTAMPTZ DEFAULT now(),
-    method TEXT DEFAULT 'cash',
+    payment_date TIMESTAMPTZ NOT NULL,
     notes TEXT,
-    created_at TIMESTAMPTZ DEFAULT now(),
-    updated_at TIMESTAMPTZ DEFAULT now()
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Bread Orders
-CREATE TABLE bread_orders (
+CREATE TABLE IF NOT EXISTS public.supplier_payments (
     uuid UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-    customer_uuid UUID REFERENCES customers(uuid) ON DELETE SET NULL,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    supplier_uuid UUID NOT NULL REFERENCES public.suppliers(uuid) ON DELETE CASCADE,
+    amount NUMERIC NOT NULL,
+    payment_date TIMESTAMPTZ NOT NULL,
+    method TEXT NOT NULL,
+    notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.bread_orders (
+    uuid UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    customer_uuid UUID REFERENCES public.customers(uuid) ON DELETE SET NULL,
     order_name TEXT NOT NULL,
-    date TEXT NOT NULL,
+    date DATE NOT NULL,
     quantite INTEGER NOT NULL,
     quantite_origine INTEGER,
-    est_paye BOOLEAN DEFAULT false,
-    est_livre BOOLEAN DEFAULT false,
-    vente_uuid UUID REFERENCES sales(uuid) ON DELETE SET NULL,
-    created_at TIMESTAMPTZ DEFAULT now(),
-    updated_at TIMESTAMPTZ DEFAULT now()
+    est_paye BOOLEAN DEFAULT FALSE,
+    est_livre BOOLEAN DEFAULT FALSE,
+    vente_uuid UUID REFERENCES public.sales(uuid) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Zakat History
-CREATE TABLE zakat_history (
+CREATE TABLE IF NOT EXISTS public.zakat_history (
     uuid UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     inventory_value NUMERIC NOT NULL,
     customer_debts NUMERIC NOT NULL,
-    bad_debts NUMERIC DEFAULT 0,
-    cash_on_hand NUMERIC DEFAULT 0,
+    bad_debts NUMERIC NOT NULL,
+    cash_on_hand NUMERIC NOT NULL,
     supplier_debts NUMERIC NOT NULL,
-    other_debts NUMERIC DEFAULT 0,
+    other_debts NUMERIC NOT NULL,
     gold_price NUMERIC NOT NULL,
     nisab NUMERIC NOT NULL,
     zakat_base NUMERIC NOT NULL,
     zakat_amount NUMERIC NOT NULL,
-    is_nisab_reached BOOLEAN DEFAULT false,
-    created_at TIMESTAMPTZ DEFAULT now()
+    is_nisab_reached BOOLEAN NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 3. SECURITY (RLS)
--- Enable RLS on all tables
-ALTER TABLE company_profile ENABLE ROW LEVEL SECURITY;
-ALTER TABLE suppliers ENABLE ROW LEVEL SECURITY;
-ALTER TABLE customers ENABLE ROW LEVEL SECURITY;
-ALTER TABLE products ENABLE ROW LEVEL SECURITY;
-ALTER TABLE sales ENABLE ROW LEVEL SECURITY;
-ALTER TABLE sale_items ENABLE ROW LEVEL SECURITY;
-ALTER TABLE expenses ENABLE ROW LEVEL SECURITY;
-ALTER TABLE stock_intakes ENABLE ROW LEVEL SECURITY;
-ALTER TABLE stock_intake_items ENABLE ROW LEVEL SECURITY;
-ALTER TABLE inventory_logs ENABLE ROW LEVEL SECURITY;
-ALTER TABLE product_returns ENABLE ROW LEVEL SECURITY;
-ALTER TABLE return_items ENABLE ROW LEVEL SECURITY;
-ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
-ALTER TABLE supplier_payments ENABLE ROW LEVEL SECURITY;
-ALTER TABLE bread_orders ENABLE ROW LEVEL SECURITY;
-ALTER TABLE zakat_history ENABLE ROW LEVEL SECURITY;
+-- 3. RLS HARDENING (Zero Mercy Policy)
+ALTER TABLE public.company_profile ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.suppliers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.customers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.sales ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.sale_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.stock_intakes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.stock_intake_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.product_returns ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.return_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.inventory_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.expenses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.payments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.supplier_payments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.bread_orders ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.zakat_history ENABLE ROW LEVEL SECURITY;
 
--- Dynamic Policy Generator for tables WITH user_id
-DO $$
+-- Dynamic Policies for tables with user_id
+DO $$ 
 DECLARE
-    t text;
+    tbl_name TEXT;
 BEGIN
-    FOR t IN 
-        SELECT table_name 
-        FROM information_schema.columns 
-        WHERE table_schema = 'public' 
-        AND column_name = 'user_id'
+    FOR tbl_name IN 
+        SELECT table_name FROM information_schema.columns 
+        WHERE table_schema = 'public' AND column_name = 'user_id'
     LOOP
-        EXECUTE format('CREATE POLICY "User can manage their own %I" ON public.%I USING (auth.uid() = user_id)', t, t);
+        EXECUTE format('DROP POLICY IF EXISTS "Owner manage %I" ON public.%I', tbl_name, tbl_name);
+        EXECUTE format('CREATE POLICY "Owner manage %I" ON public.%I USING (auth.uid() = user_id)', tbl_name, tbl_name);
     END LOOP;
 END $$;
 
--- Hardened Policies for sub-tables WITHOUT user_id (Verified Ownership via parent)
-CREATE POLICY "User can manage their own sale_items" ON public.sale_items 
-USING (EXISTS (SELECT 1 FROM public.sales WHERE sales.uuid = sale_items.sale_uuid AND sales.user_id = auth.uid()));
+-- Hardened Policies for sub-tables (joining with parent)
+-- FIX: Replaces direct user_id access with verified parent ownership checks
 
-CREATE POLICY "User can manage their own stock_intake_items" ON public.stock_intake_items 
-USING (EXISTS (SELECT 1 FROM public.stock_intakes WHERE stock_intakes.uuid = stock_intake_items.intake_uuid AND stock_intakes.user_id = auth.uid()));
+-- sale_items check via sales
+CREATE POLICY "Manage sale_items via sales" ON public.sale_items 
+USING (EXISTS (SELECT 1 FROM public.sales WHERE sales.uuid = sale_uuid AND sales.user_id = auth.uid()));
 
-CREATE POLICY "User can manage their own return_items" ON public.return_items 
-USING (EXISTS (SELECT 1 FROM public.product_returns WHERE product_returns.uuid = return_items.return_uuid AND product_returns.user_id = auth.uid()));
+-- stock_intake_items check via stock_intakes
+CREATE POLICY "Manage stock_intake_items via intakes" ON public.stock_intake_items 
+USING (EXISTS (SELECT 1 FROM public.stock_intakes WHERE stock_intakes.uuid = intake_uuid AND stock_intakes.user_id = auth.uid()));
 
--- 4. FUNCTIONS (RPC)
--- Search Sales with Date Range and Text Query
-CREATE OR REPLACE FUNCTION search_sales(p_search_query TEXT, p_from_date TIMESTAMPTZ, p_to_date TIMESTAMPTZ)
-RETURNS SETOF sales AS $$
+-- return_items check via product_returns
+CREATE POLICY "Manage return_items via returns" ON public.return_items 
+USING (EXISTS (SELECT 1 FROM public.product_returns WHERE product_returns.uuid = return_uuid AND product_returns.user_id = auth.uid()));
+
+-- 4. RPC FUNCTIONS
+DROP FUNCTION IF EXISTS get_unique_product_categories();
+CREATE OR REPLACE FUNCTION get_unique_product_categories()
+RETURNS TABLE(category TEXT) LANGUAGE plpgsql SECURITY DEFINER AS $$
 BEGIN
-    RETURN QUERY
-    SELECT s.*
-    FROM sales s
-    LEFT JOIN customers c ON s.customer_uuid = c.uuid
+    RETURN QUERY SELECT DISTINCT products.category FROM public.products WHERE products.user_id = auth.uid();
+END; $$;
+
+DROP FUNCTION IF EXISTS get_unique_customer_categories();
+CREATE OR REPLACE FUNCTION get_unique_customer_categories()
+RETURNS TABLE(category TEXT) LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+    RETURN QUERY SELECT DISTINCT customers.category FROM public.customers WHERE customers.user_id = auth.uid();
+END; $$;
+
+DROP FUNCTION IF EXISTS search_sales(text, timestamptz, timestamptz);
+CREATE OR REPLACE FUNCTION search_sales(p_query TEXT, p_from TIMESTAMPTZ, p_to TIMESTAMPTZ)
+RETURNS SETOF public.sales LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+    RETURN QUERY 
+    SELECT s.* 
+    FROM public.sales s
+    LEFT JOIN public.customers c ON s.customer_uuid = c.uuid
     WHERE s.user_id = auth.uid()
-    AND (p_search_query IS NULL OR s.invoice_number ILIKE '%' || p_search_query || '%' OR c.search_name ILIKE '%' || p_search_query || '%')
-    AND (p_from_date IS NULL OR s.created_at >= p_from_date)
-    AND (p_to_date IS NULL OR s.created_at <= p_to_date)
-    ORDER BY s.created_at DESC;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- Unique Categories Getters
-CREATE OR REPLACE FUNCTION get_unique_product_categories() RETURNS SETOF TEXT AS $$
-    SELECT DISTINCT category FROM products WHERE user_id = auth.uid() AND category IS NOT NULL;
-$$ LANGUAGE sql SECURITY DEFINER;
-
-CREATE OR REPLACE FUNCTION get_unique_customer_categories() RETURNS SETOF TEXT AS $$
-    SELECT DISTINCT category FROM customers WHERE user_id = auth.uid() AND category IS NOT NULL;
-$$ LANGUAGE sql SECURITY DEFINER;
-
-CREATE OR REPLACE FUNCTION get_unique_expense_categories() RETURNS SETOF TEXT AS $$
-    SELECT DISTINCT category FROM expenses WHERE user_id = auth.uid() AND category IS NOT NULL;
-$$ LANGUAGE sql SECURITY DEFINER;
+    AND (p_query IS NULL OR s.invoice_number ILIKE '%' || p_query || '%' OR c.search_name ILIKE '%' || p_query || '%')
+    AND (p_from IS NULL OR s.created_at >= p_from)
+    AND (p_to IS NULL OR s.created_at <= p_to);
+END; $$;
