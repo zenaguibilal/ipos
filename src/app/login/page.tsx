@@ -1,26 +1,23 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Eye, EyeOff, AlertCircle, Mail, Lock, LogIn, CheckCircle2 } from 'lucide-react';
+import { Loader2, Eye, EyeOff, AlertCircle, LogIn, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAppActions, useAppStore } from '@/stores/appStore';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 
 /**
- * @fileOverview HARDENED AUTHENTICATION GATEWAY
- * Implements Hard Synchronization Redirect Protocol.
+ * @fileOverview THE AUTH GATEWAY
+ * Implements Hard-Synchronization Redirect Protocol.
  */
 
 export default function LoginPage() {
-    const router = useRouter();
     const { setSession } = useAppActions();
     const session = useAppStore(state => state.session);
 
@@ -32,21 +29,17 @@ export default function LoginPage() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
 
-    /**
-     * @protocol HARD_REDIRECT_WITH_SYNC
-     * Eliminates Next.js Middleware cookie synchronization race conditions.
-     */
-    const performRedirect = useCallback(() => {
+    const performRedirect = () => {
         setLoginSuccess(true);
-        router.refresh();
+        // Protocol: Hard refresh ensures middleware correctly parses the newly written cookie.
         setTimeout(() => {
             window.location.href = '/dashboard';
-        }, 800);
-    }, [router]);
+        }, 500);
+    };
 
     useEffect(() => {
         if (session) performRedirect();
-    }, [session, performRedirect]);
+    }, [session]);
 
     const handleSignIn = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -62,19 +55,19 @@ export default function LoginPage() {
             setIsLoading(false);
         } else {
             setSession(data.session);
-            toast.success("Synchronisation de la session...");
+            toast.success("Synchronisation...");
         }
     };
 
     return (
         <div className="flex min-h-screen w-full items-center justify-center bg-background p-4 relative overflow-hidden">
-            <div className="w-full max-w-md z-10 space-y-8 animate-in fade-in duration-700">
+            <div className="w-full max-w-md z-10 space-y-8">
                 <div className="text-center space-y-3">
                     <div className="flex justify-center mb-2">
-                        <Image src="/icon.svg" alt="iPOS logo" width={56} height={56} priority />
+                        <Image src="/icon.svg" alt="logo" width={56} height={56} priority />
                     </div>
                     <h1 className="text-4xl font-black text-primary tracking-tighter uppercase italic">iPOS</h1>
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground opacity-60">Absolute System Domination</p>
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground opacity-60">Absolute Architecture enforced</p>
                 </div>
 
                 {loginSuccess ? (

@@ -1,24 +1,23 @@
-import { createClient } from '@/utils/supabase/server';
 import { NextResponse } from 'next/server';
-
-/**
- * @fileOverview API WALL - CUSTOMERS
- */
+import { CustomerRepository } from '@/repositories/customer.repository';
 
 export async function GET() {
-    const supabase = createClient();
-    const { data, error } = await supabase.from('customers').select('*').order('last_name');
-    
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json({ data });
+    try {
+        const repo = new CustomerRepository();
+        const data = await repo.getAll();
+        return NextResponse.json({ data });
+    } catch (e: any) {
+        return NextResponse.json({ error: e.message }, { status: 500 });
+    }
 }
 
 export async function POST(req: Request) {
-    const supabase = createClient();
-    const body = await req.json();
-    
-    const { data, error } = await supabase.from('customers').insert([body]).select().single();
-    
-    if (error) return NextResponse.json({ error: error.message }, { status: 400 });
-    return NextResponse.json({ data });
+    try {
+        const body = await req.json();
+        const repo = new CustomerRepository();
+        const data = await repo.create(body);
+        return NextResponse.json({ data });
+    } catch (e: any) {
+        return NextResponse.json({ error: e.message }, { status: 400 });
+    }
 }

@@ -3,14 +3,9 @@
 import { create } from 'zustand';
 import { produce } from 'immer';
 import type { Session, User } from '@supabase/supabase-js';
-import type { Cart, CompanyProfile, Product, Sale } from '@/lib/types';
+import type { Cart, CompanyProfile, Product, Sale, Customer } from '@/lib/types';
 import { v4 as uuidv4 } from 'uuid';
 import { api } from '@/lib/api-client';
-
-/**
- * @fileOverview THE STATE SINGULARITY
- * Absolute runtime authority. No persistence leaks.
- */
 
 interface AppState {
     session: Session | null;
@@ -19,18 +14,17 @@ interface AppState {
     sessionLoading: boolean;
     carts: Cart[];
     activeCartId: string;
-    lastCompletedSale: { sale: Sale; customer?: any } | null;
+    lastCompletedSale: { sale: Sale; customer?: Customer } | null;
     actions: {
         setSession: (session: Session | null) => void;
         fetchProfile: () => Promise<void>;
         signOut: () => Promise<void>;
-        // Cart Operations
         createNewCart: () => void;
         switchToCart: (id: string) => void;
         addProductToCart: (product: Product, quantity: number) => void;
         removeCartItem: (uuid: string) => void;
         updateCartItemQuantity: (uuid: string, qty: number) => void;
-        setCartCustomer: (customer: any | null) => void;
+        setCartCustomer: (customer: Customer | null) => void;
         setCartDiscount: (discount: { type: 'fixed' | 'percentage', value: number }) => void;
         clearCart: () => void;
         finalizeSale: (paymentData: any) => Promise<void>;
@@ -61,10 +55,10 @@ export const useAppStore = create<AppState>((set, get) => ({
 
         fetchProfile: async () => {
             try {
-                const profile = await api.request<CompanyProfile>('profile');
+                const profile = await api.get<CompanyProfile>('profile');
                 set({ profile });
             } catch (e) {
-                console.error("Profile recovery failed.");
+                set({ profile: null });
             }
         },
 
@@ -87,7 +81,7 @@ export const useAppStore = create<AppState>((set, get) => ({
             if (existing) {
                 existing.cartQuantity += quantity;
             } else {
-                cart.items.unshift({ ...product, cartQuantity: quantity });
+                cart.items.unshift({ ...product, cartQuantity: quantity } as any);
             }
         })),
 
@@ -133,9 +127,9 @@ export const useAppStore = create<AppState>((set, get) => ({
                 ...paymentData
             };
 
-            const result = await api.post('sales', saleData);
+            const result = await api.post<Sale>('sales', saleData);
             set(produce((state: AppState) => {
-                state.lastCompletedSale = result;
+                state.lastCompletedSale = { sale: result };
                 const index = state.carts.findIndex(c => c.id === state.activeCartId);
                 state.carts[index] = createInitialCart(state.activeCartId);
             }));

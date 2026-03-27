@@ -1,26 +1,14 @@
-
 'use client';
 
-import { useEffect } from 'react';
 import { ThemeProvider } from '@/components/layout/theme-provider';
 import { Toaster } from '@/components/ui/sonner';
 
-export function ClientProviders({ children }: { children: React.ReactNode }) {
-    useEffect(() => {
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/service-worker.js').then(
-                    (registration) => {
-                        console.log('Service Worker registration successful with scope: ', registration.scope);
-                    },
-                    (err) => {
-                        console.log('Service Worker registration failed: ', err);
-                    }
-                );
-            });
-        }
-    }, []);
+/**
+ * @fileOverview THE PROVIDER ROOT
+ * Purged of all legacy persistence and service worker registration.
+ */
 
+export function ClientProviders({ children }: { children: React.ReactNode }) {
     return (
         <ThemeProvider
             attribute="class"

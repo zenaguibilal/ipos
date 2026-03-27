@@ -2,13 +2,11 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 /**
- * @fileOverview AUTHENTICATION SENTRY
+ * @fileOverview THE SYSTEM SENTRY
  * Final layer of defense. Pure server-side authority.
  */
 export async function middleware(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({
-    request,
-  })
+  let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -34,9 +32,9 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  const isAuthRoute = request.nextUrl.pathname.startsWith('/login')
-  const isPublicAsset = request.nextUrl.pathname.includes('.') || 
-                       request.nextUrl.pathname.startsWith('/_next')
+  const path = request.nextUrl.pathname
+  const isAuthRoute = path.startsWith('/login')
+  const isPublicAsset = path.includes('.') || path.startsWith('/_next')
 
   if (!user && !isAuthRoute && !isPublicAsset) {
     const url = request.nextUrl.clone()
