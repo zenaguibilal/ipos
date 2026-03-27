@@ -5,18 +5,18 @@ import React, { useState, useMemo, forwardRef, useImperativeHandle, useRef, useE
 import type { Product } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
-import { Barcode, PackagePlus } from 'lucide-react';
+import { Barcode, PackagePlus, Search, ArrowRight, Star, Tag } from 'lucide-react';
 import Image from 'next/image';
 import { Button } from '../ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Label } from '../ui/label';
-import { formatCurrency, getPlaceholder } from '@/lib/utils';
-import { cn } from '@/lib/utils';
+import { formatCurrency, getPlaceholder, cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useDebounce } from '@/hooks/useDebounce';
 import { api } from '@/lib/api-client';
 import { useAppStore } from '@/stores/appStore';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Badge } from '../ui/badge';
 
 interface ProductSearchProps {
     onProductSelect: (product: Product, quantity: number) => void;
@@ -43,26 +43,29 @@ const CustomProductDialog = ({ isOpen, onOpenChange, onAdd }: { isOpen: boolean,
   
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-          <DialogContent>
+          <DialogContent className="luxury-glass border-primary/20">
             <DialogHeader>
-              <DialogTitle>Ajouter un produit personnalisé</DialogTitle>
-              <DialogDescription>
-                Créez un article temporaire qui ne sera pas sauvegardé dans votre inventaire.
+              <DialogTitle className="flex items-center gap-2">
+                <PackagePlus className="h-5 w-5 text-primary" />
+                Article Temporaire (Volant)
+              </DialogTitle>
+              <DialogDescription className="text-xs uppercase font-bold opacity-60">
+                Créez un article ponctuel sans l'enregistrer dans l'inventaire permanent.
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4 py-4">
+            <div className="space-y-6 py-6">
               <div className="space-y-2">
-                <Label htmlFor="custom-name">Nom du produit</Label>
-                <Input id="custom-name" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+                <Label className="text-[10px] font-black uppercase tracking-widest opacity-60">Désignation du produit</Label>
+                <Input value={name} onChange={(e) => setName(e.target.value)} autoFocus className="h-14 rounded-2xl bg-background/40 border-white/5 font-bold" placeholder="Ex: Service Minute, Remballage..." />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="custom-price">Prix</Label>
-                <Input id="custom-price" type="number" value={price} onChange={(e) => setPrice(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleAdd()} />
+                <Label className="text-[10px] font-black uppercase tracking-widest opacity-60">Prix de vente (DA)</Label>
+                <Input type="number" value={price} onChange={(e) => setPrice(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleAdd()} className="h-14 rounded-2xl bg-background/40 border-white/5 font-black text-2xl text-primary" placeholder="0.00" />
               </div>
             </div>
             <DialogFooter>
-              <Button variant="ghost" onClick={() => onOpenChange(false)}>Annuler</Button>
-              <Button onClick={handleAdd}>Ajouter au panier</Button>
+              <Button variant="ghost" onClick={() => onOpenChange(false)} className="rounded-xl font-bold uppercase text-[10px] tracking-widest">Annuler</Button>
+              <Button onClick={handleAdd} className="bg-primary hover:bg-primary/90 px-8 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg shadow-primary/20">Ajouter au Panier</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -88,18 +91,12 @@ export const ProductSearch = forwardRef<{focus: () => void, openCustomProductDia
 
     const fetchCategories = useCallback(async () => {
         try {
-            // Updated to use direct API Wall
             const cats = await api.get<string[]>('products/categories');
             setCategories(cats);
         } catch (e) { toast.error("Impossible de charger les catégories.")}
     }, []);
 
     const fetchProducts = useCallback(async () => {
-        if (!debouncedQuery.trim() && selectedCategory === 'all') {
-            setProducts([]);
-            return;
-        }
-
         try {
             const queryParams = new URLSearchParams({
                 query: debouncedQuery,
@@ -153,9 +150,10 @@ export const ProductSearch = forwardRef<{focus: () => void, openCustomProductDia
         if (availableQuantity > 0) {
             onProductSelect(product, 1);
             setQuery('');
+            setSelectedIndex(-1);
             inputRef.current?.focus();
         } else {
-            toast.warning(`Stock insuffisant.`);
+            toast.warning(`Stock insuffisant pour ${product.name}.`);
         }
     }, [cartQuantities, onProductSelect]);
 
@@ -167,7 +165,7 @@ export const ProductSearch = forwardRef<{focus: () => void, openCustomProductDia
             if (product) {
                 handleSelectProduct(product);
             } else {
-                toast.error("Produit non trouvé.");
+                toast.error("Code-barres inconnu.");
             }
         } catch (error) {
             toast.error("Erreur de recherche.");
@@ -213,57 +211,68 @@ export const ProductSearch = forwardRef<{focus: () => void, openCustomProductDia
             e.preventDefault();
             if (selectedIndex >= 0 && selectedIndex < products.length) {
                 handleSelectProduct(products[selectedIndex]);
-            } else if (products?.length === 1) {
+            } else if (products?.length === 1 && query.trim()) {
                 handleSelectProduct(products[0]);
             } else {
-                handleBarcodeScanned(e.currentTarget.value);
+                handleBarcodeScanned(query);
             }
         }
-    }, [products, selectedIndex, handleSelectProduct, handleBarcodeScanned]);
+    }, [products, selectedIndex, handleSelectProduct, query]);
 
     return (
-        <div className="p-4 flex flex-col h-full bg-transparent">
-            <div className="relative mb-4">
-                <Barcode className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                <Input 
-                    ref={inputRef}
-                    placeholder="Scanner ou rechercher... (F1)"
-                    className="pl-10 h-12 text-base"
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    autoFocus
-                />
-            </div>
-            
-            <ScrollArea className="w-full whitespace-nowrap -mx-2 px-2">
-                <div className="flex space-x-2 pb-2">
-                    <Button 
-                        variant={selectedCategory === 'all' ? 'secondary' : 'ghost'}
-                        size="sm"
-                        onClick={() => setSelectedCategory('all')}
-                        className="rounded-full"
-                    >
-                        Toutes
-                    </Button>
-                    {categories?.map(cat => (
-                        <Button 
-                            key={cat}
-                            variant={selectedCategory === cat ? 'secondary' : 'ghost'}
-                            size="sm"
-                            onClick={() => setSelectedCategory(cat)}
-                            className="rounded-full"
-                        >
-                            {cat}
-                        </Button>
-                    ))}
+        <div className="p-6 flex flex-col h-full bg-transparent">
+            <div className="space-y-6 flex-shrink-0">
+                <div className="relative group">
+                    <div className="absolute inset-0 bg-primary/10 blur-xl opacity-0 group-focus-within:opacity-100 transition-opacity duration-500 rounded-full" />
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary opacity-40 group-focus-within:opacity-100 transition-opacity" />
+                    <Input 
+                        ref={inputRef}
+                        placeholder="Scanner ou rechercher... (F1)"
+                        className="pl-12 h-14 rounded-2xl bg-background/40 border-white/5 focus:border-primary/40 focus:ring-0 font-bold text-lg relative z-10 transition-all shadow-inner"
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        autoFocus
+                    />
                 </div>
-                <ScrollBar orientation="horizontal" />
-            </ScrollArea>
+                
+                <div className="flex flex-col gap-3">
+                    <div className="flex items-center gap-2">
+                        <Tag className="h-3 w-3 text-primary opacity-50" />
+                        <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Rayons & Catégories</span>
+                    </div>
+                    <ScrollArea className="w-full whitespace-nowrap -mx-2 px-2">
+                        <div className="flex space-x-2 pb-3">
+                            <Button 
+                                variant={selectedCategory === 'all' ? 'secondary' : 'ghost'}
+                                size="sm"
+                                onClick={() => setSelectedCategory('all')}
+                                className={cn("rounded-xl h-9 px-5 uppercase font-black text-[10px] tracking-widest transition-all", selectedCategory === 'all' ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20" : "hover:bg-primary/10")}
+                            >
+                                Tout le stock
+                            </Button>
+                            {categories?.map(cat => (
+                                <Button 
+                                    key={cat}
+                                    variant={selectedCategory === cat ? 'secondary' : 'ghost'}
+                                    size="sm"
+                                    onClick={() => setSelectedCategory(cat)}
+                                    className={cn("rounded-xl h-9 px-5 uppercase font-black text-[10px] tracking-widest transition-all", selectedCategory === cat ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20" : "hover:bg-primary/10 border border-white/5 bg-white/5")}
+                                >
+                                    {cat}
+                                </Button>
+                            ))}
+                        </div>
+                        <ScrollBar orientation="horizontal" />
+                    </ScrollArea>
+                </div>
+            </div>
+
+            <Separator className="my-4 bg-white/5" />
 
             <ScrollArea className="flex-grow -mx-4 mt-2">
-                <div className="space-y-1 px-4">
-                    {products?.map((product, index) => {
+                <div className="space-y-2 px-4 pb-10">
+                    {products?.length > 0 ? products.map((product, index) => {
                         const inCartQuantity = cartQuantities.get(product.uuid) || 0;
                         const availableQuantity = product.quantity - inCartQuantity;
                         return (
@@ -273,32 +282,36 @@ export const ProductSearch = forwardRef<{focus: () => void, openCustomProductDia
                                 product={product}
                                 availableQuantity={availableQuantity}
                                 onClick={() => handleSelectProduct(product)}
-                                isLast={index === products.length - 1}
                                 isSelected={index === selectedIndex}
                             />
                         )
-                    })}
-                     {products?.length === 0 && (
-                        <div className="text-center text-muted-foreground py-8">
-                            {query.trim() || selectedCategory !== 'all' ? (
-                                <p>Aucun produit trouvé.</p>
-                            ) : (
-                                <p>Commencez à taper pour rechercher.</p>
-                            )}
+                    }) : (
+                        <div className="flex flex-col items-center justify-center py-20 text-center space-y-4 opacity-30 grayscale">
+                            <Barcode className="h-16 w-16" />
+                            <div className="space-y-1">
+                                <p className="font-black uppercase text-xs tracking-widest">En attente de saisie</p>
+                                <p className="text-[10px] italic">Scanner un article ou tapez son nom</p>
+                            </div>
                         </div>
-                     )}
+                    )}
                 </div>
             </ScrollArea>
-             <div className="mt-4 flex-shrink-0">
+
+             <div className="mt-4 pt-4 border-t border-white/5 flex-shrink-0">
                 <TooltipProvider>
                     <Tooltip>
                         <TooltipTrigger asChild>
-                            <Button variant="outline" onClick={() => setIsCustomProductDialogOpen(true)} className="w-full">
-                                <PackagePlus className="mr-2 h-4 w-4" /> Ajouter un produit personnalisé
+                            <Button 
+                                variant="outline" 
+                                onClick={() => setIsCustomProductDialogOpen(true)} 
+                                className="w-full h-12 rounded-xl border-dashed border-primary/30 text-primary hover:bg-primary/5 font-black uppercase text-[10px] tracking-widest gap-2"
+                            >
+                                <PackagePlus className="h-4 w-4" /> 
+                                Produit Hors-Stock (F10)
                             </Button>
                         </TooltipTrigger>
-                        <TooltipContent>
-                            <p>Ajouter un article non inventorié (F10)</p>
+                        <TooltipContent className="luxury-glass">
+                            <p className="text-[10px] font-bold">Ajouter un article non référencé</p>
                         </TooltipContent>
                     </Tooltip>
                 </TooltipProvider>
@@ -317,11 +330,10 @@ interface ListItemProps {
     product: Product;
     availableQuantity: number;
     onClick: () => void;
-    isLast: boolean;
     isSelected: boolean;
 }
 
-const ListItem = React.memo(React.forwardRef<HTMLButtonElement, ListItemProps>(({ product, availableQuantity, onClick, isLast, isSelected }, ref) => {
+const ListItem = React.memo(React.forwardRef<HTMLButtonElement, ListItemProps>(({ product, availableQuantity, onClick, isSelected }, ref) => {
     const isAvailable = availableQuantity > 0;
     const placeholder = getPlaceholder(product.category);
 
@@ -331,25 +343,37 @@ const ListItem = React.memo(React.forwardRef<HTMLButtonElement, ListItemProps>((
             onClick={onClick}
             disabled={!isAvailable}
             className={cn(
-                "w-full text-left flex items-center gap-4 p-2 rounded-lg hover:bg-primary/10 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed",
-                !isLast && "border-b border-white/5",
-                isSelected && "bg-primary/20 ring-2 ring-primary"
+                "w-full text-left flex items-center gap-4 p-3 rounded-2xl transition-all duration-300 group/item relative overflow-hidden",
+                isSelected ? "bg-primary/20 ring-2 ring-primary shadow-2xl scale-[1.02] z-10" : "hover:bg-white/5 border border-white/5",
+                !isAvailable && "opacity-40 grayscale"
             )}
         >
-            <Image
-                src={product.imageUrl || placeholder.url}
-                alt={product.name}
-                width={40}
-                height={40}
-                className="w-10 h-10 object-cover rounded-md flex-shrink-0"
-                unoptimized
-            />
-            <div className="flex-grow overflow-hidden">
-                <p className="font-semibold truncate">{product.name}</p>
-                <p className="text-sm text-muted-foreground">{formatCurrency(product.price)}</p>
+            <div className="h-12 w-12 rounded-xl overflow-hidden bg-muted relative shrink-0">
+                <Image
+                    src={product.imageUrl || placeholder.url}
+                    alt={product.name}
+                    fill
+                    className="object-cover transition-transform group-hover/item:scale-110 duration-500"
+                    unoptimized
+                />
             </div>
-            <div className="text-sm text-muted-foreground flex-shrink-0">
-                Stock: {availableQuantity === Infinity ? '∞' : availableQuantity}
+            
+            <div className="flex-grow overflow-hidden space-y-0.5">
+                <p className="font-bold truncate text-sm uppercase tracking-tight">{product.name}</p>
+                <div className="flex items-center gap-3">
+                    <p className="text-[10px] font-black text-primary tracking-widest">{formatCurrency(product.price)}</p>
+                    <span className="h-1 w-1 rounded-full bg-white/10" />
+                    <p className="text-[10px] text-muted-foreground uppercase font-medium">Stock: {availableQuantity === Infinity ? '∞' : availableQuantity} {product.unite}</p>
+                </div>
+            </div>
+
+            <div className={cn(
+                "flex-shrink-0 transition-all transform",
+                isSelected ? "translate-x-0 opacity-100" : "translate-x-4 opacity-0"
+            )}>
+                <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center text-primary-foreground shadow-lg">
+                    <ArrowRight className="h-4 w-4" />
+                </div>
             </div>
         </button>
     );

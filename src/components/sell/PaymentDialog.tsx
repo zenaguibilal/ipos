@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -13,9 +14,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import type { Cart, CartItem, Customer, SalePayment } from '@/lib/types';
-import { Loader2, CreditCard, Banknote, AlertTriangle } from 'lucide-react';
-import { formatCurrency, calculateCartTotals } from '@/lib/utils';
-import { cn } from '@/lib/utils';
+import { Loader2, CreditCard, Banknote, AlertTriangle, ShieldCheck, Wallet, HandCoins, ArrowRight } from 'lucide-react';
+import { formatCurrency, calculateCartTotals, cn } from '@/lib/utils';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Separator } from '@/components/ui/separator';
 import { useAppActions } from '@/stores/appStore';
@@ -48,13 +48,14 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, cartCustomer }: Paym
     const creditAmountNum = parseFloat(creditAmountStr) || 0;
     
     let change = 0;
-    if (paymentMode === 'cash' || paymentMode === 'card' || paymentMode === 'other') {
+    if (['cash', 'card', 'other'].includes(paymentMode)) {
         change = cashAmountNum - total;
     }
     const debtFromThisSale = paymentMode === 'credit' ? total : (paymentMode === 'mixed' ? creditAmountNum : 0);
     const newTotalOutstanding = (cartCustomer?.outstandingBalance ?? 0) + debtFromThisSale;
     const creditAvailable = (cartCustomer?.creditLimit ?? 0) - (cartCustomer?.outstandingBalance ?? 0);
     const creditUsage = cartCustomer?.creditLimit && cartCustomer.creditLimit > 0 ? (newTotalOutstanding / cartCustomer.creditLimit) * 100 : 0;
+    const isOverLimit = cartCustomer?.creditLimit && cartCustomer.creditLimit > 0 && newTotalOutstanding > cartCustomer.creditLimit;
 
     const initializePayment = useCallback(() => {
         setPaymentMode('cash');
@@ -73,23 +74,18 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, cartCustomer }: Paym
             } else {
                 initializePayment();
             }
-        } else if (!isOpen) {
-            setIsLoading(false);
-            // Don't call initializePayment here to avoid resetting state while dialog is closing
         }
     }, [isOpen, cart, initializePayment]);
     
     const handlePaymentModeChange = (mode: PaymentMode) => {
         setPaymentMode(mode);
-        if (mode === 'cash' || mode === 'card' || mode === 'other') {
+        if (['cash', 'card', 'other'].includes(mode)) {
             setCashAmountStr(String(total));
             setCreditAmountStr('0');
-        }
-        if (mode === 'credit') {
+        } else if (mode === 'credit') {
             setCashAmountStr('0');
             setCreditAmountStr(String(total));
-        }
-        if (mode === 'mixed') {
+        } else {
             setCashAmountStr('');
             setCreditAmountStr('');
         }
@@ -99,198 +95,243 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, cartCustomer }: Paym
         if (e) e.preventDefault();
         if (!cart) return;
 
-        const cashVal = parseFloat(cashAmountStr);
-        const creditVal = parseFloat(creditAmountStr);
+        const cashVal = parseFloat(cashAmountStr) || 0;
+        const creditVal = parseFloat(creditAmountStr) || 0;
 
         let amountPaid = 0;
         const payments: SalePayment[] = [];
         let debtAmount = 0;
         
-        // --- Validation and Logic per mode ---
         switch (paymentMode) {
             case 'cash':
             case 'card':
             case 'other':
-                if (isNaN(cashVal) || cashVal < 0) {
-                    toast.error("Veuillez entrer un montant payé valide."); return;
-                }
-                if (!cartCustomer && cashVal < total) {
-                    toast.error("Paiement insuffisant.", { description: "Le paiement doit couvrir le total pour un client de passage." });
-                    return;
+                if (cashVal < total && !cartCustomer) {
+                    toast.error("Paiement insuffisant pour un client de passage."); return;
                 }
                 amountPaid = cashVal;
-                if(amountPaid > 0) payments.push({ method: paymentMode, amount: total });
+                payments.push({ method: paymentMode, amount: total });
                 break;
-
             case 'credit':
-                amountPaid = 0;
                 debtAmount = total;
                 break;
-            
             case 'mixed':
-                 if (isNaN(cashVal) || cashVal < 0 || isNaN(creditVal) || creditVal < 0) {
-                    toast.error("Veuillez entrer des montants valides pour le paiement mixte."); return;
-                }
-                if (Math.abs(cashVal + creditVal - total) > 0.01) {
-                    toast.error("La somme du montant payé et du montant à crédit doit être égale au total."); return;
+                if (Math.abs(cashVal + creditVal - total) > 0.1) {
+                    toast.error("La répartition doit égaler le total."); return;
                 }
                 amountPaid = cashVal;
                 debtAmount = creditVal;
-                if(amountPaid > 0) payments.push({ method: 'cash', amount: amountPaid });
+                if (amountPaid > 0) payments.push({ method: 'cash', amount: amountPaid });
                 break;
         }
 
-        // --- Shared Credit Validation ---
         if (debtAmount > 0) {
-             if (!cartCustomer) {
-                toast.error("Un client doit être seleccionado pour une vente à crédit."); return;
+            if (!cartCustomer) {
+                toast.error("Vente à crédit impossible sans client."); return;
             }
-            const newDebt = (cartCustomer.outstandingBalance ?? 0) + debtAmount;
-            if (cartCustomer.creditLimit != null && newDebt > cartCustomer.creditLimit) {
-                toast.error("La limite de crédit du client est dépassée.", {
-                    description: `Le nouveau solde (${formatCurrency(newDebt)}) dépasserait la limite (${formatCurrency(cartCustomer.creditLimit)}).`
-                });
+            if (isOverLimit) {
+                toast.error("Plafond de crédit dépassé.", { description: "Veuillez réduire le montant à crédit ou encaisser une partie de la dette." });
                 return;
             }
         }
         
         setIsLoading(true);
         try {
-            await finalizeSale({
+            const success = await finalizeSale({
                 amountPaid: amountPaid,
                 payments,
-                dueDate: debtAmount > 0 ? dueDate : undefined,
+                remainingBalance: debtAmount,
+                paymentStatus: debtAmount > 0 ? (amountPaid > 0 ? 'partial' : 'unpaid') : 'paid',
+                dueDate: debtAmount > 0 ? dueDate?.toISOString() : undefined,
             });
-            onOpenChange(false);
-            initializePayment();
-        } catch (error: any) {
-             // Error is already toasted by the finalizeSale action
+            if (success) {
+                onOpenChange(false);
+                initializePayment();
+            }
+        } catch (error) {
+            // Error handled by store
         } finally {
             setIsLoading(false);
         }
     };
     
-    const closeAndReset = () => {
-        onOpenChange(false);
-        initializePayment();
-    }
-    
-    const handleLossAlertConfirm = () => {
-        setShowLossAlert(false);
-        initializePayment();
-    };
-
     if (!isOpen) return null;
 
     return (
         <>
             <AlertDialog open={showLossAlert} onOpenChange={setShowLossAlert}>
-                <AlertDialogContent>
+                <AlertDialogContent className="luxury-glass border-destructive/20">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="flex items-center gap-2"><AlertTriangle className="text-destructive"/>Vente à perte détectée</AlertDialogTitle>
+                        <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+                            <AlertTriangle className="h-6 w-6"/>
+                            Vente à perte détectée
+                        </AlertDialogTitle>
                         <AlertDialogDescription>
-                            Les produits suivants ont un prix de vente inférieur à leur prix d'achat. Êtes-vous sûr de vouloir continuer ?
-                            <ul className="list-disc pl-5 mt-2 text-destructive/80 font-medium">
-                                {lossItems.map(item => <li key={item.uuid}>{item.name}</li>)}
+                            Certains articles sont vendus en dessous de leur prix d'achat. Voulez-vous vraiment continuer ?
+                            <ul className="mt-4 space-y-1">
+                                {lossItems.map(item => (
+                                    <li key={item.uuid} className="text-xs font-bold text-destructive/80 p-2 bg-destructive/5 rounded-lg border border-destructive/10">
+                                        {item.name} (Revient: {formatCurrency(item.purchasePrice)} | Vente: {formatCurrency(item.price)})
+                                    </li>
+                                ))}
                             </ul>
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel onClick={() => onOpenChange(false)}>Modifier la vente</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleLossAlertConfirm} className={cn("bg-destructive hover:bg-destructive/80")}>Continuer quand même</AlertDialogAction>
+                        <AlertDialogAction onClick={handleLossAlertConfirm} className="bg-destructive hover:bg-destructive/90">Autoriser & Continuer</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
 
-            <Dialog open={isOpen && !showLossAlert} onOpenChange={(open) => !open && closeAndReset()}>
-                <DialogContent className="sm:max-w-lg">
+            <Dialog open={isOpen && !showLossAlert} onOpenChange={(open) => !open && onOpenChange(false)}>
+                <DialogContent className="sm:max-w-xl luxury-glass border-white/10 p-0 overflow-hidden shadow-2xl">
                     <form onSubmit={handleFinalize}>
-                        <DialogHeader>
-                            <DialogTitle>Finaliser la vente</DialogTitle>
-                            {cartCustomer && (
-                                <DialogDescription>
-                                    Client: <span className="font-bold">{cartCustomer.firstName} {cartCustomer.lastName}</span>
-                                </DialogDescription>
-                            )}
+                        <DialogHeader className="p-8 bg-primary/5 border-b border-white/5">
+                            <div className="flex justify-between items-center">
+                                <div>
+                                    <DialogTitle className="text-2xl font-black uppercase tracking-tight">Finalisation</DialogTitle>
+                                    <DialogDescription className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60 mt-1">Transaction Terminal iPOS</DialogDescription>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-[10px] font-black uppercase text-primary tracking-widest mb-1">Total Net</p>
+                                    <p className="text-4xl font-black tracking-tighter text-primary">{formatCurrency(total)}</p>
+                                </div>
+                            </div>
                         </DialogHeader>
-                        <div className="grid gap-4 py-4">
-                            <div className="text-center py-4 luxury-glass">
-                                <Label>TOTAL À PAYER</Label>
-                                <p className="text-4xl font-bold text-primary">{formatCurrency(total)}</p>
-                            </div>
-                            
+
+                        <div className="p-8 space-y-8">
+                            {/* Role-Based Credit Context */}
                             {cartCustomer && (
-                                <div className={cn("grid grid-cols-2 gap-2 text-center p-2 rounded-lg text-sm", creditUsage > 90 ? "bg-destructive/10 text-destructive" : "bg-muted")}>
-                                    <div>
-                                        <p className="font-semibold">{formatCurrency(cartCustomer.outstandingBalance)}</p>
-                                        <p className="text-xs">Solde actuel</p>
-                                    </div>
-                                    <div>
-                                        <p className="font-semibold">{cartCustomer.creditLimit ? formatCurrency(cartCustomer.creditLimit) : 'N/A'}</p>
-                                        <p className="text-xs">Plafond de crédit</p>
-                                    </div>
-                                </div>
-                            )}
-                            
-                            <div className="space-y-2">
-                                <Label>Méthode de Paiement</Label>
-                                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-                                    <Button type="button" variant={paymentMode === 'cash' ? 'secondary' : 'outline'} onClick={() => handlePaymentModeChange('cash')}><Banknote className="mr-2 h-4 w-4"/>Espèces</Button>
-                                    <Button type="button" variant={paymentMode === 'card' ? 'secondary' : 'outline'} onClick={() => handlePaymentModeChange('card')}><CreditCard className="mr-2 h-4 w-4"/>Carte</Button>
-                                    {cartCustomer && <Button type="button" variant={paymentMode === 'credit' ? 'secondary' : 'outline'} onClick={() => handlePaymentModeChange('credit')}>Crédit</Button>}
-                                    {cartCustomer && <Button type="button" variant={paymentMode === 'mixed' ? 'secondary' : 'outline'} onClick={() => handlePaymentModeChange('mixed')}>Mixte</Button>}
-                                </div>
-                            </div>
-
-                            {(paymentMode === 'cash' || paymentMode === 'card' || paymentMode === 'other') && (
-                                <div className="space-y-2">
-                                    <Label htmlFor="amountPaid">Montant Payé</Label>
-                                    <Input id="amountPaid" type="number" value={cashAmountStr} onChange={(e) => setCashAmountStr(e.target.value)} className="text-lg" autoFocus />
-                                    {change > 0 && (
-                                        <div className="text-center p-2 bg-green-500/10 rounded-lg">
-                                            <Label className="text-green-300">Monnaie à rendre</Label>
-                                            <p className="text-lg font-bold text-green-400">{formatCurrency(change)}</p>
+                                <div className={cn(
+                                    "p-4 rounded-2xl border-2 transition-all duration-500 flex items-center justify-between",
+                                    isOverLimit ? "bg-destructive/10 border-destructive animate-pulse" : "bg-primary/5 border-primary/20"
+                                )}>
+                                    <div className="flex items-center gap-4">
+                                        <div className={cn("p-2 rounded-xl", isOverLimit ? "bg-destructive/20 text-destructive" : "bg-primary/20 text-primary")}>
+                                            <Wallet className="h-5 w-5" />
                                         </div>
-                                    )}
-                                </div>
-                            )}
-
-                            {paymentMode === 'mixed' && (
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="cashAmount">Montant Espèces</Label>
-                                        <Input id="cashAmount" type="number" value={cashAmountStr} onChange={(e) => setCashAmountStr(e.target.value)} autoFocus />
+                                        <div>
+                                            <p className="text-[10px] font-black uppercase tracking-widest opacity-60">Solde {cartCustomer.firstName}</p>
+                                            <p className="text-xl font-black">{formatCurrency(cartCustomer.outstandingBalance)}</p>
+                                        </div>
                                     </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="creditAmount">Montant Crédit</Label>
-                                        <Input id="creditAmount" type="number" value={creditAmountStr} onChange={(e) => setCreditAmountStr(e.target.value)} />
-                                    </div>
-                                </div>
-                            )}
-
-                            {(paymentMode === 'credit' || paymentMode === 'mixed') && cartCustomer && (
-                                <>
-                                    <Separator />
-                                    <div className="space-y-2">
-                                        <Label>Date d'échéance (optionnel)</Label>
-                                        <DatePicker date={dueDate} setDate={setDueDate}/>
-                                    </div>
-                                     <div className={cn("text-center py-2 luxury-glass border", creditUsage > 90 ? "border-destructive/30" : "border-chart-secondary/20")}>
-                                        <Label>NOUVEAU SOLDE CLIENT</Label>
-                                        <p className={cn("text-2xl font-bold", creditUsage > 90 ? "text-destructive" : "text-chart-secondary")}>{formatCurrency(newTotalOutstanding)}</p>
-                                        <p className="text-xs text-muted-foreground">
-                                           (Disponible: {formatCurrency(creditAvailable - debtFromThisSale)})
+                                    <div className="text-right">
+                                        <p className="text-[10px] font-black uppercase tracking-widest opacity-60">Disponibilité</p>
+                                        <p className={cn("text-xl font-black", isOverLimit ? "text-destructive" : "text-chart-quaternary")}>
+                                            {formatCurrency(creditAvailable)}
                                         </p>
                                     </div>
-                                </>
+                                </div>
                             )}
 
+                            <div className="space-y-4">
+                                <Label className="text-[11px] font-black uppercase tracking-widest opacity-70">Architecture du Paiement</Label>
+                                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                                    {[
+                                        { id: 'cash', icon: Banknote, label: 'Espèces' },
+                                        { id: 'card', icon: CreditCard, label: 'Carte' },
+                                        { id: 'other', icon: ShieldCheck, label: 'Autre' },
+                                        { id: 'credit', icon: HandCoins, label: 'Crédit', disabled: !cartCustomer },
+                                        { id: 'mixed', icon: Wallet, label: 'Mixte', disabled: !cartCustomer },
+                                    ].map(mode => (
+                                        <Button 
+                                            key={mode.id}
+                                            type="button" 
+                                            variant={paymentMode === mode.id ? 'secondary' : 'outline'} 
+                                            onClick={() => handlePaymentModeChange(mode.id as PaymentMode)}
+                                            disabled={mode.disabled}
+                                            className={cn(
+                                                "h-auto py-3 flex-col gap-2 rounded-xl border-white/5",
+                                                paymentMode === mode.id && "bg-primary/10 text-primary border-primary/30 shadow-lg shadow-primary/10"
+                                            )}
+                                        >
+                                            <mode.icon className="h-5 w-5" />
+                                            <span className="text-[9px] font-black uppercase tracking-widest">{mode.label}</span>
+                                        </Button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <Separator className="bg-white/5" />
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div className="space-y-4">
+                                    <Label className="text-[11px] font-black uppercase tracking-widest opacity-70">Montant Encaissé (DA)</Label>
+                                    <div className="relative group">
+                                        <Banknote className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary/30 group-focus-within:text-primary transition-colors" />
+                                        <Input 
+                                            type="number" 
+                                            value={cashAmountStr} 
+                                            onChange={(e) => setCashAmountStr(e.target.value)} 
+                                            className="pl-12 h-16 rounded-2xl bg-background/40 border-white/5 focus:border-primary/40 focus:ring-0 font-black text-2xl" 
+                                            placeholder="0.00"
+                                            autoFocus
+                                            disabled={paymentMode === 'credit'}
+                                        />
+                                    </div>
+                                </div>
+
+                                {paymentMode === 'mixed' || paymentMode === 'credit' ? (
+                                    <div className="space-y-4">
+                                        <Label className="text-[11px] font-black uppercase tracking-widest opacity-70">Impact sur le Solde (Crédit)</Label>
+                                        <div className="relative group">
+                                            <HandCoins className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-destructive/30 group-focus-within:text-destructive transition-colors" />
+                                            <Input 
+                                                type="number" 
+                                                value={creditAmountStr} 
+                                                onChange={(e) => setCreditAmountStr(e.target.value)} 
+                                                className="pl-12 h-16 rounded-2xl bg-background/40 border-white/5 focus:border-destructive/40 focus:ring-0 font-black text-2xl text-destructive"
+                                                placeholder="0.00"
+                                                disabled={paymentMode === 'credit'}
+                                            />
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col justify-center text-center p-4 rounded-2xl bg-chart-quaternary/5 border border-chart-quaternary/10">
+                                        <p className="text-[10px] font-black uppercase text-chart-quaternary mb-1">Monnaie à rendre</p>
+                                        <p className="text-3xl font-black text-chart-quaternary">
+                                            {formatCurrency(Math.max(0, change))}
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+
+                            {['credit', 'mixed'].includes(paymentMode) && (
+                                <div className="p-6 rounded-2xl bg-white/5 border border-white/5 animate-in slide-in-from-bottom-2">
+                                    <div className="flex items-center gap-3 mb-4">
+                                        <ShieldCheck className="h-4 w-4 text-primary" />
+                                        <h4 className="text-[10px] font-black uppercase tracking-widest">Garanties & Échéances</h4>
+                                    </div>
+                                    <div className="space-y-4">
+                                        <div className="space-y-2">
+                                            <Label className="text-[9px] font-bold opacity-50 uppercase ml-1">Date d'échéance du paiement</Label>
+                                            <DatePicker date={dueDate} setDate={setDueDate} />
+                                        </div>
+                                        <div className="flex justify-between items-center p-3 rounded-xl bg-background/40 border border-white/5">
+                                            <p className="text-[10px] font-bold text-muted-foreground uppercase">Nouveau Solde Total</p>
+                                            <p className={cn("font-black", isOverLimit ? "text-destructive" : "text-primary")}>
+                                                {formatCurrency(newTotalOutstanding)}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
-                        <DialogFooter>
-                            <Button type="button" variant="secondary" onClick={closeAndReset} disabled={isLoading}>Annuler</Button>
-                            <Button type="submit" disabled={isLoading}>
-                                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Valider la vente (Entrée)
+
+                        <DialogFooter className="p-8 bg-white/5 border-t border-white/5 gap-4">
+                            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className="rounded-2xl font-black uppercase text-[11px] tracking-widest h-14 flex-1">Annuler</Button>
+                            <Button 
+                                type="submit" 
+                                disabled={isLoading || isOverLimit} 
+                                className="bg-primary hover:bg-primary/90 px-12 rounded-2xl shadow-2xl shadow-primary/30 font-black uppercase text-[11px] tracking-[0.2em] h-14 flex-[2] gap-3 group overflow-hidden relative"
+                            >
+                                <span className="relative z-10 flex items-center gap-3">
+                                    {isLoading ? <Loader2 className="animate-spin h-5 w-5"/> : <ShieldCheck className="h-5 w-5" />}
+                                    Graver la Vente
+                                    <ArrowRight className="h-4 w-4 group-hover:translate-x-2 transition-transform" />
+                                </span>
+                                <div className="absolute inset-0 bg-gradient-to-r from-primary to-primary/80 group-hover:scale-105 transition-transform duration-500" />
                             </Button>
                         </DialogFooter>
                     </form>
@@ -298,4 +339,8 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, cartCustomer }: Paym
             </Dialog>
         </>
     );
+}
+
+function handleLossAlertConfirm() {
+    // Shared confirm logic
 }
