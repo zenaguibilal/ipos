@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useCallback } from 'react';
@@ -17,11 +18,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { useAppActions } from '@/stores/appStore';
 import { BarcodeScannerDialog } from '@/components/products/BarcodeScannerDialog';
-
-/**
- * @fileOverview New Return Page
- * Purged: unused icon imports (X, Undo2, Banknote).
- */
 
 type ReturnItemState = ReturnItem & { originalQuantity: number };
 

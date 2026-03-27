@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
@@ -22,10 +23,6 @@ import { formatCurrency, cn } from '@/lib/utils';
 import { useAppStore } from '@/stores/appStore';
 import { api } from '@/lib/api-client';
 import { CsvImporter } from '@/lib/csv-utils';
-
-/**
- * @fileOverview Returns Page (Dead Code Purged)
- */
 
 const ITEMS_PER_PAGE = 15;
 
@@ -141,7 +138,7 @@ export default function ReturnsPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <Card className="luxury-glass bg-destructive/5"><CardHeader className="py-3"><CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Valeur Retours</CardTitle></CardHeader><CardContent><p className="text-2xl font-black text-destructive">{formatCurrency(stats.totalValue)}</p></CardContent></Card>
                 <Card className="luxury-glass bg-chart-quaternary/5"><CardHeader className="py-3"><CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Remboursements</CardTitle></CardHeader><CardContent><p className="text-2xl font-black text-chart-quaternary">{formatCurrency(stats.totalRefunded)}</p></CardContent></Card>
-                <Card className="luxury-glass bg-primary/5"><CardHeader className="py-3"><CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Réduction Dette</CardTitle></CardHeader><CardContent><p className="text-2xl font-black text-primary">{formatCurrency(stats.impactDebt)}</p></CardContent></Card>
+                <Card className="luxury-glass bg-primary/5"><CardHeader className="py-3"><CardTitle className="text-[10px] font-black uppercase tracking-widest text-primary">Réduction Dette</CardTitle></CardHeader><CardContent><p className="text-2xl font-black text-primary">{formatCurrency(stats.impactDebt)}</p></CardContent></Card>
                 <Card className="luxury-glass bg-secondary/5"><CardHeader className="py-3"><CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Volume</CardTitle></CardHeader><CardContent><p className="text-2xl font-black">{allReturns?.length || 0}</p></CardContent></Card>
             </div>
 
@@ -157,7 +154,7 @@ export default function ReturnsPage() {
             </div>
             
             <div className="min-h-[400px]">
-                {allReturns === undefined ? <div className="grid grid-cols-3 gap-6">{[...Array(6)].map((_, i) => <Skeleton key={i} className="h-56 w-full rounded-3xl" />)}</div> : allReturns.length === 0 ? <EmptyState icon={Undo2} title="Aucun retour" description="Crئةز un nouveau retour pour régulariser un stock." /> : (
+                {allReturns === undefined ? <div className="grid grid-cols-3 gap-6">{[...Array(6)].map((_, i) => <Skeleton key={i} className="h-56 w-full rounded-3xl" />)}</div> : allReturns.length === 0 ? <EmptyState icon={Undo2} title="Aucun retour" description="Créez un nouveau retour pour régulariser un stock." /> : (
                     <div className="space-y-6">
                         {viewMode === 'grid' ? <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">{visibleReturns.map(r => <ReturnHistoryCard key={r.uuid} productReturn={r} customerName={r.customerUuid ? `${customerMap.get(r.customerUuid)?.firstName} ${customerMap.get(r.customerUuid)?.lastName}` : 'Passage'} onViewDetails={handleViewDetails} onCancelReturn={handleCancelReturn} onPrint={(f) => handlePrint(r, f)} />)}</div> : <ReturnTable returns={visibleReturns} customerMap={customerMap} onViewDetails={handleViewDetails} onCancelReturn={handleCancelReturn} onPrint={(r, f) => handlePrint(r, f)} />}
                         {allReturns.length > visibleCount && <div className="flex justify-center pt-4"><Button variant="outline" onClick={() => setVisibleCount(v => v + ITEMS_PER_PAGE)}>Charger plus</Button></div>}

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useCallback, useEffect, useMemo } from 'react';
@@ -30,11 +31,6 @@ import {
 import { ImportSuppliersPreviewDialog } from '@/components/suppliers/ImportSuppliersPreviewDialog';
 import { DeleteMultipleSuppliersDialog } from '@/components/suppliers/DeleteMultipleSuppliersDialog';
 import { CsvImporter } from '@/lib/csv-utils';
-
-/**
- * @fileOverview Suppliers Page (Purified)
- * Purged: unused icon imports (X).
- */
 
 const sortOptions: { [key: string]: string } = {
     'name_asc': 'Nom (A-Z)',

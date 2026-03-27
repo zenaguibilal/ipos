@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -34,10 +35,6 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu";
-
-/**
- * @fileOverview Sales History Page (Dead Code Purged)
- */
 
 type PaymentFilter = 'all' | 'paid' | 'partial' | 'unpaid';
 

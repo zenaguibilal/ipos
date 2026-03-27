@@ -1,3 +1,4 @@
+
 'use client';
 
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -14,10 +15,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
-
-/**
- * @fileOverview Profile Page (Domination Mode)
- */
 
 export default function ProfilePage() {
     const { profile } = useAppStore();

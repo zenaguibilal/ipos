@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
@@ -21,11 +22,6 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Badge } from '@/components/ui/badge';
 import { useAppActions, useIsManagerOrAdmin } from '@/stores/appStore';
 import { api } from '@/lib/api-client';
-
-/**
- * @fileOverview New Stock Intake Page
- * Purged: unused icon imports (AlertTriangle).
- */
 
 interface LocalIntakeItem {
     id: string;

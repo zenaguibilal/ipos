@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useParams } from 'next/navigation';
@@ -26,10 +27,6 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-
-/**
- * @fileOverview Customer Detail Page (State Singularity Enforcement)
- */
 
 export default function CustomerDetailPage() {
     const params = useParams();
