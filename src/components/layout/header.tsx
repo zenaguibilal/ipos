@@ -19,7 +19,9 @@ import {
   LogOut,
   Settings,
   ShieldCheck,
-  Calculator
+  Calculator,
+  Terminal,
+  Activity
 } from 'lucide-react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
@@ -64,34 +66,43 @@ export function AppHeader() {
   const { profile, actions } = useAppStore();
 
   const mainActionLinks = [
-    { href: '/sell', label: 'Vente', icon: ShoppingCart },
+    { href: '/sell', label: 'Caisse Live', icon: ShoppingCart },
   ];
   
   const navLinks = allNavLinks.filter(link => !link.managerOnly || isManagerOrAdmin);
 
-  const roleLabels: Record<string, { label: string, color: string }> = {
-    admin: { label: 'Admin', color: 'bg-primary text-primary-foreground' },
-    manager: { label: 'Gérant', color: 'bg-blue-500 text-white' },
-    cashier: { label: 'Caisse', color: 'bg-orange-500 text-white' }
+  const roleConfig: Record<string, { label: string, color: string, icon: any }> = {
+    admin: { label: 'ADMINISTRATEUR', color: 'bg-primary text-primary-foreground shadow-lg shadow-primary/20', icon: ShieldCheck },
+    manager: { label: 'GÉRANT', color: 'bg-blue-500 text-white shadow-lg shadow-blue-500/20', icon: User },
+    cashier: { label: 'CASHIER', color: 'bg-orange-500 text-white shadow-lg shadow-orange-500/20', icon: Activity }
   };
 
+  const currentRole = roleConfig[role] || roleConfig.cashier;
+
   return (
-    <header className="flex h-16 items-center gap-4 bg-background/80 px-4 sm:px-6 print-hide sticky top-0 z-30 border-b backdrop-blur-xl transition-colors duration-500">
+    <header className="flex h-16 items-center gap-4 bg-background/60 px-4 sm:px-8 print-hide sticky top-0 z-40 border-b border-white/5 backdrop-blur-2xl transition-all duration-500 shadow-sm">
+      {/* Brand Singularity */}
       <div className="flex-1 flex justify-start">
-         <div className="flex items-baseline gap-2">
+         <div className="flex items-center gap-3">
               <Link
                   href="/dashboard"
-                  className="flex items-center gap-2 font-semibold"
+                  className="flex items-center gap-3 hover:scale-105 transition-transform group"
               >
-                  <Image src="/icon.svg" alt="iPOS logo" width={32} height={32} priority />
-                  <span className="hidden sm:inline-block text-xl font-black tracking-tighter italic text-primary">iPOS</span>
+                  <div className="p-1.5 bg-background rounded-xl border border-primary/20 shadow-xl luxury-glass group-hover:border-primary/50 transition-colors">
+                    <Image src="/icon.svg" alt="iPOS logo" width={28} height={32} priority />
+                  </div>
+                  <div className="hidden sm:flex flex-col items-start leading-none">
+                    <span className="text-xl font-black tracking-tighter italic text-primary">iPOS</span>
+                    <span className="text-[8px] font-black uppercase tracking-[0.3em] opacity-40">Absolute Cloud</span>
+                  </div>
               </Link>
           </div>
       </div>
 
+        {/* Sovereign Navigation Center */}
         <div className="flex-grow flex justify-center">
             <TooltipProvider>
-                <nav className="hidden xl:flex items-center gap-1 rounded-full border bg-black/5 dark:bg-black/20 p-1 luxury-glass border-white/5">
+                <nav className="hidden xl:flex items-center gap-1 rounded-3xl border bg-black/5 dark:bg-black/20 p-1.5 luxury-glass border-white/5 shadow-inner">
                     {mainActionLinks.map(link => (
                          <Tooltip key={link.href} delayDuration={0}>
                             <TooltipTrigger asChild>
@@ -99,102 +110,119 @@ export function AppHeader() {
                                     asChild
                                     variant={pathname.startsWith(link.href) ? "secondary" : "ghost"}
                                     className={cn(
-                                        "rounded-full relative h-9 px-5 text-sm font-bold transition-all",
-                                        pathname.startsWith(link.href) && "shadow-lg shadow-primary/20"
+                                        "rounded-2xl relative h-10 px-6 text-xs font-black uppercase tracking-widest transition-all",
+                                        pathname.startsWith(link.href) ? "shadow-xl shadow-primary/20 bg-primary text-primary-foreground hover:bg-primary/90" : "hover:bg-primary/10 hover:text-primary"
                                     )}
                                 >
                                     <Link href={link.href}>
-                                        <link.icon className="h-4 w-4 mr-2" />
+                                        <link.icon className="h-4 w-4 mr-2.5" />
                                         {link.label}
                                     </Link>
                                 </Button>
                             </TooltipTrigger>
-                            <TooltipContent>
-                                <p>{link.label}</p>
+                            <TooltipContent side="bottom" className="luxury-glass">
+                                <p className="text-[10px] font-bold uppercase tracking-widest">Interface de Vente (F9)</p>
                             </TooltipContent>
                         </Tooltip>
                     ))}
-                    <div className="h-5 w-px bg-border/50 mx-1" />
-                    {navLinks.map(link => (
-                        <Tooltip key={link.href} delayDuration={0}>
-                            <TooltipTrigger asChild>
-                                <Button 
-                                    asChild
-                                    variant={pathname.startsWith(link.href) ? "secondary" : "ghost"}
-                                    size="icon"
-                                    className={cn(
-                                        "rounded-full relative h-9 w-9 transition-all",
-                                        pathname.startsWith(link.href) && "text-primary bg-primary/10"
-                                    )}
-                                >
-                                    <Link href={link.href}>
-                                        <link.icon className="h-4 w-4" />
-                                        <span className="sr-only">{link.label}</span>
-                                    </Link>
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                                <p>{link.label}</p>
-                            </TooltipContent>
-                        </Tooltip>
-                    ))}
+                    
+                    <div className="h-6 w-px bg-white/10 mx-2" />
+                    
+                    <div className="flex items-center gap-1">
+                        {navLinks.map(link => (
+                            <Tooltip key={link.href} delayDuration={0}>
+                                <TooltipTrigger asChild>
+                                    <Button 
+                                        asChild
+                                        variant={pathname.startsWith(link.href) ? "secondary" : "ghost"}
+                                        size="icon"
+                                        className={cn(
+                                            "rounded-2xl relative h-10 w-10 transition-all duration-300",
+                                            pathname.startsWith(link.href) ? "text-primary bg-primary/10 shadow-inner" : "text-muted-foreground opacity-70 hover:opacity-100 hover:bg-white/5"
+                                        )}
+                                    >
+                                        <Link href={link.href}>
+                                            <link.icon className="h-4.5 w-4.5" />
+                                            <span className="sr-only">{link.label}</span>
+                                        </Link>
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent side="bottom" className="luxury-glass">
+                                    <p className="text-[10px] font-bold uppercase tracking-widest">{link.label}</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        ))}
+                    </div>
                 </nav>
             </TooltipProvider>
         </div>
 
 
+        {/* Command Center Controls */}
         <div className="flex-1 flex justify-end">
-            <div className="flex items-center gap-2 sm:gap-4">
-                <div className="hidden lg:block"><Clock /></div>
+            <div className="flex items-center gap-3 sm:gap-5">
+                <div className="hidden lg:block border-r border-white/5 pr-5 py-1">
+                    <Clock />
+                </div>
                 <ThemeToggle />
                 
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="rounded-full pl-2 pr-1 h-10 gap-2 hover:bg-primary/10 transition-colors">
-                            <div className="h-7 w-7 rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center text-[10px] font-black text-primary-foreground shadow-inner">
-                                {profile?.companyName?.substring(0, 1).toUpperCase() || 'U'}
+                        <Button variant="ghost" className="rounded-2xl pl-2 pr-1 h-12 gap-3 hover:bg-white/5 transition-all group border border-transparent hover:border-white/5">
+                            <div className="h-9 w-9 rounded-2xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center text-xs font-black text-primary-foreground shadow-2xl shadow-primary/20 group-hover:scale-105 transition-transform">
+                                {profile?.companyName?.substring(0, 1).toUpperCase() || 'S'}
                             </div>
-                            <div className="hidden lg:flex flex-col items-start leading-none gap-0.5">
-                                <span className="text-xs font-bold truncate max-w-[100px]">
-                                    {profile?.companyName || 'Utilisateur'}
+                            <div className="hidden lg:flex flex-col items-start leading-none gap-1.5">
+                                <span className="text-sm font-black uppercase tracking-tight truncate max-w-[120px]">
+                                    {profile?.companyName || 'Mon Espace'}
                                 </span>
-                                <Badge className={cn("h-3.5 px-1.5 py-0 text-[8px] font-black uppercase", roleLabels[role]?.color)}>
-                                    {roleLabels[role]?.label}
+                                <Badge className={cn("h-4 px-2 py-0 text-[7px] font-black uppercase tracking-tighter border-0", currentRole.color)}>
+                                    <currentRole.icon className="h-2 w-2 mr-1" />
+                                    {currentRole.label}
                                 </Badge>
                             </div>
-                            <ChevronDown className="h-3 w-3 opacity-50" />
+                            <ChevronDown className="h-3.5 w-3.5 opacity-30 group-hover:opacity-100 transition-opacity" />
                         </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-56 luxury-glass">
-                        <DropdownMenuLabel className="flex flex-col">
-                            <span className="text-xs font-black uppercase tracking-widest text-primary">Terminal iPOS</span>
-                            <span className="text-[10px] font-medium text-muted-foreground truncate">{profile?.email || 'Mode Souverain'}</span>
+                    <DropdownMenuContent align="end" className="w-64 luxury-glass p-2 mt-2 shadow-2xl border-white/10">
+                        <DropdownMenuLabel className="flex flex-col p-4 bg-primary/5 rounded-xl mb-2">
+                            <div className="flex items-center gap-2 mb-1">
+                                <Terminal className="h-3 w-3 text-primary" />
+                                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Terminal Souverain</span>
+                            </div>
+                            <span className="text-xs font-bold text-foreground truncate">{profile?.email || 'Instance Cloud iPOS'}</span>
                         </DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem asChild>
-                            <Link href="/profile" className="flex items-center gap-2 cursor-pointer">
-                                <User className="h-4 w-4" />
-                                <span>Mon Profil</span>
-                            </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
-                            <Link href="/profile?tab=settings" className="flex items-center gap-2 cursor-pointer">
-                                <Settings className="h-4 w-4" />
-                                <span>Paramètres</span>
-                            </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <div className="px-2 py-1.5 flex items-center gap-2 text-[9px] font-black uppercase text-muted-foreground opacity-50">
-                            <ShieldCheck className="h-3 w-3" />
-                            Accès: {profile?.role || 'Souverain'}
+                        
+                        <div className="px-1 space-y-1">
+                            <DropdownMenuItem asChild>
+                                <Link href="/profile" className="flex items-center gap-3 py-3 px-4 rounded-xl cursor-pointer hover:bg-white/5 transition-colors">
+                                    <User className="h-4 w-4 opacity-60" />
+                                    <span className="text-xs font-bold">Mon Centre de Commandement</span>
+                                </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem asChild>
+                                <Link href="/profile?tab=settings" className="flex items-center gap-3 py-3 px-4 rounded-xl cursor-pointer hover:bg-white/5 transition-colors">
+                                    <Settings className="h-4 w-4 opacity-60" />
+                                    <span className="text-xs font-bold">Paramètres Système</span>
+                                </Link>
+                            </DropdownMenuItem>
                         </div>
-                        <DropdownMenuSeparator />
+
+                        <DropdownMenuSeparator className="bg-white/5 my-2" />
+                        
+                        <div className="px-4 py-2 flex items-center gap-3 text-[9px] font-black uppercase text-muted-foreground opacity-40">
+                            <Activity className="h-3 w-3" />
+                            Session: Active (AES-256)
+                        </div>
+                        
+                        <DropdownMenuSeparator className="bg-white/5 my-2" />
+                        
                         <DropdownMenuItem 
                             onClick={() => actions.logout()}
-                            className="text-destructive focus:text-destructive focus:bg-destructive/10 flex items-center gap-2 cursor-pointer"
+                            className="text-destructive focus:text-destructive focus:bg-destructive/10 flex items-center gap-3 py-3 px-4 rounded-xl cursor-pointer mx-1"
                         >
                             <LogOut className="h-4 w-4" />
-                            <span>Déconnexion</span>
+                            <span className="text-xs font-black uppercase tracking-widest">Mettre fin à la session</span>
                         </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
