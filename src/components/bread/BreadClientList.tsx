@@ -13,7 +13,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { BREAD_WEEK_DAYS } from '@/lib/constants';
 import { customerService } from '@/services/customer.service';
 import { toast } from 'sonner';
-import { cn } from '@/lib/utils';
 import Link from 'next/link';
 
 interface BreadClientListProps {
@@ -134,23 +133,23 @@ export function BreadClientList({ onListChange }: BreadClientListProps) {
                     <div className="space-y-2 relative pl-6 border-l border-primary/20">
                         <div className="absolute -left-1.5 top-0 h-3 w-3 rounded-full bg-primary shadow-sm shadow-primary/50" />
                         <p className="font-bold text-foreground uppercase text-[10px] tracking-widest">Étape 1</p>
-                        <p className="text-xs">Configurez l'abonnement dans la fiche client : jours de livraison et quantités.</p>
+                        <p className="text-xs">Configurez l'abonnement dans la fiche client.</p>
                     </div>
                     <div className="space-y-2 relative pl-6 border-l border-primary/20">
                         <div className="absolute -left-1.5 top-0 h-3 w-3 rounded-full bg-primary shadow-sm shadow-primary/50" />
                         <p className="font-bold text-foreground uppercase text-[10px] tracking-widest">Étape 2</p>
-                        <p className="text-xs">Chaque matin, cliquez sur <b>"Générer depuis Récurence"</b> pour créer toutes les commandes du jour.</p>
+                        <p className="text-xs">Chaque matin, générez les commandes du jour.</p>
                     </div>
                     <div className="space-y-2 relative pl-6 border-l border-primary/20">
                         <div className="absolute -left-1.5 top-0 h-3 w-3 rounded-full bg-primary shadow-sm shadow-primary/50" />
                         <p className="font-bold text-foreground uppercase text-[10px] tracking-widest">Étape 3</p>
-                        <p className="text-xs">Validez les livraisons, puis cliquez sur <b>"Facturer"</b> pour ajouter le montant à la dette du client.</p>
+                        <p className="text-xs">Validez les livraisons et facturez en un clic.</p>
                     </div>
                     
                     <div className="pt-4 bg-primary/5 p-4 rounded-2xl border border-primary/10">
                         <p className="text-[10px] font-black uppercase text-primary mb-2">Note iPOS</p>
                         <p className="text-xs italic leading-snug">
-                            "Le système utilise le prix du pain défini dans vos paramètres de profil pour calculer automatiquement les factures."
+                            "Le système utilise le prix du pain défini dans vos paramètres de profil."
                         </p>
                     </div>
                 </CardContent>

@@ -34,7 +34,7 @@ export function DataManagementCard() {
             const data = await backupService.listBackups();
             setBackups(data);
         } catch (error: any) {
-            toast.error("Impossible de charger la liste des sauvegardes.", { description: error.message });
+            toast.error("Impossible de charger la liste des sauvegardes.");
         } finally {
             setIsLoading(false);
         }
@@ -51,7 +51,7 @@ export function DataManagementCard() {
             toast.success("Sauvegarde créée avec succès.");
             fetchBackups();
         } catch (error: any) {
-            toast.error("Erreur lors de la création de la sauvegarde.", { description: error.message });
+            toast.error("Erreur lors de la création de la sauvegarde.");
         } finally {
             setIsCreating(false);
         }
@@ -109,7 +109,7 @@ export function DataManagementCard() {
             toast.success("Sauvegarde supprimée.");
             setBackups(backups.filter(b => b.name !== selectedBackupPath?.split('/').pop()));
         } catch (error: any) {
-             toast.error("Échec de la suppression.", { description: error.message });
+             toast.error("Échec de la suppression.");
         } finally {
             setIsDeleting(null);
         }
@@ -132,7 +132,7 @@ export function DataManagementCard() {
                     <div className="bg-muted/30 p-4 rounded-2xl border border-white/5">
                         <div className="flex items-center gap-3 mb-4">
                             <FileClock className="h-5 w-5 text-primary" />
-                            <h3 className="font-bold text-sm uppercase tracking-widest">Historique des points de restauration</h3>
+                            <h3 className="font-bold text-sm uppercase tracking-widest">Historique</h3>
                         </div>
                         
                         {isLoading ? (
@@ -141,7 +141,7 @@ export function DataManagementCard() {
                             </div>
                         ) : backups.length === 0 ? (
                             <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-xl border-white/10 bg-background/20">
-                                <p className="text-sm font-medium italic">Aucune sauvegarde trouvée dans votre espace Cloud.</p>
+                                <p className="text-sm font-medium italic">Aucune sauvegarde trouvée.</p>
                             </div>
                         ) : (
                             <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
@@ -197,7 +197,7 @@ export function DataManagementCard() {
                 </CardContent>
                 <CardFooter className="bg-white/5 p-4 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4">
                     <p className="text-[10px] text-muted-foreground italic max-w-sm text-center sm:text-left">
-                        * Les sauvegardes incluent les stocks, clients, fournisseurs et l'historique complet des ventes.
+                        * Les sauvegardes incluent les stocks, clients et l'historique complet.
                     </p>
                     <Button 
                         onClick={handleCreateBackup} 
@@ -205,7 +205,7 @@ export function DataManagementCard() {
                         className="bg-primary hover:bg-primary/90 rounded-xl px-8 h-11 font-bold shadow-lg shadow-primary/20 w-full sm:w-auto gap-2"
                     >
                         {isCreating ? <Loader2 className="h-4 w-4 animate-spin"/> : <Upload className="h-4 w-4" />}
-                        {isCreating ? 'Création...' : 'Nouvelle Sauvegarde Cloud'}
+                        {isCreating ? 'Création...' : 'Nouvelle Sauvegarde'}
                     </Button>
                 </CardFooter>
             </Card>
@@ -219,30 +219,19 @@ export function DataManagementCard() {
             <ConfirmAlertDialog
                 isOpen={isRestoreConfirmOpen}
                 onOpenChange={setIsRestoreConfirmOpen}
-                title="⚠️ ATTENTION : RESTAURATION"
-                description={
-                    <div className="space-y-4 pt-2">
-                        <p className="text-sm">Cette action va <span className="font-bold text-destructive underline">écraser l'intégralité</span> de vos données actuelles pour les remplacer par celles de la sauvegarde.</p>
-                        <div className="p-4 bg-destructive/10 rounded-2xl text-destructive border border-destructive/20 flex items-start gap-3">
-                            <AlertTriangle className="h-10 w-10 shrink-0"/>
-                            <div className="space-y-1">
-                                <h4 className="font-black text-xs uppercase tracking-widest">Risque de perte de données</h4>
-                                <p className="text-[11px] leading-relaxed opacity-80">Si vous n'avez pas fait de sauvegarde aujourd'hui, les ventes saisies depuis votre dernier backup seront définitivement perdues.</p>
-                            </div>
-                        </div>
-                    </div>
-                }
+                title="RESTAURATION"
+                description="Cette action va écraser vos données actuelles. Assurez-vous d'avoir une sauvegarde récente."
                 onConfirm={handleConfirmRestore}
-                confirmText="Oui, restaurer et redémarrer"
+                confirmText="Restaurer et redémarrer"
             />
             
             <ConfirmAlertDialog
                 isOpen={isDeleteConfirmOpen}
                 onOpenChange={setIsDeleteConfirmOpen}
                 title="Supprimer la sauvegarde ?"
-                description="Ce fichier sera supprimé définitivement du Cloud iPOS. Cette action n'affectera pas vos données en cours d'utilisation."
+                description="Ce fichier sera supprimé définitivement du Cloud."
                 onConfirm={handleConfirmDelete}
-                confirmText="Supprimer définitivement"
+                confirmText="Supprimer"
             />
         </>
     );

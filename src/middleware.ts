@@ -59,11 +59,16 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
 
   const isAuthRoute = request.nextUrl.pathname.startsWith('/login');
-  const isApiRoute = request.nextUrl.pathname.startsWith('/api');
-  const isStaticFile = /\.(.*)$/.test(request.nextUrl.pathname);
+  
+  // Exclude static files and PWA assets to prevent unnecessary redirection loops
+  const isStaticFile = /\.(.*)$/.test(request.nextUrl.pathname) || 
+                       request.nextUrl.pathname.startsWith('/_next') ||
+                       request.nextUrl.pathname.includes('manifest.json') ||
+                       request.nextUrl.pathname.includes('sw.js') ||
+                       request.nextUrl.pathname.includes('icon.svg');
 
   // If user is not signed in and trying to access a protected route
-  if (!user && !isAuthRoute && !isApiRoute && !isStaticFile) {
+  if (!user && !isAuthRoute && !isStaticFile) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     return NextResponse.redirect(url);

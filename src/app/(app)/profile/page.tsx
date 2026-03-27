@@ -45,6 +45,7 @@ export default function ProfilePage() {
         try {
             await actions.signOut();
             toast.success("Vous avez été déconnecté.");
+            window.location.href = '/login';
         } catch (error: any) {
             toast.error(error.message);
         }

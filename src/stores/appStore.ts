@@ -1,3 +1,4 @@
+
 'use client';
 
 /**
@@ -395,10 +396,8 @@ export const useAppStore = create<AppState>()(
             }
         }),
         {
-            name: 'ipos-enterprise-storage-v3',
+            name: 'ipos-enterprise-storage-v4',
             storage: createJSONStorage(() => localStorage),
-            // ONLY persist non-volumetric data to prevent "big strings" webpack/cache warnings
-            // Volatile items in carts are stripped of heavy object fields
             partialize: (state) => ({ 
                 activeCartId: state.activeCartId,
                 productViewMode: state.productViewMode,
