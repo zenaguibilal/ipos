@@ -1,1 +1,1 @@
-// DELETED: Obsolete client-side repository. Replaced by API Wall.
+// DELETED: Obsolete client-side repository. Logic moved to /repositories/company.repository.ts via API Wall.
