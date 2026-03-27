@@ -1,3 +1,4 @@
+
 'use client';
 
 import { create } from 'zustand';
@@ -10,16 +11,12 @@ import { v4 as uuidv4 } from 'uuid';
 import { api } from '@/lib/api-client';
 import { calculateZakat } from '@/lib/utils';
 
-/**
- * @fileOverview THE STATE SINGULARITY (PURIFIED)
- * Integrated Role-Based Access Control (RBAC)
- */
-
 interface AppState {
     user: any | null;
     profile: CompanyProfile | null;
     isAuthenticated: boolean;
     isSettingsLoading: boolean;
+    isInitialized: boolean;
     
     products: Product[];
     customers: Customer[];
@@ -131,6 +128,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     profile: null,
     isAuthenticated: false,
     isSettingsLoading: false,
+    isInitialized: false,
     
     products: [],
     customers: [],
@@ -178,7 +176,7 @@ export const useAppStore = create<AppState>((set, get) => ({
             set({ isSettingsLoading: true });
             try {
                 const profile = await api.get<CompanyProfile>('profile');
-                set({ profile });
+                set({ profile, isInitialized: true });
             } finally {
                 set({ isSettingsLoading: false });
             }
@@ -433,6 +431,7 @@ export const useAppStore = create<AppState>((set, get) => ({
             user: null,
             profile: null,
             isAuthenticated: false,
+            isInitialized: false,
             products: [],
             customers: [],
             suppliers: [],
@@ -457,8 +456,6 @@ export const useAppStore = create<AppState>((set, get) => ({
 }));
 
 export const useAppActions = () => useAppStore(state => state.actions);
-
-// Granular Role Access Hooks
 export const useAppRole = () => useAppStore(state => state.profile?.role || 'cashier' as AppRole);
 
 export const useIsAdmin = () => {

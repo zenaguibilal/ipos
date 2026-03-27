@@ -1,11 +1,13 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useDebounce } from '@/hooks/useDebounce';
 import type { Product, Supplier, ProductImportAnalysis } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, LayoutGrid, List, FileDown, Scan, RefreshCw, FileUp } from 'lucide-react';
+import { Plus, Search, LayoutGrid, List, FileDown, Scan, RefreshCw, FileUp, ShieldAlert } from 'lucide-react';
 import { ProductCard } from '@/components/products/product-card';
 import { ProductTable } from '@/components/products/product-table';
 import { ProductTableSkeleton } from '@/components/products/product-table-skeleton';
@@ -22,13 +24,11 @@ import { useAppStore, useIsManagerOrAdmin, useAppActions } from '@/stores/appSto
 import { cn } from '@/lib/utils';
 import { CsvImporter } from '@/lib/csv-utils';
 
-/**
- * @fileOverview Products Page (Refined)
- */
-
 export default function ProductsPage() {
+    const router = useRouter();
     const isManagerOrAdmin = useIsManagerOrAdmin();
-    const { products, isLoading, viewMode } = useAppStore(state => ({
+    const { profile, products, isLoading, viewMode } = useAppStore(state => ({
+        profile: state.profile,
         products: state.products,
         isLoading: state.isLoading.products,
         viewMode: state.productViewMode
@@ -40,26 +40,34 @@ export default function ProductsPage() {
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [isHistoryDialogOpen, setIsHistoryDialogOpen] = useState(false);
     const [isScannerOpen, setIsScannerOpen] = useState(false);
-
     const [selectedProduct, setSelectedProduct] = useState<Partial<Product> | null>(null);
-
     const debouncedSearchQuery = useDebounce(searchQuery, 300);
-
     const [categories, setCategories] = useState<string[]>([]);
     const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-    
     const [isImportPreviewOpen, setIsImportPreviewOpen] = useState(false);
     const [importAnalysis, setImportAnalysis] = useState<ProductImportAnalysis | null>(null);
     const [isImporting, setIsImporting] = useState(false);
 
+    // Absolute Role Guard
     useEffect(() => {
-        refreshProducts(debouncedSearchQuery);
-    }, [debouncedSearchQuery, refreshProducts]);
+        if (profile && !isManagerOrAdmin) {
+            toast.error("Accès restreint", { description: "Seuls les gérants peuvent accéder à l'inventaire." });
+            router.replace('/sell');
+        }
+    }, [profile, isManagerOrAdmin, router]);
 
     useEffect(() => {
-        api.get<string[]>('products/categories').then(setCategories);
-        api.get<Supplier[]>('suppliers').then(setSuppliers);
-    }, []);
+        if (isManagerOrAdmin) {
+            refreshProducts(debouncedSearchQuery);
+        }
+    }, [debouncedSearchQuery, refreshProducts, isManagerOrAdmin]);
+
+    useEffect(() => {
+        if (isManagerOrAdmin) {
+            api.get<string[]>('products/categories').then(setCategories);
+            api.get<Supplier[]>('suppliers').then(setSuppliers);
+        }
+    }, [isManagerOrAdmin]);
 
     const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -89,6 +97,18 @@ export default function ProductsPage() {
         }
     };
 
+    if (!profile || !isManagerOrAdmin) {
+        return (
+            <div className="h-full flex flex-col items-center justify-center p-6 text-center space-y-4">
+                <div className="p-4 bg-destructive/10 rounded-full">
+                    <ShieldAlert className="h-12 w-12 text-destructive" />
+                </div>
+                <h2 className="text-2xl font-black uppercase italic">Vérification des Décrets...</h2>
+                <p className="text-muted-foreground text-sm max-w-xs">Votre terminal est en cours de synchronisation avec les protocoles de sécurité iPOS.</p>
+            </div>
+        );
+    }
+
     return (
         <div className="p-4 sm:p-6 space-y-6">
             <PageHeader title="Inventaire Cloud" description="Gestion souveraine du stock et des actifs.">
@@ -96,19 +116,15 @@ export default function ProductsPage() {
                     <Button variant="outline" onClick={() => CsvImporter.exportProducts(products)} className="luxury-glass border-white/10">
                         <FileUp className="mr-2 h-4 w-4" /> Exporter
                     </Button>
-                    {isManagerOrAdmin && (
-                        <>
-                            <Button asChild variant="outline" className="luxury-glass border-white/10">
-                                <label className="cursor-pointer">
-                                    <FileDown className="mr-2 h-4 w-4" /> Importer
-                                    <input type="file" accept=".csv" className="hidden" onChange={handleFileSelected} />
-                                </label>
-                            </Button>
-                            <Button onClick={() => { setSelectedProduct(null); setIsProductDialogOpen(true); }}>
-                                <Plus className="mr-2 h-4 w-4" /> Ajouter
-                            </Button>
-                        </>
-                    )}
+                    <Button asChild variant="outline" className="luxury-glass border-white/10">
+                        <label className="cursor-pointer">
+                            <FileDown className="mr-2 h-4 w-4" /> Importer
+                            <input type="file" accept=".csv" className="hidden" onChange={handleFileSelected} />
+                        </label>
+                    </Button>
+                    <Button onClick={() => { setSelectedProduct(null); setIsProductDialogOpen(true); }}>
+                        <Plus className="mr-2 h-4 w-4" /> Ajouter
+                    </Button>
                 </div>
             </PageHeader>
 

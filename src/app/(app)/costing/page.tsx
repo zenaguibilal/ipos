@@ -1,9 +1,11 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
-import { Plus, Calculator, Trash2, Edit, TrendingUp, Target } from 'lucide-react';
+import { Plus, Calculator, Trash2, Edit, TrendingUp, Target, ShieldAlert } from 'lucide-react';
 import { RecipeDialog } from '@/components/costing/RecipeDialog';
 import { api } from '@/lib/api-client';
 import type { Recipe } from '@/lib/types';
@@ -14,11 +16,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { ConfirmAlertDialog } from '@/components/ui/ConfirmAlertDialog';
-import { useAppStore, useAppActions } from '@/stores/appStore';
-
-/**
- * @fileOverview Cost Engineering Page (State Singularity Enforcement)
- */
+import { useAppStore, useAppActions, useIsManagerOrAdmin } from '@/stores/appStore';
 
 const StatCard = ({ title, value, icon: Icon, colorClass }: { title: string, value: string, icon: any, colorClass: string }) => (
     <Card className="luxury-glass bg-muted/20 border-white/5">
@@ -35,7 +33,10 @@ const StatCard = ({ title, value, icon: Icon, colorClass }: { title: string, val
 );
 
 export default function CostingPage() {
-    const { recipes, isLoading } = useAppStore(state => ({
+    const router = useRouter();
+    const isManagerOrAdmin = useIsManagerOrAdmin();
+    const { profile, recipes, isLoading } = useAppStore(state => ({
+        profile: state.profile,
         recipes: state.recipes,
         isLoading: state.isLoading.recipes
     }));
@@ -46,9 +47,17 @@ export default function CostingPage() {
     const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
     const [recipeToDelete, setRecipeToDelete] = useState<Recipe | null>(null);
 
+    // Role Guard
     useEffect(() => {
-        refreshRecipes();
-    }, [refreshRecipes]);
+        if (profile && !isManagerOrAdmin) {
+            toast.error("Accès restreint", { description: "L'ingénierie des coûts est réservée aux gérants." });
+            router.replace('/sell');
+        }
+    }, [profile, isManagerOrAdmin, router]);
+
+    useEffect(() => {
+        if (isManagerOrAdmin) refreshRecipes();
+    }, [refreshRecipes, isManagerOrAdmin]);
 
     const stats = useMemo(() => {
         if (!recipes || recipes.length === 0) return null;
@@ -81,6 +90,10 @@ export default function CostingPage() {
         }
     };
 
+    if (!profile || !isManagerOrAdmin) {
+        return <div className="h-screen flex items-center justify-center"><ShieldAlert className="animate-pulse h-12 w-12 text-primary" /></div>;
+    }
+
     const isInitialLoading = isLoading && recipes.length === 0;
 
     return (
@@ -96,24 +109,9 @@ export default function CostingPage() {
 
             {!isInitialLoading && recipes.length > 0 && stats && (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <StatCard 
-                        title="Coût Moyen Unitaire" 
-                        value={formatCurrency(stats.avgUnitCost)} 
-                        icon={Calculator} 
-                        colorClass="bg-blue-500" 
-                    />
-                    <StatCard 
-                        title="Plus rentable" 
-                        value={stats.mostProfitable.name} 
-                        icon={TrendingUp} 
-                        colorClass="bg-chart-quaternary" 
-                    />
-                    <StatCard 
-                        title="Alertes Marges Faibles" 
-                        value={`${stats.lowMarginRecipes} Recette(s)`} 
-                        icon={Target} 
-                        colorClass="bg-destructive" 
-                    />
+                    <StatCard title="Coût Moyen Unitaire" value={formatCurrency(stats.avgUnitCost)} icon={Calculator} colorClass="bg-blue-500" />
+                    <StatCard title="Plus rentable" value={stats.mostProfitable.name} icon={TrendingUp} colorClass="bg-chart-quaternary" />
+                    <StatCard title="Alertes Marges Faibles" value={`${stats.lowMarginRecipes} Recette(s)`} icon={Target} colorClass="bg-destructive" />
                 </div>
             )}
 
@@ -122,11 +120,7 @@ export default function CostingPage() {
                     {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-64 w-full rounded-2xl" />)}
                 </div>
             ) : recipes.length === 0 ? (
-                <EmptyState 
-                    icon={Calculator} 
-                    title="Aucune fiche technique" 
-                    description="Commencez par créer une fiche technique pour calculer le coût réel de vos produits fabriqués."
-                >
+                <EmptyState icon={Calculator} title="Aucune fiche technique" description="Commencez par créer une fiche technique pour calculer le coût réel de vos produits fabriqués.">
                     <Button onClick={() => setIsFormDialogOpen(true)}>Créer ma première fiche</Button>
                 </EmptyState>
             ) : (
@@ -139,9 +133,7 @@ export default function CostingPage() {
                                         <CardTitle className="text-xl font-bold">{recipe.name}</CardTitle>
                                         <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{recipe.description || 'Pas de description'}</p>
                                     </div>
-                                    <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
-                                        Lot de {recipe.yieldQuantity}
-                                    </Badge>
+                                    <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">Lot de {recipe.yieldQuantity}</Badge>
                                 </div>
                             </CardHeader>
                             <CardContent className="space-y-4">
@@ -155,7 +147,6 @@ export default function CostingPage() {
                                         <p className="text-xl font-black text-chart-quaternary">{formatCurrency(recipe.suggestedPrice)}</p>
                                     </div>
                                 </div>
-                                
                                 <div className="space-y-2">
                                     <div className="flex justify-between text-sm">
                                         <span className="text-muted-foreground">Marge cible :</span>
@@ -169,12 +160,8 @@ export default function CostingPage() {
                             </CardContent>
                             <CardFooter className="bg-muted/20 border-t border-white/5 p-3 flex justify-between">
                                 <div className="flex gap-2">
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-primary/10" onClick={() => handleEdit(recipe)}>
-                                        <Edit className="h-4 w-4" />
-                                    </Button>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-destructive/10 text-destructive" onClick={() => handleDeleteClick(recipe)}>
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-primary/10" onClick={() => handleEdit(recipe)}><Edit className="h-4 w-4" /></Button>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-destructive/10 text-destructive" onClick={() => handleDeleteClick(recipe)}><Trash2 className="h-4 w-4" /></Button>
                                 </div>
                                 <div className="flex items-center gap-1 text-[10px] text-muted-foreground italic">
                                     <TrendingUp className="h-3 w-3" />
@@ -186,21 +173,8 @@ export default function CostingPage() {
                 </div>
             )}
 
-            <RecipeDialog 
-                isOpen={isFormDialogOpen} 
-                onOpenChange={setIsFormDialogOpen} 
-                recipe={selectedRecipe}
-                onSuccess={refreshRecipes}
-            />
-
-            <ConfirmAlertDialog 
-                isOpen={isDeleteConfirmOpen}
-                onOpenChange={setIsDeleteConfirmOpen}
-                title="Supprimer la fiche technique ?"
-                description={`Voulez-vous vraiment supprimer la recette "${recipeToDelete?.name}" ? Cette action est irréversible.`}
-                onConfirm={confirmDelete}
-                confirmText="Supprimer"
-            />
+            <RecipeDialog isOpen={isFormDialogOpen} onOpenChange={setIsFormDialogOpen} recipe={selectedRecipe} onSuccess={refreshRecipes} />
+            <ConfirmAlertDialog isOpen={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen} title="Supprimer la fiche technique ?" description={`Voulez-vous vraiment supprimer la recette "${recipeToDelete?.name}" ? Cette action est irréversible.`} onConfirm={confirmDelete} confirmText="Supprimer" />
         </div>
     );
 }
