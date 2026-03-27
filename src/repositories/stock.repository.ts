@@ -1,151 +1,85 @@
-
-'use client';
-
-import { createClient } from "@/utils/supabase/client";
+import { createClient } from "@/utils/supabase/server";
 import type { StockIntake } from "@/lib/types";
+import { ProductRepository } from "./product.repository";
+import { SupplierRepository } from "./supplier.repository";
 
-const fromSupabase = (intake: any): StockIntake => ({
-    uuid: intake.uuid,
-    user_id: intake.user_id,
-    supplierUuid: intake.supplier_uuid,
-    invoiceNumber: intake.invoice_number,
-    invoiceDate: intake.invoice_date,
-    totalValue: intake.total_value,
-    transportFees: intake.transport_fees || 0,
-    createdAt: intake.created_at,
-    updatedAt: intake.updated_at,
-    items: intake.stock_intake_items?.map((item: any) => ({
-        productUuid: item.product_uuid,
-        productName: item.product_name,
-        quantityReceived: item.quantity_received,
-        quantityDamaged: item.quantity_damaged,
-        purchasePrice: item.purchase_price,
-        costPrice: item.cost_price,
-    })) || []
-});
-
-
-class StockRepository {
+/**
+ * @fileOverview Stock Repository (Absolute Data Authority)
+ * يدير عمليات توريد المخزون ويضمن دقة تكلفة الـ "Revient" وتحديث موازين الموردين.
+ */
+export class StockRepository {
     private supabase = createClient();
+    private productRepo = new ProductRepository();
+    private supplierRepo = new SupplierRepository();
 
-    private get baseQuery() {
-        return this.supabase.from('stock_intakes').select(`
-            *,
-            stock_intake_items (
-                product_uuid,
-                product_name,
-                quantity_received,
-                quantity_damaged,
-                purchase_price,
-                cost_price
-            )
-        `);
-    }
+    async create(intakeData: any): Promise<StockIntake> {
+        const { data: intake, error: sErr } = await this.supabase
+            .from('stock_intakes')
+            .insert([{
+                supplier_uuid: intakeData.supplierUuid,
+                invoice_number: intakeData.invoiceNumber,
+                invoice_date: intakeData.invoiceDate,
+                total_value: intakeData.totalValue,
+                transport_fees: intakeData.transportFees || 0,
+            }])
+            .select()
+            .single();
 
-    async getAll(): Promise<StockIntake[]> {
-        const { data, error } = await this.baseQuery;
-        if (error) throw error;
-        return data.map(fromSupabase);
-    }
+        if (sErr) throw new Error(`STOCK_INTAKE_FAILED: ${sErr.message}`);
 
-    async findByUuid(uuid: string): Promise<StockIntake | undefined> {
-        const { data, error } = await this.baseQuery.eq('uuid', uuid).single();
-        if (error && error.code !== 'PGRST116') throw error;
-        return data ? fromSupabase(data) : undefined;
-    }
-
-    async filter(filters: { query?: string; from?: Date; to?: Date }): Promise<StockIntake[]> {
-        let query = this.baseQuery.order('created_at', { ascending: false });
-
-        if (filters.query) {
-             query = query.ilike('invoice_number', `%${filters.query}%`);
-        }
-        if (filters.from) {
-            query = query.gte('created_at', filters.from.toISOString());
-        }
-        if (filters.to) {
-            query = query.lte('created_at', filters.to.toISOString());
-        }
-        
-        const { data, error } = await query;
-        if (error) throw error;
-        return data.map(fromSupabase);
-    }
-    
-    async add(intake: StockIntake): Promise<StockIntake> {
-        const { items, ...intakeData } = intake;
-
-        const { data: newIntake, error: intakeError } = await this.supabase.from('stock_intakes').insert({
-            uuid: intakeData.uuid,
-            user_id: intakeData.user_id,
-            supplier_uuid: intakeData.supplierUuid,
-            invoice_number: intakeData.invoiceNumber,
-            invoice_date: intakeData.invoiceDate,
-            total_value: intakeData.totalValue,
-            transport_fees: intakeData.transportFees,
-            created_at: intakeData.createdAt,
-            updated_at: intakeData.updatedAt,
-        }).select().single();
-
-        if (intakeError) throw intakeError;
-        
-        const intakeItems = items.map(item => ({
-            intake_uuid: newIntake.uuid,
+        const intakeItems = intakeData.items.map((item: any) => ({
+            intake_uuid: intake.uuid,
             product_uuid: item.productUuid,
             product_name: item.productName,
             quantity_received: item.quantityReceived,
-            quantity_damaged: item.quantityDamaged,
+            quantity_damaged: item.quantityDamaged || 0,
             purchase_price: item.purchasePrice,
             cost_price: item.costPrice,
         }));
 
-        const { error: itemsError } = await this.supabase.from('stock_intake_items').insert(intakeItems);
-        if (itemsError) {
-            await this.supabase.from('stock_intakes').delete().eq('uuid', newIntake.uuid);
-            throw itemsError;
+        const { error: iErr } = await this.supabase.from('stock_intake_items').insert(intakeItems);
+        if (iErr) throw new Error("STOCK_ITEMS_SYNC_FAILED");
+
+        // أتمتة السلطة: تحديث كميات المنتجات وموازين الموردين
+        for (const item of intakeItems) {
+            if (item.product_uuid) {
+                const netQuantity = item.quantity_received - item.quantity_damaged;
+                await this.productRepo.updateStock(item.product_uuid, netQuantity);
+                
+                // تحديث سعر التكلفة الفعلي في سجل المنتج إذا لزم الأمر
+                await this.supabase.from('products').update({
+                    purchase_price: item.purchase_price,
+                    updated_at: new Date().toISOString()
+                }).eq('uuid', item.product_uuid);
+            }
         }
 
-        return fromSupabase({ ...newIntake, stock_intake_items: items });
-    }
-
-    async deleteAllForUser(userId: string): Promise<void> {
-        const { error } = await this.supabase.from('stock_intakes').delete().eq('user_id', userId);
-        if (error) throw error;
-    }
-
-    async bulkUpsert(intakes: StockIntake[]): Promise<void> {
-        const intakeRecords = intakes.map(({ items, ...intakeData }) => ({
-            uuid: intakeData.uuid,
-            user_id: intakeData.user_id,
-            supplier_uuid: intakeData.supplierUuid,
-            invoice_number: intakeData.invoiceNumber,
-            invoice_date: intakeData.invoiceDate,
-            total_value: intakeData.totalValue,
-            transport_fees: intakeData.transportFees || 0,
-            created_at: intakeData.createdAt,
-            updated_at: intakeData.updatedAt,
-        }));
-
-        const { error: intakeError } = await this.supabase.from('stock_intakes').upsert(intakeRecords);
-        if (intakeError) throw intakeError;
-
-        const allIntakeItems = intakes.flatMap(intake => 
-            intake.items.map(item => ({
-                intake_uuid: intake.uuid,
-                product_uuid: item.productUuid,
-                product_name: item.productName,
-                quantity_received: item.quantityReceived,
-                quantity_damaged: item.quantityDamaged,
-                purchase_price: item.purchasePrice,
-                cost_price: item.costPrice,
-            }))
-        );
-        
-        if (allIntakeItems.length > 0) {
-            const { error: itemsError } = await this.supabase.from('stock_intake_items').upsert(allIntakeItems);
-            if (itemsError) throw itemsError;
+        if (intake.supplier_uuid) {
+            await this.supplierRepo.recalculateBalance(intake.supplier_uuid);
         }
+
+        return this.mapFromDb({ ...intake, stock_intake_items: intakeItems });
+    }
+
+    private mapFromDb(s: any): StockIntake {
+        return {
+            uuid: s.uuid,
+            user_id: s.user_id,
+            supplierUuid: s.supplier_uuid,
+            invoiceNumber: s.invoice_number,
+            invoiceDate: s.invoice_date,
+            totalValue: s.total_value,
+            transportFees: s.transport_fees || 0,
+            createdAt: s.created_at,
+            updatedAt: s.updated_at,
+            items: s.stock_intake_items?.map((i: any) => ({
+                productUuid: i.product_uuid,
+                productName: i.product_name,
+                quantityReceived: i.quantity_received,
+                quantityDamaged: i.quantity_damaged,
+                purchasePrice: i.purchase_price,
+                costPrice: i.cost_price,
+            })) || [],
+        };
     }
 }
-
-export const stockRepository = new StockRepository();
