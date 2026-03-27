@@ -1,14 +1,16 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
+import { CompanyRepository } from '@/repositories/company.repository';
+
+/**
+ * @fileOverview API WALL: Company Profile Gateway
+ * تم تحويل المسار لاستخدام Repository حصرياً لفرض سلطة البيانات.
+ */
 
 export async function GET() {
     try {
-        const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return NextResponse.json({ error: 'Unauthenticated' }, { status: 401 });
-
-        const { data, error } = await supabase.from('company_profile').select('*').eq('user_id', user.id).single();
-        if (error) throw error;
+        const repo = new CompanyRepository();
+        const data = await repo.get();
+        if (!data) return NextResponse.json({ error: 'PROFILE_NOT_FOUND' }, { status: 404 });
         
         return NextResponse.json({ data });
     } catch (e: any) {
@@ -19,12 +21,8 @@ export async function GET() {
 export async function PUT(req: Request) {
     try {
         const body = await req.json();
-        const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return NextResponse.json({ error: 'Unauthenticated' }, { status: 401 });
-
-        const { data, error } = await supabase.from('company_profile').update(body).eq('user_id', user.id).select().single();
-        if (error) throw error;
+        const repo = new CompanyRepository();
+        const data = await repo.update(body);
 
         return NextResponse.json({ data });
     } catch (e: any) {

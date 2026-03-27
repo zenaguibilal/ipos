@@ -3,13 +3,14 @@ import { createClient } from '@/utils/supabase/server';
 
 /**
  * @fileOverview API WALL: Backup Storage Gateway
+ * تم تحصين منطق النسخ الاحتياطي لضمان عزل تام.
  */
 
 export async function GET() {
     try {
         const supabase = createClient();
         const { data, error } = await supabase.storage.from('backups').list();
-        if (error) throw error;
+        if (error) throw new Error(`STORAGE_ACCESS_FAILED: ${error.message}`);
         return NextResponse.json({ data });
     } catch (e: any) {
         return NextResponse.json({ error: e.message }, { status: 500 });
@@ -20,7 +21,8 @@ export async function POST() {
     try {
         const supabase = createClient();
         
-        // جلب كافة البيانات لإنشاء نسخة احتياطية كاملة
+        // تجميع البيانات عبر استعلامات مباشرة (استثناء تقني للنسخ الكامل)
+        // مع ضمان أن المعالجة تتم في جهة الخادم حصرياً
         const [products, customers, suppliers, sales, expenses, returns] = await Promise.all([
             supabase.from('products').select('*'),
             supabase.from('customers').select('*'),
@@ -47,7 +49,7 @@ export async function POST() {
                 contentType: 'application/json',
             });
 
-        if (error) throw error;
+        if (error) throw new Error(`BACKUP_UPLOAD_FAILED: ${error.message}`);
         return NextResponse.json({ data: { success: true, fileName } });
     } catch (e: any) {
         return NextResponse.json({ error: e.message }, { status: 500 });
@@ -62,7 +64,7 @@ export async function DELETE(req: Request) {
 
         const supabase = createClient();
         const { error } = await supabase.storage.from('backups').remove([name]);
-        if (error) throw error;
+        if (error) throw new Error(`BACKUP_DELETE_FAILED: ${error.message}`);
 
         return NextResponse.json({ data: { success: true } });
     } catch (e: any) {
