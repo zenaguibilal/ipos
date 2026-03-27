@@ -10,7 +10,7 @@ import { useAppStore } from "@/stores/appStore";
 import { 
     User, Building2, Database, Settings2, ShieldCheck, 
     BadgeCheck, LayoutDashboard, Cloud, Wifi, 
-    Monitor, Cpu, Fingerprint, Globe, KeyRound
+    Monitor, Cpu, Fingerprint, Globe, KeyRound, Server
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -68,7 +68,7 @@ export default function ProfilePage() {
             />
 
             <Tabs defaultValue="account" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 luxury-glass p-1.5 h-auto bg-muted/20 border-white/5">
+                <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 luxury-glass p-1.5 h-auto bg-muted/20 border-white/5 shadow-inner">
                     <TabsTrigger value="account" className="py-3 gap-2 rounded-xl font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-background data-[state=active]:text-primary transition-all">
                         <User className="h-3.5 w-3.5" /> Système
                     </TabsTrigger>
@@ -114,16 +114,21 @@ export default function ProfilePage() {
                         </CardHeader>
                         <CardContent className="pt-10 pb-10">
                             <div className="max-w-3xl mx-auto space-y-10">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div className="p-6 rounded-[2rem] bg-muted/20 border border-white/5 flex flex-col items-center text-center group hover:bg-muted/30 transition-colors">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <div className="p-6 rounded-[2rem] bg-muted/20 border border-white/5 flex flex-col items-center text-center group hover:bg-muted/30 transition-all">
                                         <LayoutDashboard className="h-8 w-8 text-primary mb-3 opacity-50 group-hover:scale-110 transition-transform" />
                                         <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Accès Système</p>
                                         <p className="text-base font-bold">Permanent Solaire</p>
                                     </div>
-                                    <div className="p-6 rounded-[2rem] bg-muted/20 border border-white/5 flex flex-col items-center text-center group hover:bg-muted/30 transition-colors">
+                                    <div className="p-6 rounded-[2rem] bg-muted/20 border border-white/5 flex flex-col items-center text-center group hover:bg-muted/30 transition-all">
                                         <Cloud className="h-8 w-8 text-primary mb-3 opacity-50 group-hover:scale-110 transition-transform" />
                                         <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Synchronisation</p>
-                                        <p className="text-base font-bold">Temps réel Cloud-Native</p>
+                                        <p className="text-base font-bold">Cloud-Native Live</p>
+                                    </div>
+                                    <div className="p-6 rounded-[2rem] bg-muted/20 border border-white/5 flex flex-col items-center text-center group hover:bg-muted/30 transition-all">
+                                        <Server className="h-8 w-8 text-primary mb-3 opacity-50 group-hover:scale-110 transition-transform" />
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Infrastructure</p>
+                                        <p className="text-base font-bold">Hybride Sécurisé</p>
                                     </div>
                                 </div>
 
@@ -135,15 +140,15 @@ export default function ProfilePage() {
                                     <div className="grid grid-cols-3 gap-4">
                                         <div className="p-4 bg-muted/10 rounded-2xl border border-white/5 flex flex-col items-center gap-2 hover:border-primary/20 transition-all">
                                             <Cpu className="h-5 w-5 text-muted-foreground opacity-50" />
-                                            <span className="text-xs font-black uppercase">{systemInfo.os}</span>
+                                            <span className="text-xs font-black uppercase tracking-tighter">{systemInfo.os}</span>
                                         </div>
                                         <div className="p-4 bg-muted/10 rounded-2xl border border-white/5 flex flex-col items-center gap-2 hover:border-primary/20 transition-all">
                                             <Globe className="h-5 w-5 text-muted-foreground opacity-50" />
-                                            <span className="text-xs font-black uppercase">{systemInfo.browser}</span>
+                                            <span className="text-xs font-black uppercase tracking-tighter">{systemInfo.browser}</span>
                                         </div>
                                         <div className="p-4 bg-muted/10 rounded-2xl border border-white/5 flex flex-col items-center gap-2 hover:border-primary/20 transition-all">
                                             <Fingerprint className="h-5 w-5 text-muted-foreground opacity-50" />
-                                            <span className="text-xs font-black uppercase">Souverain</span>
+                                            <span className="text-xs font-black uppercase tracking-tighter">Souverain</span>
                                         </div>
                                     </div>
                                 </div>

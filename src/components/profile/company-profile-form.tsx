@@ -9,7 +9,11 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import type { CompanyProfile } from '@/lib/types';
 import { Skeleton } from '../ui/skeleton';
-import { Loader2, Save, Globe, Phone, Mail, MapPin, Hash, ShoppingBag, Coins, Scale, FileText, LogOut, Briefcase } from 'lucide-react';
+import { 
+    Loader2, Save, Globe, Phone, Mail, MapPin, Hash, 
+    ShoppingBag, Coins, Scale, FileText, LogOut, 
+    Briefcase, Building, Map, Landmark
+} from 'lucide-react';
 import { useAppStore } from '@/stores/appStore';
 import { Separator } from '../ui/separator';
 
@@ -106,15 +110,24 @@ export function CompanyProfileForm({ mode }: CompanyProfileFormProps) {
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                                 <div className="space-y-3">
                                     <Label htmlFor="city" className="text-[10px] font-black uppercase tracking-widest opacity-70 ml-1">Ville</Label>
-                                    <Input id="city" value={formState.city || ''} onChange={handleInputChange} disabled={isSaving} className="h-14 rounded-2xl bg-background/40 border-white/5 focus:border-primary/40 focus:ring-0 transition-all font-bold" />
+                                    <div className="relative group">
+                                        <Building className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-primary/30" />
+                                        <Input id="city" value={formState.city || ''} onChange={handleInputChange} disabled={isSaving} className="pl-10 h-14 rounded-2xl bg-background/40 border-white/5 focus:border-primary/40 focus:ring-0 transition-all font-bold" />
+                                    </div>
                                 </div>
                                 <div className="space-y-3">
                                     <Label htmlFor="zipCode" className="text-[10px] font-black uppercase tracking-widest opacity-70 ml-1">Code Postal</Label>
-                                    <Input id="zipCode" value={formState.zipCode || ''} onChange={handleInputChange} disabled={isSaving} className="h-14 rounded-2xl bg-background/40 border-white/5 focus:border-primary/40 focus:ring-0 transition-all font-bold" />
+                                    <div className="relative group">
+                                        <Map className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-primary/30" />
+                                        <Input id="zipCode" value={formState.zipCode || ''} onChange={handleInputChange} disabled={isSaving} className="pl-10 h-14 rounded-2xl bg-background/40 border-white/5 focus:border-primary/40 focus:ring-0 transition-all font-bold font-mono" />
+                                    </div>
                                 </div>
                                 <div className="space-y-3">
                                     <Label htmlFor="country" className="text-[10px] font-black uppercase tracking-widest opacity-70 ml-1">Pays</Label>
-                                    <Input id="country" value={formState.country || ''} onChange={handleInputChange} disabled={isSaving} className="h-14 rounded-2xl bg-background/40 border-white/5 focus:border-primary/40 focus:ring-0 transition-all font-bold" />
+                                    <div className="relative group">
+                                        <Globe className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-primary/30" />
+                                        <Input id="country" value={formState.country || ''} onChange={handleInputChange} disabled={isSaving} className="pl-10 h-14 rounded-2xl bg-background/40 border-white/5 focus:border-primary/40 focus:ring-0 transition-all font-bold" />
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -152,22 +165,22 @@ export function CompanyProfileForm({ mode }: CompanyProfileFormProps) {
                                 <div className="space-y-3">
                                     <Label htmlFor="vatNumber" className="text-[10px] font-black uppercase tracking-widest opacity-70 ml-1">NIF (Identifiant Fiscal)</Label>
                                     <div className="relative group">
-                                        <FileText className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary/40 group-focus-within:text-primary transition-colors" />
-                                        <Input id="vatNumber" value={formState.vatNumber || ''} onChange={handleInputChange} disabled={isSaving} className="pl-12 h-14 rounded-2xl bg-background/40 border-white/5 focus:border-primary/40 focus:ring-0 transition-all font-bold font-mono" />
+                                        <Landmark className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-primary/30" />
+                                        <Input id="vatNumber" value={formState.vatNumber || ''} onChange={handleInputChange} disabled={isSaving} className="pl-10 h-14 rounded-2xl bg-background/40 border-white/5 focus:border-primary/40 focus:ring-0 transition-all font-bold font-mono uppercase" />
                                     </div>
                                 </div>
                                 <div className="space-y-3">
                                     <Label htmlFor="rcNumber" className="text-[10px] font-black uppercase tracking-widest opacity-70 ml-1">N° Registre Commerce</Label>
                                     <div className="relative group">
-                                        <Hash className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary/40 group-focus-within:text-primary transition-colors" />
-                                        <Input id="rcNumber" value={formState.rcNumber || ''} onChange={handleInputChange} disabled={isSaving} className="pl-12 h-14 rounded-2xl bg-background/40 border-white/5 focus:border-primary/40 focus:ring-0 transition-all font-bold font-mono" />
+                                        <FileText className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-primary/30" />
+                                        <Input id="rcNumber" value={formState.rcNumber || ''} onChange={handleInputChange} disabled={isSaving} className="pl-10 h-14 rounded-2xl bg-background/40 border-white/5 focus:border-primary/40 focus:ring-0 transition-all font-bold font-mono uppercase" />
                                     </div>
                                 </div>
                                 <div className="space-y-3">
                                     <Label htmlFor="artImposition" className="text-[10px] font-black uppercase tracking-widest opacity-70 ml-1">Article d'Imposition</Label>
                                     <div className="relative group">
-                                        <FileText className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary/40 group-focus-within:text-primary transition-colors" />
-                                        <Input id="artImposition" value={formState.artImposition || ''} onChange={handleInputChange} disabled={isSaving} className="pl-12 h-14 rounded-2xl bg-background/40 border-white/5 focus:border-primary/40 focus:ring-0 transition-all font-bold font-mono" />
+                                        <Hash className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-primary/30" />
+                                        <Input id="artImposition" value={formState.artImposition || ''} onChange={handleInputChange} disabled={isSaving} className="pl-10 h-14 rounded-2xl bg-background/40 border-white/5 focus:border-primary/40 focus:ring-0 transition-all font-bold font-mono uppercase" />
                                     </div>
                                 </div>
                             </div>
@@ -175,7 +188,7 @@ export function CompanyProfileForm({ mode }: CompanyProfileFormProps) {
                     </>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                        <div className="space-y-6 p-8 bg-primary/5 rounded-[2.5rem] border border-primary/10 relative overflow-hidden group hover:bg-primary/10 transition-all duration-500">
+                        <div className="space-y-6 p-8 bg-primary/5 rounded-[2.5rem] border border-primary/10 relative overflow-hidden group hover:bg-primary/10 transition-all duration-500 shadow-xl">
                             <div className="absolute top-0 right-0 p-6 opacity-[0.03] group-hover:rotate-12 group-hover:scale-110 transition-all duration-700">
                                 <Scale className="h-32 w-32 text-primary" />
                             </div>
@@ -194,14 +207,14 @@ export function CompanyProfileForm({ mode }: CompanyProfileFormProps) {
                                 value={formState.prix_pain || ''} 
                                 onChange={handleInputChange} 
                                 disabled={isSaving} 
-                                className="h-20 text-5xl font-black rounded-3xl text-primary bg-background/60 border-primary/20 focus:border-primary focus:ring-0 text-center shadow-inner"
+                                className="h-20 text-5xl font-black rounded-3xl text-primary bg-background/60 border-primary/20 focus:border-primary focus:ring-0 text-center shadow-inner tracking-tighter"
                             />
-                            <p className="text-[10px] text-muted-foreground font-medium leading-relaxed bg-white/5 p-4 rounded-2xl border border-white/5">
-                                Ce prix est utilisé comme référence fondamentale pour la génération automatique des factures de distribution dans le module Boulangerie.
+                            <p className="text-[10px] text-muted-foreground font-medium leading-relaxed bg-white/5 p-4 rounded-2xl border border-white/5 shadow-inner">
+                                Ce prix est utilisé comme référence fondamentale pour la génération automatique des factures de distribution في وحدة المخبزة.
                             </p>
                         </div>
 
-                        <div className="space-y-6 p-8 bg-orange-500/5 rounded-[2.5rem] border border-orange-500/10 relative overflow-hidden group hover:bg-orange-500/10 transition-all duration-500">
+                        <div className="space-y-6 p-8 bg-orange-500/5 rounded-[2.5rem] border border-orange-500/10 relative overflow-hidden group hover:bg-orange-500/10 transition-all duration-500 shadow-xl">
                             <div className="absolute top-0 right-0 p-6 opacity-[0.03] group-hover:rotate-12 group-hover:scale-110 transition-all duration-700">
                                 <Coins className="h-32 w-32 text-orange-400" />
                             </div>
@@ -220,30 +233,30 @@ export function CompanyProfileForm({ mode }: CompanyProfileFormProps) {
                                 value={formState.goldPricePerGram || ''} 
                                 onChange={handleInputChange} 
                                 disabled={isSaving} 
-                                className="h-20 text-5xl font-black rounded-3xl text-orange-400 bg-background/60 border-orange-500/20 focus:border-orange-500 focus:ring-0 text-center shadow-inner"
+                                className="h-20 text-5xl font-black rounded-3xl text-orange-400 bg-background/60 border-orange-500/20 focus:border-orange-500 focus:ring-0 text-center shadow-inner tracking-tighter"
                             />
-                            <p className="text-[10px] text-muted-foreground font-medium leading-relaxed bg-white/5 p-4 rounded-2xl border border-white/5">
-                                Valeur marchande de référence pour le calcul automatique du Nisab. Un réglage précis garantit l'exactitude de vos évaluations de Zakat.
+                            <p className="text-[10px] text-muted-foreground font-medium leading-relaxed bg-white/5 p-4 rounded-2xl border border-white/5 shadow-inner">
+                                Valeur marchande de référence pour le calcul automatique du Nisab. Un réglage précis هو أساس تقييمات الزكاة الخاصة بك.
                             </p>
                         </div>
                     </div>
                 )}
             </CardContent>
-            <CardFooter className="bg-white/5 p-8 flex flex-col sm:flex-row justify-between items-center border-t border-white/5 gap-6 mt-6">
+            <CardFooter className="bg-white/5 p-8 flex flex-col sm:flex-row justify-between items-center border-t border-white/5 gap-6 mt-6 rounded-b-3xl">
                 <Button 
                     type="button" 
                     variant="ghost" 
                     onClick={logout}
-                    className="rounded-2xl h-14 px-8 text-[11px] font-black uppercase tracking-[0.2em] text-destructive hover:bg-destructive/10 gap-3 w-full sm:w-auto"
+                    className="rounded-2xl h-14 px-8 text-[11px] font-black uppercase tracking-[0.2em] text-destructive hover:bg-destructive/10 gap-3 w-full sm:w-auto shadow-sm"
                 >
                     <LogOut className="h-5 w-5" /> Mettre Fin à la Session
                 </Button>
-                <Button type="submit" disabled={isSaving} className="rounded-2xl px-12 h-14 font-black uppercase text-[11px] tracking-[0.3em] gap-3 shadow-2xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all w-full sm:w-auto overflow-hidden relative">
+                <Button type="submit" disabled={isSaving} className="rounded-2xl px-12 h-14 font-black uppercase text-[11px] tracking-[0.3em] gap-3 shadow-2xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all w-full sm:w-auto overflow-hidden relative group">
                     <span className="relative z-10 flex items-center gap-2">
                         {isSaving ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
                         Sauvegarder les Décrets
                     </span>
-                    <div className="absolute inset-0 bg-gradient-to-r from-primary to-primary/80" />
+                    <div className="absolute inset-0 bg-gradient-to-r from-primary to-primary/80 group-hover:from-primary group-hover:to-primary/90 transition-all duration-500" />
                 </Button>
             </CardFooter>
         </form>
