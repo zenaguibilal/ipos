@@ -1,43 +1,22 @@
 
 'use client';
-
-import { createClient } from "@/utils/supabase/client";
-import { productRepository } from '@/repositories/product.repository';
-import { customerRepository } from '@/repositories/customer.repository';
-import { supplierRepository } from '@/repositories/supplier.repository';
-import { companyRepository } from '@/repositories/company.repository';
+/**
+ * @fileOverview Zakat Service (API Wall Implementation)
+ */
+import { api } from '@/lib/api-client';
 import type { ZakatCalculation, SavedZakatCalculation } from '@/lib/types';
-import { v4 as uuidv4 } from 'uuid';
-import { useAppStore } from "@/stores/appStore";
 
 class ZakatService {
-    private supabase = createClient();
-
-    private getUserId(): string {
-        const id = useAppStore.getState().session?.user?.id;
-        if (!id) throw new Error("Utilisateur non authentifié.");
-        return id;
+    async getAutomaticData(): Promise<any> {
+        return api.get('zakat');
     }
 
-    async getAutomaticData() {
-        try {
-            const [products, customers, suppliers, profile] = await Promise.all([
-                productRepository.getAll(),
-                customerRepository.getAll(),
-                supplierRepository.getAll(),
-                companyRepository.get()
-            ]);
+    async getHistory(): Promise<SavedZakatCalculation[]> {
+        return api.get<SavedZakatCalculation[]>('zakat?type=history');
+    }
 
-            return {
-                inventoryValue: products.reduce((sum, p) => sum + (p.quantity * p.purchasePrice), 0),
-                customerDebts: customers.reduce((sum, c) => sum + c.outstandingBalance, 0),
-                supplierDebts: suppliers.reduce((sum, s) => sum + s.balance, 0),
-                goldPrice: profile?.gold_price_per_gram || profile?.goldPricePerGram || 0
-            };
-        } catch (error) { 
-            console.error("Failed to load zakat data", error);
-            throw error; 
-        }
+    async saveCalculation(data: ZakatCalculation): Promise<void> {
+        return api.post('zakat', data);
     }
 
     calculate(data: any): ZakatCalculation {
@@ -54,47 +33,6 @@ class ZakatService {
             zakatAmount: isNisabReached ? zakatBase * 0.025 : 0,
             isNisabReached
         };
-    }
-
-    async saveCalculation(calc: ZakatCalculation): Promise<void> {
-        const userId = this.getUserId();
-        const { error } = await this.supabase.from('zakat_history').insert({
-            uuid: uuidv4(),
-            user_id: userId,
-            inventory_value: calc.inventoryValue,
-            customer_debts: calc.customerDebts,
-            bad_debts: calc.badDebts,
-            cash_on_hand: calc.cashOnHand,
-            supplier_debts: calc.supplierDebts,
-            other_debts: calc.otherDebts,
-            gold_price: calc.goldPrice,
-            nisab: calc.nisab,
-            zakat_base: calc.zakatBase,
-            zakat_amount: calc.zakatAmount,
-            is_nisab_reached: calc.isNisabReached
-        });
-        if (error) throw error;
-    }
-
-    async getHistory(): Promise<SavedZakatCalculation[]> {
-        const userId = this.getUserId();
-        const { data, error } = await this.supabase.from('zakat_history')
-            .select('*').eq('user_id', userId).order('created_at', { ascending: false });
-        if (error) throw error;
-        return data.map((r: any) => ({
-            ...r,
-            inventoryValue: r.inventory_value,
-            customerDebts: r.customer_debts,
-            badDebts: r.bad_debts,
-            cashOnHand: r.cash_on_hand,
-            supplierDebts: r.supplier_debts,
-            otherDebts: r.other_debts,
-            goldPrice: r.gold_price,
-            zakatBase: r.zakat_base,
-            zakatAmount: r.zakat_amount,
-            isNisabReached: r.is_nisab_reached,
-            createdAt: new Date(r.created_at)
-        }));
     }
 }
 
