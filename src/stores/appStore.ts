@@ -41,6 +41,7 @@ interface AppState {
     lastCompletedSale: { sale: Sale; customer?: Customer } | null;
     isLoading: Record<string, boolean>;
     
+    // UI State (The Singularity)
     productViewMode: 'grid' | 'list';
     customerViewMode: 'grid' | 'list';
     expenseViewMode: 'grid' | 'list';
@@ -68,7 +69,7 @@ interface AppState {
         fetchCustomerDetails: (uuid: string) => Promise<void>;
         fetchSupplierDetails: (uuid: string) => Promise<void>;
 
-        // UI State Actions (The Singularity)
+        // UI State Actions
         setProductViewMode: (mode: 'grid' | 'list') => void;
         setCustomerViewMode: (mode: 'grid' | 'list') => void;
         setExpenseViewMode: (mode: 'grid' | 'list') => void;
@@ -90,12 +91,6 @@ interface AppState {
         clearCart: () => void;
         clearCartFlashes: () => void;
         
-        // Deletion Actions
-        deleteCustomersBulk: (uuids: string[]) => Promise<void>;
-        deleteSuppliersBulk: (uuids: string[]) => Promise<void>;
-        deleteProductsBulk: (uuids: string[]) => Promise<void>;
-        deleteBreadOrdersBulk: (uuids: string[]) => Promise<void>;
-
         // Transaction Processors
         finalizeSale: (paymentData: any) => Promise<boolean>;
         processReturn: (returnData: any) => Promise<boolean>;
@@ -142,18 +137,18 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     productViewMode: 'grid',
     customerViewMode: 'grid',
-    expenseViewMode: 'grid',
-    salesHistoryViewMode: 'grid',
-    returnViewMode: 'grid',
+    expenseViewMode: 'list',
+    salesHistoryViewMode: 'list',
+    returnViewMode: 'list',
     supplierViewMode: 'grid',
-    stockViewMode: 'grid',
+    stockViewMode: 'list',
 
     actions: {
         fetchProfile: async () => {
             set({ isSettingsLoading: true });
             try {
                 const profile = await api.get<CompanyProfile>('profile');
-                set({ profile });
+                set({ profile, activeCartId: get().carts[0].id });
             } finally {
                 set({ isSettingsLoading: false });
             }
@@ -338,13 +333,8 @@ export const useAppStore = create<AppState>((set, get) => ({
         })),
 
         addProductToCart: (product, quantity) => set(produce((state: AppState) => {
-            const cartId = state.activeCartId || (state.carts[0] ? state.carts[0].id : createInitialCart().id);
-            if (!state.activeCartId && state.carts.length === 0) {
-                const init = createInitialCart();
-                state.carts.push(init);
-                state.activeCartId = init.id;
-            }
-            const cart = state.carts.find(c => c.id === state.activeCartId)!;
+            const cart = state.carts.find(c => c.id === state.activeCartId);
+            if (!cart) return;
             const existing = cart.items.find(i => i.uuid === product.uuid);
             if (existing) {
                 existing.cartQuantity += quantity;
@@ -390,25 +380,6 @@ export const useAppStore = create<AppState>((set, get) => ({
             const cart = state.carts.find(c => c.id === state.activeCartId);
             if (cart) cart.items.forEach(i => i.flash = false);
         })),
-
-        deleteCustomersBulk: async (uuids) => {
-            await api.post('customers/bulk-delete', { uuids });
-            await get().actions.refreshCustomers();
-        },
-
-        deleteSuppliersBulk: async (uuids) => {
-            await api.post('suppliers/bulk-delete', { uuids });
-            await get().actions.refreshSuppliers();
-        },
-
-        deleteProductsBulk: async (uuids) => {
-            await api.post('products/bulk-delete', { uuids });
-            await get().actions.refreshProducts();
-        },
-
-        deleteBreadOrdersBulk: async (uuids) => {
-            await api.post('bread/bulk-delete', { uuids });
-        },
 
         finalizeSale: async (paymentData) => {
             const cart = get().carts.find(c => c.id === get().activeCartId);

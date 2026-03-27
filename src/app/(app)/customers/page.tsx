@@ -83,7 +83,7 @@ export default function CustomersPage() {
 
     return (
         <div className="p-4 sm:p-6 space-y-6">
-            <PageHeader title="Gestion des Clients" description="Recherchez, ajoutez et suivez le solde de vos clients.">
+            <PageHeader title="Gestion des Clients" description="Recherchez, ajouteز et suivez le solde de vos clients.">
                 <div className="flex gap-2">
                     <Button variant="outline" onClick={() => CsvImporter.exportCustomers(customers)}>Exporter CSV</Button>
                     {isManagerOrAdmin && (

@@ -17,7 +17,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { api } from '@/lib/api-client';
-import { useAppStore, useIsManagerOrAdmin } from '@/stores/appStore';
+import { useAppStore, useIsManagerOrAdmin, useAppActions } from '@/stores/appStore';
 import { cn, formatCurrency } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -46,10 +46,10 @@ const sortOptions: { [key: string]: string } = {
 
 export default function SuppliersPage() {
     const isManagerOrAdmin = useIsManagerOrAdmin();
-    const { viewMode, setViewMode } = useAppStore(state => ({
-        viewMode: state.supplierViewMode,
-        setViewMode: state.actions.setSupplierViewMode,
+    const { viewMode } = useAppStore(state => ({
+        viewMode: state.supplierViewMode
     }));
+    const { setSupplierViewMode } = useAppActions();
 
     const [searchQuery, setSearchQuery] = useState('');
     const debouncedSearch = useDebounce(searchQuery, 300);
@@ -187,7 +187,7 @@ export default function SuppliersPage() {
                 <EmptyState
                     icon={Building}
                     title="Aucun fournisseur trouvé"
-                    description={searchQuery ? "Aucun résultat pour cette recherche." : "Commencez par ajouter votre premier fournisseur partenaire."}
+                    description={searchQuery ? "Aucun résultat pour cette recherche." : "Commenceز par ajouter votre premier fournisseur partenaire."}
                 >
                      {!searchQuery && (
                         <Button onClick={() => { setSelectedSupplier(null); setIsSupplierDialogOpen(true); }} className="rounded-xl luxury-glass bg-primary/10 border-primary/20 text-primary">
@@ -330,8 +330,8 @@ export default function SuppliersPage() {
                     </DropdownMenu>
 
                     <div className="flex items-center gap-1 rounded-xl bg-muted/50 p-1 border border-primary/10 h-11 luxury-glass">
-                        <Button variant={viewMode === 'grid' ? 'secondary': 'ghost'} size="icon" onClick={() => setViewMode('grid')}><LayoutGrid className="h-5 w-5"/></Button>
-                        <Button variant={viewMode === 'list' ? 'secondary': 'ghost'} size="icon" onClick={() => setViewMode('list')}><List className="h-5 w-5"/></Button>
+                        <Button variant={viewMode === 'grid' ? 'secondary': 'ghost'} size="icon" onClick={() => setSupplierViewMode('grid')}><LayoutGrid className="h-5 w-5"/></Button>
+                        <Button variant={viewMode === 'list' ? 'secondary': 'ghost'} size="icon" onClick={() => setSupplierViewMode('list')}><List className="h-5 w-5"/></Button>
                     </div>
 
                     <Button variant="ghost" size="icon" className="h-11 w-11 luxury-glass" onClick={() => fetchSuppliers(true)} disabled={isRefreshing}>
