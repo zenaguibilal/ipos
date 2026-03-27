@@ -3,31 +3,23 @@ import './globals.css';
 import { Inter } from 'next/font/google';
 import { ClientProviders } from '@/components/layout/ClientProviders';
 
-const APP_NAME = "iPOS";
-const APP_DEFAULT_TITLE = "iPOS - Point de Vente Intelligent";
-const APP_TITLE_TEMPLATE = "%s - iPOS";
-const APP_DESCRIPTION = "Application de point de vente SaaS complète avec autorité de بيانات مطلقة.";
+/**
+ * iPOS Root Layout - Absolute Architecture Refactor
+ * Purged of all Offline/PWA/Manifest dependencies.
+ */
 
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  applicationName: APP_NAME,
+  applicationName: "iPOS",
   title: {
-    default: APP_DEFAULT_TITLE,
-    template: APP_TITLE_TEMPLATE,
+    default: "iPOS - Point de Vente Intelligent",
+    template: "%s - iPOS",
   },
-  description: APP_DESCRIPTION,
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "black-translucent",
-    title: APP_DEFAULT_TITLE,
-  },
+  description: "Application de point de vente SaaS complète avec autorité de بيانات مطلقة.",
+  appleWebApp: null, // Purged
   formatDetection: {
     telephone: false,
-  },
-  icons: {
-    icon: '/icon.svg',
-    apple: '/icon.svg',
   },
 };
 

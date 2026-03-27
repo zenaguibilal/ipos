@@ -10,7 +10,8 @@ import { api } from '@/lib/api-client';
 /**
  * @fileOverview THE STATE SINGULARITY
  * Single source of truth for runtime application state.
- * Direct persistence bypassed; truth derived from API Wall.
+ * Direct persistence (LocalStorage/IndexedDB) is strictly FORBIDDEN.
+ * Truth is derived exclusively from the API Wall.
  */
 
 interface AppState {
@@ -124,7 +125,9 @@ export const useAppStore = create<AppState>((set, get) => ({
 
         setCartDiscount: (discount) => set(produce((state: AppState) => {
             const cart = state.carts.find(c => c.id === state.activeCartId) || state.carts[0];
-            cart.discount = discount;
+            state.carts.forEach((c, idx) => {
+                if (c.id === state.activeCartId) state.carts[idx].discount = discount;
+            });
         })),
 
         clearCart: () => set(produce((state: AppState) => {
