@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -49,6 +48,7 @@ export default function LoginPage() {
         if (session) {
             setLoginSuccess(true);
             const timer = setTimeout(() => {
+                // Hard redirect to bypass Middleware sync delay
                 window.location.href = '/dashboard';
             }, 500);
             return () => clearTimeout(timer);
@@ -113,7 +113,6 @@ export default function LoginPage() {
 
     return (
         <div className="flex min-h-screen w-full items-center justify-center bg-background p-4 relative overflow-hidden">
-            {/* Background Grain/Noise Overlay */}
             <div className="fixed inset-0 opacity-[0.03] pointer-events-none z-0 bg-[url('https://www.transparenttextures.com/patterns/p6.png')]"></div>
 
             <div className="w-full max-w-md z-10 space-y-8 animate-in fade-in duration-700">

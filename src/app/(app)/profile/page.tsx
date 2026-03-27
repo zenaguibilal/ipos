@@ -1,4 +1,3 @@
-
 'use client';
 
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -24,7 +23,7 @@ export default function ProfilePage() {
     const [systemInfo, setSystemInfo] = useState({ os: 'Chargement...', browser: 'Chargement...' });
 
     useEffect(() => {
-        const ua = window.navigator.userAgent;
+        const ua = typeof window !== 'undefined' ? window.navigator.userAgent : "";
         let os = "Inconnu";
         if (ua.indexOf("Win") !== -1) os = "Windows";
         if (ua.indexOf("Mac") !== -1) os = "macOS";
