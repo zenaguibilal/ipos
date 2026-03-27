@@ -15,12 +15,6 @@ const nextConfig = {
       },
     ],
   },
-  experimental: {
-    allowedDevOrigins: [
-      '6000-firebase-ipos-intelligent-pos-1774532177545.cluster-cbeiita7rbe7iuwhvjs5zww2i4.cloudworkstations.dev',
-      '*.cloudworkstations.dev'
-    ]
-  },
   // Optimize webpack cache to handle "big strings" serialization issues in dev
   webpack: (config, { dev, isServer }) => {
     if (dev && !isServer) {
