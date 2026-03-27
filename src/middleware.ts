@@ -17,8 +17,6 @@ export async function middleware(request: NextRequest) {
           return request.cookies.get(name)?.value
         },
         set(name: string, value: string, options: CookieOptions) {
-          // If the cookie is set, update the request's headers so that
-          // a server component can read the updated cookie value.
           request.cookies.set({
             name,
             value,
@@ -36,8 +34,6 @@ export async function middleware(request: NextRequest) {
           })
         },
         remove(name: string, options: CookieOptions) {
-          // If the cookie is removed, update the request's headers so that
-          // a server component can read the updated cookie value.
           request.cookies.set({
             name,
             value: '',
@@ -54,26 +50,23 @@ export async function middleware(request: NextRequest) {
     }
   )
 
+  // Use getSession for faster middleware checks
   const {
-    data: { user },
-  } = await supabase.auth.getUser()
+    data: { session },
+  } = await supabase.auth.getSession()
 
+  const user = session?.user;
   const isAuthRoute = request.nextUrl.pathname.startsWith('/login');
 
-  // if user is not signed in and the current path is not /login,
-  // redirect the user to the /login page
+  // If user is not signed in and trying to access a protected route
   if (!user && !isAuthRoute) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  // if user is signed in and the current path is /login,
-  // redirect the user to the /dashboard page
+  // If user is signed in and trying to access the login page
   if (user && isAuthRoute) {
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
-
-  // refresh the session cookie
-  await supabase.auth.getSession()
 
   return response
 }
@@ -85,8 +78,9 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
-     * Feel free to modify this pattern to include more paths.
+     * - manifest.json (PWA manifest)
+     * - *.svg, *.png, *.jpg, *.jpeg, *.gif, *.webp (images)
      */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|manifest\\.json|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }

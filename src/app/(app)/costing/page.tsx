@@ -1,15 +1,14 @@
-
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
-import { Plus, Calculator, Trash2, Edit, TrendingUp, Info, ArrowUpRight, ArrowDownRight, Target } from 'lucide-react';
+import { Plus, Calculator, Trash2, Edit, TrendingUp, Target } from 'lucide-react';
 import { RecipeDialog } from '@/components/costing/RecipeDialog';
 import { recipeService } from '@/services/recipe.service';
 import type { Recipe } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -29,8 +28,6 @@ const StatCard = ({ title, value, icon: Icon, colorClass }: { title: string, val
         </CardContent>
     </Card>
 );
-
-import { cn } from '@/lib/utils';
 
 export default function CostingPage() {
     const [recipes, setRecipes] = useState<Recipe[] | undefined>(undefined);

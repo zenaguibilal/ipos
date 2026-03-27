@@ -1,4 +1,3 @@
-
 'use client';
 
 /**
@@ -15,9 +14,9 @@ import { Button } from '@/components/ui/button';
 import { zakatService } from '@/services/zakat.service';
 import { formatCurrency, cn } from '@/lib/utils';
 import { 
-    Coins, Banknote, ArrowRight, Printer, RefreshCw, 
-    HandHelping, History as HistoryIcon, Save, Loader2, Scale, 
-    BadgeCheck, Sparkles, PieChart
+    Coins, ArrowRight, Printer, RefreshCw, 
+    HandHelping, History as HistoryIcon, Save, Loader2, 
+    BadgeCheck, PieChart
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -146,7 +145,6 @@ export default function ZakatPage() {
 
                 <TabsContent value="calculator" className="space-y-8 outline-none">
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                        {/* Column 1: Assets */}
                         <div className="space-y-6">
                             <h3 className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
                                 <Coins className="h-4 w-4" /> 1. Actifs Commercialement Imposables
@@ -202,7 +200,6 @@ export default function ZakatPage() {
                             </Card>
                         </div>
 
-                        {/* Column 2: Liabilities & References */}
                         <div className="space-y-6">
                             <h3 className="text-[10px] font-black uppercase tracking-widest text-destructive flex items-center gap-2">
                                 <ArrowRight className="h-4 w-4" /> 2. Passifs & Dettes à Déduire
@@ -253,7 +250,6 @@ export default function ZakatPage() {
                             </Card>
                         </div>
 
-                        {/* Column 3: Results */}
                         <div className="space-y-6">
                             <h3 className="text-[10px] font-black uppercase tracking-widest text-chart-quaternary flex items-center gap-2">
                                 <HandHelping className="h-4 w-4" /> 3. Synthèse & Assiette (2.5%)
@@ -348,7 +344,6 @@ export default function ZakatPage() {
                 </TabsContent>
             </Tabs>
 
-            {/* Professional Print Template (Hidden) */}
             <div id="zakat-report" className="hidden p-12 bg-white text-black font-sans">
                 <header className="border-b-4 border-black pb-8 mb-8 flex justify-between items-start">
                     <div className="space-y-1">
@@ -394,12 +389,6 @@ export default function ZakatPage() {
                     <div className="h-1 bg-black w-1/3 mx-auto my-6"></div>
                     <p className="text-xl font-black text-green-800 uppercase tracking-widest mb-2">MONTANT DE LA ZAKAT À ACQUITTER (2.5%)</p>
                     <p className="text-5xl font-black text-green-900 drop-shadow-sm">{formatCurrency(result.zakatAmount)}</p>
-                </div>
-
-                <div className="mt-12 p-6 rounded-2xl bg-blue-50 border-2 border-blue-200">
-                    <p className="text-[10px] font-bold text-blue-800 leading-relaxed uppercase">
-                        Note: Le calcul est basé sur un Nisab de 85 grammes d'or pur (24 carats) évalué à {formatCurrency(autoData.goldPrice)}/g au jour du calcul.
-                    </p>
                 </div>
 
                 <footer className="mt-32 border-t-2 border-black pt-8 text-[10px] text-gray-500 flex justify-between items-end">

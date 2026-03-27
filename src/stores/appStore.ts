@@ -1,4 +1,3 @@
-
 'use client';
 
 /**
@@ -159,8 +158,6 @@ export const useAppStore = create<AppState>()(
                     const isServiceItem = product.uuid === 'BREAD_PRODUCT' || product.uuid.startsWith('custom-');
                     
                     if (!isServiceItem) {
-                        // CROSS-CART STOCK TRACKING
-                        // Ensures we don't allocate more items than physical stock across all sessions
                         const totalAllocated = state.carts.reduce((sum, c) => {
                             const item = c.items.find(i => i.uuid === product.uuid);
                             return sum + (item ? item.cartQuantity : 0);
@@ -292,7 +289,6 @@ export const useAppStore = create<AppState>()(
                         const customer = cart.customerUuid ? await customerService.getCustomerByUuid(cart.customerUuid) : null;
                         set({ lastCompletedSale: { sale, customer: customer || null } });
                         
-                        // Transactional Logic: Update stock and customer balances
                         for (const item of sale.items) {
                             if (item.productUuid && item.productUuid !== 'BREAD_PRODUCT') {
                                 await inventoryService.adjustStock(item.productUuid, -item.quantity, 'sale', sale.uuid);
@@ -412,7 +408,10 @@ export const useAppStore = create<AppState>()(
                 returnViewMode: s.returnViewMode, 
                 expenseViewMode: s.expenseViewMode 
             }),
-            onRehydrateStorage: () => (s) => { if (s) s.sessionLoading = false; }
+            onRehydrateStorage: () => (state) => {
+                // Guaranteed toggle of loading state regardless of rehydration content
+                useAppStore.setState({ sessionLoading: false });
+            }
         }
     )
 );
