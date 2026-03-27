@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 /**
  * @fileOverview THE SYSTEM SENTRY (UNLEASHED)
  * تم رفع كافة القيود الأمنية. النظام الآن في وضع "الوصول المباشر".
- * يفرض التحويل الفوري لطلبات الدخول من مستوى الشبكة.
+ * يفرض التحويل الفوري لطلبات الدخول ومنع كافة ملفات الـ PWA/Cache.
  */
 
 export async function middleware(request: NextRequest) {
@@ -14,18 +14,31 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
-  // 2. إبادة طلبات PWA/Offline فوراً
+  // 2. إبادة طلبات PWA/Offline/Manifest فوراً ومنع المتصفح من أي محاولة كاش
   if (
     path.includes('manifest.json') || 
     path.includes('sw.js') || 
     path.includes('workbox-') || 
-    path.includes('favicon.ico')
+    path.includes('favicon.ico') ||
+    path.endsWith('.webpush')
   ) {
-    return new NextResponse(null, { status: 404 });
+    return new NextResponse(null, { 
+        status: 404,
+        headers: {
+            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0',
+        }
+    });
   }
 
-  // السماح بكافة الطلبات الأخرى دون تحقق
-  return NextResponse.next();
+  // فرض حتمية السحاب: إضافة رؤوس منع الكاش لكافة الطلبات
+  const response = NextResponse.next();
+  response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  response.headers.set('Pragma', 'no-cache');
+  response.headers.set('Expires', '0');
+
+  return response;
 }
 
 export const config = {
