@@ -72,7 +72,7 @@ interface AppActions {
 const defaultCartId = uuidv4();
 const initialCart: Cart = {
     id: defaultCartId,
-    name: 'Panier 1',
+    name: 'Vente en cours',
     items: [],
     customerUuid: null,
     discount: { type: 'fixed', value: 0 },
@@ -98,37 +98,44 @@ export const useAppStore = create<AppState>()(
             lastCompletedSale: null,
             actions: {
                 setSession: (session) => set({ session, user: session?.user ?? null, sessionLoading: false }),
+                
                 signIn: async (email, password) => {
                     const session = await authService.signIn(email, password);
                     set({ session, user: session?.user ?? null });
                 },
+                
                 signUp: async (email, password) => {
                     const session = await authService.signUp(email, password);
                     set({ session, user: session?.user ?? null });
                 },
+                
                 signOut: async () => {
                     await authService.signOut();
                     set({ session: null, user: null, profile: null, carts: [initialCart], activeCartId: defaultCartId });
                 },
+                
                 fetchProfile: async () => {
                     try {
                         set({ isSettingsLoading: true });
                         const profile = await profileService.getProfile();
                         set({ profile });
                     } catch (error) {
-                        toast.error("Échec du chargement du profil.");
+                        console.error("Profile load failed", error);
                     } finally {
                         set({ isSettingsLoading: false });
                     }
                 },
+                
                 updateProfile: async (profileData) => {
                     const updated = await profileService.updateProfile(profileData);
                     set({ profile: updated });
                 },
+                
                 addProductToCart: (product, quantity) => set(produce((state: AppState) => {
                     const cart = state.carts.find(c => c.id === state.activeCartId);
                     if (!cart) return;
                     
+                    // Global allocation check across all draft carts to prevent overselling
                     const totalAllocated = state.carts.reduce((sum, c) => {
                         const item = c.items.find(i => i.uuid === product.uuid);
                         return sum + (item ? item.cartQuantity : 0);
@@ -136,7 +143,7 @@ export const useAppStore = create<AppState>()(
 
                     if (!product.uuid.startsWith('custom-') && product.uuid !== 'BREAD_PRODUCT') {
                         if ((totalAllocated + quantity) > product.quantity) {
-                            toast.error(`Stock insuffisant pour ${product.name}. Max disponible: ${Math.max(0, product.quantity - totalAllocated)}`);
+                            toast.error(`Stock insuffisant pour ${product.name}. Max total disponible: ${Math.max(0, product.quantity - totalAllocated)}`);
                             return;
                         }
                     }
@@ -149,6 +156,7 @@ export const useAppStore = create<AppState>()(
                         cart.items.unshift({ ...product, cartQuantity: quantity, flash: true });
                     }
                 })),
+                
                 updateCartItemQuantity: (uuid, qty) => set(produce((state: AppState) => {
                     const cart = state.carts.find(c => c.id === state.activeCartId);
                     if (!cart) return;
@@ -163,32 +171,38 @@ export const useAppStore = create<AppState>()(
                             .reduce((sum, c) => sum + (c.items.find(i => i.uuid === uuid)?.cartQuantity || 0), 0);
                         
                         if (!uuid.startsWith('custom-') && uuid !== 'BREAD_PRODUCT' && (qty + othersAllocated) > item.quantity) {
-                            toast.error(`Stock limite atteint.`);
+                            toast.error(`Limite de stock atteinte.`);
                         } else {
                             item.cartQuantity = qty;
                         }
                     }
                 })),
+                
                 updateCartItemPrice: (uuid, price) => set(produce((state: AppState) => {
                     const cart = state.carts.find(c => c.id === state.activeCartId);
                     const item = cart?.items.find(i => i.uuid === uuid);
                     if (item) item.price = price;
                 })),
+                
                 removeCartItem: (uuid) => set(produce((state: AppState) => {
                     const cart = state.carts.find(c => c.id === state.activeCartId);
                     if (cart) cart.items = cart.items.filter(i => i.uuid !== uuid);
                 })),
+                
                 clearCartFlashes: () => set(produce((state: AppState) => {
                     state.carts.forEach(c => c.items.forEach(i => { delete i.flash; }));
                 })),
+                
                 setCartCustomer: (customer) => set(produce((state: AppState) => {
                     const cart = state.carts.find(c => c.id === state.activeCartId);
                     if (cart) cart.customerUuid = customer?.uuid || null;
                 })),
+                
                 setCartDiscount: (disc) => set(produce((state: AppState) => {
                     const cart = state.carts.find(c => c.id === state.activeCartId);
                     if (cart) cart.discount = disc;
                 })),
+                
                 clearCart: () => set(produce((state: AppState) => {
                     const cart = state.carts.find(c => c.id === state.activeCartId);
                     if (cart) { 
@@ -197,30 +211,36 @@ export const useAppStore = create<AppState>()(
                         cart.customerUuid = null;
                     }
                 })),
+                
                 createNewCart: () => set(produce((state: AppState) => {
                     const id = uuidv4();
-                    state.carts.push({ id, name: `Panier ${state.carts.length + 1}`, items: [], customerUuid: null, discount: { type: 'fixed', value: 0 } });
+                    state.carts.push({ id, name: `Vente ${state.carts.length + 1}`, items: [], customerUuid: null, discount: { type: 'fixed', value: 0 } });
                     state.activeCartId = id;
                 })),
+                
                 switchToCart: (id) => set({ activeCartId: id }),
+                
                 saveActiveCartAsDraft: (name) => set(produce((state: AppState) => {
                     const cart = state.carts.find(c => c.id === state.activeCartId);
                     if (cart) cart.name = name;
                 })),
+                
                 deleteCart: (id) => set(produce((state: AppState) => {
                     state.carts = state.carts.filter(c => c.id !== id);
                     if (state.carts.length === 0) {
                         const newId = uuidv4();
-                        state.carts.push({ id: newId, name: 'Panier 1', items: [], customerUuid: null, discount: { type: 'fixed', value: 0 } });
+                        state.carts.push({ id: newId, name: 'Vente en cours', items: [], customerUuid: null, discount: { type: 'fixed', value: 0 } });
                         state.activeCartId = newId;
                     } else if (state.activeCartId === id) {
                         state.activeCartId = state.carts[0].id;
                     }
                 })),
+                
                 finalizeSale: async (paymentData) => {
                     const state = get();
                     const cart = state.carts.find(c => c.id === state.activeCartId);
                     if (!cart || cart.items.length === 0) return false;
+                    
                     try {
                         const sale = await salesService.createSale({ 
                             ...paymentData, 
@@ -233,6 +253,7 @@ export const useAppStore = create<AppState>()(
                         const customer = cart.customerUuid ? await customerService.getCustomerByUuid(cart.customerUuid) : null;
                         set({ lastCompletedSale: { sale, customer: customer || null } });
                         
+                        // Atomicity handled in service, but we trigger recalculations
                         for (const item of sale.items) {
                             if (item.productUuid) {
                                 await inventoryService.adjustStock(item.productUuid, -item.quantity, 'sale', sale.uuid);
@@ -244,14 +265,16 @@ export const useAppStore = create<AppState>()(
                         }
                         
                         state.actions.clearCart();
-                        toast.success("Vente finalisée !");
+                        toast.success("Vente finalisée avec succès !");
                         return true;
                     } catch (e: any) {
-                        toast.error(e.message || "Erreur critique lors de la vente.");
+                        toast.error(e.message || "Erreur lors de la finalisation de la vente.");
                         return false;
                     }
                 },
+                
                 clearLastCompletedSale: () => set({ lastCompletedSale: null }),
+                
                 processReturn: async (data) => {
                     try {
                         const ret = await returnService.addReturn(data);
@@ -261,10 +284,11 @@ export const useAppStore = create<AppState>()(
                             }
                         }
                         if (ret.customerUuid) await customerService.recalculateCustomerStatus(ret.customerUuid);
-                        toast.success("Retour enregistré.");
+                        toast.success("Retour enregistré et stock mis à jour.");
                         return true;
                     } catch (e: any) { toast.error(e.message); return false; }
                 },
+                
                 processStockIntake: async (data) => {
                     try {
                         const sup = await supplierService.findOrCreateSupplier(data.supplierName, data.supplierUuid);
@@ -274,11 +298,21 @@ export const useAppStore = create<AppState>()(
                         for (const i of data.items) {
                             const cost = i.purchasePrice * (1 + ratio);
                             let uuid = i.productUuid;
+                            
                             if (i.isNew) {
-                                const p = await stockService.addProductFromIntake({ ...i, purchasePrice: cost, supplierUuid: sup.uuid });
+                                const p = await productService.addProduct({
+                                    name: i.name,
+                                    price: i.price,
+                                    purchasePrice: cost,
+                                    quantity: i.quantity,
+                                    minStockLevel: 10,
+                                    unite: i.unite,
+                                    category: i.category,
+                                    supplierUuid: sup.uuid
+                                });
                                 uuid = p.uuid;
                             } else {
-                                await stockService.updateProductFromIntake(uuid!, { purchasePrice: cost });
+                                await productService.updateProduct(uuid!, { purchasePrice: cost });
                             }
                             
                             if (uuid) {
@@ -297,10 +331,11 @@ export const useAppStore = create<AppState>()(
                         });
                         
                         await supplierService.updateSupplierBalance(sup.uuid, data.totalValue + data.transportFees);
-                        toast.success("Stock mis à jour.");
+                        toast.success("Stock et solde fournisseur mis à jour.");
                         return true;
                     } catch (e: any) { toast.error(e.message); return false; }
                 },
+                
                 setProductViewMode: (m) => set({ productViewMode: m }),
                 setStockViewMode: (m) => set({ stockViewMode: m }),
                 setCustomerViewMode: (m) => set({ customerViewMode: m }),
@@ -311,7 +346,7 @@ export const useAppStore = create<AppState>()(
             }
         }),
         {
-            name: 'ipos-enterprise-storage',
+            name: 'ipos-v2-storage',
             storage: createJSONStorage(() => localStorage),
             partialize: (s) => ({ 
                 carts: s.carts, activeCartId: s.activeCartId, 

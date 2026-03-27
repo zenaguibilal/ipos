@@ -2,8 +2,9 @@
 'use client';
 
 /**
- * @fileOverview Zakat Module Page
+ * @fileOverview Refined Zakat Module Page
  * Performs calculation of Zakat based on live inventory, receivables, and gold course.
+ * Fixed Syntax and Hydration.
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -116,7 +117,7 @@ export default function ZakatPage() {
 
     return (
         <div className="p-4 sm:p-6 space-y-6 max-w-7xl mx-auto pb-20">
-            <PageHeader title="Calculateur de Zakat" description="Maîtrisez votre conformité religieuse et financière.">
+            <PageHeader title="Zakat Professionnelle" description="Évaluez vos actifs nets et déterminez le montant de votre Zakat annuelle.">
                 <div className="flex gap-2">
                     <Button variant="outline" onClick={() => fetchData(true)} disabled={isRefreshing} className="luxury-glass">
                         <RefreshCw className={cn("h-4 w-4 mr-2", isRefreshing && "animate-spin")} /> Actualiser
@@ -137,27 +138,27 @@ export default function ZakatPage() {
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         <div className="space-y-6">
                             <h3 className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2 px-2">
-                                <Coins className="h-4 w-4" /> الأصول (ACTIFS)
+                                <Coins className="h-4 w-4" /> ACTIFS (الأصول)
                             </h3>
                             <Card className="luxury-glass border-primary/10">
                                 <CardHeader className="pb-3">
-                                    <CardTitle className="text-sm font-bold">عروض التجارة (Stock)</CardTitle>
+                                    <CardTitle className="text-sm font-bold">Stock Marchand (عروض التجارة)</CardTitle>
                                     <CardDescription className="text-[10px] uppercase">Valeur d'achat cumulée</CardDescription>
                                 </CardHeader>
                                 <CardContent><p className="text-3xl font-black text-primary">{formatCurrency(autoData.inventoryValue)}</p></CardContent>
                             </Card>
                             <Card className="luxury-glass border-primary/10 bg-primary/5">
-                                <CardHeader className="pb-3"><CardTitle className="text-sm font-bold">الديون المرجوة (Créances)</CardTitle></CardHeader>
+                                <CardHeader className="pb-3"><CardTitle className="text-sm font-bold">Créances Mervées (الديون المرجوة)</CardTitle></CardHeader>
                                 <CardContent className="space-y-4">
                                     <div className="flex justify-between text-xs border-b pb-2"><span>Dettes clients :</span><span className="font-bold">{formatCurrency(autoData.customerDebts)}</span></div>
                                     <div className="space-y-2">
-                                        <Label className="text-[10px] uppercase text-destructive font-black">ديون مشكوك فيها (Déduction)</Label>
+                                        <Label className="text-[10px] uppercase text-destructive font-black">Créances Douteuses (Déduction)</Label>
                                         <Input type="number" value={badDebts || ''} onChange={(e) => setBadDebts(Number(e.target.value))} className="h-9 font-black" />
                                     </div>
                                 </CardContent>
                             </Card>
                             <Card className="luxury-glass bg-primary/5 border-primary/20">
-                                <CardHeader className="pb-3"><CardTitle className="text-sm font-bold">السيولة (Liquidités)</CardTitle></CardHeader>
+                                <CardHeader className="pb-3"><CardTitle className="text-sm font-bold">Liquidités (السيولة)</CardTitle></CardHeader>
                                 <CardContent>
                                     <Input type="number" value={cashOnHand || ''} onChange={(e) => setCashOnHand(Number(e.target.value))} className="h-12 text-xl font-black" placeholder="Cash en caisse / banque..." />
                                 </CardContent>
@@ -166,20 +167,20 @@ export default function ZakatPage() {
 
                         <div className="space-y-6">
                             <h3 className="text-[10px] font-black uppercase tracking-widest text-destructive flex items-center gap-2 px-2">
-                                <ArrowRight className="h-4 w-4" /> الخصوم (PASSIFS)
+                                <ArrowRight className="h-4 w-4" /> PASSIFS (الخصوم)
                             </h3>
                             <Card className="luxury-glass border-destructive/10">
-                                <CardHeader className="pb-3"><CardTitle className="text-sm font-bold">ديون الموردين (Fournisseurs)</CardTitle></CardHeader>
+                                <CardHeader className="pb-3"><CardTitle className="text-sm font-bold">Dettes Fournisseurs (ديون الموردين)</CardTitle></CardHeader>
                                 <CardContent><p className="text-3xl font-black text-destructive">{formatCurrency(autoData.supplierDebts)}</p></CardContent>
                             </Card>
                             <Card className="luxury-glass bg-destructive/5 border-destructive/20">
-                                <CardHeader className="pb-3"><CardTitle className="text-sm font-bold">التزامات أخرى (Charges)</CardTitle></CardHeader>
+                                <CardHeader className="pb-3"><CardTitle className="text-sm font-bold">Autres Charges (التزامات أخرى)</CardTitle></CardHeader>
                                 <CardContent>
                                     <Input type="number" value={otherDebts || ''} onChange={(e) => setOtherDebts(Number(e.target.value))} className="h-12 text-xl font-black" placeholder="Salaires, loyers dus..." />
                                 </CardContent>
                             </Card>
                             <Card className="luxury-glass border-blue-500/10 bg-blue-500/5">
-                                <CardHeader className="pb-2"><CardTitle className="text-[10px] uppercase font-black text-blue-400">قاعدة النصاب (85g OR)</CardTitle></CardHeader>
+                                <CardHeader className="pb-2"><CardTitle className="text-[10px] uppercase font-black text-blue-400">Seuil du NISAB (85g OR)</CardTitle></CardHeader>
                                 <CardContent className="space-y-3">
                                     <div className="flex justify-between text-xs"><span>Prix Or (1g) :</span><span className="font-bold">{formatCurrency(autoData.goldPrice)}</span></div>
                                     <div className="flex justify-between text-xs border-t pt-2"><span>Seuil du نصاب :</span><span className="font-black text-blue-400">{formatCurrency(result.nisab)}</span></div>
@@ -190,10 +191,10 @@ export default function ZakatPage() {
 
                         <div className="space-y-6">
                             <h3 className="text-[10px] font-black uppercase tracking-widest text-chart-quaternary flex items-center gap-2 px-2">
-                                <HandHelping className="h-4 w-4" /> النتيجة (2.5%)
+                                <HandHelping className="h-4 w-4" /> RÉSULTAT (2.5%)
                             </h3>
                             <Card className={cn("luxury-glass border-2 overflow-hidden shadow-2xl", result.isNisabReached ? "border-chart-quaternary bg-chart-quaternary/5" : "opacity-80")}>
-                                <CardHeader><CardTitle className="text-lg font-black text-center uppercase">وعاء الزكاة (Base)</CardTitle></CardHeader>
+                                <CardHeader><CardTitle className="text-lg font-black text-center uppercase">BASE IMPOSABLE (وعاء الزكاة)</CardTitle></CardHeader>
                                 <CardContent className="flex flex-col items-center">
                                     <p className={cn("text-5xl font-black mb-6", result.isNisabReached ? "text-chart-quaternary" : "text-foreground")}>{formatCurrency(result.zakatBase)}</p>
                                     <div className="h-48 w-full">
@@ -209,10 +210,10 @@ export default function ZakatPage() {
                                 </CardContent>
                                 {result.isNisabReached ? (
                                     <CardFooter className="bg-chart-quaternary p-8 flex flex-col items-center">
-                                        <p className="text-[10px] font-black uppercase text-white/80 mb-2">الزكاة المستحقة</p>
+                                        <p className="text-[10px] font-black uppercase text-white/80 mb-2">ZAKAT DÛE (الزكاة المستحقة)</p>
                                         <p className="text-5xl font-black text-white">{formatCurrency(result.zakatAmount)}</p>
                                         <Button variant="secondary" className="mt-6 w-full bg-white/20 hover:bg-white/30 text-white" onClick={handleSave} disabled={isSaving}>
-                                            {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4 mr-2" />} Sauvegarder
+                                            {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4 mr-2" />} Archiver ce calcul
                                         </Button>
                                     </CardFooter>
                                 ) : (
@@ -232,11 +233,11 @@ export default function ZakatPage() {
                                 </CardHeader>
                                 <CardContent className="pt-4 space-y-3">
                                     <div className="flex justify-between text-xs"><span>Base imposable :</span><span className="font-bold">{formatCurrency(record.zakatBase)}</span></div>
-                                    <div className="flex justify-between text-xs"><span>Montant payé :</span><span className="font-black text-chart-quaternary">{formatCurrency(record.zakatAmount)}</span></div>
+                                    <div className="flex justify-between text-xs"><span>Montant calculé :</span><span className="font-black text-chart-quaternary">{formatCurrency(record.zakatAmount)}</span></div>
                                 </CardContent>
                             </Card>
                         ))}
-                        {history.length === 0 && <div className="col-span-full py-20 text-center opacity-20"><HistoryIcon className="h-12 w-12 mx-auto" /><p>Aucun historique.</p></div>}
+                        {history.length === 0 && <div className="col-span-full py-20 text-center opacity-20"><HistoryIcon className="h-12 w-12 mx-auto" /><p>Aucun historique archivé.</p></div>}
                     </div>
                 </TabsContent>
             </Tabs>
@@ -247,11 +248,11 @@ export default function ZakatPage() {
                     <div className="text-right font-black uppercase text-xl">Rapport Annuel de Zakat</div>
                 </header>
                 <div className="grid grid-cols-2 gap-8">
-                    <div><h2 className="font-black border-b border-black mb-4">الأصول (Actifs)</h2><div className="space-y-2 text-sm"><div className="flex justify-between"><span>Stock</span><span>{formatCurrency(autoData.inventoryValue)}</span></div><div className="flex justify-between"><span>Liquidités</span><span>{formatCurrency(cashOnHand)}</span></div><div className="flex justify-between"><span>Créances</span><span>{formatCurrency(autoData.customerDebts - badDebts)}</span></div></div></div>
-                    <div><h2 className="font-black border-b border-black mb-4">الخصوم (Passifs)</h2><div className="space-y-2 text-sm"><div className="flex justify-between"><span>Dettes Fournisseurs</span><span>{formatCurrency(autoData.supplierDebts)}</span></div><div className="flex justify-between"><span>Charges dues</span><span>{formatCurrency(otherDebts)}</span></div></div></div>
+                    <div><h2 className="font-black border-b border-black mb-4">ACTIFS (الأصول)</h2><div className="space-y-2 text-sm"><div className="flex justify-between"><span>Stock</span><span>{formatCurrency(autoData.inventoryValue)}</span></div><div className="flex justify-between"><span>Liquidités</span><span>{formatCurrency(cashOnHand)}</span></div><div className="flex justify-between"><span>Créances</span><span>{formatCurrency(autoData.customerDebts - badDebts)}</span></div></div></div>
+                    <div><h2 className="font-black border-b border-black mb-4">PASSIFS (الخصوم)</h2><div className="space-y-2 text-sm"><div className="flex justify-between"><span>Dettes Fournisseurs</span><span>{formatCurrency(autoData.supplierDebts)}</span></div><div className="flex justify-between"><span>Charges dues</span><span>{formatCurrency(otherDebts)}</span></div></div></div>
                 </div>
                 <div className="mt-12 p-8 bg-gray-100 rounded-3xl text-center"><p className="text-xs font-black text-gray-500 uppercase">Base imposable finale</p><p className="text-4xl font-black">{formatCurrency(result.zakatBase)}</p><div className="mt-4"><p className="text-lg font-black text-green-700">Montant de la Zakat (2.5%) : {formatCurrency(result.zakatAmount)}</p></div></div>
-                <footer className="mt-20 border-t pt-4 text-[10px] text-gray-400 flex justify-between"><span>Document certifié iPOS</span><span>Signature Etablissement</span></footer>
+                <footer className="mt-20 border-t pt-4 text-[10px] text-gray-400 flex justify-between"><span>Document iPOS</span><span>Signature Etablissement</span></footer>
             </div>
         </div>
     );

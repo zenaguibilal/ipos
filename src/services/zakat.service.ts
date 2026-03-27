@@ -15,7 +15,7 @@ class ZakatService {
 
     private getUserId(): string {
         const id = useAppStore.getState().session?.user?.id;
-        if (!id) throw new Error("Non authentifié");
+        if (!id) throw new Error("Utilisateur non authentifié.");
         return id;
     }
 
@@ -32,9 +32,12 @@ class ZakatService {
                 inventoryValue: products.reduce((sum, p) => sum + (p.quantity * p.purchasePrice), 0),
                 customerDebts: customers.reduce((sum, c) => sum + c.outstandingBalance, 0),
                 supplierDebts: suppliers.reduce((sum, s) => sum + s.balance, 0),
-                goldPrice: profile?.goldPricePerGram || 0
+                goldPrice: profile?.gold_price_per_gram || profile?.goldPricePerGram || 0
             };
-        } catch (error) { throw error; }
+        } catch (error) { 
+            console.error("Failed to load zakat data", error);
+            throw error; 
+        }
     }
 
     calculate(data: any): ZakatCalculation {
@@ -80,6 +83,13 @@ class ZakatService {
         if (error) throw error;
         return data.map((r: any) => ({
             ...r,
+            inventoryValue: r.inventory_value,
+            customerDebts: r.customer_debts,
+            badDebts: r.bad_debts,
+            cashOnHand: r.cash_on_hand,
+            supplierDebts: r.supplier_debts,
+            otherDebts: r.other_debts,
+            goldPrice: r.gold_price,
             zakatBase: r.zakat_base,
             zakatAmount: r.zakat_amount,
             isNisabReached: r.is_nisab_reached,
