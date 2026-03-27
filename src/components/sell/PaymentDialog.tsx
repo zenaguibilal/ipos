@@ -91,6 +91,11 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, cartCustomer }: Paym
         }
     }
 
+    const handleLossAlertConfirm = () => {
+        setShowLossAlert(false);
+        initializePayment();
+    };
+
     const handleFinalize = async (e?: React.FormEvent) => {
         if (e) e.preventDefault();
         if (!cart) return;
@@ -339,8 +344,4 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, cartCustomer }: Paym
             </Dialog>
         </>
     );
-}
-
-function handleLossAlertConfirm() {
-    // Shared confirm logic
 }

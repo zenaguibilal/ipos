@@ -17,6 +17,7 @@ import { api } from '@/lib/api-client';
 import { useAppStore } from '@/stores/appStore';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Badge } from '../ui/badge';
+import { Separator } from '@/components/ui/separator';
 
 interface ProductSearchProps {
     onProductSelect: (product: Product, quantity: number) => void;
