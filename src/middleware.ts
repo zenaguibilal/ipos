@@ -7,9 +7,15 @@ import { NextResponse, type NextRequest } from 'next/server'
  */
 
 export async function middleware(request: NextRequest) {
-  // منع الوصول إلى ملفات PWA/Offline نهائياً وإرجاع 404
   const path = request.nextUrl.pathname;
-  if (path.includes('manifest.json') || path.includes('sw.js') || path.includes('workbox-')) {
+
+  // 1. إبادة طلبات PWA/Offline فوراً وإرجاع 404 لمنع المتصفح من التشبث بالحالة الميتة
+  if (
+    path.includes('manifest.json') || 
+    path.includes('sw.js') || 
+    path.includes('workbox-') || 
+    path.includes('favicon.ico') // تفادي طلبات الأيقونات القديمة
+  ) {
     return new NextResponse(null, { status: 404 });
   }
 
@@ -58,6 +64,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!api|_next/static|_next/image|favicon.ico|icon.svg).*)'
+    '/((?!api|_next/static|_next/image|icon.svg).*)'
   ],
 }
