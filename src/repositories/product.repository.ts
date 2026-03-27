@@ -3,7 +3,6 @@ import type { Product } from "@/lib/types";
 
 /**
  * @fileOverview Product Repository (Absolute Data Authority)
- * المسؤول الوحيد عن سلامة المخزون وتسعير المنتجات وحالتها الحتمية.
  */
 export class ProductRepository {
     private supabase = createClient();
@@ -95,6 +94,9 @@ export class ProductRepository {
     }
 
     async create(product: Partial<Product>): Promise<Product> {
+        const { data: { user } } = await this.supabase.auth.getUser();
+        if (!user) throw new Error("UNAUTHENTICATED");
+
         const quantity = product.quantity || 0;
         const minLevel = product.minStockLevel || 10;
         const status = this.calculateStockStatus(quantity, minLevel);
@@ -103,6 +105,7 @@ export class ProductRepository {
             .from('products')
             .insert([{
                 ...this.mapToDb(product),
+                user_id: user.id,
                 stock_status: status
             }])
             .select()

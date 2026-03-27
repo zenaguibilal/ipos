@@ -19,9 +19,13 @@ export class InventoryRepository {
     }
 
     async add(log: Partial<InventoryLog>): Promise<void> {
+        const { data: { user } } = await this.supabase.auth.getUser();
+        if (!user) throw new Error("UNAUTHENTICATED");
+
         const { error } = await this.supabase
             .from('inventory_logs')
             .insert([{
+                user_id: user.id,
                 product_uuid: log.productUuid,
                 change: log.change,
                 new_quantity: log.newQuantity,

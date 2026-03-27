@@ -5,7 +5,7 @@ import { SupplierRepository } from "./supplier.repository";
 
 /**
  * @fileOverview Stock Repository (Absolute Data Authority)
- * يدير عمليات توريد المخزون ويضمن دقة تكلفة الـ "Revient" وتحديث موازين الموردين.
+ * المسؤول عن توريد المخزون مع فرض التحقق الصارم من هوية المستخدم (RLS).
  */
 export class StockRepository {
     private supabase = createClient();
@@ -13,9 +13,13 @@ export class StockRepository {
     private supplierRepo = new SupplierRepository();
 
     async create(intakeData: any): Promise<StockIntake> {
+        const { data: { user } } = await this.supabase.auth.getUser();
+        if (!user) throw new Error("UNAUTHENTICATED");
+
         const { data: intake, error: sErr } = await this.supabase
             .from('stock_intakes')
             .insert([{
+                user_id: user.id,
                 supplier_uuid: intakeData.supplierUuid,
                 invoice_number: intakeData.invoiceNumber,
                 invoice_date: intakeData.invoiceDate,
@@ -28,6 +32,7 @@ export class StockRepository {
         if (sErr) throw new Error(`STOCK_INTAKE_FAILED: ${sErr.message}`);
 
         const intakeItems = intakeData.items.map((item: any) => ({
+            user_id: user.id,
             intake_uuid: intake.uuid,
             product_uuid: item.productUuid,
             product_name: item.productName,
@@ -40,13 +45,11 @@ export class StockRepository {
         const { error: iErr } = await this.supabase.from('stock_intake_items').insert(intakeItems);
         if (iErr) throw new Error("STOCK_ITEMS_SYNC_FAILED");
 
-        // أتمتة السلطة: تحديث كميات المنتجات وموازين الموردين
         for (const item of intakeItems) {
             if (item.product_uuid) {
                 const netQuantity = item.quantity_received - item.quantity_damaged;
                 await this.productRepo.updateStock(item.product_uuid, netQuantity);
                 
-                // تحديث سعر التكلفة الفعلي في سجل المنتج إذا لزم الأمر
                 await this.supabase.from('products').update({
                     purchase_price: item.purchase_price,
                     updated_at: new Date().toISOString()

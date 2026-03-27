@@ -6,7 +6,7 @@ import { CustomerRepository } from "./customer.repository";
 
 /**
  * @fileOverview Sale Repository (Absolute Data Authority)
- * المسؤول الحصري عن إنشاء المبيعات وضمان اتساق العمليات المالية والمخزنية.
+ * يضمن تسجيل المبيعات مع ربطها بحساب المستخدم للامتثال لسياسات RLS.
  */
 export class SaleRepository {
     private supabase = createClient();
@@ -23,6 +23,9 @@ export class SaleRepository {
     }
 
     async create(saleData: any): Promise<Sale> {
+        const { data: { user } } = await this.supabase.auth.getUser();
+        if (!user) throw new Error("UNAUTHENTICATED");
+
         const now = new Date();
         const datePrefix = now.toISOString().slice(2, 10).replace(/-/g, '');
         const randomSuffix = Math.floor(1000 + Math.random() * 9000);
@@ -34,6 +37,7 @@ export class SaleRepository {
             .from('sales')
             .insert([{
                 uuid: saleUuid,
+                user_id: user.id,
                 invoice_number: invoiceNumber,
                 subtotal: saleData.subtotal,
                 discount_type: saleData.discountType,
@@ -52,6 +56,7 @@ export class SaleRepository {
         if (sErr) throw new Error(`SALE_CREATION_FAILED: ${sErr.message}`);
 
         const saleItems = saleData.items.map((item: any) => ({
+            user_id: user.id,
             sale_uuid: saleUuid,
             product_uuid: item.productUuid || item.uuid,
             name: item.name,
@@ -80,7 +85,6 @@ export class SaleRepository {
     }
 
     async delete(uuid: string): Promise<void> {
-        // 1. Fetch sale data before deletion
         const { data: sale, error: sErr } = await this.supabase
             .from('sales')
             .select('*, sale_items(*)')
@@ -89,18 +93,15 @@ export class SaleRepository {
         
         if (sErr || !sale) throw new Error("SALE_NOT_FOUND_FOR_DELETION");
 
-        // 2. Restore stock for each item
         for (const item of sale.sale_items) {
             if (item.product_uuid) {
                 await this.productRepo.updateStock(item.product_uuid, item.quantity);
             }
         }
 
-        // 3. Delete sale (cascades to items in DB)
         const { error: dErr } = await this.supabase.from('sales').delete().eq('uuid', uuid);
         if (dErr) throw new Error(`SALE_DELETE_FAILED: ${dErr.message}`);
 
-        // 4. Recalculate customer balance
         if (sale.customer_uuid) {
             await this.customerRepo.recalculateBalance(sale.customer_uuid);
         }

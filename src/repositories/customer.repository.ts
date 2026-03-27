@@ -3,7 +3,6 @@ import type { Customer } from "@/lib/types";
 
 /**
  * @fileOverview Customer Repository (Absolute Data Authority)
- * المسؤول الوحيد عن صحة بيانات العملاء وحسابات مديونياتهم الحتمية.
  */
 export class CustomerRepository {
     private supabase = createClient();
@@ -109,11 +108,15 @@ export class CustomerRepository {
     }
 
     async create(customer: Partial<Customer>): Promise<Customer> {
+        const { data: { user } } = await this.supabase.auth.getUser();
+        if (!user) throw new Error("UNAUTHENTICATED");
+
         const searchName = `${customer.firstName} ${customer.lastName}`.toLowerCase().trim();
         const { data, error } = await this.supabase
             .from('customers')
             .insert([{ 
                 ...this.mapToDb(customer), 
+                user_id: user.id,
                 search_name: searchName,
                 outstanding_balance: 0,
                 total_spent: 0,
