@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useParams } from 'next/navigation';
@@ -127,7 +126,9 @@ export default function CustomerDetailPage() {
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 border-b border-white/5">
                             <CardTitle className="flex items-center gap-2 font-black uppercase tracking-tight text-sm"><History className="h-5 w-5 text-primary" />Historique des Flux</CardTitle>
                             <DropdownMenu>
-                                <DropdownMenuTrigger asChild><Button variant="outline" size="sm" className="rounded-xl h-8 text-[10px] font-black uppercase">Filtre: {filterType}</Button></DropdownMenuTrigger>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="outline" size="sm" className="rounded-xl h-8 text-[10px] font-black uppercase">Filtre: {filterType}</Button>
+                                </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="luxury-glass">
                                     <DropdownMenuCheckboxItem checked={filterType === 'all'} onCheckedChange={() => setFilterType('all')}>Tout</DropdownMenuCheckboxItem>
                                     <DropdownMenuCheckboxItem checked={filterType === 'sale'} onCheckedChange={() => setFilterType('sale')}>Ventes</DropdownMenuCheckboxItem>
