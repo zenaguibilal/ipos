@@ -42,7 +42,6 @@ export default function ProductsPage() {
     const [isScannerOpen, setIsScannerOpen] = useState(false);
 
     const [selectedProduct, setSelectedProduct] = useState<Partial<Product> | null>(null);
-    const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
 
     const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
@@ -145,10 +144,10 @@ export default function ProductsPage() {
                {isLoading && products.length === 0 ? <ProductTableSkeleton /> : (
                    viewMode === 'grid' ? (
                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                           {products.map(p => <ProductCard key={p.uuid} product={p} onEdit={(p) => { setSelectedProduct(p); setIsProductDialogOpen(true); }} onDelete={(p) => { setSelectedProduct(p); setIsDeleteDialogOpen(true); }} onDuplicate={(p) => { const { uuid, ...rest } = p; setSelectedProduct(rest); setIsProductDialogOpen(true); }} onViewHistory={(p) => { setSelectedProduct(p); setIsHistoryDialogOpen(true); }} isSelected={selectedProducts.has(p.uuid)} onToggleSelection={() => {}} />)}
+                           {products.map(p => <ProductCard key={p.uuid} product={p} onEdit={(p) => { setSelectedProduct(p); setIsProductDialogOpen(true); }} onDelete={(p) => { setSelectedProduct(p); setIsDeleteDialogOpen(true); }} onDuplicate={(p) => { const { uuid, ...rest } = p; setSelectedProduct(rest); setIsProductDialogOpen(true); }} onViewHistory={(p) => { setSelectedProduct(p); setIsHistoryDialogOpen(true); }} />)}
                        </div>
                    ) : (
-                       <ProductTable products={products} onEdit={(p) => { setSelectedProduct(p); setIsProductDialogOpen(true); }} onDelete={(p) => { setSelectedProduct(p); setIsDeleteDialogOpen(true); }} onDuplicate={(p) => { const { uuid, ...rest } = p; setSelectedProduct(rest); setIsProductDialogOpen(true); }} onViewHistory={(p) => { setSelectedProduct(p); setIsHistoryDialogOpen(true); }} selectedProducts={selectedProducts} onToggleProductSelection={() => {}} onToggleSelectAll={() => {}} suppliers={suppliers} />
+                       <ProductTable products={products} onEdit={(p) => { setSelectedProduct(p); setIsProductDialogOpen(true); }} onDelete={(p) => { setSelectedProduct(p); setIsDeleteDialogOpen(true); }} onDuplicate={(p) => { const { uuid, ...rest } = p; setSelectedProduct(rest); setIsProductDialogOpen(true); }} onViewHistory={(p) => { setSelectedProduct(p); setIsHistoryDialogOpen(true); }} suppliers={suppliers} />
                    )
                )}
             </div>

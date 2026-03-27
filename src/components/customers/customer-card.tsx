@@ -1,9 +1,8 @@
-
 'use client';
 
 import React from 'react';
 import type { Customer } from '@/lib/types';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { MoreHorizontal, Edit, Trash2, FileText, Phone, DollarSign, BellRing, ShieldCheck, Home, Calendar, Hourglass, HandCoins, Printer, MessageSquare } from 'lucide-react';
@@ -15,7 +14,6 @@ import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useIsManagerOrAdmin, useAppStore } from '@/stores/appStore';
-import { Checkbox } from '../ui/checkbox';
 
 interface CustomerCardProps {
     customer: Customer;
@@ -23,8 +21,6 @@ interface CustomerCardProps {
     onDelete: (customer: Customer) => void;
     onPayment: (customer: Customer) => void;
     onStatement: (customer: Customer) => void;
-    isSelected: boolean;
-    onToggleSelection: () => void;
 }
 
 const DebtStatusIcon = ({ status }: { status: Customer['debtStatus']}) => {
@@ -61,7 +57,7 @@ const DebtStatusIcon = ({ status }: { status: Customer['debtStatus']}) => {
 };
 
 
-const CustomerCardComponent = ({ customer, onEdit, onDelete, onPayment, onStatement, isSelected, onToggleSelection }: CustomerCardProps) => {
+const CustomerCardComponent = ({ customer, onEdit, onDelete, onPayment, onStatement }: CustomerCardProps) => {
     const isManagerOrAdmin = useIsManagerOrAdmin();
     const companyProfile = useAppStore(state => state.profile);
     const creditUsage = customer.creditLimit && customer.creditLimit > 0 ? (customer.outstandingBalance / customer.creditLimit) * 100 : 0;
@@ -83,19 +79,11 @@ const CustomerCardComponent = ({ customer, onEdit, onDelete, onPayment, onStatem
     return (
         <Card className={cn(
             "flex flex-col transition-all duration-300 hover:shadow-xl hover:-translate-y-1 relative group",
-            isSelected && "ring-2 ring-primary border-primary/50",
             customer.outstandingBalance > 0 && "border-destructive/20"
         )}>
             <CardHeader className="pb-3">
                 <div className="flex justify-between items-start">
                     <div className="flex items-start gap-3">
-                        <div onClick={(e) => e.stopPropagation()} className="pt-1">
-                            <Checkbox
-                                checked={isSelected}
-                                onCheckedChange={onToggleSelection}
-                                className="h-5 w-5"
-                            />
-                        </div>
                         <div className="space-y-1">
                             <CardTitle className="text-xl leading-none">
                                 <Link href={`/customers/${customer.uuid}`} className="hover:underline hover:text-primary transition-colors">

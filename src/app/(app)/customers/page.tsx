@@ -126,10 +126,10 @@ export default function CustomersPage() {
                {isLoading && customers.length === 0 ? <CustomerTableSkeleton /> : (
                    viewMode === 'grid' ? (
                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                           {filteredCustomers.map(c => <CustomerCard key={c.uuid} customer={c} onEdit={(c) => { setSelectedCustomer(c); setIsCustomerDialogOpen(true); }} onDelete={(c) => { setSelectedCustomer(c); setIsDeleteDialogOpen(true); }} onPayment={(c) => { setSelectedCustomer(c); setIsPaymentDialogOpen(true); }} onStatement={(c) => { setSelectedCustomer(c); setIsStatementDialogOpen(true); }} isSelected={false} onToggleSelection={() => {}} />)}
+                           {filteredCustomers.map(c => <CustomerCard key={c.uuid} customer={c} onEdit={(c) => { setSelectedCustomer(c); setIsCustomerDialogOpen(true); }} onDelete={(c) => { setSelectedCustomer(c); setIsDeleteDialogOpen(true); }} onPayment={(c) => { setSelectedCustomer(c); setIsPaymentDialogOpen(true); }} onStatement={(c) => { setSelectedCustomer(c); setIsStatementDialogOpen(true); }} />)}
                        </div>
                    ) : (
-                       <CustomerTable customers={filteredCustomers} onEdit={(c) => { setSelectedCustomer(c); setIsCustomerDialogOpen(true); }} onDelete={(c) => { setSelectedCustomer(c); setIsDeleteDialogOpen(true); }} onPayment={(c) => { setSelectedCustomer(c); setIsPaymentDialogOpen(true); }} onStatement={(c) => { setSelectedCustomer(c); setIsStatementDialogOpen(true); }} selectedCustomers={new Set()} onToggleCustomerSelection={() => {}} onToggleSelectAll={() => {}} />
+                       <CustomerTable customers={filteredCustomers} onEdit={(c) => { setSelectedCustomer(c); setIsCustomerDialogOpen(true); }} onDelete={(c) => { setSelectedCustomer(c); setIsDeleteDialogOpen(true); }} onPayment={(c) => { setSelectedCustomer(c); setIsPaymentDialogOpen(true); }} onStatement={(c) => { setSelectedCustomer(c); setIsStatementDialogOpen(true); }} />
                    )
                )}
             </div>

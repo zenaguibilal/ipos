@@ -7,7 +7,6 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { MoreHorizontal, Edit, Trash2, AlertCircle, PackageX, CalendarClock, Copy, History } from 'lucide-react';
 import Image from 'next/image';
 import { cn, formatCurrency, getPlaceholder } from '@/lib/utils';
-import { Checkbox } from '../ui/checkbox';
 import { useMemo } from 'react';
 import { differenceInDays } from 'date-fns';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
@@ -19,13 +18,10 @@ interface ProductTableProps {
     onDelete: (product: Product) => void;
     onDuplicate: (product: Product) => void;
     onViewHistory: (product: Product) => void;
-    selectedProducts: Set<string>;
-    onToggleProductSelection: (productUuid: string) => void;
-    onToggleSelectAll: () => void;
     suppliers: Supplier[];
 }
 
-export function ProductTable({ products, onEdit, onDelete, onDuplicate, onViewHistory, selectedProducts, onToggleProductSelection, onToggleSelectAll, suppliers }: ProductTableProps) {
+export function ProductTable({ products, onEdit, onDelete, onDuplicate, onViewHistory, suppliers }: ProductTableProps) {
     const isManagerOrAdmin = useIsManagerOrAdmin();
     const supplierMap = useMemo(() => new Map(suppliers.map(s => [s.uuid, s.name])), [suppliers]);
 
@@ -39,14 +35,6 @@ export function ProductTable({ products, onEdit, onDelete, onDuplicate, onViewHi
             <Table>
                 <TableHeader>
                     <TableRow>
-                        <TableHead className="w-[50px] px-4">
-                           <Checkbox
-                                checked={products.length > 0 && selectedProducts.size === products.length}
-                                onCheckedChange={onToggleSelectAll}
-                                disabled={products.length === 0 || !isManagerOrAdmin}
-                                aria-label="Select all rows"
-                            />
-                        </TableHead>
                         <TableHead className="w-[80px]">Image</TableHead>
                         <TableHead>Nom du Produit</TableHead>
                         <TableHead>Catégorie</TableHead>
@@ -60,8 +48,6 @@ export function ProductTable({ products, onEdit, onDelete, onDuplicate, onViewHi
                 </TableHeader>
                 <TableBody>
                     {products.map(product => {
-                        const productUuid = product.uuid;
-
                         const placeholder = getPlaceholder(product.category);
                         const imageUrl = product.imageUrl || placeholder.url;
 
@@ -79,19 +65,10 @@ export function ProductTable({ products, onEdit, onDelete, onDuplicate, onViewHi
 
                         return (
                             <TableRow 
-                                key={productUuid} 
-                                data-state={selectedProducts.has(productUuid) ? "selected" : ""}
+                                key={product.uuid} 
                                 onClick={() => handleRowClick(product)}
                                 className={cn(isManagerOrAdmin && "cursor-pointer")}
                             >
-                                 <TableCell className="px-4" onClick={(e) => e.stopPropagation()}>
-                                    <Checkbox
-                                        checked={selectedProducts.has(productUuid)}
-                                        onCheckedChange={() => onToggleProductSelection(productUuid)}
-                                        aria-label={`Select row for ${product.name}`}
-                                        disabled={!isManagerOrAdmin}
-                                    />
-                                </TableCell>
                                 <TableCell>
                                     <Image
                                         src={imageUrl}

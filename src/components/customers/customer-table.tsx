@@ -20,7 +20,6 @@ import {
 import { MoreHorizontal, Edit, Trash2, FileText, Phone, HandCoins, Printer, MessageSquare } from 'lucide-react';
 import Link from 'next/link';
 import { formatCurrency, cn } from '@/lib/utils';
-import { Checkbox } from '../ui/checkbox';
 import { useIsManagerOrAdmin, useAppStore } from '@/stores/appStore';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -31,9 +30,6 @@ interface CustomerTableProps {
   onDelete: (customer: Customer) => void;
   onPayment: (customer: Customer) => void;
   onStatement: (customer: Customer) => void;
-  selectedCustomers: Set<string>;
-  onToggleCustomerSelection: (customerUuid: string) => void;
-  onToggleSelectAll: () => void;
 }
 
 export function CustomerTable({
@@ -42,9 +38,6 @@ export function CustomerTable({
   onDelete,
   onPayment,
   onStatement,
-  selectedCustomers,
-  onToggleCustomerSelection,
-  onToggleSelectAll,
 }: CustomerTableProps) {
   const isManagerOrAdmin = useIsManagerOrAdmin();
   const companyProfile = useAppStore(state => state.profile);
@@ -61,13 +54,6 @@ export function CustomerTable({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-[50px] px-4">
-              <Checkbox
-                checked={customers.length > 0 && selectedCustomers.size === customers.length}
-                onCheckedChange={onToggleSelectAll}
-                disabled={customers.length === 0}
-              />
-            </TableHead>
             <TableHead>Client</TableHead>
             <TableHead>Contact</TableHead>
             <TableHead className="hidden lg:table-cell text-center">Dernière Activité</TableHead>
@@ -79,25 +65,18 @@ export function CustomerTable({
         </TableHeader>
         <TableBody>
           {customers.map((customer) => {
-            const isSelected = selectedCustomers.has(customer.uuid);
             const isOverdue = customer.debtStatus === 'overdue';
             const isOverLimit = customer.isOverLimit;
 
             return (
-              <TableRow key={customer.uuid} className={cn(isSelected && "bg-muted/50", (isOverdue || isOverLimit) && "border-l-4 border-l-destructive")}>
-                <TableCell className="px-4">
-                  <Checkbox
-                    checked={isSelected}
-                    onCheckedChange={() => onToggleCustomerSelection(customer.uuid)}
-                  />
-                </TableCell>
+              <TableRow key={customer.uuid} className={cn((isOverdue || isOverLimit) && "border-l-4 border-l-destructive")}>
                 <TableCell>
                   <div className="flex flex-col">
                     <Link href={`/customers/${customer.uuid}`} className="font-bold hover:underline">
                       {customer.firstName} {customer.lastName}
                     </Link>
                     {isOverdue && <span className="text-[10px] text-destructive font-bold uppercase tracking-tighter">Paiement en retard</span>}
-                    {isOverLimit && <span className="text-[10px] text-destructive font-bold uppercase tracking-tighter">Pلافوند dépassé</span>}
+                    {isOverLimit && <span className="text-[10px] text-destructive font-bold uppercase tracking-tighter">Plafond dépassé</span>}
                   </div>
                 </TableCell>
                 <TableCell>

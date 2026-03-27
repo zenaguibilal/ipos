@@ -9,7 +9,6 @@ import { MoreHorizontal, Edit, Trash2, CalendarClock, Copy, History } from 'luci
 import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
 import { cn, formatCurrency, getPlaceholder } from '@/lib/utils';
-import { Checkbox } from '../ui/checkbox';
 import { differenceInDays } from 'date-fns';
 import { useIsManagerOrAdmin } from '@/stores/appStore';
 
@@ -19,11 +18,9 @@ interface ProductCardProps {
     onDelete: (product: Product) => void;
     onDuplicate: (product: Product) => void;
     onViewHistory: (product: Product) => void;
-    isSelected: boolean;
-    onToggleSelection: () => void;
 }
 
-const ProductCardComponent = ({ product, onEdit, onDelete, onDuplicate, onViewHistory, isSelected, onToggleSelection }: ProductCardProps) => {
+const ProductCardComponent = ({ product, onEdit, onDelete, onDuplicate, onViewHistory }: ProductCardProps) => {
     const isManagerOrAdmin = useIsManagerOrAdmin();
     const placeholder = getPlaceholder(product.category);
     const imageUrl = product.imageUrl || placeholder.url;
@@ -48,7 +45,6 @@ const ProductCardComponent = ({ product, onEdit, onDelete, onDuplicate, onViewHi
             onClick={handleCardClick}
             className={cn(
                 "flex flex-col transition-all duration-300 hover:shadow-xl hover:-translate-y-1 relative",
-                isSelected && "ring-2 ring-primary",
                 isManagerOrAdmin && "cursor-pointer"
             )}
         >
@@ -81,16 +77,6 @@ const ProductCardComponent = ({ product, onEdit, onDelete, onDuplicate, onViewHi
                         <CardTitle className="text-lg leading-tight">{product.name}</CardTitle>
                         <p className="text-sm text-muted-foreground">{product.category || 'Non classé'}</p>
                     </div>
-                    {isManagerOrAdmin && (
-                        <div onClick={(e) => e.stopPropagation()}>
-                            <Checkbox
-                                checked={isSelected}
-                                onCheckedChange={onToggleSelection}
-                                className="h-5 w-5 flex-shrink-0"
-                                aria-label={`Select ${product.name}`}
-                            />
-                        </div>
-                    )}
                 </div>
             </CardContent>
             <CardFooter className="p-4 pt-0 flex justify-between items-center" onClick={(e) => e.stopPropagation()}>
