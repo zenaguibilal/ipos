@@ -1,4 +1,3 @@
-
 'use client';
 
 import { create } from 'zustand';
@@ -12,7 +11,7 @@ import { api } from '@/lib/api-client';
 
 /**
  * @fileOverview THE STATE SINGULARITY (DOMINATION MODE)
- * المصدر الوحيد والحتمي لكافة حالات النظام والعمليات التشغيلية والوضع البصري.
+ * The absolute and only source of truth for the entire system state and UI behavior.
  */
 
 interface AppState {
@@ -33,15 +32,12 @@ interface AppState {
     selectedCustomer: { data: Customer | null; stats: any; activity: any[] };
     selectedSupplier: { data: Supplier | null; stats: any; activity: any[]; products: Product[] };
 
-    productCategories: string[];
-    expenseCategories: string[];
-
     carts: Cart[];
     activeCartId: string;
     lastCompletedSale: { sale: Sale; customer?: Customer } | null;
     isLoading: Record<string, boolean>;
     
-    // UI State (The Singularity)
+    // UI Singularity State
     productViewMode: 'grid' | 'list';
     customerViewMode: 'grid' | 'list';
     expenseViewMode: 'grid' | 'list';
@@ -49,6 +45,15 @@ interface AppState {
     returnViewMode: 'grid' | 'list';
     supplierViewMode: 'grid' | 'list';
     stockViewMode: 'grid' | 'list';
+
+    // Global Modal Control
+    modals: {
+        sell: {
+            isProductSheetOpen: boolean;
+            isDebtPaymentDialogOpen: boolean;
+            isCustomerDialogOpen: boolean;
+        }
+    };
 
     actions: {
         fetchProfile: () => Promise<void>;
@@ -64,12 +69,10 @@ interface AppState {
         refreshBreadOrders: (date: string) => Promise<void>;
         refreshRecipes: () => Promise<void>;
         refreshZakatHistory: () => Promise<void>;
-        refreshCategories: () => Promise<void>;
 
         fetchCustomerDetails: (uuid: string) => Promise<void>;
         fetchSupplierDetails: (uuid: string) => Promise<void>;
 
-        // UI State Actions
         setProductViewMode: (mode: 'grid' | 'list') => void;
         setCustomerViewMode: (mode: 'grid' | 'list') => void;
         setExpenseViewMode: (mode: 'grid' | 'list') => void;
@@ -78,7 +81,12 @@ interface AppState {
         setSupplierViewMode: (mode: 'grid' | 'list') => void;
         setStockViewMode: (mode: 'grid' | 'list') => void;
 
-        // POS Actions
+        // Modal Actions
+        toggleSellProductSheet: (open: boolean) => void;
+        toggleSellDebtPayment: (open: boolean) => void;
+        toggleSellCustomerDialog: (open: boolean) => void;
+
+        // POS Operations
         createNewCart: () => void;
         switchToCart: (id: string) => void;
         deleteCart: (id: string) => void;
@@ -91,7 +99,6 @@ interface AppState {
         clearCart: () => void;
         clearCartFlashes: () => void;
         
-        // Transaction Processors
         finalizeSale: (paymentData: any) => Promise<boolean>;
         processReturn: (returnData: any) => Promise<boolean>;
         processStockIntake: (intakeData: any) => Promise<boolean>;
@@ -127,9 +134,6 @@ export const useAppStore = create<AppState>((set, get) => ({
     selectedCustomer: { data: null, stats: null, activity: [] },
     selectedSupplier: { data: null, stats: null, activity: [], products: [] },
 
-    productCategories: [],
-    expenseCategories: [],
-
     carts: [createInitialCart()],
     activeCartId: '',
     lastCompletedSale: null,
@@ -142,6 +146,14 @@ export const useAppStore = create<AppState>((set, get) => ({
     returnViewMode: 'list',
     supplierViewMode: 'grid',
     stockViewMode: 'list',
+
+    modals: {
+        sell: {
+            isProductSheetOpen: false,
+            isDebtPaymentDialogOpen: false,
+            isCustomerDialogOpen: false,
+        }
+    },
 
     actions: {
         fetchProfile: async () => {
@@ -264,16 +276,6 @@ export const useAppStore = create<AppState>((set, get) => ({
             }
         },
 
-        refreshCategories: async () => {
-            try {
-                const [prodCats, expCats] = await Promise.all([
-                    api.get<string[]>('products/categories'),
-                    api.get<string[]>('expenses/categories')
-                ]);
-                set({ productCategories: prodCats, expenseCategories: expCats });
-            } catch (e) {}
-        },
-
         fetchCustomerDetails: async (uuid) => {
             set(p => ({ isLoading: { ...p.isLoading, customerDetail: true } }));
             try {
@@ -296,7 +298,6 @@ export const useAppStore = create<AppState>((set, get) => ({
                     api.get<any[]>(`suppliers/${uuid}/activity`),
                     api.get<Product[]>(`products?supplierUuid=${uuid}`)
                 ]);
-                
                 const intakes = activity.filter(a => a.type === 'intake');
                 const totalBought = intakes.reduce((sum, i) => sum + i.totalValue, 0);
                 const stats = { 
@@ -304,7 +305,6 @@ export const useAppStore = create<AppState>((set, get) => ({
                     intakeCount: intakes.length,
                     avgIntake: intakes.length > 0 ? totalBought / intakes.length : 0
                 };
-
                 set({ selectedSupplier: { data, stats, activity, products } });
             } finally {
                 set(p => ({ isLoading: { ...p.isLoading, supplierDetail: false } }));
@@ -318,6 +318,10 @@ export const useAppStore = create<AppState>((set, get) => ({
         setReturnViewMode: (mode) => set({ returnViewMode: mode }),
         setSupplierViewMode: (mode) => set({ supplierViewMode: mode }),
         setStockViewMode: (mode) => set({ stockViewMode: mode }),
+
+        toggleSellProductSheet: (open) => set(produce((s: AppState) => { s.modals.sell.isProductSheetOpen = open; })),
+        toggleSellDebtPayment: (open) => set(produce((s: AppState) => { s.modals.sell.isDebtPaymentDialogOpen = open; })),
+        toggleSellCustomerDialog: (open) => set(produce((s: AppState) => { s.modals.sell.isCustomerDialogOpen = open; })),
 
         createNewCart: () => set(produce((state: AppState) => {
             const newCart = createInitialCart();
@@ -389,21 +393,11 @@ export const useAppStore = create<AppState>((set, get) => ({
                 set({ lastCompletedSale: { sale } });
                 get().actions.clearCart();
                 return true;
-            } catch (e: any) {
-                return false;
-            }
+            } catch (e: any) { return false; }
         },
 
-        processReturn: async (data) => {
-            await api.post('returns', data);
-            return true;
-        },
-
-        processStockIntake: async (data) => {
-            await api.post('stock', data);
-            return true;
-        },
-
+        processReturn: async (data) => { await api.post('returns', data); return true; },
+        processStockIntake: async (data) => { await api.post('stock', data); return true; },
         clearLastCompletedSale: () => set({ lastCompletedSale: null }),
 
         resetStore: () => set({

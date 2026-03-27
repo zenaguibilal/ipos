@@ -1,4 +1,3 @@
-
 'use client';
 
 import { CartDisplay } from '@/components/sell/CartDisplay';
@@ -10,31 +9,38 @@ import { Button } from '@/components/ui/button';
 import { CustomerCombobox } from '@/components/sell/CustomerCombobox';
 import { DraftsDropdown } from '@/components/sell/DraftsDropdown';
 import { PackageSearch, UserPlus } from 'lucide-react';
-import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { useRef, useEffect, useCallback, useMemo, useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { AddPaymentDialog } from '@/components/payments/AddPaymentDialog';
 import { CartTotalBar } from '@/components/sell/CartTotalBar';
-import type { Product, Customer } from '@/lib/types';
+import type { Customer } from '@/lib/types';
 import { useAppStore, useAppActions } from '@/stores/appStore';
 import { api } from '@/lib/api-client';
 import { PrintReceiptDialog } from '@/components/sales/PrintReceiptDialog';
 import { CustomerDialog } from '@/components/customers/customer-dialog';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+
+/**
+ * @fileOverview Sell Page (Absolute State Singularity)
+ * UI states are controlled via Zustand AppStore to prevent shadow state leakage.
+ */
 
 export default function SellPage() {
-    const { activeCartId, carts, sessionLoading } = useAppStore(state => ({
+    const { 
+        activeCartId, carts, modals, actions 
+    } = useAppStore(state => ({
         activeCartId: state.activeCartId,
         carts: state.carts,
-        sessionLoading: state.sessionLoading,
+        modals: state.modals.sell,
+        actions: state.actions
     }));
-    const { addProductToCart, setCartCustomer } = useAppActions();
     
-    const [isProductSheetOpen, setIsProductSheetOpen] = useState(false);
-    const [isDebtPaymentDialogOpen, setIsDebtPaymentDialogOpen] = useState(false);
+    const { 
+        addProductToCart, setCartCustomer, 
+        toggleSellProductSheet, toggleSellDebtPayment, toggleSellCustomerDialog 
+    } = actions;
+    
     const [localCartCustomer, setLocalCartCustomer] = useState<Customer | null>(null);
-
-    const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
     const [customerListVersion, setCustomerListVersion] = useState(0);
 
     const productSearchRef = useRef<{ focus: () => void; openCustomProductDialog: () => void; }>(null);
@@ -91,31 +97,51 @@ export default function SellPage() {
         return () => document.removeEventListener('keydown', handleKeyDown);
     }, [handleKeyDown]);
 
-    if (sessionLoading || !activeCart) {
+    if (!activeCart) {
         return <div className="p-4"><Skeleton className="h-12 w-full mb-4" /><div className="grid grid-cols-3 gap-4 h-96"><Skeleton className="col-span-2"/><Skeleton /></div></div>;
     }
     
     return (
         <>
             <div className="h-full flex flex-col">
-                <CartTotalBar cart={activeCart} customer={localCartCustomer} onPayDebtClick={() => setIsDebtPaymentDialogOpen(true)} />
+                <CartTotalBar cart={activeCart} customer={localCartCustomer} onPayDebtClick={() => toggleSellDebtPayment(true)} />
                 <div className="grid md:grid-cols-3 gap-4 flex-grow min-h-0 p-4">
                     <div className="md:col-span-2 flex flex-col gap-4">
                         <div className="flex flex-wrap items-center gap-4">
                            <div className="flex items-center gap-2 w-full sm:w-auto flex-grow">
                                 <div className="flex-grow sm:min-w-[300px]"><CustomerCombobox ref={customerComboboxRef} listVersion={customerListVersion} /></div>
-                                <Button variant="outline" size="icon" onClick={() => setIsCustomerDialogOpen(true)}><UserPlus className="h-4 w-4" /></Button>
+                                <Button variant="outline" size="icon" onClick={() => toggleSellCustomerDialog(true)}><UserPlus className="h-4 w-4" /></Button>
                             </div>
                             <DraftsDropdown ref={draftsDropdownRef} />
-                            <div className="md:hidden w-full"><Sheet open={isProductSheetOpen} onOpenChange={setIsProductSheetOpen}><SheetTrigger asChild><Button variant="outline" className="w-full"><PackageSearch className="mr-2 h-4 w-4" />Produits</Button></SheetTrigger><SheetContent side="right" className="p-0 w-full"><ProductSearch onProductSelect={addProductToCart} /></SheetContent></Sheet></div>
+                            <div className="md:hidden w-full">
+                                <Sheet open={modals.isProductSheetOpen} onOpenChange={toggleSellProductSheet}>
+                                    <SheetTrigger asChild>
+                                        <Button variant="outline" className="w-full"><PackageSearch className="mr-2 h-4 w-4" />Produits</Button>
+                                    </SheetTrigger>
+                                    <SheetContent side="right" className="p-0 w-full">
+                                        <ProductSearch onProductSelect={addProductToCart} />
+                                    </SheetContent>
+                                </Sheet>
+                            </div>
                         </div>
-                        <Card className="flex-grow flex flex-col min-h-0"><CardContent className="p-4 sm:p-6 flex-grow flex flex-col min-h-0"><CartDisplay cart={activeCart} /></CardContent><CardFooter className="p-4 sm:p-6 mt-auto border-t bg-background/30"><SaleActions ref={saleActionsRef} /></CardFooter></Card>
+                        <Card className="flex-grow flex flex-col min-h-0">
+                            <CardContent className="p-4 sm:p-6 flex-grow flex flex-col min-h-0">
+                                <CartDisplay cart={activeCart} />
+                            </CardContent>
+                            <CardFooter className="p-4 sm:p-6 mt-auto border-t bg-background/30">
+                                <SaleActions ref={saleActionsRef} />
+                            </CardFooter>
+                        </Card>
                     </div>
-                    <div className="hidden md:flex md:flex-col"><Card className="h-full flex flex-col"><ProductSearch ref={productSearchRef} onProductSelect={addProductToCart} /></Card></div>
+                    <div className="hidden md:flex md:flex-col">
+                        <Card className="h-full flex flex-col">
+                            <ProductSearch ref={productSearchRef} onProductSelect={addProductToCart} />
+                        </Card>
+                    </div>
                 </div>
             </div>
-            {localCartCustomer && <AddPaymentDialog isOpen={isDebtPaymentDialogOpen} onOpenChange={setIsDebtPaymentDialogOpen} customer={localCartCustomer} onPaymentSuccess={handleSuccessfulPayment} />}
-            <CustomerDialog isOpen={isCustomerDialogOpen} onOpenChange={setIsCustomerDialogOpen} customer={null} onSuccess={handleCustomerDialogSuccess} />
+            {localCartCustomer && <AddPaymentDialog isOpen={modals.isDebtPaymentDialogOpen} onOpenChange={toggleSellDebtPayment} customer={localCartCustomer} onPaymentSuccess={handleSuccessfulPayment} />}
+            <CustomerDialog isOpen={modals.isCustomerDialogOpen} onOpenChange={toggleSellCustomerDialog} customer={null} onSuccess={handleCustomerDialogSuccess} />
             <PrintReceiptDialog />
         </>
     );
