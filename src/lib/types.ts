@@ -51,6 +51,30 @@ export interface Customer {
     bread_jours_semaine?: Record<string, { actif: boolean; quantite: number }>;
 }
 
+export interface CustomerTopProduct {
+    productUuid: string;
+    name: string;
+    quantity: number;
+    totalAmount: number;
+    category: string;
+}
+
+export interface ImportAnalysis {
+    customersToAdd: any[];
+    customersToUpdate: any[];
+    skippedRows: any[];
+    errorRows: any[];
+    totalRows: number;
+}
+
+export interface ProductImportAnalysis {
+    productsToAdd: any[];
+    productsToUpdate: any[];
+    skippedRows: any[];
+    errorRows: any[];
+    totalRows: number;
+}
+
 export interface Ingredient {
     id: string;
     name: string;
@@ -195,6 +219,8 @@ export interface InventoryLog {
     createdAt: Date;
 }
 
+export type InventoryLogReason = InventoryLog['reason'];
+
 export interface Expense {
     uuid: string;
     user_id: string;
@@ -245,6 +271,12 @@ export interface DashboardData {
     topProducts: any[];
     topCustomers: any[];
     lowStockProducts: any[];
+}
+
+export interface TopCustomer {
+    customerUuid: string;
+    name: string;
+    totalSpent: number;
 }
 
 export interface Supplier {
