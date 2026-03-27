@@ -13,7 +13,7 @@ import { BreadClientList } from '@/components/bread/BreadClientList';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2, ChevronLeft, ChevronRight, Calendar, Users, Wheat } from 'lucide-react';
 import type { BreadOrder } from '@/lib/types';
-import { breadService } from '@/services/bread.service';
+import { api } from '@/lib/api-client';
 import { toast } from 'sonner';
 
 export default function BreadPage() {
@@ -26,10 +26,10 @@ export default function BreadPage() {
     const fetchOrders = useCallback(async (date: string) => {
         setIsLoading(true);
         try {
-            const data = await breadService.getOrdersForDate(date);
+            const data = await api.get<BreadOrder[]>(`bread?date=${date}`);
             setOrders(data);
         } catch (error: any) {
-            toast.error("Erreur lors du chargement des commandes.", { description: error.message });
+            toast.error("Erreur lors du chargement des commandes.");
         } finally {
             setIsLoading(false);
         }

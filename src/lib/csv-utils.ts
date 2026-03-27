@@ -3,14 +3,16 @@
 
 import Papa from 'papaparse';
 import { api } from './api-client';
-import type { Customer, ImportAnalysis, Product, ProductImportAnalysis, Supplier, Expense } from './types';
+import type { Customer, ImportAnalysis, Product, ProductImportAnalysis, Supplier, Expense, Sale, ProductReturn } from './types';
 
 /**
- * @fileOverview Standardized CSV Logic (The Only Authority for CSV Operations)
+ * @fileOverview THE CSV SINGULARITY
+ * المركز السيادي والوحيد لكافة عمليات استيراد وتصدير البيانات في iPOS.
  */
 
 export class CsvImporter {
-    // --- CUSTOMERS ---
+    // --- ANALYSIS TOOLS (Import) ---
+    
     static async analyzeCustomers(file: File): Promise<ImportAnalysis> {
         return new Promise((resolve, reject) => {
             Papa.parse(file, {
@@ -49,7 +51,6 @@ export class CsvImporter {
         });
     }
 
-    // --- PRODUCTS ---
     static async analyzeProducts(file: File): Promise<ProductImportAnalysis> {
         return new Promise((resolve, reject) => {
             Papa.parse(file, {
@@ -85,7 +86,6 @@ export class CsvImporter {
         });
     }
 
-    // --- SUPPLIERS ---
     static async analyzeSuppliers(file: File): Promise<any> {
         return new Promise((resolve, reject) => {
             Papa.parse(file, {
@@ -111,7 +111,8 @@ export class CsvImporter {
     }
 
     // --- EXPORT TOOLS ---
-    static exportToCSV(data: any[], filename: string) {
+
+    static download(data: any[], filename: string) {
         const csv = Papa.unparse(data);
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement('a');
@@ -121,31 +122,61 @@ export class CsvImporter {
     }
 
     static exportProducts(products: Product[]) {
-        this.exportToCSV(products.map(p => ({
+        this.download(products.map(p => ({
             'Nom': p.name,
             'Catégorie': p.category,
             'Prix Vente': p.price,
             'Prix Achat': p.purchasePrice,
             'Stock': p.quantity,
             'Unité': p.unite
-        })), 'inventory');
+        })), 'inventory-export');
     }
 
     static exportCustomers(customers: Customer[]) {
-        this.exportToCSV(customers.map(c => ({
+        this.download(customers.map(c => ({
             'Nom Complet': `${c.firstName} ${c.lastName}`,
             'Téléphone': c.phone || '',
             'Solde': c.outstandingBalance,
+            'Total Dépensé': c.totalSpent,
             'Catégorie': c.category
-        })), 'customers');
+        })), 'customers-export');
+    }
+
+    static exportSuppliers(suppliers: Supplier[]) {
+        this.download(suppliers.map(s => ({
+            'Nom': s.name,
+            'Contact': s.contactPerson || '',
+            'Téléphone': s.phone || '',
+            'Solde Dû': s.balance
+        })), 'suppliers-export');
     }
 
     static exportExpenses(expenses: Expense[]) {
-        this.exportToCSV(expenses.map(e => ({
-            'Date': e.expenseDate,
+        this.download(expenses.map(e => ({
+            'Date': new Date(e.expenseDate).toLocaleDateString(),
             'Description': e.description,
             'Catégorie': e.category,
             'Montant': e.amount
-        })), 'expenses');
+        })), 'expenses-export');
+    }
+
+    static exportSales(sales: Sale[]) {
+        this.download(sales.map(s => ({
+            'Facture': s.invoiceNumber,
+            'Date': new Date(s.createdAt).toLocaleString(),
+            'Total': s.total,
+            'Payé': s.amountPaid,
+            'Statut': s.paymentStatus
+        })), 'sales-history-export');
+    }
+
+    static exportReturns(returns: ProductReturn[]) {
+        this.download(returns.map(r => ({
+            'Référence': r.uuid.substring(0,8),
+            'Facture Origine': r.originalInvoiceNumber,
+            'Date': new Date(r.createdAt).toLocaleString(),
+            'Valeur Retour': r.totalReturnValue,
+            'Remboursé': r.amountRefunded
+        })), 'returns-export');
     }
 }

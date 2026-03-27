@@ -1,8 +1,9 @@
+
 'use client';
 
 import { toast } from 'sonner';
 import type { Customer } from '@/lib/types';
-import { customerService } from '@/services/customer.service';
+import { api } from '@/lib/api-client';
 import { ConfirmAlertDialog } from '@/components/ui/ConfirmAlertDialog';
 
 interface DeleteCustomerDialogProps {
@@ -16,11 +17,13 @@ export function DeleteCustomerDialog({ isOpen, onOpenChange, customer, onSuccess
     const handleDelete = async () => {
         if (!customer) return;
         
-        // The business rule is now enforced in the service layer.
-        // ConfirmAlertDialog will catch and display any errors thrown by the service.
-        await customerService.deleteCustomer(customer.uuid);
-        toast.success(`Client "${customer.firstName} ${customer.lastName}" supprimé.`);
-        onSuccess();
+        try {
+            await api.delete(`customers/${customer.uuid}`);
+            toast.success(`Client "${customer.firstName} ${customer.lastName}" supprimé.`);
+            onSuccess();
+        } catch (err: any) {
+            toast.error("Impossible de supprimer ce client.");
+        }
     };
 
     return (

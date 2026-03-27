@@ -16,7 +16,7 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
-import { supplierService } from '@/services/supplier.service';
+import { api } from '@/lib/api-client';
 import { useAppStore, useIsManagerOrAdmin } from '@/stores/appStore';
 import { cn, formatCurrency } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ImportSuppliersPreviewDialog } from '@/components/suppliers/ImportSuppliersPreviewDialog';
 import { DeleteMultipleSuppliersDialog } from '@/components/suppliers/DeleteMultipleSuppliersDialog';
+import { CsvImporter } from '@/lib/csv-utils';
 
 const sortOptions: { [key: string]: string } = {
     'name_asc': 'Nom (A-Z)',
@@ -64,7 +65,6 @@ export default function SuppliersPage() {
     const [suppliers, setSuppliers] = useState<Supplier[] | undefined>(undefined);
     const [isRefreshing, setIsRefreshing] = useState(false);
 
-    // Import states
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [importAnalysis, setImportAnalysis] = useState<any>(null);
     const [isImportPreviewOpen, setIsImportPreviewOpen] = useState(false);
@@ -73,7 +73,7 @@ export default function SuppliersPage() {
     const fetchSuppliers = useCallback(async (manual = false) => {
         if (manual) setIsRefreshing(true);
         try {
-            const data = await supplierService.getSuppliers();
+            const data = await api.get<Supplier[]>('suppliers');
             setSuppliers(data);
         } catch (error: any) {
             toast.error("Impossible de charger les fournisseurs.");
@@ -143,7 +143,7 @@ export default function SuppliersPage() {
         if (!file) return;
         setIsAnalyzing(true);
         try {
-            const analysis = await supplierService.parseAndAnalyzeImport(file);
+            const analysis = await CsvImporter.analyzeSuppliers(file);
             setImportAnalysis(analysis);
             setIsImportPreviewOpen(true);
         } catch (error: any) {
@@ -157,7 +157,7 @@ export default function SuppliersPage() {
     const handleConfirmImport = async (data: any) => {
         setIsImporting(true);
         try {
-            await supplierService.executeImport(data);
+            await api.post('suppliers/bulk-import', data);
             toast.success("Importation terminée.");
             setIsImportPreviewOpen(false);
             fetchSuppliers();
@@ -170,7 +170,7 @@ export default function SuppliersPage() {
 
     const handleExport = () => {
         if (!filteredAndSortedSuppliers.length) return;
-        supplierService.exportToCSV(filteredAndSortedSuppliers);
+        CsvImporter.exportSuppliers(filteredAndSortedSuppliers);
     };
 
     const renderContent = () => {

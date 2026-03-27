@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
@@ -17,8 +18,7 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
-import { stockService } from '@/services/stock.service';
-import { supplierService } from '@/services/supplier.service';
+import { api } from '@/lib/api-client';
 import { useAppStore, useIsManagerOrAdmin } from '@/stores/appStore';
 import { CancelIntakeDialog } from '@/components/stock/CancelIntakeDialog';
 import { StockIntakeStats } from '@/components/stock/StockIntakeStats';
@@ -46,19 +46,21 @@ export default function StockPage() {
         if (!isMounted || !dateRange?.from) return;
         setStockIntakes(undefined);
         try {
+            const query = new URLSearchParams({
+                query: debouncedSearchQuery,
+                from: dateRange.from?.toISOString() || '',
+                to: dateRange.to?.toISOString() || ''
+            }).toString();
+
             const [intakesData, suppliersData] = await Promise.all([
-                stockService.getStockIntakes({
-                    query: debouncedSearchQuery,
-                    from: dateRange.from,
-                    to: dateRange.to
-                }),
-                supplierService.getSuppliers()
+                api.get<StockIntake[]>(`stock?${query}`),
+                api.get<Supplier[]>('suppliers')
             ]);
 
             setStockIntakes(intakesData);
             setSupplierMap(new Map(suppliersData.map(s => [s.uuid, s])));
         } catch (error: any) {
-            toast.error("Impossible de charger l'historique des réceptions.", { description: error.message });
+            toast.error("Impossible de charger l'historique des réceptions.");
             setStockIntakes([]);
         }
     }, [isMounted, debouncedSearchQuery, dateRange]);

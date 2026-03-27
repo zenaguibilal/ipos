@@ -2,8 +2,6 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { salesService } from '@/services/sales.service';
-import { customerService } from '@/services/customer.service';
 import { useDebounce } from '@/hooks/useDebounce';
 import type { Sale, Customer } from '@/lib/types';
 import { Input } from '@/components/ui/input';
@@ -25,6 +23,8 @@ import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency, cn } from '@/lib/utils';
 import { useAppStore } from '@/stores/appStore';
+import { api } from '@/lib/api-client';
+import { CsvImporter } from '@/lib/csv-utils';
 import { startOfDay, endOfDay, subDays, startOfMonth } from 'date-fns';
 import {
   DropdownMenu,
@@ -79,19 +79,21 @@ export default function SalesHistoryPage() {
         if (manual) setIsRefreshing(true);
         setAllSales(undefined);
         try {
+            const query = new URLSearchParams({
+                query: debouncedSearchQuery,
+                from: dateRange.from?.toISOString() || '',
+                to: dateRange.to?.toISOString() || ''
+            }).toString();
+
             const [salesData, customersData] = await Promise.all([
-                salesService.filterSales({
-                    query: debouncedSearchQuery,
-                    from: dateRange.from,
-                    to: dateRange.to
-                }),
-                customerService.getCustomers()
+                api.get<Sale[]>(`sales?${query}`),
+                api.get<Customer[]>('customers')
             ]);
             setAllSales(salesData);
             setCustomerMap(new Map(customersData.map(c => [c.uuid, c])));
             setVisibleSalesCount(ITEMS_PER_PAGE);
         } catch (error: any) {
-            toast.error("Impossible de charger l'historique des ventes.", { description: error.message });
+            toast.error("Impossible de charger l'historique des ventes.");
             setAllSales([]);
         } finally {
             if (manual) setIsRefreshing(false);
@@ -203,20 +205,12 @@ export default function SalesHistoryPage() {
         setVisibleSalesCount(prev => prev + ITEMS_PER_PAGE);
     };
 
-    const handleExport = async () => {
+    const handleExport = () => {
         if (!filteredAndSortedSales.length) {
             toast.info("Aucune vente à exporter.");
             return;
         }
-        setIsExporting(true);
-        try {
-            await salesService.exportToCSV(filteredAndSortedSales, customerMap);
-            toast.success("Historique exporté avec succès.");
-        } catch (error: any) {
-            toast.error("Erreur lors de l'exportation.");
-        } finally {
-            setIsExporting(false);
-        }
+        CsvImporter.exportSales(filteredAndSortedSales);
     };
 
     const setDateShortcut = (type: 'today' | 'yesterday' | 'week' | 'month') => {

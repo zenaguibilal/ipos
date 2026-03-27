@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -5,7 +6,7 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Plus, Calculator, Trash2, Edit, TrendingUp, Target } from 'lucide-react';
 import { RecipeDialog } from '@/components/costing/RecipeDialog';
-import { recipeService } from '@/services/recipe.service';
+import { api } from '@/lib/api-client';
 import type { Recipe } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { formatCurrency, cn } from '@/lib/utils';
@@ -38,7 +39,7 @@ export default function CostingPage() {
 
     const fetchRecipes = useCallback(async () => {
         try {
-            const data = await recipeService.getRecipes();
+            const data = await api.get<Recipe[]>('recipes');
             setRecipes(data);
         } catch (error) {
             toast.error("Échec du chargement des recettes.");
@@ -73,7 +74,7 @@ export default function CostingPage() {
     const confirmDelete = async () => {
         if (!recipeToDelete) return;
         try {
-            await recipeService.deleteRecipe(recipeToDelete.uuid);
+            await api.delete(`recipes/${recipeToDelete.uuid}`);
             toast.success("Recette supprimée.");
             fetchRecipes();
         } catch (error) {
