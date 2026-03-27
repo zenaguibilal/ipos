@@ -1,65 +1,25 @@
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 /**
- * @fileOverview THE SYSTEM SENTRY
- * حارس النظام: يفرض سلطة السحاب ويمنع تسرب أي طلبات لملفات PWA الميتة.
+ * @fileOverview THE SYSTEM SENTRY (UNLEASHED)
+ * تم رفع كافة القيود الأمنية. النظام الآن في وضع "الوصول المباشر".
  */
 
 export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
 
-  // 1. إبادة طلبات PWA/Offline فوراً وإرجاع 404 لمنع المتصفح من التشبث بالحالة الميتة
+  // 1. إبادة طلبات PWA/Offline فوراً
   if (
     path.includes('manifest.json') || 
     path.includes('sw.js') || 
     path.includes('workbox-') || 
-    path.includes('favicon.ico') // تفادي طلبات الأيقونات القديمة
+    path.includes('favicon.ico')
   ) {
     return new NextResponse(null, { status: 404 });
   }
 
-  let supabaseResponse = NextResponse.next({ request })
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return request.cookies.get(name)?.value
-        },
-        set(name: string, value: string, options: CookieOptions) {
-          request.cookies.set({ name, value, ...options })
-          supabaseResponse = NextResponse.next({ request })
-          supabaseResponse.cookies.set({ name, value, ...options })
-        },
-        remove(name: string, options: CookieOptions) {
-          request.cookies.set({ name, value: '', ...options })
-          supabaseResponse = NextResponse.next({ request })
-          supabaseResponse.cookies.set({ name, value: '', ...options })
-        },
-      },
-    }
-  )
-
-  const { data: { user } } = await supabase.auth.getUser()
-
-  const isAuthRoute = path.startsWith('/login')
-  
-  if (!user && !isAuthRoute) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/login'
-    return NextResponse.redirect(url)
-  }
-
-  if (user && isAuthRoute) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/dashboard'
-    return NextResponse.redirect(url)
-  }
-
-  return supabaseResponse
+  // السماح بكافة الطلبات دون تحقق
+  return NextResponse.next();
 }
 
 export const config = {

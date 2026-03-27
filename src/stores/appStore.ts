@@ -8,9 +8,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { api } from '@/lib/api-client';
 
 /**
- * @fileOverview THE STATE SINGULARITY (PHASE 5 ENFORCED)
- * المركز السيادي الوحيد لكافة بيانات النظام أثناء التشغيل.
- * ممنوع منعاً باتاً تخزين البيانات محلياً في المكونات.
+ * @fileOverview THE STATE SINGULARITY (DOMINATION EDITION)
+ * تم تكييف المتجر للعمل في وضع "الوصول المباشر" بدون قيود جلسة.
  */
 
 interface AppState {
@@ -20,14 +19,12 @@ interface AppState {
     sessionLoading: boolean;
     isSettingsLoading: boolean;
     
-    // Core Data Collections
     products: Product[];
     customers: Customer[];
     suppliers: Supplier[];
     expenses: Expense[];
     salesHistory: Sale[];
     
-    // UI & Operation State
     carts: Cart[];
     activeCartId: string;
     lastCompletedSale: { sale: Sale; customer?: Customer } | null;
@@ -40,14 +37,12 @@ interface AppState {
         signOut: () => Promise<void>;
         resetStore: () => void;
         
-        // Data Fetching Actions (The Only Way to get data)
         refreshProducts: (query?: string) => Promise<void>;
         refreshCustomers: (status?: string) => Promise<void>;
         refreshSuppliers: () => Promise<void>;
         refreshExpenses: (from: string, to: string) => Promise<void>;
         refreshSalesHistory: (from: string, to: string) => Promise<void>;
 
-        // Operation Actions
         createNewCart: () => void;
         switchToCart: (id: string) => void;
         deleteCart: (id: string) => void;
@@ -78,7 +73,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     session: null,
     user: null,
     profile: null,
-    sessionLoading: true,
+    sessionLoading: false, // تم الإلغاء لفرض التشغيل الفوري
     isSettingsLoading: false,
     
     products: [],
@@ -105,7 +100,8 @@ export const useAppStore = create<AppState>((set, get) => ({
                 const profile = await api.get<CompanyProfile>('profile');
                 set({ profile });
             } catch (e) {
-                if ((e as Error).message.includes('401')) get().actions.resetStore();
+                // في وضع الهيمنة، الفشل في جلب البروفايل لا يوقف النظام
+                console.warn("Profile fetch failed, using default settings.");
             } finally {
                 set({ isSettingsLoading: false });
             }
@@ -167,16 +163,9 @@ export const useAppStore = create<AppState>((set, get) => ({
         },
 
         signOut: async () => {
-            try {
-                await api.post('auth/signout', {});
-            } finally {
-                get().actions.resetStore();
-                if (typeof window !== 'undefined') {
-                    window.localStorage.clear();
-                    window.sessionStorage.clear();
-                    window.location.href = '/login';
-                }
-            }
+            // تسجيل الخروج يقوم فقط بمسح الذاكرة في هذا الوضع
+            get().actions.resetStore();
+            window.location.href = '/';
         },
 
         resetStore: () => set({
@@ -277,4 +266,4 @@ export const useAppStore = create<AppState>((set, get) => ({
 }));
 
 export const useAppActions = () => useAppStore(state => state.actions);
-export const useIsManagerOrAdmin = () => useAppStore(state => state.profile?.role === 'manager' || state.profile?.role === 'admin');
+export const useIsManagerOrAdmin = () => true; // في وضع الهيمنة بدون دخول، نعتبر الوصول دائماً بصلاحيات كاملة

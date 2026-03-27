@@ -1,10 +1,8 @@
-
 'use client';
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  User as UserIcon,
   Settings,
   Package,
   Users2,
@@ -13,7 +11,6 @@ import {
   Undo2,
   Archive,
   Wallet,
-  LogOut,
   LayoutDashboard,
   Wheat,
   Building,
@@ -21,13 +18,6 @@ import {
 } from 'lucide-react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Clock } from '@/components/layout/clock';
 import { ThemeToggle } from '@/components/layout/theme-toggle';
 import {
@@ -36,8 +26,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useAppStore, useIsManagerOrAdmin } from '@/stores/appStore';
-import { toast } from 'sonner';
+import { useIsManagerOrAdmin } from '@/stores/appStore';
 
 const allNavLinks = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, managerOnly: false },
@@ -54,18 +43,7 @@ const allNavLinks = [
 
 export function AppHeader() {
   const pathname = usePathname();
-  const { user } = useAppStore(state => state);
-  const { signOut } = useAppStore(state => state.actions);
   const isManagerOrAdmin = useIsManagerOrAdmin();
-
-  const handleSignOut = async () => {
-    try {
-        await signOut();
-        toast.success("Vous avez été déconnecté.");
-    } catch(error: any) {
-        toast.error(error.message);
-    }
-  }
 
   const mainActionLinks = [
     { href: '/sell', label: 'Point de Vente', icon: ShoppingCart },
@@ -139,34 +117,11 @@ export function AppHeader() {
             <div className="flex items-center gap-2 sm:gap-4">
                 <Clock />
                 <ThemeToggle />
-                <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button variant="secondary" size="icon" className="rounded-full">
-                    <UserIcon className="h-5 w-5" />
-                    <span className="sr-only">Menu utilisateur</span>
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                    <DropdownMenuItem disabled>
-                        <div className="flex flex-col">
-                        <span className="text-sm font-medium">Connecté en tant que</span>
-                        <span className="text-xs text-muted-foreground truncate">{user?.email}</span>
-                        </div>
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
-                        <Link href="/profile">
-                            <Settings className="mr-2 h-4 w-4" />
-                            <span>Profil & Paramètres</span>
-                        </Link>
-                    </DropdownMenuItem>
-                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive">
-                        <LogOut className="mr-2 h-4 w-4" />
-                        <span>Se déconnecter</span>
-                    </DropdownMenuItem>
-                </DropdownMenuContent>
-                </DropdownMenu>
+                <Button variant="ghost" size="icon" asChild className="rounded-full">
+                    <Link href="/profile">
+                        <Settings className="h-5 w-5" />
+                    </Link>
+                </Button>
             </div>
         </div>
     </header>

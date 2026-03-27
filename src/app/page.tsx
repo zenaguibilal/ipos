@@ -1,13 +1,9 @@
-import { createClient } from '@/utils/supabase/server';
 import { redirect } from 'next/navigation';
 
+/**
+ * @fileOverview Root Redirect
+ * توجيه مباشر إلى مركز القيادة.
+ */
 export default async function RootPage() {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (user) {
-    redirect('/dashboard');
-  } else {
-    redirect('/login');
-  }
+  redirect('/dashboard');
 }
