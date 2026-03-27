@@ -1,13 +1,12 @@
-
 'use client';
 
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Banknote, History, Package, Building2, Phone, MapPin, ArrowRight, TrendingUp, BarChart3, Search, MessageSquare, ExternalLink, Printer } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import type { StockIntake } from '@/lib/types';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { formatCurrency, cn, getPlaceholder } from '@/lib/utils';
@@ -25,13 +24,11 @@ import { PrintSupplierStatementDialog } from '@/components/suppliers/PrintSuppli
 import { useAppStore, useAppActions } from '@/stores/appStore';
 
 /**
- * @fileOverview Supplier Detail Page (State Singularity Enforcement)
- * تم تطهير الصفحة من أي States محلية جالبة للبيانات.
+ * @fileOverview Supplier Detail Page (Refined)
  */
 
 export default function SupplierDetailPage() {
     const params = useParams();
-    const router = useRouter();
     const supplierUuid = params.uuid as string;
 
     const { selectedSupplier, isLoading } = useAppStore(state => ({

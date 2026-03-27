@@ -23,8 +23,7 @@ import { cn } from '@/lib/utils';
 import { CsvImporter } from '@/lib/csv-utils';
 
 /**
- * @fileOverview Products Page (Architecture Purified)
- * تم القضاء على الحالات المحلية (ViewMode) لفرض سيادة الـ Store.
+ * @fileOverview Products Page (Refined)
  */
 
 export default function ProductsPage() {
@@ -52,7 +51,6 @@ export default function ProductsPage() {
     
     const [isImportPreviewOpen, setIsImportPreviewOpen] = useState(false);
     const [importAnalysis, setImportAnalysis] = useState<ProductImportAnalysis | null>(null);
-    const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [isImporting, setIsImporting] = useState(false);
 
     useEffect(() => {
@@ -67,7 +65,6 @@ export default function ProductsPage() {
     const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
-        setIsAnalyzing(true);
         try {
             const analysis = await CsvImporter.analyzeProducts(file);
             setImportAnalysis(analysis);
@@ -75,7 +72,6 @@ export default function ProductsPage() {
         } catch (error: any) {
             toast.error("Erreur lors de l'analyse.");
         } finally {
-            setIsAnalyzing(false);
             e.target.value = '';
         }
     };

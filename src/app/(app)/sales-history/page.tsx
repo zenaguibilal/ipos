@@ -62,7 +62,6 @@ export default function SalesHistoryPage() {
     const [allSales, setAllSales] = useState<Sale[] | undefined>(undefined);
     const [visibleSalesCount, setVisibleSalesCount] = useState(ITEMS_PER_PAGE);
     const [customerMap, setCustomerMap] = useState<Map<string, Customer>>(new Map());
-    const [isExporting, setIsExporting] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
 
     const fetchSalesAndCustomers = useCallback(async (manual = false) => {
@@ -304,8 +303,8 @@ export default function SalesHistoryPage() {
                 description="Suivez vos transactions et gérez vos encaissements."
             >
                 <div className="flex gap-2 w-full sm:w-auto">
-                    <Button variant="outline" onClick={handleExport} disabled={allSales === undefined || isExporting} className="border-primary/20">
-                        <FileUp className={cn("mr-2 h-4 w-4", isExporting && "animate-pulse")} />
+                    <Button variant="outline" onClick={handleExport} disabled={allSales === undefined} className="border-primary/20">
+                        <FileUp className="mr-2 h-4 w-4" />
                         Exporter CSV
                     </Button>
                     <Button variant="ghost" size="icon" onClick={() => fetchSalesAndCustomers(true)} disabled={isRefreshing} className="hover:bg-primary/10">
