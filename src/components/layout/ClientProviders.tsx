@@ -6,7 +6,7 @@ import { useEffect } from 'react';
 
 /**
  * @fileOverview THE SYSTEM PURIFIER (ABSOLUTE EDITION - NO MERCY)
- * Eradicates all client-side persistence mechanisms every 1000ms.
+ * Eradicates all client-side persistence mechanisms every 500ms.
  * No data escapes the Cloud Authority.
  */
 
@@ -51,7 +51,7 @@ export function ClientProviders({ children }: { children: React.ReactNode }) {
         };
 
         executeTotalPurge();
-        const interval = setInterval(executeTotalPurge, 1000);
+        const interval = setInterval(executeTotalPurge, 500);
         return () => clearInterval(interval);
     }, []);
 

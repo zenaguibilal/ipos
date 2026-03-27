@@ -11,7 +11,7 @@ import { api } from '@/lib/api-client';
 
 /**
  * @fileOverview THE STATE SINGULARITY (DOMINATION MODE)
- * The absolute and only source of truth for the entire system state and UI behavior.
+ * المصدر الوحيد والأوحد للحقيقة في النظام. تم توحيد كافة حالات الواجهة هنا.
  */
 
 interface AppState {
@@ -37,7 +37,7 @@ interface AppState {
     lastCompletedSale: { sale: Sale; customer?: Customer } | null;
     isLoading: Record<string, boolean>;
     
-    // UI Singularity State (View Modes)
+    // UI Singularity State (Centralized View Modes)
     productViewMode: 'grid' | 'list';
     customerViewMode: 'grid' | 'list';
     expenseViewMode: 'grid' | 'list';
@@ -46,7 +46,7 @@ interface AppState {
     supplierViewMode: 'grid' | 'list';
     stockViewMode: 'grid' | 'list';
 
-    // Global Modal Control (Eradicate local useState for Modals)
+    // Global Modal Control
     modals: {
         sell: {
             isProductSheetOpen: boolean;
@@ -81,7 +81,6 @@ interface AppState {
         setSupplierViewMode: (mode: 'grid' | 'list') => void;
         setStockViewMode: (mode: 'grid' | 'list') => void;
 
-        // Modal Actions
         toggleSellProductSheet: (open: boolean) => void;
         toggleSellDebtPayment: (open: boolean) => void;
         toggleSellCustomerDialog: (open: boolean) => void;

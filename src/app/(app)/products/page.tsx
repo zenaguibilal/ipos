@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -22,6 +21,11 @@ import { api } from '@/lib/api-client';
 import { useAppStore, useIsManagerOrAdmin, useAppActions } from '@/stores/appStore';
 import { cn } from '@/lib/utils';
 import { CsvImporter } from '@/lib/csv-utils';
+
+/**
+ * @fileOverview Products Page (Architecture Purified)
+ * تم القضاء على الحالات المحلية (ViewMode) لفرض سيادة الـ Store.
+ */
 
 export default function ProductsPage() {
     const isManagerOrAdmin = useIsManagerOrAdmin();
