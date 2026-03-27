@@ -1,7 +1,7 @@
 
 /**
  * @fileOverview Application Type Definitions
- * Reconstructed for strict typing and architectural consistency.
+ * Enforces strict typing for the Enterprise-Grade POS system.
  */
 
 export type AppRole = 'admin' | 'manager' | 'cashier';
@@ -10,20 +10,20 @@ export interface Product {
     uuid: string;
     user_id: string;
     name: string;
-    category?: string;
+    category: string;
     price: number;
     purchasePrice: number;
     quantity: number; 
     minStockLevel: number;
-    barcodes?: string[];
+    barcodes: string[];
     imageUrl?: string;
-    unite?: 'Pièce' | 'Kg' | 'Litre' | 'Boîte' | 'Carton' | 'Sachet' | 'Bouteille';
+    unite: 'Pièce' | 'Kg' | 'Litre' | 'Boîte' | 'Carton' | 'Sachet' | 'Bouteille';
     dateExpiration?: Date;
     supplierUuid?: string;
     dateMajPrix?: Date;
     createdAt?: Date;
     updatedAt?: Date;
-    stockStatus?: 'in_stock' | 'low_stock' | 'out_of_stock';
+    stockStatus: 'in_stock' | 'low_stock' | 'out_of_stock';
 }
 
 export interface Customer {
@@ -35,19 +35,19 @@ export interface Customer {
     phone?: string;
     address?: string;
     notes?: string;
-    category?: string;
+    category: string;
     settlementDay?: number;
-    creditLimit?: number;
+    creditLimit: number;
     totalSpent: number;
     outstandingBalance: number;
     lastActivityDate?: Date;
     createdAt?: Date;
     updatedAt?: Date;
-    debtStatus?: 'none' | 'due_soon' | 'overdue';
-    isOverLimit?: boolean;
-    isBreadClient?: boolean;
-    bread_type_recurrence?: 'quotidien' | 'jours_specifiques' | 'aucun';
-    bread_quantite_defaut?: number;
+    debtStatus: 'none' | 'due_soon' | 'overdue';
+    isOverLimit: boolean;
+    isBreadClient: boolean;
+    bread_type_recurrence: 'quotidien' | 'jours_specifiques' | 'aucun';
+    bread_quantite_defaut: number;
     bread_jours_semaine?: Record<string, { actif: boolean; quantite: number }>;
 }
 
@@ -86,8 +86,8 @@ export interface Sale {
     invoiceNumber: string;
     items: SaleItem[];
     subtotal: number;
-    discountType?: 'percentage' | 'fixed';
-    discountAmount?: number;
+    discountType: 'percentage' | 'fixed';
+    discountAmount: number;
     total: number;
     amountPaid: number;
     remainingBalance: number;
@@ -113,8 +113,8 @@ export interface CompanyProfile {
     vatNumber?: string;
     rcNumber?: string;
     artImposition?: string;
-    goldPricePerGram?: number;
-    prix_pain?: number;
+    goldPricePerGram: number;
+    prix_pain: number;
     updatedAt?: Date;
     role: AppRole;
 }
@@ -125,7 +125,7 @@ export interface StockIntakeItem {
     quantityReceived: number;
     quantityDamaged: number;
     purchasePrice: number;
-    costPrice?: number;
+    costPrice: number;
 }
 
 export interface StockIntake {
@@ -162,6 +162,28 @@ export interface ProductReturn {
     notes?: string;
 }
 
+export interface InventoryLog {
+    uuid: string;
+    user_id: string;
+    productUuid: string;
+    change: number;
+    newQuantity: number;
+    reason: 'sale' | 'return' | 'stock_intake' | 'cancellation' | 'manual_adjustment';
+    relatedUuid?: string;
+    createdAt: Date;
+}
+
+export interface Expense {
+    uuid: string;
+    user_id: string;
+    description: string;
+    category: string;
+    amount: number;
+    expenseDate: Date;
+    createdAt: Date;
+    updatedAt: Date;
+}
+
 export interface ZakatCalculation {
     inventoryValue: number;
     customerDebts: number;
@@ -190,10 +212,10 @@ export interface DashboardData {
         saleCount: number;
         totalOutstandingDebt: number;
         totalInventoryValue: number;
-        totalRevenueChange?: number;
-        netProfitChange?: number;
-        totalExpensesChange?: number;
-        saleCountChange?: number;
+        totalRevenueChange: number;
+        netProfitChange: number;
+        totalExpensesChange: number;
+        saleCountChange: number;
     };
     salesByDay: { date: string; total: number; profit: number }[];
     recentSales: any[];
@@ -201,4 +223,44 @@ export interface DashboardData {
     topProducts: any[];
     topCustomers: any[];
     lowStockProducts: any[];
+}
+
+export interface Supplier {
+    uuid: string;
+    user_id: string;
+    name: string;
+    contactPerson?: string;
+    phone?: string;
+    email?: string;
+    address?: string;
+    balance: number;
+    createdAt: Date;
+    updatedAt: Date;
+}
+
+export interface SupplierPayment {
+    uuid: string;
+    user_id: string;
+    supplierUuid: string;
+    amount: number;
+    paymentDate: Date;
+    method: 'cash' | 'bank_transfer' | 'card';
+    notes?: string;
+    createdAt: Date;
+    updatedAt: Date;
+}
+
+export interface BreadOrder {
+    uuid: string;
+    user_id: string;
+    customerUuid: string | null;
+    orderName: string;
+    date: string;
+    quantite: number;
+    quantite_origine?: number;
+    est_paye: boolean;
+    est_livre: boolean;
+    venteUuid: string | null;
+    createdAt: Date;
+    updatedAt: Date;
 }

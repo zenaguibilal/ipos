@@ -8,6 +8,9 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+/**
+ * Hydration-safe date parser.
+ */
 export function safeToDate(date: Date | string | null | undefined): Date {
     if (!date) return new Date();
     if (date instanceof Date) return date;
@@ -21,11 +24,11 @@ export function formatDateToYYYYMMDD(date: Date): string {
 
 export function formatCurrency(value: number, currency = 'DA') {
   const v = (typeof value !== 'number' || isNaN(value)) ? 0 : value;
-  return `${v.toFixed(1)} ${currency}`;
+  return `${v.toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} ${currency}`;
 }
 
-export function calculateCartTotals(cart: { items: any[], discount: any }) {
-    const subtotal = cart.items.reduce((acc, item) => acc + item.price * item.cartQuantity, 0);
+export function calculateCartTotals(cart: { items: any[], discount: { type: string, value: number } }) {
+    const subtotal = cart.items.reduce((acc, item) => acc + (item.price * item.cartQuantity), 0);
     const discountAmount = cart.discount.type === 'percentage'
         ? (subtotal * (cart.discount.value || 0)) / 100
         : (cart.discount.value || 0);
