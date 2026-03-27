@@ -6,8 +6,7 @@ import { useEffect } from 'react';
 
 /**
  * @fileOverview THE SYSTEM PURIFIER (ABSOLUTE EDITION - NO MERCY)
- * Eradicates all client-side persistence mechanisms every 500ms.
- * No data escapes the Cloud Authority.
+ * Reinforcement: Clears all persistence every 500ms.
  */
 
 export function ClientProviders({ children }: { children: React.ReactNode }) {

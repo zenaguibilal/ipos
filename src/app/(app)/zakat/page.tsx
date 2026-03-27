@@ -1,12 +1,11 @@
 'use client';
 
-import { useEffect, useCallback, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { api } from '@/lib/api-client';
 import { formatCurrency, cn, calculateZakat } from '@/lib/utils';
 import { Printer, RefreshCw, Save, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -15,51 +14,34 @@ import { useAppStore, useAppActions } from '@/stores/appStore';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 /**
- * @fileOverview Zakat Calculator Page (Deterministic Purification)
- * UI adheres to absolute state singularity via Zustand.
+ * @fileOverview Zakat Calculator Page (Deterministic Singularity)
+ * Phase 5 & 7 Compliance: No local calculation or data storage.
  */
 
 export default function ZakatPage() {
-    const { history, isLoading, zakatInputs } = useAppStore(state => ({
+    const { history, isLoading, zakatData, zakatInputs } = useAppStore(state => ({
         history: state.zakatHistory,
         isLoading: state.isLoading.zakat,
-        zakatInputs: state.zakatInputs
+        zakatData: state.zakat.autoData,
+        zakatInputs: state.zakat.inputs
     }));
-    const { refreshZakatHistory, setZakatInputs } = useAppActions();
+    const { refreshZakatData, setZakatInputs, saveZakatCalculation } = useAppActions();
 
-    const [isRefreshing, setIsRefreshing] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
-    const [autoData, setAutoData] = useState({ inventoryValue: 0, customerDebts: 0, supplierDebts: 0, goldPrice: 0 });
 
-    const fetchData = useCallback(async (manual = false) => {
-        if (manual) setIsRefreshing(true);
-        try {
-            const [data] = await Promise.all([
-                api.get<any>('zakat'),
-                refreshZakatHistory()
-            ]);
-            setAutoData(data);
-        } catch (error) {
-            toast.error("Échec du chargement.");
-        } finally {
-            setIsRefreshing(false);
-        }
-    }, [refreshZakatHistory]);
-
-    useEffect(() => { fetchData(); }, [fetchData]);
+    useEffect(() => { refreshZakatData(); }, [refreshZakatData]);
 
     const result = useMemo(() => calculateZakat({ 
-        ...autoData, 
+        ...zakatData, 
         cashOnHand: zakatInputs.cashOnHand, 
         otherDebts: zakatInputs.otherDebts 
-    }), [autoData, zakatInputs]);
+    }), [zakatData, zakatInputs]);
 
     const handleSave = async () => {
         setIsSaving(true);
         try {
-            await api.post('zakat', result);
+            await saveZakatCalculation(result);
             toast.success("Point de calcul archivé.");
-            fetchData(true);
         } catch (error) { toast.error("Échec de l'archivage."); }
         finally { setIsSaving(false); }
     };
@@ -70,7 +52,7 @@ export default function ZakatPage() {
         <div className="p-4 sm:p-6 space-y-6 max-w-7xl mx-auto pb-20">
             <PageHeader title="Calculateur de Zakat" description="Évaluation des actifs nets pour le commerce.">
                 <div className="flex gap-2">
-                    <Button variant="outline" onClick={() => fetchData(true)} disabled={isRefreshing} className="luxury-glass border-white/10"><RefreshCw className={cn("h-4 w-4 mr-2", isRefreshing && "animate-spin")} /> Actualiser</Button>
+                    <Button variant="outline" onClick={() => refreshZakatData()} disabled={isLoading} className="luxury-glass border-white/10"><RefreshCw className={cn("h-4 w-4 mr-2", isLoading && "animate-spin")} /> Actualiser</Button>
                     <Button className="bg-primary shadow-lg shadow-primary/20"><Printer className="h-4 w-4 mr-2" /> Rapport PDF</Button>
                 </div>
             </PageHeader>
@@ -88,7 +70,7 @@ export default function ZakatPage() {
                             <CardContent className="space-y-6">
                                 <div className="p-4 rounded-2xl bg-white/5 border border-white/5">
                                     <Label className="text-[9px] font-black uppercase text-muted-foreground block mb-1">Valeur des Stocks</Label>
-                                    <p className="text-2xl font-black">{formatCurrency(autoData.inventoryValue)}</p>
+                                    <p className="text-2xl font-black">{formatCurrency(zakatData.inventoryValue)}</p>
                                 </div>
                                 <div className="p-4 rounded-2xl bg-white/5 border border-white/5">
                                     <Label className="text-[9px] font-black uppercase text-muted-foreground block mb-2">Liquidités en Caisse (DA)</Label>
@@ -107,7 +89,7 @@ export default function ZakatPage() {
                             <CardContent className="space-y-6">
                                 <div className="p-4 rounded-2xl bg-white/5 border border-white/5">
                                     <Label className="text-[9px] font-black uppercase text-muted-foreground block mb-1">Dettes Fournisseurs</Label>
-                                    <p className="text-2xl font-black text-destructive">{formatCurrency(autoData.supplierDebts)}</p>
+                                    <p className="text-2xl font-black text-destructive">{formatCurrency(zakatData.supplierDebts)}</p>
                                 </div>
                                 <div className="p-4 rounded-2xl bg-white/5 border border-white/5">
                                     <Label className="text-[9px] font-black uppercase text-muted-foreground block mb-2">Autres Dettes (Charges, etc.)</Label>

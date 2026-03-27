@@ -37,8 +37,11 @@ interface AppState {
     activeCartId: string;
     lastCompletedSale: { sale: Sale; customer?: Customer } | null;
     
-    // Zakat Transient State
-    zakatInputs: { cashOnHand: number; otherDebts: number };
+    // Zakat Absolute State
+    zakat: {
+        autoData: { inventoryValue: number; customerDebts: number; supplierDebts: number; goldPrice: number };
+        inputs: { cashOnHand: number; otherDebts: number };
+    };
     
     // Sell Page Reactive Data
     sellPage: { cartCustomer: Customer | null; customerListVersion: number };
@@ -82,12 +85,14 @@ interface AppState {
         refreshStockIntakes: (params?: any) => Promise<void>;
         refreshBreadOrders: (date: string) => Promise<void>;
         refreshRecipes: () => Promise<void>;
-        refreshZakatHistory: () => Promise<void>;
+        
+        // Zakat Deterministic Actions
+        refreshZakatData: () => Promise<void>;
+        setZakatInputs: (inputs: { cashOnHand?: number; otherDebts?: number }) => void;
+        saveZakatCalculation: (result: any) => Promise<void>;
 
         fetchCustomerDetails: (uuid: string) => Promise<void>;
         fetchSupplierDetails: (uuid: string) => Promise<void>;
-
-        setZakatInputs: (inputs: { cashOnHand?: number; otherDebts?: number }) => void;
         
         setProductViewMode: (mode: 'grid' | 'list') => void;
         setCustomerViewMode: (mode: 'grid' | 'list') => void;
@@ -151,7 +156,10 @@ export const useAppStore = create<AppState>((set, get) => ({
     selectedCustomer: { data: null, stats: null, activity: [] },
     selectedSupplier: { data: null, stats: null, activity: [], products: [] },
 
-    zakatInputs: { cashOnHand: 0, otherDebts: 0 },
+    zakat: {
+        autoData: { inventoryValue: 0, customerDebts: 0, supplierDebts: 0, goldPrice: 0 },
+        inputs: { cashOnHand: 0, otherDebts: 0 }
+    },
     sellPage: { cartCustomer: null, customerListVersion: 0 },
 
     carts: [createInitialCart()],
@@ -292,14 +300,30 @@ export const useAppStore = create<AppState>((set, get) => ({
             }
         },
 
-        refreshZakatHistory: async () => {
+        refreshZakatData: async () => {
             set(p => ({ isLoading: { ...p.isLoading, zakat: true } }));
             try {
-                const zakatHistory = await api.get<SavedZakatCalculation[]>('zakat?type=history');
-                set({ zakatHistory });
+                const [autoData, history] = await Promise.all([
+                    api.get<any>('zakat'),
+                    api.get<SavedZakatCalculation[]>('zakat?type=history')
+                ]);
+                set(produce((s: AppState) => {
+                    s.zakat.autoData = autoData;
+                    s.zakatHistory = history;
+                }));
             } finally {
                 set(p => ({ isLoading: { ...p.isLoading, zakat: false } }));
             }
+        },
+
+        setZakatInputs: (inputs) => set(produce((s: AppState) => {
+            if (inputs.cashOnHand !== undefined) s.zakat.inputs.cashOnHand = inputs.cashOnHand;
+            if (inputs.otherDebts !== undefined) s.zakat.inputs.otherDebts = inputs.otherDebts;
+        })),
+
+        saveZakatCalculation: async (result) => {
+            await api.post('zakat', result);
+            await get().actions.refreshZakatData();
         },
 
         fetchCustomerDetails: async (uuid) => {
@@ -336,11 +360,6 @@ export const useAppStore = create<AppState>((set, get) => ({
                 set(p => ({ isLoading: { ...p.isLoading, supplierDetail: false } }));
             }
         },
-
-        setZakatInputs: (inputs) => set(produce((s: AppState) => {
-            if (inputs.cashOnHand !== undefined) s.zakatInputs.cashOnHand = inputs.cashOnHand;
-            if (inputs.otherDebts !== undefined) s.zakatInputs.otherDebts = inputs.otherDebts;
-        })),
 
         setProductViewMode: (mode) => set({ productViewMode: mode }),
         setCustomerViewMode: (mode) => set({ customerViewMode: mode }),
@@ -460,7 +479,10 @@ export const useAppStore = create<AppState>((set, get) => ({
             lastCompletedSale: null,
             selectedCustomer: { data: null, stats: null, activity: [] },
             selectedSupplier: { data: null, stats: null, activity: [], products: [] },
-            zakatInputs: { cashOnHand: 0, otherDebts: 0 },
+            zakat: {
+                autoData: { inventoryValue: 0, customerDebts: 0, supplierDebts: 0, goldPrice: 0 },
+                inputs: { cashOnHand: 0, otherDebts: 0 }
+            },
             sellPage: { cartCustomer: null, customerListVersion: 0 }
         }),
     }
