@@ -1,4 +1,3 @@
-import { createClient } from "@/utils/supabase/server";
 import { ProductRepository } from './product.repository';
 import { SaleRepository } from './sale.repository';
 import { CustomerRepository } from './customer.repository';
@@ -7,10 +6,9 @@ import { format, eachDayOfInterval } from 'date-fns';
 
 /**
  * @fileOverview Dashboard Repository (Absolute Data Authority)
- * المسؤول عن تجميع الإحصائيات الحتمية من كافة المستودعات ومعالجتها في جهة الخادم.
+ * Responsible for aggregating deterministic statistics from all repositories and processing them server-side.
  */
 export class DashboardRepository {
-    private supabase = createClient();
     private productRepo = new ProductRepository();
     private saleRepo = new SaleRepository();
     private customerRepo = new CustomerRepository();

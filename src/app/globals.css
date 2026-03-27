@@ -90,7 +90,6 @@
     min-height: 100vh;
   }
 
-  /* Soft Grain Overlay for Luxury Texture */
   body::before {
     content: "";
     @apply fixed inset-0 pointer-events-none opacity-[0.03] z-[100];
@@ -124,7 +123,6 @@
   }
 }
 
-/* Enhanced Scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -140,7 +138,6 @@
   @apply bg-primary/40;
 }
 
-/* Specific Print Styles Refinement */
 @media print {
   body {
     background: white !important;
