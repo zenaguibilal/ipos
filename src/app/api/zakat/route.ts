@@ -28,8 +28,12 @@ export async function POST(req: Request) {
     try {
         const body = await req.json();
         const repo = new ZakatRepository();
-        const data = await repo.save(body);
-        return NextResponse.json({ data });
+        
+        // Final server-side validation/calculation before saving
+        const finalResult = ZakatRepository.calculate(body);
+        await repo.save(finalResult);
+        
+        return NextResponse.json({ data: { success: true } });
     } catch (e: any) {
         return NextResponse.json({ error: e.message }, { status: 400 });
     }
