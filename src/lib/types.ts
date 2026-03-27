@@ -252,6 +252,51 @@ export interface SavedZakatCalculation extends ZakatCalculation {
     createdAt: Date;
 }
 
+export interface SalesByDay {
+    date: string;
+    total: number;
+    profit: number;
+}
+
+export interface RecentSale {
+    uuid: string;
+    invoiceNumber: string;
+    total: number;
+    createdAt: Date | string;
+    customerName: string;
+}
+
+export interface RecentReturn {
+    uuid: string;
+    originalInvoiceNumber: string;
+    totalReturnValue: number;
+    createdAt: Date | string;
+    customerName: string;
+}
+
+export interface TopProduct {
+    productUuid: string;
+    name: string;
+    quantitySold: number;
+    revenueGenerated: number;
+    imageUrl?: string;
+    category?: string;
+}
+
+export interface TopCustomer {
+    customerUuid: string;
+    name: string;
+    totalSpent: number;
+}
+
+export interface LowStockProduct {
+    uuid: string;
+    name: string;
+    quantity: number;
+    minStockLevel: number;
+    unite: string;
+}
+
 export interface DashboardData {
     stats: {
         totalRevenue: number;
@@ -265,18 +310,12 @@ export interface DashboardData {
         totalExpensesChange: number;
         saleCountChange: number;
     };
-    salesByDay: { date: string; total: number; profit: number }[];
-    recentSales: any[];
-    recentReturns: any[];
-    topProducts: any[];
-    topCustomers: any[];
-    lowStockProducts: any[];
-}
-
-export interface TopCustomer {
-    customerUuid: string;
-    name: string;
-    totalSpent: number;
+    salesByDay: SalesByDay[];
+    recentSales: RecentSale[];
+    recentReturns: RecentReturn[];
+    topProducts: TopProduct[];
+    topCustomers: TopCustomer[];
+    lowStockProducts: LowStockProduct[];
 }
 
 export interface Supplier {

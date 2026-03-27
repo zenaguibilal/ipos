@@ -6,7 +6,15 @@ import { expenseRepository } from '@/repositories/expense.repository';
 import { returnRepository } from '@/repositories/return.repository';
 import { customerRepository } from '@/repositories/customer.repository';
 import { productRepository } from '@/repositories/product.repository';
-import type { DashboardData, TopCustomer } from '@/lib/types';
+import type { 
+    DashboardData, 
+    TopCustomer, 
+    SalesByDay, 
+    RecentSale, 
+    RecentReturn, 
+    TopProduct, 
+    LowStockProduct 
+} from '@/lib/types';
 import { eachDayOfInterval, format } from 'date-fns';
 
 class DashboardService {
@@ -49,9 +57,9 @@ class DashboardService {
             const prevNetProfit = prevTotalRevenue - prevTotalCOGS - prevTotalExpenses;
 
             // 6. Calculate percentage changes
-            const calculateChange = (current: number, previous: number): number | undefined => {
+            const calculateChange = (current: number, previous: number): number => {
                 if (previous === 0) {
-                    return current > 0 ? Infinity : 0;
+                    return current > 0 ? 100 : 0;
                 }
                 return ((current - previous) / previous) * 100;
             };
@@ -91,7 +99,7 @@ class DashboardService {
                 }
             });
 
-            const salesByDay = Array.from(salesByDayMap.entries())
+            const salesByDay: SalesByDay[] = Array.from(salesByDayMap.entries())
                 .map(([date, values]) => ({ date, ...values }))
                 .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
@@ -112,7 +120,7 @@ class DashboardService {
                 .sort((a, b) => b[1].revenueGenerated - a[1].revenueGenerated)
                 .slice(0, 5);
 
-            const topProducts = topProductsData.map(([uuid, stats]) => {
+            const topProducts: TopProduct[] = topProductsData.map(([uuid, stats]) => {
                 const product = allProducts.find(p => p.uuid === uuid);
                 return {
                     productUuid: uuid,
@@ -141,30 +149,37 @@ class DashboardService {
                 totalSpent,
             }));
 
-            const lowStockProducts = allProducts
+            const lowStockProducts: LowStockProduct[] = allProducts
                 .filter(p => p.quantity > 0 && p.quantity <= p.minStockLevel)
                 .sort((a, b) => a.quantity - b.quantity)
-                .slice(0, 5);
+                .slice(0, 5)
+                .map(p => ({
+                    uuid: p.uuid,
+                    name: p.name,
+                    quantity: p.quantity,
+                    minStockLevel: p.minStockLevel,
+                    unite: p.unite || 'Pièce'
+                }));
                 
-            const recentSales = currentSales
+            const recentSales: RecentSale[] = currentSales
                 .sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime())
                 .slice(0, 5)
                 .map(sale => ({
                     uuid: sale.uuid,
                     invoiceNumber: sale.invoiceNumber,
                     total: sale.total,
-                    createdAt: sale.createdAt,
+                    createdAt: sale.createdAt!,
                     customerName: sale.customerUuid ? customerMap.get(sale.customerUuid) || 'Client Inconnu' : defaultCustomerName,
                 }));
 
-            const recentReturns = returns
+            const recentReturns: RecentReturn[] = returns
                 .sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime())
                 .slice(0, 5)
                 .map(pr => ({
                     uuid: pr.uuid,
                     originalInvoiceNumber: pr.originalInvoiceNumber,
                     totalReturnValue: pr.totalReturnValue,
-                    createdAt: pr.createdAt,
+                    createdAt: pr.createdAt!,
                     customerName: pr.customerUuid ? customerMap.get(pr.customerUuid) || 'Client Inconnu' : defaultCustomerName,
                 }));
                 
