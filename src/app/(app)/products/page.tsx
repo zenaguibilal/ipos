@@ -6,7 +6,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import type { Product, Supplier, ProductImportAnalysis } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, LayoutGrid, List, Printer, Trash2, PackageCheck, PackageX, AlertTriangle, Archive, SortAsc, FileDown, Building, Package, Loader2, CalendarClock, CalendarX, FileUp, Scan } from 'lucide-react';
+import { Plus, Search, LayoutGrid, List, Printer, Trash2, PackageCheck, PackageX, AlertTriangle, Archive, SortAsc, FileDown, Building, Package, Loader2, CalendarClock, CalendarX, FileUp, Scan, RefreshCw } from 'lucide-react';
 import { ProductCard } from '@/components/products/product-card';
 import { ProductTable } from '@/components/products/product-table';
 import { ProductTableSkeleton } from '@/components/products/product-table-skeleton';
@@ -37,6 +37,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { productService } from '@/services/product.service';
 import { supplierService } from '@/services/supplier.service';
 import { useAppStore, useIsManagerOrAdmin } from '@/stores/appStore';
+import { cn } from '@/lib/utils';
 
 type StockStatus = 'all' | 'in_stock' | 'low_stock' | 'out_of_stock' | 'expiring_soon' | 'expired';
 
@@ -84,7 +85,8 @@ export default function ProductsPage() {
     const [isHistoryDialogOpen, setIsHistoryDialogOpen] = useState(false);
     const [isScannerOpen, setIsScannerOpen] = useState(false);
 
-    const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+    // FIX: State refactored to Partial<Product> to support duplication templates
+    const [selectedProduct, setSelectedProduct] = useState<Partial<Product> | null>(null);
     const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
 
     const debouncedSearchQuery = useDebounce(searchQuery, 300);
@@ -92,6 +94,7 @@ export default function ProductsPage() {
     const [products, setProducts] = useState<Product[] | undefined>(undefined);
     const [categories, setCategories] = useState<string[] | undefined>(undefined);
     const [suppliers, setSuppliers] = useState<Supplier[] | undefined>(undefined);
+    const [isRefreshing, setIsRefreshing] = useState(false);
     const isLoading = products === undefined || categories === undefined || suppliers === undefined;
     
     // States for CSV Import
@@ -110,14 +113,13 @@ export default function ProductsPage() {
             setSearchQuery(queryFromUrl);
         }
         
-        // Auto focus search bar
         if (searchInputRef.current) {
             searchInputRef.current.focus();
         }
     }, [searchParams]);
 
-    const fetchProducts = useCallback(async () => {
-        setProducts(undefined);
+    const fetchProducts = useCallback(async (manual = false) => {
+        if (manual) setIsRefreshing(true);
         try {
             const data = await productService.filterProducts({ 
                 query: debouncedSearchQuery, 
@@ -130,6 +132,8 @@ export default function ProductsPage() {
         } catch(error: any) {
             toast.error("Impossible de charger les produits.", { description: error.message });
             setProducts([]);
+        } finally {
+            if (manual) setIsRefreshing(false);
         }
     }, [debouncedSearchQuery, selectedCategory, selectedSupplier, stockStatus, sortBy]);
 
@@ -162,7 +166,7 @@ export default function ProductsPage() {
 
     const onDialogSuccess = () => {
         fetchProducts();
-        fetchMeta(); // Re-fetch categories/suppliers in case they were changed
+        fetchMeta();
     }
 
     const handleEditProduct = useCallback((product: Product) => {
@@ -171,9 +175,9 @@ export default function ProductsPage() {
     }, []);
 
     const handleDuplicateProduct = useCallback((product: Product) => {
-        // Create a copy without unique identifiers
+        // FIX: Create a template without unique identifiers. TS-Safe Partial<Product>.
         const { uuid, barcodes, ...rest } = product;
-        setSelectedProduct({ ...rest, barcodes: [] } as Product);
+        setSelectedProduct({ ...rest, barcodes: [] });
         setIsProductDialogOpen(true);
     }, []);
 
@@ -226,7 +230,7 @@ export default function ProductsPage() {
             toast.error("Erreur lors de l'analyse du fichier.", { description: error.message });
         } finally {
             setIsAnalyzing(false);
-            e.target.value = ''; // Reset input
+            e.target.value = '';
         }
     };
 
@@ -237,7 +241,7 @@ export default function ProductsPage() {
             toast.success("Importation des produits terminée !");
             setIsImportPreviewOpen(false);
             setImportAnalysis(null);
-            onDialogSuccess(); // Refresh products and meta
+            onDialogSuccess();
         } catch (error: any) {
             toast.error("Erreur lors de l'importation des produits.", { description: error.message });
         } finally {
@@ -287,7 +291,7 @@ export default function ProductsPage() {
                     title="Aucun produit trouvé"
                     description="Essayez d'ajuster votre recherche ou vos filtres, ou ajoutez un nouveau produit."
                 >
-                     <Button onClick={() => setIsProductDialogOpen(true)} disabled={!isManagerOrAdmin}>
+                     <Button onClick={() => { setSelectedProduct(null); setIsProductDialogOpen(true); }} disabled={!isManagerOrAdmin}>
                         <Plus className="mr-2 h-4 w-4" /> Ajouter un produit
                     </Button>
                 </EmptyState>
@@ -477,6 +481,10 @@ export default function ProductsPage() {
                         <List className="h-5 w-5"/>
                     </Button>
                 </div>
+
+                <Button variant="ghost" size="icon" onClick={() => fetchProducts(true)} disabled={isRefreshing}>
+                    <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
+                </Button>
             </div>
 
             {isManagerOrAdmin && (
@@ -522,7 +530,7 @@ export default function ProductsPage() {
                     <DeleteProductDialog 
                         isOpen={isDeleteDialogOpen}
                         onOpenChange={setIsDeleteDialogOpen}
-                        product={selectedProduct}
+                        product={selectedProduct as Product}
                         onConfirmDelete={handleDeleteProduct}
                     />
                     <PrintLabelsDialog
@@ -549,7 +557,7 @@ export default function ProductsPage() {
                     <ProductHistoryDialog
                         isOpen={isHistoryDialogOpen}
                         onOpenChange={setIsHistoryDialogOpen}
-                        product={selectedProduct}
+                        product={selectedProduct as Product}
                     />
                     <BarcodeScannerDialog
                         isOpen={isScannerOpen}

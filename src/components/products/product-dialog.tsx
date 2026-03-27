@@ -15,11 +15,13 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { productService } from '@/services/product.service';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { calculateStockStatus } from '@/lib/utils';
 
 interface ProductDialogProps {
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
-    product: Product | null;
+    // FIX: Interface updated to Partial<Product> to support duplication templates
+    product: Partial<Product> | null;
     categories: string[];
     suppliers: Supplier[];
     onSuccess: () => void;
@@ -59,6 +61,7 @@ export function ProductDialog({ isOpen, onOpenChange, product, categories, suppl
         if (product && isOpen) {
             const supplier = suppliers.find(s => s.uuid === product.supplierUuid);
             setFormState({
+                ...initialFormState,
                 ...product,
                 dateExpiration: product.dateExpiration ? new Date(product.dateExpiration) : undefined,
                 supplierName: supplier?.name || '',
@@ -134,27 +137,31 @@ export function ProductDialog({ isOpen, onOpenChange, product, categories, suppl
         setError(null);
         setIsLoading(true);
 
-        const productData: Omit<Product, 'uuid' | 'id'> & { supplierName?: string } = {
-            name: formState.name!,
-            category: formState.category || 'Non classé',
-            price: Number(formState.price) || 0,
-            purchasePrice: Number(formState.purchasePrice) || 0,
-            quantity: Number(formState.quantity) || 0,
-            minStockLevel: Number(formState.minStockLevel) || 0,
-            barcodes: formState.barcodes || [],
-            imageUrl: formState.imageUrl || undefined,
-            unite: formState.unite || 'Pièce',
-            dateExpiration: formState.dateExpiration || undefined,
-            supplierUuid: formState.supplierUuid || undefined,
-            supplierName: formState.supplierName || undefined,
+        // FIX: Replaced unsafe 'any' cast with proper destructuring
+        const { supplierName, ...productDataWithoutMeta } = formState;
+
+        const productData = {
+            name: productDataWithoutMeta.name || '',
+            category: productDataWithoutMeta.category || 'Non classé',
+            price: Number(productDataWithoutMeta.price) || 0,
+            purchasePrice: Number(productDataWithoutMeta.purchasePrice) || 0,
+            quantity: Number(productDataWithoutMeta.quantity) || 0,
+            minStockLevel: Number(productDataWithoutMeta.minStockLevel) || 0,
+            barcodes: productDataWithoutMeta.barcodes || [],
+            imageUrl: productDataWithoutMeta.imageUrl || undefined,
+            unite: productDataWithoutMeta.unite || 'Pièce',
+            dateExpiration: productDataWithoutMeta.dateExpiration || undefined,
+            supplierUuid: productDataWithoutMeta.supplierUuid || undefined,
+            supplierName: supplierName || undefined,
         };
 
         try {
-            if (product) {
+            // FIX: Check for the actual ID existence to distinguish update vs creation
+            if (product?.uuid) {
                 await productService.updateProduct(product.uuid, productData);
                 toast.success(`Produit ${productData.name} mis à jour.`);
             } else {
-                await productService.addProduct(productData as Product);
+                await productService.addProduct(productData as any);
                 toast.success(`Produit ${productData.name} ajouté.`);
             }
             onSuccess();
@@ -182,7 +189,7 @@ export function ProductDialog({ isOpen, onOpenChange, product, categories, suppl
             <DialogContent className="sm:max-w-2xl">
                 <form onSubmit={handleSubmit}>
                     <DialogHeader>
-                        <DialogTitle>{product ? 'Modifier le produit' : 'Ajouter un nouveau produit'}</DialogTitle>
+                        <DialogTitle>{product?.uuid ? 'Modifier le produit' : 'Ajouter un nouveau produit'}</DialogTitle>
                         <DialogDescription>
                            Remplissez les détails du produit.
                         </DialogDescription>
