@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -6,7 +5,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import type { Customer, ImportAnalysis } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, FileDown, RefreshCw, LayoutGrid, List } from 'lucide-react';
+import { Plus, Search, RefreshCw, LayoutGrid, List } from 'lucide-react';
 import { CustomerCard } from '@/components/customers/customer-card';
 import { CustomerTable } from '@/components/customers/customer-table';
 import { CustomerTableSkeleton } from '@/components/customers/customer-table-skeleton';
@@ -83,7 +82,7 @@ export default function CustomersPage() {
 
     return (
         <div className="p-4 sm:p-6 space-y-6">
-            <PageHeader title="Gestion des Clients" description="Recherchez, ajouteز et suivez le solde de vos clients.">
+            <PageHeader title="Gestion des Clients" description="Recherchez, ajoutez et suivez le solde de vos clients.">
                 <div className="flex gap-2">
                     <Button variant="outline" onClick={() => CsvImporter.exportCustomers(customers)}>Exporter CSV</Button>
                     {isManagerOrAdmin && (
