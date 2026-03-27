@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import type { CompanyProfile } from '@/lib/types';
 import { Skeleton } from '../ui/skeleton';
-import { Loader2, Save, Globe, Phone, Mail, MapPin, Hash, ShoppingBag, Coins, Scale, FileText, BadgeCheck } from 'lucide-react';
+import { Loader2, Save, Globe, Phone, Mail, MapPin, Hash, ShoppingBag, Coins, Scale, FileText, LogOut } from 'lucide-react';
 import { useAppStore } from '@/stores/appStore';
 import { Separator } from '../ui/separator';
 
@@ -22,7 +22,7 @@ export function CompanyProfileForm({ mode }: CompanyProfileFormProps) {
         profile: state.profile,
         isSettingsLoading: state.isSettingsLoading,
     }));
-    const { updateProfile } = useAppStore(state => state.actions);
+    const { updateProfile, logout } = useAppStore(state => state.actions);
     const [formState, setFormState] = useState<Partial<CompanyProfile>>({});
     const [isSaving, setIsSaving] = useState(false);
 
@@ -219,7 +219,15 @@ export function CompanyProfileForm({ mode }: CompanyProfileFormProps) {
                     </div>
                 )}
             </CardContent>
-            <CardFooter className="bg-white/5 p-6 flex justify-end border-t border-white/5">
+            <CardFooter className="bg-white/5 p-6 flex justify-between border-t border-white/5">
+                <Button 
+                    type="button" 
+                    variant="ghost" 
+                    onClick={logout}
+                    className="rounded-xl h-12 text-[10px] font-black uppercase tracking-widest text-destructive hover:bg-destructive/10 gap-2"
+                >
+                    <LogOut className="h-4 w-4" /> Fermer la Session
+                </Button>
                 <Button type="submit" disabled={isSaving} className="rounded-xl px-10 h-12 font-bold gap-2 shadow-xl shadow-primary/20 hover:scale-105 transition-all">
                     {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                     Sauvegarder les réglages

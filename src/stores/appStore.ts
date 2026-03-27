@@ -1,3 +1,4 @@
+
 'use client';
 
 import { create } from 'zustand';
@@ -11,13 +12,14 @@ import { api } from '@/lib/api-client';
 import { calculateZakat } from '@/lib/utils';
 
 /**
- * @fileOverview THE STATE SINGULARITY (DOMINATION MODE)
- * The only source of truth for the application state.
- * PHASE 5, 7, 8, 9 & 10 COMPLIANCE: 100%
+ * @fileOverview THE STATE SINGULARITY (PHASE 11 - FINAL AUDIT)
+ * Absolute authority for all system states including Auth and Profile.
  */
 
 interface AppState {
+    user: any | null;
     profile: CompanyProfile | null;
+    isAuthenticated: boolean;
     isSettingsLoading: boolean;
     
     products: Product[];
@@ -66,8 +68,10 @@ interface AppState {
     };
 
     actions: {
+        setAuth: (user: any | null) => void;
         fetchProfile: () => Promise<void>;
         updateProfile: (data: Partial<CompanyProfile>) => Promise<void>;
+        logout: () => Promise<void>;
         
         refreshProducts: (search?: string) => Promise<void>;
         refreshCustomers: () => Promise<void>;
@@ -132,7 +136,9 @@ const createInitialCart = (): Cart => ({
 });
 
 export const useAppStore = create<AppState>((set, get) => ({
+    user: null,
     profile: null,
+    isAuthenticated: false,
     isSettingsLoading: false,
     
     products: [],
@@ -179,12 +185,15 @@ export const useAppStore = create<AppState>((set, get) => ({
     },
 
     actions: {
+        setAuth: (user) => set({ user, isAuthenticated: !!user }),
+
         fetchProfile: async () => {
-            if (get().profile) return;
             set({ isSettingsLoading: true });
             try {
                 const profile = await api.get<CompanyProfile>('profile');
                 set({ profile, activeCartId: get().carts[0].id });
+            } catch (e) {
+                console.error("Profile Fetch Failed:", e);
             } finally {
                 set({ isSettingsLoading: false });
             }
@@ -193,6 +202,12 @@ export const useAppStore = create<AppState>((set, get) => ({
         updateProfile: async (data) => {
             const updated = await api.put<CompanyProfile>('profile', data);
             set({ profile: updated });
+        },
+
+        logout: async () => {
+            await api.post('auth/signout', {});
+            get().actions.resetStore();
+            window.location.href = '/login';
         },
 
         refreshProducts: async (search) => {
@@ -458,10 +473,12 @@ export const useAppStore = create<AppState>((set, get) => ({
             }
         },
 
-        incrementCustomerListVersion: () => set(produce((s: AppStore) => { s.sellPage.customerListVersion += 1; })),
+        incrementCustomerListVersion: () => set(produce((s: AppState) => { s.sellPage.customerListVersion += 1; })),
 
         resetStore: () => set({
+            user: null,
             profile: null,
+            isAuthenticated: false,
             products: [],
             customers: [],
             suppliers: [],
@@ -488,4 +505,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 }));
 
 export const useAppActions = () => useAppStore(state => state.actions);
-export const useIsManagerOrAdmin = () => true;
+export const useIsManagerOrAdmin = () => {
+    const role = useAppStore(state => state.profile?.role);
+    return role === 'admin' || role === 'manager';
+};

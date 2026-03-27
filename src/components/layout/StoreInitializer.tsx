@@ -1,26 +1,38 @@
-'use client';
 
-/**
- * @fileOverview Application Bootstrapper (Domination Mode)
- * تم رفع التبعية للتحقق من الجلسة.
- */
+'use client';
 
 import { useAppStore } from "@/stores/appStore";
 import { useEffect, useRef } from "react";
+import { api } from "@/lib/api-client";
+
+/**
+ * @fileOverview Application Bootstrapper (Phase 11 Consolidated)
+ * Deterministically syncs session and profile.
+ */
 
 export function StoreInitializer() {
     const initialized = useRef(false);
-    const { fetchProfile } = useAppStore(state => state.actions);
+    const { setAuth, fetchProfile } = useAppStore(state => state.actions);
 
     useEffect(() => {
         if (!initialized.current) {
-            // جلب الإعدادات فوراً وبشكل حتمي
-            fetchProfile().catch(err => {
-                console.warn("Critical: Initial settings load failed", err);
-            });
+            const syncSession = async () => {
+                try {
+                    // Quick ping to check if session exists
+                    const { data: { user } } = await fetch('/api/auth/session').then(res => res.json());
+                    if (user) {
+                        setAuth(user);
+                        await fetchProfile();
+                    }
+                } catch (err) {
+                    console.warn("Session sync failed:", err);
+                }
+            };
+
+            syncSession();
             initialized.current = true;
         }
-    }, [fetchProfile]);
+    }, [setAuth, fetchProfile]);
 
     return null;
 }

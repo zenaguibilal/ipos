@@ -16,8 +16,9 @@ export async function POST(req: Request) {
 
         if (error) throw error;
 
-        return NextResponse.json({ data: data.session });
+        return NextResponse.json({ data: { user: data.user, session: data.session } });
     } catch (e: any) {
-        return NextResponse.json({ error: e.message }, { status: 401 });
+        console.error("[AUTH_FAILURE]", e.message);
+        return NextResponse.json({ error: e.message || 'AUTH_FAILED' }, { status: 401 });
     }
 }
