@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import { CompanyRepository } from '@/repositories/company.repository';
+import { ProfileSchema } from '@/lib/schemas';
 
 /**
  * @fileOverview API WALL: Company Profile Gateway
- * تم تحويل المسار لاستخدام Repository حصرياً لفرض سلطة البيانات.
+ * تم تحصين المسار بالتحقق الصارم من البيانات لفرض سيادة المعمارية.
  */
 
 export async function GET() {
@@ -21,11 +22,13 @@ export async function GET() {
 export async function PUT(req: Request) {
     try {
         const body = await req.json();
+        const validatedData = ProfileSchema.parse(body);
         const repo = new CompanyRepository();
-        const data = await repo.update(body);
+        const data = await repo.update(validatedData);
 
         return NextResponse.json({ data });
     } catch (e: any) {
-        return NextResponse.json({ error: e.message }, { status: 400 });
+        console.error('[API_WALL_STRIKE] Profile Update Failed:', e.message);
+        return NextResponse.json({ error: e.message || 'VALIDATION_FAILED' }, { status: 400 });
     }
 }

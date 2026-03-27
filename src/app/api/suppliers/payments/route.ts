@@ -1,18 +1,20 @@
-
 import { NextResponse } from 'next/server';
 import { SupplierPaymentRepository } from '@/repositories/supplierPayment.repository';
+import { SupplierPaymentSchema } from '@/lib/schemas';
 
 /**
- * @fileOverview API WALL: Supplier Payments
+ * @fileOverview API WALL: Supplier Payments Gateway (Validated)
  */
 
 export async function POST(req: Request) {
     try {
         const body = await req.json();
+        const validatedData = SupplierPaymentSchema.parse(body);
         const repo = new SupplierPaymentRepository();
-        const data = await repo.create(body);
+        const data = await repo.create(validatedData);
         return NextResponse.json({ data });
     } catch (e: any) {
-        return NextResponse.json({ error: e.message }, { status: 400 });
+        console.error('[API_WALL_STRIKE] Supplier Payment Failed:', e.message);
+        return NextResponse.json({ error: e.message || 'VALIDATION_FAILED' }, { status: 400 });
     }
 }

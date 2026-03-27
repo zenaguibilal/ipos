@@ -92,6 +92,14 @@ export const PaymentSchema = z.object({
     notes: z.string().optional(),
 });
 
+export const SupplierPaymentSchema = z.object({
+    supplierUuid: z.string().uuid(),
+    amount: z.number().positive(),
+    paymentDate: z.string().datetime(),
+    method: z.enum(['cash', 'card', 'bank_transfer']),
+    notes: z.string().optional(),
+});
+
 export const ReturnSchema = z.object({
     originalSaleUuid: z.string().uuid(),
     originalInvoiceNumber: z.string(),
@@ -114,4 +122,36 @@ export const BreadOrderSchema = z.object({
     quantite: z.number().positive(),
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     customerUuid: z.string().uuid().nullable().optional(),
+});
+
+export const ProfileSchema = z.object({
+    companyName: z.string().min(1).optional(),
+    address: z.string().optional(),
+    city: z.string().optional(),
+    zipCode: z.string().optional(),
+    country: z.string().optional(),
+    phone: z.string().optional(),
+    email: z.string().email().optional().or(z.literal('')),
+    website: z.string().url().optional().or(z.literal('')),
+    vatNumber: z.string().optional(),
+    rcNumber: z.string().optional(),
+    artImposition: z.string().optional(),
+    goldPricePerGram: z.number().nonnegative().optional(),
+    prix_pain: z.number().nonnegative().optional(),
+});
+
+export const RecipeSchema = z.object({
+    name: z.string().min(1),
+    description: z.string().optional(),
+    yieldQuantity: z.number().positive(),
+    targetMargin: z.number().nonnegative(),
+    ingredients: z.array(z.object({
+        id: z.string(),
+        name: z.string(),
+        quantity: z.number().positive(),
+        unit: z.string(),
+        unitCost: z.number().nonnegative(),
+    })),
+    unitCost: z.number().nonnegative(),
+    suggestedPrice: z.number().nonnegative(),
 });
