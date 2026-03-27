@@ -122,14 +122,3 @@ export interface Cart {
     customerUuid: string | null;
     discount: { type: 'fixed' | 'percentage'; value: number };
 }
-
-export interface Payment {
-    uuid: string;
-    user_id: string;
-    customerUuid: string;
-    amount: number;
-    paymentDate: Date | string;
-    notes?: string;
-    createdAt: string;
-    updatedAt: string;
-}
