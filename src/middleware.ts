@@ -54,5 +54,8 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   // Purged matcher: Only system routes. No manifest/service-worker bypasses.
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|icon.svg).*)'],
+  // Explicitly ignoring all PWA-related static files.
+  matcher: [
+    '/((?!api|_next/static|_next/image|favicon.ico|icon.svg|manifest.json|sw.js|workbox-.*).*)'
+  ],
 }
