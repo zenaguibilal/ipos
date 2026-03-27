@@ -1,6 +1,5 @@
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
-import type { Product } from "./types";
 import placeholderImages from '@/lib/placeholder-images.json';
  
 export function cn(...inputs: ClassValue[]) {
@@ -9,7 +8,6 @@ export function cn(...inputs: ClassValue[]) {
 
 /**
  * Hydration-safe date parser.
- * Prevents build-blocking mismatches between server and client.
  */
 export function safeToDate(date: Date | string | null | undefined): Date {
     if (!date) return new Date();
@@ -51,9 +49,3 @@ export const getPlaceholder = (category?: string): Placeholder => {
     if (category && placeholders[category]) return placeholders[category];
     return placeholders.default;
 };
-
-export function calculateStockStatus(quantity: number, minStockLevel: number): Product['stockStatus'] {
-  if (quantity <= 0) return 'out_of_stock';
-  if (quantity <= minStockLevel) return 'low_stock';
-  return 'in_stock';
-}

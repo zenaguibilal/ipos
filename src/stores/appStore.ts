@@ -4,15 +4,15 @@ import { create } from 'zustand';
 import { produce } from 'immer';
 import type { 
     Cart, CompanyProfile, Product, Sale, Customer, Supplier, 
-    Expense, StockIntake, BreadOrder, Recipe, SavedZakatCalculation 
+    Expense, BreadOrder, Recipe, SavedZakatCalculation 
 } from '@/lib/types';
 import { v4 as uuidv4 } from 'uuid';
 import { api } from '@/lib/api-client';
 import { calculateZakat } from '@/lib/utils';
 
 /**
- * @fileOverview THE STATE SINGULARITY (PHASE 11 - FINAL AUDIT)
- * Absolute authority for all system states. Deterministic and predictable.
+ * @fileOverview THE STATE SINGULARITY (PURIFIED)
+ * Minimized state management. Non-essential global states removed.
  */
 
 interface AppState {
@@ -25,9 +25,6 @@ interface AppState {
     customers: Customer[];
     suppliers: Supplier[];
     expenses: Expense[];
-    salesHistory: Sale[];
-    returns: any[];
-    stockIntakes: StockIntake[];
     breadOrders: BreadOrder[];
     recipes: Recipe[];
     zakatHistory: SavedZakatCalculation[];
@@ -76,9 +73,6 @@ interface AppState {
         refreshCustomers: () => Promise<void>;
         refreshSuppliers: () => Promise<void>;
         refreshExpenses: (params?: any) => Promise<void>;
-        refreshSalesHistory: (params?: any) => Promise<void>;
-        refreshReturns: (params?: any) => Promise<void>;
-        refreshStockIntakes: (params?: any) => Promise<void>;
         refreshBreadOrders: (date: string) => Promise<void>;
         refreshRecipes: () => Promise<void>;
         
@@ -144,9 +138,6 @@ export const useAppStore = create<AppState>((set, get) => ({
     customers: [],
     suppliers: [],
     expenses: [],
-    salesHistory: [],
-    returns: [],
-    stockIntakes: [],
     breadOrders: [],
     recipes: [],
     zakatHistory: [],
@@ -191,8 +182,6 @@ export const useAppStore = create<AppState>((set, get) => ({
             try {
                 const profile = await api.get<CompanyProfile>('profile');
                 set({ profile });
-            } catch (e) {
-                console.error("[PROFILE_FETCH_FAILED]", e);
             } finally {
                 set({ isSettingsLoading: false });
             }
@@ -251,39 +240,6 @@ export const useAppStore = create<AppState>((set, get) => ({
                 set({ expenses });
             } finally {
                 set(p => ({ isLoading: { ...p.isLoading, expenses: false } }));
-            }
-        },
-
-        refreshSalesHistory: async (params) => {
-            set(p => ({ isLoading: { ...p.isLoading, sales: true } }));
-            try {
-                const query = params ? `?${new URLSearchParams(params).toString()}` : '';
-                const salesHistory = await api.get<Sale[]>(`sales${query}`);
-                set({ salesHistory });
-            } finally {
-                set(p => ({ isLoading: { ...p.isLoading, sales: false } }));
-            }
-        },
-
-        refreshReturns: async (params) => {
-            set(p => ({ isLoading: { ...p.isLoading, returns: true } }));
-            try {
-                const query = params ? `?${new URLSearchParams(params).toString()}` : '';
-                const returns = await api.get<any[]>(`returns${query}`);
-                set({ returns });
-            } finally {
-                set(p => ({ isLoading: { ...p.isLoading, returns: false } }));
-            }
-        },
-
-        refreshStockIntakes: async (params) => {
-            set(p => ({ isLoading: { ...p.isLoading, stock: true } }));
-            try {
-                const query = params ? `?${new URLSearchParams(params).toString()}` : '';
-                const stockIntakes = await api.get<StockIntake[]>(`stock${query}`);
-                set({ stockIntakes });
-            } finally {
-                set(p => ({ isLoading: { ...p.isLoading, stock: false } }));
             }
         },
 
@@ -485,9 +441,6 @@ export const useAppStore = create<AppState>((set, get) => ({
             customers: [],
             suppliers: [],
             expenses: [],
-            salesHistory: [],
-            returns: [],
-            stockIntakes: [],
             breadOrders: [],
             recipes: [],
             zakatHistory: [],
