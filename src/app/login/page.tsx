@@ -1,25 +1,41 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { Loader2, Lock, Mail, Building2, UserPlus, ShieldCheck, ArrowRight, Eye, EyeOff, CheckCircle2, Globe, Server } from 'lucide-react';
+import { Loader2, Lock, Mail, Building2, UserPlus, ShieldCheck, ArrowRight, Eye, EyeOff, CheckCircle2, Globe, Server, Info } from 'lucide-react';
 import Image from 'next/image';
 import { useAppStore } from '@/stores/appStore';
 import { api } from '@/lib/api-client';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
+import { z } from 'zod';
 
 /**
  * @fileOverview AUTHENTICATION GATEWAY (SOVEREIGN EDITION)
  * البوابة الرسمية والوحيدة للولوج إلى بنية iPOS السحابية.
  */
+
+// Validation Schemas
+const loginSchema = z.object({
+    email: z.string().email("Format d'email invalide"),
+    password: z.string().min(6, "La clé d'accès doit contenir au moins 6 caractères"),
+});
+
+const signupSchema = z.object({
+    email: z.string().email("Format d'email invalide"),
+    password: z.string().min(6, "La clé d'accès doit contenir au moins 6 caractères"),
+    companyName: z.string().min(2, "Le nom de l'établissement est trop court"),
+    agreeToTerms: z.literal(true, {
+        errorMap: () => ({ message: "Vous devez accepter les conditions d'utilisation" }),
+    }),
+});
 
 export default function AuthPage() {
     const router = useRouter();
@@ -38,6 +54,7 @@ export default function AuthPage() {
     const [password, setPassword] = useState('');
     const [companyName, setCompanyName] = useState('');
     const [rememberMe, setRememberMe] = useState(true);
+    const [agreeToTerms, setAgreeToTerms] = useState(false);
 
     // Set Terminal ID on mount to avoid hydration mismatch
     useEffect(() => {
@@ -56,6 +73,14 @@ export default function AuthPage() {
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
+        
+        // Client-side validation
+        const validation = loginSchema.safeParse({ email, password });
+        if (!validation.success) {
+            toast.error(validation.error.errors[0].message);
+            return;
+        }
+
         setIsLoading(true);
         try {
             const data = await api.post<any>('auth/login', { email, password });
@@ -76,12 +101,11 @@ export default function AuthPage() {
 
     const handleSignup = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!companyName.trim()) {
-            toast.error("Identification requise", { description: "Le nom de l'établissement est obligatoire." });
-            return;
-        }
-        if (password.length < 6) {
-            toast.error("Sécurité insuffisante", { description: "La clé d'accès doit contenir au moins 6 caractères." });
+        
+        // Client-side validation
+        const validation = signupSchema.safeParse({ email, password, companyName, agreeToTerms });
+        if (!validation.success) {
+            toast.error(validation.error.errors[0].message);
             return;
         }
 
@@ -99,6 +123,12 @@ export default function AuthPage() {
         } finally {
             setIsLoading(false);
         }
+    };
+
+    const handleForgotPassword = () => {
+        toast.info("Récupération d'accès", {
+            description: "Veuillez contacter l'administrateur système pour réinitialiser votre clé souveraine."
+        });
     };
 
     return (
@@ -184,7 +214,13 @@ export default function AuthPage() {
                                     <div className="space-y-2">
                                         <div className="flex justify-between items-center ml-1">
                                             <Label className="text-[10px] font-black uppercase tracking-widest opacity-50">Clé d'Accès</Label>
-                                            <button type="button" className="text-[9px] font-black uppercase text-primary/60 hover:text-primary transition-colors">Perdu ?</button>
+                                            <button 
+                                                type="button" 
+                                                onClick={handleForgotPassword}
+                                                className="text-[9px] font-black uppercase text-primary/60 hover:text-primary transition-colors"
+                                            >
+                                                Accès perdu ?
+                                            </button>
                                         </div>
                                         <div className="relative group">
                                             <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary/30 group-focus-within:text-primary transition-colors" />
@@ -294,11 +330,22 @@ export default function AuthPage() {
                                             />
                                         </div>
                                     </div>
+                                    <div className="flex items-start space-x-3 pt-2">
+                                        <Checkbox 
+                                            id="terms" 
+                                            checked={agreeToTerms} 
+                                            onCheckedChange={(checked) => setAgreeToTerms(checked as boolean)} 
+                                            className="rounded-lg border-white/10 mt-1"
+                                        />
+                                        <label htmlFor="terms" className="text-[10px] font-black uppercase tracking-widest opacity-60 cursor-pointer leading-relaxed">
+                                            J'accepte les conditions de déploiement et la politique de souveraineté des données.
+                                        </label>
+                                    </div>
                                 </CardContent>
                                 <CardFooter className="bg-white/5 border-t border-white/5 p-10 mt-6">
                                     <Button 
                                         type="submit" 
-                                        disabled={isLoading} 
+                                        disabled={isLoading || !agreeToTerms} 
                                         className="w-full h-16 rounded-[1.5rem] font-black uppercase text-xs tracking-[0.3em] shadow-2xl shadow-primary/20 gap-4 group overflow-hidden relative"
                                     >
                                         <span className="relative z-10 flex items-center gap-3">
@@ -333,9 +380,10 @@ export default function AuthPage() {
                             <span className="text-[8px] font-black uppercase tracking-widest text-primary/60">AES-256 Encryption</span>
                         </div>
                     </div>
-                    <p className="text-center text-[9px] text-muted-foreground uppercase font-black tracking-[0.4em] opacity-30">
+                    <div className="flex items-center gap-2 text-[9px] text-muted-foreground uppercase font-black tracking-[0.4em] opacity-30">
+                        <Info className="h-3 w-3" />
                         Propulsé par iPOS Cloud Authority • Terminal ID: {terminalId}
-                    </p>
+                    </div>
                 </div>
             </div>
         </div>
