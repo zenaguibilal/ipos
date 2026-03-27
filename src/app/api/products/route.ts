@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { ProductRepository } from '@/repositories/product.repository';
+import { ProductSchema } from '@/lib/schemas';
 
 /**
  * @fileOverview API WALL: Products
@@ -23,8 +24,9 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
     try {
         const body = await req.json();
+        const validatedData = ProductSchema.parse(body);
         const repo = new ProductRepository();
-        const data = await repo.create(body);
+        const data = await repo.create(validatedData);
         return NextResponse.json({ data });
     } catch (e: any) {
         return NextResponse.json({ error: e.message }, { status: 400 });

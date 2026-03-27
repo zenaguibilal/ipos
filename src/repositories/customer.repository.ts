@@ -17,6 +17,17 @@ export class CustomerRepository {
         return data.map(this.mapFromDb);
     }
 
+    async getCategories(): Promise<string[]> {
+        const { data, error } = await this.supabase
+            .from('customers')
+            .select('category')
+            .not('category', 'is', null);
+        
+        if (error) throw new Error(`CUSTOMER_CATEGORIES_FETCH_ERROR: ${error.message}`);
+        const cats = Array.from(new Set(data.map(i => i.category)));
+        return cats.sort();
+    }
+
     async findByUuid(uuid: string): Promise<Customer | null> {
         const { data, error } = await this.supabase
             .from('customers')
@@ -27,9 +38,6 @@ export class CustomerRepository {
         return this.mapFromDb(data);
     }
 
-    /**
-     * إعادة حساب مديونية العميل بشكل حتمي بناءً على سجل العمليات السحابي فقط.
-     */
     async recalculateBalance(uuid: string): Promise<void> {
         const [
             { data: sales },
