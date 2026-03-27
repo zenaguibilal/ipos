@@ -15,10 +15,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useAppStore, useAppActions, useIsManagerOrAdmin } from '@/stores/appStore';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-/**
- * @fileOverview Zakat Calculator Page (Guarded)
- */
-
 export default function ZakatPage() {
     const router = useRouter();
     const isManagerOrAdmin = useIsManagerOrAdmin();
@@ -33,7 +29,6 @@ export default function ZakatPage() {
     }));
     const { refreshZakatData, setZakatInputs, saveZakatCalculation } = useAppActions();
 
-    // Role Guard
     useEffect(() => {
         if (profile && !isManagerOrAdmin) {
             toast.error("Accès restreint", { description: "Le calculateur de Zakat est réservé aux gérants." });
@@ -129,14 +124,16 @@ export default function ZakatPage() {
                                     <p className="text-[10px] mt-2 font-bold uppercase opacity-60">Base Imposable Nette</p>
                                 </CardHeader>
                                 <CardContent className="text-center pt-8 space-y-4">
-                                    <div>
-                                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Nisab Actuel (85g)</p>
-                                        <p className="text-lg font-bold">{formatCurrency(result.nisab)}</p>
-                                    </div>
-                                    <div className="h-px bg-white/5 w-1/2 mx-auto" />
-                                    <div>
-                                        <p className="text-xs font-black text-chart-quaternary uppercase tracking-widest mb-1">Montant à Verser (2.5%)</p>
-                                        <p className="text-4xl font-black text-chart-quaternary">{formatCurrency(result.zakatAmount)}</p>
+                                    <div className="flex justify-center gap-4">
+                                        <div className="text-center">
+                                            <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Nisab Actuel</p>
+                                            <p className="text-sm font-bold">{formatCurrency(result.nisab)}</p>
+                                        </div>
+                                        <div className="w-px bg-white/10" />
+                                        <div className="text-center">
+                                            <p className="text-[9px] font-black text-chart-quaternary uppercase tracking-widest mb-1">Zakat (2.5%)</p>
+                                            <p className="text-sm font-black text-chart-quaternary">{formatCurrency(result.zakatAmount)}</p>
+                                        </div>
                                     </div>
                                 </CardContent>
                                 <CardFooter className="p-6 border-t border-white/5">

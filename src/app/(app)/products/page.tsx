@@ -7,7 +7,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import type { Product, Supplier, ProductImportAnalysis } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, LayoutGrid, List, FileDown, Scan, RefreshCw, FileUp, ShieldAlert } from 'lucide-react';
+import { Plus, Search, LayoutGrid, List, FileDown, Scan, RefreshCw, FileUp, ShieldAlert, Loader2 } from 'lucide-react';
 import { ProductCard } from '@/components/products/product-card';
 import { ProductTable } from '@/components/products/product-table';
 import { ProductTableSkeleton } from '@/components/products/product-table-skeleton';
@@ -104,7 +104,6 @@ export default function ProductsPage() {
                     <ShieldAlert className="h-12 w-12 text-destructive" />
                 </div>
                 <h2 className="text-2xl font-black uppercase italic">Vérification des Décrets...</h2>
-                <p className="text-muted-foreground text-sm max-w-xs">Votre terminal est en cours de synchronisation avec les protocoles de sécurité iPOS.</p>
             </div>
         );
     }
