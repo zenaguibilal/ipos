@@ -161,7 +161,7 @@ export default function NewStockIntakePage() {
                 return;
             }
              if (item.quantityDamaged > item.quantityReceived) {
-                toast.error(`La quantité endommagée ne peut pas dépasser la quantité reçue pour "${item.name}".`);
+                toast.error(`La quantité endومmagée ne peut pas dépasser la quantité reçue pour "${item.name}".`);
                 return;
             }
         }
