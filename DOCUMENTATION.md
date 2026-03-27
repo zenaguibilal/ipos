@@ -1,24 +1,23 @@
-# وثائق iPOS - معمارية النظام المطلقة
+# وثائق iPOS - معمارية الهيمنة المطلقة
 
 ## 🚀 المكدس التقني (Technical Stack)
 
-*   **Framework:** Next.js 14 (App Router)
-*   **UI Library:** React 18
-*   **Components:** ShadCN UI / Tailwind CSS
-*   **Backend & Authority:** Supabase (PostgreSQL, Auth, Storage)
-*   **State Management:** Zustand (Memory-Only Singularity)
-*   **API Layer:** Next.js API Routes (Hard API Wall)
+* **Framework:** Next.js 14 (App Router)
+* **Backend:** Supabase (PostgreSQL, Auth, Storage)
+* **State:** Zustand (Memory-Only Singularity)
+* **Boundary:** Next.js API Routes (Hard API Wall)
 
-## 🏗️ معمارية البيانات (PHASE 1 PURIFIED)
+## 🏗️ تطهير البيانات (PHASE 1 COMPLETE)
 
-تم تطهير النظام بالكامل من كافة آليات التخزين المحلي المؤقت (Purged of IndexedDB, Dexie, LocalStorage Persistence).
+تم تدمير كافة آليات التخزين المحلي والـ PWA. النظام الآن يعمل بمعمارية **Cloud-Only حتمية**.
 
-*   **المصدر الوحيد للحقيقة:** قاعدة بيانات Supabase.
-*   **بروتوكول الوصول:** يتم الوصول للبيانات حصراً عبر جدار حماية API (`/api/*`).
-*   **العزل:** يمنع منعاً باتاً استدعاء Supabase SDK مباشرة من مكونات واجهة المستخدم.
+* **المصدر الوحيد:** Supabase.
+* **الوصول:** عبر `/api/*` حصراً.
+* **الحالة:** متطايرة (Volatile) في الذاكرة لضمان التزامن اللحظي.
 
-## 💀 خريطة الفشل المصححة (Failure Map Resolved)
+## 💀 خريطة الطريق للتنفيذ (Execution Roadmap)
 
-1.  **Repository/Service Duality:** تم دمج المنطق في مستودعات خادم حتمية (Server-side Repositories).
-2.  **API Bypass:** تم سد الثغرات؛ المكونات تتحدث مع الـ API فقط.
-3.  **Ephemeral State:** مخزن Zustand الآن يعمل في الذاكرة فقط، لا توجد حالة "ظل" (Shadow State) في المتصفح.
+1. [✔] **Phase 1:** تطهير البيانات وبقايا PWA.
+2. [ ] **Phase 2:** سلطة البيانات المطلقة (Supabase Authority).
+3. [ ] **Phase 3:** بناء جدار الحماية (Hard API Wall).
+4. [ ] **Phase 4:** التوحيد المعماري (Purification).
