@@ -77,6 +77,7 @@ export class DashboardRepository {
         const productSalesMap = new Map();
         currentSales.forEach(s => {
             s.items.forEach(item => {
+                if (!item.productUuid) return;
                 const currentP = productSalesMap.get(item.productUuid) || { name: item.name, quantity: 0, revenue: 0 };
                 currentP.quantity += item.quantity;
                 currentP.revenue += (item.price * item.quantity);
@@ -112,21 +113,24 @@ export class DashboardRepository {
         }));
 
         // --- Business Health Score Calculation (Sovereign Logic) ---
-        // Weights: Margin (40%), Growth (30%), Stock Health (30%)
+        // Weights: Margin (40%), Growth (30%), Debt Control (30%)
         const netMargin = current.revenue > 0 ? (current.profit / current.revenue) * 100 : 0;
         const marginScore = Math.min(100, Math.max(0, netMargin * 2.5)); // 40% margin = 100 pts
         
         const growthScore = Math.min(100, Math.max(0, totalRevenueChange + 50)); // -50% to +50% range
         
-        const stockHealth = products.length > 0 ? (products.filter(p => p.quantity > p.minStockLevel).length / products.length) * 100 : 100;
+        // Debt control: ratio of outstanding debt vs total revenue. 
+        // Ideal is debt < 20% of period revenue.
+        const debtRatio = current.revenue > 0 ? totalOutstandingDebt / current.revenue : 0;
+        const debtScore = Math.max(0, 100 - (debtRatio * 100));
         
-        const healthScore = Math.round((marginScore * 0.4) + (growthScore * 0.3) + (stockHealth * 0.3));
+        const healthScore = Math.round((marginScore * 0.4) + (growthScore * 0.3) + (debtScore * 0.3));
 
         const getInsight = () => {
             if (healthScore > 80) return "Architecture robuste. Expansion recommandée.";
             if (healthScore > 60) return "Performance stable. Optimisez vos marges.";
-            if (healthScore > 40) return "Flux tendu. Surveillez vos charges.";
-            return "Alerte critique. Restructuration nécessaire.";
+            if (healthScore > 40) return "Flux tendu. Surveillez vos charges et les encours clients.";
+            return "Alerte critique. Restructuration immédiate de la stratégie de crédit nécessaire.";
         };
 
         return {

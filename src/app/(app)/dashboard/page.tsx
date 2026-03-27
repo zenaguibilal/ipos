@@ -11,7 +11,7 @@ import {
     TrendingUp, TrendingDown, DollarSign, Receipt, CreditCard, 
     Archive, RefreshCw, ShieldCheck, Lock, AlertTriangle, ArrowRight,
     ShoppingBag, Package, Plus, Wallet, Zap, Star, Activity,
-    Target, LayoutDashboard, HandCoins
+    Target, LayoutDashboard, HandCoins, BarChart3, TrendingUpDown
 } from 'lucide-react';
 import { formatCurrency, cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -163,7 +163,7 @@ export default function DashboardPage() {
                             </div>
                             <div className="space-y-4 text-center md:text-left">
                                 <div>
-                                    <h3 className="text-2xl font-black uppercase italic italic tracking-tighter">Diagnostic de <span className="text-primary">Performance</span></h3>
+                                    <h3 className="text-2xl font-black uppercase italic tracking-tighter">Diagnostic de <span className="text-primary">Performance</span></h3>
                                     <p className="text-[11px] font-black uppercase tracking-[0.3em] text-muted-foreground opacity-60">Verdict du Système Core iPOS</p>
                                 </div>
                                 <div className="p-4 rounded-2xl bg-white/5 border border-white/10 shadow-inner">
