@@ -27,14 +27,14 @@ export function ClientProviders({ children }: { children: React.ReactNode }) {
                     });
                 }
 
-                // Annihilate Cache API
+                // Annihilate Cache API (Network Cache)
                 if ('caches' in window) {
                     caches.keys().then((names) => {
                         names.forEach(name => caches.delete(name));
                     });
                 }
 
-                // Purge Cookies
+                // Purge Cookies (All sessions)
                 document.cookie.split(";").forEach(c => {
                     document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
                 });

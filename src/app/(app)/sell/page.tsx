@@ -55,6 +55,7 @@ export default function SellPage() {
 
     const activeCart = useMemo(() => carts.find(c => c.id === activeCartId), [carts, activeCartId]);
 
+    // Authority: Fetch actual customer data from API, not local cache
     useEffect(() => {
         if (activeCart?.customerUuid) {
             api.get<Customer>(`customers/${activeCart.customerUuid}`).then(setLocalCartCustomer).catch(() => setLocalCartCustomer(null));

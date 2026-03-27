@@ -22,6 +22,7 @@ export async function GET() {
 export async function PUT(req: Request) {
     try {
         const body = await req.json();
+        // Authority: Strict Zod validation
         const validatedData = ProfileSchema.parse(body);
         const repo = new CompanyRepository();
         const data = await repo.update(validatedData);

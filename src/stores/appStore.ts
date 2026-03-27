@@ -37,7 +37,7 @@ interface AppState {
     lastCompletedSale: { sale: Sale; customer?: Customer } | null;
     isLoading: Record<string, boolean>;
     
-    // UI Singularity State
+    // UI Singularity State (View Modes)
     productViewMode: 'grid' | 'list';
     customerViewMode: 'grid' | 'list';
     expenseViewMode: 'grid' | 'list';
@@ -46,7 +46,7 @@ interface AppState {
     supplierViewMode: 'grid' | 'list';
     stockViewMode: 'grid' | 'list';
 
-    // Global Modal Control
+    // Global Modal Control (Eradicate local useState for Modals)
     modals: {
         sell: {
             isProductSheetOpen: boolean;
