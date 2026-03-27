@@ -3,29 +3,24 @@ import type { Sale } from "@/lib/types";
 import { v4 as uuidv4 } from 'uuid';
 
 /**
- * @fileOverview Sale Repository (Data Authority)
- * Orchestrates atomic transactions for sales and inventory adjustments.
+ * @fileOverview Sale Repository (Absolute Data Authority)
+ * المسؤول الحصري عن إنشاء المبيعات وضمان اتساق العمليات المالية والمخزنية.
  */
 export class SaleRepository {
     private supabase = createClient();
 
-    async getAll(): Promise<Sale[]> {
-        const { data, error } = await this.supabase
-            .from('sales')
-            .select('*, sale_items(*)')
-            .order('created_at', { ascending: false });
-        if (error) throw new Error(error.message);
-        return data.map(this.mapFromDb);
-    }
-
     async create(saleData: any): Promise<Sale> {
+        // حتمية رقم الفاتورة: يتم إنشاؤه في الخادم لضمان عدم التكرار
         const now = new Date();
-        const invoiceNumber = `${now.toISOString().slice(2, 10).replace(/-/g, '')}-${Math.floor(100 + Math.random() * 900)}`;
+        const invoiceNumber = `${now.toISOString().slice(2, 10).replace(/-/g, '')}-${Math.floor(1000 + Math.random() * 9000)}`;
         
-        const { data: newSale, error: saleError } = await this.supabase
+        const saleUuid = uuidv4();
+        
+        // 1. تسجيل الفاتورة
+        const { data: sale, error: sErr } = await this.supabase
             .from('sales')
             .insert([{
-                uuid: uuidv4(),
+                uuid: saleUuid,
                 invoice_number: invoiceNumber,
                 subtotal: saleData.subtotal,
                 discount_type: saleData.discountType,
@@ -41,10 +36,11 @@ export class SaleRepository {
             .select()
             .single();
 
-        if (saleError) throw new Error(saleError.message);
+        if (sErr) throw new Error(`SALE_CREATION_FAILED: ${sErr.message}`);
 
+        // 2. تسجيل العناصر (Atomic batch)
         const saleItems = saleData.items.map((item: any) => ({
-            sale_uuid: newSale.uuid,
+            sale_uuid: saleUuid,
             product_uuid: item.productUuid || item.uuid,
             name: item.name,
             price: item.price,
@@ -52,13 +48,24 @@ export class SaleRepository {
             quantity: item.cartQuantity || item.quantity,
         }));
 
-        const { error: itemsError } = await this.supabase.from('sale_items').insert(saleItems);
-        if (itemsError) {
-            await this.supabase.from('sales').delete().eq('uuid', newSale.uuid);
-            throw new Error(itemsError.message);
+        const { error: iErr } = await this.supabase.from('sale_items').insert(saleItems);
+        if (iErr) {
+            // Rollback (Manual since we are not in a full DB transaction block here)
+            await this.supabase.from('sales').delete().eq('uuid', saleUuid);
+            throw new Error(`SALE_ITEMS_SYNC_FAILED: ${iErr.message}`);
         }
 
-        return this.mapFromDb({ ...newSale, sale_items: saleItems });
+        return this.mapFromDb({ ...sale, sale_items: saleItems });
+    }
+
+    async getByUuid(uuid: string): Promise<Sale | null> {
+        const { data, error } = await this.supabase
+            .from('sales')
+            .select('*, sale_items(*)')
+            .eq('uuid', uuid)
+            .single();
+        if (error) return null;
+        return this.mapFromDb(data);
     }
 
     private mapFromDb(s: any): Sale {
@@ -66,13 +73,6 @@ export class SaleRepository {
             uuid: s.uuid,
             user_id: s.user_id,
             invoiceNumber: s.invoice_number,
-            items: s.sale_items?.map((item: any) => ({
-                productUuid: item.product_uuid,
-                name: item.name,
-                price: item.price,
-                purchasePrice: item.purchase_price,
-                quantity: item.quantity
-            })) || [],
             subtotal: s.subtotal,
             discountType: s.discount_type,
             discountAmount: s.discount_amount,
@@ -85,6 +85,13 @@ export class SaleRepository {
             createdAt: s.created_at,
             updatedAt: s.updated_at,
             dueDate: s.due_date,
+            items: s.sale_items?.map((item: any) => ({
+                productUuid: item.product_uuid,
+                name: item.name,
+                price: item.price,
+                purchasePrice: item.purchase_price,
+                quantity: item.quantity
+            })) || [],
         };
     }
 }
