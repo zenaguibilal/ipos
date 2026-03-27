@@ -47,22 +47,19 @@ export default function LoginPage() {
     const [forgotPassMessage, setForgotPassMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
 
     /**
-     * CRITICAL: Hard Redirect Protocol
-     * Standard router.push fails if Next.js middleware doesn't see auth cookies yet.
-     * We force a page refresh to sync cookies before redirecting.
+     * @protocol HARD_REDIRECT
+     * Next.js Middleware can have race conditions with browser cookie persistence.
+     * We use window.location.href to force a clean server request with persisted cookies.
      */
     useEffect(() => {
         if (session) {
             setLoginSuccess(true);
             const timer = setTimeout(() => {
-                // router.refresh forces Next.js to re-evaluate server status
-                router.refresh();
-                // window.location.href ensures a clean browser request with fresh cookies
                 window.location.href = '/dashboard';
             }, 800);
             return () => clearTimeout(timer);
         }
-    }, [session, router]);
+    }, [session]);
 
     const handleSignIn = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -77,7 +74,7 @@ export default function LoginPage() {
         setIsLoading(true);
         try {
             await signIn(signInEmail, signInPassword);
-            toast.success("Authentification réussie. Redirection...");
+            toast.success("Connexion réussie ! Préparation de l'environnement...");
         } catch (error: any) {
             setError(error.message || "La connexion a échoué.");
             setIsLoading(false);
@@ -134,12 +131,12 @@ export default function LoginPage() {
                 </div>
 
                 {loginSuccess ? (
-                    <Card className="luxury-glass border-primary/20 text-center p-8 space-y-4">
+                    <Card className="luxury-glass border-primary/20 text-center p-8 space-y-4 shadow-2xl">
                         <div className="flex justify-center">
                             <CheckCircle2 className="h-12 w-12 text-primary animate-bounce" />
                         </div>
                         <h2 className="text-xl font-bold">Session Identifiée</h2>
-                        <p className="text-sm text-muted-foreground">Préparation de votre espace de travail...</p>
+                        <p className="text-sm text-muted-foreground">Redirection sécurisée en cours...</p>
                         <Loader2 className="h-5 w-5 animate-spin mx-auto text-primary/50" />
                     </Card>
                 ) : (
@@ -152,8 +149,8 @@ export default function LoginPage() {
                         <TabsContent value="signin" className="animate-in slide-in-from-bottom-4 duration-500">
                             <Card className="luxury-glass border-white/5 shadow-2xl overflow-hidden">
                                 <CardHeader className="bg-primary/5 border-b border-white/5 pb-6">
-                                    <CardTitle className="text-2xl font-black uppercase tracking-tight">Connexion</CardTitle>
-                                    <CardDescription className="text-xs font-medium">Accédez à votre terminal de vente iPOS.</CardDescription>
+                                    <CardTitle className="text-2xl font-black uppercase tracking-tight text-center sm:text-left">Connexion</CardTitle>
+                                    <CardDescription className="text-xs font-medium text-center sm:text-left">Accédez à votre terminal de vente iPOS.</CardDescription>
                                 </CardHeader>
                                 <form onSubmit={handleSignIn}>
                                     <CardContent className="space-y-5 pt-8">
@@ -207,7 +204,7 @@ export default function LoginPage() {
                                                                 </div>
                                                             </div>
                                                             <DialogFooter>
-                                                                <Button type="submit" disabled={isForgotPassLoading} className="w-full bg-primary font-black uppercase text-xs h-12 rounded-xl">Envoyer</Button>
+                                                                <Button type="submit" disabled={isForgotPassLoading} className="w-full bg-primary font-black uppercase text-xs h-12 rounded-xl">Envoyer le lien</Button>
                                                             </DialogFooter>
                                                         </form>
                                                     </DialogContent>
@@ -276,7 +273,7 @@ export default function LoginPage() {
                 
                 <div className="text-center">
                     <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground opacity-40">
-                        Sécurisé par iPOS Security & Supabase Enterprise
+                        Sécurisé par iPOS Enterprise Security
                     </p>
                 </div>
             </div>

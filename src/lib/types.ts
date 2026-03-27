@@ -51,12 +51,12 @@ export interface Customer {
     bread_jours_semaine?: Record<string, { actif: boolean; quantite: number }>;
 }
 
-export interface RecipeIngredient {
-    productUuid: string;
+export interface Ingredient {
+    id: string;
     name: string;
     quantity: number;
     unit: string;
-    cost: number;
+    unitCost: number;
 }
 
 export interface Recipe {
@@ -64,12 +64,11 @@ export interface Recipe {
     user_id: string;
     name: string;
     description?: string;
-    ingredients: RecipeIngredient[];
+    ingredients: Ingredient[];
     yieldQuantity: number;
-    totalCost: number;
     unitCost: number;
-    targetMargin: number;
     suggestedPrice: number;
+    targetMargin: number;
     createdAt?: Date;
     updatedAt?: Date;
 }

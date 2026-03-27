@@ -5,7 +5,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 /**
  * @fileOverview Auth Middleware
  * Synchronizes Supabase auth session between server and client.
- * Explicitly handles cookie passing to ensure Next.js Server Components see the session.
+ * Optimized to prevent authentication loops and handle PWA assets.
  */
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -54,26 +54,26 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // IMPORTANT: getUser() is required for security in middleware
+  // IMPORTANT: refresh session for the server
   const { data: { user } } = await supabase.auth.getUser()
 
   const isAuthRoute = request.nextUrl.pathname.startsWith('/login')
   
-  // Exclude static files and PWA assets to prevent unnecessary redirection loops
-  const isStaticFile = /\.(.*)$/.test(request.nextUrl.pathname) || 
+  // Ignore static assets, PWA files, and specific icons
+  const isPublicAsset = /\.(.*)$/.test(request.nextUrl.pathname) || 
                        request.nextUrl.pathname.startsWith('/_next') ||
                        request.nextUrl.pathname.includes('manifest.json') ||
                        request.nextUrl.pathname.includes('sw.js') ||
                        request.nextUrl.pathname.includes('icon.svg')
 
-  // If user is not signed in and trying to access a protected route
-  if (!user && !isAuthRoute && !isStaticFile) {
+  // Redirect to login if unauthenticated
+  if (!user && !isAuthRoute && !isPublicAsset) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
   }
 
-  // If user is signed in and trying to access the login page
+  // Redirect to dashboard if authenticated and trying to reach login
   if (user && isAuthRoute) {
     const url = request.nextUrl.clone()
     url.pathname = '/dashboard'

@@ -1,68 +1,89 @@
 
-'use server';
+'use client';
 
 import { createClient } from "@/utils/supabase/client";
-import type { Recipe } from "@/lib/types";
 import { v4 as uuidv4 } from 'uuid';
-
-/**
- * @fileOverview Business logic for cost engineering and recipe management.
- */
+import type { Recipe } from "@/lib/types";
+import { useAppStore } from "@/stores/appStore";
 
 class RecipeService {
     private supabase = createClient();
 
+    private getUserId(): string {
+        const id = useAppStore.getState().session?.user?.id;
+        if (!id) throw new Error("Utilisateur non authentifié.");
+        return id;
+    }
+
     async getRecipes(): Promise<Recipe[]> {
+        const userId = this.getUserId();
         const { data, error } = await this.supabase
             .from('recipes')
             .select('*')
-            .order('created_at', { ascending: false });
-        
+            .eq('user_id', userId)
+            .order('updated_at', { ascending: false });
+
         if (error) throw error;
         return data.map(r => ({
             ...r,
-            ingredients: r.ingredients || [],
+            createdAt: new Date(r.created_at),
+            updatedAt: new Date(r.updated_at),
             yieldQuantity: r.yield_quantity,
-            totalCost: r.total_cost,
             unitCost: r.unit_cost,
-            targetMargin: r.target_margin,
             suggestedPrice: r.suggested_price,
-            createdAt: r.created_at,
-            updatedAt: r.updated_at
+            targetMargin: r.target_margin
         }));
     }
 
-    async saveRecipe(recipe: Partial<Recipe>): Promise<void> {
-        const isNew = !recipe.uuid;
-        const now = new Date().toISOString();
-        
-        const dbData = {
-            name: recipe.name,
-            description: recipe.description,
-            ingredients: recipe.ingredients,
-            yield_quantity: recipe.yieldQuantity,
-            total_cost: recipe.totalCost,
-            unit_cost: recipe.unitCost,
-            target_margin: recipe.targetMargin,
-            suggested_price: recipe.suggestedPrice,
-            updated_at: now
-        };
-
-        if (isNew) {
-            const { error } = await this.supabase.from('recipes').insert({
-                ...dbData,
+    async addRecipe(recipe: Omit<Recipe, 'uuid' | 'user_id' | 'createdAt' | 'updatedAt'>): Promise<Recipe> {
+        const userId = this.getUserId();
+        const { data, error } = await this.supabase
+            .from('recipes')
+            .insert({
                 uuid: uuidv4(),
-                created_at: now
-            });
-            if (error) throw error;
-        } else {
-            const { error } = await this.supabase.from('recipes').update(dbData).eq('uuid', recipe.uuid);
-            if (error) throw error;
-        }
+                user_id: userId,
+                name: recipe.name,
+                description: recipe.description,
+                ingredients: recipe.ingredients,
+                yield_quantity: recipe.yieldQuantity,
+                unit_cost: recipe.unitCost,
+                suggested_price: recipe.suggestedPrice,
+                target_margin: recipe.targetMargin
+            })
+            .select()
+            .single();
+
+        if (error) throw error;
+        return data;
+    }
+
+    async updateRecipe(uuid: string, recipe: Partial<Recipe>): Promise<Recipe> {
+        const { data, error } = await this.supabase
+            .from('recipes')
+            .update({
+                name: recipe.name,
+                description: recipe.description,
+                ingredients: recipe.ingredients,
+                yield_quantity: recipe.yieldQuantity,
+                unit_cost: recipe.unitCost,
+                suggested_price: recipe.suggestedPrice,
+                target_margin: recipe.targetMargin,
+                updated_at: new Date().toISOString()
+            })
+            .eq('uuid', uuid)
+            .select()
+            .single();
+
+        if (error) throw error;
+        return data;
     }
 
     async deleteRecipe(uuid: string): Promise<void> {
-        const { error } = await this.supabase.from('recipes').delete().eq('uuid', uuid);
+        const { error } = await this.supabase
+            .from('recipes')
+            .delete()
+            .eq('uuid', uuid);
+
         if (error) throw error;
     }
 }
