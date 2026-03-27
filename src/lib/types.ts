@@ -39,12 +39,6 @@ export interface Customer {
     totalSpent: number;
     outstandingBalance: number;
     lastActivityDate?: string;
-    debtStatus: 'none' | 'due_soon' | 'overdue';
-    isOverLimit: boolean;
-    isBreadClient: boolean;
-    bread_type_recurrence?: 'quotidien' | 'jours_specifiques' | 'aucun';
-    bread_quantite_defaut?: number;
-    bread_jours_semaine?: Record<string, { actif: boolean; quantite: number }>;
     createdAt: string;
     updatedAt: string;
 }
@@ -113,8 +107,6 @@ export interface CompanyProfile {
     city?: string;
     phone?: string;
     role: AppRole;
-    prix_pain: number;
-    goldPricePerGram: number;
     updatedAt: string;
 }
 
@@ -129,37 +121,4 @@ export interface Cart {
     items: CartItem[];
     customerUuid: string | null;
     discount: { type: 'fixed' | 'percentage'; value: number };
-}
-
-export interface InventoryLog {
-    uuid: string;
-    user_id: string;
-    productUuid: string;
-    change: number;
-    newQuantity: number;
-    reason: 'sale' | 'return' | 'stock_intake' | 'cancellation' | 'manual_adjustment';
-    relatedUuid?: string;
-    createdAt: string;
-}
-
-export interface ProductReturn {
-    uuid: string;
-    user_id: string;
-    originalSaleUuid: string;
-    originalInvoiceNumber: string;
-    totalReturnValue: number;
-    amountRefunded: number;
-    customerUuid?: string;
-    notes?: string;
-    items: ReturnItem[];
-    createdAt: string;
-}
-
-export interface ReturnItem {
-    productUuid: string | null;
-    productName: string;
-    quantity: number;
-    price: number;
-    purchasePrice: number;
-    wasRestocked: boolean;
 }

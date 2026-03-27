@@ -1,4 +1,3 @@
-
 'use client';
 
 import { AppHeader } from '@/components/layout/header';
@@ -14,8 +13,6 @@ export default function AppLayout({
 }) {
   const { sessionLoading } = useAppStore();
 
-  // StoreInitializer must be rendered unconditionally to be able to update the sessionLoading state.
-  // The loading guard is now a ternary that decides whether to show the loader or the children.
   return (
     <>
       <StoreInitializer />

@@ -81,12 +81,6 @@ export class CustomerRepository {
             lastActivityDate: c.last_activity_date,
             createdAt: c.created_at,
             updatedAt: c.updated_at,
-            debtStatus: c.debt_status || 'none',
-            isOverLimit: c.is_over_limit || false,
-            isBreadClient: c.is_bread_client || false,
-            bread_type_recurrence: c.bread_type_recurrence,
-            bread_quantite_defaut: c.bread_quantite_defaut,
-            bread_jours_semaine: c.bread_jours_semaine,
         };
     }
 
@@ -99,10 +93,6 @@ export class CustomerRepository {
             notes: c.notes,
             category: c.category,
             credit_limit: c.creditLimit,
-            is_bread_client: c.isBreadClient,
-            bread_type_recurrence: c.bread_type_recurrence,
-            bread_quantite_defaut: c.bread_quantite_defaut,
-            bread_jours_semaine: c.bread_jours_semaine,
         };
     }
 }
